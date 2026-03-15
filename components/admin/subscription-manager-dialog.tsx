@@ -131,10 +131,14 @@ function StatsCardsCompact({ stats, loading }: { stats: SubscriptionStats | null
 
 function DistributionChartCompact({ data, loading }: { data: PlanDistribution[]; loading: boolean }) {
   const colors: Record<string, string> = {
+    gratuit: "bg-slate-400",
     starter: "bg-slate-500",
     confort: "bg-violet-500",
     pro: "bg-amber-500",
-    enterprise: "bg-emerald-500",
+    enterprise_s: "bg-emerald-500",
+    enterprise_m: "bg-emerald-500",
+    enterprise_l: "bg-emerald-500",
+    enterprise_xl: "bg-emerald-500",
   };
 
   if (loading) {
@@ -251,7 +255,7 @@ function ActionModal({ open, onClose, user, action, onSuccess }: ActionModalProp
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(["starter", "confort", "pro", "enterprise"] as PlanSlug[]).map((slug) => (
+                  {(["gratuit", "starter", "confort", "pro", "enterprise_s", "enterprise_m", "enterprise_l", "enterprise_xl"] as PlanSlug[]).map((slug) => (
                     <SelectItem key={slug} value={slug}>{PLANS[slug].name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -500,10 +504,14 @@ export function SubscriptionManagerDialog({
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tous</SelectItem>
+                      <SelectItem value="gratuit">Gratuit</SelectItem>
                       <SelectItem value="starter">Starter</SelectItem>
                       <SelectItem value="confort">Confort</SelectItem>
                       <SelectItem value="pro">Pro</SelectItem>
-                      <SelectItem value="enterprise">Enterprise</SelectItem>
+                      <SelectItem value="enterprise_s">Enterprise S</SelectItem>
+                      <SelectItem value="enterprise_m">Enterprise M</SelectItem>
+                      <SelectItem value="enterprise_l">Enterprise L</SelectItem>
+                      <SelectItem value="enterprise_xl">Enterprise XL</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -516,8 +524,9 @@ export function SubscriptionManagerDialog({
                       <SelectItem value="active">Actif</SelectItem>
                       <SelectItem value="trialing">Essai</SelectItem>
                       <SelectItem value="canceled">Annulé</SelectItem>
+                      <SelectItem value="incomplete">En attente</SelectItem>
                       <SelectItem value="past_due">Impayé</SelectItem>
-                      <SelectItem value="suspended">Suspendu</SelectItem>
+                      <SelectItem value="paused">Suspendu</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -559,10 +568,11 @@ export function SubscriptionManagerDialog({
                             </TableCell>
                             <TableCell>
                               <Badge className={cn(
+                                user.plan_slug === "gratuit" && "bg-slate-400/20 text-slate-300",
                                 user.plan_slug === "starter" && "bg-slate-500/20 text-slate-400",
                                 user.plan_slug === "confort" && "bg-violet-500/20 text-violet-400",
                                 user.plan_slug === "pro" && "bg-amber-500/20 text-amber-400",
-                                user.plan_slug === "enterprise" && "bg-emerald-500/20 text-emerald-400"
+                                user.plan_slug?.startsWith("enterprise") && "bg-emerald-500/20 text-emerald-400"
                               )}>
                                 {user.plan_name}
                               </Badge>
@@ -571,15 +581,17 @@ export function SubscriptionManagerDialog({
                               <Badge className={cn(
                                 user.status === "active" && "bg-emerald-500/20 text-emerald-400",
                                 user.status === "trialing" && "bg-violet-500/20 text-violet-400",
+                                user.status === "incomplete" && "bg-orange-500/20 text-orange-400",
                                 user.status === "canceled" && "bg-slate-500/20 text-slate-400",
                                 user.status === "past_due" && "bg-red-500/20 text-red-400",
-                                user.status === "suspended" && "bg-red-500/20 text-red-400"
+                                user.status === "paused" && "bg-red-500/20 text-red-400"
                               )}>
                                 {user.status === "active" ? "Actif" :
                                  user.status === "trialing" ? "Essai" :
+                                 user.status === "incomplete" ? "En attente" :
                                  user.status === "canceled" ? "Annulé" :
                                  user.status === "past_due" ? "Impayé" :
-                                 user.status === "suspended" ? "Suspendu" : user.status}
+                                 user.status === "paused" ? "Suspendu" : user.status}
                               </Badge>
                             </TableCell>
                             <TableCell>
@@ -607,7 +619,7 @@ export function SubscriptionManagerDialog({
                                     <Gift className="w-4 h-4 mr-2" />Offrir des jours
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator className="bg-slate-700" />
-                                  {user.status === "suspended" ? (
+                                  {user.status === "paused" ? (
                                     <DropdownMenuItem onClick={() => openAction(user, "unsuspend")}>
                                       <RefreshCw className="w-4 h-4 mr-2" />Réactiver
                                     </DropdownMenuItem>

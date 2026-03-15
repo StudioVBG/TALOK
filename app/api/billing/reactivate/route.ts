@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
-import { getStripe } from "@/lib/stripe-client";
+import { reactivateSubscription } from "@/lib/subscriptions/subscription-service";
 
 export async function POST() {
   try {
@@ -11,48 +11,11 @@ export async function POST() {
       return NextResponse.json({ error: "Non authentifie" }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_id", user.id)
-      .single();
+    const result = await reactivateSubscription(user.id);
 
-    if (!profile) {
-      return NextResponse.json({ error: "Profil non trouve" }, { status: 404 });
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
     }
-
-    const { data: subscription } = await supabase
-      .from("subscriptions")
-      .select("*")
-      .eq("owner_id", profile.id)
-      .single();
-
-    if (!subscription?.stripe_subscription_id) {
-      return NextResponse.json({ error: "Aucun abonnement Stripe actif" }, { status: 400 });
-    }
-
-    const stripe = getStripe();
-    await stripe.subscriptions.update(subscription.stripe_subscription_id, {
-      cancel_at_period_end: false,
-    });
-
-    await supabase
-      .from("subscriptions")
-      .update({
-        cancel_at_period_end: false,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", subscription.id);
-
-    await supabase.from("audit_log").insert({
-      user_id: user.id,
-      action: "update",
-      entity_type: "subscription",
-      entity_id: subscription.id,
-      metadata: { action: "reactivate" },
-      risk_level: "low",
-      success: true,
-    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

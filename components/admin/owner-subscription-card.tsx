@@ -54,7 +54,7 @@ import {
   Rocket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PLANS } from "@/lib/subscriptions/plans";
+import { PLANS, type PlanSlug } from "@/lib/subscriptions/plans";
 
 // ============================================
 // TYPES
@@ -133,6 +133,38 @@ const PLAN_THEMES: Record<string, {
     iconColor: "text-violet-600",
   },
   enterprise: {
+    gradient: "from-amber-500/20 via-orange-400/10 to-amber-600/20",
+    glow: "shadow-amber-500/25",
+    icon: Crown,
+    badge: "bg-amber-100 text-amber-700 border-amber-300",
+    ring: "ring-amber-400/30",
+    iconColor: "text-amber-600",
+  },
+  enterprise_s: {
+    gradient: "from-amber-500/20 via-orange-400/10 to-amber-600/20",
+    glow: "shadow-amber-500/25",
+    icon: Crown,
+    badge: "bg-amber-100 text-amber-700 border-amber-300",
+    ring: "ring-amber-400/30",
+    iconColor: "text-amber-600",
+  },
+  enterprise_m: {
+    gradient: "from-amber-500/20 via-orange-400/10 to-amber-600/20",
+    glow: "shadow-amber-500/25",
+    icon: Crown,
+    badge: "bg-amber-100 text-amber-700 border-amber-300",
+    ring: "ring-amber-400/30",
+    iconColor: "text-amber-600",
+  },
+  enterprise_l: {
+    gradient: "from-amber-500/20 via-orange-400/10 to-amber-600/20",
+    glow: "shadow-amber-500/25",
+    icon: Crown,
+    badge: "bg-amber-100 text-amber-700 border-amber-300",
+    ring: "ring-amber-400/30",
+    iconColor: "text-amber-600",
+  },
+  enterprise_xl: {
     gradient: "from-amber-500/20 via-orange-400/10 to-amber-600/20",
     glow: "shadow-amber-500/25",
     icon: Crown,
@@ -275,7 +307,7 @@ function PlanChangeDialog({
   onSuccess: () => void;
 }) {
   const { toast } = useToast();
-  const [selectedPlan, setSelectedPlan] = React.useState(currentPlan);
+  const [selectedPlan, setSelectedPlan] = React.useState<PlanSlug>(currentPlan as PlanSlug);
   const [reason, setReason] = React.useState("");
   const [notifyUser, setNotifyUser] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -283,7 +315,7 @@ function PlanChangeDialog({
   // Reset when dialog opens
   React.useEffect(() => {
     if (open) {
-      setSelectedPlan(currentPlan);
+      setSelectedPlan(currentPlan as PlanSlug);
       setReason("");
     }
   }, [open, currentPlan]);
@@ -351,7 +383,7 @@ function PlanChangeDialog({
           {/* Plan Selection */}
           <div className="space-y-2">
             <Label>Nouveau forfait</Label>
-            <Select value={selectedPlan} onValueChange={setSelectedPlan}>
+            <Select value={selectedPlan} onValueChange={(value) => setSelectedPlan(value as PlanSlug)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -374,10 +406,34 @@ function PlanChangeDialog({
                     <span>Pro — {formatPrice(PLANS.pro.price_monthly ?? 0)}</span>
                   </div>
                 </SelectItem>
-                <SelectItem value="enterprise">
+                <SelectItem value="gratuit">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-slate-500" />
+                    <span>Gratuit — {formatPrice(0)}</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="enterprise_s">
                   <div className="flex items-center gap-2">
                     <Crown className="h-4 w-4 text-amber-500" />
-                    <span>Enterprise — Sur devis</span>
+                    <span>Enterprise S — {formatPrice(PLANS.enterprise_s.price_monthly ?? 0)}</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="enterprise_m">
+                  <div className="flex items-center gap-2">
+                    <Crown className="h-4 w-4 text-amber-500" />
+                    <span>Enterprise M — {formatPrice(PLANS.enterprise_m.price_monthly ?? 0)}</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="enterprise_l">
+                  <div className="flex items-center gap-2">
+                    <Crown className="h-4 w-4 text-amber-500" />
+                    <span>Enterprise L — {formatPrice(PLANS.enterprise_l.price_monthly ?? 0)}</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="enterprise_xl">
+                  <div className="flex items-center gap-2">
+                    <Crown className="h-4 w-4 text-amber-500" />
+                    <span>Enterprise XL — {formatPrice(PLANS.enterprise_xl.price_monthly ?? 0)}</span>
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -531,7 +587,7 @@ export function OwnerSubscriptionCard({
                 <div>
                   <CardTitle className="text-lg font-bold flex items-center gap-2">
                     {subscription.plan_name}
-                    {subscription.plan_slug === "enterprise" && (
+                    {subscription.plan_slug.startsWith("enterprise") && (
                       <Sparkles className="h-4 w-4 text-amber-500" />
                     )}
                   </CardTitle>
