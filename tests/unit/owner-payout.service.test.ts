@@ -111,6 +111,10 @@ describe("owner-payout.service", () => {
       expect.objectContaining({
         sourceTransaction: "ch_123",
         idempotencyKey: "owner-transfer:payment_1",
+        metadata: expect.objectContaining({
+          payment_intent_id: "pi_123",
+          source_transaction_id: "ch_123",
+        }),
       })
     );
   });

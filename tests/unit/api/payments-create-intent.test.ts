@@ -15,12 +15,15 @@ const serviceClient = {
 
 const stripeCreate = vi.fn();
 const stripeCancel = vi.fn();
+const stripeRetrieve = vi.fn();
 
 function createSelectChain() {
   return {
     select: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
     in: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
     maybeSingle: vi.fn(),
     single: vi.fn(),
   };
@@ -51,6 +54,7 @@ vi.mock("@/lib/stripe", () => ({
     paymentIntents: {
       create: stripeCreate,
       cancel: stripeCancel,
+      retrieve: stripeRetrieve,
     },
   },
   formatAmountForStripe: (amount: number) => Math.round(amount * 100),
@@ -110,6 +114,10 @@ describe("POST /api/payments/create-intent", () => {
       data: [{ montant: 350 }],
       error: null,
     });
+    servicePaymentsChain.maybeSingle.mockResolvedValue({
+      data: null,
+      error: null,
+    });
 
     serviceLeaseSignersChain.maybeSingle.mockResolvedValue({
       data: null,
@@ -130,6 +138,7 @@ describe("POST /api/payments/create-intent", () => {
     });
 
     stripeCancel.mockResolvedValue({});
+    stripeRetrieve.mockResolvedValue(null);
 
     sessionPaymentsInsert.single.mockResolvedValue({
       data: { id: "payment-1" },
@@ -237,5 +246,47 @@ describe("POST /api/payments/create-intent", () => {
     expect(response.status).toBe(403);
     const json = await response.json();
     expect(json.error).toMatch(/paiement/i);
+  });
+
+  it("reutilise un payment intent pending recent pour la meme facture", async () => {
+    servicePaymentsChain.maybeSingle.mockResolvedValueOnce({
+      data: {
+        id: "payment-pending-1",
+        provider_ref: "pi_pending_1",
+        created_at: new Date().toISOString(),
+        montant: 650,
+      },
+      error: null,
+    });
+
+    stripeRetrieve.mockResolvedValueOnce({
+      id: "pi_pending_1",
+      client_secret: "secret_pending_1",
+      amount: 65000,
+      currency: "eur",
+      customer: null,
+      status: "requires_payment_method",
+    });
+
+    const { POST } = await import("@/app/api/payments/create-intent/route");
+    const response = await POST(
+      new Request("http://localhost/api/payments/create-intent", {
+        method: "POST",
+        body: JSON.stringify({
+          invoiceId: "0f4f7a1d-7a8f-4ef7-9ca5-f2c784d73fd1",
+        }),
+      }) as any
+    );
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json).toEqual(
+      expect.objectContaining({
+        paymentIntentId: "pi_pending_1",
+        paymentId: "payment-pending-1",
+        reused: true,
+      })
+    );
+    expect(stripeCreate).not.toHaveBeenCalled();
   });
 });
