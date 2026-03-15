@@ -61,7 +61,7 @@ export function usePushNotifications(): UsePushNotificationsReturn {
     if (isNativePlatform) {
       // Capacitor natif : vérifier la permission via le plugin
       import("@capacitor/push-notifications").then(({ PushNotifications }) => {
-        PushNotifications.checkPermissions().then((result) => {
+        PushNotifications.checkPermissions().then((result: { receive: string }) => {
           if (result.receive === "granted") {
             setPermission("granted");
             // Re-register pour s'assurer que le token est à jour

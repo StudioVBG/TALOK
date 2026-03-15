@@ -35,6 +35,7 @@ import { PageTransition } from "@/components/ui/page-transition";
 import { UsageLimitBanner, useSubscription, useUsageLimit, UpgradeModal } from "@/components/subscription";
 import { PLANS } from "@/lib/subscriptions/plans";
 import { buildPropertyQuotaSummary } from "@/lib/subscriptions/property-quota";
+import { resolvePropertyCreationGate } from "@/lib/subscriptions/property-creation-gate";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -98,7 +99,12 @@ export default function OwnerPropertiesPage() {
 
   // Pendant le chargement de l'abonnement, autoriser la navigation (le backend vérifiera)
   // pour éviter un flash de l'UpgradeModal pendant le loading
-  const canNavigateToNew = canAdd || subscriptionLoading;
+  const canNavigateToNew = resolvePropertyCreationGate({
+    currentPlan,
+    usedProperties: usage?.properties?.used ?? properties.length,
+    canAddFromUsageLimit: canAdd,
+    subscriptionLoading,
+  });
   const currentPlanConfig = PLANS[currentPlan];
   const extraPropertyPrice = currentPlanConfig.limits.extra_property_price;
   const addPropertyLabel = canNavigateToNew

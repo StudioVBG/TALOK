@@ -12,11 +12,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Non authentifie" }, { status: 401 });
     }
 
-    const { data: subscription } = await supabase
-      .from("subscriptions")
-      .select("stripe_customer_id")
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
       .eq("user_id", user.id)
       .single();
+
+    if (!profile) {
+      return NextResponse.json({
+        invoices: [],
+        has_more: false,
+        next_cursor: null,
+      } satisfies InvoicesResponse);
+    }
+
+    const { data: subscription } = await supabase
+      .from("subscriptions")
+      .select("id, stripe_customer_id")
+      .eq("owner_id", profile.id)
+      .maybeSingle();
 
     if (!subscription?.stripe_customer_id) {
       return NextResponse.json({
@@ -64,7 +78,8 @@ export async function GET(request: NextRequest) {
         .from("subscription_invoices")
         .upsert({
           id: invoice.id,
-          owner_id: user.id,
+          subscription_id: subscription.id,
+          owner_id: profile.id,
           stripe_invoice_id: invoice.id,
           invoice_number: invoice.number,
           subtotal: invoice.amount_ht,

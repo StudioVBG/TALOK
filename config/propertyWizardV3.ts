@@ -9,8 +9,6 @@
  * Cette configuration définit les étapes du wizard et les champs par type de bien
  */
 
-"use client";
-
 import type { PropertyTypeV3, EquipmentV3 } from "@/lib/types/property-v3";
 import { PROPERTY_TYPE_GROUPS, HAB_EQUIPMENTS } from "@/lib/types/property-v3";
 
