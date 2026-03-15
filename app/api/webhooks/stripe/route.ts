@@ -793,13 +793,13 @@ export async function POST(request: NextRequest) {
           if (stripeSubscriptionId) {
             const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
             const subscriptionUpdate = await buildSubscriptionUpdateFromStripe(
-              supabase,
+              supabase as any,
               stripeSubscription
             );
 
             await supabase
               .from("subscriptions")
-              .update(subscriptionUpdate)
+              .update(subscriptionUpdate as any)
               .eq("id", subscription.id);
           } else {
             await supabase
@@ -912,10 +912,19 @@ export async function POST(request: NextRequest) {
             .eq("id", resolvedSub.id)
             .maybeSingle();
 
-          if (currentSubscription?.scheduled_plan_slug === "gratuit") {
-            const freePlan = await resolvePlanIdentifiers(supabase, {
+          const typedCurrentSubscription = currentSubscription as
+            | {
+                id?: string | null;
+                owner_id?: string | null;
+                scheduled_plan_slug?: string | null;
+                scheduled_plan_id?: string | null;
+              }
+            | null;
+
+          if (typedCurrentSubscription?.scheduled_plan_slug === "gratuit") {
+            const freePlan = await resolvePlanIdentifiers(supabase as any, {
               planSlug: "gratuit",
-              planId: currentSubscription.scheduled_plan_id || null,
+              planId: typedCurrentSubscription.scheduled_plan_id || null,
             });
 
             await supabase
