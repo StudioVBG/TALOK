@@ -334,7 +334,7 @@ function AdminActionModal({ open, onClose, user, action, onSuccess }: ActionModa
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(["starter", "confort", "pro", "enterprise"] as PlanSlug[]).map((slug) => (
+                  {(["gratuit", "starter", "confort", "pro", "enterprise_s", "enterprise_m", "enterprise_l", "enterprise_xl"] as PlanSlug[]).map((slug) => (
                     <SelectItem key={slug} value={slug}>
                       {PLANS[slug].name}
                     </SelectItem>
@@ -517,8 +517,14 @@ export default function AdminSubscriptionsPage() {
                     <SelectItem value="all">Tous les plans</SelectItem>
                     <SelectItem value="starter">Starter</SelectItem>
                     <SelectItem value="confort">Confort</SelectItem>
+                    <SelectItem value="gratuit">Gratuit</SelectItem>
+                    <SelectItem value="starter">Starter</SelectItem>
+                    <SelectItem value="confort">Confort</SelectItem>
                     <SelectItem value="pro">Pro</SelectItem>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
+                    <SelectItem value="enterprise_s">Enterprise S</SelectItem>
+                    <SelectItem value="enterprise_m">Enterprise M</SelectItem>
+                    <SelectItem value="enterprise_l">Enterprise L</SelectItem>
+                    <SelectItem value="enterprise_xl">Enterprise XL</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -530,9 +536,10 @@ export default function AdminSubscriptionsPage() {
                     <SelectItem value="all">Tous</SelectItem>
                     <SelectItem value="active">Actif</SelectItem>
                     <SelectItem value="trialing">Essai</SelectItem>
+                    <SelectItem value="incomplete">En attente</SelectItem>
                     <SelectItem value="canceled">Annulé</SelectItem>
                     <SelectItem value="past_due">Impayé</SelectItem>
-                    <SelectItem value="suspended">Suspendu</SelectItem>
+                    <SelectItem value="paused">Suspendu</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -581,10 +588,11 @@ export default function AdminSubscriptionsPage() {
                           <TableCell>
                             <Badge
                               className={cn(
+                                user.plan_slug === "gratuit" && "bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300",
                                 user.plan_slug === "starter" && "bg-slate-200 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300",
                                 user.plan_slug === "confort" && "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-400",
                                 user.plan_slug === "pro" && "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
-                                user.plan_slug === "enterprise" && "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
+                                user.plan_slug?.startsWith("enterprise") && "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"
                               )}
                             >
                               {user.plan_name}
@@ -595,20 +603,23 @@ export default function AdminSubscriptionsPage() {
                               className={cn(
                                 user.status === "active" && "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400",
                                 user.status === "trialing" && "bg-violet-100 text-violet-700 dark:bg-violet-500/20 dark:text-violet-400",
+                                user.status === "incomplete" && "bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400",
                                 user.status === "canceled" && "bg-slate-200 text-slate-700 dark:bg-slate-500/20 dark:text-slate-300",
                                 user.status === "past_due" && "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
-                                user.status === "suspended" && "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
+                                user.status === "paused" && "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400"
                               )}
                             >
                               {user.status === "active"
                                 ? "Actif"
                                 : user.status === "trialing"
                                 ? "Essai"
+                                : user.status === "incomplete"
+                                ? "En attente"
                                 : user.status === "canceled"
                                 ? "Annulé"
                                 : user.status === "past_due"
                                 ? "Impayé"
-                                : user.status === "suspended"
+                                : user.status === "paused"
                                 ? "Suspendu"
                                 : user.status}
                             </Badge>
@@ -642,7 +653,7 @@ export default function AdminSubscriptionsPage() {
                                   Offrir des jours
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator className="bg-border" />
-                                {user.status === "suspended" ? (
+                                {user.status === "paused" ? (
                                   <DropdownMenuItem onClick={() => openAction(user, "unsuspend")} className="text-foreground cursor-pointer">
                                     <RefreshCw className="w-4 h-4 mr-2" />
                                     Réactiver

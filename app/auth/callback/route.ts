@@ -69,8 +69,19 @@ export async function GET(request: Request) {
       // Si onboarding non terminé, rediriger vers l'onboarding approprié
       if (!profileData?.onboarding_completed_at) {
         switch (profileData.role) {
-          case "owner":
-            return NextResponse.redirect(new URL("/signup/plan?role=owner", origin));
+          case "owner": {
+            const { data: ownerSubscription } = await supabase
+              .from("subscriptions")
+              .select("selected_plan_at")
+              .eq("owner_id", profileData.id)
+              .maybeSingle();
+
+            if (!(ownerSubscription as { selected_plan_at?: string | null } | null)?.selected_plan_at) {
+              return NextResponse.redirect(new URL("/signup/plan?role=owner", origin));
+            }
+
+            return NextResponse.redirect(new URL("/owner/onboarding/profile", origin));
+          }
           case "tenant":
             return NextResponse.redirect(new URL("/tenant/onboarding/context", origin));
           case "provider":

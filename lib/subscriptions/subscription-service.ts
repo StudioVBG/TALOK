@@ -6,6 +6,7 @@
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { PLANS, type PlanSlug, getUsagePercentage } from './plans';
 import { getSignatureUsageByOwner } from './signature-tracking';
+import { stripe } from '@/lib/stripe';
 import type {
   SubscriptionWithPlan,
   UsageSummary,
@@ -411,14 +412,36 @@ export async function reactivateSubscription(
     return { success: false, error: 'Profil non trouvé' };
   }
 
+  const { data: currentSubscription } = await supabase
+    .from('subscriptions')
+    .select('id, stripe_subscription_id')
+    .eq('owner_id', profileId)
+    .maybeSingle();
+
+  if (currentSubscription?.stripe_subscription_id) {
+    try {
+      await stripe.subscriptions.update(currentSubscription.stripe_subscription_id, {
+        cancel_at_period_end: false,
+      });
+    } catch (stripeError) {
+      return {
+        success: false,
+        error: stripeError instanceof Error ? stripeError.message : 'Impossible de reactiver Stripe',
+      };
+    }
+  }
+
   const { error } = await supabase
     .from('subscriptions')
     .update({
       status: 'active',
       canceled_at: null,
       cancel_at_period_end: false,
+      scheduled_plan_id: null,
+      scheduled_plan_slug: null,
+      scheduled_plan_effective_at: null,
       updated_at: new Date().toISOString(),
-    })
+    } as any)
     .eq('owner_id', profileId);
 
   if (error) {
@@ -658,7 +681,6 @@ export async function getAdminSubscriptionsList(options?: {
   const supabase = createServiceRoleClient();
   const page = options?.page || 1;
   const perPage = options?.perPage || 25;
-  const offset = (page - 1) * perPage;
 
   // Requête avec jointures (sans auth.users qui pose problème)
   let query = supabase
@@ -698,9 +720,7 @@ export async function getAdminSubscriptionsList(options?: {
     query = query.in('status', options.statusFilter);
   }
 
-  const { data, count, error } = await query
-    .order('created_at', { ascending: false })
-    .range(offset, offset + perPage - 1);
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
     console.error('[SubscriptionService] Admin list error:', error);
@@ -781,9 +801,13 @@ export async function getAdminSubscriptionsList(options?: {
     filteredData = filteredData.filter(d => options.planFilter!.includes(d.plan_slug));
   }
 
+  const total = filteredData.length;
+  const offset = (page - 1) * perPage;
+  filteredData = filteredData.slice(offset, offset + perPage);
+
   return {
     data: filteredData,
-    total: count || 0,
+    total,
   };
 }
 
@@ -807,7 +831,7 @@ export async function adminOverridePlan(
   // Récupérer le plan_id
   const { data: newPlan, error: planError } = await supabase
     .from('subscription_plans')
-    .select('id')
+    .select('id, slug')
     .eq('slug', newPlanSlug)
     .single();
 
@@ -820,7 +844,10 @@ export async function adminOverridePlan(
     .from('subscriptions')
     .update({
       plan_id: newPlan.id,
+      plan_slug: newPlan.slug,
       status: 'active',
+      selected_plan_at: new Date().toISOString(),
+      selected_plan_source: 'admin_override',
       updated_at: new Date().toISOString(),
     })
     .eq('owner_id', profileId);
@@ -895,6 +922,19 @@ export async function adminGiftDays(
     return { success: false, error: error.message };
   }
 
+  try {
+    await supabase.from('admin_subscription_actions').insert({
+      admin_user_id: adminUserId,
+      target_user_id: targetUserId,
+      action_type: 'gift_days',
+      reason,
+      notify_user: notifyUser,
+      action_metadata: { days },
+    });
+  } catch {
+    // Table optionnelle
+  }
+
   return { success: true };
 }
 
@@ -926,6 +966,35 @@ export async function adminSuspendAccount(
     return { success: false, error: error.message };
   }
 
+  await supabase
+    .from('profiles')
+    .update({
+      account_status: 'suspended',
+      suspended_at: new Date().toISOString(),
+      suspended_reason: reason,
+    } as any)
+    .eq('id', profileId);
+
+  try {
+    await supabase.auth.admin.updateUserById(targetUserId, {
+      ban_duration: '876000h',
+    });
+  } catch {
+    // Best effort
+  }
+
+  try {
+    await supabase.from('admin_subscription_actions').insert({
+      admin_user_id: adminUserId,
+      target_user_id: targetUserId,
+      action_type: 'suspend',
+      reason,
+      notify_user: notifyUser,
+    });
+  } catch {
+    // Table optionnelle
+  }
+
   return { success: true };
 }
 
@@ -955,6 +1024,35 @@ export async function adminUnsuspendAccount(
 
   if (error) {
     return { success: false, error: error.message };
+  }
+
+  await supabase
+    .from('profiles')
+    .update({
+      account_status: 'active',
+      suspended_at: null,
+      suspended_reason: null,
+    } as any)
+    .eq('id', profileId);
+
+  try {
+    await supabase.auth.admin.updateUserById(targetUserId, {
+      ban_duration: 'none',
+    });
+  } catch {
+    // Best effort
+  }
+
+  try {
+    await supabase.from('admin_subscription_actions').insert({
+      admin_user_id: adminUserId,
+      target_user_id: targetUserId,
+      action_type: 'unsuspend',
+      reason,
+      notify_user: notifyUser,
+    });
+  } catch {
+    // Table optionnelle
   }
 
   return { success: true };

@@ -14,6 +14,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { isValidPlanSlug, type PlanSlug } from "@/lib/subscriptions/plans";
+import { logSubscriptionEvent } from "@/lib/subscriptions/subscription-service";
 
 export async function POST(request: Request) {
   try {
@@ -89,6 +90,8 @@ export async function POST(request: Request) {
           status: "active",
           billing_cycle: "monthly",
           current_period_start: new Date().toISOString(),
+          selected_plan_at: new Date().toISOString(),
+          selected_plan_source: "signup_free",
           updated_at: new Date().toISOString(),
         },
         { onConflict: "owner_id" }
@@ -101,6 +104,14 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    await logSubscriptionEvent(user.id, {
+      event_type: "created",
+      to_plan: plan.slug,
+      metadata: {
+        source: "signup_free",
+      },
+    });
 
     return NextResponse.json({
       success: true,

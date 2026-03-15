@@ -8,6 +8,7 @@ import { stripe } from "@/lib/stripe";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { PLANS, type PlanSlug } from "@/lib/subscriptions/plans";
 import type Stripe from "stripe";
+import { getLiveOwnerUsage } from "@/lib/subscriptions/market-standard";
 
 /**
  * Synchronise la facturation des biens supplémentaires avec Stripe.
@@ -40,14 +41,8 @@ export async function syncPropertyBillingToStripe(ownerId: string): Promise<void
     return;
   }
 
-  // 2. Compter les propriétés actives
-  const { count: propertiesCount } = await serviceClient
-    .from("properties")
-    .select("id", { count: "exact", head: true })
-    .eq("owner_id", ownerId)
-    .is("deleted_at", null);
-
-  const currentCount = propertiesCount || 0;
+  const liveUsage = await getLiveOwnerUsage(serviceClient as any, ownerId);
+  const currentCount = liveUsage.properties;
   const includedProperties = planConfig.limits.included_properties;
   const extraCount = Math.max(0, currentCount - includedProperties);
   const extraPriceCents = planConfig.limits.extra_property_price;

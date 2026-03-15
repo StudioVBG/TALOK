@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { reactivateSubscription, logSubscriptionEvent } from "@/lib/subscriptions/subscription-service";
+import { reactivateSubscription } from "@/lib/subscriptions/subscription-service";
 
 export async function POST() {
   try {

@@ -46,6 +46,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import { changePlanForCurrentUser } from "@/lib/subscriptions/change-plan-client";
 
 interface UpgradeModalProps {
   open: boolean;
@@ -96,23 +97,21 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan, context }: 
     setLoading(planSlug);
 
     try {
-      const response = await fetch("/api/subscriptions/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan_slug: planSlug,
-          billing_cycle: billing,
-        }),
-      });
+      const result = await changePlanForCurrentUser(planSlug, billing);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de la création du checkout");
+      if (result.mode === "checkout" && result.url) {
+        window.location.href = result.url;
+        return;
       }
 
-      // Redirect to Stripe Checkout
-      window.location.href = data.url;
+      toast({
+        title: result.scheduled ? "Changement programme" : "Forfait mis a jour",
+        description: result.scheduled
+          ? "Le nouveau forfait sera applique a votre prochaine echeance."
+          : "Votre forfait a ete mis a jour avec succes.",
+      });
+      onClose();
+      router.refresh();
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue";
       toast({

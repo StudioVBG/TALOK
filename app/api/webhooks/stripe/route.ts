@@ -21,6 +21,10 @@ import type { Json } from "@/lib/supabase/database.types";
 import { reconcileOwnerTransfer } from "@/lib/billing/owner-payout.service";
 import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
 import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
+import {
+  buildSubscriptionUpdateFromStripe,
+  resolvePlanIdentifiers,
+} from "@/lib/subscriptions/market-standard";
 
 // Initialiser Stripe de manière lazy pour éviter les erreurs au build
 function getStripe(): Stripe {
@@ -75,19 +79,7 @@ async function syncSubscriptionStateFromStripeSubscription(
 ) {
   const stripeSubscriptionId = subscription.id;
   const stripeCustomerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id;
-
-  const baseUpdate = {
-    stripe_subscription_id: stripeSubscriptionId,
-    stripe_customer_id: stripeCustomerId || null,
-    status: subscription.status as any,
-    current_period_start: (subscription as any).current_period_start
-      ? new Date((subscription as any).current_period_start * 1000).toISOString()
-      : null,
-    current_period_end: (subscription as any).current_period_end
-      ? new Date((subscription as any).current_period_end * 1000).toISOString()
-      : null,
-    cancel_at_period_end: subscription.cancel_at_period_end,
-  };
+  const baseUpdate = await buildSubscriptionUpdateFromStripe(supabase, subscription);
 
   let query = supabase
     .from("subscriptions")
@@ -119,14 +111,11 @@ async function syncSubscriptionStateFromStripeSubscription(
   await supabase.from("subscriptions").upsert(
     {
       owner_id: ownerId,
-      stripe_subscription_id: stripeSubscriptionId,
-      stripe_customer_id: stripeCustomerId || null,
-      status: subscription.status,
-      current_period_start: baseUpdate.current_period_start,
-      current_period_end: baseUpdate.current_period_end,
-      cancel_at_period_end: subscription.cancel_at_period_end,
-      billing_cycle: subscription.metadata?.billing_cycle || null,
-      plan_slug: subscription.metadata?.plan_slug || null,
+      ...baseUpdate,
+      metadata: {
+        ...(baseUpdate.metadata || {}),
+        source: "stripe_webhook",
+      },
     },
     { onConflict: "owner_id" }
   );
@@ -157,13 +146,20 @@ async function syncSubscriptionFromCheckoutSession(
     status: session.payment_status === "paid" ? "active" : "incomplete",
     billing_cycle: session.metadata?.billing_cycle || null,
     plan_slug: session.metadata?.plan_slug || null,
+    selected_plan_at: new Date().toISOString(),
+    selected_plan_source: "signup_checkout",
   };
 
   if (ownerId) {
+    const resolvedPlan = await resolvePlanIdentifiers(supabase, {
+      planSlug: session.metadata?.plan_slug || null,
+      planId: session.metadata?.plan_id || null,
+    });
     await supabase.from("subscriptions").upsert(
       {
         owner_id: ownerId,
         ...checkoutUpdate,
+        plan_id: resolvedPlan.id,
       },
       { onConflict: "owner_id" }
     );
@@ -794,20 +790,32 @@ export async function POST(request: NextRequest) {
           .maybeSingle();
 
         if (subscription) {
-          // Mettre à jour le statut
-          await supabase
-            .from("subscriptions")
-            .update({
-              status: "active",
-              stripe_subscription_id: stripeSubscriptionId,
-              current_period_start: invoice.period_start
-                ? new Date(invoice.period_start * 1000).toISOString()
-                : undefined,
-              current_period_end: invoice.period_end
-                ? new Date(invoice.period_end * 1000).toISOString()
-                : undefined,
-            })
-            .eq("id", subscription.id);
+          if (stripeSubscriptionId) {
+            const stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+            const subscriptionUpdate = await buildSubscriptionUpdateFromStripe(
+              supabase,
+              stripeSubscription
+            );
+
+            await supabase
+              .from("subscriptions")
+              .update(subscriptionUpdate)
+              .eq("id", subscription.id);
+          } else {
+            await supabase
+              .from("subscriptions")
+              .update({
+                status: "active",
+                stripe_subscription_id: stripeSubscriptionId,
+                current_period_start: invoice.period_start
+                  ? new Date(invoice.period_start * 1000).toISOString()
+                  : undefined,
+                current_period_end: invoice.period_end
+                  ? new Date(invoice.period_end * 1000).toISOString()
+                  : undefined,
+              })
+              .eq("id", subscription.id);
+          }
 
           await supabase.from("subscription_invoices").upsert(
             {
@@ -898,13 +906,46 @@ export async function POST(request: NextRequest) {
           );
 
         if (resolvedSub) {
-          await supabase
+          const { data: currentSubscription } = await supabase
             .from("subscriptions")
-            .update({
-              status: "canceled",
-              canceled_at: new Date().toISOString(),
-            })
-            .eq("id", resolvedSub.id);
+            .select("id, owner_id, scheduled_plan_slug, scheduled_plan_id")
+            .eq("id", resolvedSub.id)
+            .maybeSingle();
+
+          if (currentSubscription?.scheduled_plan_slug === "gratuit") {
+            const freePlan = await resolvePlanIdentifiers(supabase, {
+              planSlug: "gratuit",
+              planId: currentSubscription.scheduled_plan_id || null,
+            });
+
+            await supabase
+              .from("subscriptions")
+              .update({
+                status: "active",
+                plan_id: freePlan.id,
+                plan_slug: freePlan.slug || "gratuit",
+                stripe_subscription_id: null,
+                stripe_subscription_schedule_id: null,
+                cancel_at_period_end: false,
+                canceled_at: null,
+                current_period_start: new Date().toISOString(),
+                current_period_end: null,
+                scheduled_plan_id: null,
+                scheduled_plan_slug: null,
+                scheduled_plan_effective_at: null,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", resolvedSub.id);
+          } else {
+            await supabase
+              .from("subscriptions")
+              .update({
+                status: "canceled",
+                canceled_at: new Date().toISOString(),
+                stripe_subscription_schedule_id: null,
+              })
+              .eq("id", resolvedSub.id);
+          }
 
           // Notifier le propriétaire
           if (resolvedSub.owner_id) {

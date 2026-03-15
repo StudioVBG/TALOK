@@ -76,6 +76,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import Link from "next/link";
+import { changePlanForCurrentUser } from "@/lib/subscriptions/change-plan-client";
 
 // ============================================
 // TYPES
@@ -994,17 +995,23 @@ export default function BillingPage() {
   async function handleSwitchBillingCycle(cycle: "monthly" | "yearly") {
     setActionLoading("switch-cycle");
     try {
-      const res = await fetch("/api/subscriptions/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan_slug: subscription?.plan.slug,
-          billing_cycle: cycle,
-        }),
+      if (!subscription?.plan?.slug) {
+        throw new Error("Aucun forfait actif a modifier.");
+      }
+
+      const result = await changePlanForCurrentUser(subscription.plan.slug, cycle);
+      if (result.mode === "checkout" && result.url) {
+        window.location.href = result.url;
+        return;
+      }
+
+      toast({
+        title: "Cycle de facturation mis a jour",
+        description: result.scheduled
+          ? "Le changement prendra effet a votre prochaine echeance."
+          : "Votre cycle de facturation a bien ete mis a jour.",
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      window.location.href = data.url;
+      await fetchData();
     } catch (error: unknown) {
       toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
     } finally {

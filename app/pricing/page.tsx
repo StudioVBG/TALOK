@@ -25,6 +25,7 @@ import {
   getYearlyDiscount,
   isFeatureValueEnabled,
 } from "@/lib/subscriptions/plans";
+import { changePlanForCurrentUser } from "@/lib/subscriptions/change-plan-client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -510,26 +511,22 @@ export default function PricingPage() {
       return;
     }
 
-    // Create checkout session
     setLoading(slug);
     try {
-      const response = await fetch("/api/subscriptions/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          plan_slug: slug,
-          billing_cycle: billing,
-        }),
-      });
+      const result = await changePlanForCurrentUser(slug, billing);
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de la création du checkout");
+      if (result.mode === "checkout" && result.url) {
+        window.location.href = result.url;
+        return;
       }
 
-      // Redirect to Stripe Checkout
-      window.location.href = data.url;
+      toast({
+        title: result.scheduled ? "Changement programme" : "Forfait mis a jour",
+        description: result.scheduled
+          ? "Le nouveau forfait sera applique a votre prochaine echeance."
+          : "Votre forfait a ete mis a jour avec succes.",
+      });
+      router.push("/owner/money?tab=forfait");
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue";
       toast({

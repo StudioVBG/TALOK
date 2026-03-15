@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { PLANS, type PlanSlug, getUsagePercentage } from "@/lib/subscriptions/plans";
 import { getSignatureUsageByOwner } from "@/lib/subscriptions/signature-tracking";
+import { getLiveOwnerUsage } from "@/lib/subscriptions/market-standard";
 
 export async function GET() {
   try {
@@ -82,33 +83,9 @@ export async function GET() {
     }
     const limits = PLANS[planSlug]?.limits || PLANS.gratuit.limits;
 
-    // Compter les propriétés (exclure les soft-deleted)
-    const { count: propertiesCount } = await supabase
-      .from("properties")
-      .select("id", { count: "exact", head: true })
-      .eq("owner_id", profile.id)
-      .is("deleted_at", null);
-
-    // Compter les baux actifs via les propriétés du propriétaire
-    let leasesCount = 0;
-    if (propertiesCount && propertiesCount > 0) {
-      // D'abord récupérer les IDs des propriétés
-      const { data: properties } = await supabase
-        .from("properties")
-        .select("id")
-        .eq("owner_id", profile.id)
-        .is("deleted_at", null);
-      
-      if (properties && properties.length > 0) {
-        const propertyIds = properties.map(p => p.id);
-        const { count } = await supabase
-          .from("leases")
-          .select("id", { count: "exact", head: true })
-          .in("property_id", propertyIds)
-          .in("statut", ["active", "pending_signature"]);
-        leasesCount = count || 0;
-      }
-    }
+    const liveUsage = await getLiveOwnerUsage(supabase as any, profile.id);
+    const propertiesCount = liveUsage.properties;
+    const leasesCount = liveUsage.leases;
 
     // Compter les utilisateurs (pour multi-users)
     const usersCount = 1;

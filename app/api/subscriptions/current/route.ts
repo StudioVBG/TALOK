@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { resolvePlanIdentifiers } from "@/lib/subscriptions/market-standard";
 
 /**
  * GET /api/subscriptions/current - Récupérer l'abonnement actuel de l'utilisateur
@@ -44,6 +45,27 @@ export async function GET(request: Request) {
     // Récupérer les add-ons souscrits
     let addonSubscriptions: any[] = [];
     if (subscription) {
+      if (!subscription.plan && (subscription.plan_slug || subscription.plan_id)) {
+        const resolvedPlan = await resolvePlanIdentifiers(supabase as any, {
+          planSlug: (subscription as { plan_slug?: string | null }).plan_slug ?? null,
+          planId: (subscription as { plan_id?: string | null }).plan_id ?? null,
+        });
+
+        if (resolvedPlan.id) {
+          const { data: planRow } = await supabase
+            .from("subscription_plans")
+            .select("*")
+            .eq("id", resolvedPlan.id)
+            .maybeSingle();
+
+          if (planRow) {
+            (subscription as Record<string, unknown>).plan = planRow;
+            (subscription as Record<string, unknown>).plan_id = resolvedPlan.id;
+            (subscription as Record<string, unknown>).plan_slug = resolvedPlan.slug;
+          }
+        }
+      }
+
       const { data: addons } = await supabase
         .from("subscription_addon_subscriptions")
         .select(`

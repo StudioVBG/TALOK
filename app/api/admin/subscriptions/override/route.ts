@@ -13,7 +13,7 @@ import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admi
 
 const overrideSchema = z.object({
   user_id: z.string().uuid(),
-  target_plan: z.enum(["starter", "confort", "pro", "enterprise"]),
+  target_plan: z.enum(["gratuit", "starter", "confort", "pro", "enterprise_s", "enterprise_m", "enterprise_l", "enterprise_xl"]),
   reason: z.string().min(3),
   notify_user: z.boolean().default(false),
 });

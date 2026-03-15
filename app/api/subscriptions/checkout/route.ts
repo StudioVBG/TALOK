@@ -83,9 +83,26 @@ export async function POST(request: Request) {
     // Vérifier si le propriétaire a déjà un abonnement
     const { data: existingSub } = await supabase
       .from("subscriptions")
-      .select("id, stripe_customer_id, status")
+      .select("id, stripe_customer_id, stripe_subscription_id, status, plan_slug, billing_cycle")
       .eq("owner_id", profile.id)
       .single();
+
+    const hasManagedStripeSubscription =
+      Boolean(existingSub?.stripe_subscription_id) &&
+      ["trialing", "active", "past_due", "paused", "incomplete"].includes(existingSub?.status || "");
+
+    if (
+      hasManagedStripeSubscription &&
+      (existingSub?.plan_slug !== plan.slug || existingSub?.billing_cycle !== billing_cycle)
+    ) {
+      return NextResponse.json(
+        {
+          error: "Utilisez le flux de changement de forfait dedie pour modifier un abonnement existant.",
+          code: "PLAN_CHANGE_REQUIRES_BILLING_ROUTE",
+        },
+        { status: 409 }
+      );
+    }
 
     let customerId = existingSub?.stripe_customer_id;
 
@@ -193,6 +210,8 @@ export async function POST(request: Request) {
             stripe_customer_id: customerId,
             status: "incomplete",
             billing_cycle: billing_cycle,
+            selected_plan_at: new Date().toISOString(),
+            selected_plan_source: "checkout",
           }, { onConflict: "owner_id" });
       }
     }
