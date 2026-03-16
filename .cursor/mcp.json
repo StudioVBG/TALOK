@@ -1,4 +1,12 @@
 {
-  "_comment": "MCP Supabase désactivé : aucun package officiel @supabase/mcp n'existe sur npm (404). Utiliser Supabase CLI et Management API à la place.",
-  "mcpServers": {}
+  "_comment": "Serveur MCP Supabase local scope au projet IMMO, en lecture seule par defaut. Definir SUPABASE_ACCESS_TOKEN dans l'environnement de Cursor avant usage.",
+  "mcpServers": {
+    "supabase-immo": {
+      "command": "bash",
+      "args": [
+        "-lc",
+        "if [ -z \"$SUPABASE_ACCESS_TOKEN\" ]; then echo \"SUPABASE_ACCESS_TOKEN is required\" >&2; exit 1; fi; exec npx -y @supabase/mcp-server-supabase@latest --project-ref poeijjosocmqlhgsacud --read-only --features database,docs"
+      ]
+    }
+  }
 }
