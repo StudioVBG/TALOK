@@ -17,9 +17,18 @@ import {
 } from "@/lib/stripe/connect-account";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
+const CONNECT_CONFLICT_RETRY_ERROR =
+  "Un compte bancaire existe deja pour ce profil. Reprise de l'onboarding impossible pour le moment, veuillez reessayer.";
+const CONNECT_SETUP_ERROR =
+  "Impossible de configurer le compte bancaire pour le moment. Veuillez reessayer.";
 type StoredConnectAccountReference = {
   id: string;
   stripe_account_id: string;
+};
+
+type DatabaseErrorLike = {
+  code?: string;
+  message?: string;
 };
 
 function asStringArray(value: unknown): string[] {
@@ -59,6 +68,31 @@ function normalizeStoredConnectAccount(account: unknown): StoredConnectAccount {
         ? record.onboarding_completed_at
         : null,
   };
+}
+
+function isUniqueProfileConflict(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const candidate = error as DatabaseErrorLike;
+  const normalizedMessage = candidate.message?.toLowerCase() ?? "";
+
+  return (
+    candidate.code === "23505" ||
+    normalizedMessage.includes("unique_profile_connect") ||
+    normalizedMessage.includes("duplicate key value")
+  );
+}
+
+function toSafePostConnectErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    if (error.message === CONNECT_CONFLICT_RETRY_ERROR || error.message === CONNECT_SETUP_ERROR) {
+      return error.message;
+    }
+  }
+
+  return CONNECT_SETUP_ERROR;
 }
 
 async function getAuthenticatedOwnerProfile() {
@@ -272,12 +306,12 @@ export async function POST(request: NextRequest) {
         });
 
       if (insertError) {
-        if ((insertError as { code?: string }).code === "23505") {
+        if (isUniqueProfileConflict(insertError)) {
           hasExistingAccount = true;
         } else {
           // Si erreur d'insertion, supprimer le compte Stripe
           await Promise.resolve(connectService.deleteConnectAccount(stripeAccountId)).catch(() => {});
-          throw new Error(`Erreur base de données: ${insertError.message}`);
+          throw new Error(CONNECT_SETUP_ERROR);
         }
       }
 
@@ -287,9 +321,14 @@ export async function POST(request: NextRequest) {
       );
 
       if (!persistedAccount?.stripe_account_id) {
-        await Promise.resolve(connectService.deleteConnectAccount(stripeAccountId)).catch(() => {});
+        if (createdStripeAccountId) {
+          await Promise.resolve(connectService.deleteConnectAccount(createdStripeAccountId)).catch(
+            () => {}
+          );
+        }
+
         throw new Error(
-          "Impossible de retrouver le compte Connect après la création"
+          hasExistingAccount ? CONNECT_CONFLICT_RETRY_ERROR : CONNECT_SETUP_ERROR
         );
       }
 
@@ -342,9 +381,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const errorMessage = error instanceof Error ? error.message : "";
     return NextResponse.json(
-      { error: errorMessage || "Erreur serveur" },
+      { error: toSafePostConnectErrorMessage(error) },
       { status: 500 }
     );
   }

@@ -205,6 +205,233 @@ describe("API Stripe Connect propriétaire", () => {
     expect(connectService.deleteConnectAccount).toHaveBeenCalledWith("acct_new");
   });
 
+  it("POST /api/stripe/connect reprend le compte existant si le doublon est detecte par nom de contrainte", async () => {
+    let maybeSingleCalls = 0;
+
+    serviceClient.from.mockImplementation((table: string) => {
+      if (table === "stripe_connect_accounts") {
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockImplementation(() => {
+            maybeSingleCalls += 1;
+            if (maybeSingleCalls === 1) {
+              return Promise.resolve({ data: null, error: null });
+            }
+
+            return Promise.resolve({
+              data: { id: "sca-existing", stripe_account_id: "acct_existing" },
+              error: null,
+            });
+          }),
+          insert: vi.fn().mockResolvedValue({
+            error: {
+              message:
+                'duplicate key value violates unique constraint "unique_profile_connect"',
+            },
+          }),
+        };
+      }
+
+      return createSelectChain();
+    });
+
+    connectService.createConnectAccount.mockResolvedValue({
+      id: "acct_new",
+      type: "express",
+      country: "FR",
+      default_currency: "eur",
+      charges_enabled: false,
+      payouts_enabled: false,
+      details_submitted: false,
+    });
+
+    connectService.createAccountLink.mockResolvedValue({
+      url: "https://stripe.test/onboarding",
+      expires_at: 123456,
+    });
+
+    const { POST } = await import("@/app/api/stripe/connect/route");
+    const response = await POST(
+      new Request("http://localhost/api/stripe/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ business_type: "individual" }),
+      }) as any
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.is_new_account).toBe(false);
+    expect(connectService.createAccountLink).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: "acct_existing",
+        type: "account_update",
+      })
+    );
+    expect(connectService.deleteConnectAccount).toHaveBeenCalledWith("acct_new");
+  });
+
+  it("POST /api/stripe/connect reprend le compte existant si le doublon est detecte par message generique", async () => {
+    let maybeSingleCalls = 0;
+
+    serviceClient.from.mockImplementation((table: string) => {
+      if (table === "stripe_connect_accounts") {
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockImplementation(() => {
+            maybeSingleCalls += 1;
+            if (maybeSingleCalls === 1) {
+              return Promise.resolve({ data: null, error: null });
+            }
+
+            return Promise.resolve({
+              data: { id: "sca-existing", stripe_account_id: "acct_existing" },
+              error: null,
+            });
+          }),
+          insert: vi.fn().mockResolvedValue({
+            error: { message: "duplicate key value violates unique constraint" },
+          }),
+        };
+      }
+
+      return createSelectChain();
+    });
+
+    connectService.createConnectAccount.mockResolvedValue({
+      id: "acct_new",
+      type: "express",
+      country: "FR",
+      default_currency: "eur",
+      charges_enabled: false,
+      payouts_enabled: false,
+      details_submitted: false,
+    });
+
+    connectService.createAccountLink.mockResolvedValue({
+      url: "https://stripe.test/onboarding",
+      expires_at: 123456,
+    });
+
+    const { POST } = await import("@/app/api/stripe/connect/route");
+    const response = await POST(
+      new Request("http://localhost/api/stripe/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ business_type: "individual" }),
+      }) as any
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(json.is_new_account).toBe(false);
+    expect(connectService.createAccountLink).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accountId: "acct_existing",
+        type: "account_update",
+      })
+    );
+    expect(connectService.deleteConnectAccount).toHaveBeenCalledWith("acct_new");
+  });
+
+  it("POST /api/stripe/connect renvoie une erreur metier si le compte existant reste introuvable apres conflit", async () => {
+    let maybeSingleCalls = 0;
+
+    serviceClient.from.mockImplementation((table: string) => {
+      if (table === "stripe_connect_accounts") {
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockImplementation(() => {
+            maybeSingleCalls += 1;
+            return Promise.resolve({ data: null, error: null });
+          }),
+          insert: vi.fn().mockResolvedValue({
+            error: {
+              message:
+                'duplicate key value violates unique constraint "unique_profile_connect"',
+            },
+          }),
+        };
+      }
+
+      return createSelectChain();
+    });
+
+    connectService.createConnectAccount.mockResolvedValue({
+      id: "acct_new",
+      type: "express",
+      country: "FR",
+      default_currency: "eur",
+      charges_enabled: false,
+      payouts_enabled: false,
+      details_submitted: false,
+    });
+
+    const { POST } = await import("@/app/api/stripe/connect/route");
+    const response = await POST(
+      new Request("http://localhost/api/stripe/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ business_type: "individual" }),
+      }) as any
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(json.error).toBe(
+      "Un compte bancaire existe deja pour ce profil. Reprise de l'onboarding impossible pour le moment, veuillez reessayer."
+    );
+    expect(connectService.createAccountLink).not.toHaveBeenCalled();
+    expect(connectService.deleteConnectAccount).toHaveBeenCalledWith("acct_new");
+  });
+
+  it("POST /api/stripe/connect sanitise les erreurs base non recuperables", async () => {
+    serviceClient.from.mockImplementation((table: string) => {
+      if (table === "stripe_connect_accounts") {
+        return {
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          insert: vi.fn().mockResolvedValue({
+            error: { message: 'new row violates check constraint "bank_rule"' },
+          }),
+        };
+      }
+
+      return createSelectChain();
+    });
+
+    connectService.createConnectAccount.mockResolvedValue({
+      id: "acct_new",
+      type: "express",
+      country: "FR",
+      default_currency: "eur",
+      charges_enabled: false,
+      payouts_enabled: false,
+      details_submitted: false,
+    });
+
+    const { POST } = await import("@/app/api/stripe/connect/route");
+    const response = await POST(
+      new Request("http://localhost/api/stripe/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ business_type: "individual" }),
+      }) as any
+    );
+    const json = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(json.error).toBe(
+      "Impossible de configurer le compte bancaire pour le moment. Veuillez reessayer."
+    );
+    expect(connectService.createAccountLink).not.toHaveBeenCalled();
+    expect(connectService.deleteConnectAccount).toHaveBeenCalledWith("acct_new");
+  });
+
   it("GET /api/stripe/connect/balance renvoie account_not_ready si le KYC est incomplet", async () => {
     serviceClient.from.mockImplementation((table: string) => {
       if (table === "stripe_connect_accounts") {
