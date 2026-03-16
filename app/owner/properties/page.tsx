@@ -36,6 +36,7 @@ import { UsageLimitBanner, useSubscription, useUsageLimit, UpgradeModal } from "
 import { PLANS } from "@/lib/subscriptions/plans";
 import { buildPropertyQuotaSummary } from "@/lib/subscriptions/property-quota";
 import { resolvePropertyCreationGate } from "@/lib/subscriptions/property-creation-gate";
+import { ownerPropertyRoutes } from "@/lib/owner/routes";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -472,9 +473,10 @@ export default function OwnerPropertiesPage() {
             {/* Header avec animation moderne */}
             <motion.div
               variants={itemVariants}
-              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 md:mb-8"
+              className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between md:mb-8"
             >
               <motion.div
+                className="min-w-0 flex-1"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
@@ -510,7 +512,7 @@ export default function OwnerPropertiesPage() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
-                className="flex flex-wrap gap-2"
+                className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap"
               >
                 {/* Bouton Export CSV */}
                 <Button
@@ -518,7 +520,7 @@ export default function OwnerPropertiesPage() {
                   size="sm"
                   onClick={() => exportProperties(filteredProperties, "csv")}
                   disabled={filteredProperties.length === 0}
-                  className="border-border hover:bg-muted h-9 md:h-10"
+                  className="ml-auto h-9 shrink-0 whitespace-nowrap border-border hover:bg-muted sm:ml-0 md:h-10"
                 >
                   <Download className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Exporter</span>
@@ -529,9 +531,9 @@ export default function OwnerPropertiesPage() {
                   <Button
                     asChild
                     size="sm"
-                    className="shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white h-9 md:h-10"
+                    className="h-9 shrink-0 whitespace-nowrap bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transition-all duration-300 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl md:h-10"
                   >
-                    <Link href="/owner/properties/new">
+                    <Link href={ownerPropertyRoutes.new()}>
                       <Plus className="mr-2 h-4 w-4" />
                       {addPropertyLabel}
                     </Link>
@@ -540,7 +542,7 @@ export default function OwnerPropertiesPage() {
                   <Button
                     size="sm"
                     onClick={() => setShowUpgradeModal(true)}
-                    className="shadow-lg hover:shadow-xl transition-all duration-300 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white h-9 md:h-10"
+                    className="h-9 shrink-0 whitespace-nowrap bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transition-all duration-300 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl md:h-10"
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     {addPropertyLabel}
