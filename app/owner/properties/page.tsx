@@ -512,7 +512,7 @@ export default function OwnerPropertiesPage() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
-                className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap"
+                className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:flex-nowrap"
               >
                 {/* Bouton Export CSV */}
                 <Button
@@ -520,34 +520,22 @@ export default function OwnerPropertiesPage() {
                   size="sm"
                   onClick={() => exportProperties(filteredProperties, "csv")}
                   disabled={filteredProperties.length === 0}
-                  className="ml-auto h-9 shrink-0 whitespace-nowrap border-border hover:bg-muted sm:ml-0 md:h-10"
+                  className="h-9 shrink-0 whitespace-nowrap border-border hover:bg-muted md:h-10"
                 >
                   <Download className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Exporter</span>
                 </Button>
-                
+
                 {/* Bouton Ajouter — CTA contextualisé selon quota */}
-                {canNavigateToNew ? (
-                  <Button
-                    asChild
-                    size="sm"
-                    className="h-9 shrink-0 whitespace-nowrap bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transition-all duration-300 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl md:h-10"
-                  >
-                    <Link href={ownerPropertyRoutes.new()}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      {addPropertyLabel}
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    onClick={() => setShowUpgradeModal(true)}
-                    className="h-9 shrink-0 whitespace-nowrap bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg transition-all duration-300 hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl md:h-10"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    {addPropertyLabel}
-                  </Button>
-                )}
+                <Button
+                  size="sm"
+                  onClick={() => canNavigateToNew ? router.push(ownerPropertyRoutes.new()) : setShowUpgradeModal(true)}
+                  className="h-9 shrink-0 whitespace-nowrap text-white shadow-lg transition-all duration-300 hover:shadow-xl md:h-10"
+                  style={{ background: 'linear-gradient(to right, #2563eb, #4f46e5)' }}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  {addPropertyLabel}
+                </Button>
               </motion.div>
             </motion.div>
 
