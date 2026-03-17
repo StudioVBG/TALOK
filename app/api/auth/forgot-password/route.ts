@@ -73,15 +73,19 @@ export async function POST(request: NextRequest) {
       expiresIn: "1 heure",
     });
 
-    // Envoyer via Resend
+    // Envoyer via Resend (forceSend pour bypasser la simulation en dev)
     const emailResult = await sendEmail({
       to: email,
       subject: template.subject,
       html: template.html,
+      forceSend: true,
     });
 
     if (!emailResult.success) {
       console.error("[ForgotPassword] Email send failed:", emailResult.error);
+    }
+    if ((emailResult as any).simulated) {
+      console.warn("[ForgotPassword] Email was SIMULATED, not actually sent! Set EMAIL_FORCE_SEND=true or check NODE_ENV.");
     }
 
     // Toujours retourner success pour ne pas révéler l'existence d'un compte

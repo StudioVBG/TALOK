@@ -31,6 +31,8 @@ export interface EmailOptions {
   attachments?: EmailAttachment[];
   tags?: string[];
   metadata?: Record<string, string>;
+  /** Forcer l'envoi réel même en mode développement (pour les emails critiques : reset password, OTP) */
+  forceSend?: boolean;
 }
 
 export interface EmailResult {
@@ -198,7 +200,7 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
   }
 
   // Log en développement (sauf si forceSend est activé)
-  if (process.env.NODE_ENV === "development" && !config.forceSend) {
+  if (process.env.NODE_ENV === "development" && !config.forceSend && !options.forceSend) {
     console.log("[Email] 📧 Envoi simulé (mode dev):", {
       to: options.to,
       subject: options.subject,
