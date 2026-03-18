@@ -18,15 +18,15 @@ export const metadata = {
 };
 
 interface PasswordRecoveryPageProps {
-  params: Promise<{
+  params: {
     requestId: string;
-  }>;
+  };
 }
 
 export default async function PasswordRecoveryPage({ params }: PasswordRecoveryPageProps) {
   noStore();
 
-  const { requestId } = await params;
+  const { requestId } = params;
   const supabase = await createClient();
   const cookieStore = await cookies();
   const {
