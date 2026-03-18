@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       }
       return "https://talok.fr";
     })();
-    const redirectTo = `${origin}/auth/callback?next=/auth/reset-password`;
+    const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent("/auth/reset-password")}`;
     console.log("[ForgotPassword] Using origin:", origin, "| redirectTo:", redirectTo);
 
     // Générer le lien de recovery via l'API admin

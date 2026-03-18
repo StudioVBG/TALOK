@@ -29,9 +29,17 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL("/auth/signin?error=invalid_code", origin));
     }
 
-    // Si un paramètre "next" est présent (ex: /auth/reset-password), y rediriger directement
-    // Cela permet au flux de réinitialisation de mot de passe de fonctionner correctement
-    if (next && next.startsWith("/auth/reset-password")) {
+    // Détecter une session recovery via AMR (Authentication Methods Reference)
+    // Cela fonctionne même si le paramètre "next" est perdu lors du round-trip Supabase
+    const isRecoverySession = data.session?.amr?.some(
+      (entry: { method: string }) => entry.method === "recovery"
+    );
+
+    // Si c'est un flux recovery (paramètre "next" OU session AMR recovery), rediriger vers reset-password
+    if (
+      (next && next.startsWith("/auth/reset-password")) ||
+      isRecoverySession
+    ) {
       return NextResponse.redirect(new URL("/auth/reset-password", origin));
     }
 
