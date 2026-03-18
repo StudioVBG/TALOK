@@ -3,22 +3,30 @@
  * Utilise NEXT_PUBLIC_APP_URL en production, window.location.origin en développement
  */
 
+function isLocalUrl(url: string): boolean {
+  return url.includes("localhost") || url.includes("127.0.0.1");
+}
+
 /**
  * Obtenir l'URL de base de l'application
+ * Ignore NEXT_PUBLIC_APP_URL si c'est une URL localhost pour éviter
+ * que les emails de confirmation/reset pointent vers localhost en production.
  */
 export function getBaseUrl(): string {
-  // En production, utiliser la variable d'environnement
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+  // Utiliser la variable d'environnement uniquement si ce n'est pas localhost
+  if (appUrl && !isLocalUrl(appUrl)) {
+    return appUrl.replace(/\/+$/, "");
   }
-  
-  // En développement, utiliser window.location.origin si disponible
+
+  // Côté client, utiliser l'origin réelle du navigateur (toujours correcte)
   if (typeof window !== 'undefined') {
     return window.location.origin;
   }
-  
-  // Fallback pour les contextes server-side
-  return 'http://localhost:3000';
+
+  // Fallback production pour les contextes server-side sans env var correcte
+  return 'https://talok.fr';
 }
 
 /**
