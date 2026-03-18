@@ -722,7 +722,7 @@ export const emailTemplates = {
 
         <h1 style="text-align: center;">Réinitialisation de mot de passe</h1>
         <p>Bonjour ${escapeHtml(data.userName)},</p>
-        <p>Vous avez demandé à réinitialiser votre mot de passe sur Talok. Cliquez sur le bouton ci-dessous pour en choisir un nouveau :</p>
+        <p>Vous avez demandé à réinitialiser votre mot de passe sur Talok. Cliquez sur le bouton ci-dessous pour accéder à votre page sécurisée de changement de mot de passe :</p>
 
         <div style="text-align: center; margin: 32px 0;">
           <a href="${data.resetUrl}" class="button">Réinitialiser mon mot de passe</a>
@@ -742,10 +742,43 @@ export const emailTemplates = {
         </p>
 
         <p style="font-size: 13px; color: ${COLORS.gray[500]};">
-          Si vous n'êtes pas à l'origine de cette demande, ignorez simplement cet email. Votre mot de passe ne sera pas modifié.
+          Ce lien est unique et à usage limité. Si vous n'êtes pas à l'origine de cette demande, ignorez simplement cet email. Votre mot de passe ne sera pas modifié.
         </p>
       </div>
     `, 'Réinitialisez votre mot de passe Talok — ce lien expire dans ' + data.expiresIn + '.'),
+  }),
+
+  /**
+   * Confirmation de changement de mot de passe
+   */
+  passwordChanged: (data: {
+    userName: string;
+    loginUrl: string;
+  }) => ({
+    subject: "Votre mot de passe Talok a été modifié",
+    html: baseLayout(`
+      <div class="content">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div style="display: inline-block; width: 64px; height: 64px; background: ${COLORS.success[50]}; border-radius: 50%; line-height: 64px; font-size: 32px;">✅</div>
+        </div>
+
+        <h1 style="text-align: center;">Mot de passe mis à jour</h1>
+        <p>Bonjour ${escapeHtml(data.userName)},</p>
+        <p>Le mot de passe de votre compte Talok vient d'être modifié avec succès.</p>
+        <p>Si vous êtes bien à l'origine de cette opération, vous pouvez vous reconnecter via le bouton ci-dessous.</p>
+
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="${data.loginUrl}" class="button">Se reconnecter</a>
+        </div>
+
+        <div class="highlight-box">
+          <p style="font-size: 14px; color: ${COLORS.gray[500]}; margin: 0;">
+            Si vous n'êtes pas à l'origine de ce changement, contactez immédiatement le support et sécurisez votre compte.
+          </p>
+        </div>
+      </div>
+    `, "Votre mot de passe Talok a été modifié. Si ce n'était pas vous, contactez immédiatement le support."),
+    text: `Bonjour ${data.userName},\n\nLe mot de passe de votre compte Talok vient d'être modifié.\n\nReconnectez-vous ici : ${data.loginUrl}\n\nSi vous n'êtes pas à l'origine de ce changement, contactez immédiatement le support.`,
   }),
 
   /**

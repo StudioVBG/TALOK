@@ -3,6 +3,12 @@ export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
+import {
+  PASSWORD_RESET_COOKIE_NAME,
+  createPasswordResetCookieToken,
+  getPasswordResetCookieOptions,
+  validatePasswordResetRequestForCallback,
+} from "@/lib/auth/password-recovery.service";
 
 interface ProfilePartial {
   id?: string;
@@ -19,6 +25,8 @@ export async function GET(request: Request) {
 
   const next = requestUrl.searchParams.get("next");
   const redirectParam = requestUrl.searchParams.get("redirect");
+  const flow = requestUrl.searchParams.get("flow");
+  const requestId = requestUrl.searchParams.get("rid");
 
   if (code) {
     const supabase = await createClient();
@@ -29,10 +37,36 @@ export async function GET(request: Request) {
       return NextResponse.redirect(new URL("/auth/signin?error=invalid_code", origin));
     }
 
+    if (flow === "pw-reset" && requestId && data.user) {
+      const validation = await validatePasswordResetRequestForCallback({
+        requestId,
+        userId: data.user.id,
+      });
+
+      if (!validation.valid || !validation.request) {
+        return NextResponse.redirect(new URL("/auth/forgot-password?error=invalid_reset_link", origin));
+      }
+
+      const response = NextResponse.redirect(new URL(`/recovery/password/${requestId}`, origin));
+      response.cookies.set(
+        PASSWORD_RESET_COOKIE_NAME,
+        createPasswordResetCookieToken({
+          requestId,
+          userId: data.user.id,
+          expiresAt: new Date(validation.request.expires_at).getTime(),
+        }),
+        getPasswordResetCookieOptions(validation.request.expires_at)
+      );
+      response.headers.set("Cache-Control", "no-store");
+      return response;
+    }
+
     // Si un paramètre "next" est présent (ex: /auth/reset-password), y rediriger directement
     // Cela permet au flux de réinitialisation de mot de passe de fonctionner correctement
     if (next && next.startsWith("/auth/reset-password")) {
-      return NextResponse.redirect(new URL("/auth/reset-password", origin));
+      const legacyResponse = NextResponse.redirect(new URL("/auth/reset-password", origin));
+      legacyResponse.headers.set("Cache-Control", "no-store");
+      return legacyResponse;
     }
 
     // Vérifier si l'email est confirmé → rediriger vers le parcours onboarding

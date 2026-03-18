@@ -1,0 +1,71 @@
+import { unstable_noStore as noStore } from "next/cache";
+import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
+import {
+  PASSWORD_RESET_COOKIE_NAME,
+  validatePasswordResetAccess,
+} from "@/lib/auth/password-recovery.service";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { PasswordRecoveryForm } from "./PasswordRecoveryForm";
+
+export const dynamic = "force-dynamic";
+
+export const metadata = {
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
+
+interface PasswordRecoveryPageProps {
+  params: Promise<{
+    requestId: string;
+  }>;
+}
+
+export default async function PasswordRecoveryPage({ params }: PasswordRecoveryPageProps) {
+  noStore();
+
+  const { requestId } = await params;
+  const supabase = await createClient();
+  const cookieStore = await cookies();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const validation = user
+    ? await validatePasswordResetAccess({
+        requestId,
+        userId: user.id,
+        cookieToken: cookieStore.get(PASSWORD_RESET_COOKIE_NAME)?.value,
+      })
+    : { valid: false };
+
+  const canReset = Boolean(user && validation.valid);
+
+  return (
+    <div className="flex min-h-[80vh] items-center justify-center px-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Changement sécurisé du mot de passe</CardTitle>
+          <CardDescription>
+            Cette page est accessible uniquement via le lien unique reçu par email.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {canReset ? (
+            <PasswordRecoveryForm requestId={requestId} />
+          ) : (
+            <div className="space-y-3 text-sm text-muted-foreground">
+              <p>Ce lien de changement de mot de passe est invalide, expiré ou déjà utilisé.</p>
+              <p>Pour votre sécurité, chaque demande donne accès à une page dédiée à usage unique.</p>
+              <a href="/auth/forgot-password" className="text-primary underline-offset-2 hover:underline">
+                Demander un nouveau lien
+              </a>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
