@@ -20,6 +20,35 @@ export async function GET(request: Request) {
   const next = requestUrl.searchParams.get("next");
   const redirectParam = requestUrl.searchParams.get("redirect");
 
+  // 1. Vérification via token_hash (flux email personnalisé avec generateLink)
+  // L'email contient un lien direct vers /auth/callback?token_hash=xxx&type=recovery
+  // On vérifie le token côté serveur via verifyOtp → session créée, cookies set
+  const tokenHash = requestUrl.searchParams.get("token_hash");
+  const type = requestUrl.searchParams.get("type");
+
+  if (tokenHash) {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.verifyOtp({
+      token_hash: tokenHash,
+      type: (type as "recovery" | "email") || "recovery",
+    });
+
+    if (error) {
+      console.error("Error verifying OTP token_hash:", error);
+      return NextResponse.redirect(new URL("/auth/signin?error=invalid_code", origin));
+    }
+
+    // Recovery → page de reset mot de passe
+    if (type === "recovery") {
+      return NextResponse.redirect(new URL("/auth/reset-password", origin));
+    }
+
+    // Autres types → rediriger selon next param
+    const safeNext = next && next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+    return NextResponse.redirect(new URL(safeNext, origin));
+  }
+
+  // 2. Vérification via code PKCE (flux OAuth, magic link client-side)
   if (code) {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);

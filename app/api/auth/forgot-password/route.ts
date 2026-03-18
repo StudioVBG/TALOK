@@ -20,16 +20,13 @@ export async function POST(request: NextRequest) {
 
     const supabase = getServiceClient();
 
-    // Construire l'URL de redirection vers la page de reset
-    // IMPORTANT : ignorer NEXT_PUBLIC_APP_URL si c'est localhost (dev local)
-    // pour éviter que le lien dans l'email redirige vers localhost
+    // Déterminer l'origin de production (ignorer localhost)
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
     const isLocalhost = appUrl && (appUrl.includes("localhost") || appUrl.includes("127.0.0.1"));
     const origin = (() => {
       if (appUrl && !isLocalhost) {
         return appUrl.replace(/\/+$/, "");
       }
-      // Dériver l'origin depuis les headers de la requête (fiable en production)
       const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
       const proto = request.headers.get("x-forwarded-proto") || "https";
       if (host && !host.includes("localhost") && !host.includes("127.0.0.1")) {
@@ -37,45 +34,33 @@ export async function POST(request: NextRequest) {
       }
       return "https://talok.fr";
     })();
-    const redirectTo = `${origin}/auth/reset-password`;
-    console.log("[ForgotPassword] Using origin:", origin, "| redirectTo:", redirectTo);
 
     // Générer le lien de recovery via l'API admin
+    // Note : on n'utilise PAS l'action_link retournée (elle passe par Supabase
+    // et casse le flux PKCE car pas de code_verifier côté client).
+    // On extrait le hashed_token et on construit notre propre URL.
     const { data: linkData, error: linkError } =
       await supabase.auth.admin.generateLink({
         type: "recovery",
         email,
-        options: {
-          redirectTo,
-        },
       });
 
     if (linkError) {
       console.error("[ForgotPassword] generateLink error:", linkError.message);
-      // Ne pas révéler si l'email existe ou non (sécurité)
       return NextResponse.json({ success: true });
     }
 
-    // Extraire les propriétés du lien généré
-    let actionLink = linkData?.properties?.action_link;
-    if (!actionLink) {
-      console.error("[ForgotPassword] No action_link returned");
+    // Extraire le hashed_token pour vérification via verifyOtp côté callback
+    const tokenHash = (linkData?.properties as any)?.hashed_token;
+    if (!tokenHash) {
+      console.error("[ForgotPassword] No hashed_token returned");
       return NextResponse.json({ success: true });
     }
 
-    // Sécurité : si l'action_link contient un redirect_to vers localhost,
-    // le réécrire avec l'origin de production
-    try {
-      const linkUrl = new URL(actionLink);
-      const embeddedRedirect = linkUrl.searchParams.get("redirect_to");
-      if (embeddedRedirect && (embeddedRedirect.includes("localhost") || embeddedRedirect.includes("127.0.0.1"))) {
-        console.warn("[ForgotPassword] action_link had localhost redirect_to, rewriting to:", redirectTo);
-        linkUrl.searchParams.set("redirect_to", redirectTo);
-        actionLink = linkUrl.toString();
-      }
-    } catch {
-      // URL parsing failed, use actionLink as-is
-    }
+    // Construire l'URL de reset qui passe par notre callback avec le token_hash
+    // Le callback appellera verifyOtp() côté serveur → session créée → redirect vers reset-password
+    const resetUrl = `${origin}/auth/callback?token_hash=${encodeURIComponent(tokenHash)}&type=recovery&next=${encodeURIComponent("/auth/reset-password")}`;
+    console.log("[ForgotPassword] Using origin:", origin, "| resetUrl (token_hash approach)");
 
     // Récupérer le prénom de l'utilisateur depuis le profil
     let userName = "cher utilisateur";
@@ -96,7 +81,7 @@ export async function POST(request: NextRequest) {
     // Générer l'email via le design system Talok (lib/emails/templates.ts)
     const template = emailTemplates.passwordReset({
       userName,
-      resetUrl: actionLink,
+      resetUrl,
       expiresIn: "1 heure",
     });
 
