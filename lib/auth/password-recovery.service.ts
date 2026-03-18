@@ -152,6 +152,18 @@ function mapRow(row: Record<string, unknown>): PasswordResetRequestRow {
   };
 }
 
+function isSelectableRow(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  if ("error" in value) {
+    return false;
+  }
+
+  return true;
+}
+
 async function getPasswordResetRequestById(requestId: string): Promise<PasswordResetRequestRow | null> {
   const serviceClient = getServiceClient();
   const { data, error } = await serviceClient
@@ -164,7 +176,11 @@ async function getPasswordResetRequestById(requestId: string): Promise<PasswordR
     return null;
   }
 
-  return mapRow(data as unknown as Record<string, unknown>);
+  if (!isSelectableRow(data)) {
+    return null;
+  }
+
+  return mapRow(data);
 }
 
 export async function revokePasswordResetRequest(
@@ -224,7 +240,11 @@ export async function createPasswordResetRequest(
     throw new Error(error?.message || "Impossible de créer la demande de réinitialisation.");
   }
 
-  return mapRow(data as unknown as Record<string, unknown>);
+  if (!isSelectableRow(data)) {
+    throw new Error("La demande créée n'a pas retourné une ligne exploitable.");
+  }
+
+  return mapRow(data);
 }
 
 export async function validatePasswordResetRequestForCallback(params: {
