@@ -51,6 +51,8 @@ function getSafeRedirectUrl(redirect: string | null): string | null {
 const ERROR_MESSAGES: Record<string, string> = {
   session_expired: "Votre session a expiré. Veuillez vous reconnecter.",
   invalid_code: "Le lien de connexion est invalide ou expiré. Veuillez réessayer.",
+  otp_expired: "Le lien a expiré. Veuillez en demander un nouveau.",
+  access_denied: "Accès refusé. Veuillez réessayer.",
 };
 
 export function SignInForm() {
@@ -67,6 +69,7 @@ export function SignInForm() {
 
   const redirectTo = getSafeRedirectUrl(searchParams.get("redirect"));
 
+  // Gestion des erreurs via query params (?error=...)
   useEffect(() => {
     const errorParam = searchParams.get("error");
     if (errorParam && ERROR_MESSAGES[errorParam]) {
@@ -77,6 +80,35 @@ export function SignInForm() {
       });
     }
   }, [searchParams, toast]);
+
+  // Gestion des erreurs Supabase via hash fragment (#error=access_denied&error_code=otp_expired...)
+  // Supabase redirige vers site_url + #error=... quand un token est expiré ou invalide
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const hash = window.location.hash;
+    if (!hash || !hash.includes("error=")) return;
+
+    const params = new URLSearchParams(hash.replace("#", ""));
+    const error = params.get("error");
+    const errorCode = params.get("error_code");
+    const errorDescription = params.get("error_description");
+
+    if (error) {
+      const message =
+        (errorCode && ERROR_MESSAGES[errorCode]) ||
+        errorDescription?.replace(/\+/g, " ") ||
+        "Le lien est invalide ou a expiré. Veuillez réessayer.";
+
+      toast({
+        title: "Lien expiré",
+        description: message,
+        variant: "destructive",
+      });
+
+      // Nettoyer le hash pour éviter de réafficher l'erreur au re-render
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  }, [toast]);
 
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
