@@ -12,7 +12,7 @@
  */
 
 import { getServiceRoleClient } from "@/lib/server/service-role-client";
-import emailService from "@/lib/services/email-service";
+import { sendRentReminderEmail } from "@/lib/services/email-service";
 
 export interface ReminderConfig {
   // Délais en jours après l'échéance
@@ -240,17 +240,14 @@ async function sendReminder(
 
   // Envoyer l'email
   if (config.enableEmail && invoice.tenant.email) {
-    await (emailService as any).sendRentReminder({
-      to: invoice.tenant.email,
-      tenantName: `${invoice.tenant.prenom} ${invoice.tenant.nom}`,
-      ownerName: `${invoice.owner.prenom} ${invoice.owner.nom}`,
-      propertyAddress: invoice.property.adresse_complete,
-      periode: formatPeriode(invoice.periode),
-      montant: invoice.montant_total,
-      daysLate: invoice.days_late,
-      level,
-      paymentLink: `${process.env.NEXT_PUBLIC_APP_URL}/tenant/payments?invoice=${invoice.id}`,
-    });
+    await sendRentReminderEmail(
+      invoice.tenant.email,
+      `${invoice.tenant.prenom} ${invoice.tenant.nom}`,
+      formatPeriode(invoice.periode),
+      invoice.montant_total,
+      invoice.due_date.toLocaleDateString("fr-FR"),
+      `${process.env.NEXT_PUBLIC_APP_URL}/tenant/payments?invoice=${invoice.id}`,
+    );
   }
 
   // Créer une notification dans la BDD

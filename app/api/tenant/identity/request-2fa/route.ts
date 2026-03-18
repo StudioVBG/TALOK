@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { randomInt, createHmac, randomBytes } from "crypto";
-import { sendEmail } from "@/lib/email/send-email";
+import { sendEmail } from "@/lib/services/email-service";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 const OTP_EXPIRY_MINUTES = 10;

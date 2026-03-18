@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
-import { sendEmail } from "@/lib/email/send-email";
+import { sendEmail } from "@/lib/services/email-service";
 
 /**
  * CRON: GET /api/cron/check-cni-expiry

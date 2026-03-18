@@ -9,6 +9,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { sendEmail } from "@/lib/services/email-service";
 
 // Types
 export type ReminderType = 
@@ -281,20 +282,30 @@ export async function createReminder(
 }
 
 /**
- * Envoie une relance par email
+ * Envoie une relance par email via Resend
  */
 async function sendEmailReminder(reminder: Reminder): Promise<boolean> {
-  // TODO: Intégrer avec un service d'email (Resend, SendGrid, etc.)
   try {
     if (!reminder.recipientEmail) {
-      console.warn("[Email] Pas d'email pour le destinataire:", reminder.recipientId);
+      console.warn("[Reminder] Pas d'email pour le destinataire:", reminder.recipientId);
       return false;
     }
-    // Simulation d'envoi — à remplacer par Resend/SendGrid
-    console.warn(`[Email] Envoi simulé à ${reminder.recipientEmail}: ${reminder.subject}`);
+
+    const result = await sendEmail({
+      to: reminder.recipientEmail,
+      subject: reminder.subject,
+      text: reminder.content,
+      html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; white-space: pre-line;">${reminder.content.replace(/\n/g, "<br>")}</div>`,
+    });
+
+    if (!result.success) {
+      console.error("[Reminder] Erreur envoi email:", result.error);
+      return false;
+    }
+
     return true;
   } catch (error) {
-    console.error("[Email] Erreur envoi:", error);
+    console.error("[Reminder] Erreur envoi email:", error);
     return false;
   }
 }
