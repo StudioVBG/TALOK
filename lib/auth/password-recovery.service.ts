@@ -164,7 +164,7 @@ async function getPasswordResetRequestById(requestId: string): Promise<PasswordR
     return null;
   }
 
-  return mapRow(data as Record<string, unknown>);
+  return mapRow(data as unknown as Record<string, unknown>);
 }
 
 export async function revokePasswordResetRequest(
@@ -224,7 +224,7 @@ export async function createPasswordResetRequest(
     throw new Error(error?.message || "Impossible de créer la demande de réinitialisation.");
   }
 
-  return mapRow(data as Record<string, unknown>);
+  return mapRow(data as unknown as Record<string, unknown>);
 }
 
 export async function validatePasswordResetRequestForCallback(params: {

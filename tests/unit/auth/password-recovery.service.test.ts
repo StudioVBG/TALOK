@@ -34,7 +34,7 @@ describe("password-recovery.service", () => {
       expiresAt,
     });
 
-    const tampered = `${token}broken`;
+    const tampered = `x${token.slice(1)}`;
     expect(verifyPasswordResetCookieToken(tampered)).toBeNull();
   });
 
