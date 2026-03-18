@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { sendEmail } from "@/lib/services/email-service";
 import { emailTemplates } from "@/lib/emails/templates";
+import { getPasswordRecoveryCallbackUrl } from "@/lib/utils/redirect-url";
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,12 +21,12 @@ export async function POST(request: NextRequest) {
 
     const supabase = getServiceClient();
 
-    // Construire l'URL de redirection via /auth/callback
-    const origin =
+    // Construire l'URL de redirection via /auth/callback en neutralisant une base mal configurée.
+    const redirectTo = getPasswordRecoveryCallbackUrl(
       process.env.NEXT_PUBLIC_APP_URL ||
-      request.headers.get("origin") ||
-      "https://talok.fr";
-    const redirectTo = `${origin}/auth/callback?next=/auth/reset-password`;
+        request.headers.get("origin") ||
+        "https://talok.fr"
+    );
 
     // Générer le lien de recovery via l'API admin
     const { data: linkData, error: linkError } =

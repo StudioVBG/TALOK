@@ -15,6 +15,7 @@ import { emailTemplates } from './templates';
 import { withRetry } from './utils/retry';
 import { checkRateLimitBatch } from './utils/rate-limit';
 import { validateEmails, isValidEmail } from './utils/validation';
+import { getPasswordRecoveryCallbackUrl } from "@/lib/utils/redirect-url";
 
 // Client Resend (singleton)
 let resendClient: Resend | null = null;
@@ -478,12 +479,32 @@ export async function sendWelcomeEmail(data: {
 export async function sendPasswordResetEmail(data: {
   userEmail: string;
   userName: string;
-  resetToken: string;
+  resetUrl?: string;
+  actionLink?: string;
+  resetToken?: string;
+  expiresIn?: string;
 }): Promise<EmailResult> {
+  const resetUrl = data.resetUrl ?? data.actionLink;
+
+  // Le flux actif envoie un action_link Supabase complet. Refuser silencieusement
+  // de reconstruire un ancien lien /auth/reset-password?token=... qui n'est plus supporté.
+  if (!resetUrl) {
+    console.error(
+      "[Email] sendPasswordResetEmail called without resetUrl/actionLink. " +
+      `Legacy resetToken flow no longer supported: ${Boolean(data.resetToken)}`
+    );
+
+    return {
+      success: false,
+      error: `Lien de réinitialisation manquant. Utilisez l'URL de recovery complète (ex: ${getPasswordRecoveryCallbackUrl()}).`,
+      attempts: 0,
+    };
+  }
+
   const template = emailTemplates.passwordReset({
     userName: data.userName,
-    resetUrl: `${process.env.NEXT_PUBLIC_APP_URL}/auth/reset-password?token=${data.resetToken}`,
-    expiresIn: '1 heure',
+    resetUrl,
+    expiresIn: data.expiresIn || '1 heure',
   });
 
   return sendEmail({

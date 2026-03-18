@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { apiError, apiSuccess, validateBody, logAudit } from "@/lib/api/middleware";
 import { RegisterSchema } from "@/lib/api/schemas";
 import { applyRateLimit } from "@/lib/security/rate-limit";
+import { getAuthCallbackUrl } from "@/lib/utils/redirect-url";
 
 /**
  * POST /api/v1/auth/register
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
           prenom: data.prenom,
           nom: data.nom,
         },
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
+        emailRedirectTo: getAuthCallbackUrl(process.env.NEXT_PUBLIC_APP_URL),
       },
     });
 

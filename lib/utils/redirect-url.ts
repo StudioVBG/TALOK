@@ -1,43 +1,63 @@
 /**
- * Utilitaires pour les URLs de redirection Supabase Auth
- * Utilise NEXT_PUBLIC_APP_URL en production, window.location.origin en développement
+ * Utilitaires pour les URLs de redirection Supabase Auth.
+ * Normalise la base d'application pour éviter les config du type https://domaine/auth.
  */
 
-/**
- * Obtenir l'URL de base de l'application
- */
-export function getBaseUrl(): string {
-  // En production, utiliser la variable d'environnement
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL;
+function normalizeUrl(rawUrl: string): string {
+  const trimmedUrl = rawUrl.trim();
+  const withProtocol = /^https?:\/\//i.test(trimmedUrl)
+    ? trimmedUrl
+    : `https://${trimmedUrl}`;
+  const url = new URL(withProtocol);
+
+  // Les liens d'auth sont servis à la racine de l'app, pas sous /auth.
+  url.pathname = url.pathname.replace(/\/+$/, "");
+  if (url.pathname === "/auth") {
+    url.pathname = "";
   }
-  
-  // En développement, utiliser window.location.origin si disponible
-  if (typeof window !== 'undefined') {
-    return window.location.origin;
-  }
-  
-  // Fallback pour les contextes server-side
-  return 'http://localhost:3000';
+
+  url.search = "";
+  url.hash = "";
+
+  return url.toString().replace(/\/$/, "");
 }
 
 /**
- * Obtenir l'URL complète pour le callback d'authentification
+ * Obtenir l'URL de base de l'application.
  */
-export function getAuthCallbackUrl(): string {
-  return `${getBaseUrl()}/auth/callback`;
+export function getBaseUrl(overrideUrl?: string): string {
+  const rawUrl =
+    overrideUrl ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "http://localhost:3000");
+
+  return normalizeUrl(rawUrl);
 }
 
 /**
- * Obtenir l'URL complète pour la réinitialisation de mot de passe
+ * Obtenir l'URL complète pour le callback d'authentification.
  */
-export function getResetPasswordUrl(): string {
-  return `${getBaseUrl()}/auth/reset-password`;
+export function getAuthCallbackUrl(overrideUrl?: string): string {
+  return `${getBaseUrl(overrideUrl)}/auth/callback`;
 }
 
 /**
- * Obtenir l'URL complète pour la vérification d'email
+ * Obtenir l'URL de callback utilisée par le recovery de mot de passe.
  */
-export function getVerifyEmailUrl(): string {
-  return `${getBaseUrl()}/auth/verify-email`;
+export function getPasswordRecoveryCallbackUrl(overrideUrl?: string): string {
+  return `${getAuthCallbackUrl(overrideUrl)}?next=${encodeURIComponent("/auth/reset-password")}`;
+}
+
+/**
+ * Obtenir l'URL complète pour la réinitialisation de mot de passe.
+ */
+export function getResetPasswordUrl(overrideUrl?: string): string {
+  return `${getBaseUrl(overrideUrl)}/auth/reset-password`;
+}
+
+/**
+ * Obtenir l'URL complète pour la vérification d'email.
+ */
+export function getVerifyEmailUrl(overrideUrl?: string): string {
+  return `${getBaseUrl(overrideUrl)}/auth/verify-email`;
 }
