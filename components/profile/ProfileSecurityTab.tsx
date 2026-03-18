@@ -7,7 +7,6 @@
  */
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -15,76 +14,49 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { PasswordInput } from "@/components/ui/password-input";
-import { PasswordStrength } from "@/components/ui/password-strength";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Lock } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { SecuritySettings } from "@/components/settings/security-settings";
+import { authService } from "@/features/auth/services/auth.service";
 
-export function ProfileSecurityTab() {
-  const router = useRouter();
+interface ProfileSecurityTabProps {
+  userEmail: string | null;
+}
+
+export function ProfileSecurityTab({ userEmail }: ProfileSecurityTabProps) {
   const { toast } = useToast();
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
-  const handlePasswordChange = async () => {
-    const hasUppercase = /[A-Z]/.test(newPassword);
-    const hasLowercase = /[a-z]/.test(newPassword);
-    const hasDigit = /\d/.test(newPassword);
-    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
-
-    if (newPassword.length < 12 || !hasUppercase || !hasLowercase || !hasDigit || !hasSpecial) {
+  const handlePasswordChangeRequest = async () => {
+    if (!userEmail) {
       toast({
-        title: "Mot de passe trop faible",
-        description: "12 caractères minimum avec majuscule, minuscule, chiffre et caractère spécial.",
+        title: "Email introuvable",
+        description: "Impossible d'envoyer le lien sécurisé sans email de compte.",
         variant: "destructive",
       });
       return;
     }
 
-    if (newPassword !== confirmPassword) {
-      toast({
-        title: "Mots de passe différents",
-        description: "Les deux mots de passe ne correspondent pas.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsSaving(true);
+    setIsSending(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
+      await authService.resetPassword(userEmail);
       toast({
-        title: "Mot de passe modifié",
-        description: "Votre mot de passe a été mis à jour avec succès.",
+        title: "Lien sécurisé envoyé",
+        description:
+          "Vérifiez votre boîte email. Le changement de mot de passe se fait désormais via une page dédiée à usage unique.",
       });
-      setIsChangingPassword(false);
-      setNewPassword("");
-      setConfirmPassword("");
     } catch (error: unknown) {
       toast({
         title: "Erreur",
         description:
           error instanceof Error
             ? error.message
-            : "Impossible de modifier le mot de passe.",
+            : "Impossible d'envoyer le lien sécurisé de changement de mot de passe.",
         variant: "destructive",
       });
     } finally {
-      setIsSaving(false);
+      setIsSending(false);
     }
   };
 
@@ -98,60 +70,18 @@ export function ProfileSecurityTab() {
             Mot de passe
           </CardTitle>
           <CardDescription>
-            Modifiez votre mot de passe de connexion
+            Pour des raisons de sécurité, le changement du mot de passe se fait via un lien unique envoyé à votre adresse email.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isChangingPassword ? (
-            <div className="space-y-4 max-w-md">
-              <div className="space-y-2">
-                <Label htmlFor="new_password">Nouveau mot de passe</Label>
-                <PasswordInput
-                  id="new_password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="12 caractères minimum"
-                  autoComplete="new-password"
-                />
-                <PasswordStrength password={newPassword} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm_password">Confirmer</Label>
-                <PasswordInput
-                  id="confirm_password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Retapez le mot de passe"
-                  autoComplete="new-password"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={handlePasswordChange}
-                  disabled={isSaving || !newPassword || !confirmPassword}
-                >
-                  {isSaving ? "Enregistrement..." : "Enregistrer"}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsChangingPassword(false);
-                    setNewPassword("");
-                    setConfirmPassword("");
-                  }}
-                >
-                  Annuler
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button
-              variant="outline"
-              onClick={() => setIsChangingPassword(true)}
-            >
-              Modifier le mot de passe
+          <div className="max-w-xl space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Le lien reçu est temporaire, à usage unique, et ouvre une page dédiée hors dashboard avec vérifications renforcées.
+            </p>
+            <Button variant="outline" onClick={handlePasswordChangeRequest} disabled={isSending}>
+              {isSending ? "Envoi du lien..." : "Recevoir un lien sécurisé"}
             </Button>
-          )}
+          </div>
         </CardContent>
       </Card>
 

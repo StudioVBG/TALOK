@@ -103,7 +103,7 @@ export function ProfileForm() {
           </>
         )}
         {activeTab === "entities" && <ProfileEntitiesTab />}
-        {activeTab === "security" && <ProfileSecurityTab />}
+        {activeTab === "security" && <ProfileSecurityTab userEmail={userEmail} />}
       </div>
 
       {/* Unified save button — only for identity tab */}

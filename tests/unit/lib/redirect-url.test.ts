@@ -19,8 +19,8 @@ describe("redirect-url helpers", () => {
   });
 
   it("construit le callback de recovery attendu", () => {
-    expect(getPasswordRecoveryCallbackUrl("https://talok.fr/auth")).toBe(
-      "https://talok.fr/auth/callback?next=%2Fauth%2Freset-password"
+    expect(getPasswordRecoveryCallbackUrl("https://talok.fr/auth", "request-id-123")).toBe(
+      "https://talok.fr/auth/callback?flow=pw-reset&rid=request-id-123"
     );
   });
 

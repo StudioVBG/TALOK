@@ -26,6 +26,7 @@ const publicRoutes = [
   "/auth/verify-email",
   "/auth/forgot-password",
   "/auth/reset-password",
+  "/recovery/password",
   "/signup",
   "/pricing",
   "/blog",

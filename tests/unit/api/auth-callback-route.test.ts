@@ -15,9 +15,31 @@ vi.mock("@/lib/helpers/role-redirects", () => ({
   getRoleDashboardUrl: vi.fn(() => "/owner/dashboard"),
 }));
 
+const validatePasswordResetRequestForCallback = vi.fn();
+
+vi.mock("@/lib/auth/password-recovery.service", () => ({
+  PASSWORD_RESET_COOKIE_NAME: "pw_reset_access",
+  createPasswordResetCookieToken: vi.fn(() => "signed-reset-cookie"),
+  getPasswordResetCookieOptions: vi.fn(() => ({
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    path: "/recovery/password",
+    expires: new Date("2026-03-20T10:00:00.000Z"),
+  })),
+  validatePasswordResetRequestForCallback,
+}));
+
 describe("GET /auth/callback", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    validatePasswordResetRequestForCallback.mockResolvedValue({
+      valid: true,
+      request: {
+        id: "request-1",
+        expires_at: "2026-03-20T10:00:00.000Z",
+      },
+    });
 
     supabaseClient.auth.exchangeCodeForSession.mockResolvedValue({
       data: {
@@ -95,5 +117,19 @@ describe("GET /auth/callback", () => {
     const response = await GET(new Request("http://localhost/auth/callback?code=test"));
 
     expect(response.headers.get("location")).toBe("http://localhost/owner/onboarding/profile");
+  });
+
+  it("redirige le flux de password recovery vers la page dédiée", async () => {
+    const { GET } = await import("@/app/auth/callback/route");
+    const response = await GET(
+      new Request("http://localhost/auth/callback?code=test&flow=pw-reset&rid=request-1")
+    );
+
+    expect(validatePasswordResetRequestForCallback).toHaveBeenCalledWith({
+      requestId: "request-1",
+      userId: "user-1",
+    });
+    expect(response.headers.get("location")).toBe("http://localhost/recovery/password/request-1");
+    expect(response.headers.get("set-cookie")).toContain("pw_reset_access=signed-reset-cookie");
   });
 });
