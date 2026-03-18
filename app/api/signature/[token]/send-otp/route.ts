@@ -6,6 +6,7 @@ import { randomInt } from "crypto";
 import { setOTP } from "@/lib/services/otp-store";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { sendEmail } from "@/lib/services/email-service";
+import { emailTemplates } from "@/lib/emails/templates";
 import { verifyTokenCompat } from "@/lib/utils/secure-token";
 
 interface PageProps {
@@ -69,24 +70,16 @@ export async function POST(request: Request, { params }: PageProps) {
     });
 
     try {
+      const template = emailTemplates.otpVerification({
+        otpCode,
+        purpose: "Signature de bail",
+        expiresInMinutes: 10,
+      });
+
       const emailResult = await sendEmail({
         to: email,
-        subject: "Code de vérification - Signature de bail",
-        html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <div style="background: #2563eb; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-                <h1 style="margin: 0;">Code de vérification</h1>
-              </div>
-              <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 8px 8px;">
-                <p>Voici votre code de vérification pour signer votre bail :</p>
-                <div style="background: white; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; border-radius: 8px; margin: 20px 0;">
-                  ${otpCode}
-                </div>
-                <p style="color: #64748b; font-size: 14px;">Ce code est valable 10 minutes.</p>
-                <p style="color: #64748b; font-size: 14px;">Si vous n'avez pas demandé ce code, ignorez cet email.</p>
-              </div>
-            </div>
-          `,
+        subject: template.subject,
+        html: template.html,
       });
 
       if (!emailResult.success) {
