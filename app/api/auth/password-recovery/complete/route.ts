@@ -121,9 +121,10 @@ export async function POST(request: NextRequest) {
       user.email?.split("@")[0] ||
       "cher utilisateur";
 
+    const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
     const passwordChangedTemplate = emailTemplates.passwordChanged({
       userName: displayName,
-      loginUrl: `${request.nextUrl.origin}/auth/signin`,
+      loginUrl: `${appBaseUrl}/auth/signin`,
     });
 
     await sendEmail({

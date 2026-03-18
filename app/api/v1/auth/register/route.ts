@@ -7,6 +7,7 @@ import { apiError, apiSuccess, validateBody, logAudit } from "@/lib/api/middlewa
 import { RegisterSchema } from "@/lib/api/schemas";
 import { applyRateLimit } from "@/lib/security/rate-limit";
 import { getAuthCallbackUrl } from "@/lib/utils/redirect-url";
+import { sendWelcomeEmail } from "@/lib/emails";
 
 /**
  * POST /api/v1/auth/register
@@ -83,6 +84,17 @@ export async function POST(request: NextRequest) {
         );
       }
       // Note: syndic uses base profile only (no syndic_profiles table yet)
+
+      // Email de bienvenue (fire-and-forget, ne bloque pas l'inscription)
+      // Note: Supabase envoie aussi son email de confirmation séparément
+      const welcomeRole = data.role as "owner" | "tenant" | "provider";
+      if (["owner", "tenant", "provider"].includes(data.role)) {
+        sendWelcomeEmail({
+          userEmail: data.email,
+          userName: data.prenom || data.nom || data.email.split("@")[0],
+          role: welcomeRole,
+        }).catch(err => console.error("[register] Welcome email failed:", err));
+      }
 
       // Audit log
       await logAudit(

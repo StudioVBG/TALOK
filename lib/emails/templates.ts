@@ -712,7 +712,9 @@ export const emailTemplates = {
     userName: string;
     resetUrl: string;
     expiresIn: string;
-  }) => ({
+  }) => {
+    const safeResetUrl = escapeHtml(data.resetUrl);
+    return {
     subject: `Réinitialisation de votre mot de passe Talok`,
     html: baseLayout(`
       <div class="content">
@@ -725,7 +727,7 @@ export const emailTemplates = {
         <p>Vous avez demandé à réinitialiser votre mot de passe sur Talok. Cliquez sur le bouton ci-dessous pour accéder à votre page sécurisée de changement de mot de passe :</p>
 
         <div style="text-align: center; margin: 32px 0;">
-          <a href="${data.resetUrl}" class="button">Réinitialiser mon mot de passe</a>
+          <a href="${safeResetUrl}" class="button">Réinitialiser mon mot de passe</a>
         </div>
 
         <div class="highlight-box">
@@ -738,7 +740,7 @@ export const emailTemplates = {
 
         <p style="font-size: 13px; color: ${COLORS.gray[500]};">
           Si le bouton ne fonctionne pas, copiez-collez ce lien dans votre navigateur&nbsp;:<br>
-          <a href="${data.resetUrl}" style="color: ${COLORS.primary}; word-break: break-all; font-size: 12px;">${data.resetUrl}</a>
+          <a href="${safeResetUrl}" style="color: ${COLORS.primary}; word-break: break-all; font-size: 12px;">${safeResetUrl}</a>
         </p>
 
         <p style="font-size: 13px; color: ${COLORS.gray[500]};">
@@ -746,7 +748,8 @@ export const emailTemplates = {
         </p>
       </div>
     `, 'Réinitialisez votre mot de passe Talok — ce lien expire dans ' + data.expiresIn + '.'),
-  }),
+    };
+  },
 
   /**
    * Confirmation de changement de mot de passe
@@ -754,12 +757,14 @@ export const emailTemplates = {
   passwordChanged: (data: {
     userName: string;
     loginUrl: string;
-  }) => ({
+  }) => {
+    const safeLoginUrl = escapeHtml(data.loginUrl);
+    return {
     subject: "Votre mot de passe Talok a été modifié",
     html: baseLayout(`
       <div class="content">
         <div style="text-align: center; margin-bottom: 24px;">
-          <div style="display: inline-block; width: 64px; height: 64px; background: ${COLORS.success[50]}; border-radius: 50%; line-height: 64px; font-size: 32px;">✅</div>
+          <div style="display: inline-block; width: 64px; height: 64px; background: #d1fae5; border-radius: 50%; line-height: 64px; font-size: 32px;">✅</div>
         </div>
 
         <h1 style="text-align: center;">Mot de passe mis à jour</h1>
@@ -768,7 +773,7 @@ export const emailTemplates = {
         <p>Si vous êtes bien à l'origine de cette opération, vous pouvez vous reconnecter via le bouton ci-dessous.</p>
 
         <div style="text-align: center; margin: 32px 0;">
-          <a href="${data.loginUrl}" class="button">Se reconnecter</a>
+          <a href="${safeLoginUrl}" class="button">Se reconnecter</a>
         </div>
 
         <div class="highlight-box">
@@ -779,7 +784,8 @@ export const emailTemplates = {
       </div>
     `, "Votre mot de passe Talok a été modifié. Si ce n'était pas vous, contactez immédiatement le support."),
     text: `Bonjour ${data.userName},\n\nLe mot de passe de votre compte Talok vient d'être modifié.\n\nReconnectez-vous ici : ${data.loginUrl}\n\nSi vous n'êtes pas à l'origine de ce changement, contactez immédiatement le support.`,
-  }),
+    };
+  },
 
   /**
    * Notification de changement de tarif d'abonnement

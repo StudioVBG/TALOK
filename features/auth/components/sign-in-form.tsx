@@ -76,6 +76,13 @@ export function SignInForm() {
         variant: errorParam === "session_expired" ? "destructive" : "default",
       });
     }
+
+    if (searchParams.get("passwordChanged") === "1") {
+      toast({
+        title: "Mot de passe mis à jour",
+        description: "Votre mot de passe a été modifié avec succès. Connectez-vous avec votre nouveau mot de passe.",
+      });
+    }
   }, [searchParams, toast]);
 
   const handleGoogleSignIn = async () => {
