@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     const supabase = getServiceClient();
 
-    // Construire l'URL de redirection via /auth/callback
+    // Construire l'URL de redirection vers la page de reset
     // IMPORTANT : ignorer NEXT_PUBLIC_APP_URL si c'est localhost (dev local)
     // pour éviter que le lien dans l'email redirige vers localhost
     const appUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       }
       return "https://talok.fr";
     })();
-    const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent("/auth/reset-password")}`;
+    const redirectTo = `${origin}/auth/reset-password`;
     console.log("[ForgotPassword] Using origin:", origin, "| redirectTo:", redirectTo);
 
     // Générer le lien de recovery via l'API admin
