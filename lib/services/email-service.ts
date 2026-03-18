@@ -9,6 +9,7 @@
  */
 
 import { getProviderCredentials, getResendCredentials } from "./credentials-service";
+import { sendEmail as sendEmailViaResendSDK } from "@/lib/emails/resend.service";
 
 // Types
 export type EmailProvider = "resend";
@@ -206,93 +207,34 @@ function interpolate(template: string, variables: Record<string, string>): strin
 
 /**
  * Envoie un email via Resend
- * Récupère les credentials depuis la DB ou les variables d'environnement
+ *
+ * Délègue au service resend.service.ts qui fournit :
+ * - SDK Resend officiel
+ * - Retry automatique (3 tentatives avec backoff exponentiel)
+ * - Validation avancée (RFC 5322, domaines jetables)
+ * - Logging structuré
  */
 async function sendViaResend(options: EmailOptions): Promise<EmailResult> {
   try {
-    // Récupérer les credentials depuis la DB ou l'environnement
-    let apiKey = config.apiKey;
-    let fromAddress = options.from || config.from;
-    
-    console.log("[Email] sendViaResend appelé, destinataire:", options.to);
-    
-    // Essayer de récupérer depuis la DB
-    try {
-      const dbCredentials = await getResendCredentials();
-      console.log("[Email] Credentials DB:", dbCredentials ? "trouvés" : "non trouvés");
-      if (dbCredentials) {
-        apiKey = dbCredentials.apiKey;
-        console.log("[Email] API Key (premiers caractères):", apiKey?.substring(0, 10) + "...");
-        if (!options.from && dbCredentials.emailFrom) {
-          fromAddress = dbCredentials.emailFrom;
-        }
-        console.log("[Email] Adresse d'expédition:", fromAddress);
-      }
-    } catch (credError) {
-      console.warn("[Email] Impossible de récupérer les credentials DB, utilisation de l'environnement:", credError);
-    }
-
-    // Avertir si le domaine utilise un sous-domaine @send.* (peut nécessiter vérification dans Resend)
-    if (fromAddress.includes("@send.")) {
-      console.warn(`[Email] ⚠️ Domaine @send.* détecté: ${fromAddress}. Vérifiez qu'il est bien configuré dans Resend.`);
-    }
-
-    if (!apiKey) {
-      console.error("[Email] ❌ Pas de clé API configurée");
-      return { 
-        success: false, 
-        error: "Resend n'est pas configuré. Ajoutez votre clé API dans Admin > Intégrations." 
-      };
-    }
-
-    // Corriger le format de l'adresse d'expédition si nécessaire
-    // Resend exige le format "Nom <email@domain.com>" avec un domaine vérifié
-    if (!fromAddress.includes("<") && !fromAddress.includes(">")) {
-      // C'est juste une adresse email, vérifier si c'est un domaine autorisé par Resend
-      if (fromAddress.includes("@gmail.com") || fromAddress.includes("@hotmail.com") || fromAddress.includes("@yahoo.com")) {
-        console.error("[Email] ❌ Adresse d'expédition non autorisée par Resend:", fromAddress);
-        console.error("[Email] ❌ Configurez un domaine vérifié dans Admin > Intégrations ou RESEND_FROM_EMAIL.");
-        return { success: false, error: `Adresse d'expédition non autorisée: ${fromAddress}. Configurez un domaine vérifié dans Resend.` };
-      } else {
-        fromAddress = `Talok <${fromAddress}>`;
-      }
-    }
-    
-    console.log("[Email] Adresse finale d'expédition:", fromAddress);
-
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        from: fromAddress,
-        to: Array.isArray(options.to) ? options.to : [options.to],
-        subject: options.subject,
-        html: options.html,
-        text: options.text,
-        reply_to: options.replyTo || config.replyTo,
-        cc: options.cc,
-        bcc: options.bcc,
-        attachments: options.attachments?.map((a) => ({
-          filename: a.filename,
-          content: typeof a.content === "string" ? a.content : a.content.toString("base64"),
-        })),
-        tags: options.tags?.map((t) => ({ name: t })),
-      }),
+    const result = await sendEmailViaResendSDK({
+      to: options.to,
+      subject: options.subject,
+      html: options.html || "",
+      text: options.text,
+      replyTo: options.replyTo,
+      cc: options.cc,
+      bcc: options.bcc,
+      attachments: options.attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+      })),
     });
 
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      console.error("[Email] ❌ Erreur Resend:", error);
-      const errMsg = (error as Record<string, unknown>)?.message;
-      return { success: false, error: typeof errMsg === "string" ? errMsg : (JSON.stringify(error) || "Erreur Resend") };
-    }
-
-    const data = await response.json();
-    console.log("[Email] ✅ Email envoyé avec succès! ID:", data.id);
-    return { success: true, messageId: data.id };
+    return {
+      success: result.success,
+      messageId: result.id,
+      error: result.error,
+    };
   } catch (error) {
     console.error("[Email] ❌ Exception:", error);
     return { success: false, error: String(error) };
@@ -314,23 +256,9 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
     return { success: false, error: "Contenu requis (html ou text)" };
   }
 
-  // Vérifier si on a une clé API configurée (env OU db)
-  let hasApiKey = !!config.apiKey;
-  
-  // Si pas de clé en env, vérifier dans la DB
-  if (!hasApiKey) {
-    try {
-      const dbCredentials = await getResendCredentials();
-      hasApiKey = !!dbCredentials?.apiKey;
-      if (hasApiKey) {
-        console.log("[Email] ✅ Clé API trouvée dans la base de données");
-      }
-    } catch (e) {
-      console.warn("[Email] Impossible de vérifier les credentials DB");
-    }
-  }
-
-  // Log en développement (sauf si forceSend est activé)
+  // Note: La vérification des credentials et le mode simulation dev sont
+  // gérés par resend.service.ts (délégation). On garde uniquement le
+  // warning pour les environnements de staging mal configurés.
   if (process.env.NODE_ENV === "development" && !config.forceSend) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
     if (appUrl && !appUrl.includes("localhost") && !appUrl.includes("127.0.0.1")) {
@@ -339,18 +267,7 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
         `Les emails sont SIMULÉS et ne seront PAS envoyés. Corrigez NODE_ENV ou ajoutez EMAIL_FORCE_SEND=true.`
       );
     }
-    console.warn("[Email] 📧 Envoi simulé (mode dev) — destinataire:", options.to, "— sujet:", options.subject);
-    console.warn("[Email] 💡 Pour envoyer réellement, ajoutez EMAIL_FORCE_SEND=true dans .env.local");
-    return { success: true, messageId: `dev-${Date.now()}`, simulated: true };
   }
-
-  // Vérifier qu'on a une clé API
-  if (!hasApiKey) {
-    console.error("[Email] ❌ Aucune clé API configurée (ni RESEND_API_KEY en env, ni dans la DB)");
-    return { success: false, error: "Clé API email non configurée" };
-  }
-
-  console.log("[Email] 📤 Envoi réel via", config.provider, "à", options.to);
 
   // Sélection du provider
   switch (config.provider) {

@@ -1550,5 +1550,41 @@ export const emailTemplates = {
       `, `Votre espace Talok est prêt à 100% !`),
     };
   },
+
+  /**
+   * Code OTP de vérification (signature de bail, 2FA, etc.)
+   */
+  otpVerification: (data: {
+    otpCode: string;
+    purpose?: string;
+    expiresInMinutes?: number;
+  }) => ({
+    subject: `🔐 Code de vérification${data.purpose ? ` - ${data.purpose}` : ''}`,
+    html: baseLayout(`
+      <div class="content">
+        <h1>Code de vérification</h1>
+        <p>${data.purpose ? escapeHtml(data.purpose) : 'Voici votre code de vérification'} :</p>
+
+        <div style="text-align: center; margin: 32px 0;">
+          <div style="display: inline-block; background-color: ${COLORS.gray[50]}; border: 2px solid ${COLORS.gray[200]}; border-radius: 12px; padding: 20px 40px;">
+            <span style="font-size: 36px; font-weight: 700; letter-spacing: 8px; color: ${COLORS.primary}; font-family: 'Courier New', monospace;">
+              ${escapeHtml(data.otpCode)}
+            </span>
+          </div>
+        </div>
+
+        <p style="text-align: center; color: ${COLORS.gray[500]}; font-size: 14px;">
+          Ce code est valable <strong>${data.expiresInMinutes || 10} minutes</strong>.
+        </p>
+
+        <div class="divider"></div>
+
+        <p style="font-size: 13px; color: ${COLORS.gray[500]};">
+          Si vous n'avez pas demandé ce code, ignorez cet email.
+          Votre compte reste sécurisé.
+        </p>
+      </div>
+    `, 'Votre code de vérification Talok'),
+  }),
 };
 

@@ -145,7 +145,20 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
       );
     }
 
-    // 2. Vérifier le rate limit
+    // 2. Mode simulation en développement (sauf si EMAIL_FORCE_SEND=true)
+    if (process.env.NODE_ENV === "development" && process.env.EMAIL_FORCE_SEND !== "true") {
+      console.warn(
+        `[Email] 📧 Envoi simulé (mode dev) — destinataire: ${validation.validEmails.join(', ')} — sujet: ${options.subject}`
+      );
+      console.warn("[Email] 💡 Pour envoyer réellement, ajoutez EMAIL_FORCE_SEND=true dans .env.local");
+      return {
+        success: true,
+        id: `dev-${Date.now()}`,
+        attempts: 0,
+      };
+    }
+
+    // 3. Vérifier le rate limit
     if (!options.skipRateLimit) {
       const rateLimitCheck = checkRateLimitBatch(validation.validEmails);
 
