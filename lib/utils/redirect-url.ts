@@ -44,8 +44,20 @@ export function getAuthCallbackUrl(overrideUrl?: string): string {
 /**
  * Obtenir l'URL de callback utilisée par le recovery de mot de passe.
  */
-export function getPasswordRecoveryCallbackUrl(overrideUrl?: string): string {
-  return `${getAuthCallbackUrl(overrideUrl)}?next=${encodeURIComponent("/auth/reset-password")}`;
+export function getPasswordRecoveryCallbackUrl(
+  overrideUrl?: string,
+  requestId?: string
+): string {
+  const callbackUrl = new URL(getAuthCallbackUrl(overrideUrl));
+
+  if (requestId) {
+    callbackUrl.searchParams.set("flow", "pw-reset");
+    callbackUrl.searchParams.set("rid", requestId);
+    return callbackUrl.toString();
+  }
+
+  callbackUrl.searchParams.set("next", "/auth/reset-password");
+  return callbackUrl.toString();
 }
 
 /**
