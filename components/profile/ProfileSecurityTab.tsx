@@ -16,7 +16,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
+import { PasswordStrength } from "@/components/ui/password-strength";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Lock } from "lucide-react";
@@ -32,10 +33,15 @@ export function ProfileSecurityTab() {
   const [isSaving, setIsSaving] = useState(false);
 
   const handlePasswordChange = async () => {
-    if (newPassword.length < 8) {
+    const hasUppercase = /[A-Z]/.test(newPassword);
+    const hasLowercase = /[a-z]/.test(newPassword);
+    const hasDigit = /\d/.test(newPassword);
+    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
+
+    if (newPassword.length < 12 || !hasUppercase || !hasLowercase || !hasDigit || !hasSpecial) {
       toast({
-        title: "Mot de passe trop court",
-        description: "Le mot de passe doit contenir au moins 8 caractères.",
+        title: "Mot de passe trop faible",
+        description: "12 caractères minimum avec majuscule, minuscule, chiffre et caractère spécial.",
         variant: "destructive",
       });
       return;
@@ -100,20 +106,19 @@ export function ProfileSecurityTab() {
             <div className="space-y-4 max-w-md">
               <div className="space-y-2">
                 <Label htmlFor="new_password">Nouveau mot de passe</Label>
-                <Input
+                <PasswordInput
                   id="new_password"
-                  type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="8 caractères minimum"
+                  placeholder="12 caractères minimum"
                   autoComplete="new-password"
                 />
+                <PasswordStrength password={newPassword} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirm_password">Confirmer</Label>
-                <Input
+                <PasswordInput
                   id="confirm_password"
-                  type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Retapez le mot de passe"

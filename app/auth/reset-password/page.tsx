@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
+import { PasswordStrength } from "@/components/ui/password-strength";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -139,6 +140,7 @@ export default function ResetPasswordPage() {
                   onChange={(event) => setPassword(event.target.value)}
                   required
                 />
+                <PasswordStrength password={password} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirm-password">Confirmation</Label>
