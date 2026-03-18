@@ -764,7 +764,7 @@ export const emailTemplates = {
     html: baseLayout(`
       <div class="content">
         <div style="text-align: center; margin-bottom: 24px;">
-          <div style="display: inline-block; width: 64px; height: 64px; background: ${COLORS.success[50]}; border-radius: 50%; line-height: 64px; font-size: 32px;">✅</div>
+          <div style="display: inline-block; width: 64px; height: 64px; background: #d1fae5; border-radius: 50%; line-height: 64px; font-size: 32px;">✅</div>
         </div>
 
         <h1 style="text-align: center;">Mot de passe mis à jour</h1>
