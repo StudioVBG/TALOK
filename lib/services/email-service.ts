@@ -232,11 +232,9 @@ async function sendViaResend(options: EmailOptions): Promise<EmailResult> {
       console.warn("[Email] Impossible de récupérer les credentials DB, utilisation de l'environnement:", credError);
     }
 
-    // Garde-fou : le sous-domaine send.talok.fr n'est pas un domaine d'envoi vérifié sur Resend
+    // Avertir si le domaine utilise un sous-domaine @send.* (peut nécessiter vérification dans Resend)
     if (fromAddress.includes("@send.")) {
-      const corrected = fromAddress.replace(/@send\./, "@");
-      console.warn(`[Email] Correction auto domaine: ${fromAddress} -> ${corrected}`);
-      fromAddress = corrected;
+      console.warn(`[Email] ⚠️ Domaine @send.* détecté: ${fromAddress}. Vérifiez qu'il est bien configuré dans Resend.`);
     }
 
     if (!apiKey) {
@@ -248,13 +246,13 @@ async function sendViaResend(options: EmailOptions): Promise<EmailResult> {
     }
 
     // Corriger le format de l'adresse d'expédition si nécessaire
-    // Resend exige le format "Nom <email@domain.com>" ou utiliser onboarding@resend.dev
+    // Resend exige le format "Nom <email@domain.com>" avec un domaine vérifié
     if (!fromAddress.includes("<") && !fromAddress.includes(">")) {
-      // C'est juste une adresse email, vérifier si c'est un domaine vérifié
+      // C'est juste une adresse email, vérifier si c'est un domaine autorisé par Resend
       if (fromAddress.includes("@gmail.com") || fromAddress.includes("@hotmail.com") || fromAddress.includes("@yahoo.com")) {
-        console.warn("[Email] ⚠️ Adresse d'expédition non autorisée:", fromAddress);
-        console.warn("[Email] ⚠️ Utilisation de onboarding@resend.dev (limité à l'email du propriétaire du compte)");
-        fromAddress = "Talok <onboarding@resend.dev>";
+        console.error("[Email] ❌ Adresse d'expédition non autorisée par Resend:", fromAddress);
+        console.error("[Email] ❌ Configurez un domaine vérifié dans Admin > Intégrations ou RESEND_FROM_EMAIL.");
+        return { success: false, error: `Adresse d'expédition non autorisée: ${fromAddress}. Configurez un domaine vérifié dans Resend.` };
       } else {
         fromAddress = `Talok <${fromAddress}>`;
       }
@@ -334,11 +332,15 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
 
   // Log en développement (sauf si forceSend est activé)
   if (process.env.NODE_ENV === "development" && !config.forceSend) {
-    console.log("[Email] 📧 Envoi simulé (mode dev):", {
-      to: options.to,
-      subject: options.subject,
-    });
-    console.log("[Email] 💡 Pour envoyer réellement, ajoutez EMAIL_FORCE_SEND=true dans .env.local");
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "";
+    if (appUrl && !appUrl.includes("localhost") && !appUrl.includes("127.0.0.1")) {
+      console.error(
+        `[Email] ⚠️ ATTENTION: NODE_ENV=development mais APP_URL=${appUrl} semble être un environnement de production. ` +
+        `Les emails sont SIMULÉS et ne seront PAS envoyés. Corrigez NODE_ENV ou ajoutez EMAIL_FORCE_SEND=true.`
+      );
+    }
+    console.warn("[Email] 📧 Envoi simulé (mode dev) — destinataire:", options.to, "— sujet:", options.subject);
+    console.warn("[Email] 💡 Pour envoyer réellement, ajoutez EMAIL_FORCE_SEND=true dans .env.local");
     return { success: true, messageId: `dev-${Date.now()}`, simulated: true };
   }
 

@@ -167,7 +167,7 @@ export async function getResendCredentials(): Promise<{
     if (envApiKey) {
       return {
         apiKey: envApiKey,
-        emailFrom: envEmailFrom || "Talok <onboarding@resend.dev>",
+        emailFrom: envEmailFrom || "Talok <noreply@talok.fr>",
       };
     }
     return null;
@@ -175,7 +175,7 @@ export async function getResendCredentials(): Promise<{
 
   return {
     apiKey: credentials.apiKey,
-    emailFrom: credentials.config.email_from || process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "Talok <onboarding@resend.dev>",
+    emailFrom: credentials.config.email_from || process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "Talok <noreply@talok.fr>",
   };
 }
 

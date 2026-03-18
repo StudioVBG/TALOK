@@ -16,23 +16,58 @@ import { withRetry } from './utils/retry';
 import { checkRateLimitBatch } from './utils/rate-limit';
 import { validateEmails, isValidEmail } from './utils/validation';
 import { getPasswordRecoveryCallbackUrl } from "@/lib/utils/redirect-url";
+import { getResendCredentials } from "@/lib/services/credentials-service";
 
-// Client Resend (singleton)
+// Client Resend (singleton avec invalidation si la clé change)
 let resendClient: Resend | null = null;
+let cachedApiKey: string | null = null;
 
-function getResendClient(): Resend {
-  if (!resendClient) {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-      throw new Error('RESEND_API_KEY non configurée. Ajoutez-la dans vos variables d\'environnement.');
+/**
+ * Résout les credentials Resend depuis la DB ou l'environnement,
+ * puis retourne le client Resend et l'adresse d'expédition.
+ */
+async function getResendClientAndFrom(): Promise<{ client: Resend; fromEmail: string }> {
+  let apiKey: string | undefined;
+  let fromEmail: string | undefined;
+
+  // 1. Essayer les credentials DB (qui font déjà le fallback env)
+  try {
+    const dbCreds = await getResendCredentials();
+    if (dbCreds) {
+      apiKey = dbCreds.apiKey;
+      fromEmail = dbCreds.emailFrom;
     }
-    resendClient = new Resend(apiKey);
+  } catch (err) {
+    console.warn("[Email/Resend] Impossible de récupérer les credentials DB:", err);
   }
-  return resendClient;
+
+  // 2. Fallback direct sur les variables d'environnement
+  if (!apiKey) {
+    apiKey = process.env.RESEND_API_KEY;
+  }
+  if (!fromEmail) {
+    fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM;
+  }
+
+  if (!apiKey) {
+    throw new Error(
+      "Aucune clé API Resend configurée. Ajoutez-la dans Admin > Intégrations ou dans RESEND_API_KEY."
+    );
+  }
+
+  // Recréer le client si la clé a changé
+  if (!resendClient || cachedApiKey !== apiKey) {
+    resendClient = new Resend(apiKey);
+    cachedApiKey = apiKey;
+  }
+
+  return {
+    client: resendClient,
+    fromEmail: fromEmail || "Talok <noreply@talok.fr>",
+  };
 }
 
-// Configuration
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Talok <noreply@talok.fr>';
+// Configuration par défaut (fallbacks)
 const REPLY_TO = process.env.RESEND_REPLY_TO || 'support@talok.fr';
 
 // Configuration retry
@@ -124,13 +159,15 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
       }
     }
 
-    // 3. Fonction d'envoi (sera retryée si nécessaire)
+    // 3. Résoudre les credentials (DB ou env)
+    const { client: resendInstance, fromEmail } = await getResendClientAndFrom();
+
+    // 4. Fonction d'envoi (sera retryée si nécessaire)
     const doSend = async (): Promise<{ id: string }> => {
       attempts++;
-      const resend = getResendClient();
 
-      const { data, error } = await resend.emails.send({
-        from: FROM_EMAIL,
+      const { data, error } = await resendInstance.emails.send({
+        from: fromEmail,
         to: validation.validEmails,
         subject: options.subject,
         html: options.html,
@@ -149,7 +186,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
       return { id: data?.id || 'unknown' };
     };
 
-    // 4. Exécuter avec ou sans retry
+    // 5. Exécuter avec ou sans retry
     let result: { id: string };
 
     if (options.skipRetry) {
@@ -165,7 +202,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
       });
     }
 
-    // 5. Log succès
+    // 6. Log succès
     const duration = Date.now() - startTime;
     console.log(
       `[Email] ✅ Envoyé avec succès | ID: ${result.id} | To: ${validation.validEmails.join(', ')} | ` +
