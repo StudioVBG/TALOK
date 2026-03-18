@@ -9,6 +9,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { PasswordStrength } from "@/components/ui/password-strength";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { validatePassword } from "@/lib/validations/onboarding";
 
 export default function ResetPasswordPage() {
   const supabase = createClient();
@@ -71,16 +72,11 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // Mêmes règles que l'inscription : 12 chars min + complexité
-    const hasUppercase = /[A-Z]/.test(password);
-    const hasLowercase = /[a-z]/.test(password);
-    const hasDigit = /\d/.test(password);
-    const hasSpecial = /[^A-Za-z0-9]/.test(password);
-
-    if (password.length < 12 || !hasUppercase || !hasLowercase || !hasDigit || !hasSpecial) {
+    const { valid, error: pwError } = validatePassword(password);
+    if (!valid) {
       toast({
         title: "Mot de passe trop faible",
-        description: "12 caractères minimum avec majuscule, minuscule, chiffre et caractère spécial.",
+        description: pwError || "12 caractères minimum avec majuscule, minuscule, chiffre et caractère spécial.",
         variant: "destructive",
       });
       return;

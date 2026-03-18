@@ -15,6 +15,13 @@ export const passwordSchema = z
   .regex(/[0-9]/, "Le mot de passe doit contenir au moins un chiffre")
   .regex(/[^A-Za-z0-9]/, "Le mot de passe doit contenir au moins un caractère spécial");
 
+/** Valide un mot de passe et retourne le premier message d'erreur Zod si invalide. */
+export function validatePassword(password: string): { valid: boolean; error?: string } {
+  const result = passwordSchema.safeParse(password);
+  if (result.success) return { valid: true };
+  return { valid: false, error: result.error.issues[0]?.message };
+}
+
 // Étape 1 : Choix du rôle
 export const roleChoiceSchema = z.object({
   role: z.enum(["owner", "tenant", "provider", "guarantor"]),

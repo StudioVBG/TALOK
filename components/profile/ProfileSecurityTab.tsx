@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { validatePassword } from "@/lib/validations/onboarding";
 import { SecuritySettings } from "@/components/settings/security-settings";
 
 export function ProfileSecurityTab() {
@@ -33,15 +34,11 @@ export function ProfileSecurityTab() {
   const [isSaving, setIsSaving] = useState(false);
 
   const handlePasswordChange = async () => {
-    const hasUppercase = /[A-Z]/.test(newPassword);
-    const hasLowercase = /[a-z]/.test(newPassword);
-    const hasDigit = /\d/.test(newPassword);
-    const hasSpecial = /[^A-Za-z0-9]/.test(newPassword);
-
-    if (newPassword.length < 12 || !hasUppercase || !hasLowercase || !hasDigit || !hasSpecial) {
+    const { valid, error } = validatePassword(newPassword);
+    if (!valid) {
       toast({
         title: "Mot de passe trop faible",
-        description: "12 caractères minimum avec majuscule, minuscule, chiffre et caractère spécial.",
+        description: error || "12 caractères minimum avec majuscule, minuscule, chiffre et caractère spécial.",
         variant: "destructive",
       });
       return;

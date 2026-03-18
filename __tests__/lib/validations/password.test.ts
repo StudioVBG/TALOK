@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { passwordSchema } from "@/lib/validations/onboarding";
+import { passwordSchema, validatePassword } from "@/lib/validations/onboarding";
 
 describe("passwordSchema", () => {
   it("rejects passwords shorter than 12 characters", () => {
@@ -40,5 +40,42 @@ describe("passwordSchema", () => {
   it("rejects empty string", () => {
     const result = passwordSchema.safeParse("");
     expect(result.success).toBe(false);
+  });
+});
+
+describe("validatePassword", () => {
+  it("returns valid: true for a valid password", () => {
+    const result = validatePassword("Abcdefghij1!");
+    expect(result).toEqual({ valid: true });
+  });
+
+  it("returns valid: false with French error message for short password", () => {
+    const result = validatePassword("Ab1!");
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("12 caractères");
+  });
+
+  it("returns valid: false with French error message for missing uppercase", () => {
+    const result = validatePassword("abcdefghij1!");
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("majuscule");
+  });
+
+  it("returns valid: false with French error message for missing lowercase", () => {
+    const result = validatePassword("ABCDEFGHIJ1!");
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("minuscule");
+  });
+
+  it("returns valid: false with French error message for missing digit", () => {
+    const result = validatePassword("Abcdefghijk!");
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("chiffre");
+  });
+
+  it("returns valid: false with French error message for missing special char", () => {
+    const result = validatePassword("Abcdefghij12");
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain("spécial");
   });
 });

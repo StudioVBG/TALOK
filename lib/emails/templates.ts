@@ -725,7 +725,7 @@ export const emailTemplates = {
         <p>Vous avez demandé à réinitialiser votre mot de passe sur Talok. Cliquez sur le bouton ci-dessous pour en choisir un nouveau :</p>
 
         <div style="text-align: center; margin: 32px 0;">
-          <a href="${data.resetUrl}" class="button">Réinitialiser mon mot de passe</a>
+          <a href="${escapeHtml(data.resetUrl)}" class="button">Réinitialiser mon mot de passe</a>
         </div>
 
         <div class="highlight-box">
@@ -738,7 +738,7 @@ export const emailTemplates = {
 
         <p style="font-size: 13px; color: ${COLORS.gray[500]};">
           Si le bouton ne fonctionne pas, copiez-collez ce lien dans votre navigateur&nbsp;:<br>
-          <a href="${data.resetUrl}" style="color: ${COLORS.primary}; word-break: break-all; font-size: 12px;">${data.resetUrl}</a>
+          <a href="${escapeHtml(data.resetUrl)}" style="color: ${COLORS.primary}; word-break: break-all; font-size: 12px;">${escapeHtml(data.resetUrl)}</a>
         </p>
 
         <p style="font-size: 13px; color: ${COLORS.gray[500]};">
