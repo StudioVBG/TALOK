@@ -2,7 +2,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { sendEmail } from "@/lib/emails/resend.service";
+import { sendEmail } from "@/lib/services/email-service";
 import { validateEmailContent, validateEmails } from "@/lib/emails/utils/validation";
 import { checkRateLimitBatch } from "@/lib/emails/utils/rate-limit";
 
@@ -149,22 +149,7 @@ export async function POST(request: NextRequest) {
     // ENVOI
     // ========================================
 
-    // Vérifier si Resend est configuré
-    if (!process.env.RESEND_API_KEY) {
-      console.warn("[Email] RESEND_API_KEY non configurée - Mode simulation");
-      console.log("[Email] Simulation d'envoi:", {
-        to: emailValidation.validEmails,
-        subject,
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: "Email simulé (RESEND_API_KEY non configurée)",
-        simulated: true,
-      });
-    }
-
-    // Envoyer l'email via Resend
+    // Envoyer l'email via le service runtime principal
     const result = await sendEmail({
       to: emailValidation.validEmails,
       subject,
@@ -187,13 +172,14 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(
-      `[API Email] Email envoyé avec succès à ${emailValidation.validEmails.length} destinataire(s), ID: ${result.id}`
+      `[API Email] Email envoyé avec succès à ${emailValidation.validEmails.length} destinataire(s), ID: ${result.messageId}`
     );
 
     return NextResponse.json({
       success: true,
       message: "Email envoyé avec succès",
-      id: result.id,
+      id: result.messageId,
+      simulated: result.simulated || false,
       recipientCount: emailValidation.validEmails.length,
     });
   } catch (error: unknown) {

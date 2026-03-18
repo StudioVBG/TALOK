@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { getEmailConfigurationStatus } from "@/lib/services/email-service";
 
 // GET - Récupérer le statut de la configuration email
 export async function GET(request: Request) {
@@ -12,11 +13,7 @@ export async function GET(request: Request) {
     });
     if (isAdminAuthError(auth)) return auth;
 
-    // Vérifier les variables d'environnement
-    const resendApiKeySet = !!process.env.RESEND_API_KEY;
-    const emailFrom = process.env.EMAIL_FROM || null;
-    const emailForceSend = process.env.EMAIL_FORCE_SEND === "true";
-    const nodeEnv = process.env.NODE_ENV || "development";
+    const status = await getEmailConfigurationStatus();
 
     // Masquer partiellement la clé API si elle existe
     let resendApiKeyPreview: string | null = null;
@@ -26,11 +23,22 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      configured: resendApiKeySet,
-      provider: "resend",
-      emailFrom,
-      emailForceSend,
-      nodeEnv,
+      configured: status.configured,
+      canSendLive: status.canSendLive,
+      provider: status.provider,
+      deliveryMode: status.deliveryMode,
+      emailFrom: status.resolved.fromAddress,
+      emailReplyTo: status.resolved.replyTo,
+      emailForceSend: status.env.forceSend,
+      nodeEnv: status.nodeEnv,
+      apiKeySource: status.sources.apiKey,
+      fromAddressSource: status.sources.fromAddress,
+      dbFallbackAvailable: status.database.available,
+      dbCredentialEnv: status.database.credentialEnv,
+      dbCheckFailed: status.database.checkFailed,
+      hasAppUrl: status.env.hasAppUrl,
+      hasPasswordResetCookieSecret: status.env.hasPasswordResetCookieSecret,
+      warnings: status.warnings,
       resendApiKeyPreview,
       freeQuota: {
         monthly: 3000,

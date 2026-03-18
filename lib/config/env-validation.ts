@@ -56,6 +56,12 @@ const ENV_VARS: EnvVar[] = [
     required: true,
     description: "Supabase service role key (server-side only)",
   },
+  {
+    name: "NEXT_PUBLIC_APP_URL",
+    required: isProduction,
+    validator: (v) => v.startsWith("http://") || v.startsWith("https://"),
+    description: "Application base URL used in emails and auth redirects",
+  },
 
   // Stripe - Critiques pour paiements
   {
@@ -108,10 +114,22 @@ const ENV_VARS: EnvVar[] = [
 
   // Email - Requis pour notifications
   {
+    name: "EMAIL_PROVIDER",
+    required: false,
+    validator: (v) => v === "resend",
+    description: "Email provider identifier (currently only resend is supported)",
+  },
+  {
     name: "RESEND_API_KEY",
-    required: isProduction,
+    required: false,
     validator: (v) => v.startsWith("re_"),
-    description: "Resend API key for emails",
+    description: "Resend API key for emails (optional if credentials are managed in Admin > Integrations)",
+  },
+  {
+    name: "PASSWORD_RESET_COOKIE_SECRET",
+    required: isProduction,
+    minLength: 32,
+    description: "Secret used to sign password reset access cookies",
   },
 
   // SMS - Optionnel mais recommandé
@@ -180,6 +198,24 @@ export function validateEnvironment(): ValidationResult {
     if (envVar.validator && !envVar.validator(value)) {
       errors.push(`${envVar.name} has invalid format`);
     }
+  }
+
+  if (!process.env.RESEND_API_KEY && !process.env.EMAIL_API_KEY) {
+    warnings.push(
+      "No email API key found in environment. Production email delivery must be configured via Admin > Integrations if you rely on DB credentials."
+    );
+  }
+
+  if (!process.env.EMAIL_FROM && !process.env.RESEND_FROM_EMAIL) {
+    warnings.push(
+      "No explicit sender address configured. The email service will fall back to Talok <noreply@talok.fr>."
+    );
+  }
+
+  if (!process.env.EMAIL_REPLY_TO && !process.env.RESEND_REPLY_TO) {
+    warnings.push(
+      "No reply-to address configured for transactional emails."
+    );
   }
 
   return {

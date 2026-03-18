@@ -8,7 +8,7 @@
  * ou utilise les variables d'environnement en fallback.
  */
 
-import { getResendCredentials } from "./credentials-service";
+import { getProviderCredentials, getResendCredentials } from "./credentials-service";
 
 // Types
 export type EmailProvider = "resend";
@@ -48,6 +48,38 @@ export interface EmailTemplate {
   text?: string;
 }
 
+export interface EmailConfigurationStatus {
+  provider: EmailProvider;
+  nodeEnv: string;
+  configured: boolean;
+  canSendLive: boolean;
+  deliveryMode: "live" | "simulation";
+  sources: {
+    apiKey: "environment" | "database" | "none";
+    fromAddress: "environment" | "database" | "default";
+  };
+  env: {
+    hasResendApiKey: boolean;
+    hasEmailApiKey: boolean;
+    hasEmailFrom: boolean;
+    hasReplyTo: boolean;
+    hasAppUrl: boolean;
+    hasPasswordResetCookieSecret: boolean;
+    forceSend: boolean;
+  };
+  database: {
+    available: boolean;
+    checkFailed: boolean;
+    credentialEnv: string | null;
+    hasEmailFrom: boolean;
+  };
+  resolved: {
+    fromAddress: string;
+    replyTo: string | null;
+  };
+  warnings: string[];
+}
+
 // Configuration
 const config = {
   provider: (process.env.EMAIL_PROVIDER as EmailProvider) || "resend",
@@ -57,6 +89,109 @@ const config = {
   // Forcer l'envoi même en dev si cette variable est définie
   forceSend: process.env.EMAIL_FORCE_SEND === "true",
 };
+
+export async function getEmailConfigurationStatus(): Promise<EmailConfigurationStatus> {
+  const warnings: string[] = [];
+  const envApiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY || "";
+  const envFrom = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "";
+  const nodeEnv = process.env.NODE_ENV || "development";
+  const deliveryMode =
+    nodeEnv === "development" && !config.forceSend ? "simulation" : "live";
+
+  let dbCredential: Awaited<ReturnType<typeof getProviderCredentials>> = null;
+  let dbCheckFailed = false;
+
+  try {
+    dbCredential = await getProviderCredentials("Resend");
+  } catch (error) {
+    dbCheckFailed = true;
+    console.warn("[Email] Impossible d'inspecter la configuration DB:", error);
+  }
+
+  let apiKeySource: EmailConfigurationStatus["sources"]["apiKey"] = "none";
+  if (dbCredential?.apiKey) {
+    apiKeySource = "database";
+  } else if (envApiKey) {
+    apiKeySource = "environment";
+  }
+
+  let fromAddressSource: EmailConfigurationStatus["sources"]["fromAddress"] = "default";
+  let fromAddress = config.from;
+
+  if (dbCredential?.config.email_from) {
+    fromAddressSource = "database";
+    fromAddress = dbCredential.config.email_from;
+  } else if (envFrom) {
+    fromAddressSource = "environment";
+    fromAddress = envFrom;
+  }
+
+  if (deliveryMode === "simulation") {
+    warnings.push(
+      "Les emails sont simules en developpement tant que EMAIL_FORCE_SEND n'est pas active."
+    );
+  }
+
+  if (apiKeySource === "none") {
+    warnings.push(
+      "Aucune cle API email active n'a ete detectee dans l'environnement ni dans Admin > Integrations."
+    );
+  }
+
+  if (!process.env.NEXT_PUBLIC_APP_URL) {
+    warnings.push("NEXT_PUBLIC_APP_URL est absente: les liens email peuvent etre invalides.");
+  }
+
+  if (!process.env.PASSWORD_RESET_COOKIE_SECRET) {
+    warnings.push(
+      "PASSWORD_RESET_COOKIE_SECRET est absente: le reset mot de passe utilise un secret de secours non adapte a la production."
+    );
+  }
+
+  if (fromAddress.includes("@send.")) {
+    warnings.push(
+      "L'adresse d'expedition utilise un sous-domaine @send.* qui n'est probablement pas verifie dans Resend."
+    );
+  }
+
+  if (fromAddress.includes("onboarding@resend.dev")) {
+    warnings.push(
+      "L'adresse d'expedition onboarding@resend.dev limite les envois a l'adresse du proprietaire du compte Resend."
+    );
+  }
+
+  return {
+    provider: config.provider,
+    nodeEnv,
+    configured: apiKeySource !== "none",
+    canSendLive: apiKeySource !== "none" && deliveryMode === "live",
+    deliveryMode,
+    sources: {
+      apiKey: apiKeySource,
+      fromAddress: fromAddressSource,
+    },
+    env: {
+      hasResendApiKey: Boolean(process.env.RESEND_API_KEY),
+      hasEmailApiKey: Boolean(process.env.EMAIL_API_KEY),
+      hasEmailFrom: Boolean(process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL),
+      hasReplyTo: Boolean(process.env.EMAIL_REPLY_TO || process.env.RESEND_REPLY_TO),
+      hasAppUrl: Boolean(process.env.NEXT_PUBLIC_APP_URL),
+      hasPasswordResetCookieSecret: Boolean(process.env.PASSWORD_RESET_COOKIE_SECRET),
+      forceSend: config.forceSend,
+    },
+    database: {
+      available: Boolean(dbCredential?.apiKey),
+      checkFailed: dbCheckFailed,
+      credentialEnv: dbCredential?.env ?? null,
+      hasEmailFrom: Boolean(dbCredential?.config.email_from),
+    },
+    resolved: {
+      fromAddress,
+      replyTo: config.replyTo || null,
+    },
+    warnings,
+  };
+}
 
 /**
  * Remplace les variables dans un template
@@ -802,6 +937,7 @@ export async function sendLeaseSignatureEmail(
 
 export default {
   sendEmail,
+  getEmailConfigurationStatus,
   sendTemplateEmail,
   sendWelcomeEmail,
   sendRentReceiptEmail,
