@@ -21,11 +21,24 @@ export async function POST(request: NextRequest) {
     const supabase = getServiceClient();
 
     // Construire l'URL de redirection via /auth/callback
-    const origin =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      request.headers.get("origin") ||
-      "https://talok.fr";
+    // IMPORTANT : ignorer NEXT_PUBLIC_APP_URL si c'est localhost (dev local)
+    // pour éviter que le lien dans l'email redirige vers localhost
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    const isLocalhost = appUrl && (appUrl.includes("localhost") || appUrl.includes("127.0.0.1"));
+    const origin = (() => {
+      if (appUrl && !isLocalhost) {
+        return appUrl.replace(/\/+$/, "");
+      }
+      // Dériver l'origin depuis les headers de la requête (fiable en production)
+      const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+      const proto = request.headers.get("x-forwarded-proto") || "https";
+      if (host && !host.includes("localhost") && !host.includes("127.0.0.1")) {
+        return `${proto}://${host}`;
+      }
+      return "https://talok.fr";
+    })();
     const redirectTo = `${origin}/auth/callback?next=/auth/reset-password`;
+    console.log("[ForgotPassword] Using origin:", origin, "| redirectTo:", redirectTo);
 
     // Générer le lien de recovery via l'API admin
     const { data: linkData, error: linkError } =
@@ -44,10 +57,24 @@ export async function POST(request: NextRequest) {
     }
 
     // Extraire les propriétés du lien généré
-    const actionLink = linkData?.properties?.action_link;
+    let actionLink = linkData?.properties?.action_link;
     if (!actionLink) {
       console.error("[ForgotPassword] No action_link returned");
       return NextResponse.json({ success: true });
+    }
+
+    // Sécurité : si l'action_link contient un redirect_to vers localhost,
+    // le réécrire avec l'origin de production
+    try {
+      const linkUrl = new URL(actionLink);
+      const embeddedRedirect = linkUrl.searchParams.get("redirect_to");
+      if (embeddedRedirect && (embeddedRedirect.includes("localhost") || embeddedRedirect.includes("127.0.0.1"))) {
+        console.warn("[ForgotPassword] action_link had localhost redirect_to, rewriting to:", redirectTo);
+        linkUrl.searchParams.set("redirect_to", redirectTo);
+        actionLink = linkUrl.toString();
+      }
+    } catch {
+      // URL parsing failed, use actionLink as-is
     }
 
     // Récupérer le prénom de l'utilisateur depuis le profil
