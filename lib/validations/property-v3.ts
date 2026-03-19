@@ -335,8 +335,8 @@ export const localProSchemaV3 = basePropertySchemaV3
 // Décision : Schéma spécifique pour les immeubles avec validation des lots
 
 const buildingUnitSchema = z.object({
-  id: z.string(),
-  building_id: z.string(),
+  id: z.string().optional(),
+  building_id: z.string().optional(),
   floor: z.number().int().min(-5).max(50),
   position: z.string().min(1).max(10),
   type: z.enum(["appartement", "studio", "local_commercial", "parking", "cave", "bureau"]),
@@ -345,10 +345,10 @@ const buildingUnitSchema = z.object({
   loyer_hc: z.number().min(0),
   charges: z.number().min(0),
   depot_garantie: z.number().min(0),
-  status: z.enum(["vacant", "occupe", "travaux", "reserve"]),
+  status: z.enum(["vacant", "occupe", "travaux", "reserve"]).default("vacant"),
   template: z.string().optional().nullable(),
-  created_at: z.string(),
-  updated_at: z.string(),
+  created_at: z.string().optional(),
+  updated_at: z.string().optional(),
 });
 
 // NOTE: immeubleSchemaV3Base is used in discriminatedUnion (requires ZodObject, not ZodEffects)

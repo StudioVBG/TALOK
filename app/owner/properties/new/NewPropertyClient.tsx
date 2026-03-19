@@ -5,6 +5,7 @@ import { Suspense, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/protected-route";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { PropertyWizardV3 } from "@/features/properties/components/v3/property-wizard-v3";
 import { usePropertyWizardStore } from "@/features/properties/stores/wizard-store";
 import { UpgradeModal, useSubscription, useUsageLimit } from "@/components/subscription";
@@ -76,10 +77,12 @@ function PropertyWizardWrapper() {
 
   return (
     <div className="space-y-6">
-      <PropertyWizardV3
-        onSuccess={handleSuccess}
-        onCancel={handleCancel}
-      />
+      <ErrorBoundary>
+        <PropertyWizardV3
+          onSuccess={handleSuccess}
+          onCancel={handleCancel}
+        />
+      </ErrorBoundary>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
+import { createLogger } from "@/lib/logging/structured-logger";
 
 /**
  * Validation schema for creating a unit
@@ -95,7 +96,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       .order("position", { ascending: true });
 
     if (unitsError) {
-      console.error("[GET /api/buildings/[id]/units] Error:", unitsError);
+      createLogger("GET /api/buildings/[id]/units").error("Error fetching units", { unitsError });
       throw new ApiError(500, "Erreur lors de la récupération des lots");
     }
 
@@ -169,7 +170,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         .select();
 
       if (insertError) {
-        console.error("[POST /api/buildings/[id]/units] Bulk insert error:", insertError);
+        createLogger("POST /api/buildings/[id]/units").error("Bulk insert error", { insertError });
         throw new ApiError(500, "Erreur lors de la création des lots", insertError);
       }
 
@@ -206,7 +207,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       .single();
 
     if (insertError) {
-      console.error("[POST /api/buildings/[id]/units] Insert error:", insertError);
+      createLogger("POST /api/buildings/[id]/units").error("Insert error", { insertError });
       throw new ApiError(500, "Erreur lors de la création du lot", insertError);
     }
 

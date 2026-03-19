@@ -650,6 +650,10 @@ export const usePropertyWizardStore = create<WizardState>()(
   nextStep: () => {
     const { currentStep, formData, mode } = get();
     const propertyType = (formData.type as string) || "";
+
+    if (currentStep === 'type_bien' && !propertyType) return;
+    if (currentStep === 'address' && !formData.adresse_complete) return;
+
     const applicableSteps = getApplicableSteps(propertyType, mode);
     const currentIndex = applicableSteps.indexOf(currentStep);
     if (currentIndex < applicableSteps.length - 1) {

@@ -11,6 +11,7 @@ import { propertiesQuerySchema, validateQueryParams } from "@/lib/validations/pa
 import { withSubscriptionLimit, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 import { syncPropertyBillingToStripe } from "@/lib/stripe/sync-property-billing";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
+import { createLogger } from "@/lib/logging/structured-logger";
 import type {
   ServiceSupabaseClient,
   TypedSupabaseClient,
@@ -46,7 +47,7 @@ export async function GET(request: Request) {
       queryParams = validateQueryParams(propertiesQuerySchema, url.searchParams);
     } catch (validationError) {
       // Si la validation échoue, utiliser des paramètres par défaut au lieu de planter
-      console.warn("[GET /api/properties] Invalid query params, using defaults:", validationError);
+      createLogger("GET /api/properties").warn("Invalid query params, using defaults", { validationError });
       queryParams = {};
     }
 
@@ -101,7 +102,7 @@ export async function GET(request: Request) {
 
     if (profile.role === "admin") {
       if (!supabaseUrl || !serviceRoleKey) {
-        console.warn("[GET /api/properties] Service role indisponible pour l'admin (variables manquantes). Utilisation du client authentifié.");
+        createLogger("GET /api/properties").warn("Service role indisponible pour l'admin, utilisation du client authentifié");
       } else {
         const { createClient: createSupabaseClient } = await import("@supabase/supabase-js");
         dbClient = createSupabaseClient(supabaseUrl, serviceRoleKey, {
@@ -257,7 +258,7 @@ export async function GET(request: Request) {
             });
           } catch (mediaError) {
             // Ne pas faire échouer la requête si les médias échouent
-            console.warn("[GET /api/properties] Error loading media (non-blocking):", mediaError);
+            createLogger("GET /api/properties").warn("Error loading media (non-blocking)", { mediaError });
           }
         } else if (properties.length > 20) {
           // Pour les grandes listes, ne pas charger les médias pour éviter les timeouts
@@ -270,7 +271,7 @@ export async function GET(request: Request) {
         }
       }
     } catch (queryError: unknown) {
-      console.error("[GET /api/properties] Query error:", queryError);
+      createLogger("GET /api/properties").error("Query error", { queryError });
       if (queryError instanceof ApiError) {
         throw queryError;
       }
@@ -281,7 +282,7 @@ export async function GET(request: Request) {
     
     // Log uniquement si > 3 secondes pour réduire les logs
     if (elapsedTime > 3000) {
-      console.warn(`[GET /api/properties] Slow request: ${elapsedTime}ms, role: ${profile.role}, count: ${totalCount}`);
+      createLogger("GET /api/properties").warn("Slow request", { elapsedTime, role: profile.role, count: totalCount });
     }
     
     // ✅ TIMEOUT: Retourner une erreur si trop lent
@@ -357,7 +358,7 @@ async function fetchPropertyMedia(
         message.includes("timeout");
 
       if (!missingColumn && message !== "timeout") {
-        console.error("[fetchPropertyMedia] Error fetching property media:", mediaError);
+        createLogger("fetchPropertyMedia").error("Error fetching property media", { mediaError });
         return result;
       }
 
@@ -379,14 +380,14 @@ async function fetchPropertyMedia(
         mediaDocs = fallback.data as MediaDocument[] | null;
         mediaError = fallback.error;
       } catch (fallbackError: unknown) {
-        console.error("[fetchPropertyMedia] Fallback query failed:", fallbackError);
+        createLogger("fetchPropertyMedia").error("Fallback query failed", { fallbackError });
         return result;
       }
     }
 
     if (mediaError || !mediaDocs) {
       if (mediaError && mediaError.message !== "Timeout") {
-        console.error("[fetchPropertyMedia] Error fetching property media:", mediaError);
+        createLogger("fetchPropertyMedia").error("Error fetching property media", { mediaError });
       }
       return result;
     }
@@ -411,7 +412,7 @@ async function fetchPropertyMedia(
 
     return result;
   } catch (error: unknown) {
-    console.error("[fetchPropertyMedia] Unexpected error:", error);
+    createLogger("fetchPropertyMedia").error("Unexpected error", { error });
     return result;
   }
 }
@@ -491,9 +492,7 @@ async function insertPropertyRecord(
       throw attempt.error ?? new Error("Insertion impossible");
     }
 
-    console.warn(
-      `[api/properties] Colonne optionnelle absente (${missingColumn}). Insertion sans ce champ sur cette base.`
-    );
+    createLogger("POST /api/properties").warn("Colonne optionnelle absente, insertion sans ce champ", { missingColumn });
     warnings.push(`${missingColumn}_non_pris_en_compte`);
     delete (sanitizedPayload as any)[missingColumn];
   }
@@ -549,7 +548,7 @@ async function createDraftProperty({
   };
 
   const { data } = await insertPropertyRecord(serviceClient, insertPayload);
-  console.log(`[createDraftProperty] Draft créé: id=${data.id}, type_bien=${payload.type_bien}`);
+  createLogger("createDraftProperty").info("Draft créé", { id: data.id, type_bien: payload.type_bien });
   return data;
 }
 
@@ -639,7 +638,7 @@ export async function POST(request: Request) {
     // ✅ QUOTAS SOTA 2026: Vérifier les limites d'abonnement via middleware
     const limitCheck = await withSubscriptionLimit(profile.id, "properties");
     if (!limitCheck.allowed) {
-      console.log(`[POST /api/properties] Limite atteinte: ${limitCheck.current}/${limitCheck.max} (plan: ${limitCheck.plan})`);
+      createLogger("POST /api/properties").info("Limite atteinte", { current: limitCheck.current, max: limitCheck.max, plan: limitCheck.plan });
       // SOTA 2026: Utiliser QuotaExceededError pour un message clair avec lien upgrade
       const { QuotaExceededError } = await import("@/lib/helpers/api-error");
       throw new QuotaExceededError("properties", limitCheck.current, limitCheck.max, limitCheck.plan);
@@ -647,19 +646,19 @@ export async function POST(request: Request) {
 
     // ✅ CRÉATION: Créer un draft ou une propriété complète
     if (draftPayload.success) {
-      console.log(`[POST /api/properties] Création d'un draft avec type_bien=${draftPayload.data.type_bien}`);
+      createLogger("POST /api/properties").info("Création draft", { type_bien: draftPayload.data.type_bien });
       const property = await createDraftProperty({
         payload: draftPayload.data,
         profileId: profile.id,
         serviceClient,
       });
-      console.log(`[POST /api/properties] Draft créé avec succès: id=${property.id}, owner_id=${property.owner_id}`);
+      createLogger("POST /api/properties").info("Draft créé avec succès", { id: property.id, owner_id: property.owner_id });
 
       // ✅ STRIPE SYNC: Mettre à jour la facturation des biens supplémentaires
       try {
         await syncPropertyBillingToStripe(profile.id);
       } catch (billingError) {
-        console.warn("[POST /api/properties] Stripe billing sync failed:", billingError);
+        createLogger("POST /api/properties").warn("Stripe billing sync failed", { billingError });
       }
 
       return NextResponse.json({ property }, { status: 201 });
@@ -704,7 +703,7 @@ export async function POST(request: Request) {
       });
     } catch (outboxError) {
       // Ignorer si la table n'existe pas
-      console.warn("[POST /api/properties] Table outbox non disponible:", outboxError);
+      createLogger("POST /api/properties").warn("Table outbox non disponible", { outboxError });
     }
 
     // ✅ AUDIT: Journaliser (si la table existe)
@@ -718,14 +717,14 @@ export async function POST(request: Request) {
       });
     } catch (auditError) {
       // Ignorer si la table n'existe pas
-      console.warn("[POST /api/properties] Table audit_log non disponible:", auditError);
+      createLogger("POST /api/properties").warn("Table audit_log non disponible", { auditError });
     }
 
     // ✅ STRIPE SYNC: Mettre à jour la facturation des biens supplémentaires
     try {
       await syncPropertyBillingToStripe(profile.id);
     } catch (billingError) {
-      console.warn("[POST /api/properties] Stripe billing sync failed:", billingError);
+      createLogger("POST /api/properties").warn("Stripe billing sync failed (post-outbox)", { billingError });
     }
 
     return NextResponse.json({ property }, { status: 201 });

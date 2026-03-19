@@ -6,6 +6,7 @@ import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
+import { createLogger } from "@/lib/logging/structured-logger";
 
 /**
  * Validation schema for creating a building
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
     const { data: buildings, error: buildingsError } = await query;
 
     if (buildingsError) {
-      console.error("[GET /api/buildings] Error:", buildingsError);
+      createLogger("GET /api/buildings").error("Error fetching buildings", { buildingsError });
       throw new ApiError(500, "Erreur lors de la récupération des immeubles");
     }
 
@@ -176,7 +177,7 @@ export async function POST(request: Request) {
       .single();
 
     if (insertError) {
-      console.error("[POST /api/buildings] Insert error:", insertError);
+      createLogger("POST /api/buildings").error("Insert error", { insertError });
       throw new ApiError(500, "Erreur lors de la création de l'immeuble", insertError);
     }
 
@@ -191,7 +192,7 @@ export async function POST(request: Request) {
         },
       });
     } catch (e) {
-      console.warn("[POST /api/buildings] Outbox insert failed:", e);
+      createLogger("POST /api/buildings").warn("Outbox insert failed", { error: e });
     }
 
     return NextResponse.json({ building }, { status: 201 });

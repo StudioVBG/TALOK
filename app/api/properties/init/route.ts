@@ -33,10 +33,15 @@ function getDepartementFromCP(codePostal: string | null | undefined): string | n
   return codePostal.substring(0, 2);
 }
 
-// Schéma minimal pour l'initialisation
+const propertyTypeEnum = z.enum([
+  "appartement", "maison", "studio", "colocation", "saisonnier",
+  "parking", "box",
+  "local_commercial", "bureaux", "entrepot", "fonds_de_commerce",
+  "immeuble", "terrain_agricole", "exploitation_agricole",
+], { errorMap: () => ({ message: "Type de bien invalide" }) });
+
 const initSchema = z.object({
-  type: z.string().min(1, "Le type de bien est requis"),
-  // Optionnels pour l'instant, on peut initialiser juste avec le type
+  type: propertyTypeEnum,
   adresse: z.string().optional(),
   cp: z.string().optional(),
   ville: z.string().optional(),
