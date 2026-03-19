@@ -1648,6 +1648,84 @@ export const emailTemplates = {
     };
   },
 
+  /**
+   * Facture initiale après signature du bail
+   */
+  initialInvoiceNotification: (data: {
+    tenantName: string;
+    propertyAddress: string;
+    amount: number;
+    rentAmount: number;
+    chargesAmount: number;
+    depositAmount: number;
+    includesDeposit: boolean;
+    dueDate: string;
+    paymentUrl: string;
+  }) => {
+    const depositRow = data.includesDeposit
+      ? `<tr>
+          <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]};">
+            <span style="color: ${COLORS.gray[500]}; font-size: 14px;">Dépôt de garantie</span>
+          </td>
+          <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]}; text-align: right;">
+            <span style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 14px;">${data.depositAmount.toLocaleString('fr-FR')} €</span>
+          </td>
+        </tr>`
+      : '';
+
+    return {
+      subject: `🧾 Facture initiale - ${data.amount.toLocaleString('fr-FR')} € pour ${data.propertyAddress}`,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span class="badge badge-success">BAIL SIGNÉ</span>
+          </div>
+
+          <h1>Votre facture initiale est prête</h1>
+          <p>Bonjour ${escapeHtml(data.tenantName)},</p>
+          <p>Le bail pour <strong>${escapeHtml(data.propertyAddress)}</strong> est signé par toutes les parties. Votre premier versement est maintenant attendu.</p>
+
+          <div class="highlight-box" style="border-left-color: ${COLORS.success};">
+            <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Montant total à régler</p>
+            <div class="amount" style="color: ${COLORS.success};">${data.amount.toLocaleString('fr-FR')} €</div>
+            <p style="color: ${COLORS.gray[500]}; font-size: 14px;">Échéance : ${data.dueDate}</p>
+          </div>
+
+          <div class="info-grid">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+              <tr>
+                <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]};">
+                  <span style="color: ${COLORS.gray[500]}; font-size: 14px;">Loyer</span>
+                </td>
+                <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]}; text-align: right;">
+                  <span style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 14px;">${data.rentAmount.toLocaleString('fr-FR')} €</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]};">
+                  <span style="color: ${COLORS.gray[500]}; font-size: 14px;">Charges</span>
+                </td>
+                <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]}; text-align: right;">
+                  <span style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 14px;">${data.chargesAmount.toLocaleString('fr-FR')} €</span>
+                </td>
+              </tr>
+              ${depositRow}
+            </table>
+          </div>
+
+          <div style="text-align: center;">
+            <a href="${data.paymentUrl}" class="button button-success">Régler ma facture</a>
+          </div>
+
+          <p style="font-size: 14px; color: ${COLORS.gray[500]};">
+            Ce montant couvre votre premier versement${data.includesDeposit ? ' ainsi que le dépôt de garantie' : ''}.
+            Vous pouvez payer par carte bancaire ou prélèvement SEPA depuis votre espace locataire.
+          </p>
+        </div>
+      `, `Votre facture initiale de ${data.amount.toLocaleString('fr-FR')}€ pour ${escapeHtml(data.propertyAddress)} est disponible.`),
+    };
+  },
+
   cniExpiryNotification: (data: {
     recipientName: string;
     message: string;

@@ -13,6 +13,7 @@ import {
   visitBookingConfirmed as visitBookingConfirmedTemplate,
   visitBookingCancelled as visitBookingCancelledTemplate,
   visitFeedbackRequest as visitFeedbackRequestTemplate,
+  initialInvoiceEmail as initialInvoiceEmailTemplate,
 } from "../_shared/email-templates.ts";
 
 const corsHeaders = {
@@ -197,6 +198,15 @@ async function processEvent(supabase: any, event: any) {
             lease_id: payload.lease_id,
             deposit_amount: payload.deposit_amount || 0,
           },
+        });
+
+        await sendInitialInvoiceEmailToTenant(supabase, {
+          tenant_user_id: tenantUserId,
+          lease_id: payload.lease_id,
+          invoice_id: payload.invoice_id,
+          amount: payload.amount,
+          deposit_amount: payload.deposit_amount || 0,
+          includes_deposit: payload.includes_deposit || false,
         });
       }
       break;
@@ -1259,6 +1269,96 @@ async function sendVisitBookingEmail(supabase: any, params: any) {
 /**
  * Envoie un email de demande de feedback après visite
  */
+/**
+ * Envoie un email au locataire pour la facture initiale (post-signature)
+ */
+async function sendInitialInvoiceEmailToTenant(supabase: any, params: {
+  tenant_user_id: string;
+  lease_id: string;
+  invoice_id: string;
+  amount: number;
+  deposit_amount: number;
+  includes_deposit: boolean;
+}) {
+  try {
+    const { data: settings } = await supabase
+      .from("notification_settings")
+      .select("email_enabled")
+      .eq("user_id", params.tenant_user_id)
+      .single();
+
+    if (settings?.email_enabled === false) {
+      console.log(`[Email] Emails désactivés pour ${params.tenant_user_id}`);
+      return;
+    }
+
+    const { data: authUser } = await supabase.auth.admin.getUserById(params.tenant_user_id);
+    const userEmail = authUser?.user?.email;
+    if (!userEmail) {
+      console.log(`[InitialInvoice] Pas d'email trouvé pour ${params.tenant_user_id}`);
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("prenom, nom")
+      .eq("user_id", params.tenant_user_id)
+      .single();
+
+    const tenantName = profile?.prenom || "Bonjour";
+
+    const { data: invoice } = await supabase
+      .from("invoices")
+      .select("montant_loyer, montant_charges, montant_total, date_echeance, metadata")
+      .eq("id", params.invoice_id)
+      .single();
+
+    const { data: lease } = await supabase
+      .from("leases")
+      .select("property:properties!leases_property_id_fkey(adresse_complete, ville)")
+      .eq("id", params.lease_id)
+      .single();
+
+    const propertyAddress = lease?.property?.adresse_complete || lease?.property?.ville || "le logement";
+    const rentAmount = invoice?.montant_loyer ?? 0;
+    const chargesAmount = invoice?.montant_charges ?? 0;
+    const totalAmount = invoice?.montant_total ?? params.amount;
+    const dueDate = invoice?.date_echeance
+      ? new Date(invoice.date_echeance).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })
+      : "Dès que possible";
+
+    const emailHtml = initialInvoiceEmailTemplate({
+      tenantName,
+      amount: String(totalAmount),
+      rentAmount: String(rentAmount),
+      chargesAmount: String(chargesAmount),
+      depositAmount: String(params.deposit_amount),
+      includesDeposit: params.includes_deposit,
+      propertyAddress,
+      dueDate,
+      leaseId: params.lease_id,
+    });
+
+    const emailSent = await sendOutboxEmail({
+      to: userEmail,
+      subject: `🧾 Facture initiale - ${totalAmount}€ pour ${propertyAddress}`,
+      html: emailHtml,
+      tags: [
+        { name: "type", value: "initial_invoice" },
+        { name: "lease_id", value: params.lease_id },
+      ],
+    });
+
+    if (!emailSent) {
+      console.error(`[InitialInvoice] Échec envoi email à ${userEmail}`);
+    } else {
+      console.log(`[InitialInvoice] Email envoyé à ${userEmail} pour ${totalAmount}€`);
+    }
+  } catch (error) {
+    console.error(`[InitialInvoice] Erreur envoi email:`, error);
+  }
+}
+
 async function sendVisitFeedbackRequestEmail(supabase: any, payload: any) {
   const emailServiceUrl = Deno.env.get("EMAIL_SERVICE_URL");
 

@@ -399,6 +399,74 @@ export function visitBookingCancelled(params: {
 </div>`;
 }
 
+// ============================================
+// Initial Invoice (after lease fully signed)
+// ============================================
+
+export function initialInvoiceEmail(params: {
+  tenantName: string;
+  amount: string;
+  rentAmount: string;
+  chargesAmount: string;
+  depositAmount: string;
+  includesDeposit: boolean;
+  propertyAddress: string;
+  dueDate: string;
+  leaseId: string;
+}): string {
+  const depositRow = params.includesDeposit
+    ? `<tr>
+        <td style="padding: 8px 0; color: #64748b; font-size: 14px; border-bottom: 1px solid #e2e8f0;">Dépôt de garantie</td>
+        <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #1e293b; border-bottom: 1px solid #e2e8f0;">${params.depositAmount} €</td>
+      </tr>`
+    : "";
+
+  return baseWrapper(`
+    <h2 style="color: #1e293b; margin: 0 0 20px; font-size: 22px; font-weight: 600;">
+      Votre facture initiale est prête
+    </h2>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+      ${params.tenantName},
+    </p>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+      Le bail pour <strong>${params.propertyAddress}</strong> est signé par toutes les parties.
+      Votre premier versement est maintenant attendu pour finaliser votre entrée dans le logement.
+    </p>
+
+    <div style="background: #f0fdf4; border: 2px solid #22c55e; padding: 24px; border-radius: 12px; margin-bottom: 24px; text-align: center;">
+      <p style="color: #166534; margin: 0 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Montant total à régler</p>
+      <p style="color: #166534; margin: 0; font-size: 36px; font-weight: 700;">${params.amount} €</p>
+      <p style="color: #166534; margin: 8px 0 0; font-size: 14px;">Échéance : ${params.dueDate}</p>
+    </div>
+
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 0 0 24px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px 0; color: #64748b; font-size: 14px; border-bottom: 1px solid #e2e8f0;">Loyer${params.rentAmount !== params.amount ? " (prorata)" : ""}</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #1e293b; border-bottom: 1px solid #e2e8f0;">${params.rentAmount} €</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #64748b; font-size: 14px; border-bottom: 1px solid #e2e8f0;">Charges</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #1e293b; border-bottom: 1px solid #e2e8f0;">${params.chargesAmount} €</td>
+        </tr>
+        ${depositRow}
+        <tr>
+          <td style="padding: 10px 0; color: #1e293b; font-size: 15px; font-weight: 700;">Total</td>
+          <td style="padding: 10px 0; text-align: right; font-weight: 700; color: #1e293b; font-size: 15px;">${params.amount} €</td>
+        </tr>
+      </table>
+    </div>
+
+    ${ctaButton("Payer ma facture", `${APP_URL()}/tenant/payments`, "#22c55e")}
+
+    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+    <p style="font-size: 14px; color: #94a3b8; text-align: center;">
+      Ce montant couvre votre premier versement${params.includesDeposit ? " ainsi que le dépôt de garantie" : ""}.
+      Vous pouvez payer par carte bancaire ou prélèvement SEPA depuis votre espace locataire.
+    </p>
+  `);
+}
+
 export function visitFeedbackRequest(params: {
   recipientName: string;
   propertyAddress: string;

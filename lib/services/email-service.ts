@@ -427,6 +427,38 @@ export async function sendLeaseSignatureEmail(
   });
 }
 
+export async function sendInitialInvoiceEmail(params: {
+  to: string;
+  tenantName: string;
+  propertyAddress: string;
+  amount: number;
+  rentAmount: number;
+  chargesAmount: number;
+  depositAmount: number;
+  includesDeposit: boolean;
+  dueDate: string;
+}): Promise<EmailResult> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+  const template = emailTemplates.initialInvoiceNotification({
+    tenantName: params.tenantName,
+    propertyAddress: params.propertyAddress,
+    amount: params.amount,
+    rentAmount: params.rentAmount,
+    chargesAmount: params.chargesAmount,
+    depositAmount: params.depositAmount,
+    includesDeposit: params.includesDeposit,
+    dueDate: params.dueDate,
+    paymentUrl: `${appUrl}/tenant/payments`,
+  });
+  return sendEmail({
+    to: params.to,
+    subject: template.subject,
+    html: template.html,
+    tags: [{ name: "type", value: "initial_invoice" }],
+    idempotencyKey: `initial-invoice/${params.to}`,
+  });
+}
+
 export default {
   sendEmail,
   getEmailConfigurationStatus,
@@ -437,5 +469,6 @@ export default {
   sendPaymentReceivedEmail,
   sendLeaseInviteEmail,
   sendLeaseSignatureEmail,
+  sendInitialInvoiceEmail,
 };
 

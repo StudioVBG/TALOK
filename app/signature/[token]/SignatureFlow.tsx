@@ -331,13 +331,17 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
         throw new Error(error.error || "Erreur lors de la signature");
       }
 
+      const result = await response.json();
+
       toast({
         title: "🎉 Bail signé !",
-        description: "Votre contrat a été signé avec succès",
+        description: result.all_signed
+          ? "Toutes les signatures sont enregistrées. Votre facture initiale est en préparation."
+          : "Votre contrat a été signé avec succès",
       });
       
-      // Rediriger vers la page de succès
-      window.location.href = `/signature/success?lease_id=${lease.id}`;
+      const allSignedParam = result.all_signed ? "&all_signed=true" : "";
+      window.location.href = `/signature/success?lease_id=${lease.id}${allSignedParam}`;
     } catch (error: unknown) {
       toast({
         title: "Erreur",
@@ -378,11 +382,13 @@ export function SignatureFlow({ token, lease, tenantEmail, ownerName, propertyAd
 
       toast({
         title: "🎉 Bail signé !",
-        description: "Votre contrat a été signé avec succès",
+        description: result.all_signed
+          ? "Toutes les signatures sont enregistrées. Votre facture initiale est en préparation."
+          : "Votre contrat a été signé avec succès",
       });
       
-      // Rediriger vers la page de succès
-      window.location.href = `/signature/success?lease_id=${lease.id}&proof=${result.proof_id}`;
+      const allSignedParam = result.all_signed ? "&all_signed=true" : "";
+      window.location.href = `/signature/success?lease_id=${lease.id}&proof=${result.proof_id}${allSignedParam}`;
     } catch (error: unknown) {
       toast({
         title: "Erreur",
