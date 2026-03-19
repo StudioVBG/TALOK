@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { emailTemplates } from "@/lib/emails/templates";
-import { Resend } from "resend";
+import { sendEmail } from "@/lib/services/email-service";
 
 // Vérifier l'autorisation (clé secrète pour le cron)
 function isAuthorized(request: NextRequest): boolean {
@@ -32,7 +32,6 @@ export async function GET(request: NextRequest) {
   // Créer les clients à l'intérieur du handler (pas au niveau module)
   // pour éviter les erreurs de build quand les env vars ne sont pas disponibles
   const supabase = getServiceClient();
-  const resend = new Resend(process.env.RESEND_API_KEY);
   // Vérification de l'autorisation
   if (!isAuthorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -173,17 +172,16 @@ export async function GET(request: NextRequest) {
         }
 
         // Envoyer l'email
-        const { error: sendError } = await resend.emails.send({
-          from: process.env.EMAIL_FROM || "Talok <noreply@talok.fr>",
+        const sendResult = await sendEmail({
           to: email,
           subject: emailData.subject,
           html: emailData.html,
         });
 
-        if (sendError) {
+        if (!sendResult.success) {
           results.failed++;
-          results.errors.push(`Failed to send to ${email}: ${sendError.message}`);
-          await markReminderFailed(supabase, reminder.id, sendError.message);
+          results.errors.push(`Failed to send to ${email}: ${sendResult.error}`);
+          await markReminderFailed(supabase, reminder.id, sendResult.error || "Email send failed");
         } else {
           results.sent++;
           await markReminderSent(supabase, reminder.id);

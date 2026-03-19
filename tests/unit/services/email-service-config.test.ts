@@ -29,7 +29,10 @@ describe("email-service configuration status", () => {
 
     getProviderCredentialsMock.mockResolvedValue({
       apiKey: "re_db_key",
-      config: { email_from: "Talok DB <noreply@talok.fr>" },
+      config: {
+        email_from: "Talok DB <noreply@send.talok.fr>",
+        reply_to: "support-db@talok.fr",
+      },
       env: "prod",
     });
 
@@ -43,6 +46,7 @@ describe("email-service configuration status", () => {
     expect(status.database.available).toBe(true);
     expect(status.database.credentialEnv).toBe("prod");
     expect(status.resolved.fromAddress).toBe("Talok DB <noreply@talok.fr>");
+    expect(status.resolved.replyTo).toBe("support-db@talok.fr");
   });
 
   it("signale les avertissements critiques quand la config est incomplete", async () => {

@@ -8,8 +8,8 @@
  * ou utilise les variables d'environnement en fallback.
  */
 
-import { getProviderCredentials, getResendCredentials } from "./credentials-service";
 import { sendEmail as sendEmailViaResendSDK } from "@/lib/emails/resend.service";
+import { resolveResendRuntimeConfig } from "./resend-config";
 
 // Types
 export type EmailProvider = "resend";
@@ -84,48 +84,21 @@ export interface EmailConfigurationStatus {
 // Configuration
 const config = {
   provider: (process.env.EMAIL_PROVIDER as EmailProvider) || "resend",
-  apiKey: process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY || "",
-  from: process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "Talok <noreply@talok.fr>",
-  replyTo: process.env.EMAIL_REPLY_TO || process.env.RESEND_REPLY_TO,
   // Forcer l'envoi même en dev si cette variable est définie
   forceSend: process.env.EMAIL_FORCE_SEND === "true",
 };
 
 export async function getEmailConfigurationStatus(): Promise<EmailConfigurationStatus> {
   const warnings: string[] = [];
-  const envApiKey = process.env.RESEND_API_KEY || process.env.EMAIL_API_KEY || "";
-  const envFrom = process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "";
   const nodeEnv = process.env.NODE_ENV || "development";
   const deliveryMode =
     nodeEnv === "development" && !config.forceSend ? "simulation" : "live";
-
-  let dbCredential: Awaited<ReturnType<typeof getProviderCredentials>> = null;
-  let dbCheckFailed = false;
-
-  try {
-    dbCredential = await getProviderCredentials("Resend");
-  } catch (error) {
-    dbCheckFailed = true;
-    console.warn("[Email] Impossible d'inspecter la configuration DB:", error);
-  }
-
-  let apiKeySource: EmailConfigurationStatus["sources"]["apiKey"] = "none";
-  if (dbCredential?.apiKey) {
-    apiKeySource = "database";
-  } else if (envApiKey) {
-    apiKeySource = "environment";
-  }
-
-  let fromAddressSource: EmailConfigurationStatus["sources"]["fromAddress"] = "default";
-  let fromAddress = config.from;
-
-  if (dbCredential?.config.email_from) {
-    fromAddressSource = "database";
-    fromAddress = dbCredential.config.email_from;
-  } else if (envFrom) {
-    fromAddressSource = "environment";
-    fromAddress = envFrom;
-  }
+  const resendConfig = await resolveResendRuntimeConfig();
+  const apiKeySource = resendConfig.sources.apiKey;
+  const fromAddressSource = resendConfig.sources.fromAddress;
+  const rawFromAddress = resendConfig.rawFromAddress;
+  const fromAddress = resendConfig.fromAddress;
+  const replyTo = resendConfig.replyTo;
 
   if (deliveryMode === "simulation") {
     warnings.push(
@@ -149,7 +122,7 @@ export async function getEmailConfigurationStatus(): Promise<EmailConfigurationS
     );
   }
 
-  if (fromAddress.includes("@send.")) {
+  if (rawFromAddress.includes("@send.")) {
     warnings.push(
       "L'adresse d'expedition utilise un sous-domaine @send.* qui n'est probablement pas verifie dans Resend."
     );
@@ -181,14 +154,14 @@ export async function getEmailConfigurationStatus(): Promise<EmailConfigurationS
       forceSend: config.forceSend,
     },
     database: {
-      available: Boolean(dbCredential?.apiKey),
-      checkFailed: dbCheckFailed,
-      credentialEnv: dbCredential?.env ?? null,
-      hasEmailFrom: Boolean(dbCredential?.config.email_from),
+      available: resendConfig.sources.apiKey === "database",
+      checkFailed: resendConfig.dbCheckFailed,
+      credentialEnv: resendConfig.dbCredentialEnv,
+      hasEmailFrom: resendConfig.sources.fromAddress === "database",
     },
     resolved: {
       fromAddress,
-      replyTo: config.replyTo || null,
+      replyTo,
     },
     warnings,
   };
@@ -221,12 +194,17 @@ async function sendViaResend(options: EmailOptions): Promise<EmailResult> {
       subject: options.subject,
       html: options.html || "",
       text: options.text,
+      from: options.from,
       replyTo: options.replyTo,
       cc: options.cc,
       bcc: options.bcc,
       attachments: options.attachments?.map((a) => ({
         filename: a.filename,
         content: a.content,
+      })),
+      tags: options.tags?.map((tag) => ({
+        name: tag,
+        value: "true",
       })),
     });
 

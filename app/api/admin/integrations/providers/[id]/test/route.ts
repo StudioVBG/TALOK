@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { normalizeResendFromAddress } from "@/lib/services/resend-config";
 
 // Fonction de déchiffrement
 function decryptKey(encryptedKey: string): string {
@@ -135,7 +136,12 @@ export async function POST(request: Request, { params }: RouteParams) {
 // Test Resend
 async function testResend(apiKey: string, adminEmail: string | undefined, config: any): Promise<{ success: boolean; message: string; details?: any }> {
   try {
-    const fromAddress = config?.email_from || "Talok <onboarding@resend.dev>";
+    const fromAddress = normalizeResendFromAddress(
+      config?.email_from ||
+      process.env.EMAIL_FROM ||
+      process.env.RESEND_FROM_EMAIL ||
+      "Talok <onboarding@resend.dev>"
+    );
     
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -156,6 +162,7 @@ async function testResend(apiKey: string, adminEmail: string | undefined, config
             </p>
           </div>
         `,
+        reply_to: config?.reply_to || process.env.EMAIL_REPLY_TO || process.env.RESEND_REPLY_TO,
       }),
     });
 

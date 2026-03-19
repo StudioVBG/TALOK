@@ -34,6 +34,7 @@ describe("env-validation", () => {
     seedRequiredProductionEnv();
     delete process.env.RESEND_API_KEY;
     delete process.env.EMAIL_API_KEY;
+    delete process.env.INTERNAL_EMAIL_API_KEY;
 
     const { validateEnvironment } = await import("@/lib/config/env-validation");
     const result = validateEnvironment();
@@ -42,6 +43,9 @@ describe("env-validation", () => {
     expect(result.errors).toHaveLength(0);
     expect(result.warnings).toContain(
       "No email API key found in environment. Production email delivery must be configured via Admin > Integrations if you rely on DB credentials."
+    );
+    expect(result.warnings).toContain(
+      "INTERNAL_EMAIL_API_KEY is not set. Internal server-to-server email flows may fail."
     );
   });
 

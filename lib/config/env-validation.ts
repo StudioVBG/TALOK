@@ -126,6 +126,18 @@ const ENV_VARS: EnvVar[] = [
     description: "Resend API key for emails (optional if credentials are managed in Admin > Integrations)",
   },
   {
+    name: "EMAIL_API_KEY",
+    required: false,
+    validator: (v) => v.startsWith("re_"),
+    description: "Legacy alias for Resend API key",
+  },
+  {
+    name: "INTERNAL_EMAIL_API_KEY",
+    required: false,
+    minLength: 32,
+    description: "Secret for internal calls to /api/emails/send",
+  },
+  {
     name: "PASSWORD_RESET_COOKIE_SECRET",
     required: isProduction,
     minLength: 32,
@@ -215,6 +227,12 @@ export function validateEnvironment(): ValidationResult {
   if (!process.env.EMAIL_REPLY_TO && !process.env.RESEND_REPLY_TO) {
     warnings.push(
       "No reply-to address configured for transactional emails."
+    );
+  }
+
+  if (isProduction && !process.env.INTERNAL_EMAIL_API_KEY) {
+    warnings.push(
+      "INTERNAL_EMAIL_API_KEY is not set. Internal server-to-server email flows may fail."
     );
   }
 

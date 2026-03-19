@@ -14,62 +14,22 @@ import { Resend } from 'resend';
 import { emailTemplates } from './templates';
 import { withRetry } from './utils/retry';
 import { checkRateLimitBatch } from './utils/rate-limit';
-import { validateEmails, isValidEmail } from './utils/validation';
+import { validateEmails } from './utils/validation';
 import { getPasswordRecoveryCallbackUrl } from "@/lib/utils/redirect-url";
-import { getResendCredentials } from "@/lib/services/credentials-service";
+import { resolveResendRuntimeConfig } from "@/lib/services/resend-config";
 
-// Client Resend (singleton avec invalidation si la clé change)
-let resendClient: Resend | null = null;
-let cachedApiKey: string | null = null;
+// Client Resend (singleton)
+let resendClient: { apiKey: string; client: Resend } | null = null;
 
-/**
- * Résout les credentials Resend depuis la DB ou l'environnement,
- * puis retourne le client Resend et l'adresse d'expédition.
- */
-async function getResendClientAndFrom(): Promise<{ client: Resend; fromEmail: string }> {
-  let apiKey: string | undefined;
-  let fromEmail: string | undefined;
-
-  // 1. Essayer les credentials DB (qui font déjà le fallback env)
-  try {
-    const dbCreds = await getResendCredentials();
-    if (dbCreds) {
-      apiKey = dbCreds.apiKey;
-      fromEmail = dbCreds.emailFrom;
-    }
-  } catch (err) {
-    console.warn("[Email/Resend] Impossible de récupérer les credentials DB:", err);
+function getResendClient(apiKey: string): Resend {
+  if (!resendClient || resendClient.apiKey !== apiKey) {
+    resendClient = {
+      apiKey,
+      client: new Resend(apiKey),
+    };
   }
-
-  // 2. Fallback direct sur les variables d'environnement
-  if (!apiKey) {
-    apiKey = process.env.RESEND_API_KEY;
-  }
-  if (!fromEmail) {
-    fromEmail = process.env.RESEND_FROM_EMAIL || process.env.EMAIL_FROM;
-  }
-
-  if (!apiKey) {
-    throw new Error(
-      "Aucune clé API Resend configurée. Ajoutez-la dans Admin > Intégrations ou dans RESEND_API_KEY."
-    );
-  }
-
-  // Recréer le client si la clé a changé
-  if (!resendClient || cachedApiKey !== apiKey) {
-    resendClient = new Resend(apiKey);
-    cachedApiKey = apiKey;
-  }
-
-  return {
-    client: resendClient,
-    fromEmail: fromEmail || "Talok <noreply@talok.fr>",
-  };
+  return resendClient.client;
 }
-
-// Configuration par défaut (fallbacks)
-const REPLY_TO = process.env.RESEND_REPLY_TO || 'support@talok.fr';
-
 // Configuration retry
 const RETRY_CONFIG = {
   maxRetries: 3,
@@ -83,6 +43,7 @@ export interface SendEmailOptions {
   subject: string;
   html: string;
   text?: string;
+  from?: string;
   replyTo?: string;
   cc?: string[];
   bcc?: string[];
@@ -123,6 +84,19 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
   let attempts = 0;
 
   try {
+    const resendConfig = await resolveResendRuntimeConfig({
+      preferredFrom: options.from,
+      preferredReplyTo: options.replyTo,
+    });
+
+    if (!resendConfig.apiKey) {
+      return {
+        success: false,
+        error: "Resend n'est pas configuré. Ajoutez votre clé API dans Admin > Intégrations.",
+        attempts: 0,
+      };
+    }
+
     // 1. Valider et normaliser les destinataires
     const recipients = Array.isArray(options.to) ? options.to : [options.to];
     const validation = validateEmails(recipients);
@@ -172,20 +146,18 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
       }
     }
 
-    // 3. Résoudre les credentials (DB ou env)
-    const { client: resendInstance, fromEmail } = await getResendClientAndFrom();
-
     // 4. Fonction d'envoi (sera retryée si nécessaire)
     const doSend = async (): Promise<{ id: string }> => {
       attempts++;
+      const resend = getResendClient(resendConfig.apiKey);
 
-      const { data, error } = await resendInstance.emails.send({
-        from: fromEmail,
+      const { data, error } = await resend.emails.send({
+        from: resendConfig.fromAddress,
         to: validation.validEmails,
         subject: options.subject,
         html: options.html,
         text: options.text,
-        replyTo: options.replyTo || REPLY_TO,
+        replyTo: resendConfig.replyTo || undefined,
         cc: options.cc,
         bcc: options.bcc,
         attachments: options.attachments,

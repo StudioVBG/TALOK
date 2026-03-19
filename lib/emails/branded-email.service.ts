@@ -8,8 +8,10 @@
 import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 import { OrganizationBranding, DEFAULT_BRANDING } from "@/lib/white-label/types";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import {
+  normalizeResendFromAddress,
+  resolveResendRuntimeConfig,
+} from "@/lib/services/resend-config";
 
 // ============================================
 // TYPES
@@ -184,6 +186,19 @@ export class BrandedEmailService {
    */
   async sendBrandedEmail(options: BrandedEmailOptions): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
+      const resendConfig = await resolveResendRuntimeConfig({
+        preferredReplyTo: options.replyTo,
+      });
+
+      if (!resendConfig.apiKey) {
+        return {
+          success: false,
+          error: "Resend n'est pas configuré. Ajoutez votre clé API dans Admin > Intégrations.",
+        };
+      }
+
+      const resend = new Resend(resendConfig.apiKey);
+
       // Récupérer le branding
       let branding: EmailBranding;
       if (options.organizationId) {
@@ -199,11 +214,11 @@ export class BrandedEmailService {
 
       // Envoyer l'email
       const { data, error } = await resend.emails.send({
-        from: `${branding.fromName} <${branding.fromEmail}>`,
+        from: normalizeResendFromAddress(`${branding.fromName} <${branding.fromEmail}>`),
         to: Array.isArray(options.to) ? options.to : [options.to],
         subject: options.subject,
         html: brandedHtml,
-        replyTo: options.replyTo || branding.replyTo || undefined,
+        replyTo: options.replyTo || branding.replyTo || resendConfig.replyTo || undefined,
         tags: options.tags,
       });
 

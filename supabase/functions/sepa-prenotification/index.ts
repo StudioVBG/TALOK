@@ -16,12 +16,32 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || Deno.env.get("EMAIL_API_KEY");
 const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr";
+const EMAIL_FROM = Deno.env.get("EMAIL_FROM") || Deno.env.get("RESEND_FROM_EMAIL") || "Talok <noreply@talok.fr>";
+const EMAIL_REPLY_TO = Deno.env.get("EMAIL_REPLY_TO") || Deno.env.get("RESEND_REPLY_TO") || undefined;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 const PRENOTIFICATION_DAYS = 14;
+
+function normalizeResendFromAddress(fromAddress: string): string {
+  let normalized = fromAddress.trim();
+
+  if (normalized.includes("@send.")) {
+    normalized = normalized.replace(/@send\./i, "@");
+  }
+
+  if (!normalized.includes("<") && !normalized.includes(">")) {
+    if (/@(gmail|hotmail|outlook|yahoo)\./i.test(normalized)) {
+      return "Talok <onboarding@resend.dev>";
+    }
+
+    return `Talok <${normalized}>`;
+  }
+
+  return normalized;
+}
 
 interface ActiveMandate {
   id: string;
@@ -135,9 +155,10 @@ Deno.serve(async () => {
               Authorization: `Bearer ${RESEND_API_KEY}`,
             },
             body: JSON.stringify({
-              from: "Talok <noreply@talok.fr>",
+              from: normalizeResendFromAddress(EMAIL_FROM),
               to: [tenant.email],
               subject: `Prélèvement SEPA prévu le ${collectionDate}`,
+              reply_to: EMAIL_REPLY_TO,
               html: `
                 <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
                   <h2 style="color: #1e293b;">Avis de prélèvement SEPA</h2>
