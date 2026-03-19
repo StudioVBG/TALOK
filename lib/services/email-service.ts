@@ -14,6 +14,7 @@ import {
   sendPaymentConfirmation as sendPaymentConfirmationViaResend,
   sendTicketUpdateNotification as sendTicketUpdateNotificationViaResend,
   emailService as resendEmailService,
+  sendWelcomeEmail as sendWelcomeEmailViaResend,
 } from "@/lib/emails/resend.service";
 import { resolveResendRuntimeConfig } from "./resend-config";
 
@@ -21,6 +22,7 @@ export { sendVisitReminderViaResend as sendVisitReminderEmail };
 export { sendPaymentConfirmationViaResend as sendPaymentConfirmation };
 export { sendTicketUpdateNotificationViaResend as sendTicketUpdateNotification };
 export { resendEmailService as emailService };
+export { sendWelcomeEmailViaResend as sendWelcomeEmail };
 
 // Types
 export type EmailProvider = "resend";
@@ -296,24 +298,6 @@ export async function sendTemplateEmail(
   });
 }
 
-export async function sendWelcomeEmail(
-  to: string,
-  name: string,
-  dashboardUrl: string
-): Promise<EmailResult> {
-  const template = emailTemplates.welcome({
-    userName: name,
-    role: "owner",
-    loginUrl: dashboardUrl,
-  });
-  return sendEmail({
-    to,
-    subject: template.subject,
-    html: template.html,
-    tags: [{ name: "type", value: "welcome" }],
-  });
-}
-
 export async function sendRentReceiptEmail(
   to: string,
   tenantName: string,
@@ -447,7 +431,7 @@ export default {
   sendEmail,
   getEmailConfigurationStatus,
   sendTemplateEmail,
-  sendWelcomeEmail,
+  sendWelcomeEmail: sendWelcomeEmailViaResend,
   sendRentReceiptEmail,
   sendRentReminderEmail,
   sendPaymentReceivedEmail,
