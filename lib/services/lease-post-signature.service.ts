@@ -81,26 +81,27 @@ export async function handleLeaseFullySigned(leaseId: string): Promise<PostSigna
     return result;
   }
 
-  // ── 2. Générer le PDF signé ────────────────────────────────────────
-  const sealedPdfPath = `bails/${leaseId}/signed_final.pdf`;
+  // ── 2. Générer le document HTML signé ─────────────────────────────
+  const sealedDocPath = `bails/${leaseId}/signed_final.html`;
 
   try {
-    const { buffer } = await generateSignedLeasePDF(leaseId);
+    const { html } = await generateSignedLeasePDF(leaseId);
+    const htmlBuffer = Buffer.from(html, "utf-8");
 
     const { error: uploadErr } = await serviceClient.storage
       .from("documents")
-      .upload(sealedPdfPath, buffer, {
-        contentType: "application/pdf",
+      .upload(sealedDocPath, htmlBuffer, {
+        contentType: "text/html; charset=utf-8",
         upsert: true,
         cacheControl: "31536000",
       });
 
     if (uploadErr) {
-      console.warn("[post-signature] Erreur upload PDF:", uploadErr.message);
+      console.warn("[post-signature] Erreur upload HTML:", uploadErr.message);
     } else {
       result.pdfStored = true;
-      result.pdfPath = sealedPdfPath;
-      console.log("[post-signature] PDF stocké:", sealedPdfPath, "size:", buffer.length);
+      result.pdfPath = sealedDocPath;
+      console.log("[post-signature] HTML signé stocké:", sealedDocPath, "size:", htmlBuffer.length);
 
       // ── 3. Upsert document bail_signe en DB ─────────────────────────
       const { data: existingDoc } = await serviceClient
@@ -113,14 +114,15 @@ export async function handleLeaseFullySigned(leaseId: string): Promise<PostSigna
       const docMetadata = {
         sealed: true,
         sealed_at: new Date().toISOString(),
-        size_bytes: buffer.length,
+        size_bytes: htmlBuffer.length,
+        content_type: "text/html",
       };
 
       if (existingDoc) {
         await serviceClient
           .from("documents")
           .update({
-            storage_path: sealedPdfPath,
+            storage_path: sealedDocPath,
             metadata: docMetadata,
             updated_at: new Date().toISOString(),
           } as any)
@@ -139,17 +141,17 @@ export async function handleLeaseFullySigned(leaseId: string): Promise<PostSigna
           owner_id: prop?.owner_id,
           property_id: (leaseForProperty as any)?.property_id,
           lease_id: leaseId,
-          storage_path: sealedPdfPath,
+          storage_path: sealedDocPath,
           metadata: docMetadata,
         } as any);
       }
     }
   } catch (pdfErr) {
-    console.warn("[post-signature] Exception génération PDF (non bloquant):", String(pdfErr));
+    console.warn("[post-signature] Exception génération document (non bloquant):", String(pdfErr));
   }
 
   // ── 4. Sceller le bail (seal_lease RPC) ────────────────────────────
-  const finalPdfPath = result.pdfStored ? sealedPdfPath : `pending_generation_${Date.now()}`;
+  const finalPdfPath = result.pdfStored ? sealedDocPath : `pending_generation_${Date.now()}`;
 
   try {
     const { error: sealError } = await serviceClient.rpc("seal_lease", {

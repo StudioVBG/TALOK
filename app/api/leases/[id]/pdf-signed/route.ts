@@ -4,7 +4,8 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/leases/[id]/pdf-signed
  *
- * Génère et retourne le PDF complet du bail signé (téléchargement à la demande).
+ * Génère et retourne le document HTML complet du bail signé (téléchargement à la demande).
+ * Le HTML inclut signatures, certificat et styles d'impression A4.
  * La logique de génération est centralisée dans lib/services/lease-pdf-generator.ts
  */
 
@@ -75,18 +76,17 @@ export async function GET(request: Request, { params }: RouteParams) {
       );
     }
 
-    // Générer le PDF via le module partagé
-    const { buffer, fileName } = await generateSignedLeasePDF(leaseId);
+    const { html, fileName } = await generateSignedLeasePDF(leaseId);
 
-    return new NextResponse(buffer as any, {
+    return new NextResponse(html, {
       headers: {
-        "Content-Type": "application/pdf",
+        "Content-Type": "text/html; charset=utf-8",
         "Content-Disposition": `attachment; filename="${fileName}"`,
-        "Content-Length": String(buffer.length),
+        "Content-Length": String(Buffer.byteLength(html, "utf-8")),
       },
     });
   } catch (error: unknown) {
-    console.error("Erreur génération PDF signé:", error);
+    console.error("Erreur génération document signé:", error);
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Erreur serveur",

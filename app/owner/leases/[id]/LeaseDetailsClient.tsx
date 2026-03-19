@@ -637,7 +637,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
             ) : (
               <div className="flex items-center gap-2">
                 <a 
-                  href={`/api/documents/download?path=${encodeURIComponent(signedPdfPath)}&filename=Bail_Complet_${property.ville || 'Logement'}.pdf`}
+                  href={`/api/documents/download?path=${encodeURIComponent(signedPdfPath)}&filename=Bail_Complet_${property.ville || 'Logement'}.html`}
                   download
                   className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100")}
                 >

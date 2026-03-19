@@ -605,7 +605,7 @@ export async function POST(
         },
       } as any);
 
-      // Auto-insert signed EDL into documents table for both owner and tenant
+      // Auto-insert signed EDL into documents table
       const edlType = edl.type === "entree" ? "EDL_entree" : "EDL_sortie";
       const edlLabel = edl.type === "entree" ? "d'entrée" : "de sortie";
       try {
@@ -626,18 +626,28 @@ export async function POST(
             owner_id: propertyOwnerId,
             tenant_id: tenantProfileId,
             title: `État des lieux ${edlLabel} — Signé`,
-            storage_path: `edl/${edlId}/signed_document.pdf`,
+            storage_path: `edl/${edlId}/signed_document.html`,
             is_archived: false,
             metadata: {
               edl_id: edlId,
               signed_at: new Date().toISOString(),
               all_signers_signed: true,
               final: true,
+              content_type: "text/html",
             },
           } as any);
         }
       } catch (docErr) {
         console.warn("[sign-edl] Erreur insertion document EDL (non bloquant):", docErr);
+      }
+
+      // Générer et stocker le HTML signé dans Storage
+      try {
+        const { handleEDLFullySigned } = await import("@/lib/services/edl-post-signature.service");
+        const edlResult = await handleEDLFullySigned(edlId);
+        console.log("[sign-edl] Post-signature EDL:", { htmlStored: edlResult.htmlStored, path: edlResult.storagePath });
+      } catch (postSignErr) {
+        console.warn("[sign-edl] Exception post-signature EDL (non bloquant):", String(postSignErr));
       }
     }
 

@@ -1,5 +1,9 @@
 /**
- * Génération du PDF de bail signé — module partagé SOTA 2026
+ * Génération du document HTML signé de bail — module partagé SOTA 2026
+ *
+ * Génère un document HTML complet avec signatures injectées,
+ * certificat de signature et styles d'impression A4.
+ * Le HTML est stocké directement dans Storage (pas de conversion PDF).
  *
  * Utilisé par :
  *  - handleLeaseFullySigned() (post-signature automatique)
@@ -22,14 +26,14 @@ export interface SignatureInfo {
   proof?: any;
 }
 
-export interface GeneratedPdfResult {
-  buffer: Buffer;
+export interface GeneratedLeaseDocResult {
+  html: string;
   fileName: string;
 }
 
 // ─── Fonction principale ─────────────────────────────────────────────
 
-export async function generateSignedLeasePDF(leaseId: string): Promise<GeneratedPdfResult> {
+export async function generateSignedLeasePDF(leaseId: string): Promise<GeneratedLeaseDocResult> {
   const serviceClient = getServiceClient();
 
   const { data: lease, error: leaseError } = await serviceClient
@@ -239,10 +243,64 @@ export async function generateSignedLeasePDF(leaseId: string): Promise<Generated
     signedAt: tenantSigner?.signed_at || ownerSigner?.signed_at,
   });
 
-  const buffer = await generatePdfFromHtml(html);
-  const fileName = `Bail_Signe_${property?.ville || "location"}_${new Date().toISOString().split("T")[0]}.pdf`;
+  const sealedDate = new Date().toLocaleDateString("fr-FR", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
-  return { buffer, fileName };
+  const fullHtml = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bail de Location - Document Signé</title>
+  <style>
+    @page { size: A4; margin: 20mm; }
+    @media print {
+      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .sealed-badge { position: absolute; }
+    }
+    body {
+      font-family: 'Times New Roman', Times, serif;
+      font-size: 11pt;
+      line-height: 1.5;
+      color: #000;
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 20mm;
+      background: white;
+    }
+    .sealed-badge {
+      position: fixed;
+      top: 10mm;
+      right: 10mm;
+      background: #059669;
+      color: white;
+      padding: 5px 15px;
+      border-radius: 4px;
+      font-size: 10pt;
+      font-weight: bold;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+  <div class="sealed-badge">✓ DOCUMENT SIGNÉ ET CERTIFIÉ</div>
+  ${html}
+  <footer style="margin-top: 30mm; padding-top: 10mm; border-top: 1px solid #ccc; font-size: 9pt; color: #666;">
+    <p>Document scellé le ${sealedDate}</p>
+    <p>Référence : ${leaseId.substring(0, 8).toUpperCase()}</p>
+  </footer>
+</body>
+</html>`;
+
+  const fileName = `Bail_Signe_${property?.ville || "location"}_${new Date().toISOString().split("T")[0]}.html`;
+
+  return { html: fullHtml, fileName };
 }
 
 // ─── Helpers exportés ────────────────────────────────────────────────
@@ -445,89 +503,3 @@ export function numberToWords(n: number): string {
   return `${n.toFixed(2)} euros`;
 }
 
-export async function generatePdfFromHtml(html: string): Promise<Buffer> {
-  try {
-    const edgeFunctionUrl = process.env.SUPABASE_FUNCTIONS_URL;
-    if (edgeFunctionUrl) {
-      const response = await fetch(`${edgeFunctionUrl}/html-to-pdf`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-        },
-        body: JSON.stringify({ html }),
-      });
-
-      if (response.ok) {
-        return Buffer.from(await response.arrayBuffer());
-      }
-    }
-  } catch {
-    console.log("[lease-pdf-generator] Edge Function PDF non disponible, fallback pdf-lib");
-  }
-
-  const { PDFDocument, rgb, StandardFonts } = await import("pdf-lib");
-
-  const pdfDoc = await PDFDocument.create();
-  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-
-  const page1 = pdfDoc.addPage([595, 842]);
-  const { width, height } = page1.getSize();
-  let y = height - 50;
-
-  page1.drawText("CONTRAT DE LOCATION SIGNÉ", {
-    x: 50, y, size: 20, font: fontBold, color: rgb(0.1, 0.37, 0.48),
-  });
-  y -= 30;
-
-  page1.drawText("Document signé électroniquement", {
-    x: 50, y, size: 12, font, color: rgb(0.18, 0.49, 0.2),
-  });
-  y -= 50;
-
-  page1.drawText("Ce bail a été signé électroniquement par les parties.", {
-    x: 50, y, size: 12, font, color: rgb(0, 0, 0),
-  });
-  y -= 25;
-
-  page1.drawText("Les signatures et preuves cryptographiques sont stockées", {
-    x: 50, y, size: 12, font, color: rgb(0, 0, 0),
-  });
-  y -= 20;
-
-  page1.drawText("dans la base de données sécurisée.", {
-    x: 50, y, size: 12, font, color: rgb(0, 0, 0),
-  });
-  y -= 50;
-
-  page1.drawRectangle({
-    x: 45, y: y - 100, width: width - 90, height: 110,
-    borderColor: rgb(0.1, 0.37, 0.48), borderWidth: 2, color: rgb(0.95, 0.98, 1),
-  });
-
-  page1.drawText("Pour obtenir le PDF complet avec images de signature :", {
-    x: 55, y: y - 25, size: 11, font: fontBold, color: rgb(0.1, 0.37, 0.48),
-  });
-
-  const instructions = [
-    "1. Utilisez l'aperçu HTML du bail dans l'application",
-    "2. Imprimez en PDF via votre navigateur (Ctrl/Cmd + P)",
-    "3. Ou configurez l'Edge Function 'html-to-pdf' Supabase",
-  ];
-
-  let instrY = y - 50;
-  for (const instruction of instructions) {
-    page1.drawText(instruction, {
-      x: 60, y: instrY, size: 10, font, color: rgb(0.3, 0.3, 0.3),
-    });
-    instrY -= 18;
-  }
-
-  page1.drawText(`Document généré le ${new Date().toLocaleDateString("fr-FR")} - ImmoGestion`, {
-    x: 50, y: 30, size: 9, font, color: rgb(0.5, 0.5, 0.5),
-  });
-
-  const pdfBytes = await pdfDoc.save();
-  return Buffer.from(pdfBytes);
-}

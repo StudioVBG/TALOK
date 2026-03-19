@@ -201,8 +201,43 @@ export default function TenantEDLDetailClient({
     }
   };
 
-  const handleDownloadPDF = () => {
-    window.open(`/api/edl/${edl.id}/pdf`, "_blank");
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+
+  const handleDownloadPDF = async () => {
+    setIsDownloadingPdf(true);
+    try {
+      const response = await fetch("/api/edl/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ edlId: edl.id }),
+      });
+
+      if (!response.ok) throw new Error("Erreur génération document");
+
+      const { html: pdfHtml, fileName } = await response.json();
+      const html2pdf = (await import("html2pdf.js")).default;
+
+      const element = document.createElement("div");
+      element.innerHTML = pdfHtml;
+      document.body.appendChild(element);
+
+      await html2pdf()
+        .set({
+          margin: 10,
+          filename: fileName || `edl_${edl.type || "entree"}_${edl.id.slice(0, 8)}.pdf`,
+          image: { type: "jpeg", quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        })
+        .from(element)
+        .save();
+
+      document.body.removeChild(element);
+    } catch (err) {
+      toast({ variant: "destructive", title: "Erreur", description: "Impossible de télécharger le document" });
+    } finally {
+      setIsDownloadingPdf(false);
+    }
   };
 
   return (
@@ -238,10 +273,11 @@ export default function TenantEDLDetailClient({
             {edl.status === "signed" && (
               <Button
                 onClick={handleDownloadPDF}
+                disabled={isDownloadingPdf}
                 className="h-10 sm:h-11 px-4 sm:px-6 bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg shadow-emerald-100 rounded-xl flex-1 sm:flex-none"
               >
-                <Download className="h-4 w-4 mr-2" />
-                Télécharger le PDF signé
+                {isDownloadingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                {isDownloadingPdf ? "Génération..." : "Télécharger le PDF signé"}
               </Button>
             )}
             {edl.type === "sortie" && (
@@ -278,10 +314,11 @@ export default function TenantEDLDetailClient({
             </div>
             <Button
               onClick={handleDownloadPDF}
+              disabled={isDownloadingPdf}
               size="sm"
               className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex-shrink-0"
             >
-              <Download className="h-3.5 w-3.5 mr-1.5" />
+              {isDownloadingPdf ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
               PDF
             </Button>
           </div>
