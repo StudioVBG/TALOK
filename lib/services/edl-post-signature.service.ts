@@ -151,31 +151,35 @@ export async function handleEDLFullySigned(edlId: string): Promise<EDLPostSignat
       allMeters = meters?.filter((m: any) => m.is_active !== false) || [];
     }
 
-    const recordedMeterIds = new Set((meterReadings || []).map((r: any) => r.meter_id));
+    const validReadings = (meterReadings || []).filter(
+      (r) => !!r && typeof r === "object" && !("code" in r)
+    ) as Array<Record<string, any>>;
+    const recordedMeterIds = new Set(validReadings.map((r) => r.meter_id));
 
     const finalMeterReadings: any[] = [];
-    for (const r of meterReadings || []) {
-      const hasValue = r.reading_value !== null && r.reading_value !== undefined;
+    for (const reading of validReadings) {
+      const hasValue = reading.reading_value !== null && reading.reading_value !== undefined;
       const readingDisplay = hasValue
-        ? String(r.reading_value)
-        : r.photo_path
+        ? String(reading.reading_value)
+        : reading.photo_path
           ? "À valider"
           : "Non relevé";
 
       let photoUrl = null;
-      if (r.photo_path) {
+      if (reading.photo_path) {
         const { data: signedUrlData } = await serviceClient.storage
           .from("documents")
-          .createSignedUrl(r.photo_path, 3600);
+          .createSignedUrl(reading.photo_path, 3600);
         photoUrl = signedUrlData?.signedUrl || null;
       }
 
+      const meter = reading.meter as Record<string, any> | null;
       finalMeterReadings.push({
-        type: r.meter?.type || "electricity",
-        meter_number: r.meter?.meter_number || r.meter?.serial_number,
+        type: meter?.type || "electricity",
+        meter_number: meter?.meter_number || meter?.serial_number,
         reading: readingDisplay,
-        reading_value: r.reading_value,
-        unit: r.reading_unit || r.meter?.unit || "kWh",
+        reading_value: reading.reading_value,
+        unit: reading.reading_unit || meter?.unit || "kWh",
         photo_url: photoUrl,
       });
     }
