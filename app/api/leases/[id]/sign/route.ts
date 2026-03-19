@@ -11,7 +11,7 @@ import { extractClientIP } from "@/lib/utils/ip-address";
 import { SIGNER_ROLES, isOwnerRole, isTenantRole, LEASE_STATUS } from "@/lib/constants/roles";
 import { validateSignatureImage, stripBase64Prefix } from "@/lib/utils/validate-signature";
 import { createSignatureLogger } from "@/lib/utils/signature-logger";
-import { ensureInitialInvoiceForLease } from "@/lib/services/lease-initial-invoice.service";
+import { handleLeaseFullySigned } from "@/lib/services/lease-post-signature.service";
 
 /**
  * POST /api/leases/[id]/sign - Signer un bail avec Audit Trail conforme
@@ -280,146 +280,20 @@ export async function POST(
       log.warn("Erreur incrément usage signature", { error: String(usageError) });
     }
 
-    // FIX P0-6: Si fully_signed, générer le PDF signé définitif et sceller le bail
+    // SOTA 2026: Post-signature centralisée (PDF + scellement + facture)
+    let postSignatureResult: Awaited<ReturnType<typeof handleLeaseFullySigned>> | null = null;
+
     if (newLeaseStatus === LEASE_STATUS.FULLY_SIGNED) {
-      try {
-        // 1. Générer le PDF signé définitif via l'endpoint interne
-        const sealedPdfPath = `bails/${leaseId}/signed_final.pdf`;
-        let pdfStored = false;
+      postSignatureResult = await handleLeaseFullySigned(leaseId);
 
-        try {
-          const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
-            ? `https://${process.env.VERCEL_URL}`
-            : "http://localhost:3000";
-
-          // Appeler la route pdf-signed pour générer le PDF avec signatures intégrées
-          const pdfResponse = await fetch(`${baseUrl}/api/leases/${leaseId}/pdf-signed`, {
-            headers: {
-              cookie: request.headers.get("cookie") || "",
-            },
-          });
-
-          if (pdfResponse.ok) {
-            const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer());
-
-            // Stocker le PDF définitif dans Supabase Storage
-            const { error: uploadErr } = await serviceClient.storage
-              .from("documents")
-              .upload(sealedPdfPath, pdfBuffer, {
-                contentType: "application/pdf",
-                upsert: true,
-                cacheControl: "31536000", // Cache 1 an — fichier immuable
-              });
-
-            if (uploadErr) {
-              log.warn("Erreur upload PDF scellé", { error: uploadErr.message });
-            } else {
-              pdfStored = true;
-              log.info("PDF signé définitif stocké", { path: sealedPdfPath, sizeBytes: pdfBuffer.length });
-
-              // Créer/mettre à jour l'entrée document pour le PDF signé
-              const { data: existingDoc } = await serviceClient
-                .from("documents")
-                .select("id")
-                .eq("type", "bail_signe")
-                .eq("lease_id", leaseId)
-                .maybeSingle();
-
-              if (existingDoc) {
-                await serviceClient.from("documents").update({
-                  storage_path: sealedPdfPath,
-                  metadata: { sealed: true, sealed_at: new Date().toISOString(), size_bytes: pdfBuffer.length },
-                  updated_at: new Date().toISOString(),
-                } as any).eq("id", existingDoc.id);
-              } else {
-                await serviceClient.from("documents").insert({
-                  type: "bail_signe",
-                  title: `Bail signé - ${(lease as any)?.property?.adresse_complete || leaseId.slice(0, 8)}`,
-                  owner_id: (lease as any)?.property?.owner_id,
-                  property_id: (lease as any)?.property_id || (lease as any)?.property?.id,
-                  lease_id: leaseId,
-                  storage_path: sealedPdfPath,
-                  metadata: { sealed: true, sealed_at: new Date().toISOString(), size_bytes: pdfBuffer.length },
-                } as any);
-              }
-            }
-          } else {
-            log.warn("Échec génération PDF signé", { status: pdfResponse.status });
-          }
-        } catch (pdfErr) {
-          log.warn("Exception génération PDF scellé (non bloquant)", { error: String(pdfErr) });
-        }
-
-        // 2. Sceller le bail dans la DB avec le vrai chemin (ou placeholder si PDF échoué)
-        const finalPdfPath = pdfStored ? sealedPdfPath : `pending_generation_${Date.now()}`;
-        const { error: sealError } = await serviceClient.rpc("seal_lease", {
-          p_lease_id: leaseId,
-          p_pdf_path: finalPdfPath,
-        });
-
-        if (sealError) {
-          log.warn("Erreur scellement bail (non bloquant)", {
-            lease_id: leaseId,
-            sealError: sealError.message,
-            code: sealError.code,
-          });
-          try {
-            await serviceClient.from("outbox").insert({
-              event_type: "Lease.SealRetry",
-              payload: { lease_id: leaseId, reason: "seal_lease_failed", error: sealError.message, pdf_stored: pdfStored },
-            });
-          } catch {
-            // non bloquant
-          }
-        } else {
-          log.info("Bail scellé avec succès", { lease_id: leaseId, pdf_stored: pdfStored, pdf_path: finalPdfPath });
-        }
-      } catch (sealErr) {
-        log.warn("Exception scellement bail", { lease_id: leaseId, error: String(sealErr) });
-        try {
-          await serviceClient.from("outbox").insert({
-            event_type: "Lease.SealRetry",
-            payload: { lease_id: leaseId, reason: "seal_lease_exception", error: String(sealErr) },
-          });
-        } catch {
-          // non bloquant
-        }
-      }
-    }
-
-    let initialInvoiceResult:
-      | Awaited<ReturnType<typeof ensureInitialInvoiceForLease>>
-      | null = null;
-
-    // 9bis. SOTA 2026: créer la facture initiale immédiatement après fully_signed
-    if (newLeaseStatus === LEASE_STATUS.FULLY_SIGNED) {
-      initialInvoiceResult = await ensureInitialInvoiceForLease(
-        serviceClient as unknown as Parameters<typeof ensureInitialInvoiceForLease>[0],
-        leaseId
-      );
-
-      log.info("Facture initiale synchronisée à la signature", {
+      log.info("Post-signature complétée", {
         lease_id: leaseId,
-        invoice_id: initialInvoiceResult.invoiceId,
-        amount: initialInvoiceResult.amount,
-        deposit: initialInvoiceResult.depositAmount,
-        created: initialInvoiceResult.created,
+        pdf_stored: postSignatureResult.pdfStored,
+        sealed: postSignatureResult.sealed,
+        invoice_id: postSignatureResult.invoiceId,
+        invoice_created: postSignatureResult.invoiceCreated,
+        invoice_amount: postSignatureResult.invoiceAmount,
       });
-
-      if (initialInvoiceResult.created) {
-        await serviceClient.from("outbox").insert({
-          event_type: "Invoice.InitialCreated",
-          payload: {
-            lease_id: leaseId,
-            invoice_id: initialInvoiceResult.invoiceId,
-            tenant_profile_id: initialInvoiceResult.tenantProfileId,
-            owner_profile_id: initialInvoiceResult.ownerProfileId,
-            amount: initialInvoiceResult.amount,
-            includes_deposit: initialInvoiceResult.depositAmount > 0,
-            deposit_amount: initialInvoiceResult.depositAmount,
-          },
-        } as any);
-      }
     }
 
     // 10. Journaliser

@@ -10,6 +10,7 @@ import { verifyTokenCompat } from "@/lib/utils/secure-token";
 import { validateSignatureImage, stripBase64Prefix } from "@/lib/utils/validate-signature";
 import { createSignatureLogger } from "@/lib/utils/signature-logger";
 import { isOwnerRole, LEASE_STATUS } from "@/lib/constants/roles";
+import { handleLeaseFullySigned } from "@/lib/services/lease-post-signature.service";
 
 interface PageProps {
   params: Promise<{ token: string }>;
@@ -271,6 +272,23 @@ export async function POST(request: Request, { params }: PageProps) {
             .eq("id", lease.id);
           newStatus = LEASE_STATUS.PENDING_SIGNATURE;
         }
+      }
+    }
+
+    // SOTA 2026: Post-signature automatique (PDF + scellement + facture)
+    if (allSigned && newStatus === LEASE_STATUS.FULLY_SIGNED) {
+      try {
+        const postSignResult = await handleLeaseFullySigned(lease.id);
+        log.info("Post-signature complétée via token", {
+          pdf_stored: postSignResult.pdfStored,
+          sealed: postSignResult.sealed,
+          invoice_created: postSignResult.invoiceCreated,
+          invoice_amount: postSignResult.invoiceAmount,
+        });
+      } catch (postSignErr) {
+        log.warn("Exception post-signature via token (non bloquant)", {
+          error: String(postSignErr),
+        });
       }
     }
 

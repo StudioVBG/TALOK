@@ -860,15 +860,20 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                       </div>
                     </div>
                   ) : isSealed && !signedPdfPath ? (
-                    <div className="flex flex-col h-full">
-                      <div className="flex items-center justify-between px-4 py-3 border-b bg-amber-50">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 text-amber-600 animate-spin" />
-                          <span className="font-medium text-amber-800">PDF signé en cours de génération</span>
-                        </div>
-                        <span className="text-xs text-amber-600">Aperçu du contrat ci-dessous</span>
+                    <div className="flex flex-col items-center justify-center h-full gap-4 p-8 min-h-[300px]">
+                      <div className="p-3 bg-amber-100 rounded-full">
+                        <Clock className="h-6 w-6 text-amber-600" />
                       </div>
-                      <LeasePreview typeBail={lease.type_bail as any} bailData={bailData} leaseId={leaseId} leaseStatus={lease.statut} />
+                      <div className="text-center space-y-1">
+                        <p className="font-medium text-slate-800">PDF signé en cours de génération</p>
+                        <p className="text-sm text-slate-500 max-w-md">
+                          Le document PDF du bail signé est en cours de préparation. Rafraîchissez la page dans quelques secondes.
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => router.refresh()} className="gap-1.5">
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Rafraîchir
+                      </Button>
                     </div>
                   ) : (
                     <LeasePreview typeBail={lease.type_bail as any} bailData={bailData} leaseId={leaseId} leaseStatus={lease.statut} />

@@ -546,6 +546,41 @@ async function fetchLeaseDetailsFallback(
   (cleanLease as Lease & { has_keys_handed_over?: boolean }).has_keys_handed_over =
     !!confirmedKeyHandover?.confirmed_at;
 
+  // SOTA 2026: Self-healing — rattraper les baux signés dont le PDF n'a jamais été généré
+  const allSignersSigned =
+    signers &&
+    signers.length >= 2 &&
+    signers.every((s) => s.signature_status === "signed");
+
+  const needsSelfHeal =
+    ["fully_signed", "active"].includes(leaseData.statut) &&
+    !leaseData.signed_pdf_path &&
+    allSignersSigned;
+
+  if (needsSelfHeal) {
+    try {
+      const { handleLeaseFullySigned } = await import(
+        "@/lib/services/lease-post-signature.service"
+      );
+      const selfHealResult = await handleLeaseFullySigned(leaseData.id);
+      if (selfHealResult.pdfPath) {
+        (cleanLease as any).signed_pdf_path = selfHealResult.pdfPath;
+        (cleanLease as any).sealed_at = selfHealResult.sealedAt;
+        console.log(
+          "[fetchLeaseDetails] Self-heal réussi pour bail:",
+          leaseData.id,
+          "PDF:",
+          selfHealResult.pdfPath
+        );
+      }
+    } catch (selfHealErr) {
+      console.warn(
+        "[fetchLeaseDetails] Self-heal échoué (non bloquant):",
+        String(selfHealErr)
+      );
+    }
+  }
+
   type SignerWithProfile = LeaseSignerRow & {
     profiles?: ProfileRow | ProfileRow[] | null;
   };

@@ -529,13 +529,13 @@ export function deriveLeaseReadinessState(
       status:
         contractState === "available"
           ? "available"
-          : contractState === "pending_workflow"
-            ? "pending_workflow"
-            : "missing",
+          : "pending_workflow",
       description:
         contractState === "available"
           ? "Le contrat principal est disponible dans le workflow du bail."
-          : "Le contrat PDF final sera généré une fois la signature terminée.",
+          : contractState === "missing"
+            ? "Le document PDF du contrat signé n'a pas encore été généré."
+            : "Le contrat PDF final sera généré une fois la signature terminée.",
       storagePath: lease.signed_pdf_path ?? undefined,
       source: "workflow",
     },
