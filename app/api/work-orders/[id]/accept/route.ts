@@ -3,7 +3,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
-import { sendTicketUpdateNotification } from "@/lib/emails";
+import { sendTicketUpdateNotification } from "@/lib/services/email-service";
 
 /**
  * POST /api/work-orders/[id]/accept

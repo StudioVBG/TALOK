@@ -1,9 +1,9 @@
 /**
  * Module d'emails
  * 
- * Exporte le service d'email et les templates
+ * Exporte les templates uniquement.
+ * Pour envoyer des emails, utilisez @/lib/services/email-service.
  */
 
-export * from './resend.service';
 export * from './templates';
 

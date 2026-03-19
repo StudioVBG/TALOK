@@ -5,25 +5,15 @@
  * avec des templates professionnels
  */
 
-import { emailService } from "@/lib/emails";
+import { emailService, sendEmail, sendPaymentConfirmation, sendTicketUpdateNotification, sendWelcomeEmail } from "@/lib/services/email-service";
 
-// Ré-exporter toutes les fonctions du service email
 export {
   sendEmail,
-  sendInvoiceNotification,
   sendPaymentConfirmation,
-  sendPaymentReminder,
-  sendNewTicketNotification,
   sendTicketUpdateNotification,
-  sendSignatureRequest,
-  sendLeaseSignedNotification,
-  sendPropertyInvitation,
   sendWelcomeEmail,
-  sendPasswordResetEmail,
-} from "@/lib/emails";
-
-// Export par défaut du service complet
-export { emailService };
+  emailService,
+};
 
 // Types exportés
 export interface EmailData {

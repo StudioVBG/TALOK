@@ -13,6 +13,7 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sepaPrenotification as sepaTemplate } from "../_shared/email-templates.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -34,7 +35,8 @@ function normalizeResendFromAddress(fromAddress: string): string {
 
   if (!normalized.includes("<") && !normalized.includes(">")) {
     if (/@(gmail|hotmail|outlook|yahoo)\./i.test(normalized)) {
-      return "Talok <onboarding@resend.dev>";
+      console.warn(`[SEPA] Consumer mailbox detected (${normalized}), using default from`);
+      return "Talok <noreply@talok.fr>";
     }
 
     return `Talok <${normalized}>`;
@@ -147,6 +149,15 @@ Deno.serve(async () => {
         const maskedIban = `${mandate.debtor_iban.slice(0, 4)} •••• •••• ${mandate.debtor_iban.slice(-4)}`;
 
         if (RESEND_API_KEY) {
+          const emailHtml = sepaTemplate({
+            tenantName: tenant.prenom,
+            mandateReference: mandate.mandate_reference,
+            amount: mandate.amount.toFixed(2),
+            collectionDate,
+            maskedIban,
+            propertyAddress,
+          });
+
           const emailRes = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {
@@ -162,64 +173,20 @@ Deno.serve(async () => {
                 { name: "type", value: "sepa_prenotification" },
                 { name: "mandate_id", value: mandate.id },
               ],
-              html: `
-                <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
-                  <h2 style="color: #1e293b;">Avis de prélèvement SEPA</h2>
-                  <p>Bonjour ${tenant.prenom},</p>
-                  <p>Conformément à votre mandat SEPA <strong>${mandate.mandate_reference}</strong>, 
-                  un prélèvement sera effectué sur votre compte bancaire :</p>
-                  
-                  <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 20px 0;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                      <tr>
-                        <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Montant</td>
-                        <td style="padding: 8px 0; text-align: right; font-weight: bold; font-size: 18px; color: #1e293b;">${mandate.amount.toFixed(2)} €</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Date de prélèvement</td>
-                        <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #1e293b;">${collectionDate}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Compte débité</td>
-                        <td style="padding: 8px 0; text-align: right; font-family: monospace; color: #1e293b;">${maskedIban}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Logement</td>
-                        <td style="padding: 8px 0; text-align: right; color: #1e293b;">${propertyAddress}</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Réf. mandat</td>
-                        <td style="padding: 8px 0; text-align: right; font-family: monospace; color: #64748b; font-size: 12px;">${mandate.mandate_reference}</td>
-                      </tr>
-                    </table>
-                  </div>
-
-                  <p style="font-size: 14px; color: #475569;">
-                    Assurez-vous que votre compte dispose des fonds nécessaires à cette date.
-                    En cas de question ou de contestation, vous disposez d'un droit de remboursement 
-                    de <strong>8 semaines</strong> après le prélèvement (mandat SEPA Core).
-                  </p>
-
-                  <a href="${APP_URL}/tenant/settings/payments" 
-                     style="display: inline-block; padding: 12px 24px; background: #4f46e5; color: white; 
-                            text-decoration: none; border-radius: 8px; font-weight: 600; margin-top: 12px;">
-                    Gérer mes moyens de paiement
-                  </a>
-
-                  <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-                  <p style="font-size: 12px; color: #94a3b8;">
-                    Cet email est envoyé conformément à la réglementation SEPA (notification D-14 minimum).
-                    Identifiant créancier : Talok SAS.
-                  </p>
-                </div>
-              `,
+              html: emailHtml,
             }),
           });
 
           if (!emailRes.ok) {
             const errBody = await emailRes.text();
             console.error(`[SEPA] Resend error ${emailRes.status}: ${errBody}`);
+            failed++;
+            continue;
           }
+        } else {
+          console.warn(`[SEPA] RESEND_API_KEY absent, email non envoyé pour ${tenant.email}`);
+          failed++;
+          continue;
         }
 
         // In-app notification
@@ -233,7 +200,7 @@ Deno.serve(async () => {
           });
         }
 
-        // Update mandate
+        // Update mandate only after successful email
         await supabase
           .from("sepa_mandates")
           .update({ last_prenotification_sent_at: new Date().toISOString() })

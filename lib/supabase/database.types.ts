@@ -132,6 +132,12 @@ export type PropertyRow = {
   local_alarme?: boolean
   // Soft delete
   deleted_at?: string | null
+  deleted_by?: string | null
+  // Colonnes complémentaires SOTA 2026
+  complement_adresse?: string | null
+  surface_carrez?: number | null
+  has_local_velo?: boolean
+  has_local_poubelles?: boolean
   // Missing columns discovered by type-level query parser
   rental_status?: string | null
   nom?: string | null

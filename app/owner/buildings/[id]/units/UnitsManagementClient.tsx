@@ -29,11 +29,22 @@ import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link";
 import type { BuildingUnitRow, BuildingUnitType, BuildingUnitTemplate } from "@/lib/supabase/database.types";
 
+interface BuildingMeta {
+  floors?: number;
+  has_ascenseur?: boolean;
+  has_gardien?: boolean;
+  has_interphone?: boolean;
+  has_digicode?: boolean;
+  has_local_velo?: boolean;
+  has_local_poubelles?: boolean;
+}
+
 interface UnitsManagementClientProps {
-  buildingId: string;
+  propertyId: string;
   buildingName: string;
   buildingCity: string;
   existingUnits: Partial<BuildingUnitRow>[];
+  buildingMeta?: BuildingMeta | null;
 }
 
 interface UnitDraft {
@@ -86,10 +97,11 @@ function createEmptyUnit(): UnitDraft {
 }
 
 export function UnitsManagementClient({
-  buildingId,
+  propertyId,
   buildingName,
   buildingCity,
   existingUnits,
+  buildingMeta,
 }: UnitsManagementClientProps) {
   const { toast } = useToast();
   const [units, setUnits] = useState<UnitDraft[]>(() =>
@@ -134,19 +146,36 @@ export function UnitsManagementClient({
 
     setIsSaving(true);
     try {
-      const response = await fetch(`/api/buildings/${buildingId}/units`, {
-        method: "PUT",
+      const response = await fetch(`/api/properties/${propertyId}/building-units`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ units }),
+        body: JSON.stringify({
+          ...buildingMeta,
+          units: units.map(u => ({
+            floor: u.floor,
+            position: u.position,
+            type: u.type,
+            template: u.template,
+            surface: u.surface,
+            nb_pieces: u.nb_pieces,
+            loyer_hc: u.loyer_hc,
+            charges: u.charges,
+            depot_garantie: u.depot_garantie,
+          })),
+        }),
       });
 
       if (!response.ok) {
-        throw new Error("Erreur lors de la sauvegarde");
+        const err = await response.json().catch(() => null);
+        throw new Error(err?.error || "Erreur lors de la sauvegarde");
       }
 
       toast({ title: "Lots enregistrés avec succès" });
     } catch (error) {
-      toast({ title: "Erreur lors de la sauvegarde des lots", variant: "destructive" });
+      toast({
+        title: error instanceof Error ? error.message : "Erreur lors de la sauvegarde des lots",
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -156,7 +185,7 @@ export function UnitsManagementClient({
     <div className="container mx-auto py-8 px-4 max-w-4xl">
       {/* Back Button */}
       <Button variant="ghost" asChild className="mb-6">
-        <Link href={`/owner/buildings/${buildingId}`}>
+        <Link href={`/owner/buildings/${propertyId}`}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Retour à l'immeuble
         </Link>

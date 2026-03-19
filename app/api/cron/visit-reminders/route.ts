@@ -149,8 +149,7 @@ export async function GET(request: Request) {
       // Send 24h reminder (between 23-25 hours before)
       if (!booking.reminder_24h_sent && hoursUntilVisit <= 25 && hoursUntilVisit >= 23) {
         try {
-          // Send to tenant
-          await sendVisitReminder({
+          const tenantResult = await sendVisitReminder({
             recipientEmail: booking.tenant_email,
             recipientName: booking.tenant_name,
             propertyAddress,
@@ -163,8 +162,11 @@ export async function GET(request: Request) {
             bookingId: booking.id,
           });
 
-          // Send to owner
-          await sendVisitReminder({
+          if (!tenantResult.success) {
+            console.error(`[Visit Reminders] 24h tenant email failed for ${booking.id}:`, tenantResult.error);
+          }
+
+          const ownerResult = await sendVisitReminder({
             recipientEmail: owner.email,
             recipientName: owner.full_name,
             propertyAddress,
@@ -177,13 +179,18 @@ export async function GET(request: Request) {
             bookingId: booking.id,
           });
 
-          // Mark as sent
-          await supabase
-            .from("visit_bookings")
-            .update({ reminder_24h_sent: true })
-            .eq("id", booking.id);
+          if (!ownerResult.success) {
+            console.error(`[Visit Reminders] 24h owner email failed for ${booking.id}:`, ownerResult.error);
+          }
 
-          results.reminders_24h_sent++;
+          if (tenantResult.success || ownerResult.success) {
+            await supabase
+              .from("visit_bookings")
+              .update({ reminder_24h_sent: true })
+              .eq("id", booking.id);
+
+            results.reminders_24h_sent++;
+          }
         } catch (err: any) {
           results.errors.push(`24h reminder for ${booking.id}: ${err.message}`);
         }
@@ -192,8 +199,7 @@ export async function GET(request: Request) {
       // Send 1h reminder (between 0.5-1.5 hours before)
       if (!booking.reminder_1h_sent && hoursUntilVisit <= 1.5 && hoursUntilVisit >= 0.5) {
         try {
-          // Send to tenant
-          await sendVisitReminder({
+          const tenantResult = await sendVisitReminder({
             recipientEmail: booking.tenant_email,
             recipientName: booking.tenant_name,
             propertyAddress,
@@ -206,8 +212,11 @@ export async function GET(request: Request) {
             bookingId: booking.id,
           });
 
-          // Send to owner
-          await sendVisitReminder({
+          if (!tenantResult.success) {
+            console.error(`[Visit Reminders] 1h tenant email failed for ${booking.id}:`, tenantResult.error);
+          }
+
+          const ownerResult = await sendVisitReminder({
             recipientEmail: owner.email,
             recipientName: owner.full_name,
             propertyAddress,
@@ -220,13 +229,18 @@ export async function GET(request: Request) {
             bookingId: booking.id,
           });
 
-          // Mark as sent
-          await supabase
-            .from("visit_bookings")
-            .update({ reminder_1h_sent: true })
-            .eq("id", booking.id);
+          if (!ownerResult.success) {
+            console.error(`[Visit Reminders] 1h owner email failed for ${booking.id}:`, ownerResult.error);
+          }
 
-          results.reminders_1h_sent++;
+          if (tenantResult.success || ownerResult.success) {
+            await supabase
+              .from("visit_bookings")
+              .update({ reminder_1h_sent: true })
+              .eq("id", booking.id);
+
+            results.reminders_1h_sent++;
+          }
         } catch (err: any) {
           results.errors.push(`1h reminder for ${booking.id}: ${err.message}`);
         }

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { propertiesService } from '../services/properties.service';
+import { propertiesService, type RoomPayload } from '../services/properties.service';
 import { toast } from '@/components/ui/use-toast';
 import type { Property, Room, Photo } from '@/lib/types';
 import type { PropertyTypeV3 } from '@/lib/types/property-v3';
@@ -351,7 +351,7 @@ export const usePropertyWizardStore = create<WizardState>()(
       console.error('[WizardStore] Erreur création draft:', error);
 
       // Détecter erreur de limite d'abonnement (403 SUBSCRIPTION_LIMIT)
-      const errorData = (error as any)?.data;
+      const errorData = (error as { data?: { error?: string; message?: string } })?.data;
       const isSubscriptionLimit = errorData?.error === "SUBSCRIPTION_LIMIT"
         || (error instanceof Error && error.message === "SUBSCRIPTION_LIMIT");
 
@@ -452,12 +452,11 @@ export const usePropertyWizardStore = create<WizardState>()(
       currentDebounce.timer = null;
 
       try {
-        await propertiesService.updatePropertyGeneral(capturedPropertyId, updatesToSend as any);
-        // Vérifier qu'on est toujours sur le même propertyId avant de mettre à jour le status
+        await propertiesService.updatePropertyGeneral(capturedPropertyId, updatesToSend as Partial<WizardFormData>);
         if (get().propertyId === capturedPropertyId) {
           set({ syncStatus: 'saved' });
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('[WizardStore] Erreur sauvegarde:', err);
         if (get().propertyId === capturedPropertyId) {
           const errorMessage = "Erreur sauvegarde";
@@ -488,7 +487,7 @@ export const usePropertyWizardStore = create<WizardState>()(
     const { formData } = get();
     if (propertyId) {
       propertiesService.createRoom(propertyId, {
-        type_piece: roomData.type_piece as any,
+        type_piece: roomData.type_piece,
         label_affiche: roomData.label_affiche || "Nouvelle pièce",
         chauffage_present: roomData.chauffage_present ?? true,
         clim_presente: roomData.clim_presente ?? false,
@@ -535,7 +534,7 @@ export const usePropertyWizardStore = create<WizardState>()(
 
     // Sync serveur seulement si pièce synchronisée
     if (propertyId && !isTemporary) {
-      propertiesService.updateRoom(propertyId, id, updates as any)
+      propertiesService.updateRoom(propertyId, id, updates as Partial<RoomPayload>)
         .then(() => set({ syncStatus: 'saved' }))
         .catch(() => {
           const errorMessage = "Erreur mise à jour pièce";

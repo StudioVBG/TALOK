@@ -4,6 +4,16 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  signatureEmail as signatureEmailTemplate,
+  legislationUpdate as legislationTemplate,
+  paymentReminder as paymentReminderTemplate,
+  overdueAlert as overdueAlertTemplate,
+  visitBookingRequest as visitBookingRequestTemplate,
+  visitBookingConfirmed as visitBookingConfirmedTemplate,
+  visitBookingCancelled as visitBookingCancelledTemplate,
+  visitFeedbackRequest as visitFeedbackRequestTemplate,
+} from "../_shared/email-templates.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -675,7 +685,6 @@ async function handleLegislationUpdate(supabase: any, payload: any) {
     return;
   }
 
-  // Préparer le contenu de l'email
   const emailSubject = is_owner
     ? `📋 Mise à jour législative ${version} - Action requise pour votre bail`
     : `📋 Mise à jour législative ${version} - Information concernant votre location`;
@@ -684,66 +693,28 @@ async function handleLegislationUpdate(supabase: any, payload: any) {
     ?.map((c: any) => `<li><strong>${c.field}</strong>: ${c.description}</li>`)
     .join("") || "<li>Mise à jour des clauses légales</li>";
 
-  const emailBody = `
-    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #1e293b;">Bonjour ${user_name || ""},</h2>
-      
-      <p>Une mise à jour législative <strong>(${version})</strong> concerne ${
-        is_owner ? "un de vos baux" : "votre bail de location"
-      }.</p>
-      
-      <div style="background: #f8fafc; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0;">
-        <h3 style="margin-top: 0; color: #92400e;">Changements apportés</h3>
-        <p>${description || "Mise à jour conforme aux derniers décrets en vigueur."}</p>
-        <ul style="color: #475569;">
-          ${changesHtml}
-        </ul>
-      </div>
-
-      ${is_owner ? `
-        <div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin: 20px 0;">
-          <p style="margin: 0; color: #92400e;">
-            <strong>⚠️ Action requise :</strong> Ces modifications seront appliquées automatiquement lors du prochain renouvellement de bail. 
-            Vous pouvez consulter les détails dans votre espace propriétaire.
-          </p>
-        </div>
-      ` : `
-        <p style="color: #64748b;">
-          Ces modifications seront appliquées lors du prochain renouvellement de votre bail. 
-          Votre propriétaire a été informé de ces changements.
-        </p>
-      `}
-
-      <p style="margin-top: 30px;">
-        <a href="${Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr"}/leases/${lease_id}" 
-           style="background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; display: inline-block;">
-          Voir les détails du bail
-        </a>
-      </p>
-
-      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
-      
-      <p style="color: #94a3b8; font-size: 12px;">
-        Vous recevez cet email car vous êtes ${is_owner ? "propriétaire" : "locataire"} d'un bien géré via notre plateforme.
-        <br />
-        Pour modifier vos préférences de notification, rendez-vous dans les paramètres de votre compte.
-      </p>
-    </div>
-  `;
+  const emailBody = legislationTemplate({
+    userName: user_name || "",
+    isOwner: is_owner,
+    version,
+    description: description || "Mise à jour conforme aux derniers décrets en vigueur.",
+    changesHtml,
+    leaseId: lease_id,
+  });
 
   // Si l'utilisateur accepte les emails, envoyer
   const shouldSendEmail = settings?.email_enabled !== false;
 
   if (shouldSendEmail && userEmail) {
-    // Appeler le service d'envoi d'email
-    const emailServiceUrl = Deno.env.get("EMAIL_SERVICE_URL");
-    
-    await sendOutboxEmail({
+    const emailSent = await sendOutboxEmail({
       to: userEmail,
       subject: emailSubject,
       html: emailBody,
       tags: [{ name: "type", value: "legislation_update" }],
     });
+    if (!emailSent) {
+      console.error(`[Legislation] Échec envoi email à ${userEmail}`);
+    }
   }
 
   // Log dans audit_log pour traçabilité
@@ -987,54 +958,24 @@ async function sendSignatureEmail(supabase: any, params: {
       .single();
 
     const userName = profile?.prenom || "Bonjour";
-    const appUrl = Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr";
 
-    const emailHtml = `
-      <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
-        <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 40px 30px; text-align: center;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">Talok</h1>
-          <p style="color: #94a3b8; margin: 8px 0 0; font-size: 14px;">Gestion locative simplifiée</p>
-        </div>
-        
-        <div style="padding: 40px 30px;">
-          <h2 style="color: #1e293b; margin: 0 0 20px; font-size: 22px; font-weight: 600;">
-            ${params.subject}
-          </h2>
-          
-          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-            ${userName},
-          </p>
-          
-          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 32px;">
-            ${params.message}
-          </p>
-          
-          <div style="text-align: center; margin: 32px 0;">
-            <a href="${appUrl}${params.cta_url}" 
-               style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); 
-                      color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; 
-                      font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);">
-              ${params.cta_label}
-            </a>
-          </div>
-        </div>
-        
-        <div style="background: #f8fafc; padding: 24px 30px; border-top: 1px solid #e2e8f0;">
-          <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
-            Vous recevez cet email car vous avez un compte sur Talok.
-            <br />
-            <a href="${appUrl}/settings/notifications" style="color: #64748b;">Gérer mes préférences</a>
-          </p>
-        </div>
-      </div>
-    `;
+    const emailHtml = signatureEmailTemplate({
+      userName,
+      subject: params.subject,
+      message: params.message,
+      ctaLabel: params.cta_label,
+      ctaUrl: params.cta_url,
+    });
 
-    await sendOutboxEmail({
+    const emailSent = await sendOutboxEmail({
       to: userEmail,
       subject: params.subject,
       html: emailHtml,
-      tags: [{ name: "type", value: params.type || "outbox_email" }],
+      tags: [{ name: "type", value: "signature_request" }],
     });
+    if (!emailSent) {
+      console.error(`[Email] Échec envoi signature email à ${userEmail}`);
+    }
   } catch (error) {
     console.error(`[Email] Erreur envoi:`, error);
   }
@@ -1058,85 +999,37 @@ async function sendPaymentReminderEmail(supabase: any, payload: any) {
     .single();
 
   const userName = profile?.prenom || "Bonjour";
-  const appUrl = Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr";
 
-  // Style de l'email selon le niveau de relance
-  const levelStyles: Record<string, { color: string; bgColor: string; emoji: string }> = {
-    friendly: { color: "#3b82f6", bgColor: "#eff6ff", emoji: "📅" },
-    reminder: { color: "#f59e0b", bgColor: "#fffbeb", emoji: "⏰" },
-    urgent: { color: "#ef4444", bgColor: "#fef2f2", emoji: "⚠️" },
-    final: { color: "#dc2626", bgColor: "#fee2e2", emoji: "🚨" },
+  const emailHtml = paymentReminderTemplate({
+    userName,
+    montantTotal: String(montant_total),
+    periode,
+    propertyAddress: property_address,
+    daysOverdue: days_overdue,
+    reminderLevel: reminder_level,
+    reminderSubject: payload.reminder_subject || "Rappel de paiement",
+  });
+
+  const levelEmojis: Record<string, string> = {
+    friendly: "📅",
+    reminder: "⏰",
+    urgent: "⚠️",
+    final: "🚨",
   };
+  const emoji = levelEmojis[reminder_level] || "⏰";
 
-  const style = levelStyles[reminder_level] || levelStyles.reminder;
-
-  const emailHtml = `
-    <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
-      <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 40px 30px; text-align: center;">
-        <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Talok</h1>
-      </div>
-      
-      <div style="padding: 40px 30px;">
-        <div style="background: ${style.bgColor}; border-left: 4px solid ${style.color}; padding: 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
-          <h2 style="color: ${style.color}; margin: 0 0 8px; font-size: 20px;">
-            ${style.emoji} ${payload.reminder_subject || "Rappel de paiement"}
-          </h2>
-          <p style="color: #475569; margin: 0; font-size: 14px;">
-            ${days_overdue} jours depuis l'émission de la facture
-          </p>
-        </div>
-        
-        <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-          ${userName},
-        </p>
-        
-        <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-          Nous n'avons pas encore reçu votre paiement de loyer pour <strong>${property_address}</strong> (${periode}).
-        </p>
-        
-        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
-          <p style="color: #64748b; margin: 0 0 8px; font-size: 14px;">Montant dû</p>
-          <p style="color: #1e293b; margin: 0; font-size: 32px; font-weight: 700;">${montant_total}€</p>
-        </div>
-        
-        ${reminder_level === "urgent" || reminder_level === "final" ? `
-          <div style="background: #fee2e2; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-            <p style="color: #dc2626; margin: 0; font-size: 14px;">
-              <strong>⚠️ Important :</strong> Un retard prolongé peut entraîner des frais supplémentaires et affecter votre relation avec votre propriétaire.
-            </p>
-          </div>
-        ` : ""}
-        
-        <div style="text-align: center; margin: 32px 0;">
-          <a href="${appUrl}/tenant/payments"
-             style="display: inline-block; background: ${style.color}; color: #ffffff; text-decoration: none; 
-                    padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
-            Payer maintenant
-          </a>
-        </div>
-        
-        <p style="color: #94a3b8; font-size: 14px; text-align: center;">
-          Si vous avez déjà effectué le paiement, ignorez ce message.
-        </p>
-      </div>
-      
-      <div style="background: #f8fafc; padding: 24px 30px; border-top: 1px solid #e2e8f0;">
-        <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
-          Besoin d'aide ? <a href="${appUrl}/help" style="color: #3b82f6;">Contactez le support</a>
-        </p>
-      </div>
-    </div>
-  `;
-
-  await sendOutboxEmail({
+  const emailSent = await sendOutboxEmail({
     to: userEmail,
-    subject: `${style.emoji} ${payload.reminder_subject} - ${montant_total}€`,
+    subject: `${emoji} ${payload.reminder_subject} - ${montant_total}€`,
     html: emailHtml,
     tags: [
       { name: "type", value: "payment_reminder" },
       { name: "level", value: reminder_level },
     ],
   });
+  if (!emailSent) {
+    console.error(`[PaymentReminder] Échec envoi relance à ${userEmail}`);
+  }
 }
 
 /**
@@ -1156,64 +1049,17 @@ async function sendOverdueAlertEmail(supabase: any, payload: any) {
     .single();
 
   const userName = profile?.prenom || "Bonjour";
-  const appUrl = Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr";
 
-  const emailHtml = `
-    <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
-      <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 40px 30px; text-align: center;">
-        <h1 style="color: #ffffff; margin: 0; font-size: 24px;">🚨 Alerte Impayé</h1>
-      </div>
-      
-      <div style="padding: 40px 30px;">
-        <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-          ${userName},
-        </p>
-        
-        <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
-          <p style="color: #dc2626; margin: 0 0 8px; font-size: 16px; font-weight: 600;">
-            Impayé détecté - ${days_overdue} jours de retard
-          </p>
-          <p style="color: #7f1d1d; margin: 0;">
-            <strong>${tenant_name}</strong> n'a pas réglé son loyer pour <strong>${property_address}</strong> (${periode}).
-          </p>
-        </div>
-        
-        <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 24px; display: flex; justify-content: space-between;">
-          <div>
-            <p style="color: #64748b; margin: 0 0 4px; font-size: 14px;">Montant impayé</p>
-            <p style="color: #dc2626; margin: 0; font-size: 28px; font-weight: 700;">${montant_total}€</p>
-          </div>
-          <div style="text-align: right;">
-            <p style="color: #64748b; margin: 0 0 4px; font-size: 14px;">Jours de retard</p>
-            <p style="color: #ef4444; margin: 0; font-size: 28px; font-weight: 700;">${days_overdue}</p>
-          </div>
-        </div>
-        
-        <h3 style="color: #1e293b; margin: 24px 0 12px; font-size: 16px;">Actions recommandées :</h3>
-        <ul style="color: #475569; margin: 0 0 24px; padding-left: 20px; line-height: 1.8;">
-          <li>Contactez votre locataire pour comprendre la situation</li>
-          <li>Vérifiez si un problème technique empêche le paiement</li>
-          <li>Envisagez une relance amiable avant toute procédure</li>
-        </ul>
-        
-        <div style="text-align: center; margin: 32px 0;">
-          <a href="${appUrl}/owner/money?filter=late" 
-             style="display: inline-block; background: #dc2626; color: #ffffff; text-decoration: none; 
-                    padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
-            Voir les impayés
-          </a>
-        </div>
-      </div>
-      
-      <div style="background: #f8fafc; padding: 24px 30px; border-top: 1px solid #e2e8f0;">
-        <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
-          Des relances automatiques sont envoyées à votre locataire.
-        </p>
-      </div>
-    </div>
-  `;
+  const emailHtml = overdueAlertTemplate({
+    userName,
+    tenantName: tenant_name,
+    montantTotal: String(montant_total),
+    periode,
+    propertyAddress: property_address,
+    daysOverdue: days_overdue,
+  });
 
-  await sendOutboxEmail({
+  const emailSent = await sendOutboxEmail({
     to: userEmail,
     subject: `🚨 Impayé: ${tenant_name} - ${montant_total}€ (${days_overdue}j)`,
     html: emailHtml,
@@ -1222,6 +1068,9 @@ async function sendOverdueAlertEmail(supabase: any, payload: any) {
       { name: "days_overdue", value: String(days_overdue) },
     ],
   });
+  if (!emailSent) {
+    console.error(`[OverdueAlert] Échec envoi alerte à ${userEmail}`);
+  }
 }
 
 async function calculateAndStoreAge(supabase: any, applicationId: string, birthdate: string) {
@@ -1315,7 +1164,6 @@ async function generateReceiptAutomatically(supabase: any, invoiceId: string, pa
  * Envoie un email lié aux réservations de visite
  */
 async function sendVisitBookingEmail(supabase: any, params: any) {
-  const appUrl = Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr";
   const emailServiceUrl = Deno.env.get("EMAIL_SERVICE_URL");
 
   if (!emailServiceUrl) {
@@ -1329,7 +1177,6 @@ async function sendVisitBookingEmail(supabase: any, params: any) {
   let emailHtml: string = "";
 
   if (params.type === "request") {
-    // Email au propriétaire pour nouvelle demande
     const { data: authUser } = await supabase.auth.admin.getUserById(params.owner_user_id);
     recipientEmail = authUser?.user?.email;
 
@@ -1340,71 +1187,16 @@ async function sendVisitBookingEmail(supabase: any, params: any) {
       .single();
 
     recipientName = profile?.prenom || "Bonjour";
-
     emailSubject = `📋 Nouvelle demande de visite - ${params.property_address}`;
-    emailHtml = `
-      <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
-        <div style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); padding: 40px 30px; text-align: center;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Nouvelle demande de visite</h1>
-        </div>
-
-        <div style="padding: 40px 30px;">
-          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-            ${recipientName},
-          </p>
-
-          <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
-            <p style="color: #1e40af; margin: 0 0 8px; font-size: 16px; font-weight: 600;">
-              ${params.tenant_name} souhaite visiter votre bien
-            </p>
-            <p style="color: #3b82f6; margin: 0;">
-              ${params.property_address}
-            </p>
-          </div>
-
-          <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
-            <div style="display: flex; gap: 24px;">
-              <div>
-                <p style="color: #64748b; margin: 0 0 4px; font-size: 14px;">📅 Date</p>
-                <p style="color: #1e293b; margin: 0; font-size: 16px; font-weight: 600;">${params.visit_date}</p>
-              </div>
-              <div>
-                <p style="color: #64748b; margin: 0 0 4px; font-size: 14px;">🕐 Horaire</p>
-                <p style="color: #1e293b; margin: 0; font-size: 16px; font-weight: 600;">${params.visit_time}</p>
-              </div>
-            </div>
-          </div>
-
-          ${params.tenant_message ? `
-            <div style="background: #f1f5f9; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-              <p style="color: #64748b; margin: 0 0 8px; font-size: 12px; text-transform: uppercase;">Message du candidat</p>
-              <p style="color: #475569; margin: 0; font-size: 14px; font-style: italic;">"${params.tenant_message}"</p>
-            </div>
-          ` : ""}
-
-          <div style="text-align: center; margin: 32px 0;">
-            <a href="${appUrl}/owner/visits"
-               style="display: inline-block; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); color: #ffffff;
-                      text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; margin-right: 12px;">
-              Confirmer
-            </a>
-            <a href="${appUrl}/owner/visits"
-               style="display: inline-block; background: #f1f5f9; color: #64748b;
-                      text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
-              Voir les détails
-            </a>
-          </div>
-        </div>
-
-        <div style="background: #f8fafc; padding: 24px 30px; border-top: 1px solid #e2e8f0;">
-          <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
-            Répondez rapidement pour ne pas perdre ce candidat potentiel !
-          </p>
-        </div>
-      </div>
-    `;
+    emailHtml = visitBookingRequestTemplate({
+      recipientName,
+      tenantName: params.tenant_name,
+      propertyAddress: params.property_address,
+      visitDate: params.visit_date,
+      visitTime: params.visit_time,
+      tenantMessage: params.tenant_message,
+    });
   } else if (params.type === "confirmed") {
-    // Email au locataire pour confirmation
     const { data: authUser } = await supabase.auth.admin.getUserById(params.tenant_user_id);
     recipientEmail = authUser?.user?.email;
 
@@ -1415,61 +1207,17 @@ async function sendVisitBookingEmail(supabase: any, params: any) {
       .single();
 
     recipientName = profile?.prenom || "Bonjour";
-
     emailSubject = `✅ Visite confirmée - ${params.property_address}`;
-    emailHtml = `
-      <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
-        <div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 40px 30px; text-align: center;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 24px;">✅ Visite confirmée !</h1>
-        </div>
-
-        <div style="padding: 40px 30px;">
-          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-            ${recipientName},
-          </p>
-
-          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-            Bonne nouvelle ! Votre demande de visite a été acceptée.
-          </p>
-
-          <div style="background: #f0fdf4; border: 2px solid #22c55e; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
-            <h3 style="color: #166534; margin: 0 0 16px; font-size: 18px;">📍 ${params.property_address}</h3>
-            <div style="display: flex; gap: 24px;">
-              <div>
-                <p style="color: #64748b; margin: 0 0 4px; font-size: 14px;">📅 Date</p>
-                <p style="color: #1e293b; margin: 0; font-size: 18px; font-weight: 600;">${params.visit_date}</p>
-              </div>
-              <div>
-                <p style="color: #64748b; margin: 0 0 4px; font-size: 14px;">🕐 Horaire</p>
-                <p style="color: #1e293b; margin: 0; font-size: 18px; font-weight: 600;">${params.visit_time}</p>
-              </div>
-            </div>
-          </div>
-
-          <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
-            <p style="color: #64748b; margin: 0 0 8px; font-size: 14px;">Contact propriétaire</p>
-            <p style="color: #1e293b; margin: 0; font-size: 16px; font-weight: 600;">${params.owner_name}</p>
-            ${params.owner_phone ? `<p style="color: #3b82f6; margin: 8px 0 0; font-size: 14px;">📞 ${params.owner_phone}</p>` : ""}
-          </div>
-
-          <div style="text-align: center; margin: 32px 0;">
-            <a href="${appUrl}/tenant/visits/${params.booking_id}"
-               style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #ffffff;
-                      text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
-              Voir ma visite
-            </a>
-          </div>
-
-          <div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin-top: 24px;">
-            <p style="color: #92400e; margin: 0; font-size: 14px;">
-              💡 <strong>Conseil :</strong> Préparez vos questions sur le logement et n'oubliez pas d'arriver à l'heure !
-            </p>
-          </div>
-        </div>
-      </div>
-    `;
+    emailHtml = visitBookingConfirmedTemplate({
+      recipientName,
+      propertyAddress: params.property_address,
+      visitDate: params.visit_date,
+      visitTime: params.visit_time,
+      ownerName: params.owner_name,
+      ownerPhone: params.owner_phone,
+      bookingId: params.booking_id,
+    });
   } else if (params.type === "cancelled") {
-    // Email au locataire pour annulation
     const { data: authUser } = await supabase.auth.admin.getUserById(params.tenant_user_id);
     recipientEmail = authUser?.user?.email;
 
@@ -1480,53 +1228,14 @@ async function sendVisitBookingEmail(supabase: any, params: any) {
       .single();
 
     recipientName = profile?.prenom || "Bonjour";
-
     emailSubject = `❌ Visite annulée - ${params.property_address}`;
-    emailHtml = `
-      <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
-        <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 40px 30px; text-align: center;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Visite annulée</h1>
-        </div>
-
-        <div style="padding: 40px 30px;">
-          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-            ${recipientName},
-          </p>
-
-          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-            Nous sommes désolés, la visite prévue a été annulée par le propriétaire.
-          </p>
-
-          <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
-            <p style="color: #991b1b; margin: 0 0 8px; font-size: 16px; font-weight: 600;">
-              ${params.property_address}
-            </p>
-            <p style="color: #dc2626; margin: 0;">
-              ${params.visit_date} à ${params.visit_time}
-            </p>
-          </div>
-
-          ${params.cancellation_reason ? `
-            <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-              <p style="color: #64748b; margin: 0 0 8px; font-size: 12px; text-transform: uppercase;">Raison</p>
-              <p style="color: #475569; margin: 0; font-size: 14px;">${params.cancellation_reason}</p>
-            </div>
-          ` : ""}
-
-          <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-            Ne vous découragez pas ! Continuez à chercher le logement idéal.
-          </p>
-
-          <div style="text-align: center; margin: 32px 0;">
-            <a href="${appUrl}/search"
-               style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: #ffffff;
-                      text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
-              Rechercher d'autres logements
-            </a>
-          </div>
-        </div>
-      </div>
-    `;
+    emailHtml = visitBookingCancelledTemplate({
+      recipientName,
+      propertyAddress: params.property_address,
+      visitDate: params.visit_date,
+      visitTime: params.visit_time,
+      cancellationReason: params.cancellation_reason,
+    });
   }
 
   if (!recipientEmail) {
@@ -1534,7 +1243,7 @@ async function sendVisitBookingEmail(supabase: any, params: any) {
     return;
   }
 
-  await sendOutboxEmail({
+  const emailSent = await sendOutboxEmail({
     to: recipientEmail,
     subject: emailSubject,
     html: emailHtml,
@@ -1542,13 +1251,15 @@ async function sendVisitBookingEmail(supabase: any, params: any) {
       { name: "type", value: `visit_booking_${params.type}` },
     ],
   });
+  if (!emailSent) {
+    console.error(`[VisitBooking] Échec envoi email ${params.type} à ${recipientEmail}`);
+  }
 }
 
 /**
  * Envoie un email de demande de feedback après visite
  */
 async function sendVisitFeedbackRequestEmail(supabase: any, payload: any) {
-  const appUrl = Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr";
   const emailServiceUrl = Deno.env.get("EMAIL_SERVICE_URL");
 
   if (!emailServiceUrl) return;
@@ -1566,49 +1277,21 @@ async function sendVisitFeedbackRequestEmail(supabase: any, payload: any) {
 
   const recipientName = profile?.prenom || "Bonjour";
 
-  const emailHtml = `
-    <div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
-      <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 40px 30px; text-align: center;">
-        <h1 style="color: #ffffff; margin: 0; font-size: 24px;">⭐ Comment s'est passée la visite ?</h1>
-      </div>
+  const emailHtml = visitFeedbackRequestTemplate({
+    recipientName,
+    propertyAddress: payload.property_address,
+    visitDate: payload.visit_date,
+    bookingId: payload.booking_id,
+  });
 
-      <div style="padding: 40px 30px;">
-        <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-          ${recipientName},
-        </p>
-
-        <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
-          Vous avez visité <strong>${payload.property_address}</strong> le ${payload.visit_date}.
-          Votre avis nous intéresse !
-        </p>
-
-        <div style="background: #f5f3ff; padding: 24px; border-radius: 12px; margin-bottom: 24px; text-align: center;">
-          <p style="color: #6b21a8; margin: 0 0 16px; font-size: 16px;">
-            Partagez votre expérience en 1 minute
-          </p>
-          <div style="font-size: 32px;">⭐⭐⭐⭐⭐</div>
-        </div>
-
-        <div style="text-align: center; margin: 32px 0;">
-          <a href="${appUrl}/tenant/visits/${payload.booking_id}/feedback"
-             style="display: inline-block; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); color: #ffffff;
-                    text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600;">
-            Donner mon avis
-          </a>
-        </div>
-
-        <p style="color: #94a3b8; font-size: 14px; text-align: center;">
-          Votre feedback aide les autres locataires à trouver leur logement idéal.
-        </p>
-      </div>
-    </div>
-  `;
-
-  await sendOutboxEmail({
+  const emailSent = await sendOutboxEmail({
     to: recipientEmail,
     subject: `⭐ Comment s'est passée votre visite ? - ${payload.property_address}`,
     html: emailHtml,
     tags: [{ name: "type", value: "visit_feedback_request" }],
   });
+  if (!emailSent) {
+    console.error(`[VisitFeedback] Échec envoi email feedback à ${recipientEmail}`);
+  }
 }
 

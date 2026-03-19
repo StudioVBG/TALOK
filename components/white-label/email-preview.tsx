@@ -39,7 +39,7 @@ interface EmailPreviewProps {
 // EMAIL TEMPLATES
 // ============================================
 
-const EMAIL_TEMPLATES: Record<EmailTemplate, { name: string; subject: string }> = {
+const EMAIL_PREVIEW_TEMPLATES: Record<EmailTemplate, { name: string; subject: string }> = {
   welcome: { name: "Bienvenue", subject: "Bienvenue sur {{companyName}} !" },
   invoice: { name: "Nouvelle facture", subject: "Votre facture de loyer - {{month}}" },
   payment: { name: "Paiement reçu", subject: "Confirmation de paiement" },
@@ -183,7 +183,7 @@ function generateEmailHTML(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${EMAIL_TEMPLATES[template].subject.replace("{{companyName}}", companyName)}</title>
+  <title>${EMAIL_PREVIEW_TEMPLATES[template].subject.replace("{{companyName}}", companyName)}</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f8fafc;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -243,7 +243,7 @@ export function EmailPreview({ branding, className }: EmailPreviewProps) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(EMAIL_TEMPLATES).map(([key, { name }]) => (
+              {Object.entries(EMAIL_PREVIEW_TEMPLATES).map(([key, { name }]) => (
                 <SelectItem key={key} value={key}>
                   {name}
                 </SelectItem>
@@ -300,7 +300,7 @@ export function EmailPreview({ branding, className }: EmailPreviewProps) {
           <span className="text-slate-400">&lt;{branding.email_from_address || "noreply@talok.fr"}&gt;</span>
         </div>
         <p className="font-medium text-slate-900 mt-1">
-          {EMAIL_TEMPLATES[template].subject
+          {EMAIL_PREVIEW_TEMPLATES[template].subject
             .replace("{{companyName}}", companyName)
             .replace("{{month}}", "Janvier 2026")}
         </p>

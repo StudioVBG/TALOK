@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     // ========================================
 
     const body = await request.json();
-    const { to, subject, html, text, replyTo, cc, bcc } = body;
+    const { to, subject, html, text, replyTo, cc, bcc, tags } = body;
 
     // Validation du contenu
     const contentValidation = validateEmailContent({ to, subject, html, text });
@@ -158,6 +158,7 @@ export async function POST(request: NextRequest) {
       replyTo,
       cc,
       bcc,
+      tags: tags || [{ name: "type", value: "api_send" }],
     });
 
     if (!result.success) {

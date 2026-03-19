@@ -41,6 +41,8 @@ export interface LateInvoice {
   lease_id: string;
   tenant_id: string;
   owner_id: string;
+  tenant_user_id: string;
+  owner_user_id: string;
   periode: string;
   montant_total: number;
   due_date: Date;
@@ -104,6 +106,7 @@ export async function processRentReminders(
           user:user_id (email)
         ),
         owner:owner_id (
+          user_id,
           prenom,
           nom,
           user:user_id (email)
@@ -144,6 +147,8 @@ export async function processRentReminders(
           lease_id: invoice.lease_id,
           tenant_id: invoice.tenant_id,
           owner_id: invoice.owner_id,
+          tenant_user_id: tenantData?.user_id || "",
+          owner_user_id: ownerData?.user_id || "",
           periode: invoice.periode,
           montant_total: invoice.montant_total,
           due_date: dueDate,
@@ -247,40 +252,45 @@ async function sendReminder(
       invoice.montant_total,
       invoice.due_date.toLocaleDateString("fr-FR"),
       `${process.env.NEXT_PUBLIC_APP_URL}/tenant/payments?invoice=${invoice.id}`,
+      `rent-reminder/${invoice.id}/${level}`,
     );
     if (!emailResult.success) {
       console.error(`[Rent Reminder] Email failed for invoice ${invoice.id}:`, emailResult.error);
     }
   }
 
-  // Créer une notification dans la BDD
-  await supabase.from("notifications").insert({
-    user_id: invoice.tenant_id,
-    type: "rent_reminder",
-    title: template.subject,
-    body: `Votre loyer de ${invoice.montant_total}€ pour ${formatPeriode(invoice.periode)} est en retard de ${invoice.days_late} jours.`,
-    priority: template.priority,
-    metadata: {
-      invoice_id: invoice.id,
-      level,
-      amount: invoice.montant_total,
-      days_late: invoice.days_late,
-    },
-  });
+  // Créer une notification dans la BDD (user_id = auth.users.id, pas profile_id)
+  if (invoice.tenant_user_id) {
+    await supabase.from("notifications").insert({
+      user_id: invoice.tenant_user_id,
+      type: "rent_reminder",
+      title: template.subject,
+      body: `Votre loyer de ${invoice.montant_total}€ pour ${formatPeriode(invoice.periode)} est en retard de ${invoice.days_late} jours.`,
+      priority: template.priority,
+      metadata: {
+        invoice_id: invoice.id,
+        level,
+        amount: invoice.montant_total,
+        days_late: invoice.days_late,
+      },
+    });
+  }
 
   // Notifier aussi le propriétaire
-  await supabase.from("notifications").insert({
-    user_id: invoice.owner_id,
-    type: "rent_late_owner",
-    title: `Loyer impayé - ${invoice.tenant.prenom} ${invoice.tenant.nom}`,
-    body: `Le loyer de ${invoice.montant_total}€ pour ${formatPeriode(invoice.periode)} est en retard de ${invoice.days_late} jours.`,
-    priority: template.priority,
-    metadata: {
-      invoice_id: invoice.id,
-      level,
-      tenant_name: `${invoice.tenant.prenom} ${invoice.tenant.nom}`,
-    },
-  });
+  if (invoice.owner_user_id) {
+    await supabase.from("notifications").insert({
+      user_id: invoice.owner_user_id,
+      type: "rent_late_owner",
+      title: `Loyer impayé - ${invoice.tenant.prenom} ${invoice.tenant.nom}`,
+      body: `Le loyer de ${invoice.montant_total}€ pour ${formatPeriode(invoice.periode)} est en retard de ${invoice.days_late} jours.`,
+      priority: template.priority,
+      metadata: {
+        invoice_id: invoice.id,
+        level,
+        tenant_name: `${invoice.tenant.prenom} ${invoice.tenant.nom}`,
+      },
+    });
+  }
 
   // Mettre à jour le statut de la facture si nécessaire
   if (level === "formal_notice" || level === "pre_contentious") {

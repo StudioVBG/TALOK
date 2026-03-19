@@ -50,6 +50,13 @@ export default async function UnitsPage({ params }: PageProps) {
     notFound();
   }
 
+  // Fetch building metadata (from buildings table linked to this property)
+  const { data: buildingRecord } = await supabase
+    .from("buildings")
+    .select("floors, has_ascenseur, has_gardien, has_interphone, has_digicode, has_local_velo, has_local_poubelles")
+    .eq("property_id", id)
+    .single();
+
   // Fetch existing units
   const { data: units } = await supabase
     .from("building_units")
@@ -60,10 +67,19 @@ export default async function UnitsPage({ params }: PageProps) {
 
   return (
     <UnitsManagementClient
-      buildingId={id}
+      propertyId={id}
       buildingName={building.adresse_complete}
       buildingCity={building.ville}
       existingUnits={units || []}
+      buildingMeta={buildingRecord ? {
+        floors: buildingRecord.floors ?? undefined,
+        has_ascenseur: buildingRecord.has_ascenseur ?? undefined,
+        has_gardien: buildingRecord.has_gardien ?? undefined,
+        has_interphone: buildingRecord.has_interphone ?? undefined,
+        has_digicode: buildingRecord.has_digicode ?? undefined,
+        has_local_velo: buildingRecord.has_local_velo ?? undefined,
+        has_local_poubelles: buildingRecord.has_local_poubelles ?? undefined,
+      } : null}
     />
   );
 }

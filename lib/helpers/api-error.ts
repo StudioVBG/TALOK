@@ -8,7 +8,7 @@ export class ApiError extends Error {
   constructor(
     public statusCode: number,
     message: string,
-    public details?: any
+    public details?: unknown
   ) {
     super(message);
     this.name = "ApiError";
@@ -49,7 +49,7 @@ export function handleApiError(error: unknown): NextResponse {
 
   // Erreur Supabase
   if (error && typeof error === "object" && "code" in error) {
-    const supabaseError = error as any;
+    const supabaseError = error as { code: string; message?: string };
     
     // Erreurs de permission RLS
     if (supabaseError.code === "42501" || supabaseError.code === "42P17") {
@@ -132,7 +132,7 @@ export function validateWithZod<T>(schema: z.ZodSchema<T>, data: unknown): T {
 /**
  * Helper pour vérifier l'authentification et retourner une erreur standardisée si non authentifié
  */
-export function requireAuth(user: any): void {
+export function requireAuth(user: { id: string } | null | undefined): void {
   if (!user) {
     throw new ApiError(401, "Non authentifié");
   }
@@ -211,7 +211,8 @@ export function isStripeConfigurationError(error: unknown): boolean {
     message.includes("Invalid API Key") ||
     (error !== null &&
       typeof error === "object" &&
-      (error as any).type === "StripeAuthenticationError")
+      "type" in error &&
+      (error as { type: string }).type === "StripeAuthenticationError")
   );
 }
 

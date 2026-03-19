@@ -148,7 +148,7 @@ export async function POST(request: Request) {
     const { data: invoice } = await serviceClient
       .from("invoices")
       .select(`
-        id, lease_id, montant, due_date, statut,
+        id, lease_id, montant, montant_total, due_date, date_echeance, periode, statut,
         lease:leases(
           id, type_bail, property_id,
           property:properties(adresse_complete, owner_id)
@@ -213,9 +213,9 @@ export async function POST(request: Request) {
       const { emailTemplates } = await import("@/lib/emails/templates");
       const template = emailTemplates.invoiceReminder({
         tenantName: lateInvoice.tenant_name,
-        period: invoice.periode,
-        amount: invoice.montant_total,
-        dueDate: invoice.date_echeance || "",
+        period: invoice.periode || lateInvoice.due_date.slice(0, 7),
+        amount: invoice.montant_total || invoice.montant,
+        dueDate: invoice.date_echeance || invoice.due_date || "",
         reminderLevel: reminderLevel,
         paymentUrl: `${process.env.NEXT_PUBLIC_APP_URL}/tenant/payments?invoice=${invoice_id}`,
       });
@@ -224,6 +224,7 @@ export async function POST(request: Request) {
         subject: template.subject,
         html: template.html,
         text: emailContent.body,
+        idempotencyKey: `invoice-reminder/${invoice_id}/${reminderLevel}`,
         tags: [
           { name: "type", value: "invoice_reminder" },
           { name: "invoice_id", value: invoice_id },

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-limit";
 import { stripe, formatAmountFromStripe } from "@/lib/stripe";
-import { sendPaymentConfirmation } from "@/lib/emails";
+import { sendPaymentConfirmation } from "@/lib/services/email-service";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { z } from "zod";

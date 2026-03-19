@@ -21,9 +21,10 @@ export async function POST(
     const { user, error } = await getAuthenticatedUser(request);
 
     if (error) {
+      const errObj = error as { message?: string; details?: unknown; status?: number };
       return NextResponse.json(
-        { error: error instanceof Error ? (error as Error).message : "Une erreur est survenue", details: (error as any).details },
-        { status: (error as any).status || 401 }
+        { error: errObj.message || "Une erreur est survenue", details: errObj.details },
+        { status: errObj.status || 401 }
       );
     }
 
@@ -47,16 +48,13 @@ export async function POST(
     let validated;
     try {
       validated = photoUploadRequestSchema.parse(body);
-    } catch (validationError: any) {
-      console.error("[upload-url] Erreur de validation:", {
-        body,
-        errors: validationError.errors,
-      });
+    } catch (validationError: unknown) {
+      const zodErr = validationError as { errors?: Array<{ path: (string | number)[]; message: string }> };
       return NextResponse.json(
         { 
           error: "Données invalides", 
-          details: validationError.errors,
-          message: validationError.errors?.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
+          details: zodErr.errors,
+          message: zodErr.errors?.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')
         },
         { status: 400 }
       );
@@ -83,16 +81,15 @@ export async function POST(
     const { data: property, error: propertyError } = await serviceClient
       .from("properties")
       .select("id, owner_id, type")
-      .eq("id", id as any)
+      .eq("id", id)
       .single();
 
     if (propertyError || !property) {
       return NextResponse.json({ error: "Logement introuvable" }, { status: 404 });
     }
 
-    const profileData = profile as any;
-    const isAdmin = profileData.role === "admin";
-    const isOwner = property.owner_id === profileData.id;
+    const isAdmin = profile.role === "admin";
+    const isOwner = property.owner_id === profile.id;
 
     if (!isAdmin && !isOwner) {
       return NextResponse.json(
@@ -102,7 +99,7 @@ export async function POST(
     }
 
     // Déterminer le type de bien pour adapter les validations
-    const propertyType = property.type as string;
+    const propertyType = property.type;
     const isHabitation = ["appartement", "maison", "studio", "colocation"].includes(propertyType);
     const isParking = ["parking", "box"].includes(propertyType);
     const isLocal = ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"].includes(propertyType);
@@ -223,20 +220,19 @@ export async function POST(
       photo: insertedPhoto,
     });
   } catch (error: unknown) {
-    if (error && typeof error === 'object' && 'name' in error && (error as any).name === "ZodError") {
-      const zodErr = error as any;
+    if (error && typeof error === 'object' && 'name' in error && (error as { name: string }).name === "ZodError") {
+      const zodErr = error as { errors?: Array<{ path: (string | number)[]; message: string }> };
       return NextResponse.json(
         {
           error: "Données invalides",
           details: zodErr.errors,
-          message: zodErr.errors?.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(', ')
+          message: zodErr.errors?.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ')
         },
         { status: 400 }
       );
     }
-    console.error("[upload-url] Erreur:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? (error as Error).message : "Erreur serveur" },
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
     );
   }

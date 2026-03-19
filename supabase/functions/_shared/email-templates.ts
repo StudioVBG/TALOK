@@ -1,0 +1,428 @@
+/**
+ * Templates email partagés pour les Edge Functions Supabase (Deno)
+ *
+ * Centralise les templates HTML utilisés par sepa-prenotification et process-outbox
+ * pour éviter les templates inline et garantir la cohérence visuelle.
+ */
+
+const APP_URL = () => Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr";
+
+function baseWrapper(content: string): string {
+  return `
+<div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+  <div style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 40px 30px; text-align: center;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">Talok</h1>
+    <p style="color: #94a3b8; margin: 8px 0 0; font-size: 14px;">Gestion locative simplifiée</p>
+  </div>
+  <div style="padding: 40px 30px;">
+    ${content}
+  </div>
+  <div style="background: #f8fafc; padding: 24px 30px; border-top: 1px solid #e2e8f0;">
+    <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
+      Vous recevez cet email car vous avez un compte sur Talok.
+      <br />
+      <a href="${APP_URL()}/settings/notifications" style="color: #64748b;">Gérer mes préférences</a>
+    </p>
+  </div>
+</div>`.trim();
+}
+
+function ctaButton(label: string, url: string, color = "#3b82f6"): string {
+  return `
+<div style="text-align: center; margin: 32px 0;">
+  <a href="${url}" style="display: inline-block; background: linear-gradient(135deg, ${color} 0%, ${color}dd 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 14px ${color}4d;">
+    ${label}
+  </a>
+</div>`;
+}
+
+// ============================================
+// SEPA Pre-notification
+// ============================================
+
+export function sepaPrenotification(params: {
+  tenantName: string;
+  mandateReference: string;
+  amount: string;
+  collectionDate: string;
+  maskedIban: string;
+  propertyAddress: string;
+}): string {
+  return baseWrapper(`
+    <h2 style="color: #1e293b; margin: 0 0 20px;">Avis de prélèvement SEPA</h2>
+    <p style="color: #475569; font-size: 16px;">Bonjour ${params.tenantName},</p>
+    <p style="color: #475569; font-size: 16px;">Conformément à votre mandat SEPA <strong>${params.mandateReference}</strong>, un prélèvement sera effectué sur votre compte bancaire :</p>
+    
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 20px 0;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+          <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Montant</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: bold; font-size: 18px; color: #1e293b;">${params.amount} €</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Date de prélèvement</td>
+          <td style="padding: 8px 0; text-align: right; font-weight: 600; color: #1e293b;">${params.collectionDate}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Compte débité</td>
+          <td style="padding: 8px 0; text-align: right; font-family: monospace; color: #1e293b;">${params.maskedIban}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Logement</td>
+          <td style="padding: 8px 0; text-align: right; color: #1e293b;">${params.propertyAddress}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px 0; color: #64748b; font-size: 14px;">Réf. mandat</td>
+          <td style="padding: 8px 0; text-align: right; font-family: monospace; color: #64748b; font-size: 12px;">${params.mandateReference}</td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="font-size: 14px; color: #475569;">
+      Assurez-vous que votre compte dispose des fonds nécessaires à cette date.
+      En cas de question ou de contestation, vous disposez d'un droit de remboursement 
+      de <strong>8 semaines</strong> après le prélèvement (mandat SEPA Core).
+    </p>
+
+    ${ctaButton("Gérer mes moyens de paiement", `${APP_URL()}/tenant/settings/payments`, "#4f46e5")}
+
+    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+    <p style="font-size: 12px; color: #94a3b8;">
+      Cet email est envoyé conformément à la réglementation SEPA (notification D-14 minimum).
+      Identifiant créancier : Talok SAS.
+    </p>
+  `);
+}
+
+// ============================================
+// Signature / CTA Email
+// ============================================
+
+export function signatureEmail(params: {
+  userName: string;
+  subject: string;
+  message: string;
+  ctaLabel: string;
+  ctaUrl: string;
+}): string {
+  return baseWrapper(`
+    <h2 style="color: #1e293b; margin: 0 0 20px; font-size: 22px; font-weight: 600;">
+      ${params.subject}
+    </h2>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+      ${params.userName},
+    </p>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 32px;">
+      ${params.message}
+    </p>
+    ${ctaButton(params.ctaLabel, `${APP_URL()}${params.ctaUrl}`)}
+  `);
+}
+
+// ============================================
+// Legislation Update
+// ============================================
+
+export function legislationUpdate(params: {
+  userName: string;
+  isOwner: boolean;
+  version: string;
+  description: string;
+  changesHtml: string;
+  leaseId: string;
+}): string {
+  const actionBox = params.isOwner
+    ? `<div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 0; color: #92400e;">
+          <strong>⚠️ Action requise :</strong> Ces modifications seront appliquées automatiquement lors du prochain renouvellement de bail. 
+          Vous pouvez consulter les détails dans votre espace propriétaire.
+        </p>
+      </div>`
+    : `<p style="color: #64748b;">
+        Ces modifications seront appliquées lors du prochain renouvellement de votre bail. 
+        Votre propriétaire a été informé de ces changements.
+      </p>`;
+
+  return baseWrapper(`
+    <h2 style="color: #1e293b;">Bonjour ${params.userName},</h2>
+    <p>Une mise à jour législative <strong>(${params.version})</strong> concerne ${
+      params.isOwner ? "un de vos baux" : "votre bail de location"
+    }.</p>
+    
+    <div style="background: #f8fafc; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0;">
+      <h3 style="margin-top: 0; color: #92400e;">Changements apportés</h3>
+      <p>${params.description}</p>
+      <ul style="color: #475569;">${params.changesHtml}</ul>
+    </div>
+
+    ${actionBox}
+    ${ctaButton("Voir les détails du bail", `${APP_URL()}/leases/${params.leaseId}`)}
+
+    <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+    <p style="color: #94a3b8; font-size: 12px;">
+      Vous recevez cet email car vous êtes ${params.isOwner ? "propriétaire" : "locataire"} d'un bien géré via notre plateforme.
+    </p>
+  `);
+}
+
+// ============================================
+// Payment Reminder
+// ============================================
+
+export function paymentReminder(params: {
+  userName: string;
+  montantTotal: string;
+  periode: string;
+  propertyAddress: string;
+  daysOverdue: number;
+  reminderLevel: string;
+  reminderSubject: string;
+}): string {
+  const levelStyles: Record<string, { color: string; bgColor: string; emoji: string }> = {
+    friendly: { color: "#3b82f6", bgColor: "#eff6ff", emoji: "📅" },
+    reminder: { color: "#f59e0b", bgColor: "#fffbeb", emoji: "⏰" },
+    urgent: { color: "#ef4444", bgColor: "#fef2f2", emoji: "⚠️" },
+    final: { color: "#dc2626", bgColor: "#fee2e2", emoji: "🚨" },
+  };
+
+  const style = levelStyles[params.reminderLevel] || levelStyles.reminder;
+
+  const warningBox = (params.reminderLevel === "urgent" || params.reminderLevel === "final")
+    ? `<div style="background: #fee2e2; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+        <p style="color: #dc2626; margin: 0; font-size: 14px;">
+          <strong>⚠️ Important :</strong> Un retard prolongé peut entraîner des frais supplémentaires et affecter votre relation avec votre propriétaire.
+        </p>
+      </div>`
+    : "";
+
+  return baseWrapper(`
+    <div style="background: ${style.bgColor}; border-left: 4px solid ${style.color}; padding: 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
+      <h2 style="color: ${style.color}; margin: 0 0 8px; font-size: 20px;">
+        ${style.emoji} ${params.reminderSubject}
+      </h2>
+      <p style="color: #475569; margin: 0; font-size: 14px;">
+        ${params.daysOverdue} jours depuis l'émission de la facture
+      </p>
+    </div>
+    
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+      ${params.userName},
+    </p>
+    
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+      Nous n'avons pas encore reçu votre paiement de loyer pour <strong>${params.propertyAddress}</strong> (${params.periode}).
+    </p>
+    
+    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+      <p style="color: #64748b; margin: 0 0 8px; font-size: 14px;">Montant dû</p>
+      <p style="color: #1e293b; margin: 0; font-size: 32px; font-weight: 700;">${params.montantTotal}€</p>
+    </div>
+    
+    ${warningBox}
+    ${ctaButton("Payer maintenant", `${APP_URL()}/tenant/payments`, style.color)}
+    
+    <p style="color: #94a3b8; font-size: 14px; text-align: center;">
+      Si vous avez déjà effectué le paiement, ignorez ce message.
+    </p>
+  `);
+}
+
+// ============================================
+// Overdue Alert (Owner)
+// ============================================
+
+export function overdueAlert(params: {
+  userName: string;
+  tenantName: string;
+  montantTotal: string;
+  periode: string;
+  propertyAddress: string;
+  daysOverdue: number;
+}): string {
+  return `
+<div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+  <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 40px 30px; text-align: center;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 24px;">🚨 Alerte Impayé</h1>
+  </div>
+  <div style="padding: 40px 30px;">
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+      ${params.userName},
+    </p>
+    
+    <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
+      <p style="color: #dc2626; margin: 0 0 8px; font-size: 16px; font-weight: 600;">
+        Impayé détecté - ${params.daysOverdue} jours de retard
+      </p>
+      <p style="color: #7f1d1d; margin: 0;">
+        <strong>${params.tenantName}</strong> n'a pas réglé son loyer pour <strong>${params.propertyAddress}</strong> (${params.periode}).
+      </p>
+    </div>
+    
+    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+      <p style="color: #64748b; margin: 0 0 4px; font-size: 14px;">Montant impayé</p>
+      <p style="color: #dc2626; margin: 0; font-size: 28px; font-weight: 700;">${params.montantTotal}€</p>
+    </div>
+    
+    <h3 style="color: #1e293b; margin: 24px 0 12px; font-size: 16px;">Actions recommandées :</h3>
+    <ul style="color: #475569; margin: 0 0 24px; padding-left: 20px; line-height: 1.8;">
+      <li>Contactez votre locataire pour comprendre la situation</li>
+      <li>Vérifiez si un problème technique empêche le paiement</li>
+      <li>Envisagez une relance amiable avant toute procédure</li>
+    </ul>
+    
+    ${ctaButton("Voir les impayés", `${APP_URL()}/owner/money?filter=late`, "#dc2626")}
+  </div>
+  <div style="background: #f8fafc; padding: 24px 30px; border-top: 1px solid #e2e8f0;">
+    <p style="color: #94a3b8; font-size: 12px; margin: 0; text-align: center;">
+      Des relances automatiques sont envoyées à votre locataire.
+    </p>
+  </div>
+</div>`;
+}
+
+// ============================================
+// Visit Booking
+// ============================================
+
+export function visitBookingRequest(params: {
+  recipientName: string;
+  tenantName: string;
+  propertyAddress: string;
+  visitDate: string;
+  visitTime: string;
+  tenantMessage?: string;
+}): string {
+  const msgBox = params.tenantMessage
+    ? `<div style="background: #f1f5f9; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+        <p style="color: #64748b; margin: 0 0 8px; font-size: 12px; text-transform: uppercase;">Message du candidat</p>
+        <p style="color: #475569; margin: 0; font-size: 14px; font-style: italic;">"${params.tenantMessage}"</p>
+      </div>`
+    : "";
+
+  return baseWrapper(`
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">${params.recipientName},</p>
+    
+    <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
+      <p style="color: #1e40af; margin: 0 0 8px; font-size: 16px; font-weight: 600;">${params.tenantName} souhaite visiter votre bien</p>
+      <p style="color: #3b82f6; margin: 0;">${params.propertyAddress}</p>
+    </div>
+
+    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+      <p style="color: #64748b; margin: 0 0 4px; font-size: 14px;">📅 Date : <strong style="color: #1e293b;">${params.visitDate}</strong></p>
+      <p style="color: #64748b; margin: 8px 0 0; font-size: 14px;">🕐 Horaire : <strong style="color: #1e293b;">${params.visitTime}</strong></p>
+    </div>
+
+    ${msgBox}
+    ${ctaButton("Voir les détails", `${APP_URL()}/owner/visits`, "#22c55e")}
+    
+    <p style="color: #94a3b8; font-size: 12px; text-align: center;">Répondez rapidement pour ne pas perdre ce candidat potentiel !</p>
+  `);
+}
+
+export function visitBookingConfirmed(params: {
+  recipientName: string;
+  propertyAddress: string;
+  visitDate: string;
+  visitTime: string;
+  ownerName: string;
+  ownerPhone?: string;
+  bookingId: string;
+}): string {
+  const phoneHtml = params.ownerPhone
+    ? `<p style="color: #3b82f6; margin: 8px 0 0; font-size: 14px;">📞 ${params.ownerPhone}</p>`
+    : "";
+
+  return `
+<div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+  <div style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); padding: 40px 30px; text-align: center;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 24px;">✅ Visite confirmée !</h1>
+  </div>
+  <div style="padding: 40px 30px;">
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">${params.recipientName},</p>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">Bonne nouvelle ! Votre demande de visite a été acceptée.</p>
+    
+    <div style="background: #f0fdf4; border: 2px solid #22c55e; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
+      <h3 style="color: #166534; margin: 0 0 16px; font-size: 18px;">📍 ${params.propertyAddress}</h3>
+      <p style="color: #64748b; margin: 0 0 4px; font-size: 14px;">📅 Date : <strong style="color: #1e293b;">${params.visitDate}</strong></p>
+      <p style="color: #64748b; margin: 8px 0 0; font-size: 14px;">🕐 Horaire : <strong style="color: #1e293b;">${params.visitTime}</strong></p>
+    </div>
+
+    <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+      <p style="color: #64748b; margin: 0 0 8px; font-size: 14px;">Contact propriétaire</p>
+      <p style="color: #1e293b; margin: 0; font-size: 16px; font-weight: 600;">${params.ownerName}</p>
+      ${phoneHtml}
+    </div>
+
+    ${ctaButton("Voir ma visite", `${APP_URL()}/tenant/visits/${params.bookingId}`)}
+    
+    <div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin-top: 24px;">
+      <p style="color: #92400e; margin: 0; font-size: 14px;">
+        💡 <strong>Conseil :</strong> Préparez vos questions sur le logement et n'oubliez pas d'arriver à l'heure !
+      </p>
+    </div>
+  </div>
+</div>`;
+}
+
+export function visitBookingCancelled(params: {
+  recipientName: string;
+  propertyAddress: string;
+  visitDate: string;
+  visitTime: string;
+  cancellationReason?: string;
+}): string {
+  const reasonBox = params.cancellationReason
+    ? `<div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+        <p style="color: #64748b; margin: 0 0 8px; font-size: 12px; text-transform: uppercase;">Raison</p>
+        <p style="color: #475569; margin: 0; font-size: 14px;">${params.cancellationReason}</p>
+      </div>`
+    : "";
+
+  return `
+<div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+  <div style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); padding: 40px 30px; text-align: center;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Visite annulée</h1>
+  </div>
+  <div style="padding: 40px 30px;">
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">${params.recipientName},</p>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">Nous sommes désolés, la visite prévue a été annulée par le propriétaire.</p>
+
+    <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin-bottom: 24px; border-radius: 0 8px 8px 0;">
+      <p style="color: #991b1b; margin: 0 0 8px; font-size: 16px; font-weight: 600;">${params.propertyAddress}</p>
+      <p style="color: #dc2626; margin: 0;">${params.visitDate} à ${params.visitTime}</p>
+    </div>
+
+    ${reasonBox}
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">Ne vous découragez pas ! Continuez à chercher le logement idéal.</p>
+    ${ctaButton("Rechercher d'autres logements", `${APP_URL()}/search`)}
+  </div>
+</div>`;
+}
+
+export function visitFeedbackRequest(params: {
+  recipientName: string;
+  propertyAddress: string;
+  visitDate: string;
+  bookingId: string;
+}): string {
+  return `
+<div style="font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
+  <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 40px 30px; text-align: center;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 24px;">⭐ Comment s'est passée la visite ?</h1>
+  </div>
+  <div style="padding: 40px 30px;">
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">${params.recipientName},</p>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+      Vous avez visité <strong>${params.propertyAddress}</strong> le ${params.visitDate}. Votre avis nous intéresse !
+    </p>
+
+    <div style="background: #f5f3ff; padding: 24px; border-radius: 12px; margin-bottom: 24px; text-align: center;">
+      <p style="color: #6b21a8; margin: 0 0 16px; font-size: 16px;">Partagez votre expérience en 1 minute</p>
+      <div style="font-size: 32px;">⭐⭐⭐⭐⭐</div>
+    </div>
+
+    ${ctaButton("Donner mon avis", `${APP_URL()}/tenant/visits/${params.bookingId}/feedback`, "#8b5cf6")}
+    <p style="color: #94a3b8; font-size: 14px; text-align: center;">Votre feedback aide les autres locataires à trouver leur logement idéal.</p>
+  </div>
+</div>`;
+}

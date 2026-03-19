@@ -5,9 +5,22 @@
  * et retournent des erreurs ciblées pour chaque champ/étape.
  */
 
+import type { PropertyRow, PhotoRow } from "@/lib/supabase/database.types";
+
+type PropertyData = Partial<PropertyRow> & { type_bien?: string; type_bail?: string };
+
+interface RoomData {
+  id?: string;
+  type_piece?: string;
+  surface?: number;
+  [key: string]: unknown;
+}
+
+type PhotoData = Partial<PhotoRow>;
+
 type ValidationResult = {
   isValid: boolean;
-  stepId?: string; // pour cibler l'étape du wizard
+  stepId?: string;
   fieldErrors: Record<string, string>;
   globalErrors: string[];
 };
@@ -16,13 +29,21 @@ function baseResult(): ValidationResult {
   return { isValid: true, fieldErrors: {}, globalErrors: [] };
 }
 
+function finalizeResult(res: ValidationResult, stepId: string): ValidationResult {
+  if (Object.keys(res.fieldErrors).length || res.globalErrors.length) {
+    res.isValid = false;
+    res.stepId = stepId;
+  }
+  return res;
+}
+
 /**
  * Validation pour les biens d'habitation (appartement, maison, studio, colocation)
  */
 export function validateHabitation(
-  property: any,
-  rooms: any[],
-  photos: any[]
+  property: PropertyData,
+  rooms: RoomData[],
+  photos: PhotoData[]
 ): ValidationResult {
   const res = baseResult();
 
@@ -88,20 +109,57 @@ export function validateHabitation(
     res.fieldErrors["type_bail"] = "Type de bail obligatoire.";
   }
 
-  // Résultat
-  if (Object.keys(res.fieldErrors).length || res.globalErrors.length) {
-    res.isValid = false;
-    // on peut pointer prioritairement une étape ; ici "conditions_location"
-    res.stepId = "conditions_location";
+  return finalizeResult(res, "conditions_location");
+}
+
+/**
+ * Validation pour les biens saisonniers
+ */
+export function validateSaisonnier(
+  property: PropertyData,
+  rooms: RoomData[],
+  photos: PhotoData[]
+): ValidationResult {
+  const res = validateHabitation(property, rooms, photos);
+
+  if (!property.loyer_hc || property.loyer_hc <= 0) {
+    res.fieldErrors["loyer_hc"] = "Tarif par nuit/semaine obligatoire.";
   }
 
-  return res;
+  return finalizeResult(res, "conditions_location");
+}
+
+/**
+ * Validation pour les immeubles (multi-lots)
+ */
+export function validateImmeuble(
+  property: PropertyData,
+  photos: PhotoData[]
+): ValidationResult {
+  const res = baseResult();
+
+  if (!property.adresse_complete) res.fieldErrors["adresse_complete"] = "Adresse obligatoire.";
+  if (!property.code_postal) res.fieldErrors["code_postal"] = "Code postal obligatoire.";
+  if (!property.ville) res.fieldErrors["ville"] = "Ville obligatoire.";
+
+  if (!property.surface || property.surface <= 0) {
+    res.fieldErrors["surface"] = "Surface totale de l'immeuble obligatoire.";
+  }
+  if (!property.nb_etages_immeuble || property.nb_etages_immeuble <= 0) {
+    res.fieldErrors["nb_etages_immeuble"] = "Nombre d'étages obligatoire.";
+  }
+
+  if (!photos.length) {
+    res.globalErrors.push("Ajoutez au moins une photo de l'immeuble.");
+  }
+
+  return finalizeResult(res, "infos_essentielles");
 }
 
 /**
  * Validation pour les parkings et boxes
  */
-export function validateParking(property: any, photos: any[]): ValidationResult {
+export function validateParking(property: PropertyData, photos: PhotoData[]): ValidationResult {
   const res = baseResult();
 
   // Adresse
@@ -133,18 +191,13 @@ export function validateParking(property: any, photos: any[]): ValidationResult 
     res.fieldErrors["type_bail"] = "Type de location obligatoire.";
   }
 
-  if (Object.keys(res.fieldErrors).length || res.globalErrors.length) {
-    res.isValid = false;
-    res.stepId = "conditions_location";
-  }
-
-  return res;
+  return finalizeResult(res, "conditions_location");
 }
 
 /**
  * Validation pour les locaux commerciaux (local_commercial, bureaux, entrepot, fonds_de_commerce)
  */
-export function validateCommercial(property: any, photos: any[]): ValidationResult {
+export function validateCommercial(property: PropertyData, photos: PhotoData[]): ValidationResult {
   const res = baseResult();
 
   // Adresse
@@ -176,37 +229,43 @@ export function validateCommercial(property: any, photos: any[]): ValidationResu
     res.fieldErrors["type_bail"] = "Type de bail obligatoire.";
   }
 
-  if (Object.keys(res.fieldErrors).length || res.globalErrors.length) {
-    res.isValid = false;
-    res.stepId = "conditions_location";
-  }
-
-  return res;
+  return finalizeResult(res, "conditions_location");
 }
 
 /**
  * Fonction principale de validation selon le type de bien
  */
 export function validateProperty(
-  property: any,
-  rooms: any[] = [],
-  photos: any[] = []
+  property: PropertyData,
+  rooms: RoomData[] = [],
+  photos: PhotoData[] = []
 ): ValidationResult {
   const typeBien = property.type_bien || property.type;
 
-  if (["appartement", "maison", "studio", "colocation"].includes(typeBien)) {
+  if (["appartement", "maison", "studio", "colocation"].includes(typeBien ?? "")) {
     return validateHabitation(property, rooms, photos);
   }
 
-  if (["parking", "box"].includes(typeBien)) {
+  if (typeBien === "saisonnier") {
+    return validateSaisonnier(property, rooms, photos);
+  }
+
+  if (typeBien === "immeuble") {
+    return validateImmeuble(property, photos);
+  }
+
+  if (["parking", "box"].includes(typeBien ?? "")) {
     return validateParking(property, photos);
   }
 
-  if (["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"].includes(typeBien)) {
+  if (["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"].includes(typeBien ?? "")) {
     return validateCommercial(property, photos);
   }
 
-  // Type non reconnu
+  if (["terrain_agricole", "exploitation_agricole"].includes(typeBien ?? "")) {
+    return validateCommercial(property, photos);
+  }
+
   return {
     isValid: false,
     fieldErrors: { type_bien: "Type de bien non reconnu." },

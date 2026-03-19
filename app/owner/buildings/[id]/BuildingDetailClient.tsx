@@ -30,6 +30,8 @@ import Image from "next/image";
 import type { BuildingRow, BuildingUnitRow } from "@/lib/supabase/database.types";
 
 interface BuildingDetailClientProps {
+  propertyId: string;
+  buildingId: string | null;
   building: {
     id: string;
     adresse_complete: string;
@@ -79,6 +81,8 @@ const statusLabels: Record<string, string> = {
 };
 
 export function BuildingDetailClient({
+  propertyId,
+  buildingId,
   building,
   buildingMeta,
   units,
@@ -105,7 +109,7 @@ export function BuildingDetailClient({
     <div className="container mx-auto py-8 px-4">
       {/* Back Button */}
       <Button variant="ghost" asChild className="mb-6">
-        <Link href="/owner/buildings">
+        <Link href="/owner/properties?tab=immeubles">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Retour aux immeubles
         </Link>

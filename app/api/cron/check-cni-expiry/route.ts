@@ -135,6 +135,7 @@ export async function GET(request: Request) {
               message: messages.tenantMessage,
               daysUntilExpiry: cni.days_until_expiry,
               notificationType: cni.notification_type,
+              documentId: cni.document_id,
             });
 
             // Marquer comme envoyé
@@ -184,6 +185,7 @@ export async function GET(request: Request) {
               tenantName: tenantProfile 
                 ? `${tenantProfile.prenom} ${tenantProfile.nom}` 
                 : tenantEmailAddress,
+              documentId: cni.document_id,
             });
 
             // Marquer comme envoyé
@@ -323,6 +325,7 @@ async function sendCniExpiryEmail(params: {
   daysUntilExpiry: number;
   notificationType: string;
   tenantName?: string;
+  documentId?: string;
 }) {
   const { emailTemplates } = await import("@/lib/emails/templates");
   const template = emailTemplates.cniExpiryNotification({
@@ -338,6 +341,7 @@ async function sendCniExpiryEmail(params: {
     to: params.to,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: params.documentId ? `cni-expiry/${params.documentId}/${params.notificationType}` : undefined,
     tags: [{ name: "type", value: `cni_expiry_${params.notificationType}` }],
   });
 

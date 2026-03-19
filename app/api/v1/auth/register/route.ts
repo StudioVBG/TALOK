@@ -7,7 +7,7 @@ import { apiError, apiSuccess, validateBody, logAudit } from "@/lib/api/middlewa
 import { RegisterSchema } from "@/lib/api/schemas";
 import { applyRateLimit } from "@/lib/security/rate-limit";
 import { getAuthCallbackUrl } from "@/lib/utils/redirect-url";
-import { sendWelcomeEmail } from "@/lib/emails";
+import { sendWelcomeEmail } from "@/lib/services/email-service";
 
 /**
  * POST /api/v1/auth/register

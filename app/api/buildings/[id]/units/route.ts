@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 
@@ -38,7 +39,7 @@ interface RouteParams {
  * Helper to verify building access
  */
 async function verifyBuildingAccess(
-  supabase: any,
+  supabase: SupabaseClient,
   buildingId: string,
   profileId: string,
   role: string

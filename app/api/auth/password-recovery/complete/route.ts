@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
       subject: passwordChangedTemplate.subject,
       html: passwordChangedTemplate.html,
       text: passwordChangedTemplate.text,
+      idempotencyKey: `password-changed/${user.id}`,
       tags: [{ name: "type", value: "password_changed" }],
     });
 

@@ -348,6 +348,7 @@ export async function sendNewTicketNotification(data: {
     to: data.recipientEmail,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: `ticket-created/${data.ticketId}`,
     tags: [
       { name: 'type', value: 'new_ticket' },
       { name: 'ticket_id', value: data.ticketId },
@@ -381,6 +382,7 @@ export async function sendTicketUpdateNotification(data: {
     to: data.recipientEmail,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: `ticket-update/${data.ticketId}/${data.newStatus}`,
     tags: [
       { name: 'type', value: 'ticket_update' },
       { name: 'ticket_id', value: data.ticketId },
@@ -411,6 +413,7 @@ export async function sendSignatureRequest(data: {
     to: data.signerEmail,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: `signature-request/${data.signatureToken}`,
     tags: [
       { name: 'type', value: 'signature_request' },
     ],
@@ -473,6 +476,7 @@ export async function sendPropertyInvitation(data: {
     to: data.tenantEmail,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: `property-invite/${data.propertyCode}/${data.tenantEmail}`,
     tags: [
       { name: 'type', value: 'property_invitation' },
       { name: 'property_code', value: data.propertyCode },
@@ -498,6 +502,7 @@ export async function sendWelcomeEmail(data: {
     to: data.userEmail,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: `welcome/${data.userEmail}`,
     tags: [
       { name: 'type', value: 'welcome' },
       { name: 'role', value: data.role },
@@ -581,6 +586,7 @@ export async function sendVisitBookingRequest(data: {
     to: data.ownerEmail,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: `visit-booking-request/${data.bookingId}`,
     tags: [
       { name: 'type', value: 'visit_booking_request' },
       { name: 'booking_id', value: data.bookingId },
@@ -615,6 +621,7 @@ export async function sendVisitBookingConfirmed(data: {
     to: data.tenantEmail,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: `visit-booking-confirmed/${data.bookingId}`,
     tags: [
       { name: 'type', value: 'visit_booking_confirmed' },
       { name: 'booking_id', value: data.bookingId },
@@ -649,6 +656,7 @@ export async function sendVisitBookingCancelled(data: {
     to: data.tenantEmail,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: `visit-booking-cancelled/${data.bookingId}`,
     tags: [
       { name: 'type', value: 'visit_booking_cancelled' },
       { name: 'booking_id', value: data.bookingId },
@@ -721,6 +729,7 @@ export async function sendVisitFeedbackRequest(data: {
     to: data.tenantEmail,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: `visit-feedback/${data.bookingId}`,
     tags: [
       { name: 'type', value: 'visit_feedback_request' },
       { name: 'booking_id', value: data.bookingId },

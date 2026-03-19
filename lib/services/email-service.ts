@@ -8,10 +8,19 @@
  * ou utilise les variables d'environnement en fallback.
  */
 
-import { sendEmail as sendEmailViaResendSDK, sendVisitReminder as sendVisitReminderViaResend } from "@/lib/emails/resend.service";
+import {
+  sendEmail as sendEmailViaResendSDK,
+  sendVisitReminder as sendVisitReminderViaResend,
+  sendPaymentConfirmation as sendPaymentConfirmationViaResend,
+  sendTicketUpdateNotification as sendTicketUpdateNotificationViaResend,
+  emailService as resendEmailService,
+} from "@/lib/emails/resend.service";
 import { resolveResendRuntimeConfig } from "./resend-config";
 
 export { sendVisitReminderViaResend as sendVisitReminderEmail };
+export { sendPaymentConfirmationViaResend as sendPaymentConfirmation };
+export { sendTicketUpdateNotificationViaResend as sendTicketUpdateNotification };
+export { resendEmailService as emailService };
 
 // Types
 export type EmailProvider = "resend";
@@ -148,10 +157,10 @@ export async function getEmailConfigurationStatus(): Promise<EmailConfigurationS
       fromAddress: fromAddressSource,
     },
     env: {
-      hasResendApiKey: Boolean(process.env.RESEND_API_KEY),
+      hasResendApiKey: Boolean(resendConfig.apiKey),
       hasEmailApiKey: Boolean(process.env.EMAIL_API_KEY),
-      hasEmailFrom: Boolean(process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL),
-      hasReplyTo: Boolean(process.env.EMAIL_REPLY_TO || process.env.RESEND_REPLY_TO),
+      hasEmailFrom: Boolean(fromAddress),
+      hasReplyTo: Boolean(replyTo),
       hasAppUrl: Boolean(process.env.NEXT_PUBLIC_APP_URL),
       hasPasswordResetCookieSecret: Boolean(process.env.PASSWORD_RESET_COOKIE_SECRET),
       forceSend: config.forceSend,
@@ -335,7 +344,8 @@ export async function sendRentReminderEmail(
   period: string,
   amount: number,
   dueDate: string,
-  paymentUrl: string
+  paymentUrl: string,
+  idempotencyKey?: string
 ): Promise<EmailResult> {
   const template = emailTemplates.paymentReminder({
     tenantName,
@@ -348,6 +358,7 @@ export async function sendRentReminderEmail(
     to,
     subject: template.subject,
     html: template.html,
+    idempotencyKey,
     tags: [{ name: "type", value: "rent_reminder" }],
   });
 }

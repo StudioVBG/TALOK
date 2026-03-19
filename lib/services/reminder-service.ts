@@ -302,6 +302,7 @@ async function sendEmailReminder(reminder: Reminder): Promise<boolean> {
       subject: template.subject,
       html: template.html,
       text: reminder.content,
+      idempotencyKey: `reminder-${reminder.type}/${reminder.id}`,
       tags: [{ name: "type", value: `reminder_${reminder.type}` }],
     });
 

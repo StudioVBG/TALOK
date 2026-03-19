@@ -110,7 +110,7 @@ export class BuildingsService {
    */
   async bulkCreateUnits(payload: BulkCreateUnitsPayload): Promise<BuildingUnit[]> {
     const response = await apiClient.post<{ units: BuildingUnit[] }>(
-      `/buildings/${payload.building_id}/units/bulk`,
+      `/buildings/${payload.building_id}/units`,
       { units: payload.units }
     );
     return response.units;
