@@ -118,7 +118,7 @@ export function LeasePreview({
   // ✅ SOTA 2026: Validation des données du bail (CRITIQUES vs RECOMMANDÉES)
   // Si le bail est déjà signé/actif, les erreurs de données manquantes deviennent des warnings
   // car elles reflètent un manque de données côté affichage, pas un vrai blocage
-  const isSealed = ["fully_signed", "active", "terminated", "archived"].includes(leaseStatus || "");
+  const isSealed = ["fully_signed", "active", "notice_given", "terminated", "archived"].includes(leaseStatus || "");
   
   const validateBailData = useCallback((): { critical: string[]; warnings: string[] } => {
     const critical: string[] = [];

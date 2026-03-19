@@ -51,6 +51,7 @@ import { useToast } from "@/components/ui/use-toast";
 import type { LeaseDetails } from "../../_data/fetchLeaseDetails";
 import { LeasePreview } from "@/features/leases/components/lease-preview";
 import { formatCurrency } from "@/lib/helpers/format";
+import { getMaxDepotLegal } from "@/lib/validations/lease-financial";
 import { mapLeaseToTemplate } from "@/lib/mappers/lease-to-template";
 import { OwnerSignatureModal } from "./OwnerSignatureModal";
 import { KeyHandoverQRGenerator } from "@/components/key-handover/KeyHandoverQRGenerator";
@@ -100,6 +101,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; description?
     color: "bg-slate-100 text-slate-700 border-slate-300",
     description: "Le bail est en cours de rédaction",
   },
+  sent: {
+    label: "Envoyé",
+    color: "bg-blue-100 text-blue-700 border-blue-300",
+    description: "Le bail a été envoyé pour signature",
+  },
   pending_signature: {
     label: "Signature en attente",
     color: "bg-amber-100 text-amber-700 border-amber-300",
@@ -110,6 +116,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; description?
     color: "bg-orange-100 text-orange-700 border-orange-300",
     description: "Certaines parties ont signé",
   },
+  pending_owner_signature: {
+    label: "Attente signature propriétaire",
+    color: "bg-blue-100 text-blue-700 border-blue-300",
+    description: "Le locataire a signé, en attente du propriétaire",
+  },
   fully_signed: {
     label: "Signé - EDL requis",
     color: "bg-indigo-100 text-indigo-700 border-indigo-300",
@@ -119,6 +130,16 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; description?
     label: "Actif",
     color: "bg-green-100 text-green-700 border-green-300",
     description: "Le bail est en cours",
+  },
+  notice_given: {
+    label: "Congé donné",
+    color: "bg-orange-100 text-orange-700 border-orange-300",
+    description: "Le préavis est en cours",
+  },
+  amended: {
+    label: "Avenant en cours",
+    color: "bg-purple-100 text-purple-700 border-purple-300",
+    description: "Un avenant est en cours de traitement",
   },
   terminated: {
     label: "Terminé",
@@ -197,30 +218,13 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   const statusConfig = STATUS_CONFIG[lease.statut] || STATUS_CONFIG.draft;
   
   // ✅ BAIL SCELLÉ : Un bail signé ne peut plus être modifié
-  const isSealed = !!(lease as any).sealed_at || ["fully_signed", "active", "terminated", "archived"].includes(lease.statut);
+  const isSealed = !!(lease as any).sealed_at || ["fully_signed", "active", "notice_given", "terminated", "archived"].includes(lease.statut);
   const signedPdfPath = (lease as any).signed_pdf_path;
   const sealedAt = (lease as any).sealed_at;
 
   // Le bail est la source de vérité pour les conditions financières.
   // Fallback sur les valeurs du bien uniquement si le bail n'a pas encore ses propres valeurs.
   const propAny = property as any;
-
-  const getMaxDepotLegal = (typeBail: string, loyerHC: number): number => {
-    switch (typeBail) {
-      case "nu":
-      case "etudiant":
-        return loyerHC * 1;
-      case "meuble":
-      case "colocation":
-        return loyerHC * 2;
-      case "mobilite":
-        return 0;
-      case "saisonnier":
-        return loyerHC * 2;
-      default:
-        return loyerHC;
-    }
-  };
 
   // Bail = source de vérité ; fallback sur property si non renseigné
   const displayLoyer = lease.loyer ?? propAny?.loyer_hc ?? propAny?.loyer_base ?? 0;
@@ -253,7 +257,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   // ✅ SOTA 2026: Logique corrigée - Le propriétaire peut signer dès que le locataire a signé
   const needsOwnerSignature = useMemo(() => {
     // Si déjà fully_signed, active, ou terminé → pas besoin de signer
-    if (["fully_signed", "active", "terminated", "archived"].includes(lease.statut)) {
+    if (["fully_signed", "active", "notice_given", "terminated", "archived"].includes(lease.statut)) {
       return false;
     }
     // Si le propriétaire a déjà signé → pas besoin

@@ -60,7 +60,7 @@ export function LeaseProgressTracker({
       detailInProgress: "En attente de signatures",
       detailPending: "Les deux parties doivent signer",
       icon: FileSignature,
-      isDone: ["fully_signed", "active", "terminated", "archived"].includes(status),
+      isDone: ["fully_signed", "active", "notice_given", "terminated", "archived"].includes(status),
       isInProgress: ["pending_signature", "partially_signed"].includes(status)
     },
     {

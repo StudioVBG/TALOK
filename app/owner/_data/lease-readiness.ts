@@ -581,7 +581,9 @@ export function deriveLeaseReadinessState(
       label:
         contractState === "available"
           ? "Contrat principal disponible"
-          : "Contrat final en attente du workflow de signature",
+          : contractState === "missing"
+            ? "Document contrat non généré"
+            : "Contrat en attente du workflow de signature",
       status:
         contractState === "available"
           ? "complete"
@@ -902,7 +904,7 @@ export function deriveLeaseReadinessState(
     defaultTab = "paiements";
     hero = {
       tone: "amber",
-      eyebrow: "Étape 5",
+      eyebrow: "Bail actif",
       title: "Le bail est actif mais la facture initiale manque",
       description:
         "L'activation est passée, mais le suivi financier n'est pas encore matérialisé par une facture.",
@@ -923,7 +925,7 @@ export function deriveLeaseReadinessState(
     defaultTab = "paiements";
     hero = {
       tone: "amber",
-      eyebrow: "Étape 5",
+      eyebrow: "Bail actif",
       title: "Le premier paiement est attendu",
       description:
         "La facture initiale existe bien. L'étape suivante est maintenant l'encaissement.",
@@ -946,7 +948,7 @@ export function deriveLeaseReadinessState(
     defaultTab = "paiements";
     hero = {
       tone: "amber",
-      eyebrow: "Étape 5",
+      eyebrow: "Bail actif",
       title: "Le premier paiement est partiellement reçu",
       description:
         "La facture initiale avance, mais elle n'est pas encore totalement soldée.",
@@ -970,7 +972,7 @@ export function deriveLeaseReadinessState(
     currentStep = "awaiting_key_handover";
     hero = {
       tone: "emerald",
-      eyebrow: "Étape 6",
+      eyebrow: "Bail actif",
       title: "Le paiement est reçu, il reste la remise des clés",
       description:
         "Le dossier financier est soldé, mais la remise des clés n'est pas encore confirmée côté workflow.",

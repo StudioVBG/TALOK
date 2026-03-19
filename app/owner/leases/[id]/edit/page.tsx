@@ -37,6 +37,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { getMaxDepotLegal } from "@/lib/validations/lease-financial";
 
 interface Lease {
   id: string;
@@ -85,24 +86,6 @@ const joursPaiement = Array.from({ length: 28 }, (_, i) => ({
   label: `${i + 1}${i === 0 ? "er" : ""}`,
 }));
 
-// ✅ Calcul du dépôt max légal selon le type de bail
-const getMaxDepotLegal = (typeBail: string, loyerHC: number): number => {
-  switch (typeBail) {
-    case "nu":
-    case "etudiant":
-      return loyerHC * 1; // 1 mois max légal
-    case "meuble":
-    case "colocation":
-      return loyerHC * 2; // 2 mois max légal
-    case "bail_mobilite":
-    case "mobilite":
-      return 0; // Interdit par la loi
-    case "saisonnier":
-      return loyerHC * 2;
-    default:
-      return loyerHC;
-  }
-};
 
 export default function EditLeasePage() {
   const params = useParams();

@@ -489,7 +489,7 @@ export const DELETE = withSecurity(async function DELETE(request: Request, { par
     }
 
     // ✅ SOTA 2026: Bloquer la suppression des baux actifs/terminés/archivés
-    const NON_DELETABLE_STATUS = ["fully_signed", "active", "terminated", "archived"];
+    const NON_DELETABLE_STATUS = ["fully_signed", "active", "notice_given", "terminated", "archived"];
     const leaseStatus = (lease as any).statut;
     
     if (!isAdmin && NON_DELETABLE_STATUS.includes(leaseStatus)) {

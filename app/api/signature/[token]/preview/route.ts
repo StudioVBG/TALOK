@@ -7,6 +7,7 @@ import { numberToWords } from "@/lib/helpers/format";
 import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 import type { BailComplet, TypeBail } from "@/lib/templates/bail/types";
 import { verifyTokenCompat } from "@/lib/utils/secure-token";
+import { getMaxDepotLegal } from "@/lib/validations/lease-financial";
 
 interface PageProps {
   params: Promise<{ token: string }>;
@@ -23,24 +24,6 @@ function mapLeaseToTemplateData(
   tenantProfile: any,
   tenantEmail: string
 ): Partial<BailComplet> {
-  // Calcul du dépôt de garantie légal
-  const getMaxDepotLegal = (typeBail: string, loyerHC: number): number => {
-    switch (typeBail) {
-      case "nu":
-      case "etudiant":
-        return loyerHC * 1;
-      case "meuble":
-      case "colocation":
-        return loyerHC * 2;
-      case "mobilite":
-        return 0;
-      case "saisonnier":
-        return loyerHC * 2;
-      default:
-        return loyerHC;
-    }
-  };
-
   // Calcul de la durée par défaut selon le type de bail
   // ✅ FIX: Prend en compte le type de bailleur (société = 6 ans pour bail nu)
   const getDureeMois = (type: string, bailleurType?: string): number => {

@@ -94,7 +94,9 @@ export function LeaseEdlTab({
     );
   }
 
-  // Bail signé mais pas d'EDL encore : proposer la création
+  // Bail signé/actif mais pas d'EDL encore : proposer la création
+  const isAlreadyActive = leaseStatus === "active";
+
   if (!edl) {
     return (
       <motion.div
@@ -102,15 +104,18 @@ export function LeaseEdlTab({
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col items-center justify-center py-6 sm:py-10 px-4"
       >
-        <div className="p-4 bg-indigo-100 rounded-full mb-4">
-          <ClipboardCheck className="h-8 w-8 text-indigo-600" />
+        <div className={`p-4 rounded-full mb-4 ${isAlreadyActive ? "bg-amber-100" : "bg-indigo-100"}`}>
+          <ClipboardCheck className={`h-8 w-8 ${isAlreadyActive ? "text-amber-600" : "text-indigo-600"}`} />
         </div>
         <h3 className="text-lg font-semibold text-slate-900 mb-2">
-          Créer l&apos;état des lieux d&apos;entrée
+          {isAlreadyActive
+            ? "État des lieux d\u2019entrée non réalisé"
+            : "Créer l\u2019état des lieux d\u2019entrée"}
         </h3>
         <p className="text-sm text-slate-600 text-center max-w-md mb-4">
-          Le bail est signé. L&apos;état des lieux d&apos;entrée est requis pour activer le bail
-          et remettre les clés au locataire.
+          {isAlreadyActive
+            ? "Le bail est actif mais aucun état des lieux d\u2019entrée n\u2019a été réalisé. Il est recommandé d\u2019en créer un pour la conformité du dossier."
+            : "Le bail est signé. L\u2019état des lieux d\u2019entrée est requis pour activer le bail et remettre les clés au locataire."}
         </p>
 
         {/* CTA en premier — toujours visible sans scroll */}
