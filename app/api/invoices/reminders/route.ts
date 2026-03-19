@@ -210,12 +210,30 @@ export async function POST(request: Request) {
 
     try {
       const { sendEmail } = await import("@/lib/services/email-service");
-      await sendEmail({
-        to: tenantProfile.email,
-        subject: emailContent.subject,
-        text: emailContent.body,
+      const { emailTemplates } = await import("@/lib/emails/templates");
+      const template = emailTemplates.invoiceReminder({
+        tenantName: lateInvoice.tenant_name,
+        period: invoice.periode,
+        amount: invoice.montant_total,
+        dueDate: invoice.date_echeance || "",
+        reminderLevel: reminderLevel,
+        paymentUrl: `${process.env.NEXT_PUBLIC_APP_URL}/tenant/payments?invoice=${invoice_id}`,
       });
-      result.sent = true;
+      const emailResult = await sendEmail({
+        to: tenantProfile.email,
+        subject: template.subject,
+        html: template.html,
+        text: emailContent.body,
+        tags: [
+          { name: "type", value: "invoice_reminder" },
+          { name: "invoice_id", value: invoice_id },
+          { name: "level", value: reminderLevel },
+        ],
+      });
+      result.sent = emailResult.success;
+      if (!emailResult.success) {
+        result.error = emailResult.error;
+      }
 
       // Mettre à jour le statut de la facture si elle n'est pas déjà marquée "late"
       if (invoice.statut !== "late") {

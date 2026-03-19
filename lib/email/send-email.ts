@@ -6,14 +6,13 @@
 export { 
   sendEmail,
   sendTemplateEmail,
-  sendTemplateEmail as sendTemplatedEmail, // alias
+  sendTemplateEmail as sendTemplatedEmail,
   sendWelcomeEmail,
   sendRentReminderEmail,
   sendPaymentReceivedEmail,
   sendRentReceiptEmail,
   sendLeaseInviteEmail,
   sendLeaseSignatureEmail,
-  EMAIL_TEMPLATES,
 } from "@/lib/services/email-service";
 
 // Re-export du service par défaut

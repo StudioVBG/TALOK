@@ -26,7 +26,6 @@ interface ResolveResendConfigOptions {
 }
 
 const DEFAULT_FROM = "Talok <noreply@talok.fr>";
-const DEFAULT_DEV_FROM = "Talok <onboarding@resend.dev>";
 const DEFAULT_FROM_NAME = "Talok";
 
 function getEnvApiKey(): string {
@@ -54,7 +53,8 @@ export function normalizeResendFromAddress(fromAddress: string): string {
 
   if (!normalized.includes("<") && !normalized.includes(">")) {
     if (isConsumerMailbox(normalized)) {
-      return DEFAULT_DEV_FROM;
+      console.warn(`[Email] Adresse consumer détectée (${normalized}), fallback vers ${DEFAULT_FROM}`);
+      return DEFAULT_FROM;
     }
 
     return `${DEFAULT_FROM_NAME} <${normalized}>`;

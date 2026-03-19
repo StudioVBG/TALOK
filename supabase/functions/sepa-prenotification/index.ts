@@ -146,9 +146,8 @@ Deno.serve(async () => {
 
         const maskedIban = `${mandate.debtor_iban.slice(0, 4)} •••• •••• ${mandate.debtor_iban.slice(-4)}`;
 
-        // Send email via Resend
         if (RESEND_API_KEY) {
-          await fetch("https://api.resend.com/emails", {
+          const emailRes = await fetch("https://api.resend.com/emails", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -158,7 +157,11 @@ Deno.serve(async () => {
               from: normalizeResendFromAddress(EMAIL_FROM),
               to: [tenant.email],
               subject: `Prélèvement SEPA prévu le ${collectionDate}`,
-              reply_to: EMAIL_REPLY_TO,
+              reply_to: EMAIL_REPLY_TO || "support@talok.fr",
+              tags: [
+                { name: "type", value: "sepa_prenotification" },
+                { name: "mandate_id", value: mandate.id },
+              ],
               html: `
                 <div style="font-family: system-ui, sans-serif; max-width: 600px; margin: 0 auto;">
                   <h2 style="color: #1e293b;">Avis de prélèvement SEPA</h2>
@@ -212,6 +215,11 @@ Deno.serve(async () => {
               `,
             }),
           });
+
+          if (!emailRes.ok) {
+            const errBody = await emailRes.text();
+            console.error(`[SEPA] Resend error ${emailRes.status}: ${errBody}`);
+          }
         }
 
         // In-app notification

@@ -86,21 +86,31 @@ if (!res.ok) {
 
 ## Idempotency key patterns for Talok
 
-| Flow | Key format | Example |
-|------|-----------|---------|
-| Password reset | `password-reset/{userId}` | `password-reset/uuid-123` |
-| Password changed | `password-changed/{userId}` | `password-changed/uuid-123` |
-| Lease invite | `lease-invite/{leaseId}/{email}` | `lease-invite/uuid-456/john@mail.com` |
-| Invoice reminder | `invoice-reminder/{invoiceId}/{attempt}` | `invoice-reminder/uuid-789/2` |
-| Onboarding 24h | `onboarding-24h/{profileId}` | `onboarding-24h/uuid-abc` |
-| Onboarding 72h | `onboarding-72h/{profileId}` | `onboarding-72h/uuid-abc` |
-| Visit reminder | `visit-reminder/{visitId}/{recipientId}` | `visit-reminder/uuid-def/uuid-ghi` |
-| Payment received | `payment-received/{paymentId}` | `payment-received/uuid-jkl` |
-| CNI expiry | `cni-expiry/{documentId}/{type}` | `cni-expiry/uuid-mno/expiring_soon` |
-| SEPA pre-notif | `sepa-prenotif/{leaseId}/{period}` | `sepa-prenotif/uuid-pqr/2026-03` |
-| Ticket created | `ticket-created/{ticketId}` | `ticket-created/uuid-stu` |
-| Quittance | `quittance/{invoiceId}` | `quittance/uuid-vwx` |
-| Rent reminder | `rent-reminder/{invoiceId}/{level}` | `rent-reminder/uuid-yz1/L2` |
+These keys match the actual implementation in the codebase as of March 2026.
+
+| Flow | Key format | Source file | Example |
+|------|-----------|-------------|---------|
+| Password reset | `password-reset/{userEmail}` | `resend.service.ts` | `password-reset/user@mail.com` |
+| Invoice notification | `invoice-notif/{invoiceId}` | `resend.service.ts` | `invoice-notif/uuid-789` |
+| Payment confirmation | `payment-confirm/{paymentId}` | `resend.service.ts` | `payment-confirm/uuid-jkl` |
+| Payment reminder | `payment-reminder/{invoiceId}/{daysLate}` | `resend.service.ts` | `payment-reminder/uuid-789/15` |
+| Lease signed | `lease-signed/{leaseId}/{signerName}` | `resend.service.ts` | `lease-signed/uuid-456/Jean Dupont` |
+| Visit reminder | `visit-reminder-{hours}h-{role}/{bookingId}` | `resend.service.ts` | `visit-reminder-24h-tenant/uuid-def` |
+| Onboarding 24h | `onboarding-24h/{reminderId}` | `onboarding-reminders/route.ts` | `onboarding-24h/uuid-abc` |
+| Onboarding 72h | `onboarding-72h/{reminderId}` | `onboarding-reminders/route.ts` | `onboarding-72h/uuid-abc` |
+| Onboarding 7d | `onboarding-7d/{reminderId}` | `onboarding-reminders/route.ts` | `onboarding-7d/uuid-abc` |
+| SEPA pre-notif | `sepa-prenotif/{leaseId}/{period}` | `sepa-prenotification/index.ts` | `sepa-prenotif/uuid-pqr/2026-03` |
+
+### Not yet implemented (candidates for future work)
+
+| Flow | Suggested key format |
+|------|---------------------|
+| Password changed | `password-changed/{userId}` |
+| Lease invite | `lease-invite/{leaseId}/{email}` |
+| CNI expiry | `cni-expiry/{documentId}/{type}` |
+| Ticket created | `ticket-created/{ticketId}` |
+| Quittance | `quittance/{invoiceId}` |
+| Rent reminder | `rent-reminder/{invoiceId}/{level}` |
 
 ## Webhook events (17 total)
 
@@ -137,17 +147,26 @@ const payload = wh.verify(rawBody, {
 });
 ```
 
-### Webhooks Ingester (SOTA Jan 2026)
+### Talok custom endpoint (implemented)
 
-Open-source Next.js app by Resend: [github.com/resend/resend-webhooks-ingester](https://github.com/resend/resend-webhooks-ingester)
+`app/api/webhooks/resend/route.ts` handles:
+- `email.delivered` → structured log
+- `email.bounced` → structured log + alert
+- `email.complained` → structured log + alert
+- `email.delivery_delayed` → structured log warning
+
+Uses Svix signature verification with `RESEND_WEBHOOK_SECRET`.
+
+### Webhooks Ingester (SOTA Jan 2026 — future upgrade)
+
+For persistent storage beyond console logs, consider the open-source Next.js app by Resend: [github.com/resend/resend-webhooks-ingester](https://github.com/resend/resend-webhooks-ingester)
 
 - 1-click deploy on Vercel/Railway/Render
 - Supabase/PostgreSQL native
 - Stores all 17 event types
 - Idempotent + retry-safe
 - Svix verification built-in
-- Replaces need for custom webhook handler
-- **Recommended** for production Talok deployment
+- **Recommended** as an upgrade to the custom endpoint for persistent event storage
 
 ## Test addresses
 
@@ -211,26 +230,44 @@ Available in Cursor for AI-assisted email debugging:
 
 ## Talok email file map
 
+### Core architecture (3 layers)
+
 | File | Role |
 |------|------|
-| `lib/services/resend-config.ts` | Config resolution (DB > ENV), address normalization |
-| `lib/emails/resend.service.ts` | SDK wrapper, retry, rate limit, validation |
-| `lib/services/email-service.ts` | Public facade (`sendEmail`), template routing |
-| `lib/emails/templates.ts` | All HTML email templates (`emailTemplates.*`) |
-| `lib/emails/branded-email.service.ts` | White-label emails for owners |
-| `lib/services/reminder-service.ts` | Multi-channel reminder dispatching |
-| `lib/automations/rent-reminders.ts` | Automated rent reminder processing |
-| `lib/config/env-validation.ts` | Environment variable validation |
-| `app/api/emails/send/route.ts` | Internal email sending endpoint |
+| `lib/services/resend-config.ts` | Config resolution (DB > ENV), address normalization, consumer mailbox fallback |
+| `lib/emails/resend.service.ts` | SDK wrapper, retry (3×), rate limit (5/min/dest), idempotencyKey passthrough |
+| `lib/services/email-service.ts` | Public facade (`sendEmail`), re-exports `sendVisitReminderEmail`. All wrappers use `emailTemplates.*` |
+| `lib/emails/templates.ts` | **All** HTML email templates (`emailTemplates.*`) — 30+ templates including `leaseInvite`, `cniExpiryNotification`, `genericReminder`, `invoiceReminder`, `integrationTest` |
+| `lib/emails/branded-email.service.ts` | White-label emails for owners. Delegates to `sendEmail()` from `email-service.ts` (no direct SDK usage) |
+
+### Email callers
+
+| File | Role |
+|------|------|
+| `lib/services/reminder-service.ts` | Multi-channel reminder dispatching, uses `emailTemplates.genericReminder` |
+| `lib/automations/rent-reminders.ts` | Automated rent reminder processing with `result.success` check |
+| `app/api/emails/send/route.ts` | Internal email sending endpoint (used by Edge Functions) |
 | `app/api/auth/forgot-password/route.ts` | Password reset flow |
-| `app/api/auth/password-recovery/complete/route.ts` | Password changed confirmation |
-| `app/api/cron/onboarding-reminders/route.ts` | Onboarding reminders (24h/72h/7d) |
-| `app/api/cron/visit-reminders/route.ts` | Visit reminders (24h/1h) |
-| `app/api/cron/check-cni-expiry/route.ts` | CNI expiry notifications |
-| `app/api/invoices/reminders/route.ts` | Invoice reminder management |
-| `app/api/webhooks/stripe/route.ts` | Payment webhook → confirmation emails |
-| `app/api/webhooks/resend/route.ts` | Resend webhook handler (bounce/complaint) |
-| `supabase/functions/sepa-prenotification/index.ts` | SEPA emails (Edge Function, REST API) |
-| `supabase/functions/process-outbox/index.ts` | Outbox processor (delegates to email service) |
+| `app/api/auth/password-recovery/complete/route.ts` | Password changed confirmation with tags |
+| `app/api/cron/onboarding-reminders/route.ts` | Onboarding reminders (24h/72h/7d) with tags + idempotencyKey |
+| `app/api/cron/visit-reminders/route.ts` | Visit reminders — imports `sendVisitReminderEmail` from `email-service.ts` |
+| `app/api/cron/check-cni-expiry/route.ts` | CNI expiry notifications using `emailTemplates.cniExpiryNotification` |
+| `app/api/invoices/reminders/route.ts` | Invoice reminders using `emailTemplates.invoiceReminder` with tags |
+| `app/api/admin/integrations/providers/[id]/test/route.ts` | Admin integration test using `emailTemplates.integrationTest` |
+| `app/api/webhooks/stripe/route.ts` | Payment webhook → confirmation emails with `result.success` check |
+
+### Webhooks & Edge Functions
+
+| File | Role |
+|------|------|
+| `app/api/webhooks/resend/route.ts` | Resend webhook handler (bounce/complaint/delivered/delayed), Svix verification |
+| `supabase/functions/sepa-prenotification/index.ts` | SEPA emails (Edge Function, REST API), `reply_to` fallback, `response.ok` check |
+| `supabase/functions/process-outbox/index.ts` | Outbox processor with centralized `sendOutboxEmail()` helper |
+
+### Config & Tests
+
+| File | Role |
+|------|------|
+| `lib/config/env-validation.ts` | Environment variable validation |
 | `tests/unit/services/resend-config.test.ts` | Config resolution tests |
 | `tests/unit/services/email-service-config.test.ts` | Email service config tests |

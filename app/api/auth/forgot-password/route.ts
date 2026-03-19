@@ -121,6 +121,8 @@ export async function POST(request: NextRequest) {
       to: email,
       subject: template.subject,
       html: template.html,
+      tags: [{ name: "type", value: "password_reset" }],
+      idempotencyKey: resetRequestId ? `password-reset/${resetRequestId}` : undefined,
     });
 
     if (!emailResult.success) {

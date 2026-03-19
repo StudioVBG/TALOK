@@ -8,8 +8,10 @@
  * ou utilise les variables d'environnement en fallback.
  */
 
-import { sendEmail as sendEmailViaResendSDK } from "@/lib/emails/resend.service";
+import { sendEmail as sendEmailViaResendSDK, sendVisitReminder as sendVisitReminderViaResend } from "@/lib/emails/resend.service";
 import { resolveResendRuntimeConfig } from "./resend-config";
+
+export { sendVisitReminderViaResend as sendVisitReminderEmail };
 
 // Types
 export type EmailProvider = "resend";
@@ -30,7 +32,8 @@ export interface EmailOptions {
   cc?: string[];
   bcc?: string[];
   attachments?: EmailAttachment[];
-  tags?: string[];
+  tags?: Array<{ name: string; value: string }>;
+  idempotencyKey?: string;
   metadata?: Record<string, string>;
 }
 
@@ -167,16 +170,7 @@ export async function getEmailConfigurationStatus(): Promise<EmailConfigurationS
   };
 }
 
-/**
- * Remplace les variables dans un template
- */
-function interpolate(template: string, variables: Record<string, string>): string {
-  let result = template;
-  for (const [key, value] of Object.entries(variables)) {
-    result = result.replace(new RegExp(`{{${key}}}`, "g"), value);
-  }
-  return result;
-}
+import { emailTemplates } from "@/lib/emails/templates";
 
 /**
  * Envoie un email via Resend
@@ -202,10 +196,8 @@ async function sendViaResend(options: EmailOptions): Promise<EmailResult> {
         filename: a.filename,
         content: a.content,
       })),
-      tags: options.tags?.map((tag) => ({
-        name: tag,
-        value: "true",
-      })),
+      tags: options.tags,
+      idempotencyKey: options.idempotencyKey,
     });
 
     return {
@@ -256,420 +248,63 @@ export async function sendEmail(options: EmailOptions): Promise<EmailResult> {
   }
 }
 
+// ============================================
+// FONCTIONS UTILITAIRES (basées sur emailTemplates.*)
+// ============================================
+
 /**
- * Envoie un email depuis un template
+ * @deprecated Utiliser sendEmail() directement avec emailTemplates.* pour les nouveaux flux.
+ * Conservé pour compatibilité avec sendTemplateEmail("lease_invite", ...) dans le codebase.
  */
 export async function sendTemplateEmail(
   templateId: string,
   to: string | string[],
   variables: Record<string, string>
 ): Promise<EmailResult> {
-  const template = EMAIL_TEMPLATES[templateId];
-  if (!template) {
-    return { success: false, error: `Template inconnu: ${templateId}` };
+  const legacyMapper: Record<string, () => { subject: string; html: string }> = {
+    lease_invite: () => emailTemplates.leaseInvite({
+      tenantName: variables.greeting?.replace("Bonjour ", "") || "",
+      ownerName: variables.owner_name,
+      propertyAddress: variables.property_address,
+      rent: Number(variables.rent?.replace(/\s/g, "").replace(",", ".")) || 0,
+      charges: Number(variables.charges?.replace(/\s/g, "").replace(",", ".")) || 0,
+      leaseType: variables.lease_type,
+      inviteUrl: variables.invite_url,
+    }),
+  };
+
+  const mapper = legacyMapper[templateId];
+  if (!mapper) {
+    return { success: false, error: `Template legacy inconnu: ${templateId}. Migrer vers emailTemplates.*` };
   }
 
+  const template = mapper();
   return sendEmail({
     to,
-    subject: interpolate(template.subject, variables),
-    html: interpolate(template.html, variables),
-    text: template.text ? interpolate(template.text, variables) : undefined,
+    subject: template.subject,
+    html: template.html,
+    tags: [{ name: "type", value: templateId }],
   });
 }
 
-// ============================================
-// TEMPLATES D'EMAILS
-// ============================================
-
-const baseStyles = `
-  body { font-family: 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; }
-  .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-  .header { background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-  .header h1 { margin: 0; font-size: 24px; }
-  .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }
-  .footer { background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #6b7280; border-radius: 0 0 8px 8px; }
-  .button { display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; }
-  .button:hover { background: #2563eb; }
-  .highlight { background: #f0f9ff; padding: 15px; border-radius: 6px; margin: 15px 0; }
-  .amount { font-size: 28px; font-weight: 700; color: #3b82f6; }
-`;
-
-export const EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
-  // Bienvenue
-  welcome: {
-    id: "welcome",
-    subject: "Bienvenue sur Talok, {{name}} !",
-    html: `
-<!DOCTYPE html>
-<html>
-<head><style>${baseStyles}</style></head>
-<body>
-<div class="container">
-  <div class="header">
-    <h1>🏠 Bienvenue !</h1>
-  </div>
-  <div class="content">
-    <p>Bonjour {{name}},</p>
-    <p>Nous sommes ravis de vous accueillir sur <strong>Talok</strong> !</p>
-    <p>Votre compte a été créé avec succès. Vous pouvez maintenant :</p>
-    <ul>
-      <li>Ajouter vos biens immobiliers</li>
-      <li>Gérer vos locataires</li>
-      <li>Suivre vos loyers et paiements</li>
-      <li>Générer des documents automatiquement</li>
-    </ul>
-    <p style="text-align: center; margin: 30px 0;">
-      <a href="{{dashboard_url}}" class="button">Accéder à mon espace</a>
-    </p>
-    <p>Si vous avez des questions, notre équipe est là pour vous aider.</p>
-  </div>
-  <div class="footer">
-    <p>© {{year}} Talok. Tous droits réservés.</p>
-  </div>
-</div>
-</body>
-</html>
-    `,
-  },
-
-  // Quittance de loyer
-  rent_receipt: {
-    id: "rent_receipt",
-    subject: "Quittance de loyer - {{period}}",
-    html: `
-<!DOCTYPE html>
-<html>
-<head><style>${baseStyles}</style></head>
-<body>
-<div class="container">
-  <div class="header">
-    <h1>📄 Quittance de loyer</h1>
-  </div>
-  <div class="content">
-    <p>Bonjour {{tenant_name}},</p>
-    <p>Veuillez trouver ci-joint votre quittance de loyer pour la période de <strong>{{period}}</strong>.</p>
-    
-    <div class="highlight">
-      <p style="margin: 0;"><strong>Bien :</strong> {{property_address}}</p>
-      <p style="margin: 5px 0 0;"><strong>Montant :</strong> <span class="amount">{{amount}} €</span></p>
-    </div>
-    
-    <p>Ce document atteste du paiement de votre loyer.</p>
-    
-    <p style="text-align: center; margin: 30px 0;">
-      <a href="{{receipt_url}}" class="button">Télécharger la quittance</a>
-    </p>
-  </div>
-  <div class="footer">
-    <p>© {{year}} Talok. Tous droits réservés.</p>
-  </div>
-</div>
-</body>
-</html>
-    `,
-  },
-
-  // Rappel de loyer
-  rent_reminder: {
-    id: "rent_reminder",
-    subject: "Rappel : Loyer de {{period}} en attente",
-    html: `
-<!DOCTYPE html>
-<html>
-<head><style>${baseStyles}</style></head>
-<body>
-<div class="container">
-  <div class="header" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
-    <h1>⏰ Rappel de paiement</h1>
-  </div>
-  <div class="content">
-    <p>Bonjour {{tenant_name}},</p>
-    <p>Nous n'avons pas encore reçu le paiement de votre loyer pour <strong>{{period}}</strong>.</p>
-    
-    <div class="highlight" style="background: #fef3c7;">
-      <p style="margin: 0;"><strong>Montant dû :</strong> <span class="amount" style="color: #d97706;">{{amount}} €</span></p>
-      <p style="margin: 5px 0 0;"><strong>Échéance :</strong> {{due_date}}</p>
-    </div>
-    
-    <p>Merci de régulariser votre situation dans les meilleurs délais.</p>
-    
-    <p style="text-align: center; margin: 30px 0;">
-      <a href="{{payment_url}}" class="button" style="background: #f59e0b;">Payer maintenant</a>
-    </p>
-    
-    <p style="font-size: 14px; color: #6b7280;">
-      Si vous avez déjà effectué le paiement, veuillez ignorer ce message.
-    </p>
-  </div>
-  <div class="footer">
-    <p>© {{year}} Talok. Tous droits réservés.</p>
-  </div>
-</div>
-</body>
-</html>
-    `,
-  },
-
-  // Nouveau ticket
-  ticket_created: {
-    id: "ticket_created",
-    subject: "Nouvelle demande : {{ticket_title}}",
-    html: `
-<!DOCTYPE html>
-<html>
-<head><style>${baseStyles}</style></head>
-<body>
-<div class="container">
-  <div class="header">
-    <h1>🎫 Nouvelle demande</h1>
-  </div>
-  <div class="content">
-    <p>Bonjour {{owner_name}},</p>
-    <p>Une nouvelle demande a été créée par votre locataire.</p>
-    
-    <div class="highlight">
-      <p style="margin: 0;"><strong>Titre :</strong> {{ticket_title}}</p>
-      <p style="margin: 5px 0 0;"><strong>Bien :</strong> {{property_address}}</p>
-      <p style="margin: 5px 0 0;"><strong>Créé par :</strong> {{tenant_name}}</p>
-      <p style="margin: 5px 0 0;"><strong>Priorité :</strong> {{priority}}</p>
-    </div>
-    
-    <p style="text-align: center; margin: 30px 0;">
-      <a href="{{ticket_url}}" class="button">Voir la demande</a>
-    </p>
-  </div>
-  <div class="footer">
-    <p>© {{year}} Talok. Tous droits réservés.</p>
-  </div>
-</div>
-</body>
-</html>
-    `,
-  },
-
-  // Signature de bail
-  lease_signature: {
-    id: "lease_signature",
-    subject: "Signature requise : Bail pour {{property_address}}",
-    html: `
-<!DOCTYPE html>
-<html>
-<head><style>${baseStyles}</style></head>
-<body>
-<div class="container">
-  <div class="header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-    <h1>✍️ Signature requise</h1>
-  </div>
-  <div class="content">
-    <p>Bonjour {{recipient_name}},</p>
-    <p>Un contrat de bail est en attente de votre signature.</p>
-    
-    <div class="highlight" style="background: #d1fae5;">
-      <p style="margin: 0;"><strong>Bien :</strong> {{property_address}}</p>
-      <p style="margin: 5px 0 0;"><strong>Type de bail :</strong> {{lease_type}}</p>
-      <p style="margin: 5px 0 0;"><strong>Date de début :</strong> {{start_date}}</p>
-      <p style="margin: 5px 0 0;"><strong>Loyer :</strong> {{rent}} €/mois</p>
-    </div>
-    
-    <p>Veuillez signer ce document avant le <strong>{{expiry_date}}</strong>.</p>
-    
-    <p style="text-align: center; margin: 30px 0;">
-      <a href="{{signature_url}}" class="button" style="background: #10b981;">Signer le bail</a>
-    </p>
-  </div>
-  <div class="footer">
-    <p>© {{year}} Talok. Tous droits réservés.</p>
-  </div>
-</div>
-</body>
-</html>
-    `,
-  },
-
-  // Paiement reçu (pour le propriétaire)
-  payment_received: {
-    id: "payment_received",
-    subject: "Paiement reçu : {{amount}} € de {{tenant_name}}",
-    html: `
-<!DOCTYPE html>
-<html>
-<head><style>${baseStyles}</style></head>
-<body>
-<div class="container">
-  <div class="header" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-    <h1>💰 Paiement reçu</h1>
-  </div>
-  <div class="content">
-    <p>Bonjour {{owner_name}},</p>
-    <p>Un paiement a été enregistré avec succès.</p>
-    
-    <div class="highlight" style="background: #d1fae5;">
-      <p style="margin: 0; text-align: center;"><span class="amount" style="color: #10b981;">{{amount}} €</span></p>
-      <hr style="border: none; border-top: 1px solid #a7f3d0; margin: 15px 0;">
-      <p style="margin: 0;"><strong>Locataire :</strong> {{tenant_name}}</p>
-      <p style="margin: 5px 0 0;"><strong>Bien :</strong> {{property_address}}</p>
-      <p style="margin: 5px 0 0;"><strong>Période :</strong> {{period}}</p>
-      <p style="margin: 5px 0 0;"><strong>Date :</strong> {{payment_date}}</p>
-    </div>
-    
-    <p style="text-align: center; margin: 30px 0;">
-      <a href="{{dashboard_url}}" class="button" style="background: #10b981;">Voir mes finances</a>
-    </p>
-  </div>
-  <div class="footer">
-    <p>© {{year}} Talok. Tous droits réservés.</p>
-  </div>
-</div>
-</body>
-</html>
-    `,
-  },
-
-  // Invitation bail (pour le locataire)
-  lease_invite: {
-    id: "lease_invite",
-    subject: "{{owner_name}} vous invite à signer un bail",
-    html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Invitation à signer votre bail</title>
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f4f4f5; margin: 0; padding: 20px;">
-  <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-    
-    <!-- Header -->
-    <div style="background: linear-gradient(135deg, #3b82f6, #8b5cf6); padding: 32px; text-align: center;">
-      <h1 style="color: white; margin: 0; font-size: 24px;">📄 Nouveau bail à signer</h1>
-    </div>
-
-    <!-- Content -->
-    <div style="padding: 32px;">
-      <p style="font-size: 16px; color: #374151; margin: 0 0 24px 0;">
-        {{greeting}},
-      </p>
-      
-      <p style="font-size: 16px; color: #374151; margin: 0 0 24px 0;">
-        <strong>{{owner_name}}</strong> vous invite à signer un contrat de bail pour le logement suivant :
-      </p>
-
-      <!-- Property card -->
-      <div style="background: #f8fafc; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-        <p style="margin: 0 0 8px 0; font-size: 14px; color: #64748b;">📍 Adresse</p>
-        <p style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #1e293b;">
-          {{property_address}}
-        </p>
-        
-        <table style="width: 100%;">
-          <tr>
-            <td style="vertical-align: top; padding-right: 20px;">
-              <p style="margin: 0 0 4px 0; font-size: 14px; color: #64748b;">💰 Loyer</p>
-              <p style="margin: 0; font-size: 18px; font-weight: 700; color: #3b82f6;">
-                {{total_rent}} €/mois
-              </p>
-              <p style="margin: 4px 0 0 0; font-size: 12px; color: #94a3b8;">
-                {{rent}} € + {{charges}} € charges
-              </p>
-            </td>
-            <td style="vertical-align: top;">
-              <p style="margin: 0 0 4px 0; font-size: 14px; color: #64748b;">📋 Type</p>
-              <p style="margin: 0; font-size: 16px; font-weight: 600; color: #1e293b;">
-                {{lease_type}}
-              </p>
-            </td>
-          </tr>
-        </table>
-      </div>
-
-      <!-- Steps -->
-      <p style="font-size: 14px; color: #64748b; margin: 0 0 16px 0;">
-        Pour finaliser votre bail, vous devrez :
-      </p>
-      
-      <div style="margin-bottom: 24px;">
-        <table style="width: 100%;">
-          <tr>
-            <td style="width: 36px; vertical-align: top; padding-bottom: 12px;">
-              <div style="width: 24px; height: 24px; background: #3b82f6; border-radius: 50%; color: white; font-size: 12px; font-weight: bold; text-align: center; line-height: 24px;">1</div>
-            </td>
-            <td style="vertical-align: top; padding-bottom: 12px;">
-              <p style="margin: 0; font-weight: 600; color: #1e293b;">Vérifier votre identité</p>
-              <p style="margin: 4px 0 0 0; font-size: 14px; color: #64748b;">Scan de votre CNI ou France Identité</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="width: 36px; vertical-align: top; padding-bottom: 12px;">
-              <div style="width: 24px; height: 24px; background: #3b82f6; border-radius: 50%; color: white; font-size: 12px; font-weight: bold; text-align: center; line-height: 24px;">2</div>
-            </td>
-            <td style="vertical-align: top; padding-bottom: 12px;">
-              <p style="margin: 0; font-weight: 600; color: #1e293b;">Relire le bail</p>
-              <p style="margin: 4px 0 0 0; font-size: 14px; color: #64748b;">Vérifiez toutes les informations du contrat</p>
-            </td>
-          </tr>
-          <tr>
-            <td style="width: 36px; vertical-align: top;">
-              <div style="width: 24px; height: 24px; background: #3b82f6; border-radius: 50%; color: white; font-size: 12px; font-weight: bold; text-align: center; line-height: 24px;">3</div>
-            </td>
-            <td style="vertical-align: top;">
-              <p style="margin: 0; font-weight: 600; color: #1e293b;">Signer électroniquement</p>
-              <p style="margin: 4px 0 0 0; font-size: 14px; color: #64748b;">Signature sécurisée avec code SMS</p>
-            </td>
-          </tr>
-        </table>
-      </div>
-
-      <!-- CTA Button -->
-      <div style="text-align: center; margin: 32px 0;">
-        <a href="{{invite_url}}" style="display: inline-block; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
-          ✍️ Compléter et signer mon bail
-        </a>
-      </div>
-
-      <p style="font-size: 14px; color: #94a3b8; text-align: center; margin: 0;">
-        Ce lien expire dans 7 jours.
-      </p>
-    </div>
-
-    <!-- Footer -->
-    <div style="background: #f8fafc; padding: 24px; text-align: center; border-top: 1px solid #e2e8f0;">
-      <p style="margin: 0 0 8px 0; font-size: 14px; color: #64748b;">
-        🔒 Signature électronique sécurisée
-      </p>
-      <p style="margin: 0; font-size: 12px; color: #94a3b8;">
-        © {{year}} Talok - Votre solution de gestion immobilière
-      </p>
-    </div>
-  </div>
-</body>
-</html>
-    `,
-  },
-};
-
-// ============================================
-// FONCTIONS UTILITAIRES
-// ============================================
-
-/**
- * Envoie un email de bienvenue
- */
 export async function sendWelcomeEmail(
   to: string,
   name: string,
   dashboardUrl: string
 ): Promise<EmailResult> {
-  return sendTemplateEmail("welcome", to, {
-    name,
-    dashboard_url: dashboardUrl,
-    year: new Date().getFullYear().toString(),
+  const template = emailTemplates.welcome({
+    userName: name,
+    role: "owner",
+    loginUrl: dashboardUrl,
+  });
+  return sendEmail({
+    to,
+    subject: template.subject,
+    html: template.html,
+    tags: [{ name: "type", value: "welcome" }],
   });
 }
 
-/**
- * Envoie une quittance de loyer
- */
 export async function sendRentReceiptEmail(
   to: string,
   tenantName: string,
@@ -678,19 +313,22 @@ export async function sendRentReceiptEmail(
   propertyAddress: string,
   receiptUrl: string
 ): Promise<EmailResult> {
-  return sendTemplateEmail("rent_receipt", to, {
-    tenant_name: tenantName,
+  const template = emailTemplates.paymentConfirmation({
+    tenantName,
+    amount,
+    paymentDate: new Date().toLocaleDateString("fr-FR"),
+    paymentMethod: "Virement",
     period,
-    amount: amount.toLocaleString("fr-FR"),
-    property_address: propertyAddress,
-    receipt_url: receiptUrl,
-    year: new Date().getFullYear().toString(),
+    receiptUrl,
+  });
+  return sendEmail({
+    to,
+    subject: template.subject,
+    html: template.html,
+    tags: [{ name: "type", value: "rent_receipt" }],
   });
 }
 
-/**
- * Envoie un rappel de loyer
- */
 export async function sendRentReminderEmail(
   to: string,
   tenantName: string,
@@ -699,19 +337,21 @@ export async function sendRentReminderEmail(
   dueDate: string,
   paymentUrl: string
 ): Promise<EmailResult> {
-  return sendTemplateEmail("rent_reminder", to, {
-    tenant_name: tenantName,
-    period,
-    amount: amount.toLocaleString("fr-FR"),
-    due_date: dueDate,
-    payment_url: paymentUrl,
-    year: new Date().getFullYear().toString(),
+  const template = emailTemplates.paymentReminder({
+    tenantName,
+    amount,
+    dueDate,
+    daysLate: 0,
+    invoiceUrl: paymentUrl,
+  });
+  return sendEmail({
+    to,
+    subject: template.subject,
+    html: template.html,
+    tags: [{ name: "type", value: "rent_reminder" }],
   });
 }
 
-/**
- * Envoie une notification de paiement reçu
- */
 export async function sendPaymentReceivedEmail(
   to: string,
   ownerName: string,
@@ -722,21 +362,22 @@ export async function sendPaymentReceivedEmail(
   paymentDate: string,
   dashboardUrl: string
 ): Promise<EmailResult> {
-  return sendTemplateEmail("payment_received", to, {
-    owner_name: ownerName,
-    tenant_name: tenantName,
-    amount: amount.toLocaleString("fr-FR"),
-    property_address: propertyAddress,
+  const template = emailTemplates.paymentConfirmation({
+    tenantName: ownerName,
+    amount,
+    paymentDate,
+    paymentMethod: "Carte bancaire",
     period,
-    payment_date: paymentDate,
-    dashboard_url: dashboardUrl,
-    year: new Date().getFullYear().toString(),
+    receiptUrl: dashboardUrl,
+  });
+  return sendEmail({
+    to,
+    subject: `Paiement reçu : ${amount.toLocaleString("fr-FR")} € de ${tenantName}`,
+    html: template.html,
+    tags: [{ name: "type", value: "payment_received" }],
   });
 }
 
-/**
- * Envoie une invitation de bail au locataire, colocataire ou garant
- */
 export async function sendLeaseInviteEmail(params: {
   to: string;
   tenantName?: string;
@@ -749,59 +390,23 @@ export async function sendLeaseInviteEmail(params: {
   role?: "locataire_principal" | "colocataire" | "garant";
   isReminder?: boolean;
 }): Promise<EmailResult> {
-  const leaseTypeLabels: Record<string, string> = {
-    nu: "Location nue",
-    meuble: "Location meublée",
-    colocation: "Colocation",
-    saisonnier: "Location saisonnière",
-    mobilite: "Bail mobilité",
-  };
-
-  const roleLabels: Record<string, string> = {
-    locataire_principal: "locataire principal",
-    colocataire: "colocataire",
-    garant: "garant",
-  };
-
-  const roleText = params.role ? roleLabels[params.role] : "locataire";
-  const isGuarantor = params.role === "garant";
-
-  const totalRent = params.rent + params.charges;
-  const greeting = params.tenantName ? `Bonjour ${params.tenantName}` : "Bonjour";
-
-  // Adapter le message selon le rôle et si c'est un rappel
-  let actionText: string;
-  if (isGuarantor) {
-    actionText = params.isReminder 
-      ? "Rappel : vous avez été invité(e) à vous porter garant"
-      : "Vous avez été invité(e) à vous porter garant";
-  } else {
-    actionText = params.isReminder
-      ? `Rappel : vous avez été invité(e) en tant que ${roleText}`
-      : `Vous avez été invité(e) en tant que ${roleText}`;
-  }
-
-  return sendTemplateEmail("lease_invite", params.to, {
-    greeting,
-    owner_name: params.ownerName,
-    property_address: params.propertyAddress,
-    total_rent: totalRent.toLocaleString("fr-FR"),
-    rent: params.rent.toLocaleString("fr-FR"),
-    charges: params.charges.toLocaleString("fr-FR"),
-    lease_type: leaseTypeLabels[params.leaseType] || params.leaseType,
-    invite_url: params.inviteUrl,
-    year: new Date().getFullYear().toString(),
-    // Nouveaux champs pour le template
-    role_text: roleText,
-    action_text: actionText,
-    is_guarantor: String(isGuarantor),
-    is_reminder: String(params.isReminder || false),
+  const template = emailTemplates.leaseInvite({
+    tenantName: params.tenantName || "",
+    ownerName: params.ownerName,
+    propertyAddress: params.propertyAddress,
+    rent: params.rent,
+    charges: params.charges,
+    leaseType: params.leaseType,
+    inviteUrl: params.inviteUrl,
+  });
+  return sendEmail({
+    to: params.to,
+    subject: template.subject,
+    html: template.html,
+    tags: [{ name: "type", value: "lease_invite" }],
   });
 }
 
-/**
- * Envoie un email de demande de signature de bail
- */
 export async function sendLeaseSignatureEmail(
   to: string,
   recipientName: string,
@@ -812,23 +417,18 @@ export async function sendLeaseSignatureEmail(
   signatureUrl: string,
   expiryDate: string
 ): Promise<EmailResult> {
-  const leaseTypeLabels: Record<string, string> = {
-    nu: "Location nue",
-    meuble: "Location meublée",
-    colocation: "Colocation",
-    saisonnier: "Location saisonnière",
-    mobilite: "Bail mobilité",
-  };
-
-  return sendTemplateEmail("lease_signature", to, {
-    recipient_name: recipientName,
-    property_address: propertyAddress,
-    lease_type: leaseTypeLabels[leaseType] || leaseType,
-    start_date: startDate,
-    rent: rent.toLocaleString("fr-FR"),
-    signature_url: signatureUrl,
-    expiry_date: expiryDate,
-    year: new Date().getFullYear().toString(),
+  const template = emailTemplates.signatureRequest({
+    signerName: recipientName,
+    ownerName: "",
+    propertyAddress,
+    leaseType,
+    signatureUrl,
+  });
+  return sendEmail({
+    to,
+    subject: template.subject,
+    html: template.html,
+    tags: [{ name: "type", value: "lease_signature" }],
   });
 }
 
@@ -842,6 +442,5 @@ export default {
   sendPaymentReceivedEmail,
   sendLeaseInviteEmail,
   sendLeaseSignatureEmail,
-  EMAIL_TEMPLATES,
 };
 

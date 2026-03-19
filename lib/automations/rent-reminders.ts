@@ -240,7 +240,7 @@ async function sendReminder(
 
   // Envoyer l'email
   if (config.enableEmail && invoice.tenant.email) {
-    await sendRentReminderEmail(
+    const emailResult = await sendRentReminderEmail(
       invoice.tenant.email,
       `${invoice.tenant.prenom} ${invoice.tenant.nom}`,
       formatPeriode(invoice.periode),
@@ -248,6 +248,9 @@ async function sendReminder(
       invoice.due_date.toLocaleDateString("fr-FR"),
       `${process.env.NEXT_PUBLIC_APP_URL}/tenant/payments?invoice=${invoice.id}`,
     );
+    if (!emailResult.success) {
+      console.error(`[Rent Reminder] Email failed for invoice ${invoice.id}:`, emailResult.error);
+    }
   }
 
   // Créer une notification dans la BDD

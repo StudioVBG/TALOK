@@ -127,12 +127,17 @@ export async function POST(request: NextRequest) {
       loginUrl: `${appBaseUrl}/auth/signin`,
     });
 
-    await sendEmail({
+    const emailResult = await sendEmail({
       to: user.email || "",
       subject: passwordChangedTemplate.subject,
       html: passwordChangedTemplate.html,
       text: passwordChangedTemplate.text,
+      tags: [{ name: "type", value: "password_changed" }],
     });
+
+    if (!emailResult.success) {
+      console.error("[PasswordRecovery] Confirmation email failed:", emailResult.error);
+    }
 
     await logAuditEvent({
       user_id: user.id,

@@ -1586,5 +1586,188 @@ export const emailTemplates = {
       </div>
     `, 'Votre code de vérification Talok'),
   }),
+
+  leaseInvite: (data: {
+    tenantName: string;
+    ownerName: string;
+    propertyAddress: string;
+    rent: number;
+    charges: number;
+    leaseType: string;
+    inviteUrl: string;
+  }) => {
+    const totalRent = data.rent + data.charges;
+    const leaseTypeLabels: Record<string, string> = {
+      nu: 'Location nue', meuble: 'Location meublée', colocation: 'Colocation',
+      saisonnier: 'Location saisonnière', mobilite: 'Bail mobilité',
+    };
+
+    return {
+      subject: `📄 ${escapeHtml(data.ownerName)} vous invite à signer un bail`,
+      html: baseLayout(`
+        <div class="content">
+          <h1>Nouveau bail à signer</h1>
+          <p>Bonjour${data.tenantName ? ` ${escapeHtml(data.tenantName)}` : ''},</p>
+          <p><strong>${escapeHtml(data.ownerName)}</strong> vous invite à signer un contrat de bail pour le logement suivant :</p>
+
+          <div class="highlight-box">
+            <p style="font-weight: 600; color: ${COLORS.gray[900]}; margin-bottom: 8px;">📍 ${escapeHtml(data.propertyAddress)}</p>
+          </div>
+
+          <div class="info-grid">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+              <tr>
+                <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]};">
+                  <span style="color: ${COLORS.gray[500]}; font-size: 14px;">Loyer mensuel</span>
+                </td>
+                <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]}; text-align: right;">
+                  <span style="color: ${COLORS.primary}; font-weight: 700; font-size: 16px;">${totalRent.toLocaleString('fr-FR')} €/mois</span>
+                  <br><span style="color: ${COLORS.gray[500]}; font-size: 12px;">${data.rent.toLocaleString('fr-FR')} € + ${data.charges.toLocaleString('fr-FR')} € charges</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 12px 0;">
+                  <span style="color: ${COLORS.gray[500]}; font-size: 14px;">Type de bail</span>
+                </td>
+                <td style="padding: 12px 0; text-align: right;">
+                  <span style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 14px;">${leaseTypeLabels[data.leaseType] || escapeHtml(data.leaseType)}</span>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="text-align: center;">
+            <a href="${data.inviteUrl}" class="button">Compléter et signer mon bail</a>
+          </div>
+
+          <p style="font-size: 13px; color: ${COLORS.gray[500]}; text-align: center; margin-top: 16px;">
+            Ce lien expire dans 7 jours.
+          </p>
+        </div>
+      `, `${escapeHtml(data.ownerName)} vous invite à signer un bail sur Talok.`),
+    };
+  },
+
+  cniExpiryNotification: (data: {
+    recipientName: string;
+    message: string;
+    subject: string;
+    daysUntilExpiry: number;
+    urgencyLevel: string;
+    tenantName?: string;
+  }) => {
+    const urgencyColors: Record<string, string> = {
+      expiring_soon: COLORS.warning,
+      expired: COLORS.error,
+    };
+    const urgencyColor = urgencyColors[data.urgencyLevel] || COLORS.warning;
+
+    return {
+      subject: data.subject,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span class="badge" style="background-color: ${urgencyColor}20; color: ${urgencyColor};">
+              ${data.daysUntilExpiry <= 0 ? 'DOCUMENT EXPIRÉ' : `EXPIRATION DANS ${data.daysUntilExpiry} JOUR(S)`}
+            </span>
+          </div>
+
+          <h1>${escapeHtml(data.subject)}</h1>
+          <p>Bonjour ${escapeHtml(data.recipientName)},</p>
+          <p>${escapeHtml(data.message)}</p>
+
+          ${data.tenantName ? `<p><strong>Locataire concerné :</strong> ${escapeHtml(data.tenantName)}</p>` : ''}
+
+          <div class="highlight-box" style="border-left-color: ${urgencyColor};">
+            <p style="margin: 0; font-weight: bold;">
+              ${data.daysUntilExpiry <= 0 ? 'Document expiré' : `Expiration dans ${data.daysUntilExpiry} jour(s)`}
+            </p>
+          </div>
+
+          <div style="text-align: center;">
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr'}/documents" class="button">Gérer mes documents</a>
+          </div>
+        </div>
+      `, escapeHtml(data.message)),
+    };
+  },
+
+  integrationTest: (data: {
+    testDate: string;
+  }) => ({
+    subject: 'Test de configuration Resend - Talok',
+    html: baseLayout(`
+      <div class="content">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span class="badge badge-success">TEST RÉUSSI</span>
+        </div>
+        <h1 style="text-align: center;">Configuration Resend réussie !</h1>
+        <p style="text-align: center;">Votre intégration email fonctionne correctement.</p>
+        <p style="text-align: center; color: ${COLORS.gray[500]}; font-size: 14px;">
+          Test effectué le ${escapeHtml(data.testDate)}
+        </p>
+      </div>
+    `, 'Votre intégration Resend fonctionne correctement.'),
+  }),
+
+  genericReminder: (data: {
+    subject: string;
+    content: string;
+  }) => ({
+    subject: data.subject,
+    html: baseLayout(`
+      <div class="content">
+        <h1>${escapeHtml(data.subject)}</h1>
+        <div style="white-space: pre-line; line-height: 1.6; color: ${COLORS.gray[700]};">
+          ${escapeHtml(data.content).replace(/\n/g, '<br>')}
+        </div>
+      </div>
+    `, escapeHtml(data.subject)),
+  }),
+
+  invoiceReminder: (data: {
+    tenantName: string;
+    period: string;
+    amount: number;
+    dueDate: string;
+    reminderLevel: string;
+    paymentUrl: string;
+  }) => {
+    const levelLabels: Record<string, { label: string; color: string }> = {
+      L1: { label: 'Rappel amiable', color: COLORS.warning },
+      L2: { label: 'Rappel formel', color: '#ea580c' },
+      L3: { label: 'Mise en demeure', color: COLORS.error },
+    };
+    const level = levelLabels[data.reminderLevel] || levelLabels.L1;
+
+    return {
+      subject: `${level.label} - Loyer ${data.period}`,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span class="badge" style="background-color: ${level.color}20; color: ${level.color};">${level.label.toUpperCase()}</span>
+          </div>
+
+          <h1>Paiement en attente</h1>
+          <p>Bonjour ${escapeHtml(data.tenantName)},</p>
+          <p>Nous n'avons pas encore reçu le paiement de votre loyer pour la période de <strong>${data.period}</strong>.</p>
+
+          <div class="highlight-box" style="border-left-color: ${level.color};">
+            <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Montant dû</p>
+            <div class="amount" style="color: ${level.color};">${data.amount.toLocaleString('fr-FR')} €</div>
+            <p style="color: ${COLORS.gray[500]}; font-size: 14px;">Échéance : ${data.dueDate}</p>
+          </div>
+
+          <div style="text-align: center;">
+            <a href="${data.paymentUrl}" class="button" style="background-color: ${level.color};">Régulariser maintenant</a>
+          </div>
+
+          <p style="font-size: 13px; color: ${COLORS.gray[500]}; margin-top: 24px;">
+            Si vous avez déjà effectué le paiement, veuillez ignorer ce message.
+          </p>
+        </div>
+      `, `Rappel : loyer ${data.period} en attente (${data.amount.toLocaleString('fr-FR')} €)`),
+    };
+  },
 };
 

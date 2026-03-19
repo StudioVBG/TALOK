@@ -291,11 +291,18 @@ async function sendEmailReminder(reminder: Reminder): Promise<boolean> {
       return false;
     }
 
+    const { emailTemplates } = await import("@/lib/emails/templates");
+    const template = emailTemplates.genericReminder({
+      subject: reminder.subject,
+      content: reminder.content,
+    });
+
     const result = await sendEmail({
       to: reminder.recipientEmail,
-      subject: reminder.subject,
+      subject: template.subject,
+      html: template.html,
       text: reminder.content,
-      html: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; white-space: pre-line;">${reminder.content.replace(/\n/g, "<br>")}</div>`,
+      tags: [{ name: "type", value: `reminder_${reminder.type}` }],
     });
 
     if (!result.success) {

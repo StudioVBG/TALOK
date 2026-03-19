@@ -176,6 +176,11 @@ export async function GET(request: NextRequest) {
           to: email,
           subject: emailData.subject,
           html: emailData.html,
+          tags: [
+            { name: "type", value: `onboarding_reminder_${reminder.reminder_type}` },
+            { name: "profile_id", value: reminder.profile_id },
+          ],
+          idempotencyKey: `onboarding-${reminder.reminder_type}/${reminder.id}`,
         });
 
         if (!sendResult.success) {

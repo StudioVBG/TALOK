@@ -10,6 +10,49 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+async function sendOutboxEmail(params: {
+  to: string;
+  subject: string;
+  html: string;
+  tags?: Array<{ name: string; value: string }>;
+  reply_to?: string;
+}): Promise<boolean> {
+  const emailServiceUrl = Deno.env.get("EMAIL_SERVICE_URL");
+  if (!emailServiceUrl) {
+    console.log(`[Outbox] Email service non configuré. Email à ${params.to}: ${params.subject}`);
+    return false;
+  }
+
+  try {
+    const response = await fetch(emailServiceUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${Deno.env.get("EMAIL_SERVICE_API_KEY") || ""}`,
+      },
+      body: JSON.stringify({
+        to: params.to,
+        subject: params.subject,
+        html: params.html,
+        reply_to: params.reply_to || Deno.env.get("EMAIL_REPLY_TO") || "support@talok.fr",
+        tags: params.tags,
+      }),
+    });
+
+    if (!response.ok) {
+      const errBody = await response.text();
+      console.error(`[Outbox] Email service error ${response.status}: ${errBody}`);
+      return false;
+    }
+
+    console.log(`[Outbox] Email envoyé à ${params.to}: ${params.subject}`);
+    return true;
+  } catch (error) {
+    console.error(`[Outbox] Erreur envoi email à ${params.to}:`, error);
+    return false;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -695,27 +738,12 @@ async function handleLegislationUpdate(supabase: any, payload: any) {
     // Appeler le service d'envoi d'email
     const emailServiceUrl = Deno.env.get("EMAIL_SERVICE_URL");
     
-    if (emailServiceUrl) {
-      try {
-        await fetch(emailServiceUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${Deno.env.get("EMAIL_SERVICE_API_KEY") || ""}`,
-          },
-          body: JSON.stringify({
-            to: userEmail,
-            subject: emailSubject,
-            html: emailBody,
-          }),
-        });
-        console.log(`Email de mise à jour législative envoyé à ${userEmail}`);
-      } catch (error) {
-        console.error(`Erreur envoi email à ${userEmail}:`, error);
-      }
-    } else {
-      console.log(`Email service non configuré. Email à envoyer à ${userEmail}: ${emailSubject}`);
-    }
+    await sendOutboxEmail({
+      to: userEmail,
+      subject: emailSubject,
+      html: emailBody,
+      tags: [{ name: "type", value: "legislation_update" }],
+    });
   }
 
   // Log dans audit_log pour traçabilité
@@ -1001,27 +1029,12 @@ async function sendSignatureEmail(supabase: any, params: {
       </div>
     `;
 
-    // Appeler le service email
-    const emailServiceUrl = Deno.env.get("EMAIL_SERVICE_URL");
-    
-    if (emailServiceUrl) {
-      await fetch(emailServiceUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${Deno.env.get("EMAIL_SERVICE_API_KEY") || ""}`,
-        },
-        body: JSON.stringify({
-          to: userEmail,
-          subject: params.subject,
-          html: emailHtml,
-        }),
-      });
-      console.log(`[Email] ✅ Email envoyé à ${userEmail}: ${params.subject}`);
-    } else {
-      // En mode dev, log seulement
-      console.log(`[Email] Service non configuré. Email à ${userEmail}: ${params.subject}`);
-    }
+    await sendOutboxEmail({
+      to: userEmail,
+      subject: params.subject,
+      html: emailHtml,
+      tags: [{ name: "type", value: params.type || "outbox_email" }],
+    });
   } catch (error) {
     console.error(`[Email] Erreur envoi:`, error);
   }
@@ -1115,22 +1128,15 @@ async function sendPaymentReminderEmail(supabase: any, payload: any) {
     </div>
   `;
 
-  const emailServiceUrl = Deno.env.get("EMAIL_SERVICE_URL");
-  if (emailServiceUrl) {
-    await fetch(emailServiceUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${Deno.env.get("EMAIL_SERVICE_API_KEY") || ""}`,
-      },
-      body: JSON.stringify({
-        to: userEmail,
-        subject: `${style.emoji} ${payload.reminder_subject} - ${montant_total}€`,
-        html: emailHtml,
-      }),
-    });
-    console.log(`[Email] ✅ Relance ${reminder_level} envoyée à ${userEmail}`);
-  }
+  await sendOutboxEmail({
+    to: userEmail,
+    subject: `${style.emoji} ${payload.reminder_subject} - ${montant_total}€`,
+    html: emailHtml,
+    tags: [
+      { name: "type", value: "payment_reminder" },
+      { name: "level", value: reminder_level },
+    ],
+  });
 }
 
 /**
@@ -1207,22 +1213,15 @@ async function sendOverdueAlertEmail(supabase: any, payload: any) {
     </div>
   `;
 
-  const emailServiceUrl = Deno.env.get("EMAIL_SERVICE_URL");
-  if (emailServiceUrl) {
-    await fetch(emailServiceUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${Deno.env.get("EMAIL_SERVICE_API_KEY") || ""}`,
-      },
-      body: JSON.stringify({
-        to: userEmail,
-        subject: `🚨 Impayé: ${tenant_name} - ${montant_total}€ (${days_overdue}j)`,
-        html: emailHtml,
-      }),
-    });
-    console.log(`[Email] ✅ Alerte impayé envoyée au propriétaire ${userEmail}`);
-  }
+  await sendOutboxEmail({
+    to: userEmail,
+    subject: `🚨 Impayé: ${tenant_name} - ${montant_total}€ (${days_overdue}j)`,
+    html: emailHtml,
+    tags: [
+      { name: "type", value: "overdue_alert" },
+      { name: "days_overdue", value: String(days_overdue) },
+    ],
+  });
 }
 
 async function calculateAndStoreAge(supabase: any, applicationId: string, birthdate: string) {
@@ -1535,23 +1534,14 @@ async function sendVisitBookingEmail(supabase: any, params: any) {
     return;
   }
 
-  try {
-    await fetch(emailServiceUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${Deno.env.get("EMAIL_SERVICE_API_KEY") || ""}`,
-      },
-      body: JSON.stringify({
-        to: recipientEmail,
-        subject: emailSubject,
-        html: emailHtml,
-      }),
-    });
-    console.log(`[Email] ✅ Visit booking ${params.type} envoyé à ${recipientEmail}`);
-  } catch (error) {
-    console.error(`[Email] Erreur envoi visit booking:`, error);
-  }
+  await sendOutboxEmail({
+    to: recipientEmail,
+    subject: emailSubject,
+    html: emailHtml,
+    tags: [
+      { name: "type", value: `visit_booking_${params.type}` },
+    ],
+  });
 }
 
 /**
@@ -1614,22 +1604,11 @@ async function sendVisitFeedbackRequestEmail(supabase: any, payload: any) {
     </div>
   `;
 
-  try {
-    await fetch(emailServiceUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${Deno.env.get("EMAIL_SERVICE_API_KEY") || ""}`,
-      },
-      body: JSON.stringify({
-        to: recipientEmail,
-        subject: `⭐ Comment s'est passée votre visite ? - ${payload.property_address}`,
-        html: emailHtml,
-      }),
-    });
-    console.log(`[Email] ✅ Feedback request envoyé à ${recipientEmail}`);
-  } catch (error) {
-    console.error(`[Email] Erreur envoi feedback request:`, error);
-  }
+  await sendOutboxEmail({
+    to: recipientEmail,
+    subject: `⭐ Comment s'est passée votre visite ? - ${payload.property_address}`,
+    html: emailHtml,
+    tags: [{ name: "type", value: "visit_feedback_request" }],
+  });
 }
 

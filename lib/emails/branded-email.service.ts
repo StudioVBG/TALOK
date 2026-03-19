@@ -5,9 +5,10 @@
  * de l'organisation (white-label).
  */
 
-import { Resend } from "resend";
 import { createClient } from "@/lib/supabase/server";
 import { OrganizationBranding, DEFAULT_BRANDING } from "@/lib/white-label/types";
+import { sendEmail } from "@/lib/services/email-service";
+import type { EmailResult } from "@/lib/services/email-service";
 import {
   normalizeResendFromAddress,
   resolveResendRuntimeConfig,
@@ -53,13 +54,14 @@ export class BrandedEmailService {
    * Récupère le branding email pour une organisation
    */
   async getEmailBranding(organizationId?: string): Promise<EmailBranding> {
+    const resendConfig = await resolveResendRuntimeConfig({ skipDatabase: true });
     const defaultBranding: EmailBranding = {
       companyName: "Talok",
       logoUrl: null,
       primaryColor: DEFAULT_BRANDING.primary_color!,
-      fromName: process.env.RESEND_FROM_NAME || "Talok",
-      fromEmail: process.env.RESEND_FROM_EMAIL || "noreply@talok.fr",
-      replyTo: null,
+      fromName: "Talok",
+      fromEmail: resendConfig.fromAddress,
+      replyTo: resendConfig.replyTo,
       footerHtml: null,
       removePoweredBy: false,
     };
@@ -186,20 +188,6 @@ export class BrandedEmailService {
    */
   async sendBrandedEmail(options: BrandedEmailOptions): Promise<{ success: boolean; id?: string; error?: string }> {
     try {
-      const resendConfig = await resolveResendRuntimeConfig({
-        preferredReplyTo: options.replyTo,
-      });
-
-      if (!resendConfig.apiKey) {
-        return {
-          success: false,
-          error: "Resend n'est pas configuré. Ajoutez votre clé API dans Admin > Intégrations.",
-        };
-      }
-
-      const resend = new Resend(resendConfig.apiKey);
-
-      // Récupérer le branding
       let branding: EmailBranding;
       if (options.organizationId) {
         branding = await this.getEmailBranding(options.organizationId);
@@ -209,27 +197,26 @@ export class BrandedEmailService {
         branding = await this.getEmailBranding();
       }
 
-      // Générer le HTML brandé
       const brandedHtml = this.generateBrandedWrapper(options.html, branding);
+      const brandedFrom = normalizeResendFromAddress(`${branding.fromName} <${branding.fromEmail}>`);
 
-      // Envoyer l'email
-      const { data, error } = await resend.emails.send({
-        from: normalizeResendFromAddress(`${branding.fromName} <${branding.fromEmail}>`),
-        to: Array.isArray(options.to) ? options.to : [options.to],
+      const result: EmailResult = await sendEmail({
+        to: options.to,
         subject: options.subject,
         html: brandedHtml,
-        replyTo: options.replyTo || branding.replyTo || resendConfig.replyTo || undefined,
-        tags: options.tags,
+        from: brandedFrom,
+        replyTo: options.replyTo || branding.replyTo || undefined,
+        tags: options.tags || [{ name: "type", value: "branded_email" }],
       });
 
-      if (error) {
-        console.error("Erreur envoi email:", error);
-        return { success: false, error: error.message };
+      if (!result.success) {
+        console.error("[BrandedEmail] Échec envoi:", result.error);
+        return { success: false, error: result.error };
       }
 
-      return { success: true, id: data?.id };
+      return { success: true, id: result.messageId };
     } catch (err) {
-      console.error("Erreur envoi email brandé:", err);
+      console.error("[BrandedEmail] Exception:", err);
       return {
         success: false,
         error: err instanceof Error ? err.message : "Erreur inconnue",
@@ -262,6 +249,7 @@ export async function sendBrandedEmail(
     organizationId?: string;
     userId?: string;
     replyTo?: string;
+    tags?: { name: string; value: string }[];
   }
 ): Promise<{ success: boolean; id?: string; error?: string }> {
   const service = await createBrandedEmailService();

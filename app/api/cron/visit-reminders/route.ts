@@ -10,7 +10,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendVisitReminder } from "@/lib/emails/resend.service";
+import { sendVisitReminderEmail as sendVisitReminder } from "@/lib/services/email-service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

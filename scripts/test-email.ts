@@ -9,7 +9,8 @@
  */
 
 import { config } from "dotenv";
-import { sendEmail, sendLeaseInviteEmail, EMAIL_TEMPLATES } from "../lib/services/email-service";
+import { sendEmail, sendLeaseInviteEmail } from "../lib/services/email-service";
+import { emailTemplates } from "../lib/emails/templates";
 
 // Charger .env.local
 config({ path: ".env.local" });
@@ -52,9 +53,8 @@ async function main() {
 
   if (!testEmail) {
     console.log("📋 Templates disponibles :");
-    Object.keys(EMAIL_TEMPLATES).forEach((key) => {
-      const template = EMAIL_TEMPLATES[key];
-      console.log(`   - ${key}: "${template.subject}"`);
+    Object.keys(emailTemplates).forEach((key) => {
+      console.log(`   - ${key}`);
     });
     
     console.log("\n💡 Pour envoyer un email de test :");

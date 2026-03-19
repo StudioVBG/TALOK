@@ -324,49 +324,26 @@ async function sendCniExpiryEmail(params: {
   notificationType: string;
   tenantName?: string;
 }) {
-  const { to, recipientName, subject, message, daysUntilExpiry, notificationType, tenantName } = params;
-
-  const urgencyColor = notificationType === "expired" ? "#dc2626" 
-    : notificationType === "j7" ? "#ea580c"
-    : "#f59e0b";
-
-  const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <div style="background: ${urgencyColor}; color: white; padding: 20px; text-align: center;">
-        <h1 style="margin: 0; font-size: 24px;">${subject}</h1>
-      </div>
-      
-      <div style="padding: 30px; background: #f9fafb;">
-        <p>Bonjour ${recipientName},</p>
-        
-        <p style="font-size: 16px; line-height: 1.6;">${message}</p>
-        
-        ${tenantName ? `<p><strong>Locataire concerné :</strong> ${tenantName}</p>` : ""}
-        
-        <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border-left: 4px solid ${urgencyColor};">
-          <p style="margin: 0; font-weight: bold;">
-            ${daysUntilExpiry <= 0 ? "Document expiré" : `Expiration dans ${daysUntilExpiry} jour(s)`}
-          </p>
-        </div>
-        
-        <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr"}/tenant/identity" 
-           style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-top: 20px;">
-          Mettre à jour ma CNI
-        </a>
-        
-        <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
-          Cet email a été envoyé automatiquement par Talok.<br>
-          Pour toute question, contactez-nous à support@talok.fr
-        </p>
-      </div>
-    </div>
-  `;
-
-  await sendEmail({
-    to,
-    subject,
-    html,
+  const { emailTemplates } = await import("@/lib/emails/templates");
+  const template = emailTemplates.cniExpiryNotification({
+    recipientName: params.recipientName,
+    message: params.message,
+    subject: params.subject,
+    daysUntilExpiry: params.daysUntilExpiry,
+    urgencyLevel: params.notificationType,
+    tenantName: params.tenantName,
   });
+
+  const result = await sendEmail({
+    to: params.to,
+    subject: template.subject,
+    html: template.html,
+    tags: [{ name: "type", value: `cni_expiry_${params.notificationType}` }],
+  });
+
+  if (!result.success) {
+    console.error(`[CNI Expiry] Échec envoi email à ${params.to}:`, result.error);
+  }
 }
 
 /**

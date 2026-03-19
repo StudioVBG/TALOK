@@ -5,7 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
-import { normalizeResendFromAddress } from "@/lib/services/resend-config";
+import { sendEmail } from "@/lib/services/email-service";
+import { emailTemplates } from "@/lib/emails/templates";
 
 // Fonction de déchiffrement
 function decryptKey(encryptedKey: string): string {
@@ -133,53 +134,31 @@ export async function POST(request: Request, { params }: RouteParams) {
   }
 }
 
-// Test Resend
-async function testResend(apiKey: string, adminEmail: string | undefined, config: any): Promise<{ success: boolean; message: string; details?: any }> {
+async function testResend(_apiKey: string, adminEmail: string | undefined, _config: any): Promise<{ success: boolean; message: string; details?: any }> {
   try {
-    const fromAddress = normalizeResendFromAddress(
-      config?.email_from ||
-      process.env.EMAIL_FROM ||
-      process.env.RESEND_FROM_EMAIL ||
-      "Talok <onboarding@resend.dev>"
-    );
-    
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        from: fromAddress,
-        to: [adminEmail || "test@example.com"],
-        subject: "✅ Test de configuration Resend - Talok",
-        html: `
-          <div style="font-family: sans-serif; padding: 20px;">
-            <h2 style="color: #10b981;">✅ Configuration Resend réussie !</h2>
-            <p>Votre intégration email fonctionne correctement.</p>
-            <p style="color: #64748b; font-size: 14px;">
-              Test effectué le ${new Date().toLocaleString("fr-FR")}
-            </p>
-          </div>
-        `,
-        reply_to: config?.reply_to || process.env.EMAIL_REPLY_TO || process.env.RESEND_REPLY_TO,
-      }),
+    const to = adminEmail || "delivered@resend.dev";
+    const template = emailTemplates.integrationTest
+      ? emailTemplates.integrationTest({ testDate: new Date().toLocaleString("fr-FR") })
+      : {
+          subject: "Test de configuration Resend - Talok",
+          html: `<div style="font-family: sans-serif; padding: 20px;"><h2 style="color: #10b981;">Configuration Resend réussie !</h2><p>Votre intégration email fonctionne correctement.</p><p style="color: #64748b; font-size: 14px;">Test effectué le ${new Date().toLocaleString("fr-FR")}</p></div>`,
+        };
+
+    const result = await sendEmail({
+      to,
+      subject: template.subject,
+      html: template.html,
+      tags: [{ name: "type", value: "integration_test" }],
     });
 
-    if (!response.ok) {
-      const error = await response.json();
-      return {
-        success: false,
-        message: error instanceof Error ? error.message : "Erreur Resend",
-        details: error,
-      };
+    if (!result.success) {
+      return { success: false, message: result.error || "Erreur Resend", details: result };
     }
 
-    const result = await response.json();
     return {
       success: true,
-      message: `Email de test envoyé à ${adminEmail}`,
-      details: { messageId: result.id },
+      message: `Email de test envoyé à ${to}`,
+      details: { messageId: result.messageId },
     };
   } catch (error: unknown) {
     return {

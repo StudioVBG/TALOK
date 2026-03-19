@@ -55,6 +55,8 @@ export interface SendEmailOptions {
     name: string;
     value: string;
   }>;
+  /** Clé d'idempotence pour éviter les doublons (max 256 chars, expire 24h) */
+  idempotencyKey?: string;
   /** Désactiver le rate limiting pour cet envoi */
   skipRateLimit?: boolean;
   /** Désactiver le retry pour cet envoi */
@@ -151,7 +153,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
       attempts++;
       const resend = getResendClient(resendConfig.apiKey);
 
-      const { data, error } = await resend.emails.send({
+      const sendParams: Parameters<typeof resend.emails.send>[0] = {
         from: resendConfig.fromAddress,
         to: validation.validEmails,
         subject: options.subject,
@@ -162,7 +164,11 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
         bcc: options.bcc,
         attachments: options.attachments,
         tags: options.tags,
-      });
+      };
+
+      const { data, error } = options.idempotencyKey
+        ? await resend.emails.send(sendParams, { idempotencyKey: options.idempotencyKey })
+        : await resend.emails.send(sendParams);
 
       if (error) {
         throw new Error(error.message);
@@ -242,6 +248,7 @@ export async function sendInvoiceNotification(data: {
     to: data.tenantEmail,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: `invoice-notif/${data.invoiceId}`,
     tags: [
       { name: 'type', value: 'invoice' },
       { name: 'invoice_id', value: data.invoiceId },
@@ -274,6 +281,7 @@ export async function sendPaymentConfirmation(data: {
     to: data.tenantEmail,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: `payment-confirm/${data.paymentId}`,
     tags: [
       { name: 'type', value: 'payment_confirmation' },
       { name: 'payment_id', value: data.paymentId },
@@ -304,6 +312,7 @@ export async function sendPaymentReminder(data: {
     to: data.tenantEmail,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: `payment-reminder/${data.invoiceId}/${data.daysLate}`,
     tags: [
       { name: 'type', value: 'payment_reminder' },
       { name: 'invoice_id', value: data.invoiceId },
@@ -433,6 +442,7 @@ export async function sendLeaseSignedNotification(data: {
     to: data.ownerEmail,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: `lease-signed/${data.leaseId}/${data.signerName}`,
     tags: [
       { name: 'type', value: 'lease_signed' },
       { name: 'lease_id', value: data.leaseId },
@@ -533,6 +543,7 @@ export async function sendPasswordResetEmail(data: {
     to: data.userEmail,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: `password-reset/${data.userEmail}`,
     tags: [
       { name: 'type', value: 'password_reset' },
     ],
@@ -675,10 +686,12 @@ export async function sendVisitReminder(data: {
       : `${process.env.NEXT_PUBLIC_APP_URL}/tenant/visits/${data.bookingId}`,
   });
 
+  const role = data.isOwner ? 'owner' : 'tenant';
   return sendEmail({
     to: data.recipientEmail,
     subject: template.subject,
     html: template.html,
+    idempotencyKey: `visit-reminder-${data.hoursBeforeVisit}h-${role}/${data.bookingId}`,
     tags: [
       { name: 'type', value: 'visit_reminder' },
       { name: 'booking_id', value: data.bookingId },

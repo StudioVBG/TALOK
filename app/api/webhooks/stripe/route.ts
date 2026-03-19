@@ -666,7 +666,7 @@ export async function POST(request: NextRequest) {
             const tenant = invoice.tenant;
 
             if (owner?.email) {
-              await sendPaymentReceivedEmail(
+              const emailResult = await sendPaymentReceivedEmail(
                 owner.email,
                 `${owner.prenom} ${owner.nom}`,
                 `${tenant?.prenom} ${tenant?.nom}`,
@@ -676,6 +676,9 @@ export async function POST(request: NextRequest) {
                 new Date().toLocaleDateString("fr-FR"),
                 `${process.env.NEXT_PUBLIC_APP_URL}/owner/money`
               );
+              if (!emailResult.success) {
+                console.error("[Stripe Webhook] Payment email failed:", emailResult.error);
+              }
             }
           }
 

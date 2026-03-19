@@ -22,7 +22,6 @@ export {
   sendEmail,
   sendTemplateEmail,
   sendLeaseInviteEmail,
-  EMAIL_TEMPLATES,
   type EmailOptions,
   type EmailResult,
 } from "./email-service";
