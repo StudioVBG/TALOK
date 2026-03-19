@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { propertyGeneralUpdateSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { propertyIdParamSchema } from "@/lib/validations/params";
 import type { ServiceSupabaseClient, MediaDocument, SupabaseError } from "@/lib/types/supabase-client";
 import { syncPropertyBillingToStripe } from "@/lib/stripe/sync-property-billing";
@@ -139,8 +140,10 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rateLimitResponse = applyRateLimit(request, "property");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { id } = await params;
-    // ✅ VALIDATION: Vérifier que l'ID est un UUID valide
     const propertyId = propertyIdParamSchema.parse(id);
 
     // ✅ AUTHENTIFICATION: Vérifier l'utilisateur
@@ -495,8 +498,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rateLimitResponse = applyRateLimit(request, "property");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { id } = await params;
-    // ✅ VALIDATION: Vérifier que l'ID est un UUID valide
     const propertyId = propertyIdParamSchema.parse(id);
 
     // ✅ AUTHENTIFICATION: Vérifier l'utilisateur
@@ -591,8 +596,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rateLimitResponse = applyRateLimit(request, "property");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { id } = await params;
-    // ✅ VALIDATION: Vérifier que l'ID est un UUID valide
     const propertyId = propertyIdParamSchema.parse(id);
 
     // ✅ AUTHENTIFICATION: Vérifier l'utilisateur

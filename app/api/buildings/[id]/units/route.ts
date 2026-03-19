@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 /**
  * Validation schema for creating a unit
@@ -109,6 +110,9 @@ export async function GET(request: Request, { params }: RouteParams) {
  */
 export async function POST(request: Request, { params }: RouteParams) {
   try {
+    const rateLimitResponse = applyRateLimit(request, "property");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { id: buildingId } = await params;
     const { user, error, supabase } = await getAuthenticatedUser(request);
 

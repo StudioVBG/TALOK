@@ -7,6 +7,7 @@ import { z } from "zod";
 import { generateCode } from "@/lib/helpers/code-generator";
 import { withSubscriptionLimit } from "@/lib/middleware/subscription-check";
 import { syncPropertyBillingToStripe } from "@/lib/stripe/sync-property-billing";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 /**
  * Extrait le code département depuis un code postal
@@ -43,6 +44,9 @@ const initSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const rateLimitResponse = applyRateLimit(request, "property");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const supabase = await createClient();
     
     // 1. Vérifier l'authentification

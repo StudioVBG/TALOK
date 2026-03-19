@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { photoUploadRequestSchema } from "@/lib/validations";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 const PHOTOS_BUCKET = "property-photos";
 const ROOMLESS_ALLOWED_TAGS = new Set(["vue_generale", "exterieur"]);
@@ -17,6 +18,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rateLimitResponse = applyRateLimit(request, "upload");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { id } = await params;
     const { user, error } = await getAuthenticatedUser(request);
 

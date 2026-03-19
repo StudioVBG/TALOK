@@ -10,6 +10,7 @@ import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { propertiesQuerySchema, validateQueryParams } from "@/lib/validations/params";
 import { withSubscriptionLimit, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 import { syncPropertyBillingToStripe } from "@/lib/stripe/sync-property-billing";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import type {
   ServiceSupabaseClient,
   TypedSupabaseClient,
@@ -585,6 +586,9 @@ const propertyDraftSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const rateLimitResponse = applyRateLimit(request, "property");
+    if (rateLimitResponse) return rateLimitResponse;
+
     // ✅ AUTHENTIFICATION: Vérifier l'utilisateur
     const { user, error, supabase } = await getAuthenticatedUser(request);
 

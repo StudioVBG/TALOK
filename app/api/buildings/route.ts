@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 
 /**
  * Validation schema for creating a building
@@ -91,6 +92,9 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
+    const rateLimitResponse = applyRateLimit(request, "property");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { user, error, supabase } = await getAuthenticatedUser(request);
 
     if (error || !user || !supabase) {

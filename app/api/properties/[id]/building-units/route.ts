@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import type { BuildingUnitTemplate } from "@/lib/supabase/database.types";
 import { z } from "zod";
 
@@ -41,6 +42,9 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const rateLimitResponse = applyRateLimit(request, "property");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const { id: propertyId } = await params;
     const { user, error: authError } = await getAuthenticatedUser(request);
     if (authError || !user) {
