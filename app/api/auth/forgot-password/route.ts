@@ -18,17 +18,28 @@ import { passwordRecoveryRequestSchema } from "@/lib/validations/auth/password-r
 
 export async function POST(request: NextRequest) {
   try {
+    console.log(
+      `[ForgotPassword] Step 0 — ENV: NODE_ENV=${process.env.NODE_ENV}, ` +
+      `EMAIL_FORCE_SEND=${process.env.EMAIL_FORCE_SEND || "unset"}, ` +
+      `RESEND_API_KEY=${process.env.RESEND_API_KEY ? "set" : "MISSING"}, ` +
+      `EMAIL_FROM=${process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "unset"}, ` +
+      `APP_URL=${process.env.NEXT_PUBLIC_APP_URL || "MISSING"}`
+    );
+
     const body = await request.json();
     const parsed = passwordRecoveryRequestSchema.safeParse(body);
 
     if (!parsed.success) {
+      console.warn("[ForgotPassword] Step 1 — Zod validation FAILED:", parsed.error.flatten().fieldErrors);
       return NextResponse.json({ success: true });
     }
 
     const email = parsed.data.email;
+    console.log(`[ForgotPassword] Step 1 — Zod OK for email: ${email.substring(0, 3)}***`);
 
     const ipRateLimit = await applyRateLimit(request, "email");
     if (ipRateLimit) {
+      console.warn(`[ForgotPassword] Step 2 — IP rate limit HIT`);
       return ipRateLimit as NextResponse;
     }
 
@@ -38,13 +49,14 @@ export async function POST(request: NextRequest) {
       `pw-reset:${hashEmail(email)}`
     );
     if (identityRateLimit) {
+      console.warn(`[ForgotPassword] Step 2 — Identity rate limit HIT`);
       return identityRateLimit as NextResponse;
     }
+    console.log("[ForgotPassword] Step 2 — Rate limit OK");
 
     const supabase = getServiceClient();
     const { ipAddress, userAgent } = getRequestClientInfo(request);
 
-    // Construire l'URL de redirection via /auth/callback en neutralisant une base mal configurée.
     const requestId = crypto.randomUUID();
     const redirectTo = getPasswordRecoveryCallbackUrl(
       process.env.NEXT_PUBLIC_APP_URL ||
@@ -53,7 +65,6 @@ export async function POST(request: NextRequest) {
       requestId
     );
 
-    // Générer le lien de recovery via l'API admin
     const { data: linkData, error: linkError } =
       await supabase.auth.admin.generateLink({
         type: "recovery",
@@ -64,17 +75,16 @@ export async function POST(request: NextRequest) {
       });
 
     if (linkError) {
-      console.error("[ForgotPassword] generateLink error:", linkError.message);
-      // Ne pas révéler si l'email existe ou non (sécurité)
+      console.error(`[ForgotPassword] Step 3 — generateLink FAILED: ${linkError.message}`);
       return NextResponse.json({ success: true });
     }
 
-    // Extraire les propriétés du lien généré
     const actionLink = linkData?.properties?.action_link;
     if (!actionLink || !linkData.user?.id) {
-      console.error("[ForgotPassword] No action_link returned");
+      console.error("[ForgotPassword] Step 3 — generateLink returned no action_link or no user.id");
       return NextResponse.json({ success: true });
     }
+    console.log(`[ForgotPassword] Step 3 — generateLink OK, userId=${linkData.user.id}, actionLink length=${actionLink.length}`);
 
     let resetRequestId: string | null = null;
     try {
@@ -90,12 +100,14 @@ export async function POST(request: NextRequest) {
         },
       });
       resetRequestId = resetRequest.id;
+      console.log(`[ForgotPassword] Step 4 — Reset request created: ${resetRequestId}`);
     } catch (requestError) {
-      console.error("[ForgotPassword] Password reset request creation failed:", requestError);
-      return NextResponse.json({ success: true });
+      console.error(
+        "[ForgotPassword] Step 4 — Reset request creation FAILED (continuing to send email):",
+        requestError instanceof Error ? requestError.message : requestError
+      );
     }
 
-    // Récupérer le prénom de l'utilisateur depuis le profil
     let userName = "cher utilisateur";
     const { data: profile } = await supabase
       .from("profiles")
@@ -109,14 +121,14 @@ export async function POST(request: NextRequest) {
       userName = profile.nom;
     }
 
-    // Générer l'email via le design system Talok (lib/emails/templates.ts)
     const template = emailTemplates.passwordReset({
       userName,
       resetUrl: actionLink,
       expiresIn: "1 heure",
     });
 
-    // Envoyer via Resend
+    console.log(`[ForgotPassword] Step 5 — Calling sendEmail to=${email.substring(0, 3)}***, subject="${template.subject}"`);
+
     const emailResult = await sendEmail({
       to: email,
       subject: template.subject,
@@ -126,31 +138,36 @@ export async function POST(request: NextRequest) {
     });
 
     if (!emailResult.success) {
-      console.error("[ForgotPassword] Email send failed:", emailResult.error);
+      console.error(`[ForgotPassword] Step 5 — sendEmail FAILED: ${emailResult.error}`);
       if (resetRequestId) {
         await revokePasswordResetRequest(resetRequestId);
       }
-    } else if (resetRequestId) {
-      await logAuditEvent({
-        user_id: linkData.user.id,
-        action: "password_change",
-        entity_type: "profile",
-        entity_id: resetRequestId,
-        ip_address: ipAddress || undefined,
-        user_agent: userAgent || undefined,
-        risk_level: "medium",
-        success: true,
-        metadata: {
-          event: "password_reset_requested",
-          source: "forgot-password",
-        },
-      });
+    } else {
+      console.log(
+        `[ForgotPassword] Step 5 — sendEmail OK, messageId=${emailResult.messageId || "n/a"}, ` +
+        `simulated=${emailResult.simulated || false}`
+      );
+      if (resetRequestId) {
+        await logAuditEvent({
+          user_id: linkData.user.id,
+          action: "password_change",
+          entity_type: "profile",
+          entity_id: resetRequestId,
+          ip_address: ipAddress || undefined,
+          user_agent: userAgent || undefined,
+          risk_level: "medium",
+          success: true,
+          metadata: {
+            event: "password_reset_requested",
+            source: "forgot-password",
+          },
+        });
+      }
     }
 
-    // Toujours retourner success pour ne pas révéler l'existence d'un compte
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[ForgotPassword] Unexpected error:", error);
+    console.error("[ForgotPassword] UNHANDLED error:", error);
     return NextResponse.json({ success: true });
   }
 }
