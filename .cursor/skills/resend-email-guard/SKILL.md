@@ -32,7 +32,8 @@ Caller → email-service.ts → resend.service.ts → resend-config.ts → Resen
 - **Use** `lib/emails/templates.ts` (`emailTemplates.*`) for ALL templates. This is the only place templates should exist.
 - **NEVER** write inline HTML email templates in route handlers, cron jobs, or Edge Functions.
 - The legacy `EMAIL_TEMPLATES` object in `email-service.ts` has been **deleted**. All wrappers (`sendWelcomeEmail`, etc.) now use `emailTemplates.*`.
-- If an Edge Function needs a template, delegate to `EMAIL_SERVICE_URL` (calls `/api/emails/send`).
+- If an Edge Function needs a template, use `supabase/functions/_shared/email-templates.ts` (shared Deno-compatible templates) or delegate to `EMAIL_SERVICE_URL` (calls `/api/emails/send`).
+- **NEVER** write inline HTML in Edge Functions. Use the shared templates: `sepaPrenotification`, `signatureEmail`, `legislationUpdate`, `paymentReminder`, `overdueAlert`, `visitBookingRequest`, `visitBookingConfirmed`, `visitBookingCancelled`, `visitFeedbackRequest`.
 
 ### Available templates (as of March 2026)
 
@@ -79,6 +80,8 @@ if (error) throw new Error(error.message);
 - [ ] Error result is checked: `if (!result.success) { console.error(...) }`
 - [ ] White-label emails use `branded-email.service.ts` which delegates to `sendEmail()` internally
 - [ ] Cron visit-reminders imports `sendVisitReminderEmail` from `email-service.ts` (not from `resend.service.ts`)
+- [ ] `email-service.ts` re-exports: `sendVisitReminderEmail`, `sendPaymentConfirmation`, `sendTicketUpdateNotification`, `emailService` — callers use these, not direct `resend.service.ts` imports
+- [ ] `lib/emails/index.ts` only exports `templates` — no re-export of `resend.service`
 
 ## Batch sending (crons, bulk relances)
 
@@ -114,7 +117,7 @@ const { data, errors } = await resend.batch.send(
 | `EMAIL_FORCE_SEND` | Dev only | Set `true` to send real emails in dev |
 | `CRON_SECRET` | Yes (prod) | Auth for cron endpoints |
 | `INTERNAL_EMAIL_API_KEY` | Yes (prod) | Auth for `/api/emails/send` |
-| `RESEND_WEBHOOK_SECRET` | Yes (prod) | Svix signing secret for webhook verification |
+| `RESEND_WEBHOOK_SECRET` | Yes (prod) | HMAC signing secret for webhook verification (native crypto) |
 
 - `EMAIL_API_KEY` and `RESEND_FROM_EMAIL` are legacy aliases — prefer `RESEND_API_KEY` and `EMAIL_FROM`.
 - `onboarding@resend.dev` is test-only. **NEVER** use in production `from`.
@@ -130,7 +133,7 @@ const { data, errors } = await resend.batch.send(
 
 ### Talok implementation: `app/api/webhooks/resend/route.ts`
 
-Talok has a custom webhook endpoint that handles bounces, complaints, and delivery events. It verifies Svix signatures and logs structured events. Configure the webhook URL in Resend dashboard: `https://app.talok.fr/api/webhooks/resend`.
+Talok has a custom webhook endpoint that handles bounces, complaints, and delivery events. It verifies signatures using native Node.js `crypto` (HMAC SHA256 + `timingSafeEqual`) — no `svix` dependency required. Configure the webhook URL in Resend dashboard: `https://app.talok.fr/api/webhooks/resend`.
 
 ### Recommended upgrade: Webhooks Ingester
 
@@ -169,6 +172,7 @@ Edge Functions (`supabase/functions/`) cannot import from `@/lib/`. They must:
 4. Always set `reply_to` with fallback: `reply_to: EMAIL_REPLY_TO || "support@talok.fr"`.
 5. Always verify `response.ok` after `fetch` and log errors.
 6. Prefer delegating to `EMAIL_SERVICE_URL` (calls `/api/emails/send`) when possible.
+7. If HTML templates are needed locally, place them in `supabase/functions/_shared/email-templates.ts` — **NEVER** inline HTML in Edge Functions.
 
 ### Centralized helper pattern (process-outbox)
 
@@ -239,5 +243,7 @@ async function sendOutboxEmail(params: {
 | Edge Function fetch without `reply_to` | Always set `reply_to` with fallback `support@talok.fr` |
 | Edge Function fetch without `response.ok` check | Always verify response status and log errors |
 | `onboarding@resend.dev` as fallback in prod | Use `DEFAULT_FROM` (`noreply@talok.fr`) for consumer mailbox fallback |
+| `import { Webhook } from 'svix'` for webhook verification | Use native `crypto` (HMAC SHA256 + `timingSafeEqual`) — no `svix` dependency |
+| Inline HTML template in Edge Function | Move to `supabase/functions/_shared/email-templates.ts` |
 
 For detailed SDK parameters, idempotency patterns, and Talok file map, see [reference.md](reference.md).
