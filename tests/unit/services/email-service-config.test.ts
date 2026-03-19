@@ -17,11 +17,12 @@ describe("email-service configuration status", () => {
   });
 
   afterEach(() => {
+    vi.unstubAllEnvs();
     process.env = { ...originalEnv };
   });
 
   it("priorise les credentials DB quand ils existent", async () => {
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     process.env.NEXT_PUBLIC_APP_URL = "https://talok.fr";
     process.env.PASSWORD_RESET_COOKIE_SECRET = "12345678901234567890123456789012";
     delete process.env.RESEND_API_KEY;
@@ -50,7 +51,7 @@ describe("email-service configuration status", () => {
   });
 
   it("signale les avertissements critiques quand la config est incomplete", async () => {
-    process.env.NODE_ENV = "development";
+    vi.stubEnv("NODE_ENV", "development");
     delete process.env.NEXT_PUBLIC_APP_URL;
     delete process.env.PASSWORD_RESET_COOKIE_SECRET;
     delete process.env.RESEND_API_KEY;

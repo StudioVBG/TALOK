@@ -485,7 +485,7 @@ export const usePropertyWizardStore = create<WizardState>()(
     });
 
     const { formData } = get();
-    if (propertyId) {
+    if (propertyId && roomData.type_piece) {
       propertiesService.createRoom(propertyId, {
         type_piece: roomData.type_piece,
         label_affiche: roomData.label_affiche || "Nouvelle pièce",

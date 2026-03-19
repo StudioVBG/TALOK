@@ -105,7 +105,7 @@ export type PropertyRow = {
   has_terrasse?: boolean
   has_jardin?: boolean
   has_cave?: boolean
-  clim_presence?: boolean
+  clim_presence?: "aucune" | "fixe" | "mobile" | null
   clim_type?: string | null
   visite_virtuelle_url?: string | null
   photo_url?: string | null
