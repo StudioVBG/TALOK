@@ -51,7 +51,10 @@ export async function GET(request: Request) {
     const offset = (page - 1) * limit;
 
     // ✅ RÉCUPÉRATION: Récupérer les propriétés du propriétaire avec pagination côté DB
-    let propertiesQuery = supabase
+    // Utilise adminClient (service role) pour bypasser RLS et éviter les problèmes
+    // de récursion avec user_profile_id(). La sécurité est assurée par le filtre owner_id
+    // vérifié manuellement ci-dessus.
+    let propertiesQuery = adminClient
       .from("properties")
       .select("*, legal_entity:legal_entities(id, nom, entity_type, couleur)", { count: "exact" })
       .eq("owner_id", profile.id)

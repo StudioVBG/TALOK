@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { propertyHeatingSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 /**
  * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
@@ -26,8 +27,9 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const supabaseClient = supabase as any;
-    const { data: property, error: propertyError } = await supabaseClient
+    // Utiliser service role pour bypasser RLS sur properties
+    const serviceClient = createServiceRoleClient();
+    const { data: property, error: propertyError } = await (serviceClient as any)
       .from("properties")
       .select(
         "id, owner_id, type, chauffage_type, chauffage_energie, eau_chaude_type, clim_presence, clim_type"
@@ -78,12 +80,13 @@ export async function PATCH(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const supabaseClient = supabase as any;
+    // Utiliser service role pour bypasser RLS sur properties et profiles
+    const serviceClient = createServiceRoleClient();
 
     const body = await request.json();
     const validated = propertyHeatingSchema.parse(body);
 
-    const { data: profile } = await supabaseClient
+    const { data: profile } = await (serviceClient as any)
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
@@ -95,7 +98,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const { data: property, error: propertyError } = await supabaseClient
+    const { data: property, error: propertyError } = await (serviceClient as any)
       .from("properties")
       .select("owner_id, type, etat")
       .eq("id", id as any)
@@ -140,7 +143,7 @@ export async function PATCH(
       updated_at: new Date().toISOString(),
     };
 
-    const { data: updatedProperty, error: updateError } = await supabaseClient
+    const { data: updatedProperty, error: updateError } = await (serviceClient as any)
       .from("properties")
       .update(heatingUpdates as any)
       .eq("id", id as any)
