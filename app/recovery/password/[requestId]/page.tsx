@@ -1,9 +1,9 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { cookies } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
 import {
   PASSWORD_RESET_COOKIE_NAME,
-  validatePasswordResetAccess,
+  verifyPasswordResetCookieToken,
+  validatePasswordResetRequestForCallback,
 } from "@/lib/auth/password-recovery.service";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PasswordRecoveryForm } from "./PasswordRecoveryForm";
@@ -27,21 +27,19 @@ export default async function PasswordRecoveryPage({ params }: PasswordRecoveryP
   noStore();
 
   const { requestId } = params;
-  const supabase = await createClient();
   const cookieStore = await cookies();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const cookieToken = cookieStore.get(PASSWORD_RESET_COOKIE_NAME)?.value;
+  const cookiePayload = verifyPasswordResetCookieToken(cookieToken);
 
-  const validation = user
-    ? await validatePasswordResetAccess({
-        requestId,
-        userId: user.id,
-        cookieToken: cookieStore.get(PASSWORD_RESET_COOKIE_NAME)?.value,
-      })
-    : { valid: false };
+  let canReset = false;
 
-  const canReset = Boolean(user && validation.valid);
+  if (cookiePayload && cookiePayload.requestId === requestId) {
+    const validation = await validatePasswordResetRequestForCallback({
+      requestId,
+      userId: cookiePayload.userId,
+    });
+    canReset = validation.valid;
+  }
 
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4">

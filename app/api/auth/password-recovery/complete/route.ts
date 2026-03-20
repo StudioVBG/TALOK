@@ -2,7 +2,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/services/email-service";
 import { emailTemplates } from "@/lib/emails/templates";
 import { applyRateLimit } from "@/lib/security/rate-limit";
@@ -13,7 +12,8 @@ import {
   getPasswordResetCookieOptions,
   getRequestClientInfo,
   markPasswordResetCompleted,
-  validatePasswordResetAccess,
+  verifyPasswordResetCookieToken,
+  validatePasswordResetRequestForCallback,
 } from "@/lib/auth/password-recovery.service";
 import { getServiceClient } from "@/lib/supabase/service-client";
 
@@ -41,13 +41,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    // Valider via le cookie HMAC signé (pas besoin de session Supabase)
+    const cookieToken = request.cookies.get(PASSWORD_RESET_COOKIE_NAME)?.value;
+    const cookiePayload = verifyPasswordResetCookieToken(cookieToken);
 
-    if (authError || !user) {
+    if (!cookiePayload || cookiePayload.requestId !== parsed.data.requestId) {
       return NextResponse.json(
         { error: "Session de récupération invalide ou expirée." },
         {
@@ -57,10 +55,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const validation = await validatePasswordResetAccess({
+    const userId = cookiePayload.userId;
+
+    const validation = await validatePasswordResetRequestForCallback({
       requestId: parsed.data.requestId,
-      userId: user.id,
-      cookieToken: request.cookies.get(PASSWORD_RESET_COOKIE_NAME)?.value,
+      userId,
     });
 
     if (!validation.valid || !validation.request) {
@@ -73,13 +72,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { error: updateError } = await supabase.auth.updateUser({
+    // Utiliser le client admin pour mettre à jour le mot de passe (pas besoin de session utilisateur)
+    const serviceClient = getServiceClient();
+    const { error: updateError } = await serviceClient.auth.admin.updateUserById(userId, {
       password: parsed.data.password,
     });
 
     if (updateError) {
       await logAuditEvent({
-        user_id: user.id,
+        user_id: userId,
         action: "password_change",
         entity_type: "profile",
         entity_id: parsed.data.requestId,
@@ -108,17 +109,20 @@ export async function POST(request: NextRequest) {
       completedIp: ipAddress,
     });
 
-    const serviceClient = getServiceClient();
+    // Récupérer le profil et l'email pour la notification
     const { data: profile } = await serviceClient
       .from("profiles")
       .select("prenom, nom")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .maybeSingle();
+
+    const { data: authUser } = await serviceClient.auth.admin.getUserById(userId);
+    const userEmail = authUser?.user?.email || "";
 
     const displayName =
       profile?.prenom ||
       profile?.nom ||
-      user.email?.split("@")[0] ||
+      userEmail.split("@")[0] ||
       "cher utilisateur";
 
     const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
@@ -128,14 +132,14 @@ export async function POST(request: NextRequest) {
     });
 
     await sendEmail({
-      to: user.email || "",
+      to: userEmail,
       subject: passwordChangedTemplate.subject,
       html: passwordChangedTemplate.html,
       text: passwordChangedTemplate.text,
     });
 
     await logAuditEvent({
-      user_id: user.id,
+      user_id: userId,
       action: "password_change",
       entity_type: "profile",
       entity_id: parsed.data.requestId,
@@ -147,8 +151,6 @@ export async function POST(request: NextRequest) {
         event: "password_reset_completed",
       },
     });
-
-    await supabase.auth.signOut();
 
     const response = NextResponse.json(
       {

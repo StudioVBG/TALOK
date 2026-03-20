@@ -247,6 +247,27 @@ export async function createPasswordResetRequest(
   return mapRow(data);
 }
 
+/**
+ * Récupère et valide une demande de reset par requestId uniquement (sans userId).
+ * Utilisé dans le callback quand aucune session Supabase n'est disponible.
+ */
+export async function getValidPendingRequest(
+  requestId: string
+): Promise<PasswordResetRequestRow | null> {
+  const request = await getPasswordResetRequestById(requestId);
+
+  if (!request) return null;
+
+  if (isPasswordResetRequestExpired(request.expires_at)) {
+    await revokePasswordResetRequest(request.id, "expired");
+    return null;
+  }
+
+  if (request.status !== "pending") return null;
+
+  return request;
+}
+
 export async function validatePasswordResetRequestForCallback(params: {
   requestId: string;
   userId: string;

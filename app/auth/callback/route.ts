@@ -7,6 +7,7 @@ import {
   PASSWORD_RESET_COOKIE_NAME,
   createPasswordResetCookieToken,
   getPasswordResetCookieOptions,
+  getValidPendingRequest,
   validatePasswordResetRequestForCallback,
 } from "@/lib/auth/password-recovery.service";
 
@@ -28,73 +29,28 @@ export async function GET(request: Request) {
   const flow = requestUrl.searchParams.get("flow");
   const requestId = requestUrl.searchParams.get("rid");
 
-  // Chemin 1 : Vérification directe par token_hash (liens email custom via generateLink)
-  // generateLink() côté serveur ne pose pas de code verifier PKCE dans le navigateur,
-  // donc on utilise verifyOtp() avec le token_hash au lieu de exchangeCodeForSession().
-  const tokenHash = requestUrl.searchParams.get("token_hash");
-  const type = requestUrl.searchParams.get("type");
+  // Chemin 1 : Password reset via lien email direct (sans session Supabase)
+  // Le lien email contient flow=pw-reset&rid=requestId.
+  // On valide via notre table password_reset_requests (pas besoin de verifyOtp/PKCE).
+  if (flow === "pw-reset" && requestId) {
+    const pendingRequest = await getValidPendingRequest(requestId);
 
-  if (tokenHash && type) {
-    const supabase = await createClient();
-    const { data, error } = await supabase.auth.verifyOtp({
-      token_hash: tokenHash,
-      type: type as "recovery",
-    });
-
-    if (error || !data.user) {
-      console.error("Error verifying OTP token:", error);
-      if (flow === "pw-reset") {
-        return NextResponse.redirect(new URL("/auth/forgot-password?error=invalid_reset_link", origin));
-      }
-      return NextResponse.redirect(new URL("/auth/signin?error=invalid_code", origin));
+    if (!pendingRequest) {
+      return NextResponse.redirect(new URL("/auth/forgot-password?error=invalid_reset_link", origin));
     }
 
-    if (flow === "pw-reset" && requestId && data.user) {
-      const validation = await validatePasswordResetRequestForCallback({
+    const response = NextResponse.redirect(new URL(`/recovery/password/${requestId}`, origin));
+    response.cookies.set(
+      PASSWORD_RESET_COOKIE_NAME,
+      createPasswordResetCookieToken({
         requestId,
-        userId: data.user.id,
-      });
-
-      if (!validation.valid || !validation.request) {
-        return NextResponse.redirect(new URL("/auth/forgot-password?error=invalid_reset_link", origin));
-      }
-
-      const response = NextResponse.redirect(new URL(`/recovery/password/${requestId}`, origin));
-      response.cookies.set(
-        PASSWORD_RESET_COOKIE_NAME,
-        createPasswordResetCookieToken({
-          requestId,
-          userId: data.user.id,
-          expiresAt: new Date(validation.request.expires_at).getTime(),
-        }),
-        getPasswordResetCookieOptions(validation.request.expires_at)
-      );
-      response.headers.set("Cache-Control", "no-store");
-      return response;
-    }
-
-    // Token vérifié mais pas un flow pw-reset : traiter comme une connexion normale
-    // (fallthrough vers la logique de redirection par rôle ci-dessous)
-    if (data.user && data.user.email_confirmed_at) {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id, role, onboarding_completed_at")
-        .eq("user_id", data.user.id)
-        .maybeSingle();
-
-      const profileData = profile as ProfilePartial | null;
-      if (!profileData?.role) {
-        return NextResponse.redirect(new URL("/signup/role", origin));
-      }
-      if (!profileData?.onboarding_completed_at) {
-        const dashUrl = getRoleDashboardUrl(profileData.role);
-        return NextResponse.redirect(new URL(dashUrl, origin));
-      }
-      const dashUrl = getRoleDashboardUrl(profileData.role);
-      return NextResponse.redirect(new URL(dashUrl, origin));
-    }
-
-    return NextResponse.redirect(new URL("/auth/signin", origin));
+        userId: pendingRequest.user_id,
+        expiresAt: new Date(pendingRequest.expires_at).getTime(),
+      }),
+      getPasswordResetCookieOptions(pendingRequest.expires_at)
+    );
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   }
 
   // Chemin 2 : Échange de code PKCE (flux standard Supabase, rétrocompatibilité)

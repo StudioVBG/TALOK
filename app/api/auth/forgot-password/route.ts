@@ -76,24 +76,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    // Construire un lien direct vers /auth/callback avec le token_hash.
+    // Construire un lien direct vers /auth/callback.
     // On bypass le redirect Supabase car generateLink() côté serveur ne pose
-    // pas de code verifier PKCE dans le navigateur de l'utilisateur, ce qui
-    // fait échouer exchangeCodeForSession() dans le callback.
-    const actionUrl = new URL(actionLink);
-    const tokenHash = actionUrl.searchParams.get("token");
-    if (!tokenHash) {
-      console.error("[ForgotPassword] No token in action_link");
-      return NextResponse.json({ success: true });
-    }
-
+    // pas de code verifier PKCE dans le navigateur de l'utilisateur.
+    // Le callback valide via notre table password_reset_requests (pas besoin du token Supabase).
     const requestOrigin =
       process.env.NEXT_PUBLIC_APP_URL ||
       request.headers.get("origin") ||
       "https://talok.fr";
     const directResetUrl = new URL("/auth/callback", requestOrigin);
-    directResetUrl.searchParams.set("token_hash", tokenHash);
-    directResetUrl.searchParams.set("type", "recovery");
     directResetUrl.searchParams.set("flow", "pw-reset");
     directResetUrl.searchParams.set("rid", requestId);
 
