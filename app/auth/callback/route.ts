@@ -7,7 +7,6 @@ import {
   PASSWORD_RESET_COOKIE_NAME,
   createPasswordResetCookieToken,
   getPasswordResetCookieOptions,
-  getValidPendingRequest,
   validatePasswordResetRequestForCallback,
 } from "@/lib/auth/password-recovery.service";
 
@@ -29,28 +28,13 @@ export async function GET(request: Request) {
   const flow = requestUrl.searchParams.get("flow");
   const requestId = requestUrl.searchParams.get("rid");
 
-  // Chemin 1 : Password reset via lien email direct (sans session Supabase)
-  // Le lien email contient flow=pw-reset&rid=requestId.
-  // On valide via notre table password_reset_requests (pas besoin de verifyOtp/PKCE).
-  if (flow === "pw-reset" && requestId) {
-    const pendingRequest = await getValidPendingRequest(requestId);
-
-    if (!pendingRequest) {
-      return NextResponse.redirect(new URL("/auth/forgot-password?error=invalid_reset_link", origin));
-    }
-
-    const response = NextResponse.redirect(new URL(`/recovery/password/${requestId}`, origin));
-    response.cookies.set(
-      PASSWORD_RESET_COOKIE_NAME,
-      createPasswordResetCookieToken({
-        requestId,
-        userId: pendingRequest.user_id,
-        expiresAt: new Date(pendingRequest.expires_at).getTime(),
-      }),
-      getPasswordResetCookieOptions(pendingRequest.expires_at)
+  // Chemin 1 (legacy) : Les anciens emails contiennent flow=pw-reset&rid=requestId.
+  // Les nouveaux emails utilisent /recovery/password?token=SIGNED_TOKEN directement.
+  // Rediriger les anciens liens vers la page de demande d'un nouveau lien.
+  if (flow === "pw-reset") {
+    return NextResponse.redirect(
+      new URL("/auth/forgot-password?error=legacy_link", origin)
     );
-    response.headers.set("Cache-Control", "no-store");
-    return response;
   }
 
   // Chemin 2 : Échange de code PKCE (flux standard Supabase, rétrocompatibilité)

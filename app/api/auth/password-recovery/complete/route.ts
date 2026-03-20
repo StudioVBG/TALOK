@@ -8,12 +8,8 @@ import { applyRateLimit } from "@/lib/security/rate-limit";
 import { logAuditEvent } from "@/lib/security/audit.service";
 import { passwordRecoveryCompleteSchema } from "@/lib/validations/auth/password-recovery";
 import {
-  PASSWORD_RESET_COOKIE_NAME,
-  getPasswordResetCookieOptions,
   getRequestClientInfo,
-  markPasswordResetCompleted,
-  verifyPasswordResetCookieToken,
-  validatePasswordResetRequestForCallback,
+  verifyPasswordResetToken,
 } from "@/lib/auth/password-recovery.service";
 import { getServiceClient } from "@/lib/supabase/service-client";
 
@@ -41,13 +37,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Valider via le cookie HMAC signé (pas besoin de session Supabase)
-    const cookieToken = request.cookies.get(PASSWORD_RESET_COOKIE_NAME)?.value;
-    const cookiePayload = verifyPasswordResetCookieToken(cookieToken);
+    // Valider via le token HMAC signé (auto-contenu, pas de lookup DB)
+    const tokenResult = verifyPasswordResetToken(parsed.data.token);
 
-    if (!cookiePayload || cookiePayload.requestId !== parsed.data.requestId) {
+    if (!tokenResult) {
       return NextResponse.json(
-        { error: "Session de récupération invalide ou expirée." },
+        { error: "Lien de réinitialisation invalide ou expiré." },
         {
           status: 401,
           headers: { "Cache-Control": "no-store" },
@@ -55,22 +50,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = cookiePayload.userId;
-
-    const validation = await validatePasswordResetRequestForCallback({
-      requestId: parsed.data.requestId,
-      userId,
-    });
-
-    if (!validation.valid || !validation.request) {
-      return NextResponse.json(
-        { error: "Ce lien n'est plus valide. Veuillez effectuer une nouvelle demande." },
-        {
-          status: 403,
-          headers: { "Cache-Control": "no-store" },
-        }
-      );
-    }
+    const userId = tokenResult.userId;
 
     // Utiliser le client admin pour mettre à jour le mot de passe (pas besoin de session utilisateur)
     const serviceClient = getServiceClient();
@@ -83,7 +63,7 @@ export async function POST(request: NextRequest) {
         user_id: userId,
         action: "password_change",
         entity_type: "profile",
-        entity_id: parsed.data.requestId,
+        entity_id: userId,
         ip_address: ipAddress || undefined,
         user_agent: userAgent || undefined,
         risk_level: "high",
@@ -103,11 +83,6 @@ export async function POST(request: NextRequest) {
         }
       );
     }
-
-    await markPasswordResetCompleted({
-      requestId: parsed.data.requestId,
-      completedIp: ipAddress,
-    });
 
     // Récupérer le profil et l'email pour la notification
     const { data: profile } = await serviceClient
@@ -142,7 +117,7 @@ export async function POST(request: NextRequest) {
       user_id: userId,
       action: "password_change",
       entity_type: "profile",
-      entity_id: parsed.data.requestId,
+      entity_id: userId,
       ip_address: ipAddress || undefined,
       user_agent: userAgent || undefined,
       risk_level: "high",
@@ -152,7 +127,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const response = NextResponse.json(
+    return NextResponse.json(
       {
         success: true,
         redirectTo: "/auth/signin?passwordChanged=1",
@@ -161,14 +136,6 @@ export async function POST(request: NextRequest) {
         headers: { "Cache-Control": "no-store" },
       }
     );
-
-    response.cookies.set(PASSWORD_RESET_COOKIE_NAME, "", {
-      ...getPasswordResetCookieOptions(new Date()),
-      maxAge: 0,
-      expires: new Date(0),
-    });
-
-    return response;
   } catch (error) {
     console.error("[PasswordRecovery] Unexpected error:", error);
     return NextResponse.json(

@@ -7,7 +7,7 @@ export const passwordRecoveryRequestSchema = z.object({
 
 export const passwordRecoveryCompleteSchema = z
   .object({
-    requestId: z.string().uuid("Identifiant de demande invalide"),
+    token: z.string().min(1, "Token de réinitialisation requis"),
     password: passwordSchema,
     confirmPassword: z.string().min(1, "Confirmation requise"),
   })

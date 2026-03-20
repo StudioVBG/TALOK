@@ -10,6 +10,7 @@ import { applyRateLimit } from "@/lib/security/rate-limit";
 import { logAuditEvent } from "@/lib/security/audit.service";
 import {
   createPasswordResetRequest,
+  createPasswordResetToken,
   getRequestClientInfo,
   hashEmail,
   revokePasswordResetRequest,
@@ -76,18 +77,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    // Construire un lien direct vers /auth/callback.
-    // On bypass le redirect Supabase car generateLink() côté serveur ne pose
-    // pas de code verifier PKCE dans le navigateur de l'utilisateur.
-    // Le callback valide via notre table password_reset_requests (pas besoin du token Supabase).
+    // Construire un lien direct vers /recovery/password avec un token HMAC signé.
+    // Le token est auto-contenu (userId + expiration + signature) — pas de lookup DB nécessaire.
     const requestOrigin =
       process.env.NEXT_PUBLIC_APP_URL ||
       request.headers.get("origin") ||
       "https://talok.fr";
-    const directResetUrl = new URL("/auth/callback", requestOrigin);
-    directResetUrl.searchParams.set("flow", "pw-reset");
-    directResetUrl.searchParams.set("rid", requestId);
+    const resetToken = createPasswordResetToken(linkData.user.id);
+    const directResetUrl = new URL("/recovery/password", requestOrigin);
+    directResetUrl.searchParams.set("token", resetToken);
 
+    // Audit trail (best-effort — ne bloque pas l'envoi du mail si la DB échoue)
     let resetRequestId: string | null = null;
     try {
       const resetRequest = await createPasswordResetRequest({
@@ -103,8 +103,7 @@ export async function POST(request: NextRequest) {
       });
       resetRequestId = resetRequest.id;
     } catch (requestError) {
-      console.error("[ForgotPassword] Password reset request creation failed:", requestError);
-      return NextResponse.json({ success: true });
+      console.error("[ForgotPassword] Audit insert failed (non-blocking):", requestError);
     }
 
     // Récupérer le prénom de l'utilisateur depuis le profil

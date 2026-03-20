@@ -136,6 +136,68 @@ export function isPasswordResetRequestExpired(expiresAt: string): boolean {
   return new Date(expiresAt).getTime() <= Date.now();
 }
 
+// ---------------------------------------------------------------------------
+// Token HMAC signé – remplace la dépendance DB pour la validation du lien email
+// ---------------------------------------------------------------------------
+
+interface PasswordResetTokenPayload {
+  uid: string;
+  exp: number;
+}
+
+/**
+ * Crée un token HMAC signé contenant le userId et une expiration.
+ * Le token est auto-contenu : pas besoin de lookup DB pour le valider.
+ */
+export function createPasswordResetToken(userId: string): string {
+  const payload: PasswordResetTokenPayload = {
+    uid: userId,
+    exp: Date.now() + PASSWORD_RESET_TTL_MS,
+  };
+  const payloadJson = JSON.stringify(payload);
+  const signature = createHmac("sha256", getPasswordResetSecret())
+    .update(payloadJson)
+    .digest("hex");
+
+  return Buffer.from(`${payloadJson}.${signature}`).toString("base64url");
+}
+
+/**
+ * Vérifie et décode un token HMAC signé.
+ * Retourne { userId } si valide, null sinon.
+ */
+export function verifyPasswordResetToken(
+  token: string | null | undefined
+): { userId: string } | null {
+  if (!token) return null;
+
+  try {
+    const decoded = Buffer.from(token, "base64url").toString("utf-8");
+    const separatorIndex = decoded.lastIndexOf(".");
+    if (separatorIndex === -1) return null;
+
+    const payloadJson = decoded.slice(0, separatorIndex);
+    const receivedSignature = decoded.slice(separatorIndex + 1);
+    const expectedSignature = createHmac("sha256", getPasswordResetSecret())
+      .update(payloadJson)
+      .digest("hex");
+
+    const receivedBuffer = Buffer.from(receivedSignature, "hex");
+    const expectedBuffer = Buffer.from(expectedSignature, "hex");
+
+    if (receivedBuffer.length !== expectedBuffer.length) return null;
+    if (!timingSafeEqual(receivedBuffer, expectedBuffer)) return null;
+
+    const payload = JSON.parse(payloadJson) as PasswordResetTokenPayload;
+    if (!payload.uid || !payload.exp) return null;
+    if (payload.exp < Date.now()) return null;
+
+    return { userId: payload.uid };
+  } catch {
+    return null;
+  }
+}
+
 function mapRow(row: Record<string, unknown>): PasswordResetRequestRow {
   return {
     id: String(row.id),
