@@ -127,7 +127,7 @@ export function getPasswordResetCookieOptions(expiresAt: string | Date) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
-    path: "/recovery/password",
+    path: "/",
     expires: expiresAt instanceof Date ? expiresAt : new Date(expiresAt),
   };
 }
