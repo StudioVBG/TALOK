@@ -138,7 +138,11 @@ export interface Annexe {
 // CONDITIONS DU BAIL
 // ============================================
 
-export type TypeBail = 'nu' | 'meuble' | 'colocation' | 'saisonnier' | 'mobilite';
+export type TypeBail =
+  | 'nu' | 'meuble' | 'colocation' | 'saisonnier' | 'mobilite'
+  | 'etudiant' | 'parking'
+  | 'commercial' | 'commercial_3_6_9' | 'commercial_derogatoire'
+  | 'professionnel' | 'location_gerance' | 'bail_mixte' | 'bail_mobilite';
 
 export interface ConditionsBail {
   type_bail: TypeBail;

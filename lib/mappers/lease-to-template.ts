@@ -5,6 +5,7 @@ import { getMaxDepotLegal } from "@/lib/validations/lease-financial";
 import { isTenantRole, isOwnerRole, isGuarantorRole, SIGNER_ROLES } from "@/lib/constants/roles";
 import type { OwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 import { resolveTenantDisplay } from "@/lib/helpers/resolve-tenant-display";
+import { normalizeTypeBail } from "@/lib/builders/bail-data.builder";
 
 interface OwnerProfile {
   id: string;
@@ -69,6 +70,7 @@ export function mapLeaseToTemplate(
   const ownerCodePostal = isOwnerIdentity ? (ownerProfile as OwnerIdentity).address.postalCode : "";
   const ownerVille = isOwnerIdentity ? (ownerProfile as OwnerIdentity).address.city : "";
   const { lease, property, signers } = details;
+  const typeBailNormalized = normalizeTypeBail(lease.type_bail);
 
   // Trier les signataires pour mettre ceux qui ont signé en premier (le plus "réel")
   const sortedSigners = (signers || []).sort((a: any, b: any) => {
@@ -97,7 +99,7 @@ export function mapLeaseToTemplate(
   
   // ✅ CALCUL AUTOMATIQUE: Toujours calculer le dépôt basé sur le loyer
   // Cela garantit la cohérence même pour les baux existants avec des données incorrectes
-  const maxDepotLegal = getMaxDepotLegal(lease.type_bail, loyer);
+  const maxDepotLegal = getMaxDepotLegal(typeBailNormalized, loyer);
   const depotSaisi = (lease as any).depot_de_garantie;
   
   // Si le dépôt saisi dépasse le max légal, utiliser le max légal
@@ -110,14 +112,16 @@ export function mapLeaseToTemplate(
   const getDureeMois = (type: string, bailleurType?: string): number => {
     switch (type) {
       case "meuble":
+      case "colocation":
         return 12;
       case "nu":
-        // 6 ans (72 mois) si bailleur personne morale, 3 ans sinon
         return bailleurType === "societe" ? 72 : 36;
+      case "etudiant":
+        return 9;
       case "mobilite":
-        return 10; // Max légal, souvent ajusté selon dates
+      case "bail_mobilite":
+        return 10;
       case "saisonnier":
-        // Calculer la différence en mois si dates dispos
         if (lease.date_debut && lease.date_fin) {
             const start = new Date(lease.date_debut);
             const end = new Date(lease.date_fin);
@@ -125,7 +129,20 @@ export function mapLeaseToTemplate(
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
             return Math.ceil(diffDays / 30);
         }
-        return 1;
+        return 3;
+      case "commercial":
+      case "commercial_3_6_9":
+        return 108;
+      case "commercial_derogatoire":
+        return 36;
+      case "professionnel":
+        return 72;
+      case "location_gerance":
+        return 24;
+      case "bail_mixte":
+        return 36;
+      case "parking":
+        return 12;
       default:
         return bailleurType === "societe" ? 72 : 36;
     }
@@ -138,7 +155,7 @@ export function mapLeaseToTemplate(
   const paiementAvance = jourPaiement <= 10;
 
   // ✅ FIX: Calculer la durée et la date de fin COHÉRENTES
-  const dureeMois = getDureeMois(lease.type_bail, resolvedProfile?.type);
+  const dureeMois = getDureeMois(typeBailNormalized, resolvedProfile?.type);
   
   // Recalculer date_fin à partir de date_debut + duree_mois
   // Justification : Évite l'incohérence entre "Six ans" et date_fin réelle
@@ -233,7 +250,7 @@ export function mapLeaseToTemplate(
     },
 
     conditions: {
-      type_bail: (lease.type_bail || "nu") as any,
+      type_bail: typeBailNormalized,
       usage: "habitation_principale",
       date_debut: lease.date_debut,
       // FIX: Utiliser la date de fin CALCULEE (coherente avec duree_mois)
@@ -252,7 +269,7 @@ export function mapLeaseToTemplate(
       mode_paiement: "virement",
       periodicite_paiement: "mensuelle",
       jour_paiement: jourPaiement,
-      tacite_reconduction: ["nu", "meuble"].includes(lease.type_bail),
+      tacite_reconduction: ["nu", "meuble"].includes(typeBailNormalized),
       charges_type: "provisions", // Default
       revision_autorisee: true,
       indice_reference: "IRL",

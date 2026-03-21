@@ -51,6 +51,15 @@ const typeLabels: Record<TypeBail, string> = {
   colocation: "Colocation",
   saisonnier: "Location saisonnière",
   mobilite: "Bail mobilité",
+  etudiant: "Bail étudiant",
+  parking: "Parking / Garage",
+  commercial: "Bail commercial",
+  commercial_3_6_9: "Commercial 3/6/9",
+  commercial_derogatoire: "Bail dérogatoire",
+  professionnel: "Bail professionnel",
+  location_gerance: "Location-gérance",
+  bail_mixte: "Bail mixte",
+  bail_mobilite: "Bail mobilité",
 };
 
 /**

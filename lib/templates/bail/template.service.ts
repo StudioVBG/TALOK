@@ -7,22 +7,36 @@ import { BAIL_NU_TEMPLATE } from './bail-nu.template';
 import { BAIL_MEUBLE_TEMPLATE } from './bail-meuble.template';
 import { BAIL_COLOCATION_TEMPLATE } from './bail-colocation.template';
 import { BAIL_PARKING_TEMPLATE } from './bail-parking.template';
+import { BAIL_SAISONNIER_TEMPLATE } from './bail-saisonnier.template';
+import { BAIL_MOBILITE_TEMPLATE } from './bail-mobilite.template';
+import { BAIL_ETUDIANT_TEMPLATE } from './bail-etudiant.template';
+import { BAIL_COMMERCIAL_TEMPLATE } from './bail-commercial.template';
+import { BAIL_COMMERCIAL_3_6_9_TEMPLATE } from './bail-commercial-3-6-9.template';
+import { BAIL_COMMERCIAL_DEROGATOIRE_TEMPLATE } from './bail-commercial-derogatoire.template';
+import { BAIL_PROFESSIONNEL_TEMPLATE } from './bail-professionnel.template';
+import { BAIL_LOCATION_GERANCE_TEMPLATE } from './bail-location-gerance.template';
+import { BAIL_MIXTE_TEMPLATE } from './bail-mixte.template';
+import { BAIL_DEROGATOIRE_TEMPLATE } from './bail-derogatoire.template';
 import type { BailComplet, TypeBail, TemplateVariables } from './types';
 import type { ParkingLease, ParkingCategory } from './bail-parking.types';
 import { getParkingCategoryLabel, getVehicleTypeLabel, getAccessMethodLabel, getSecurityFeatureLabel } from './bail-parking.types';
 import { formatDate as globalFormatDate } from '@/lib/helpers/format';
 
-// Types de bail étendus pour inclure parking
-type ExtendedTypeBail = TypeBail | 'parking';
-
-// Mapping des templates par type
-const TEMPLATES: Record<ExtendedTypeBail, string> = {
+const TEMPLATES: Record<TypeBail, string> = {
   nu: BAIL_NU_TEMPLATE,
   meuble: BAIL_MEUBLE_TEMPLATE,
   colocation: BAIL_COLOCATION_TEMPLATE,
-  saisonnier: BAIL_NU_TEMPLATE, // Utilise le template nu pour l'instant
-  mobilite: BAIL_MEUBLE_TEMPLATE, // Utilise le template meublé pour l'instant
-  parking: BAIL_PARKING_TEMPLATE, // Nouveau template parking
+  saisonnier: BAIL_SAISONNIER_TEMPLATE,
+  mobilite: BAIL_MOBILITE_TEMPLATE,
+  etudiant: BAIL_ETUDIANT_TEMPLATE,
+  parking: BAIL_PARKING_TEMPLATE,
+  commercial: BAIL_COMMERCIAL_TEMPLATE,
+  commercial_3_6_9: BAIL_COMMERCIAL_3_6_9_TEMPLATE,
+  commercial_derogatoire: BAIL_COMMERCIAL_DEROGATOIRE_TEMPLATE,
+  professionnel: BAIL_PROFESSIONNEL_TEMPLATE,
+  location_gerance: BAIL_LOCATION_GERANCE_TEMPLATE,
+  bail_mixte: BAIL_MIXTE_TEMPLATE,
+  bail_mobilite: BAIL_MOBILITE_TEMPLATE,
 };
 
 /**

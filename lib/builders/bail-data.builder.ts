@@ -34,6 +34,39 @@ export interface BuildBailDataOptions {
 }
 
 // ---------------------------------------------------------------------------
+// Normalisation type_bail DB -> clé template
+// ---------------------------------------------------------------------------
+
+const TYPE_BAIL_ALIASES: Record<string, TypeBail> = {
+  bail_mobilite: "mobilite",
+  bail_meuble: "meuble",
+  bail_nu: "nu",
+  bail_colocation: "colocation",
+  bail_saisonnier: "saisonnier",
+  bail_etudiant: "etudiant",
+  bail_parking: "parking",
+  bail_commercial: "commercial",
+  bail_professionnel: "professionnel",
+  bail_derogatoire: "commercial_derogatoire",
+  bail_location_gerance: "location_gerance",
+  bail_3_6_9: "commercial_3_6_9",
+};
+
+export function normalizeTypeBail(raw: string | null | undefined): TypeBail {
+  if (!raw) return "meuble";
+  const lower = raw.toLowerCase().trim();
+  if (TYPE_BAIL_ALIASES[lower]) return TYPE_BAIL_ALIASES[lower];
+  const allValid: TypeBail[] = [
+    "nu", "meuble", "colocation", "saisonnier", "mobilite",
+    "etudiant", "parking", "commercial", "commercial_3_6_9",
+    "commercial_derogatoire", "professionnel", "location_gerance",
+    "bail_mixte", "bail_mobilite",
+  ];
+  if (allValid.includes(lower as TypeBail)) return lower as TypeBail;
+  return "meuble";
+}
+
+// ---------------------------------------------------------------------------
 // Builder
 // ---------------------------------------------------------------------------
 
@@ -137,7 +170,7 @@ export async function buildBailData(
   };
 
   // 8. Build conditions
-  const typeBail = (lease.type_bail || "meuble") as TypeBail;
+  const typeBail = normalizeTypeBail(lease.type_bail);
   const isDraft = lease.statut === "draft";
   const finalLoyer = isDraft
     ? (property.loyer_hc ?? property.loyer_base ?? lease.loyer ?? 0)
@@ -154,7 +187,7 @@ export async function buildBailData(
     usage: "habitation_principale" as const,
     date_debut: lease.date_debut,
     date_fin: lease.date_fin ?? undefined,
-    duree_mois: typeBail === "nu" ? 36 : typeBail === "meuble" ? 12 : 12,
+    duree_mois: getDefaultDureeMois(typeBail),
     tacite_reconduction: true,
     loyer_hc: parseFloat(String(finalLoyer)) || 0,
     loyer_en_lettres: numberToWords(parseFloat(String(finalLoyer)) || 0),
@@ -188,6 +221,26 @@ export async function buildBailData(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function getDefaultDureeMois(type: TypeBail): number {
+  switch (type) {
+    case "nu": return 36;
+    case "meuble": return 12;
+    case "etudiant": return 9;
+    case "mobilite":
+    case "bail_mobilite": return 10;
+    case "saisonnier": return 3;
+    case "colocation": return 12;
+    case "commercial":
+    case "commercial_3_6_9": return 108;
+    case "commercial_derogatoire": return 36;
+    case "professionnel": return 72;
+    case "location_gerance": return 24;
+    case "bail_mixte": return 36;
+    case "parking": return 12;
+    default: return 12;
+  }
+}
 
 async function buildDiagnostics(
   supabase: SupabaseLike,
