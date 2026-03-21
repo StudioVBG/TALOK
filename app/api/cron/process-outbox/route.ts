@@ -42,6 +42,7 @@ export async function GET(request: Request) {
     let failed = 0;
 
     for (const event of events) {
+      if (!event.id) continue;
       try {
         await processEvent(event);
 

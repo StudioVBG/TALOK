@@ -561,7 +561,7 @@ async function fetchLeaseDetailsFallback(
     // SOTA 2026: Ne plus executer handleLeaseFullySigned dans un contexte read-only.
     // Inserer un evenement outbox pour traitement asynchrone par le processeur CRON.
     try {
-      await serviceClient.from("outbox").insert({
+      await supabase.from("outbox").insert({
         event_type: "Lease.SealRetry",
         payload: { lease_id: leaseData.id },
         status: "pending",

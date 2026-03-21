@@ -10,19 +10,21 @@ import { TaxRegimeSelector, createInitialTaxRegime } from "../TaxRegimeSelector"
  */
 export function FurnishedFields() {
   const isFurnished = useLeaseWizardStore(selectIsFurnished);
-  const { furnitureInventory, taxRegime, setFurnished } = useLeaseWizardStore();
+  const { typeBail, loyer, furnitureInventory, taxRegime, setFurnished } = useLeaseWizardStore();
 
   if (!isFurnished) return null;
 
   return (
     <div className="space-y-6">
       <FurnitureInventoryStep
-        data={furnitureInventory ?? createInitialInventory()}
+        value={furnitureInventory ?? createInitialInventory()}
         onChange={(data) => setFurnished({ furnitureInventory: data })}
+        typeBail={typeBail || "meuble"}
       />
       <TaxRegimeSelector
-        data={taxRegime ?? createInitialTaxRegime()}
+        value={taxRegime ?? createInitialTaxRegime()}
         onChange={(data) => setFurnished({ taxRegime: data })}
+        annualRent={(loyer || 0) * 12}
       />
     </div>
   );

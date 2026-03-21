@@ -116,7 +116,7 @@ export async function findSigner(
       .select("id, profile_id, role, signature_status, invited_email, invited_name")
       .eq("lease_id", leaseId)
       .is("profile_id", null)
-      .in("role", ["locataire_principal", "locataire", "tenant", "colocataire"])
+      .in("role", ["locataire_principal", "locataire", "tenant", "colocataire"] as any[])
       .maybeSingle();
 
     if (placeholder) return placeholder as FoundSigner;
@@ -136,7 +136,7 @@ export async function findSigner(
         .from("lease_signers")
         .select("id, profile_id, role, signature_status, invited_email, invited_name")
         .eq("lease_id", leaseId)
-        .in("role", ["proprietaire", "owner"])
+        .in("role", ["proprietaire", "owner"] as any[])
         .maybeSingle();
 
       if (ownerSigner) {

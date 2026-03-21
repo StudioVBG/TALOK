@@ -192,7 +192,14 @@ export function mapWizardToPreviewData(ctx: WizardPreviewContext): Partial<BailC
     logement: logement as any,
     conditions: conditions as any,
     diagnostics: diagnostics as any,
-    clauses_additionnelles: state.customClauses.length > 0 ? state.customClauses.map((c) => c.text) : undefined,
+    clauses: {
+      activite_professionnelle_autorisee: false,
+      animaux_autorises: true,
+      sous_location_autorisee: false,
+      travaux_autorises: false,
+      assurance_obligatoire: true,
+      clauses_additionnelles: state.customClauses.length > 0 ? state.customClauses.map((c) => c.text) : undefined,
+    } as any,
     garants: garants as any,
   };
 }
