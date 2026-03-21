@@ -143,26 +143,42 @@ export async function GET(request: Request, { params }: RouteParams) {
       );
     }
 
-    // === BAIL SCELLÉ: Retourner le PDF stocké définitif ===
-    // Après signature complète, le PDF est immuable et stocké une seule fois
+    // === BAIL SCELLÉ: Générer le PDF à partir du HTML stocké ===
+    // Le document scellé est stocké en HTML — on le convertit en PDF pour le téléchargement
     if (lease.sealed_at && lease.signed_pdf_path && !lease.signed_pdf_path.startsWith("pending_generation_")) {
-      const { data: signedUrl, error: urlError } = await serviceClient.storage
-        .from("documents")
-        .createSignedUrl(lease.signed_pdf_path, 3600);
+      try {
+        const { data: fileData, error: dlError } = await serviceClient.storage
+          .from("documents")
+          .download(lease.signed_pdf_path);
 
-      if (!urlError && signedUrl?.signedUrl) {
-        // Journaliser l'accès en lecture
-        await serviceClient.from("audit_log").insert({
-          user_id: user.id,
-          action: "read",
-          entity_type: "document",
-          entity_id: leaseId,
-          metadata: { type: "bail_signe", sealed: true, path: lease.signed_pdf_path },
-        } as any);
+        if (!dlError && fileData) {
+          const sealedHtml = await fileData.text();
 
-        return NextResponse.redirect(signedUrl.signedUrl);
+          // Générer un vrai PDF à partir du HTML scellé
+          const sealedPdfBuffer = await generatePDF(sealedHtml);
+
+          // Journaliser l'accès en lecture
+          await serviceClient.from("audit_log").insert({
+            user_id: user.id,
+            action: "read",
+            entity_type: "document",
+            entity_id: leaseId,
+            metadata: { type: "bail_signe", sealed: true, path: lease.signed_pdf_path },
+          } as any);
+
+          const sealedFileName = `Bail_Signe_${property?.ville || "location"}_${lease.sealed_at?.split("T")[0] || ""}.pdf`;
+          return new NextResponse(new Uint8Array(sealedPdfBuffer), {
+            headers: {
+              "Content-Type": "application/pdf",
+              "Content-Disposition": `inline; filename="${sealedFileName}"`,
+              "Content-Length": String(sealedPdfBuffer.length),
+            },
+          });
+        }
+      } catch (sealedErr) {
+        console.error("[PDF] Erreur lecture document scellé:", sealedErr);
       }
-      // Si l'URL signée échoue, on continue avec la génération classique (fallback)
+      // Si l'extraction échoue, on continue avec la génération classique (fallback)
     }
 
     // Diagnostics depuis la table documents (aligné sur la route HTML)

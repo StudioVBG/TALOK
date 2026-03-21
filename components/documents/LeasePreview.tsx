@@ -16,6 +16,7 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isSealed, setIsSealed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const { toast } = useToast();
@@ -54,6 +55,56 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
     fetchLeaseHtml();
   }, [leaseId]);
 
+  const handleDownloadPDF = async () => {
+    setDownloading(true);
+    try {
+      let htmlContent = html;
+
+      // Si le bail est scellé, récupérer le HTML depuis l'URL signée
+      if (isSealed && pdfUrl) {
+        const resp = await fetch(pdfUrl);
+        if (!resp.ok) throw new Error("Erreur récupération document scellé");
+        htmlContent = await resp.text();
+      }
+
+      if (!htmlContent) {
+        // Fallback: récupérer depuis l'API
+        const resp = await fetch(`/api/leases/${leaseId}/html`);
+        if (!resp.ok) throw new Error("Erreur récupération bail");
+        const data = await resp.json();
+        if (data.sealed && data.pdfUrl) {
+          const sealedResp = await fetch(data.pdfUrl);
+          if (!sealedResp.ok) throw new Error("Erreur récupération document scellé");
+          htmlContent = await sealedResp.text();
+        } else {
+          htmlContent = data.html;
+        }
+      }
+
+      const html2pdf = (await import("html2pdf.js")).default;
+      const element = document.createElement("div");
+      element.innerHTML = htmlContent;
+      document.body.appendChild(element);
+
+      await html2pdf().set({
+        margin: 10,
+        filename: `Bail_${leaseId.substring(0, 8).toUpperCase()}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
+        pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+      } as any).from(element).save();
+
+      document.body.removeChild(element);
+      toast({ title: "Téléchargement terminé", description: "Le bail a été téléchargé au format PDF." });
+    } catch (error) {
+      console.error("[LeasePreview] Erreur téléchargement PDF:", error);
+      toast({ title: "Erreur", description: "Impossible de télécharger le PDF.", variant: "destructive" });
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   useEffect(() => {
     if (iframeRef.current && html && !isSealed) {
       const doc = iframeRef.current.contentDocument;
@@ -82,9 +133,19 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
           >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleDownloadPDF}
+            disabled={downloading || (loading && !html && !pdfUrl)}
+            className="h-8 gap-1.5 text-xs"
+          >
+            {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            PDF
+          </Button>
           <Dialog open={fullscreen} onOpenChange={setFullscreen}>
             <DialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={!html}>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={!html && !pdfUrl}>
                 <Maximize2 className="h-4 w-4" />
               </Button>
             </DialogTrigger>
