@@ -141,7 +141,7 @@ export async function handleLeaseFullySigned(leaseId: string): Promise<PostSigna
           .from("lease_signers")
           .select("profile_id")
           .eq("lease_id", leaseId)
-          .in("role", ["locataire_principal", "locataire", "tenant", "principal"])
+          .in("role", ["locataire_principal", "locataire", "tenant", "principal"] as any)
           .limit(1)
           .maybeSingle();
 

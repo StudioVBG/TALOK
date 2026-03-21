@@ -77,7 +77,7 @@ export function DocumentDownloadButton({
             html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
             pagebreak: { mode: ["avoid-all", "css", "legacy"] },
-          }).from(element).save();
+          } as any).from(element).save();
 
           document.body.removeChild(element);
           toast({

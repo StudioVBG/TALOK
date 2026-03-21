@@ -415,6 +415,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       element.innerHTML = html;
       document.body.appendChild(element);
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await html2pdf().set({
         margin: 10,
         filename: `Bail_${leaseId.substring(0, 8).toUpperCase()}_${property.ville || "Logement"}.pdf`,
@@ -422,7 +423,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
         html2canvas: { scale: 2, useCORS: true },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
         pagebreak: { mode: ["avoid-all", "css", "legacy"] },
-      }).from(element).save();
+      } as any).from(element).save();
 
       document.body.removeChild(element);
       toast({ title: "Téléchargement terminé", description: "Votre bail signé a été téléchargé au format PDF." });
