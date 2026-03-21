@@ -59,15 +59,30 @@ export function DocumentDownloadButton({
 
         const data = await response.json();
 
-        // Si le bail est scellé, télécharger directement le PDF stocké
+        // Si le bail est scellé, convertir le HTML en PDF via html2pdf.js
         if (data.sealed && data.pdfUrl) {
-          const link = document.createElement("a");
-          link.href = data.pdfUrl;
-          link.download = fileName || data.fileName || "bail_signe.pdf";
-          link.click();
+          const htmlResponse = await fetch(data.pdfUrl);
+          if (!htmlResponse.ok) throw new Error("Erreur récupération document scellé");
+          const pdfHtml = await htmlResponse.text();
+
+          const html2pdf = (await import("html2pdf.js")).default;
+          const element = document.createElement("div");
+          element.innerHTML = pdfHtml;
+          document.body.appendChild(element);
+
+          await html2pdf().set({
+            margin: 10,
+            filename: fileName || data.fileName || "bail_signe.pdf",
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
+            pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+          }).from(element).save();
+
+          document.body.removeChild(element);
           toast({
-            title: "Téléchargement démarré",
-            description: "Votre bail signé est en cours de téléchargement.",
+            title: "Téléchargement terminé",
+            description: "Votre bail signé a été téléchargé au format PDF.",
           });
           return;
         }

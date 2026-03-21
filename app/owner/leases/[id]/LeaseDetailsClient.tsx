@@ -400,6 +400,40 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   const canRenew = lease.statut === "active";
   const canTerminate = lease.statut === "active";
 
+  // ===== TÉLÉCHARGEMENT PDF SCELLÉ =====
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
+  const handleDownloadSealedPDF = async () => {
+    if (!signedPdfPath) return;
+    setIsDownloadingPdf(true);
+    try {
+      const response = await fetch(`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}`);
+      if (!response.ok) throw new Error("Erreur récupération document");
+      const html = await response.text();
+
+      const html2pdf = (await import("html2pdf.js")).default;
+      const element = document.createElement("div");
+      element.innerHTML = html;
+      document.body.appendChild(element);
+
+      await html2pdf().set({
+        margin: 10,
+        filename: `Bail_${leaseId.substring(0, 8).toUpperCase()}_${property.ville || "Logement"}.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
+        pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+      }).from(element).save();
+
+      document.body.removeChild(element);
+      toast({ title: "Téléchargement terminé", description: "Votre bail signé a été téléchargé au format PDF." });
+    } catch (error) {
+      console.error("[LeaseDetailsClient] Erreur téléchargement PDF:", error);
+      toast({ title: "Erreur", description: "Impossible de télécharger le PDF.", variant: "destructive" });
+    } finally {
+      setIsDownloadingPdf(false);
+    }
+  };
+
   // ===== ACTIVATION DU BAIL =====
   // Vérifier les conditions d'activation
   const checkActivation = async () => {
@@ -636,15 +670,17 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
               </Link>
             ) : (
               <div className="flex items-center gap-2">
-                <a 
-                  href={`/api/documents/download?path=${encodeURIComponent(signedPdfPath)}&filename=Bail_Complet_${property.ville || 'Logement'}.html`}
-                  download
-                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100")}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadSealedPDF}
+                  disabled={isDownloadingPdf}
+                  className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Imprimer / PDF</span>
+                  {isDownloadingPdf ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                  <span className="hidden sm:inline">Télécharger PDF</span>
                   <span className="sm:hidden text-[10px]">PDF</span>
-                </a>
+                </Button>
                 <div className="hidden md:flex items-center gap-1 text-[10px] text-slate-400 font-medium uppercase tracking-wider px-2 py-1 bg-slate-50 rounded border border-slate-100">
                   <Lock className="h-3 w-3" />
                   Scellé
@@ -837,14 +873,15 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                             <ExternalLink className="h-4 w-4 mr-1.5" />
                             Ouvrir
                           </a>
-                          <a
-                            href={`/api/documents/download?path=${encodeURIComponent(signedPdfPath)}&filename=Bail_${leaseId.substring(0, 8).toUpperCase()}.html`}
-                            download
-                            className={cn(buttonVariants({ size: "sm" }), "bg-emerald-600 hover:bg-emerald-700")}
+                          <Button
+                            size="sm"
+                            onClick={handleDownloadSealedPDF}
+                            disabled={isDownloadingPdf}
+                            className="bg-emerald-600 hover:bg-emerald-700"
                           >
-                            <Download className="h-4 w-4 mr-1.5" />
+                            {isDownloadingPdf ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Download className="h-4 w-4 mr-1.5" />}
                             Télécharger
-                          </a>
+                          </Button>
                         </div>
                       </div>
                       <iframe
