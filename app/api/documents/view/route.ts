@@ -44,10 +44,10 @@ export async function GET(request: Request) {
     // Le path contient généralement le type et l'ID (ex: leases/{lease_id}/xxx.html)
     const pathParts = storagePath.split("/");
     
-    if (pathParts[0] === "leases" && pathParts[1]) {
+    // Vérifier les droits d'accès pour les documents liés à un bail
+    if ((pathParts[0] === "leases" || pathParts[0] === "bails") && pathParts[1]) {
       const leaseId = pathParts[1];
-      
-      // Vérifier que l'utilisateur a accès à ce bail
+
       const { data: lease } = await serviceClient
         .from("leases")
         .select(`
@@ -57,17 +57,59 @@ export async function GET(request: Request) {
         `)
         .eq("id", leaseId)
         .single();
-      
+
       if (!lease) {
         return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
       }
-      
-      // Vérifier si l'utilisateur est propriétaire ou signataire
+
       const isOwner = (lease as any).property?.owner_id === profile.id;
       const isSigner = (lease as any).signers?.some((s: any) => s.profile_id === profile.id);
       const isAdmin = profile.role === "admin";
-      
+
       if (!isOwner && !isSigner && !isAdmin) {
+        return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+      }
+    }
+
+    // Vérifier les droits d'accès pour les documents liés à un EDL
+    if (pathParts[0] === "edl" && pathParts[1]) {
+      const edlId = pathParts[1];
+
+      const { data: edlRecord } = await serviceClient
+        .from("edl")
+        .select(`
+          id, lease_id, property_id, created_by,
+          edl_signatures(signer_profile_id)
+        `)
+        .eq("id", edlId)
+        .single();
+
+      if (!edlRecord) {
+        return NextResponse.json({ error: "EDL non trouvé" }, { status: 404 });
+      }
+
+      let edlAccess = false;
+      const isAdmin = profile.role === "admin";
+      const isCreator = (edlRecord as any).created_by === profile.id;
+      const isEdlSigner = (edlRecord as any).edl_signatures?.some((s: any) => s.signer_profile_id === profile.id);
+
+      if (isAdmin || isCreator || isEdlSigner) {
+        edlAccess = true;
+      } else if ((edlRecord as any).lease_id) {
+        // Vérifier via le bail associé (propriétaire ou signataire)
+        const { data: lease } = await serviceClient
+          .from("leases")
+          .select(`id, property:properties!leases_property_id_fkey(owner_id), signers:lease_signers(profile_id)`)
+          .eq("id", (edlRecord as any).lease_id)
+          .single();
+        if (lease) {
+          const isOwner = (lease as any).property?.owner_id === profile.id;
+          const isSigner = (lease as any).signers?.some((s: any) => s.profile_id === profile.id);
+          if (isOwner || isSigner) edlAccess = true;
+        }
+      }
+
+      if (!edlAccess) {
         return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
       }
     }

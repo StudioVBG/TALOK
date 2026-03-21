@@ -135,10 +135,21 @@ export async function handleLeaseFullySigned(leaseId: string): Promise<PostSigna
           .single();
 
         const prop = (leaseForProperty as any)?.properties;
+
+        // Récupérer le tenant_id depuis les signataires
+        const { data: tenantSigner } = await serviceClient
+          .from("lease_signers")
+          .select("profile_id")
+          .eq("lease_id", leaseId)
+          .in("role", ["locataire_principal", "locataire", "tenant", "principal"] as any)
+          .limit(1)
+          .maybeSingle();
+
         await serviceClient.from("documents").insert({
           type: "bail_signe",
           title: `Bail signé - ${prop?.adresse_complete || leaseId.slice(0, 8)}`,
           owner_id: prop?.owner_id,
+          tenant_id: tenantSigner?.profile_id || null,
           property_id: (leaseForProperty as any)?.property_id,
           lease_id: leaseId,
           storage_path: sealedDocPath,
