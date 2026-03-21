@@ -558,25 +558,22 @@ async function fetchLeaseDetailsFallback(
     allSignersSigned;
 
   if (needsSelfHeal) {
+    // SOTA 2026: Ne plus executer handleLeaseFullySigned dans un contexte read-only.
+    // Inserer un evenement outbox pour traitement asynchrone par le processeur CRON.
     try {
-      const { handleLeaseFullySigned } = await import(
-        "@/lib/services/lease-post-signature.service"
-      );
-      const selfHealResult = await handleLeaseFullySigned(leaseData.id);
-      if (selfHealResult.pdfPath) {
-        (cleanLease as any).signed_pdf_path = selfHealResult.pdfPath;
-        (cleanLease as any).sealed_at = selfHealResult.sealedAt;
-        console.log(
-          "[fetchLeaseDetails] Self-heal réussi pour bail:",
-          leaseData.id,
-          "PDF:",
-          selfHealResult.pdfPath
-        );
-      }
-    } catch (selfHealErr) {
+      await serviceClient.from("outbox").insert({
+        event_type: "Lease.SealRetry",
+        payload: { lease_id: leaseData.id },
+        status: "pending",
+      } as any);
       console.warn(
-        "[fetchLeaseDetails] Self-heal échoué (non bloquant):",
-        String(selfHealErr)
+        "[fetchLeaseDetails] SealRetry programme via outbox pour bail:",
+        leaseData.id
+      );
+    } catch (outboxErr) {
+      console.warn(
+        "[fetchLeaseDetails] Outbox insert echoue (non bloquant):",
+        String(outboxErr)
       );
     }
   }

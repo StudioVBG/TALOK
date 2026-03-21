@@ -267,281 +267,94 @@ interface LeaseResult {
 }
 
 /**
- * POST /api/leases - Créer un nouveau bail
+ * POST /api/leases — Creer un nouveau bail
+ * SOTA 2026: Delegue a LeaseCreationService
+ *
+ * Supporte mode=draft (ancien /api/leases POST) et mode=invite (ancien /api/leases/invite)
  */
 export const POST = withSecurity(async function POST(request: Request) {
   try {
-    const { user, error, supabase } = await getAuthenticatedUser(request);
+    const { user, error } = await getAuthenticatedUser(request);
+    if (error) throw new ApiError(error.status || 401, error.message);
+    if (!user) throw new ApiError(401, "Non authentifié");
 
-    if (error) {
-      throw new ApiError(error.status || 401, error.message);
-    }
+    const { createServiceRoleClient } = await import("@/lib/supabase/service-client");
+    const serviceClient = createServiceRoleClient();
 
-    if (!user || !supabase) {
-      throw new ApiError(401, "Non authentifié");
-    }
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      throw new ApiError(500, "Configuration manquante");
-    }
-
-    const { createClient: createSupabaseClient } = await import("@supabase/supabase-js");
-    const serviceClient = createSupabaseClient(supabaseUrl, serviceRoleKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    });
-
-    // Récupérer le profil de l'utilisateur courant
     const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
-      .select("id, role")
+      .select("id, role, prenom, nom")
       .eq("user_id", user.id)
       .single();
 
-    if (profileError || !profile) {
-      throw new ApiError(404, "Profil non trouvé");
-    }
-
-    const profileData = profile as Profile;
-
-    // Seuls les propriétaires et admins peuvent créer des baux
-    if (profileData.role !== "owner" && profileData.role !== "admin") {
-      throw new ApiError(403, "Accès non autorisé");
-    }
-
-    // ✅ QUOTAS SOTA 2026: Vérifier les limites d'abonnement via middleware
-    if (profileData.role === "owner") {
-      const limitCheck = await withSubscriptionLimit(profileData.id, "leases");
-      if (!limitCheck.allowed) {
-        console.log(`[POST /api/leases] Limite atteinte: ${limitCheck.current}/${limitCheck.max} (plan: ${limitCheck.plan})`);
-        throw new ApiError(403, limitCheck.message || "Limite de baux atteinte pour votre forfait.");
-      }
-    }
+    if (profileError || !profile) throw new ApiError(404, "Profil non trouvé");
+    const profileData = profile as Profile & { prenom?: string; nom?: string };
+    if (profileData.role !== "owner" && profileData.role !== "admin") throw new ApiError(403, "Accès non autorisé");
 
     const body = await request.json();
-    
-    // ✅ SSOT 2026: Validation unifiée avec Zod
-    const loyerRaw = body.loyer ? parseFloat(body.loyer) : undefined;
-    const loyer = loyerRaw !== undefined && Number.isFinite(loyerRaw) ? loyerRaw : undefined;
-    const typeBail = body.type_bail || "meuble";
-    const depotRaw = body.depot_garantie ? parseFloat(body.depot_garantie) : undefined;
-    const depotFourni = depotRaw !== undefined && Number.isFinite(depotRaw) ? depotRaw : undefined;
+
+    const loyerRaw = body.loyer ? parseFloat(body.loyer) : 0;
+    const loyer = Number.isFinite(loyerRaw) ? loyerRaw : 0;
     const chargesRaw = body.charges_forfaitaires ? parseFloat(body.charges_forfaitaires) : 0;
-    const chargesParsed = Number.isFinite(chargesRaw) ? chargesRaw : 0;
-    
+    const depotRaw = body.depot_garantie ? parseFloat(body.depot_garantie) : undefined;
+
     const validationResult = LeaseCreateSchema.safeParse({
       property_id: body.property_id,
-      type_bail: typeBail,
+      type_bail: body.type_bail || "meuble",
       signatory_entity_id: body.signatory_entity_id ?? null,
-      loyer: loyer,
-      charges_forfaitaires: chargesParsed,
-      depot_de_garantie: depotFourni, // Peut être undefined - sera calculé après
+      loyer,
+      charges_forfaitaires: Number.isFinite(chargesRaw) ? chargesRaw : 0,
+      depot_de_garantie: depotRaw !== undefined && Number.isFinite(depotRaw) ? depotRaw : undefined,
       date_debut: body.date_debut,
       date_fin: body.date_fin || null,
       tenant_email: body.tenant_email,
       tenant_name: body.tenant_name,
     });
-    
+
     if (!validationResult.success) {
-      const errors = validationResult.error.errors.map(e => ({
-        field: e.path.join("."),
-        message: e.message,
-      }));
-      console.error("[POST /api/leases] Validation échouée:", errors);
+      const errors = validationResult.error.errors.map(e => ({ field: e.path.join("."), message: e.message }));
       throw new ApiError(400, errors[0]?.message || "Données invalides", { errors });
     }
-    
-    const validatedData = validationResult.data;
-    
-    // ✅ CALCUL AUTOMATIQUE du dépôt de garantie si non fourni
-    let depotGarantie = validatedData.depot_de_garantie;
-    if (depotGarantie === undefined || depotGarantie === 0) {
-      depotGarantie = getMaxDepotLegal(validatedData.type_bail, validatedData.loyer);
-      console.log(`[POST /api/leases] Dépôt calculé automatiquement: ${depotGarantie}€ (${validatedData.type_bail}, loyer: ${validatedData.loyer}€)`);
-    }
 
-    // Vérifier que le bien appartient au propriétaire (sauf admin) et récupérer legal_entity_id pour fallback
-    let propertyForEntity: { legal_entity_id?: string | null } | null = null;
-    if (profileData.role !== "admin") {
-      const { data: property, error: propertyError } = await serviceClient
-        .from("properties")
-        .select("id, owner_id, legal_entity_id")
-        .eq("id", validatedData.property_id)
-        .single();
+    const v = validationResult.data;
+    const mode = body.mode || "draft";
 
-      if (propertyError || !property) {
-        throw new ApiError(404, "Bien non trouvé");
-      }
+    const { createLease } = await import("@/lib/services/lease-creation.service");
+    const result = await createLease({
+      mode: mode as any,
+      ownerProfileId: profileData.id,
+      ownerName: `${profileData.prenom || ""} ${profileData.nom || ""}`.trim(),
+      propertyId: v.property_id,
+      typeBail: v.type_bail,
+      signatoryEntityId: v.signatory_entity_id,
+      loyer: v.loyer,
+      chargesForfaitaires: v.charges_forfaitaires,
+      depotGarantie: v.depot_de_garantie,
+      dateDebut: v.date_debut,
+      dateFin: v.date_fin,
+      jourPaiement: body.jour_paiement,
+      customClauses: body.custom_clauses,
+      taxRegime: body.tax_regime,
+      lmnpStatus: body.lmnp_status,
+      furnitureInventory: body.furniture_inventory,
+      tenantEmail: v.tenant_email,
+      tenantName: v.tenant_name,
+      colocConfig: body.coloc_config,
+      invitees: body.invitees,
+    });
 
-      const typedProperty = property as PropertyWithOwner & { legal_entity_id?: string | null };
-      if (typedProperty.owner_id !== profileData.id) {
-        throw new ApiError(403, "Vous n'êtes pas propriétaire de ce bien");
-      }
-      propertyForEntity = property;
-    } else {
-      const { data: prop } = await serviceClient
-        .from("properties")
-        .select("legal_entity_id")
-        .eq("id", validatedData.property_id)
-        .single();
-      propertyForEntity = prop;
-    }
-
-    // ✅ P2: Vérifier s'il existe déjà un bail draft pour cette propriété
-    let existingDraftWarning: string | null = null;
-    const { data: existingDrafts } = await serviceClient
-      .from("leases")
-      .select("id, created_at")
-      .eq("property_id", validatedData.property_id)
-      .eq("statut", "draft");
-
-    if (existingDrafts && existingDrafts.length > 0) {
-      existingDraftWarning = `Attention : ${existingDrafts.length} bail(s) en brouillon existe(nt) déjà pour ce bien.`;
-      console.warn(`[POST /api/leases] ${existingDraftWarning} IDs: ${existingDrafts.map((d: any) => d.id).join(", ")}`);
-    }
-
-    // ✅ SSOT 2026: Créer le bail avec les données VALIDÉES + dépôt calculé
-    const signatoryEntityId =
-      validatedData.signatory_entity_id ?? propertyForEntity?.legal_entity_id ?? null;
-    const leaseData = {
-      property_id: validatedData.property_id,
-      type_bail: validatedData.type_bail,
-      loyer: validatedData.loyer,
-      charges_forfaitaires: validatedData.charges_forfaitaires,
-      depot_de_garantie: depotGarantie, // ← Calculé automatiquement si non fourni
-      date_debut: validatedData.date_debut,
-      date_fin: validatedData.date_fin || null,
-      statut: "draft", // ✅ SOTA BIC 2026: Toujours "draft" à la création (sécurité)
-      signatory_entity_id: signatoryEntityId,
-    };
-
-    const { data: lease, error: leaseError } = await serviceClient
-      .from("leases")
-      .insert(leaseData)
-      .select()
-      .single();
-
-    if (leaseError || !lease) {
-      console.error("[POST /api/leases] Error creating lease:", leaseError);
-      throw new ApiError(500, leaseError?.message || "Erreur lors de la création du bail");
-    }
-
-    const leaseResult = lease as LeaseResult;
-
-    // ✅ SSOT 2026: Ajouter le propriétaire comme signataire avec rôle standardisé
-    try {
-      const { error: ownerSignerError } = await serviceClient
-        .from("lease_signers")
-        .insert({
-          lease_id: leaseResult.id,
-          profile_id: profileData.id,
-          role: SIGNER_ROLES.OWNER, // ✅ Utilisation constante
-          signature_status: "pending",
-        });
-
-      if (ownerSignerError) {
-        console.warn("[POST /api/leases] Erreur ajout signataire propriétaire:", ownerSignerError);
-      } else {
-        console.log("[POST /api/leases] Propriétaire ajouté comme signataire");
-      }
-    } catch (signerErr) {
-      console.warn("[POST /api/leases] Exception signataire (non bloquant):", signerErr);
-    }
-
-    // ✅ SSOT 2026: Ajouter un signataire locataire avec rôle standardisé
-    try {
-      const tenantEmail = validatedData.tenant_email;
-      const tenantName = validatedData.tenant_name;
-      const tenantProfileId = body.tenant_profile_id as string | undefined;
-      
-      let tenantSignerData: Record<string, unknown>;
-      
-      if (tenantProfileId) {
-        // Cas 1: Le locataire a déjà un profil
-        tenantSignerData = {
-          lease_id: leaseResult.id,
-          profile_id: tenantProfileId,
-          role: SIGNER_ROLES.TENANT_PRINCIPAL, // ✅ Utilisation constante
-          signature_status: "pending",
-        };
-        console.log("[POST /api/leases] Locataire ajouté via profile_id:", tenantProfileId);
-      } else if (tenantEmail && tenantEmail !== "") {
-        // Cas 2: On a un email - chercher si un profil existe via auth.users
-        const { data: authData } = await serviceClient.auth.admin.listUsers();
-        const existingUser = authData?.users?.find(u => u.email?.toLowerCase() === tenantEmail.toLowerCase());
-        
-        let existingProfileId: string | null = null;
-        if (existingUser) {
-          const { data: profile } = await serviceClient
-            .from("profiles")
-            .select("id")
-            .eq("user_id", existingUser.id)
-            .maybeSingle();
-          if (profile) existingProfileId = profile.id;
-        }
-        
-        if (existingProfileId) {
-          tenantSignerData = {
-            lease_id: leaseResult.id,
-            profile_id: existingProfileId,
-            role: SIGNER_ROLES.TENANT_PRINCIPAL, // ✅ Utilisation constante
-            signature_status: "pending",
-          };
-          console.log("[POST /api/leases] Locataire trouvé par email:", tenantEmail);
-        } else {
-          // Créer un signataire invité
-          tenantSignerData = {
-            lease_id: leaseResult.id,
-            profile_id: null,
-            invited_email: tenantEmail,
-            invited_name: tenantName || tenantEmail.split("@")[0],
-            role: SIGNER_ROLES.TENANT_PRINCIPAL, // ✅ Utilisation constante
-            signature_status: "pending",
-          };
-          console.log("[POST /api/leases] Locataire invité créé:", tenantEmail);
-        }
-      } else {
-        // Cas 3: Pas d'info locataire - créer un placeholder
-        tenantSignerData = {
-          lease_id: leaseResult.id,
-          profile_id: null,
-          invited_email: "locataire@a-definir.com",
-          invited_name: "Locataire à définir",
-          role: SIGNER_ROLES.TENANT_PRINCIPAL, // ✅ Utilisation constante
-          signature_status: "pending",
-        };
-        console.log("[POST /api/leases] Locataire placeholder créé");
-      }
-      
-      const { error: tenantSignerError } = await serviceClient
-        .from("lease_signers")
-        .insert(tenantSignerData);
-      
-      if (tenantSignerError) {
-        console.warn("[POST /api/leases] Erreur ajout signataire locataire:", tenantSignerError);
-      }
-    } catch (tenantErr) {
-      console.warn("[POST /api/leases] Exception signataire locataire (non bloquant):", tenantErr);
-    }
-
-    console.log("[POST /api/leases] Bail créé avec signataires:", leaseResult.id);
-
-    // ✅ SOTA 2026: Invalider le cache ISR de la page propriété pour que le CTA se mette à jour
-    revalidatePath(`/owner/properties/${validatedData.property_id}`);
+    revalidatePath(`/owner/properties/${v.property_id}`);
     revalidatePath("/owner/properties");
     revalidatePath("/owner/leases");
 
-    const response: Record<string, unknown> = { ...lease as Record<string, unknown> };
-    if (existingDraftWarning) {
-      response.warning = existingDraftWarning;
-    }
-
-    return NextResponse.json(response, { status: 201 });
+    return NextResponse.json({
+      id: result.leaseId,
+      lease_id: result.leaseId,
+      success: true,
+      message: result.message,
+      mode: result.mode,
+      invitees: result.inviteeSummary,
+    }, { status: 201 });
   } catch (error: unknown) {
     return handleApiError(error);
   }
