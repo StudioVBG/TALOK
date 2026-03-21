@@ -44,7 +44,10 @@ export function DocumentDownloadButton({
 
       // Cas 1.5: Document générique (CNI, Assurance, etc.) déjà dans Storage
       if (type === "other") {
-        window.open(`/api/documents/${documentId}/download`, "_blank");
+        const res = await fetch(`/api/documents/${documentId}/signed-url`);
+        if (!res.ok) throw new Error("Erreur récupération URL document");
+        const { signedUrl } = await res.json();
+        window.open(signedUrl, "_blank");
         return;
       }
 
