@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -76,8 +77,11 @@ export async function PATCH(
     }
     const body = await request.json();
 
+    // Utiliser service role pour bypasser RLS sur properties et profiles
+    const serviceClient = createServiceRoleClient();
+
     // Vérifier que l'utilisateur est propriétaire
-    const { data: property } = await supabase
+    const { data: property } = await serviceClient
       .from("properties")
       .select("id, owner_id")
       .eq("id", propertyId)
@@ -87,7 +91,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Logement non trouvé" }, { status: 404 });
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -104,7 +108,7 @@ export async function PATCH(
     }
 
     // Vérifier que le compteur existe
-    const { data: existingMeter } = await supabase
+    const { data: existingMeter } = await serviceClient
       .from("meters")
       .select("id")
       .eq("id", meterId)
@@ -186,8 +190,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    // Utiliser service role pour bypasser RLS sur properties et profiles
+    const serviceClient = createServiceRoleClient();
+
     // Vérifier que l'utilisateur est propriétaire
-    const { data: property } = await supabase
+    const { data: property } = await serviceClient
       .from("properties")
       .select("id, owner_id")
       .eq("id", propertyId)
@@ -197,7 +204,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Logement non trouvé" }, { status: 404 });
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -214,7 +221,7 @@ export async function DELETE(
     }
 
     // Vérifier que le compteur existe et appartient au logement
-    const { data: meter } = await supabase
+    const { data: meter } = await serviceClient
       .from("meters")
       .select("id, type, serial_number")
       .eq("id", meterId)

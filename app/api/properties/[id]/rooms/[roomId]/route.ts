@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { roomUpdateSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 
 /**
  * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
@@ -29,8 +30,9 @@ export async function PATCH(
     const body = await request.json();
     const validated = roomUpdateSchema.parse(body);
 
-    const supabaseClient = supabase as any;
-    const { data: profile } = await supabaseClient
+    // Utiliser service role pour bypasser RLS sur properties et profiles
+    const serviceClient = createServiceRoleClient() as any;
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
@@ -42,7 +44,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const { data: property, error: propertyError } = await supabaseClient
+    const { data: property, error: propertyError } = await serviceClient
       .from("properties")
       .select("owner_id, type, etat")
       .eq("id", id as any)
@@ -69,7 +71,7 @@ export async function PATCH(
       );
     }
 
-    const { data: room, error: roomError } = await supabaseClient
+    const { data: room, error: roomError } = await serviceClient
       .from("rooms")
       .select("id, property_id")
       .eq("id", roomId as any)
@@ -97,7 +99,7 @@ export async function PATCH(
       }
     }
 
-    const { data: updatedRoom, error: updateError } = await supabaseClient
+    const { data: updatedRoom, error: updateError } = await serviceClient
       .from("rooms")
       .update(updates as any)
       .eq("id", roomId as any)
@@ -149,8 +151,9 @@ export async function DELETE(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const supabaseClient = supabase as any;
-    const { data: profile } = await supabaseClient
+    // Utiliser service role pour bypasser RLS sur properties et profiles
+    const serviceClient = createServiceRoleClient() as any;
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
@@ -162,7 +165,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const { data: property, error: propertyError } = await supabaseClient
+    const { data: property, error: propertyError } = await serviceClient
       .from("properties")
       .select("owner_id, type, etat")
       .eq("id", id as any)
@@ -189,7 +192,7 @@ export async function DELETE(
       );
     }
 
-    const { data: room, error: roomError } = await supabaseClient
+    const { data: room, error: roomError } = await serviceClient
       .from("rooms")
       .select("id")
       .eq("id", roomId as any)
@@ -200,7 +203,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Pièce introuvable" }, { status: 404 });
     }
 
-    const { data: photos } = await supabaseClient
+    const { data: photos } = await serviceClient
       .from("photos")
       .select("id")
       .eq("room_id", roomId as any)
@@ -216,7 +219,7 @@ export async function DELETE(
       );
     }
 
-    const { error: deleteError } = await supabaseClient
+    const { error: deleteError } = await serviceClient
       .from("rooms")
       .delete()
       .eq("id", roomId as any)

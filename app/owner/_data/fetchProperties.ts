@@ -4,6 +4,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { redirect } from "next/navigation";
 import type { PropertyRow } from "@/lib/supabase/typed-client";
 
@@ -50,8 +51,10 @@ export async function fetchProperties(
     throw new Error("Accès non autorisé");
   }
 
-  // Récupérer les propriétés
-  const { data: properties, error: propertiesError } = await supabase
+  // Récupérer les propriétés via service role pour bypasser RLS
+  // La sécurité est assurée par le filtre owner_id vérifié manuellement ci-dessus
+  const serviceClient = createServiceRoleClient();
+  const { data: properties, error: propertiesError } = await serviceClient
     .from("properties")
     .select("*")
     .eq("owner_id", ownerId)
@@ -62,10 +65,10 @@ export async function fetchProperties(
     throw new Error(`Erreur lors de la récupération des propriétés: ${propertiesError.message}`);
   }
 
-  // Compter les baux si demandé
+  // Compter les baux si demandé (via service role pour cohérence)
   let leasesCount = 0;
   if (options.includeStats || options.includeLeases) {
-    const { count } = await supabase
+    const { count } = await serviceClient
       .from("leases")
       .select("*", { count: "exact", head: true })
       .in(
@@ -113,8 +116,10 @@ export async function fetchProperty(
     throw new Error("Accès non autorisé");
   }
 
-  // Récupérer la propriété
-  const { data: property, error } = await supabase
+  // Récupérer la propriété via service role pour bypasser RLS
+  // La sécurité est assurée par le filtre owner_id vérifié manuellement ci-dessus
+  const serviceClientForProperty = createServiceRoleClient();
+  const { data: property, error } = await serviceClientForProperty
     .from("properties")
     .select("*")
     .eq("id", propertyId)

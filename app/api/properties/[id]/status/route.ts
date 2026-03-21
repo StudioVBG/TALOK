@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { z } from "zod";
 
 const statusSchema = z.object({
@@ -29,8 +30,11 @@ export async function POST(
     const body = await request.json();
     const validatedData = statusSchema.parse(body);
 
+    // Utiliser service role pour bypasser RLS sur properties et profiles
+    const serviceClient = createServiceRoleClient();
+
     // Vérifier que le logement appartient bien à l'utilisateur
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id")
       .eq("user_id", user.id)
@@ -40,7 +44,7 @@ export async function POST(
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const { data: property, error: propertyError } = await supabase
+    const { data: property, error: propertyError } = await serviceClient
       .from("properties")
       .select("id, owner_id")
       .eq("id", id)
@@ -55,7 +59,7 @@ export async function POST(
     }
 
     // Mettre à jour le statut
-    const { error: updateError } = await supabase
+    const { error: updateError } = await serviceClient
       .from("properties")
       .update({ rental_status: validatedData.rental_status })
       .eq("id", id);
