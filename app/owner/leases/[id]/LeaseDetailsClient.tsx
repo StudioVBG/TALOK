@@ -405,44 +405,20 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   const handleDownloadSealedPDF = async () => {
     if (!signedPdfPath) return;
     setIsDownloadingPdf(true);
+    const docUrl = `/api/documents/view?path=${encodeURIComponent(signedPdfPath)}${sealedAt ? `&v=${new Date(sealedAt).getTime()}` : ""}`;
     try {
-      const response = await fetch(`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}${sealedAt ? `&v=${new Date(sealedAt).getTime()}` : ""}`);
-      if (!response.ok) throw new Error("Erreur récupération document");
-      const htmlContent = await response.text();
+      const printWindow = window.open(docUrl, "_blank");
+      if (!printWindow) throw new Error("Popup bloquée par le navigateur");
 
-      const html2pdf = (await import("html2pdf.js")).default;
+      printWindow.addEventListener("afterprint", () => printWindow.close());
+      printWindow.onload = () => {
+        setTimeout(() => printWindow.print(), 500);
+      };
 
-      const iframe = document.createElement("iframe");
-      iframe.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:210mm;height:297mm;border:none;";
-      document.body.appendChild(iframe);
-
-      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!iframeDoc) throw new Error("Impossible de créer le contexte iframe");
-
-      iframeDoc.open();
-      iframeDoc.write(htmlContent);
-      iframeDoc.close();
-
-      await new Promise<void>((resolve) => {
-        iframe.onload = () => resolve();
-        setTimeout(resolve, 2000);
-      });
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await html2pdf().set({
-        margin: 10,
-        filename: `Bail_${leaseId.substring(0, 8).toUpperCase()}_${property.ville || "Logement"}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, windowWidth: 794 },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
-        pagebreak: { mode: ["avoid-all", "css", "legacy"] },
-      } as any).from(iframeDoc.body).save();
-
-      document.body.removeChild(iframe);
-      toast({ title: "Téléchargement terminé", description: "Votre bail signé a été téléchargé au format PDF." });
-    } catch (error) {
-      console.error("[LeaseDetailsClient] Erreur téléchargement PDF:", error);
-      toast({ title: "Erreur", description: "Impossible de télécharger le PDF.", variant: "destructive" });
+      toast({ title: "Impression", description: "Sélectionnez « Enregistrer en PDF » dans la boîte de dialogue." });
+    } catch {
+      window.open(docUrl, "_blank");
+      toast({ title: "Document ouvert", description: "Utilisez Cmd+P (ou Ctrl+P) pour enregistrer en PDF." });
     } finally {
       setIsDownloadingPdf(false);
     }

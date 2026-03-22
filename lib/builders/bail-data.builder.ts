@@ -132,15 +132,20 @@ export async function buildBailData(
     },
   ];
 
-  // 5. Resolve signature image URLs if needed
+  // 5. Resolve signature images as base64 data URLs (self-contained, never expire)
   if (includeSignatures && lease.signers) {
     for (const signer of lease.signers as any[]) {
       if (signer.signature_image_path) {
         try {
-          const { data: signedUrl } = await supabase.storage
+          const { data: blob } = await supabase.storage
             .from("documents")
-            .createSignedUrl(signer.signature_image_path, 3600);
-          if (signedUrl?.signedUrl) signer.signature_image = signedUrl.signedUrl;
+            .download(signer.signature_image_path);
+          if (blob) {
+            const buffer = Buffer.from(await blob.arrayBuffer());
+            const ext = signer.signature_image_path.split(".").pop()?.toLowerCase() || "png";
+            const mime = ext === "jpg" || ext === "jpeg" ? "image/jpeg" : "image/png";
+            signer.signature_image = `data:${mime};base64,${buffer.toString("base64")}`;
+          }
         } catch { /* non-blocking */ }
       }
     }
