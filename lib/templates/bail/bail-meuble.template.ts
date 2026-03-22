@@ -1058,7 +1058,7 @@ export const BAIL_MEUBLE_TEMPLATE = `
       </div>
     </div>
 
-    {{{CERTIFICATE_HTML}}}
+    {{CERTIFICATE_HTML}}
 
     <div class="section">
       <div class="section-title">📄 Intégrité du Document</div>

@@ -34,6 +34,7 @@ yarn-error.log*
 .env*.save
 .env.local.save
 *.env.backup
+.env*.backup
 
 # vercel
 .vercel

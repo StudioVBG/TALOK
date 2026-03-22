@@ -31,8 +31,12 @@ export interface PostSignatureResult {
 
 // ─── Fonction principale ─────────────────────────────────────────────
 
-export async function handleLeaseFullySigned(leaseId: string): Promise<PostSignatureResult> {
+export async function handleLeaseFullySigned(
+  leaseId: string,
+  options?: { force?: boolean }
+): Promise<PostSignatureResult> {
   const serviceClient = getServiceClient();
+  const force = options?.force ?? false;
 
   const result: PostSignatureResult = {
     pdfStored: false,
@@ -57,13 +61,22 @@ export async function handleLeaseFullySigned(leaseId: string): Promise<PostSigna
     return result;
   }
 
-  // Si déjà scellé avec un vrai PDF, ne rien refaire
-  if (lease.sealed_at && lease.signed_pdf_path && !lease.signed_pdf_path.startsWith("pending_generation_")) {
+  // Si déjà scellé avec un vrai PDF, ne rien refaire (sauf si force=true)
+  if (!force && lease.sealed_at && lease.signed_pdf_path && !lease.signed_pdf_path.startsWith("pending_generation_")) {
     result.pdfStored = true;
     result.pdfPath = lease.signed_pdf_path;
     result.sealedAt = lease.sealed_at;
     result.sealed = true;
     return result;
+  }
+
+  // En mode force, réinitialiser sealed_at et signed_pdf_path pour permettre le re-scellement
+  if (force && lease.sealed_at) {
+    console.log("[post-signature] Mode force: réinitialisation sealed_at/signed_pdf_path pour", leaseId);
+    await serviceClient
+      .from("leases")
+      .update({ sealed_at: null, signed_pdf_path: null } as any)
+      .eq("id", leaseId);
   }
 
   const { data: signers } = await serviceClient
@@ -91,7 +104,7 @@ export async function handleLeaseFullySigned(leaseId: string): Promise<PostSigna
     const { error: uploadErr } = await serviceClient.storage
       .from("documents")
       .upload(sealedDocPath, htmlBuffer, {
-        contentType: "text/html; charset=utf-8",
+        contentType: "text/html",
         upsert: true,
         cacheControl: "31536000",
       });

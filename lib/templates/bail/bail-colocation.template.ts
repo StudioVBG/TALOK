@@ -1064,7 +1064,7 @@ export const BAIL_COLOCATION_TEMPLATE = `
       </div>
     </div>
 
-    {{{CERTIFICATE_HTML}}}
+    {{CERTIFICATE_HTML}}
 
     <div class="section">
       <div class="section-title" style="background: #7c3aed;">📄 Intégrité du Document</div>

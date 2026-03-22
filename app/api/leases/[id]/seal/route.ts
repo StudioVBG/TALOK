@@ -117,78 +117,34 @@ export async function POST(
       siret: ownerIdentity.siret || "",
     });
     
-    // 6. Générer le HTML final
-    const html = LeaseTemplateService.generateHTML((lease as any).type_bail || "nu", bailData);
+    // 6. Générer le HTML final (le template produit déjà un document HTML complet)
+    let finalHtml = LeaseTemplateService.generateHTML((lease as any).type_bail || "nu", bailData);
     
-    // 7. Convertir en PDF (utiliser notre service existant ou API externe)
-    // Pour l'instant, on stocke le HTML qui pourra être converti en PDF côté client
     const timestamp = Date.now();
     const fileName = `bail_signe_${leaseId}_${timestamp}.html`;
     const storagePath = `leases/${leaseId}/${fileName}`;
     
-    // Créer le contenu HTML complet avec styles pour impression
-    const fullHtml = `
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bail de Location - Document Signé</title>
-  <style>
-    @page {
-      size: A4;
-      margin: 20mm;
-    }
-    @media print {
-      body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    }
-    body {
-      font-family: 'Times New Roman', Times, serif;
-      font-size: 11pt;
-      line-height: 1.5;
-      color: #000;
-      max-width: 210mm;
-      margin: 0 auto;
-      padding: 20mm;
-      background: white;
-    }
-    .sealed-badge {
-      position: fixed;
-      top: 10mm;
-      right: 10mm;
-      background: #059669;
-      color: white;
-      padding: 5px 15px;
-      border-radius: 4px;
-      font-size: 10pt;
-      font-weight: bold;
-    }
-    @media print {
-      .sealed-badge { position: absolute; }
-    }
-  </style>
-</head>
-<body>
-  <div class="sealed-badge">✓ DOCUMENT SIGNÉ</div>
-  ${html}
-  <footer style="margin-top: 30mm; padding-top: 10mm; border-top: 1px solid #ccc; font-size: 9pt; color: #666;">
-    <p>Document scellé le ${new Date().toLocaleDateString('fr-FR', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })}</p>
-    <p>Référence : ${leaseId.substring(0, 8).toUpperCase()}</p>
-  </footer>
-</body>
-</html>`;
+    // Injecter le badge scellé et le footer dans le HTML existant du template
+    const sealedBadgeStyle = `<style>
+      .sealed-badge { position: fixed; top: 10mm; right: 10mm; background: #059669; color: white; padding: 5px 15px; border-radius: 4px; font-size: 10pt; font-weight: bold; z-index: 1000; }
+      @media print { .sealed-badge { position: absolute; } }
+    </style>`;
+    finalHtml = finalHtml.replace("</head>", `${sealedBadgeStyle}</head>`);
+    finalHtml = finalHtml.replace(/<body([^>]*)>/, `<body$1><div class="sealed-badge">DOCUMENT SIGNE ET CERTIFIE</div>`);
+
+    const sealedDate = new Date().toLocaleDateString('fr-FR', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+    const footer = `<footer style="margin-top: 30mm; padding-top: 10mm; border-top: 1px solid #ccc; font-size: 9pt; color: #666;">
+      <p>Document scelle le ${sealedDate}</p>
+      <p>Reference : ${leaseId.substring(0, 8).toUpperCase()}</p>
+    </footer>`;
+    finalHtml = finalHtml.replace("</body>", `${footer}</body>`);
     
     // 8. Uploader vers Supabase Storage
     const { error: uploadError } = await serviceClient.storage
       .from("documents")
-      .upload(storagePath, fullHtml, {
+      .upload(storagePath, finalHtml, {
         contentType: "text/html",
         upsert: true,
       });

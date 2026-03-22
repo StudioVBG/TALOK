@@ -154,7 +154,7 @@ export async function GET(request: Request) {
       status: 200,
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "private, max-age=3600",
+        "Cache-Control": "private, no-cache, must-revalidate",
       },
     });
     

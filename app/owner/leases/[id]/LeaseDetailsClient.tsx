@@ -406,26 +406,39 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     if (!signedPdfPath) return;
     setIsDownloadingPdf(true);
     try {
-      const response = await fetch(`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}`);
+      const response = await fetch(`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}${sealedAt ? `&v=${new Date(sealedAt).getTime()}` : ""}`);
       if (!response.ok) throw new Error("Erreur récupération document");
-      const html = await response.text();
+      const htmlContent = await response.text();
 
       const html2pdf = (await import("html2pdf.js")).default;
-      const element = document.createElement("div");
-      element.innerHTML = html;
-      document.body.appendChild(element);
+
+      const iframe = document.createElement("iframe");
+      iframe.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:210mm;height:297mm;border:none;";
+      document.body.appendChild(iframe);
+
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) throw new Error("Impossible de créer le contexte iframe");
+
+      iframeDoc.open();
+      iframeDoc.write(htmlContent);
+      iframeDoc.close();
+
+      await new Promise<void>((resolve) => {
+        iframe.onload = () => resolve();
+        setTimeout(resolve, 2000);
+      });
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await html2pdf().set({
         margin: 10,
         filename: `Bail_${leaseId.substring(0, 8).toUpperCase()}_${property.ville || "Logement"}.pdf`,
         image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: { scale: 2, useCORS: true, windowWidth: 794 },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
         pagebreak: { mode: ["avoid-all", "css", "legacy"] },
-      } as any).from(element).save();
+      } as any).from(iframeDoc.body).save();
 
-      document.body.removeChild(element);
+      document.body.removeChild(iframe);
       toast({ title: "Téléchargement terminé", description: "Votre bail signé a été téléchargé au format PDF." });
     } catch (error) {
       console.error("[LeaseDetailsClient] Erreur téléchargement PDF:", error);
@@ -849,7 +862,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : Contrat */}
               <TabsContent value="contrat" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 overflow-hidden flex-1 flex flex-col min-h-[50vh] lg:h-full">
+                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 overflow-hidden flex-1 flex flex-col min-h-[80vh]">
                   {isSealed && signedPdfPath ? (
                     <div className="flex flex-col h-full">
                       <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-emerald-50 to-green-50">
@@ -866,7 +879,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                         </div>
                         <div className="flex items-center gap-2">
                           <a
-                            href={`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}`}
+                            href={`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}${sealedAt ? `&v=${new Date(sealedAt).getTime()}` : ""}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className={cn(buttonVariants({ variant: "outline", size: "sm" }), "text-emerald-700 border-emerald-200 hover:bg-emerald-50")}
@@ -886,8 +899,8 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                         </div>
                       </div>
                       <iframe
-                        src={`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}`}
-                        className="flex-1 w-full border-0"
+                        src={`/api/documents/view?path=${encodeURIComponent(signedPdfPath)}${sealedAt ? `&v=${new Date(sealedAt).getTime()}` : ""}`}
+                        className="flex-1 w-full border-0 min-h-[70vh]"
                         title="Bail de location signé"
                       />
                       <div className="px-4 py-2 border-t bg-slate-50 text-center">
