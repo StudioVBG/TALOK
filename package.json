@@ -42,6 +42,8 @@
     "@capacitor/push-notifications": "^8.0.1",
     "@capacitor/splash-screen": "^8.0.0",
     "@capacitor/status-bar": "^8.0.0",
+    "@fontsource-variable/manrope": "^5.2.8",
+    "@fontsource-variable/space-grotesk": "^5.2.10",
     "@hookform/resolvers": "^3.9.0",
     "@langchain/core": "^1.0.6",
     "@langchain/langgraph": "^1.0.2",

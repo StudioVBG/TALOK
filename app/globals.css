@@ -30,6 +30,15 @@
     --ring: 217 91% 60%;
     --radius: 0.75rem;
     
+    /* Talok brand colors */
+    --talok-bleu-nuit: 207 74% 20%;
+    --talok-bleu-marque: 204 72% 41%;
+    --talok-cyan: 181 72% 46%;
+    --talok-vert: 155 75% 37%;
+    --talok-orange: 22 93% 52%;
+    --talok-rouge: 1 75% 51%;
+    --talok-gris-fond: 207 35% 97%;
+
     /* Couleurs sémantiques */
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
@@ -633,4 +642,37 @@ html.disable-transitions *::after {
 
 .dark .leaflet-popup-tip {
   background: #1f2937 !important;
+}
+
+/* ============================================
+   LANDING PAGE — Animations SOTA 2026
+   ============================================ */
+
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes landing-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.4); }
+}
+
+.animate-gradient-shift {
+  background-size: 200% auto;
+  animation: gradient-shift 4s ease infinite;
+}
+
+.animate-landing-shimmer {
+  animation: landing-shimmer 3s infinite;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s infinite;
 }
