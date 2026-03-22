@@ -50,6 +50,19 @@ const satisfy = localFont({
   variable: "--font-satisfy",
 });
 
+const manrope = localFont({
+  src: "../public/fonts/manrope-latin-wght-normal.woff2",
+  display: "swap",
+  variable: "--font-manrope",
+  preload: true,
+});
+
+const spaceGrotesk = localFont({
+  src: "../public/fonts/space-grotesk-latin-wght-normal.woff2",
+  display: "swap",
+  variable: "--font-space-grotesk",
+});
+
 /**
  * Normalise l'URL de base pour les métadonnées.
  * Ajoute le protocole https:// si manquant pour éviter les erreurs new URL().
@@ -229,7 +242,7 @@ export default function RootLayout({
     <html
       lang="fr"
       suppressHydrationWarning
-      className={`${inter.variable} ${dancingScript.variable} ${greatVibes.variable} ${pacifico.variable} ${satisfy.variable}`}
+      className={`${inter.variable} ${dancingScript.variable} ${greatVibes.variable} ${pacifico.variable} ${satisfy.variable} ${manrope.variable} ${spaceGrotesk.variable}`}
     >
       <head>
         {/* Script anti-flash de thème - s'exécute avant le rendu */}

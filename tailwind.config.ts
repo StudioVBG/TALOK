@@ -46,6 +46,8 @@ const config: Config = {
         'great-vibes': ['var(--font-great-vibes)', 'cursive'],
         'pacifico': ['var(--font-pacifico)', 'cursive'],
         'satisfy': ['var(--font-satisfy)', 'cursive'],
+        'display': ['var(--font-manrope)', 'system-ui', 'sans-serif'],
+        'mono': ['var(--font-space-grotesk)', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -80,6 +82,14 @@ const config: Config = {
         card: {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
+        },
+        talok: {
+          "bleu-nuit": "hsl(var(--talok-bleu-nuit) / <alpha-value>)",
+          "bleu-marque": "hsl(var(--talok-bleu-marque) / <alpha-value>)",
+          cyan: "hsl(var(--talok-cyan) / <alpha-value>)",
+          vert: "hsl(var(--talok-vert) / <alpha-value>)",
+          orange: "hsl(var(--talok-orange) / <alpha-value>)",
+          rouge: "hsl(var(--talok-rouge) / <alpha-value>)",
         },
       },
       borderRadius: {
