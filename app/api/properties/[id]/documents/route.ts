@@ -98,34 +98,42 @@ export async function GET(
     }
 
     // Construire la requête pour récupérer les documents
-    let query = serviceClient
+    let baseQuery = serviceClient
       .from("documents")
       .select("*")
       .eq("property_id", propertyId as any);
 
+    // Filtrer visible_tenant pour les locataires (service role bypass RLS)
+    if (isTenantLinked && !isAdmin && !isOwner) {
+      baseQuery = baseQuery.eq("visible_tenant", true);
+    }
+
     // Ajouter le filtre collection si fourni et si la colonne existe
-    // On essaie d'abord avec collection, puis sans si ça échoue
     let documents: any[] | null = null;
     let queryError: any = null;
 
     if (collection) {
-      // Essayer avec collection
-      const { data: docsWithCollection, error: errorWithCollection } = await query
+      const { data: docsWithCollection, error: errorWithCollection } = await baseQuery
         .eq("collection", collection)
         .order("created_at", { ascending: false });
 
       if (errorWithCollection) {
-        // Si erreur due à colonne manquante, réessayer sans collection
         if (
           errorWithCollection.message?.includes("does not exist") ||
           errorWithCollection.message?.includes("column") ||
           errorWithCollection.code === "42703"
         ) {
           console.log(`[GET /api/properties/${propertyId}/documents] Colonne collection manquante, réessai sans filtre`);
-          const { data: docsWithoutCollection, error: errorWithoutCollection } = await serviceClient
+          let fallbackQuery = serviceClient
             .from("documents")
             .select("*")
-            .eq("property_id", propertyId as any)
+            .eq("property_id", propertyId as any);
+
+          if (isTenantLinked && !isAdmin && !isOwner) {
+            fallbackQuery = fallbackQuery.eq("visible_tenant", true);
+          }
+
+          const { data: docsWithoutCollection, error: errorWithoutCollection } = await fallbackQuery
             .order("created_at", { ascending: false });
 
           if (errorWithoutCollection) {
@@ -140,8 +148,7 @@ export async function GET(
         documents = docsWithCollection;
       }
     } else {
-      // Pas de filtre collection, requête simple
-      const { data: docs, error: docsError } = await query.order("created_at", { ascending: false });
+      const { data: docs, error: docsError } = await baseQuery.order("created_at", { ascending: false });
       if (docsError) {
         queryError = docsError;
       } else {

@@ -25,8 +25,12 @@ export async function GET(
     const { data: profile } = await supabase.from("profiles").select("id, role").eq("user_id", user.id as any).single();
     const profileData = profile as any;
 
-    let hasAccess = docData.owner_id === profileData?.id || docData.tenant_id === profileData?.id || profileData?.role === "admin";
-    if (docData.lease_id && !hasAccess) {
+    const isTenantRole = profileData?.role === "tenant";
+    const tenantVisibleOk = !isTenantRole || docData.visible_tenant !== false;
+    let hasAccess = profileData?.role === "admin"
+      || docData.owner_id === profileData?.id
+      || (docData.tenant_id === profileData?.id && tenantVisibleOk);
+    if (docData.lease_id && !hasAccess && tenantVisibleOk) {
       const { data: signer } = await supabase.from("lease_signers").select("id").eq("lease_id", docData.lease_id).eq("profile_id", profileData?.id).maybeSingle();
       hasAccess = !!signer;
     }
@@ -90,12 +94,14 @@ export async function POST(
 
     const profileData = profile as any;
     const isOwner = docData.owner_id === profileData?.id;
-    const isTenant = docData.tenant_id === profileData?.id;
+    const isTenantRole = profileData?.role === "tenant";
+    const tenantVisibleOk = !isTenantRole || docData.visible_tenant !== false;
+    const isTenant = docData.tenant_id === profileData?.id && tenantVisibleOk;
     const isAdmin = profileData?.role === "admin";
 
     // Vérifier si signataire du bail (colocataire ou locataire principal)
     let hasAccess = isOwner || isTenant || isAdmin;
-    if (docData.lease_id && !hasAccess) {
+    if (docData.lease_id && !hasAccess && tenantVisibleOk) {
       const { data: signer } = await supabase
         .from("lease_signers")
         .select("id")
