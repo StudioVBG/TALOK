@@ -105,6 +105,12 @@
 
 ## 3. BUGS MOYENS
 
+### BUG M0 : Activation manuelle du bail sans verification des signataires
+- **Fichier** : `app/api/leases/[id]/activate/route.ts:95-112`
+- **Cause** : Verifie `statut === "fully_signed"` mais ne verifie PAS que tous les `lease_signers` ont `signature_status === "signed"`
+- **Impact** : Le bail pourrait etre active meme si les signataires n'ont pas tous signe (etat incoherent)
+- **Statut** : **CORRIGE** (ajout verification des signataires avant etape 5)
+
 ### BUG M1 : EDL document update sans INSERT prealable (race condition)
 - **Fichier** : `lib/services/edl-post-signature.service.ts:287-301`
 - **Cause** : `handleEDLFullySigned` fait un UPDATE sur `documents` filtre par `metadata->>edl_id`. Le INSERT est fait dans la route de signature (ligne 622-638 de `edl/[id]/sign/route.ts`). Si le INSERT echoue silencieusement, l'UPDATE ne matchera rien.
@@ -194,7 +200,22 @@
 - **Fichier** : `app/owner/invoices/page.tsx:10`
 - **Impact** : Les filtres de l'utilisateur sont perdus
 
-### BUG L8 : Tenant multi-bail pas totalement supporte
+### BUG L8 : Double trigger d'activation du bail (EDL)
+- **Fichier** : `supabase/migrations/20260105000002_edl_lease_sync_triggers.sql`
+- **Cause** : Deux triggers distincts activent le bail (check_edl_finalization + trigger_activate_lease_on_edl_signed)
+- **Impact** : Evenements outbox dupliques, double audit log
+
+### BUG L9 : Tokens invitation EDL sans expiration si invitation_sent_at est NULL
+- **Fichier** : `app/api/signature/edl/[token]/sign/route.ts:56-70`
+- **Cause** : Si `invitation_sent_at` est null, le check d'expiration est saute
+- **Impact** : Tokens valides indefiniment (risque securite)
+
+### BUG L10 : Cles vides dans la remise des clefs
+- **Fichier** : `app/api/leases/[id]/key-handover/route.ts:186`
+- **Cause** : Si l'EDL n'a pas de cles, le handover est cree avec `keys_list: []`
+- **Impact** : Attestation sans cles, pas de preuve juridique
+
+### BUG L11 : Tenant multi-bail pas totalement supporte
 - **Fichier** : `app/tenant/dashboard/DashboardClient.tsx:81`
 - **Cause** : `selectedLeaseIndex` existe mais tous les widgets ne l'utilisent pas
 - **Impact** : Certaines sections montrent le premier bail meme si un autre est selectionne
