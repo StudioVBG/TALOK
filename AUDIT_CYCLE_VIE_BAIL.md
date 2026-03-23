@@ -222,6 +222,28 @@
 
 ---
 
+### BUG L12 : Owner non notifie quand facture initiale creee
+- **Fichier** : `supabase/functions/process-outbox/index.ts:188-211`
+- **Cause** : L'event `Invoice.InitialCreated` n'envoie une notification qu'au locataire
+- **Impact** : Le proprietaire ne sait pas que la facture a ete creee
+
+### BUG L13 : Quittance uniquement si facture reglee a 100%
+- **Fichier** : `app/api/webhooks/stripe/route.ts:602-609`
+- **Cause** : `ensureReceiptDocument()` appele seulement si `isSettled === true`
+- **Impact** : Paiement partiel sans quittance
+
+### BUG L14 : Deux processeurs outbox en concurrence
+- **Fichier** : `app/api/cron/process-outbox/route.ts` vs `supabase/functions/process-outbox/index.ts`
+- **Cause** : Deux processeurs distincts traitent les memes events
+- **Impact** : Notifications dupliquees possibles
+
+### BUG L15 : Pas de flow de remboursement Stripe
+- **Fichier** : `app/api/webhooks/stripe/route.ts`
+- **Cause** : Le statut `refunded` existe dans le schema mais aucun handler pour les events refund
+- **Impact** : Les remboursements Stripe ne sont pas refletes dans l'application
+
+---
+
 ## 5. CE QUI FONCTIONNE CORRECTEMENT
 
 ### Signature
