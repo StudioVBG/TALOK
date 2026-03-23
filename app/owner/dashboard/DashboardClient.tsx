@@ -117,7 +117,7 @@ interface DashboardClientProps {
 export function DashboardClient({ profileCompletion }: DashboardClientProps) {
   const { dashboard, apiData, isLoadingApi, error } = useOwnerData();
   // Single realtime hook instance shared between RealtimeRevenueWidget (via its own hook) and RealtimeStatusIndicator (via props)
-  const realtimeStatus = useRealtimeDashboard({ showToasts: false });
+  const realtimeStatus = useRealtimeDashboard({ showToasts: true });
   const completionPercentage = profileCompletion ? calculateCompletionPercentage(profileCompletion) : 0;
 
   if (error) {
