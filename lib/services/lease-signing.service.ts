@@ -90,7 +90,27 @@ export async function findSigner(
       .ilike("invited_email", normalizedEmail)
       .maybeSingle();
 
-    if (byEmail) return byEmail as FoundSigner;
+    if (byEmail) {
+      // If profile_id is missing, try to resolve from profiles table
+      if (!byEmail.profile_id && normalizedEmail) {
+        const { data: resolvedProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("email", normalizedEmail)
+          .maybeSingle();
+
+        if (resolvedProfile) {
+          // Link profile_id in DB for future lookups
+          await supabase
+            .from("lease_signers")
+            .update({ profile_id: (resolvedProfile as { id: string }).id } as any)
+            .eq("id", (byEmail as any).id);
+
+          return { ...(byEmail as FoundSigner), profile_id: (resolvedProfile as { id: string }).id };
+        }
+      }
+      return byEmail as FoundSigner;
+    }
 
     // Priority 3: email → profiles → profile_id → lease_signers
     const { data: profileByEmail } = await supabase
@@ -194,8 +214,38 @@ export async function determineLeaseStatus(
   const allNonOwnersSigned = signers.filter((s) => !isOwnerRole(s.role)).every((s) => s.signature_status === "signed");
 
   if (allSigned) {
+    // All signers have signed — attempt to resolve missing tenant profile_id
     const tenantSigner = signers.find((s) => isTenantRole(s.role));
-    if (!tenantSigner?.profile_id) {
+    if (tenantSigner && !tenantSigner.profile_id) {
+      // Try to resolve profile_id from lease_signers.invited_email → profiles
+      const { data: signerWithEmail } = await supabase
+        .from("lease_signers")
+        .select("id, invited_email")
+        .eq("lease_id", leaseId)
+        .in("role", ["locataire_principal", "locataire", "tenant", "principal"] as any[])
+        .not("invited_email", "is", null)
+        .limit(1)
+        .maybeSingle();
+
+      if (signerWithEmail?.invited_email) {
+        const { data: resolvedProfile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("email", (signerWithEmail.invited_email as string).toLowerCase().trim())
+          .maybeSingle();
+
+        if (resolvedProfile) {
+          await supabase
+            .from("lease_signers")
+            .update({ profile_id: (resolvedProfile as { id: string }).id } as any)
+            .eq("id", (signerWithEmail as any).id);
+
+          return LEASE_STATUS.FULLY_SIGNED;
+        }
+      }
+
+      // If we truly cannot resolve profile_id, stay partially_signed
+      console.warn("[determineLeaseStatus] Tenant profile_id unresolvable for lease:", leaseId);
       return LEASE_STATUS.PARTIALLY_SIGNED;
     }
     return LEASE_STATUS.FULLY_SIGNED;
