@@ -231,7 +231,7 @@ export async function determineLeaseStatus(
         const { data: resolvedProfile } = await supabase
           .from("profiles")
           .select("id")
-          .eq("email", (signerWithEmail.invited_email as string).toLowerCase().trim())
+          .ilike("email", (signerWithEmail.invited_email as string).toLowerCase().trim())
           .maybeSingle();
 
         if (resolvedProfile) {

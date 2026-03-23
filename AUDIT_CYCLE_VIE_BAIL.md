@@ -85,7 +85,17 @@
 - **Impact** : Le nombre de factures en attente affiche ne correspond pas a la realite
 - **Statut** : A CORRIGER
 
-### BUG C4 : Realtime toasts desactives pour le proprietaire
+### BUG C4 : Lookups email case-sensitive → profil non lie, facture non creee
+- **Fichiers** :
+  - `app/api/signature/[token]/profile/route.ts:421` — `.eq("invited_email", tenantEmail)` case-sensitive
+  - `app/api/signature/[token]/profile/route.ts:181` — `.eq("email", tenantEmail)` case-sensitive
+  - `lib/services/lease-initial-invoice.service.ts:120` — `.eq("email", ...)` case-sensitive
+  - `lib/services/lease-creation.service.ts:194,324` — email non normalise avant insertion
+- **Cause** : Si le locataire est invite avec "John@Example.com" mais s'authentifie avec "john@example.com", tous les lookups echouent
+- **Impact** : Profil non lie → signer orphelin → facture non creee → bail bloque
+- **Statut** : **CORRIGE** (`.eq()` → `.ilike()` + normalisation `.toLowerCase().trim()` a l'insertion)
+
+### BUG C5 : Realtime toasts desactives pour le proprietaire
 - **Fichier** : `app/owner/dashboard/DashboardClient.tsx:120`
 - **Cause** : `useRealtimeDashboard({ showToasts: false })` alors que le locataire a `showToasts: true`
 - **Impact** : Le proprietaire ne recoit pas de toast en temps reel (signature recue, paiement effectue, etc.)
@@ -255,7 +265,8 @@
 | C1 | CRITIQUE | Fait | CORRIGE |
 | C2 | CRITIQUE | 5 min | A FAIRE |
 | C3 | CRITIQUE | 15 min | A FAIRE |
-| C4 | CRITIQUE | 5 min | A FAIRE |
+| C4 | CRITIQUE | Fait | CORRIGE |
+| C5 | CRITIQUE | 5 min | A FAIRE |
 | M1 | MOYEN | 30 min | A FAIRE |
 | M2 | MOYEN | 30 min | A FAIRE |
 | M3 | MOYEN | 20 min | A FAIRE |
