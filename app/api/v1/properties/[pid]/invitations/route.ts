@@ -12,6 +12,7 @@ import {
   logAudit,
 } from "@/lib/api/middleware";
 import { CreateInvitationSchema } from "@/lib/api/schemas";
+import { sendPropertyInvitation } from "@/lib/emails/resend.service";
 
 interface RouteParams {
   params: Promise<{ pid: string }>;
@@ -138,7 +139,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // If email provided, send invitation
     if (data.email) {
-      // TODO: Send email via Brevo/Resend
+      try {
+        await sendPropertyInvitation({
+          tenantEmail: data.email,
+          tenantName: data.email.split("@")[0],
+          ownerName: `${auth.profile.prenom || ""} ${auth.profile.nom || ""}`.trim() || "Le propriétaire",
+          propertyAddress: property.adresse_complete || "",
+          propertyCode: property.unique_code || "",
+        });
+      } catch (e) {
+        console.error("[POST /invitations] Email send error:", e);
+      }
     }
 
     // Audit log

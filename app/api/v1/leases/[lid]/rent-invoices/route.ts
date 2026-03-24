@@ -14,6 +14,7 @@ import {
   storeIdempotency,
 } from "@/lib/api/middleware";
 import { CreateInvoiceSchema } from "@/lib/api/schemas";
+import { sendInvoiceNotification } from "@/lib/emails/resend.service";
 
 interface RouteParams {
   params: Promise<{ lid: string }>;
@@ -134,7 +135,30 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       },
     });
 
-    // TODO: Send email notification to tenant
+    // Send email notification to tenant
+    try {
+      const { data: tenantProfile } = await supabase
+        .from("profiles")
+        .select("prenom, nom, user_id")
+        .eq("id", tenant.profile_id)
+        .single();
+      if (tenantProfile?.user_id) {
+        const { data: { user: tenantUser } } = await supabase.auth.admin.getUserById(tenantProfile.user_id);
+        if (tenantUser?.email) {
+          await sendInvoiceNotification({
+            tenantEmail: tenantUser.email,
+            tenantName: `${tenantProfile.prenom || ""} ${tenantProfile.nom || ""}`.trim() || "Locataire",
+            propertyAddress: lease.adresse_bien || "",
+            period: periode,
+            amount: montantTotal,
+            dueDate: new Date(Date.now() + 30 * 86400000).toLocaleDateString("fr-FR"),
+            invoiceId: invoice.id,
+          });
+        }
+      }
+    } catch (e) {
+      console.error("[POST /rent-invoices] Email send error:", e);
+    }
 
     // Audit log
     await logAudit(

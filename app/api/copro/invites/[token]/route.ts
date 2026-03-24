@@ -10,6 +10,8 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sendEmail } from '@/lib/services/email-service';
+import { emailTemplates } from '@/lib/emails/templates';
 
 interface RouteParams {
   params: { token: string };
@@ -167,8 +169,34 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     
     if (error) throw error;
     
-    // TODO: Renvoyer l'email
-    
+    // Resend the invitation email
+    try {
+      if (data?.email) {
+        const { data: site } = await supabase
+          .from('sites')
+          .select('name')
+          .eq('id', data.site_id)
+          .single();
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+        const siteName = site?.name || 'votre copropriété';
+        const firstName = data.first_name || 'Futur copropriétaire';
+        const inviteUrl = `${appUrl}/invite/copro?token=${data.token}`;
+        const template = emailTemplates.genericReminder({
+          subject: `Rappel : Invitation à rejoindre ${siteName}`,
+          content: `Bonjour ${firstName},\n\nCeci est un rappel pour rejoindre la copropriété ${siteName} sur Talok.\n\nCliquez sur le lien suivant pour accepter l'invitation :\n${inviteUrl}\n\nCe lien expire le ${new Date(data.expires_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}.`,
+        });
+        await sendEmail({
+          to: data.email,
+          subject: template.subject,
+          html: template.html,
+          tags: [{ name: 'type', value: 'copro_invite_reminder' }],
+          idempotencyKey: `copro-invite-reminder/${data.token}/${data.reminder_count}`,
+        });
+      }
+    } catch (e) {
+      console.error('[PATCH /copro/invites] Email resend error:', e);
+    }
+
     return NextResponse.json(data);
   } catch (error: unknown) {
     console.error('Erreur PATCH /api/copro/invites/[token]:', error);

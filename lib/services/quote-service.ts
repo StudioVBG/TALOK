@@ -5,6 +5,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/monitoring";
+import { sendEmail } from "@/lib/services/email-service";
+import { emailTemplates } from "@/lib/emails/templates";
 
 // Types
 export interface QuoteItem {
@@ -165,7 +167,45 @@ export async function sendQuote(
       return { success: false, error: "Impossible d'envoyer le devis" };
     }
 
-    // TODO: Envoyer une notification au propriétaire
+    // Notify the owner that a quote has been received
+    try {
+      const { data: quoteData } = await supabase
+        .from("quotes")
+        .select("reference, total, owner_id, provider_id")
+        .eq("id", quoteId)
+        .single();
+      if (quoteData) {
+        const { data: ownerProfile } = await supabase
+          .from("profiles")
+          .select("prenom, nom, user_id")
+          .eq("id", quoteData.owner_id)
+          .single();
+        const { data: providerProfile } = await supabase
+          .from("profiles")
+          .select("prenom, nom")
+          .eq("id", quoteData.provider_id)
+          .single();
+        if (ownerProfile?.user_id) {
+          const { data: { user: ownerUser } } = await supabase.auth.admin.getUserById(ownerProfile.user_id);
+          if (ownerUser?.email) {
+            const providerName = `${providerProfile?.prenom || ""} ${providerProfile?.nom || ""}`.trim() || "Un prestataire";
+            const template = emailTemplates.genericReminder({
+              subject: `Nouveau devis reçu — ${quoteData.reference}`,
+              content: `${providerName} vous a envoyé un devis d'un montant de ${quoteData.total?.toLocaleString("fr-FR")} € TTC.\n\nRéférence : ${quoteData.reference}\n\nConnectez-vous à votre espace Talok pour l'accepter ou le refuser.`,
+            });
+            await sendEmail({
+              to: ownerUser.email,
+              subject: template.subject,
+              html: template.html,
+              tags: [{ name: "type", value: "quote_sent" }],
+              idempotencyKey: `quote-sent/${quoteId}`,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      logger.error("Failed to send quote notification email", { error: e as Error });
+    }
     logger.info("Quote sent", { quoteId });
 
     return { success: true };
@@ -232,7 +272,47 @@ export async function respondToQuote(
       return { success: false, error: "Impossible de répondre au devis" };
     }
 
-    // TODO: Envoyer une notification au prestataire
+    // Notify the provider about the quote response
+    try {
+      const { data: fullQuote } = await supabase
+        .from("quotes")
+        .select("reference, total, provider_id, owner_id")
+        .eq("id", quoteId)
+        .single();
+      if (fullQuote) {
+        const { data: providerProfile } = await supabase
+          .from("profiles")
+          .select("prenom, nom, user_id")
+          .eq("id", fullQuote.provider_id)
+          .single();
+        const { data: ownerProfile } = await supabase
+          .from("profiles")
+          .select("prenom, nom")
+          .eq("id", fullQuote.owner_id)
+          .single();
+        if (providerProfile?.user_id) {
+          const { data: { user: providerUser } } = await supabase.auth.admin.getUserById(providerProfile.user_id);
+          if (providerUser?.email) {
+            const ownerName = `${ownerProfile?.prenom || ""} ${ownerProfile?.nom || ""}`.trim() || "Le propriétaire";
+            const statusLabel = response === "accepted" ? "accepté" : "refusé";
+            const reasonText = response === "rejected" && reason ? `\n\nMotif : ${reason}` : "";
+            const template = emailTemplates.genericReminder({
+              subject: `Votre devis ${fullQuote.reference} a été ${statusLabel}`,
+              content: `${ownerName} a ${statusLabel} votre devis ${fullQuote.reference} d'un montant de ${fullQuote.total?.toLocaleString("fr-FR")} € TTC.${reasonText}\n\nConnectez-vous à votre espace Talok pour consulter les détails.`,
+            });
+            await sendEmail({
+              to: providerUser.email,
+              subject: template.subject,
+              html: template.html,
+              tags: [{ name: "type", value: "quote_response" }],
+              idempotencyKey: `quote-response/${quoteId}/${response}`,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      logger.error("Failed to send quote response notification email", { error: e as Error });
+    }
     logger.info("Quote response", { quoteId, response });
 
     return { success: true };
