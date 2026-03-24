@@ -183,7 +183,8 @@ export async function POST(request: NextRequest) {
       if (guarantorProf?.user_id) {
         const { data: { user: guarantorUser } } = await serviceClient.auth.admin.getUserById(guarantorProf.user_id);
         if (guarantorUser?.email) {
-          const tenantName = `${engagement.tenant?.prenom || ""} ${engagement.tenant?.nom || ""}`.trim() || "le locataire";
+          const eng = engagement as any;
+          const tenantName = `${eng.tenant?.prenom || ""} ${eng.tenant?.nom || ""}`.trim() || "le locataire";
           const guarantorName = `${guarantorProf.prenom || ""} ${guarantorProf.nom || ""}`.trim() || "Garant";
           const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
 
@@ -199,8 +200,8 @@ export async function POST(request: NextRequest) {
             guarantorName,
             tenantName,
             propertyAddress,
-            rentAmount: engagement.lease?.loyer || 0,
-            chargesAmount: engagement.lease?.charges_forfaitaires || 0,
+            rentAmount: eng.lease?.loyer || 0,
+            chargesAmount: eng.lease?.charges_forfaitaires || 0,
             dashboardUrl: `${appUrl}/guarantor/dashboard`,
           });
           await sendEmail({

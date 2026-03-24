@@ -174,16 +174,16 @@ export async function sendQuote(
         .select("reference, total, owner_id, provider_id")
         .eq("id", quoteId)
         .single();
-      if (quoteData) {
+      if (quoteData && quoteData.owner_id && quoteData.provider_id) {
         const { data: ownerProfile } = await supabase
           .from("profiles")
           .select("prenom, nom, user_id")
-          .eq("id", quoteData.owner_id)
+          .eq("id", quoteData.owner_id as string)
           .single();
         const { data: providerProfile } = await supabase
           .from("profiles")
           .select("prenom, nom")
-          .eq("id", quoteData.provider_id)
+          .eq("id", quoteData.provider_id as string)
           .single();
         if (ownerProfile?.user_id) {
           const { data: { user: ownerUser } } = await supabase.auth.admin.getUserById(ownerProfile.user_id);
@@ -279,16 +279,16 @@ export async function respondToQuote(
         .select("reference, total, provider_id, owner_id")
         .eq("id", quoteId)
         .single();
-      if (fullQuote) {
+      if (fullQuote && fullQuote.provider_id && fullQuote.owner_id) {
         const { data: providerProfile } = await supabase
           .from("profiles")
           .select("prenom, nom, user_id")
-          .eq("id", fullQuote.provider_id)
+          .eq("id", fullQuote.provider_id as string)
           .single();
         const { data: ownerProfile } = await supabase
           .from("profiles")
           .select("prenom, nom")
-          .eq("id", fullQuote.owner_id)
+          .eq("id", fullQuote.owner_id as string)
           .single();
         if (providerProfile?.user_id) {
           const { data: { user: providerUser } } = await supabase.auth.admin.getUserById(providerProfile.user_id);

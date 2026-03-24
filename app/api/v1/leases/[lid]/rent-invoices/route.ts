@@ -140,7 +140,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       const { data: tenantProfile } = await supabase
         .from("profiles")
         .select("prenom, nom, user_id")
-        .eq("id", tenant.profile_id)
+        .eq("id", tenant.profile_id as string)
         .single();
       if (tenantProfile?.user_id) {
         const { data: { user: tenantUser } } = await supabase.auth.admin.getUserById(tenantProfile.user_id);
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           await sendInvoiceNotification({
             tenantEmail: tenantUser.email,
             tenantName: `${tenantProfile.prenom || ""} ${tenantProfile.nom || ""}`.trim() || "Locataire",
-            propertyAddress: lease.adresse_bien || "",
+            propertyAddress: (lease as any).adresse_bien || "",
             period: periode,
             amount: montantTotal,
             dueDate: new Date(Date.now() + 30 * 86400000).toLocaleDateString("fr-FR"),
