@@ -6,7 +6,7 @@
 
 -- 1. Statut exact du bail
 SELECT id, statut, date_debut, loyer, charges_forfaitaires, depot_de_garantie,
-       invoice_engine_started, first_invoice_date, activated_at, property_id
+       property_id, activated_at
 FROM leases
 WHERE id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7';
 
@@ -23,15 +23,12 @@ JOIN edl e ON es.edl_id = e.id
 WHERE e.lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7'
 AND e.type = 'entree';
 
--- 4. Facture initiale : existe-t-elle en base ?
+-- 4. Factures liées au bail
 SELECT id, type, statut, montant_loyer, montant_charges, montant_total,
-       date_echeance, periode, metadata, notes, created_at
+       periode, metadata, created_at
 FROM invoices
 WHERE lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7'
-AND (
-  metadata->>'type' = 'initial_invoice'
-  OR type = 'initial_invoice'
-);
+ORDER BY created_at;
 
 -- 5. Lease signers : tenant et owner résolus ?
 SELECT ls.id, ls.role, ls.profile_id, ls.invited_email, ls.signed_at
@@ -51,10 +48,10 @@ SELECT tgname AS trigger_name, tgenabled AS enabled,
        pg_get_triggerdef(oid) AS definition
 FROM pg_trigger
 WHERE tgrelid = 'leases'::regclass
-AND tgname LIKE '%invoice%' OR tgname LIKE '%activ%';
+AND (tgname LIKE '%invoice%' OR tgname LIKE '%activ%');
 
 -- 8. Outbox events pour ce bail ou son EDL
-SELECT id, event_type, status, payload, created_at, processed_at, last_error
+SELECT id, event_type, status, processed, payload, created_at, processed_at
 FROM outbox
 WHERE payload->>'lease_id' = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7'
    OR payload->>'edl_id' IN (
