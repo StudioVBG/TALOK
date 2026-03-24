@@ -15,6 +15,7 @@
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { generateSignedLeasePDF } from "@/lib/services/lease-pdf-generator";
 import { ensureInitialInvoiceForLease } from "@/lib/services/lease-initial-invoice.service";
+import { generateInvoicePDF, type InvoiceData } from "@/lib/services/invoice-pdf-generator";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -246,10 +247,132 @@ export async function handleLeaseFullySigned(
           deposit_amount: invoiceResult.depositAmount,
         },
       } as any);
+
+      // ── 5b. Generate invoice PDF and store it ──────────────────
+      try {
+        await generateAndStoreInvoicePDF(serviceClient, leaseId, invoiceResult.invoiceId);
+        console.log("[post-signature] Invoice PDF generated and stored for:", invoiceResult.invoiceId);
+      } catch (pdfErr) {
+        console.warn("[post-signature] Invoice PDF generation failed (non-blocking):", String(pdfErr));
+      }
     }
   } catch (invoiceErr) {
-    console.warn("[post-signature] Exception facture initiale (non bloquant):", String(invoiceErr));
+    console.error("[post-signature] Exception facture initiale:", String(invoiceErr));
+    // Emit outbox event for automatic retry instead of swallowing the error
+    try {
+      await serviceClient.from("outbox").insert({
+        event_type: "Invoice.GenerationFailed",
+        payload: {
+          lease_id: leaseId,
+          reason: "initial_invoice_exception",
+          error: String(invoiceErr),
+          timestamp: new Date().toISOString(),
+        },
+      } as any);
+      console.log("[post-signature] Invoice.GenerationFailed event queued for retry");
+    } catch {
+      // outbox insert itself failed — nothing more we can do
+    }
   }
 
   return result;
+}
+
+// ─── Helper : Generate and store invoice PDF ────────────────────────
+
+type ServiceClient = ReturnType<typeof getServiceClient>;
+
+async function generateAndStoreInvoicePDF(
+  serviceClient: ServiceClient,
+  leaseId: string,
+  invoiceId: string
+): Promise<void> {
+  // Fetch invoice
+  const { data: invoice } = await serviceClient
+    .from("invoices")
+    .select("*, metadata")
+    .eq("id", invoiceId)
+    .single();
+
+  if (!invoice) throw new Error("Invoice not found: " + invoiceId);
+  const inv = invoice as any;
+
+  // Fetch owner profile
+  const { data: ownerProfile } = await serviceClient
+    .from("profiles")
+    .select("full_name, adresse")
+    .eq("id", inv.owner_id)
+    .single();
+
+  // Fetch tenant profile
+  const { data: tenantProfile } = await serviceClient
+    .from("profiles")
+    .select("full_name")
+    .eq("id", inv.tenant_id)
+    .single();
+
+  // Fetch property via lease
+  const { data: leaseData } = await serviceClient
+    .from("leases")
+    .select("property:properties!leases_property_id_fkey(adresse_complete, ville, code_postal)")
+    .eq("id", leaseId)
+    .single();
+
+  const property = (leaseData as any)?.property;
+  const owner = ownerProfile as any;
+  const tenant = tenantProfile as any;
+  const metadata = inv.metadata ?? {};
+
+  const invoiceData: InvoiceData = {
+    ownerName: owner?.full_name || "Propriétaire",
+    ownerAddress: owner?.adresse || "",
+    tenantName: tenant?.full_name || "Locataire",
+    propertyAddress: property?.adresse_complete || "",
+    propertyCity: property?.ville || "",
+    propertyPostalCode: property?.code_postal || "",
+    invoiceNumber: inv.invoice_number || `FAC-${invoiceId.slice(0, 8).toUpperCase()}`,
+    invoiceDate: inv.generated_at || inv.created_at || new Date().toISOString(),
+    dueDate: inv.due_date || inv.date_echeance || new Date().toISOString(),
+    periodStart: inv.period_start || (inv.periode ? inv.periode + "-01" : new Date().toISOString()),
+    periodEnd: inv.period_end || new Date().toISOString(),
+    montantLoyer: Number(inv.montant_loyer) || 0,
+    montantCharges: Number(inv.montant_charges) || 0,
+    depotDeGarantie: Number(metadata.deposit_amount) || 0,
+    montantTotal: Number(inv.montant_total) || 0,
+    isProrated: Boolean(metadata.is_prorated),
+    prorataDays: metadata.prorata_days ? Number(metadata.prorata_days) : undefined,
+    totalDaysInMonth: metadata.total_days ? Number(metadata.total_days) : undefined,
+    isInitialInvoice: inv.type === "initial_invoice" || metadata.type === "initial_invoice",
+    leaseId,
+    invoiceId,
+    statut: inv.statut || "sent",
+  };
+
+  const pdfBytes = await generateInvoicePDF(invoiceData);
+
+  // Store in Supabase Storage
+  const storagePath = `factures/${leaseId}/${invoiceId}.pdf`;
+  const { error: uploadErr } = await serviceClient.storage
+    .from("documents")
+    .upload(storagePath, pdfBytes, {
+      contentType: "application/pdf",
+      upsert: true,
+      cacheControl: "31536000",
+    });
+
+  if (uploadErr) {
+    console.warn("[post-signature] Invoice PDF upload error:", uploadErr.message);
+  }
+
+  // Update invoice metadata with PDF path
+  await serviceClient
+    .from("invoices")
+    .update({
+      metadata: {
+        ...metadata,
+        pdf_path: storagePath,
+        pdf_generated_at: new Date().toISOString(),
+      },
+    } as any)
+    .eq("id", invoiceId);
 }

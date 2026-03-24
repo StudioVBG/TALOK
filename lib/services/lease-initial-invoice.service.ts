@@ -80,47 +80,110 @@ function getDepositAmount(invoice: LeaseInitialInvoiceLike): number {
   return parsePositiveNumber(metadata.deposit_amount);
 }
 
+const TENANT_ROLE_VARIANTS = new Set([
+  "locataire_principal",
+  "locataire",
+  "tenant",
+  "principal",
+  "colocataire",
+  "co_locataire",
+  "cotenant",
+]);
+
+const OWNER_ROLE_VARIANTS = new Set([
+  "proprietaire",
+  "owner",
+  "bailleur",
+]);
+
+function isTenantLikeRole(role: string | null | undefined): boolean {
+  if (!role) return false;
+  return TENANT_ROLE_VARIANTS.has(role.toLowerCase().trim());
+}
+
+function isOwnerLikeRole(role: string | null | undefined): boolean {
+  if (!role) return false;
+  return OWNER_ROLE_VARIANTS.has(role.toLowerCase().trim());
+}
+
 async function resolveTenantProfileId(
   supabase: SupabaseLike,
   signers: Array<{ profile_id?: string | null; role?: string | null; invited_email?: string | null }>
 ): Promise<string | null> {
-  const tenantRoles = new Set([
-    "locataire_principal",
-    "locataire",
-    "tenant",
-    "principal",
-    "colocataire",
-  ]);
-
+  // 1. Direct match: signer with profile_id and a tenant role
   const directMatch = signers.find(
     (signer) =>
       Boolean(signer.profile_id) &&
-      Boolean(signer.role) &&
-      tenantRoles.has(String(signer.role).toLowerCase())
+      isTenantLikeRole(signer.role)
   );
 
   if (directMatch?.profile_id) {
     return directMatch.profile_id;
   }
 
+  // 2. Invited signer with tenant role → lookup profile by email
   const invitedSigner = signers.find(
     (signer) =>
       Boolean(signer.invited_email) &&
-      Boolean(signer.role) &&
-      tenantRoles.has(String(signer.role).toLowerCase())
+      isTenantLikeRole(signer.role)
   );
 
-  if (!invitedSigner?.invited_email) {
-    return null;
+  if (invitedSigner?.invited_email) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("email", invitedSigner.invited_email)
+      .maybeSingle();
+
+    if ((profile as { id?: string } | null)?.id) {
+      return (profile as { id: string }).id;
+    }
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id")
-    .ilike("email", invitedSigner.invited_email)
-    .maybeSingle();
+  // 3. Fallback: any signer with profile_id who is NOT an owner
+  const nonOwnerWithProfile = signers.find(
+    (signer) =>
+      Boolean(signer.profile_id) &&
+      !isOwnerLikeRole(signer.role)
+  );
 
-  return (profile as { id?: string } | null)?.id ?? null;
+  if (nonOwnerWithProfile?.profile_id) {
+    console.warn(
+      "[initial-invoice] Fallback: using non-owner signer as tenant:",
+      nonOwnerWithProfile.profile_id,
+      "role:", nonOwnerWithProfile.role
+    );
+    return nonOwnerWithProfile.profile_id;
+  }
+
+  // 4. Last resort: any invited email that's not an owner → lookup
+  const anyInvited = signers.find(
+    (signer) =>
+      Boolean(signer.invited_email) &&
+      !isOwnerLikeRole(signer.role)
+  );
+
+  if (anyInvited?.invited_email) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id")
+      .ilike("email", anyInvited.invited_email)
+      .maybeSingle();
+
+    if ((profile as { id?: string } | null)?.id) {
+      console.warn(
+        "[initial-invoice] Fallback: resolved tenant from invited email:",
+        anyInvited.invited_email
+      );
+      return (profile as { id: string }).id;
+    }
+  }
+
+  console.error(
+    "[initial-invoice] Cannot resolve tenant profile_id. Signers:",
+    JSON.stringify(signers.map(s => ({ role: s.role, has_profile: !!s.profile_id, has_email: !!s.invited_email })))
+  );
+  return null;
 }
 
 export async function ensureInitialInvoiceForLease(

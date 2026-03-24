@@ -578,6 +578,36 @@ async function fetchLeaseDetailsFallback(
     }
   }
 
+  // Self-healing: if lease is fully_signed/active but no initial invoice exists, queue generation
+  const hasInitialInvoice = (invoices ?? []).some(
+    (inv: any) =>
+      inv.type === "initial_invoice" ||
+      (inv.metadata && typeof inv.metadata === "object" && (inv.metadata as any).type === "initial_invoice")
+  );
+  const needsInvoiceSelfHeal =
+    ["fully_signed", "active"].includes(leaseData.statut) &&
+    !hasInitialInvoice &&
+    allSignersSigned;
+
+  if (needsInvoiceSelfHeal) {
+    try {
+      await supabase.from("outbox").insert({
+        event_type: "Invoice.GenerationRetry",
+        payload: { lease_id: leaseData.id },
+        status: "pending",
+      } as any);
+      console.warn(
+        "[fetchLeaseDetails] Invoice.GenerationRetry queued for lease:",
+        leaseData.id
+      );
+    } catch (outboxErr) {
+      console.warn(
+        "[fetchLeaseDetails] Invoice outbox insert failed (non-blocking):",
+        String(outboxErr)
+      );
+    }
+  }
+
   type SignerWithProfile = LeaseSignerRow & {
     profiles?: ProfileRow | ProfileRow[] | null;
   };
