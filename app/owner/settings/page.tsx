@@ -97,7 +97,7 @@ export default function OwnerSettingsPage() {
                       <item.icon className="h-5 w-5" />
                     </div>
                     {item.locked ? (
-                      <Badge variant="outline" className="border-amber-300 bg-white text-amber-700">
+                      <Badge variant="outline" className="border-amber-300 bg-card text-amber-700">
                         <Lock className="mr-1 h-3 w-3" />
                         {item.requiredPlanName}
                       </Badge>

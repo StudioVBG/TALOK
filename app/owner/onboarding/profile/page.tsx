@@ -85,21 +85,21 @@ export default function OwnerProfileOnboardingPage() {
         {/* Colonne gauche : Infos contextuelles */}
         <div className="hidden md:flex md:col-span-2 flex-col justify-center space-y-6 p-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Bienvenue.</h1>
-            <p className="text-lg text-slate-600">Configurons votre espace propriétaire ensemble.</p>
+            <h1 className="text-3xl font-bold text-foreground mb-2">Bienvenue.</h1>
+            <p className="text-lg text-muted-foreground">Configurons votre espace propriétaire ensemble.</p>
           </div>
           
           <div className="space-y-4">
-            <div className="p-4 bg-white rounded-xl shadow-sm border border-slate-100">
-              <div className="text-sm font-medium text-slate-500 mb-1">Type</div>
+            <div className="p-4 bg-card rounded-xl shadow-sm border border-slate-100">
+              <div className="text-sm font-medium text-muted-foreground mb-1">Type</div>
               <div className="text-lg font-semibold capitalize">{formData.type}</div>
             </div>
             
             {formData.type === 'societe' && (
-               <div className="p-4 bg-white rounded-xl shadow-sm border border-slate-100">
-                <div className="text-sm font-medium text-slate-500 mb-1">Société</div>
+               <div className="p-4 bg-card rounded-xl shadow-sm border border-slate-100">
+                <div className="text-sm font-medium text-muted-foreground mb-1">Société</div>
                 <div className="font-semibold">{formData.raison_sociale || "..."}</div>
-                {formData.siret && <div className="text-sm text-slate-400 font-mono mt-1">{formData.siret}</div>}
+                {formData.siret && <div className="text-sm text-muted-foreground font-mono mt-1">{formData.siret}</div>}
               </div>
             )}
           </div>

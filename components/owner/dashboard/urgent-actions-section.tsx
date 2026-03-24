@@ -126,7 +126,7 @@ function UrgentActionCard({ action, index }: { action: UrgentAction; index: numb
               {/* Contenu */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <h4 className="font-semibold text-slate-900 truncate">
+                  <h4 className="font-semibold text-foreground truncate">
                     {action.title}
                   </h4>
                   {action.priority === "critical" && (
@@ -136,7 +136,7 @@ function UrgentActionCard({ action, index }: { action: UrgentAction; index: numb
                     </Badge>
                   )}
                 </div>
-                <p className="text-sm text-slate-500 line-clamp-1">
+                <p className="text-sm text-muted-foreground line-clamp-1">
                   {action.description}
                 </p>
                 
@@ -152,7 +152,7 @@ function UrgentActionCard({ action, index }: { action: UrgentAction; index: numb
                       <span className={cn(
                         "font-medium",
                         action.metadata.daysLeft <= 7 ? "text-red-600" :
-                        action.metadata.daysLeft <= 30 ? "text-amber-600" : "text-slate-500"
+                        action.metadata.daysLeft <= 30 ? "text-amber-600" : "text-muted-foreground"
                       )}>
                         <Clock className="h-3 w-3 inline mr-1" />
                         {action.metadata.daysLeft}j restants
@@ -226,7 +226,7 @@ export function UrgentActionsSection({ actions }: UrgentActionsSectionProps) {
       {/* Header avec compteurs */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold text-slate-800 flex items-center gap-2">
+          <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-amber-600" />
             Actions urgentes
           </h2>
@@ -243,7 +243,7 @@ export function UrgentActionsSection({ actions }: UrgentActionsSectionProps) {
             )}
           </div>
         </div>
-        <span className="text-sm text-slate-500">
+        <span className="text-sm text-muted-foreground">
           {actions.length} action{actions.length > 1 ? "s" : ""} en attente
         </span>
       </div>

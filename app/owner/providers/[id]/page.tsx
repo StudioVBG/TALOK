@@ -254,25 +254,25 @@ export default function ProviderDetailPage() {
               
               {/* Stats rapides */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-center p-3 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-primary">
                     {provider.stats.completed_interventions}
                   </div>
                   <div className="text-xs text-muted-foreground">Interventions</div>
                 </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-center p-3 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-green-600">
                     {provider.stats.on_time_rate}%
                   </div>
                   <div className="text-xs text-muted-foreground">À l'heure</div>
                 </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-center p-3 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-blue-600">
                     {provider.stats.satisfaction_rate}%
                   </div>
                   <div className="text-xs text-muted-foreground">Satisfaction</div>
                 </div>
-                <div className="text-center p-3 bg-gray-50 rounded-lg">
+                <div className="text-center p-3 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-amber-600">
                     {provider.stats.recommendation_rate}%
                   </div>
@@ -534,8 +534,8 @@ export default function ProviderDetailPage() {
                 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-full ${provider.kyc_status === 'verified' ? 'bg-green-100' : 'bg-gray-100'}`}>
-                      <Shield className={`h-5 w-5 ${provider.kyc_status === 'verified' ? 'text-green-600' : 'text-gray-400'}`} />
+                    <div className={`p-2 rounded-full ${provider.kyc_status === 'verified' ? 'bg-green-100' : 'bg-muted'}`}>
+                      <Shield className={`h-5 w-5 ${provider.kyc_status === 'verified' ? 'text-green-600' : 'text-muted-foreground'}`} />
                     </div>
                     <div>
                       <div className="font-medium">Assurance RC Pro</div>
@@ -578,7 +578,7 @@ export default function ProviderDetailPage() {
 function PortfolioCard({ item, showDetails = false }: { item: PortfolioItem; showDetails?: boolean }) {
   return (
     <div className="border rounded-lg overflow-hidden group">
-      <div className="relative aspect-[4/3] bg-gray-100">
+      <div className="relative aspect-[4/3] bg-muted">
         {item.before_photo_url && (
           <div className="absolute inset-0 flex">
             <div className="flex-1 relative">
