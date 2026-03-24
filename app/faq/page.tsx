@@ -22,6 +22,7 @@ import {
   MessageSquare,
   Sparkles,
 } from "lucide-react";
+import { PublicFooter } from "@/components/layout/public-footer";
 
 const FAQ_CATEGORIES = [
   {
@@ -239,6 +240,8 @@ export default function FAQPage() {
           </motion.div>
         </div>
       </section>
+
+      <PublicFooter variant="dark" />
     </div>
   );
 }

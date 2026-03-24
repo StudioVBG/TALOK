@@ -31,7 +31,10 @@ export function HeroSection() {
             </Badge>
 
             <h1 className="mt-6 font-display text-4xl font-bold tracking-tight text-foreground md:text-5xl lg:text-6xl">
-              Gérez vos locations sans prise de tête
+              Gérez vos locations{" "}
+              <span className="bg-gradient-to-r from-talok-bleu-marque to-talok-cyan bg-clip-text text-transparent">
+                sans prise de tête
+              </span>
             </h1>
 
             <p className="mt-6 max-w-lg text-lg leading-relaxed text-muted-foreground">

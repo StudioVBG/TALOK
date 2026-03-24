@@ -65,7 +65,7 @@ function Card({
   return (
     <div
       className={cn(
-        "reveal rounded-2xl border p-8",
+        "reveal rounded-2xl border p-8 transition-transform hover:-translate-y-1",
         className
       )}
     >

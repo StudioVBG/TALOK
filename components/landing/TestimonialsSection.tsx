@@ -6,27 +6,30 @@ import { Badge } from "@/components/ui/badge";
 const TESTIMONIALS = [
   {
     name: "Sophie",
+    initials: "SL",
     role: "Propriétaire · 4 biens à Schoelcher",
     badge: "Plus de sérénité",
     quote:
       "Avant je passais mes dimanches à faire les quittances et vérifier les virements. Maintenant tout se fait tout seul. Je retrouve enfin une vue claire de tout.",
-    gradient: "from-talok-bleu-marque/20 to-talok-cyan/20",
+    gradient: "from-talok-bleu-marque to-talok-cyan",
   },
   {
     name: "David",
+    initials: "DM",
     role: "Gestionnaire · 15 lots au Lamentin",
     badge: "Gain de temps",
     quote:
       "Les relances partent toutes seules, les quittances aussi. Je me concentre sur ce qui compte vraiment : mes clients et mes projets.",
-    gradient: "from-talok-vert/20 to-talok-cyan/20",
+    gradient: "from-talok-vert to-talok-cyan",
   },
   {
     name: "Mélanie",
+    initials: "MR",
     role: "Locataire · Fort-de-France",
     badge: "Communication fluide",
     quote:
       "Je paie mon loyer en 30 secondes depuis mon téléphone. Les demandes sont suivies, je sais toujours où ça en est. Enfin un truc simple.",
-    gradient: "from-talok-cyan/20 to-talok-bleu-marque/20",
+    gradient: "from-talok-cyan to-talok-bleu-marque",
   },
 ];
 
@@ -42,14 +45,14 @@ export function TestimonialsSection() {
           {TESTIMONIALS.map((t) => (
             <div
               key={t.name}
-              className="reveal flex flex-col rounded-2xl border bg-white p-6 shadow-sm"
+              className="reveal flex flex-col rounded-2xl border bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
             >
               <div className="flex items-center gap-3">
-                {/* Avatar placeholder */}
                 <div
-                  className={`h-12 w-12 rounded-full bg-gradient-to-br ${t.gradient}`}
-                />
-                {/* TODO: <Image src="/images/testimonial-xxx.jpg" alt={t.name} width={48} height={48} className="rounded-full object-cover" /> */}
+                  className={`flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br ${t.gradient} text-sm font-bold text-white`}
+                >
+                  {t.initials}
+                </div>
                 <div>
                   <p className="font-semibold text-foreground">{t.name}</p>
                   <p className="text-xs text-muted-foreground">{t.role}</p>

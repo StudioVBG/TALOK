@@ -47,7 +47,7 @@ export function DomTomSection() {
           {CARDS.map((card) => (
             <div
               key={card.title}
-              className="reveal rounded-2xl border bg-white p-6 shadow-sm"
+              className="reveal rounded-2xl border bg-white p-6 shadow-sm transition-shadow hover:shadow-md"
             >
               <span className="text-3xl">{card.emoji}</span>
               <h3 className="mt-4 font-display text-lg font-semibold text-foreground">

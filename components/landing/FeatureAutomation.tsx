@@ -64,7 +64,7 @@ export function FeatureAutomation() {
         {AUTOMATIONS.map((auto) => (
           <div
             key={auto.title}
-            className="flex items-center gap-4 rounded-2xl border bg-white p-5 shadow-sm"
+            className="flex items-center gap-4 rounded-2xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
           >
             <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${auto.color}`}>
               <auto.icon className="h-5 w-5" />

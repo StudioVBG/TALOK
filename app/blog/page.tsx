@@ -6,6 +6,7 @@ import { BlogPostCard } from "@/features/blog/components/blog-post-card";
 import { BlogSearch } from "@/features/blog/components/blog-search";
 import { blogService } from "@/features/blog/services/blog.service";
 import type { BlogPost } from "@/lib/types";
+import { PublicFooter } from "@/components/layout/public-footer";
 
 export default function BlogPage() {
   const [posts, setPosts] = useState<BlogPost[]>([]);
@@ -42,7 +43,7 @@ export default function BlogPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <><div className="container mx-auto p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Centre d'aide</h1>
         <p className="text-muted-foreground">
@@ -79,6 +80,8 @@ export default function BlogPage() {
         </div>
       )}
     </div>
+    <PublicFooter variant="light" />
+    </>
   );
 }
 

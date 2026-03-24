@@ -35,7 +35,7 @@ export function ReassuranceSection() {
 
         <div className="mt-14 grid gap-8 md:grid-cols-2 lg:grid-cols-4">
           {ITEMS.map((item) => (
-            <div key={item.title} className="reveal rounded-2xl bg-white p-6 shadow-sm">
+            <div key={item.title} className="reveal rounded-2xl bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-talok-bleu-marque/10">
                 <item.icon className="h-6 w-6 text-talok-bleu-marque" />
               </div>

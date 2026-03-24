@@ -57,7 +57,7 @@ export function HowItWorksSection() {
 
         <div className="mt-14 grid gap-8 md:grid-cols-3">
           {STEPS.map((step) => (
-            <div key={step.number} className="reveal rounded-2xl border bg-white p-6 shadow-sm">
+            <div key={step.number} className="reveal rounded-2xl border bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
               <div className="flex items-center gap-3">
                 <span
                   className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white ${step.color}`}

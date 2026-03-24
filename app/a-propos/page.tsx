@@ -25,6 +25,7 @@ import {
   Shield,
   MessageSquare,
 } from "lucide-react";
+import { PublicFooter } from "@/components/layout/public-footer";
 
 const VALUES = [
   {
@@ -277,6 +278,8 @@ export default function AProposPage() {
           </motion.div>
         </div>
       </section>
+
+      <PublicFooter variant="dark" />
     </div>
   );
 }

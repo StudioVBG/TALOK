@@ -22,6 +22,7 @@ import {
   Sparkles,
   CheckCircle,
 } from "lucide-react";
+import { PublicFooter } from "@/components/layout/public-footer";
 
 const TESTIMONIALS = [
   {
@@ -278,6 +279,8 @@ export default function TemoignagesPage() {
           </motion.div>
         </div>
       </section>
+
+      <PublicFooter variant="dark" />
     </div>
   );
 }

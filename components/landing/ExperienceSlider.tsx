@@ -1,41 +1,55 @@
 "use client";
 
+import { FileText, CreditCard, FolderSearch, Smartphone, BellRing, BarChart3 } from "lucide-react";
+
 const SLIDES = [
   {
     tag: "En 5 min",
     title: "Créer un bail complet",
     text: "L'assistant vous guide, le contrat sort conforme",
+    icon: FileText,
     gradient: "from-talok-bleu-marque/20 to-talok-cyan/10",
+    iconColor: "text-talok-bleu-marque",
   },
   {
     tag: "Zéro oubli",
     title: "Recevoir les loyers",
     text: "Paiement en ligne, suivi automatique, quittance envoyée",
+    icon: CreditCard,
     gradient: "from-talok-vert/20 to-talok-cyan/10",
+    iconColor: "text-talok-vert",
   },
   {
     tag: "Tout au même endroit",
     title: "Retrouver un document",
     text: "Baux, quittances, EDL — rangés et accessibles",
+    icon: FolderSearch,
     gradient: "from-talok-cyan/20 to-talok-bleu-marque/10",
+    iconColor: "text-talok-cyan",
   },
   {
     tag: "Desktop & mobile",
     title: "Gérer depuis n'importe où",
     text: "Sur votre canapé ou sur le terrain, même interface",
+    icon: Smartphone,
     gradient: "from-talok-bleu-nuit/20 to-talok-bleu-marque/10",
+    iconColor: "text-talok-bleu-nuit",
   },
   {
     tag: "Automatique",
     title: "Relancer un locataire en retard",
     text: "Email + SMS part tout seul à J+3",
+    icon: BellRing,
     gradient: "from-talok-orange/20 to-talok-vert/10",
+    iconColor: "text-talok-orange",
   },
   {
     tag: "En un coup d'œil",
     title: "Voir si c'est rentable",
     text: "Rendement net, taux d'occupation, tendances",
+    icon: BarChart3,
     gradient: "from-talok-vert/20 to-talok-bleu-marque/10",
+    iconColor: "text-talok-vert",
   },
 ];
 
@@ -49,6 +63,9 @@ export function ExperienceSlider() {
         <h2 className="reveal text-center font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
           L&apos;expérience Talok
         </h2>
+        <p className="reveal mx-auto mt-4 max-w-2xl text-center text-lg text-muted-foreground">
+          Chaque fonctionnalité a été pensée pour vous simplifier la vie.
+        </p>
       </div>
 
       {/* Marquee track */}
@@ -69,7 +86,7 @@ export function ExperienceSlider() {
           {ALL_SLIDES.map((slide, i) => (
             <div
               key={i}
-              className="w-[300px] shrink-0 rounded-2xl border bg-white p-5 shadow-sm md:w-[340px]"
+              className="w-[300px] shrink-0 rounded-2xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md md:w-[340px]"
             >
               <span className="inline-block rounded-full bg-talok-bleu-marque/10 px-3 py-1 text-xs font-semibold text-talok-bleu-marque">
                 {slide.tag}
@@ -78,11 +95,11 @@ export function ExperienceSlider() {
                 {slide.title}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">{slide.text}</p>
-              {/* Image placeholder */}
               <div
-                className={`mt-4 h-36 rounded-xl bg-gradient-to-br ${slide.gradient}`}
-              />
-              {/* TODO: remplacer par <Image src="/images/slide-${i % 6 + 1}.jpg" alt={slide.title} width={300} height={144} className="rounded-xl object-cover" /> */}
+                className={`mt-4 flex h-36 items-center justify-center rounded-xl bg-gradient-to-br ${slide.gradient}`}
+              >
+                <slide.icon className={`h-16 w-16 ${slide.iconColor} opacity-60`} strokeWidth={1.2} />
+              </div>
             </div>
           ))}
         </div>
