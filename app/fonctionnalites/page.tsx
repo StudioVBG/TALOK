@@ -27,7 +27,6 @@ import {
   Clock,
   Zap,
 } from "lucide-react";
-import { PublicFooter } from "@/components/layout/public-footer";
 
 const FEATURES = [
   {
@@ -302,9 +301,6 @@ export default function FonctionnalitesPage() {
           </motion.div>
         </div>
       </section>
-
-      {/* Footer */}
-      <PublicFooter variant="dark" />
     </div>
   );
 }

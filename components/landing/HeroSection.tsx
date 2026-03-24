@@ -58,7 +58,7 @@ export function HeroSection() {
             {/* Reassurance pills */}
             <div className="mt-8 flex flex-wrap gap-3 text-sm text-muted-foreground">
               <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 shadow-sm">
-                ✓ Gratuit jusqu&apos;à 2 biens
+                ✓ Gratuit pour 1 bien
               </span>
               <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 shadow-sm">
                 ✓ Sans engagement

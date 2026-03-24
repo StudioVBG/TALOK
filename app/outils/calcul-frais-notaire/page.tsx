@@ -46,7 +46,7 @@ export default function CalculFraisNotairePage() {
       terrain: 0.0580715, // Comme l'ancien
     };
 
-    // Émoluments du notaire (barème 2024)
+    // Émoluments du notaire (barème 2025-2026)
     const calculEmoluments = (prix: number) => {
       let emoluments = 0;
       if (prix <= 6500) {

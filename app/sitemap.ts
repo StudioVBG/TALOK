@@ -48,7 +48,7 @@ async function getBlogPosts(): Promise<Array<{ slug: string; updated_at: string 
  * Génère automatiquement les URLs pour :
  * - Pages statiques publiques
  * - Articles de blog dynamiques
- * - Pages marketing SEO
+ * - Pages marketing
  * - Pages légales
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -71,72 +71,85 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
-      url: `${BASE_URL}/features`,
+      url: `${BASE_URL}/fonctionnalites`,
       lastModified: now,
       changeFrequency: "weekly",
       priority: 0.9,
+    },
+    {
+      url: `${BASE_URL}/a-propos`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: `${BASE_URL}/contact`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: `${BASE_URL}/temoignages`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    {
+      url: `${BASE_URL}/faq`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
     },
   ];
 
   // ============================================
-  // PAGES SEO STRATÉGIQUES
+  // FONCTIONNALITÉS (pages détaillées)
   // ============================================
-  const seoPages: MetadataRoute.Sitemap = [
-    {
-      url: `${BASE_URL}/logiciel-gestion-locative`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
-    {
-      url: `${BASE_URL}/comparatif/rentila`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/comparatif/smovin`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/comparatif/hektor`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-  ];
+  const featurePages: MetadataRoute.Sitemap = [
+    "gestion-biens",
+    "gestion-locataires",
+    "etats-des-lieux",
+    "signature-electronique",
+    "quittances-loyers",
+    "comptabilite-fiscalite",
+    "paiements-en-ligne",
+  ].map((slug) => ({
+    url: `${BASE_URL}/fonctionnalites/${slug}`,
+    lastModified: now,
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+  }));
+
+  // ============================================
+  // SOLUTIONS
+  // ============================================
+  const solutionPages: MetadataRoute.Sitemap = [
+    "proprietaires-particuliers",
+    "investisseurs",
+    "administrateurs-biens",
+    "sci-familiales",
+    "dom-tom",
+  ].map((slug) => ({
+    url: `${BASE_URL}/solutions/${slug}`,
+    lastModified: now,
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+  }));
 
   // ============================================
   // OUTILS GRATUITS (Lead magnets SEO)
   // ============================================
   const toolPages: MetadataRoute.Sitemap = [
-    {
-      url: `${BASE_URL}/outils/quittance-loyer`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/outils/modele-bail`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/outils/calculateur-rentabilite`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${BASE_URL}/outils/etat-des-lieux`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-  ];
+    "calcul-rendement-locatif",
+    "calcul-revision-irl",
+    "calcul-frais-notaire",
+    "simulateur-charges",
+  ].map((slug) => ({
+    url: `${BASE_URL}/outils/${slug}`,
+    lastModified: now,
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
 
   // ============================================
   // PAGES AUTHENTIFICATION
@@ -147,12 +160,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.6,
-    },
-    {
-      url: `${BASE_URL}/auth/signup`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
     },
     {
       url: `${BASE_URL}/signup/role`,
@@ -184,59 +191,41 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // ============================================
-  // PAGES LÉGALES
+  // GUIDES
   // ============================================
-  const legalPages: MetadataRoute.Sitemap = [
+  const guidePages: MetadataRoute.Sitemap = [
     {
-      url: `${BASE_URL}/legal/privacy`,
+      url: `${BASE_URL}/guides`,
       lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: `${BASE_URL}/legal/terms`,
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-    {
-      url: `${BASE_URL}/legal/cookies`,
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.2,
+      changeFrequency: "monthly",
+      priority: 0.7,
     },
   ];
 
   // ============================================
-  // PAGES GUIDES (Contenu SEO)
+  // PAGES LÉGALES
   // ============================================
-  const guidePages: MetadataRoute.Sitemap = [
-    {
-      url: `${BASE_URL}/guide/proprietaire-bailleur`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${BASE_URL}/guide/bail-location`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${BASE_URL}/guide/gestion-locative-drom`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-  ];
+  const legalPages: MetadataRoute.Sitemap = [
+    "privacy",
+    "terms",
+    "cgu",
+    "cgv",
+    "cookies",
+    "mentions",
+  ].map((slug) => ({
+    url: `${BASE_URL}/legal/${slug}`,
+    lastModified: now,
+    changeFrequency: "yearly" as const,
+    priority: 0.3,
+  }));
 
   // ============================================
   // ASSEMBLAGE FINAL
   // ============================================
   return [
     ...mainPages,
-    ...seoPages,
+    ...featurePages,
+    ...solutionPages,
     ...toolPages,
     ...authPages,
     ...blogIndexPage,
@@ -245,6 +234,3 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...legalPages,
   ];
 }
-
-
-

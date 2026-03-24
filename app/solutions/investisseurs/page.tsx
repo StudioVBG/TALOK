@@ -37,7 +37,7 @@ const PAIN_POINTS = [
   {
     icon: Euro,
     title: "\"L'agence fait le minimum pour 5 600€/an\"",
-    solution: "Reprenez le contrôle. Talok Pro à 64€/mois = 768€/an. ROI immédiat.",
+    solution: "Reprenez le contrôle. Talok Pro à 69€/mois = 828€/an. ROI immédiat.",
   },
   {
     icon: Calculator,

@@ -122,10 +122,10 @@ export default function DomTomPage() {
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
-              <a href="tel:+596696000000">
+              <a href="mailto:support@talok.fr">
                 <Button size="lg" variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800">
                   <Phone className="w-4 h-4 mr-2" />
-                  0696 XX XX XX
+                  support@talok.fr
                 </Button>
               </a>
             </div>
@@ -230,9 +230,9 @@ export default function DomTomPage() {
               </div>
               <div className="bg-slate-800/50 rounded-2xl p-6 text-center">
                 <div className="text-6xl mb-4">📞</div>
-                <p className="text-2xl font-bold text-white mb-2">0696 XX XX XX</p>
-                <p className="text-slate-400">Martinique · Guadeloupe</p>
-                <p className="text-sm text-slate-500 mt-2">Lun-Ven 8h-18h (heure Antilles)</p>
+                <p className="text-2xl font-bold text-white mb-2">support@talok.fr</p>
+                <p className="text-slate-400">Martinique · Guadeloupe · Métropole</p>
+                <p className="text-sm text-slate-500 mt-2">Réponse sous 24h en jours ouvrés</p>
               </div>
             </div>
           </motion.div>

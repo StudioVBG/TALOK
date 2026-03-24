@@ -8,15 +8,15 @@ import { cn } from "@/lib/utils";
 
 const PLANS = [
   {
-    name: "Découverte",
+    name: "Gratuit",
     price: "0€",
-    period: "gratuit sans limite",
+    period: "pour toujours",
     description: "Pour démarrer et tester à votre rythme",
     features: [
-      "Jusqu'à 2 biens",
-      "Création de baux",
+      "1 bien",
+      "Création de baux conformes",
       "Quittances manuelles",
-      "Messagerie avec vos locataires",
+      "Messagerie locataire",
       "Tableau de bord basique",
     ],
     cta: "Commencer gratuitement",
@@ -24,39 +24,39 @@ const PLANS = [
     featured: false,
   },
   {
-    name: "Pro",
-    price: "19,90€",
+    name: "Confort",
+    price: "35€",
     period: "/mois",
     description: "Pour ceux qui veulent que ça tourne tout seul",
     badge: "Le plus choisi",
     features: [
-      "Biens illimités",
+      "Jusqu'à 10 biens",
       "Relances et quittances automatiques",
-      "Paiement en ligne pour vos locataires",
-      "Signature électronique",
+      "Paiement en ligne",
+      "2 signatures électroniques/mois",
       "Suivi rentabilité par bien",
       "État des lieux numérique",
       "Support prioritaire",
     ],
     cta: "Essayer 14 jours gratuit",
-    href: "/inscription?plan=pro",
+    href: "/inscription?plan=confort",
     featured: true,
   },
   {
-    name: "Premium",
-    price: "49,90€",
+    name: "Pro",
+    price: "69€",
     period: "/mois",
-    description: "Pour gérer plusieurs structures (SCI, SARL…)",
+    description: "Pour les investisseurs et gestionnaires (jusqu'à 50 biens)",
     features: [
-      "Tout le plan Pro",
-      "Multi-entités (SCI, SARL, SAS…)",
-      "Module copropriété",
+      "Tout le plan Confort",
+      "Jusqu'à 50 biens",
+      "10 signatures/mois incluses",
+      "Multi-entités (SCI, SARL…)",
       "Export comptable",
-      "Intégrations avancées",
       "Support dédié",
     ],
-    cta: "Contacter l'équipe",
-    href: "/contact",
+    cta: "Essayer 14 jours gratuit",
+    href: "/inscription?plan=pro",
     featured: false,
   },
 ];
@@ -70,8 +70,8 @@ export function PricingSection() {
             Un prix simple. Pas de mauvaise surprise.
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Commencez gratuitement avec 2 biens. Montez en gamme quand vous êtes
-            prêt. Zéro engagement.
+            Commencez gratuitement. Montez en gamme quand vous êtes prêt.
+            Zéro engagement.
           </p>
         </div>
 
@@ -132,10 +132,14 @@ export function PricingSection() {
           ))}
         </div>
 
-        <p className="reveal mt-8 text-center text-sm text-muted-foreground">
-          Envie d&apos;économiser ? Le plan annuel Confort à 380 €/an vous offre 2
-          mois gratuits.
-        </p>
+        <div className="reveal mt-8 flex flex-col items-center gap-2 text-center text-sm text-muted-foreground">
+          <p>
+            -20% sur l&apos;abonnement annuel. Besoin de gérer plus de 50 biens ?{" "}
+            <Link href="/contact" className="font-medium text-talok-bleu-marque underline underline-offset-4">
+              Contactez-nous pour une offre Enterprise
+            </Link>
+          </p>
+        </div>
       </div>
     </section>
   );

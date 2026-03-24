@@ -22,7 +22,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Je peux gérer une SCI ou plusieurs structures ?",
-    a: "Oui, le plan Premium permet de gérer SCI, SARL, SAS ou indivision. Chaque structure a son espace, ses documents et ses flux, mais tout reste accessible depuis un seul compte.",
+    a: "Oui, le plan Pro permet de gérer SCI, SARL, SAS ou indivision. Chaque structure a son espace, ses documents et ses flux, mais tout reste accessible depuis un seul compte.",
   },
   {
     q: "Mes données sont en sécurité ?",
@@ -30,7 +30,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Et si je veux juste essayer ?",
-    a: "Le plan Découverte est 100% gratuit, sans limite de durée, pour 2 biens. Pas de carte bancaire demandée. Le plan Pro offre 14 jours d'essai gratuit si vous voulez aller plus loin.",
+    a: "Le plan Gratuit est 100% gratuit, sans limite de durée, pour 1 bien. Pas de carte bancaire demandée. Les plans payants offrent 14 jours d'essai gratuit si vous voulez aller plus loin.",
   },
 ];
 

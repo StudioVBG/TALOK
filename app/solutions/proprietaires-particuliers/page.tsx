@@ -77,7 +77,7 @@ const TESTIMONIAL = {
 
 const SAVINGS = [
   { label: "Agence traditionnelle", cost: "8% des loyers", annual: "~2 400€/an" },
-  { label: "Talok Essentiel", cost: "9€/mois", annual: "108€/an", highlight: true },
+  { label: "Talok Starter", cost: "9€/mois", annual: "108€/an", highlight: true },
 ];
 
 export default function ProprietairesParticuliersPage() {

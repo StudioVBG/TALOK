@@ -32,8 +32,9 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
-// IRL values (Q3 2024 to Q4 2025 - should be updated regularly)
+// IRL values (Q1 2023 to Q1 2026 - updated March 2026)
 const IRL_VALUES: Record<string, number> = {
+  "2026-T1": 146.31,
   "2025-T4": 145.47,
   "2025-T3": 144.50,
   "2025-T2": 143.58,
@@ -50,8 +51,8 @@ const IRL_VALUES: Record<string, number> = {
 
 export default function CalculRevisionIRLPage() {
   const [loyerActuel, setLoyerActuel] = useState<number>(800);
-  const [irlReference, setIrlReference] = useState<string>("2024-T3");
-  const [irlNouveau, setIrlNouveau] = useState<string>("2025-T3");
+  const [irlReference, setIrlReference] = useState<string>("2025-T1");
+  const [irlNouveau, setIrlNouveau] = useState<string>("2026-T1");
 
   const results = useMemo(() => {
     const irlRefValue = IRL_VALUES[irlReference] || 0;
