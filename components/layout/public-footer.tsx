@@ -28,10 +28,10 @@ const FOOTER_LINKS = {
   product: {
     title: "Produit",
     links: [
-      { label: "Fonctionnalites", href: "/fonctionnalites" },
+      { label: "Fonctionnalités", href: "/fonctionnalites" },
       { label: "Tarifs", href: "/pricing" },
       { label: "Solutions", href: "/solutions/proprietaires-particuliers" },
-      { label: "Temoignages", href: "/temoignages" },
+      { label: "Témoignages", href: "/temoignages" },
     ],
   },
   resources: {
@@ -40,14 +40,16 @@ const FOOTER_LINKS = {
       { label: "Blog", href: "/blog" },
       { label: "Guides", href: "/guides" },
       { label: "FAQ", href: "/faq" },
-      { label: "Outils", href: "/outils/calcul-rendement-locatif" },
+      { label: "Outils gratuits", href: "/outils/calcul-rendement-locatif" },
     ],
   },
   legal: {
-    title: "Legal",
+    title: "Légal",
     links: [
-      { label: "CGU", href: "/legal/terms" },
-      { label: "Confidentialite", href: "/legal/privacy" },
+      { label: "CGU", href: "/legal/cgu" },
+      { label: "CGV", href: "/legal/cgv" },
+      { label: "Confidentialité", href: "/legal/privacy" },
+      { label: "Mentions légales", href: "/legal/mentions" },
       { label: "Contact", href: "/contact" },
     ],
   },
@@ -75,13 +77,13 @@ export function PublicFooter({ variant = "dark", compact = false }: PublicFooter
                 Tarifs
               </Link>
               <Link href="/fonctionnalites" className={`${isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"} transition-colors`}>
-                Fonctionnalites
+                Fonctionnalités
               </Link>
               <Link href="/blog" className={`${isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"} transition-colors`}>
                 Blog
               </Link>
               <Link href="/legal/privacy" className={`${isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"} transition-colors`}>
-                Confidentialite
+                Confidentialité
               </Link>
               <Link href="/legal/terms" className={`${isDark ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"} transition-colors`}>
                 CGU
@@ -90,7 +92,7 @@ export function PublicFooter({ variant = "dark", compact = false }: PublicFooter
 
             {/* Copyright */}
             <p className={`text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>
-              2026 Talok. Tous droits reserves.
+              © 2026 Talok. Tous droits réservés.
             </p>
           </div>
         </div>
@@ -111,7 +113,7 @@ export function PublicFooter({ variant = "dark", compact = false }: PublicFooter
               <span className={`text-xl font-bold ${isDark ? "text-white" : "text-slate-900"}`}>Talok</span>
             </div>
             <p className={`text-sm mb-4 ${isDark ? "text-slate-400" : "text-slate-600"}`}>
-              Le logiciel de gestion locative n1 en France. Baux ALUR, e-signatures, scoring IA.
+              Le logiciel de gestion locative n°1 en France. Baux ALUR, e-signatures, scoring IA.
             </p>
             <div className={`text-sm ${isDark ? "text-slate-400" : "text-slate-600"}`}>
               <a href="mailto:support@talok.fr" className={`${isDark ? "hover:text-white" : "hover:text-slate-900"} transition-colors`}>
@@ -145,11 +147,11 @@ export function PublicFooter({ variant = "dark", compact = false }: PublicFooter
         {/* Bottom Bar */}
         <div className={`pt-8 border-t ${isDark ? "border-slate-800" : "border-slate-200"} flex flex-col md:flex-row items-center justify-between gap-4`}>
           <p className={`text-sm ${isDark ? "text-slate-500" : "text-slate-400"}`}>
-            2026 Talok. Tous droits reserves. Fait avec passion en France.
+            © 2026 Talok. Tous droits réservés. Fait avec passion en France.
           </p>
           <div className="flex items-center gap-4">
             <span className={`text-xs ${isDark ? "text-slate-600" : "text-slate-400"}`}>
-              +10 000 proprietaires nous font confiance
+              +10 000 propriétaires nous font confiance
             </span>
           </div>
         </div>
