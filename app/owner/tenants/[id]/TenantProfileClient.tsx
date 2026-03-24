@@ -167,7 +167,7 @@ export function TenantProfileClient({ tenant, isAdmin = false }: TenantProfileCl
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white">
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground">
                   {tenant.prenom} {tenant.nom}
                 </h1>
                 <div className="flex items-center gap-2 mt-1">
@@ -315,7 +315,7 @@ export function TenantProfileClient({ tenant, isAdmin = false }: TenantProfileCl
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                  <div className="p-4 rounded-xl bg-muted border border-border border-border">
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <p className="font-semibold">
@@ -420,10 +420,10 @@ export function TenantProfileClient({ tenant, isAdmin = false }: TenantProfileCl
                       {tp?.cni_recto_path && (
                         <button
                           onClick={() => setImagePreview(getCniUrl(tp.cni_recto_path) || "")}
-                          className="relative aspect-[3/2] rounded-lg overflow-hidden border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 transition-colors group"
+                          className="relative aspect-[3/2] rounded-lg overflow-hidden border-2 border-border border-border hover:border-blue-500 transition-colors group"
                         >
-                          <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                            <CreditCard className="h-8 w-8 text-slate-400" />
+                          <div className="absolute inset-0 bg-muted flex items-center justify-center">
+                            <CreditCard className="h-8 w-8 text-muted-foreground" />
                           </div>
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <ZoomIn className="h-6 w-6 text-white" />
@@ -436,10 +436,10 @@ export function TenantProfileClient({ tenant, isAdmin = false }: TenantProfileCl
                       {tp?.cni_verso_path && (
                         <button
                           onClick={() => setImagePreview(getCniUrl(tp.cni_verso_path) || "")}
-                          className="relative aspect-[3/2] rounded-lg overflow-hidden border-2 border-slate-200 dark:border-slate-700 hover:border-blue-500 transition-colors group"
+                          className="relative aspect-[3/2] rounded-lg overflow-hidden border-2 border-border border-border hover:border-blue-500 transition-colors group"
                         >
-                          <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                            <CreditCard className="h-8 w-8 text-slate-400" />
+                          <div className="absolute inset-0 bg-muted flex items-center justify-center">
+                            <CreditCard className="h-8 w-8 text-muted-foreground" />
                           </div>
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <ZoomIn className="h-6 w-6 text-white" />
@@ -455,7 +455,7 @@ export function TenantProfileClient({ tenant, isAdmin = false }: TenantProfileCl
 
                 {/* Données extraites */}
                 {identityData.nom && (
-                  <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 text-sm space-y-1">
+                  <div className="p-3 rounded-lg bg-muted text-sm space-y-1">
                     <p className="font-medium text-xs text-muted-foreground uppercase tracking-wide mb-2">
                       Données extraites de la CNI
                     </p>
@@ -499,14 +499,14 @@ export function TenantProfileClient({ tenant, isAdmin = false }: TenantProfileCl
                     {tenant.documents.map((doc) => (
                       <div
                         key={doc.id}
-                        className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                        className="flex items-center justify-between p-3 rounded-lg border border-border border-border hover:bg-muted transition-colors"
                       >
                         <div className="flex items-center gap-3">
                           <div className={cn(
                             "p-2 rounded-lg",
                             doc.is_valid 
                               ? "bg-green-100 dark:bg-green-900/50 text-green-600"
-                              : "bg-slate-100 dark:bg-slate-800 text-slate-500"
+                              : "bg-muted text-muted-foreground"
                           )}>
                             <FileText className="h-4 w-4" />
                           </div>
@@ -547,10 +547,10 @@ export function TenantProfileClient({ tenant, isAdmin = false }: TenantProfileCl
           <DialogHeader>
             <DialogTitle>Pièce d'identité</DialogTitle>
           </DialogHeader>
-          <div className="relative aspect-[3/2] bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden">
+          <div className="relative aspect-[3/2] bg-muted rounded-lg overflow-hidden">
             {imagePreview && (
               <div className="absolute inset-0 flex items-center justify-center">
-                <CreditCard className="h-16 w-16 text-slate-400" />
+                <CreditCard className="h-16 w-16 text-muted-foreground" />
                 <p className="absolute bottom-4 text-sm text-muted-foreground">
                   Aperçu du document
                 </p>

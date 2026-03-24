@@ -41,7 +41,7 @@ const TRANSFER_STATUS: Record<string, { label: string; icon: React.ReactNode; cl
   paid: { label: "Versé", icon: <CheckCircle2 className="h-3 w-3" />, classes: "bg-emerald-500/20 text-emerald-600 border-emerald-500/30" },
   pending: { label: "En cours", icon: <Clock className="h-3 w-3" />, classes: "bg-amber-500/20 text-amber-600 border-amber-500/30" },
   failed: { label: "Échoué", icon: <AlertCircle className="h-3 w-3" />, classes: "bg-red-500/20 text-red-600 border-red-500/30" },
-  canceled: { label: "Annulé", icon: <Ban className="h-3 w-3" />, classes: "bg-slate-500/20 text-slate-600 border-slate-500/30" },
+  canceled: { label: "Annulé", icon: <Ban className="h-3 w-3" />, classes: "bg-slate-500/20 text-muted-foreground border-slate-500/30" },
   reversed: { label: "Reversé", icon: <RotateCcw className="h-3 w-3" />, classes: "bg-orange-500/20 text-orange-600 border-orange-500/30" },
 };
 

@@ -325,11 +325,11 @@ function InvoiceStatusBadge({ status }: { status: string }) {
   const configs: Record<string, { label: string; icon: React.ElementType; classes: string }> = {
     paid: { label: "Payée", icon: CheckCircle2, classes: "bg-emerald-500/20 text-emerald-600 border-emerald-500/30" },
     open: { label: "En attente", icon: Clock, classes: "bg-amber-500/20 text-amber-600 border-amber-500/30" },
-    draft: { label: "Brouillon", icon: FileText, classes: "bg-slate-500/20 text-slate-500 border-slate-500/30" },
-    void: { label: "Annulée", icon: X, classes: "bg-slate-500/20 text-slate-500 border-slate-500/30" },
+    draft: { label: "Brouillon", icon: FileText, classes: "bg-slate-500/20 text-muted-foreground border-slate-500/30" },
+    void: { label: "Annulée", icon: X, classes: "bg-slate-500/20 text-muted-foreground border-slate-500/30" },
     uncollectible: { label: "Irrécouvrable", icon: AlertTriangle, classes: "bg-red-500/20 text-red-600 border-red-500/30" },
   };
-  const config = configs[status] || { label: status, icon: Info, classes: "bg-slate-500/20 text-slate-500 border-slate-500/30" };
+  const config = configs[status] || { label: status, icon: Info, classes: "bg-slate-500/20 text-muted-foreground border-slate-500/30" };
   const StatusIcon = config.icon;
   return (
     <Badge className={cn("gap-1", config.classes)}>
@@ -860,7 +860,7 @@ export function MonForfaitTab() {
                         ? "bg-violet-500/20 text-violet-600 border-violet-500/30"
                         : subscription?.status === "past_due"
                           ? "bg-red-500/20 text-red-600 border-red-500/30"
-                          : "bg-slate-500/20 text-slate-500"
+                          : "bg-slate-500/20 text-muted-foreground"
                   )}
                 >
                   {subscription?.status === "active"

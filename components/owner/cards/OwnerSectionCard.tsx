@@ -29,7 +29,7 @@ export function OwnerSectionCard({
       transition={{ delay: index * 0.1, type: "spring", stiffness: 100, damping: 15 }}
       whileHover={{ y: -2 }}
     >
-      <Card className={cn("bg-white/80 backdrop-blur-sm border-slate-200/80", className)}>
+      <Card className={cn("bg-card/80 backdrop-blur-sm border-border/80", className)}>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <div>
             <CardTitle className="text-xl font-semibold">{title}</CardTitle>
