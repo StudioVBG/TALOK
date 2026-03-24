@@ -51,11 +51,111 @@ function formatEur(cents: number): string {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
 }
 
-function formatRequirementLabel(requirement: string): string {
-  return requirement
-    .replaceAll(".", " > ")
-    .replaceAll("_", " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+// Dictionnaire codes Stripe → labels français
+const STRIPE_REQUIREMENT_LABELS: Record<string, string> = {
+  // Identite
+  "individual.first_name": "Prenom",
+  "individual.last_name": "Nom de famille",
+  "individual.dob.day": "Date de naissance (jour)",
+  "individual.dob.month": "Date de naissance (mois)",
+  "individual.dob.year": "Date de naissance (annee)",
+  "individual.email": "Adresse e-mail",
+  "individual.phone": "Numero de telephone",
+  "individual.id_number": "Numero SIREN / SIRET",
+  "individual.verification.document": "Piece d'identite (recto/verso)",
+  "individual.verification.additional_document": "Justificatif de domicile",
+  // Adresse
+  "individual.address.line1": "Adresse postale",
+  "individual.address.city": "Ville",
+  "individual.address.postal_code": "Code postal",
+  "individual.address.state": "Region / Departement",
+  // Coordonnees bancaires
+  "external_account": "Coordonnees bancaires (IBAN)",
+  // Activite professionnelle
+  "business_profile.mcc": "Categorie d'activite professionnelle",
+  "business_profile.url": "Site web ou page en ligne",
+  "business_profile.product_description": "Description de votre activite",
+  // Entreprise
+  "company.name": "Raison sociale",
+  "company.tax_id": "Numero de TVA / SIREN",
+  "company.phone": "Telephone de l'entreprise",
+  "company.address.line1": "Adresse de l'entreprise",
+  "company.address.city": "Ville de l'entreprise",
+  "company.address.postal_code": "Code postal de l'entreprise",
+  // CGU
+  "tos_acceptance.date": "Acceptation des conditions d'utilisation",
+  "tos_acceptance.ip": "Acceptation des conditions (confirmation IP)",
+};
+
+const STRIPE_DISABLED_REASON_LABELS: Record<string, string> = {
+  "requirements.past_due":
+    "Des informations obligatoires n'ont pas ete fournies a temps.",
+  "requirements.pending_verification":
+    "Vos documents sont en cours de verification par Stripe.",
+  "under_review":
+    "Votre compte est en cours d'examen. Nous revenons vers vous sous 2 jours ouvres.",
+  "listed":
+    "Votre compte a ete signale. Contactez le support.",
+  "rejected.fraud":
+    "Votre compte a ete refuse. Contactez le support.",
+  "rejected.terms_of_service":
+    "Les conditions d'utilisation Stripe n'ont pas ete acceptees.",
+  "rejected.other":
+    "Votre compte a ete refuse. Contactez le support.",
+  "other":
+    "Compte suspendu. Contactez le support Talok.",
+};
+
+const STRIPE_REQUIREMENT_GROUPS: Record<string, string[]> = {
+  "Identite": [
+    "individual.first_name", "individual.last_name",
+    "individual.dob.day", "individual.dob.month", "individual.dob.year",
+    "individual.email", "individual.phone", "individual.id_number",
+    "individual.verification.document",
+    "individual.verification.additional_document",
+  ],
+  "Adresse": [
+    "individual.address.line1", "individual.address.city",
+    "individual.address.postal_code", "individual.address.state",
+  ],
+  "Coordonnees bancaires": ["external_account"],
+  "Activite": [
+    "business_profile.mcc", "business_profile.url",
+    "business_profile.product_description",
+  ],
+  "Entreprise": [
+    "company.name", "company.tax_id", "company.phone",
+    "company.address.line1", "company.address.city",
+    "company.address.postal_code",
+  ],
+};
+
+function getRequirementLabel(code: string): string {
+  return STRIPE_REQUIREMENT_LABELS[code] ?? "Information complementaire requise";
+}
+
+function groupRequirements(requirements: string[]): Record<string, string[]> {
+  const grouped: Record<string, string[]> = {};
+  const ungrouped: string[] = [];
+
+  for (const req of requirements) {
+    let found = false;
+    for (const [group, codes] of Object.entries(STRIPE_REQUIREMENT_GROUPS)) {
+      if (codes.includes(req)) {
+        if (!grouped[group]) grouped[group] = [];
+        grouped[group].push(req);
+        found = true;
+        break;
+      }
+    }
+    if (!found) ungrouped.push(req);
+  }
+
+  if (ungrouped.length > 0) {
+    grouped["Autres informations"] = ungrouped;
+  }
+
+  return grouped;
 }
 
 export function CompteBancaireTab() {
@@ -258,56 +358,80 @@ export function CompteBancaireTab() {
               </Button>
             </div>
           ) : isOnboardingIncomplete ? (
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/20">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-amber-900 dark:text-amber-100">
-                        Onboarding Stripe incomplet
-                      </p>
-                      <Badge variant="outline" className="border-amber-300 text-amber-700">
-                        Action requise
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-amber-800 dark:text-amber-200">
-                      Votre compte existe déjà, mais Stripe attend encore certaines informations avant d&apos;autoriser les versements.
-                    </p>
-                    {connectAccount?.requirements.disabled_reason ? (
-                      <p className="text-sm text-amber-800 dark:text-amber-200">
-                        Motif Stripe: {connectAccount.requirements.disabled_reason}
-                      </p>
-                    ) : null}
-                    {connectAccount?.missing_requirements?.length ? (
-                      <div className="space-y-1 pt-1">
-                        <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                          Éléments à compléter
+            (() => {
+              const disabledReason = connectAccount?.requirements?.disabled_reason;
+              const humanReason = disabledReason
+                ? STRIPE_DISABLED_REASON_LABELS[disabledReason]
+                  ?? "Des informations sont requises pour activer votre compte."
+                : null;
+              const missingReqs = connectAccount?.missing_requirements ?? [];
+              const groupedReqs = groupRequirements(missingReqs);
+
+              return (
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/20 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-amber-900 dark:text-amber-100">
+                            Votre compte bancaire n&apos;est pas encore pret
+                          </p>
+                          <Badge variant="outline" className="border-amber-300 text-amber-700">
+                            Action requise
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                          Il manque quelques informations pour activer la reception de vos loyers.
                         </p>
-                        <ul className="space-y-1 text-sm text-amber-800 dark:text-amber-200">
-                          {connectAccount.missing_requirements.slice(0, 5).map((item) => (
-                            <li key={item}>- {formatRequirementLabel(item)}</li>
-                          ))}
-                        </ul>
+                        {humanReason ? (
+                          <p className="text-sm text-amber-600 dark:text-amber-400">
+                            {humanReason}
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {missingReqs.length > 0 ? (
+                      <div className="space-y-3 pt-1">
+                        {Object.entries(groupedReqs).map(([group, codes]) => (
+                          <div key={group}>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-400 mb-1.5">
+                              {group}
+                            </p>
+                            <ul className="space-y-1">
+                              {codes.map((code) => (
+                                <li key={code} className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-300">
+                                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />
+                                  {getRequirementLabel(code)}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
                       </div>
                     ) : null}
+
+                    <p className="text-xs text-amber-600 dark:text-amber-400 border-t border-amber-200 dark:border-amber-800 pt-3">
+                      Vous serez redirige vers notre partenaire de paiement securise Stripe pour completer ces informations.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Button onClick={startConnectOnboarding} disabled={connectLoading} className="gap-2">
+                      {connectLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Building2 className="h-4 w-4" />
+                      )}
+                      Completer mes informations
+                    </Button>
+                    <Button variant="outline" onClick={() => refetchStatus()} className="gap-2">
+                      <RotateCcw className="h-4 w-4" /> Actualiser le statut
+                    </Button>
                   </div>
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Button onClick={startConnectOnboarding} disabled={connectLoading} className="gap-2">
-                  {connectLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Building2 className="h-4 w-4" />
-                  )}
-                  Reprendre l&apos;onboarding
-                </Button>
-                <Button variant="outline" onClick={() => refetchStatus()} className="gap-2">
-                  <RotateCcw className="h-4 w-4" /> Actualiser le statut
-                </Button>
-              </div>
-            </div>
+              );
+            })()
           ) : (
             <div className="space-y-4">
               <div className="text-center py-8 border-2 border-dashed rounded-2xl bg-muted/30">
