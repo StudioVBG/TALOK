@@ -9,6 +9,8 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient, createRouteHandlerClient } from "@/lib/supabase/server";
 import { createEngagementSchema } from "@/lib/validations/guarantor";
+import { sendEmail } from "@/lib/services/email-service";
+import { emailTemplates } from "@/lib/emails/templates";
 
 export async function GET() {
   try {
@@ -171,7 +173,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: createError.message }, { status: 500 });
     }
 
-    // TODO: Envoyer notification au garant
+    // Send notification to guarantor
+    try {
+      const { data: guarantorProf } = await serviceClient
+        .from("profiles")
+        .select("prenom, nom, user_id")
+        .eq("id", validatedData.guarantor_profile_id)
+        .single();
+      if (guarantorProf?.user_id) {
+        const { data: { user: guarantorUser } } = await serviceClient.auth.admin.getUserById(guarantorProf.user_id);
+        if (guarantorUser?.email) {
+          const tenantName = `${engagement.tenant?.prenom || ""} ${engagement.tenant?.nom || ""}`.trim() || "le locataire";
+          const guarantorName = `${guarantorProf.prenom || ""} ${guarantorProf.nom || ""}`.trim() || "Garant";
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+
+          // Fetch property address via lease
+          const { data: leaseWithProp } = await serviceClient
+            .from("leases")
+            .select("property:properties(adresse_complete)")
+            .eq("id", validatedData.lease_id)
+            .single();
+          const propertyAddress = (leaseWithProp?.property as any)?.adresse_complete || "";
+
+          const template = emailTemplates.guarantorEngagement({
+            guarantorName,
+            tenantName,
+            propertyAddress,
+            rentAmount: engagement.lease?.loyer || 0,
+            chargesAmount: engagement.lease?.charges_forfaitaires || 0,
+            dashboardUrl: `${appUrl}/guarantor/dashboard`,
+          });
+          await sendEmail({
+            to: guarantorUser.email,
+            subject: template.subject,
+            html: template.html,
+            tags: [{ name: "type", value: "guarantor_engagement" }],
+            idempotencyKey: `guarantor-engagement/${engagement.id}`,
+          });
+        }
+      }
+    } catch (e) {
+      console.error("[POST /engagements] Email send error:", e);
+    }
 
     return NextResponse.json(engagement, { status: 201 });
   } catch (error: unknown) {
