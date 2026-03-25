@@ -76,7 +76,7 @@ import { useToast } from "@/components/ui/use-toast";
 import type { SubscriptionInvoice } from "@/lib/subscriptions/types";
 import { PaymentMethod } from "@/components/billing/PaymentMethod";
 import { useOwnerCurrentPaymentMethod } from "@/lib/hooks/use-owner-payment-methods";
-import { isExpiringSoon } from "@/lib/billing-utils";
+import { isExpiringSoon, formatBillingCountdown } from "@/lib/billing-utils";
 import { useStripePortal } from "@/hooks/useStripePortal";
 
 // ── Constants ──
@@ -969,7 +969,7 @@ export function MonForfaitTab() {
                         : "-"}
                     </div>
                     {daysUntilRenewal !== null && daysUntilRenewal <= 7 && (
-                      <p className="text-xs text-amber-600 mt-1">Dans {daysUntilRenewal} jour(s)</p>
+                      <p className="text-xs text-amber-600 mt-1">{formatBillingCountdown(subscription.current_period_end)}</p>
                     )}
                   </div>
                   <div className="p-4 rounded-lg bg-muted/50 border">
