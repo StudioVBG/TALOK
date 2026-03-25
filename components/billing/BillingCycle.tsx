@@ -2,7 +2,7 @@
 
 import { Calendar, Clock, AlertCircle, Receipt } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatPrice, formatDateLong, daysUntil, computeYearlySavings } from "@/lib/billing-utils";
+import { formatPrice, formatDateLong, daysUntil, formatBillingCountdown, computeYearlySavings } from "@/lib/billing-utils";
 import type { BillingCycle as BillingCycleType, PlanDefinition } from "@/types/billing";
 import Link from "next/link";
 
@@ -65,19 +65,9 @@ export function BillingCycle({ cycle, periodEnd, plan, tvaTaux }: BillingCyclePr
         <p className={cn("text-sm font-medium", isOverdue ? "text-amber-400" : "text-white")}>
           {formatDateLong(periodEnd)}
         </p>
-        {isOverdue ? (
-          <p className="text-xs text-amber-400 mt-1">
-            Renouvellement en cours
-          </p>
-        ) : isUrgent ? (
-          <p className="text-xs text-red-400 mt-1">
-            Dans {daysLeft} jour{daysLeft > 1 ? "s" : ""}
-          </p>
-        ) : (
-          <p className="text-xs text-slate-400 mt-1">
-            Dans {daysLeft} jour{daysLeft > 1 ? "s" : ""}
-          </p>
-        )}
+        <p className={cn("text-xs mt-1", isOverdue ? "text-amber-400" : isUrgent ? "text-red-400" : "text-slate-400")}>
+          {formatBillingCountdown(periodEnd)}
+        </p>
       </div>
 
       {/* Monthly cost */}
