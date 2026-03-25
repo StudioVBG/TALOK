@@ -174,9 +174,9 @@ export async function POST(request: Request, { params }: PageProps) {
         const { data, error } = await serviceClient
           .from("profiles")
           .select("id, user_id")
-          .eq("email", tenantEmail)
+          .ilike("email", tenantEmail)
           .maybeSingle();
-        
+
         if (!error && data) {
           existingProfile = data;
         } else if (error) {
@@ -394,7 +394,7 @@ export async function POST(request: Request, { params }: PageProps) {
       .from("lease_signers")
       .select("id, role, profile_id")
       .eq("lease_id", lease.id)
-      .eq("invited_email", tenantEmail)
+      .ilike("invited_email", tenantEmail)
       .maybeSingle();
     
     if (signerByEmail) {

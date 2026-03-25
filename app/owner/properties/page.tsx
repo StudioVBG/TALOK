@@ -721,10 +721,17 @@ export default function OwnerPropertiesPage() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <EmptyState 
-                    title="Aucun bien"
-                    description="Aucun bien ne correspond à vos critères de recherche."
-                  />
+                  {entityFilterId === "personal" && properties.length === 0 ? (
+                    <EmptyState
+                      title="Aucun bien en nom propre"
+                      description="Vos biens sont associés à une entité juridique. Sélectionnez une entité dans le menu ou choisissez « Tous mes biens » pour les voir."
+                    />
+                  ) : (
+                    <EmptyState
+                      title="Aucun bien"
+                      description="Aucun bien ne correspond à vos critères de recherche."
+                    />
+                  )}
                 </motion.div>
               ) : !isLoading ? (
                 viewMode === "grid" ? (

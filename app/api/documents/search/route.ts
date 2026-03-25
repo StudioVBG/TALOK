@@ -75,6 +75,13 @@ export async function GET(request: Request) {
     } catch (rpcError) {
       // Fallback sur recherche LIKE si la fonction RPC n'existe pas
 
+      // Sanitize query for PostgREST LIKE: escape %, _, and backslash
+      const safeQuery = query
+        .replace(/\\/g, "\\\\")
+        .replace(/%/g, "\\%")
+        .replace(/_/g, "\\_")
+        .replace(/[(),.'"/;]/g, "");
+
       let baseQuery = supabase
         .from("documents")
         .select(`
@@ -86,7 +93,7 @@ export async function GET(request: Request) {
           property_id,
           properties(adresse_complete)
         `)
-        .or(`title.ilike.%${query}%,type.ilike.%${query}%`)
+        .or(`title.ilike.%${safeQuery}%,type.ilike.%${safeQuery}%`)
         .order("created_at", { ascending: false })
         .limit(limit);
 

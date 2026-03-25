@@ -8,6 +8,8 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { sendEmail } from '@/lib/services/email-service';
+import { emailTemplates } from '@/lib/emails/templates';
 
 interface RouteParams {
   params: { id: string };
@@ -101,8 +103,29 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    // TODO: Envoyer l'email via le système de notifications
-    // Pour l'instant, on log simplement l'action
+    // Send the invoice email to the owner
+    try {
+      const { data: providerProf } = await supabase
+        .from("profiles")
+        .select("prenom, nom")
+        .eq("id", profile.id)
+        .single();
+      const senderName = `${providerProf?.prenom || ""} ${providerProf?.nom || ""}`.trim() || "Un prestataire";
+      const ownerName = `${invoice.owner?.prenom || ""} ${invoice.owner?.nom || ""}`.trim() || "Propriétaire";
+      const template = emailTemplates.genericReminder({
+        subject: `Facture ${invoice.invoice_number} — ${invoice.total_amount?.toLocaleString("fr-FR")} €`,
+        content: `Bonjour ${ownerName},\n\n${senderName} vous a envoyé la facture n° ${invoice.invoice_number} d'un montant de ${invoice.total_amount?.toLocaleString("fr-FR")} € TTC.\n\nConnectez-vous à votre espace Talok pour la consulter et la régler.`,
+      });
+      await sendEmail({
+        to: sendToEmail,
+        subject: template.subject,
+        html: template.html,
+        tags: [{ name: "type", value: "provider_invoice" }],
+        idempotencyKey: `provider-invoice/${invoiceId}/${invoice.reminder_count || 0}`,
+      });
+    } catch (e) {
+      console.error("[POST /provider/invoices/send] Email send error:", e);
+    }
 
     // Créer une notification pour le destinataire
     if (invoice.owner?.id) {
