@@ -297,7 +297,7 @@ export async function POST(
       if (leaseId) {
         try {
           const { ensureInitialInvoiceForLease } = await import("@/lib/services/lease-initial-invoice.service");
-          const invoiceResult = await ensureInitialInvoiceForLease(serviceClient, leaseId);
+          const invoiceResult = await ensureInitialInvoiceForLease(serviceClient as any, leaseId);
           log.info("Facture initiale", {
             invoiceId: invoiceResult.invoiceId,
             created: invoiceResult.created,

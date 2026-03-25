@@ -630,7 +630,7 @@ export async function POST(
       if (edl.lease_id) {
         try {
           const { ensureInitialInvoiceForLease } = await import("@/lib/services/lease-initial-invoice.service");
-          const invoiceResult = await ensureInitialInvoiceForLease(serviceClient, edl.lease_id);
+          const invoiceResult = await ensureInitialInvoiceForLease(serviceClient as any, edl.lease_id);
           console.log("[sign-edl] Facture initiale:", {
             invoiceId: invoiceResult.invoiceId,
             created: invoiceResult.created,
