@@ -100,7 +100,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                 value={currentGarant.type_garantie}
                 onValueChange={(value) => updateGarant("type_garantie", value)}
               >
-                <SelectTrigger className="bg-white">
+                <SelectTrigger className="bg-card">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -127,7 +127,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                   <Label>Numéro de visa Visale (optionnel)</Label>
                   <Input
                     placeholder="Ex: VISALE-2024-XXXXX"
-                    className="bg-white"
+                    className="bg-card"
                   />
                 </div>
               </div>
@@ -153,7 +153,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                       value={currentGarant.prenom}
                       onChange={(e) => updateGarant("prenom", e.target.value)}
                       placeholder="Jean"
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                   <div className="space-y-2">
@@ -162,7 +162,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                       value={currentGarant.nom}
                       onChange={(e) => updateGarant("nom", e.target.value)}
                       placeholder="Dupont"
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                 </div>
@@ -173,7 +173,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                     value={currentGarant.adresse}
                     onChange={(e) => updateGarant("adresse", e.target.value)}
                     placeholder="123 rue de la Paix"
-                    className="bg-white"
+                    className="bg-card"
                   />
                 </div>
 
@@ -184,7 +184,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                       value={currentGarant.code_postal}
                       onChange={(e) => updateGarant("code_postal", e.target.value)}
                       placeholder="75001"
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                   <div className="space-y-2">
@@ -193,7 +193,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                       value={currentGarant.ville}
                       onChange={(e) => updateGarant("ville", e.target.value)}
                       placeholder="Paris"
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                 </div>
@@ -206,7 +206,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                       value={currentGarant.email || ""}
                       onChange={(e) => updateGarant("email", e.target.value)}
                       placeholder="jean.dupont@email.com"
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                   <div className="space-y-2">
@@ -215,7 +215,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                       value={currentGarant.telephone || ""}
                       onChange={(e) => updateGarant("telephone", e.target.value)}
                       placeholder="06 12 34 56 78"
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                 </div>
@@ -226,7 +226,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                     value={currentGarant.lien_parente || ""}
                     onValueChange={(value) => updateGarant("lien_parente", value)}
                   >
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-card">
                       <SelectValue placeholder="Sélectionner..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -251,7 +251,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                     value={currentGarant.raison_sociale || ""}
                     onChange={(e) => updateGarant("raison_sociale", e.target.value)}
                     placeholder="Nom de l'entreprise"
-                    className="bg-white"
+                    className="bg-card"
                   />
                 </div>
 
@@ -261,7 +261,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                     value={currentGarant.siret || ""}
                     onChange={(e) => updateGarant("siret", e.target.value)}
                     placeholder="123 456 789 00012"
-                    className="bg-white"
+                    className="bg-card"
                   />
                 </div>
 
@@ -271,7 +271,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                     value={currentGarant.adresse}
                     onChange={(e) => updateGarant("adresse", e.target.value)}
                     placeholder="Adresse complète"
-                    className="bg-white"
+                    className="bg-card"
                   />
                 </div>
 
@@ -282,7 +282,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                       value={currentGarant.code_postal}
                       onChange={(e) => updateGarant("code_postal", e.target.value)}
                       placeholder="75001"
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                   <div className="space-y-2">
@@ -291,7 +291,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                       value={currentGarant.ville}
                       onChange={(e) => updateGarant("ville", e.target.value)}
                       placeholder="Paris"
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                 </div>
@@ -303,7 +303,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                       value={currentGarant.nom}
                       onChange={(e) => updateGarant("nom", e.target.value)}
                       placeholder="Nom"
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                   <div className="space-y-2">
@@ -312,7 +312,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
                       value={currentGarant.prenom}
                       onChange={(e) => updateGarant("prenom", e.target.value)}
                       placeholder="Prénom"
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                 </div>

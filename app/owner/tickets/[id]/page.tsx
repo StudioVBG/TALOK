@@ -392,7 +392,7 @@ function ProviderSearchModal({
           </div>
         )}
 
-        <div className="px-6 py-4 border-b bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="px-6 py-4 border-b bg-muted/50">
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -423,10 +423,10 @@ function ProviderSearchModal({
                   </div>
                 ) : filteredProviders.length === 0 ? (
                   <div className="text-center py-8 px-4">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                      <HardHat className="h-8 w-8 text-slate-400" />
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+                      <HardHat className="h-8 w-8 text-muted-foreground" />
                     </div>
-                    <h4 className="font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    <h4 className="font-semibold text-foreground mb-2">
                       Aucun prestataire disponible
                     </h4>
                     <p className="text-sm text-muted-foreground mb-4">
@@ -437,8 +437,8 @@ function ProviderSearchModal({
                     </p>
                     
                     {/* LIENS EXTERNES - Toujours visible quand pas de prestataires */}
-                    <div className="mt-6 p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950 border border-slate-200 dark:border-slate-700">
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
+                    <div className="mt-6 p-4 rounded-xl bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-blue-950 border border-border">
+                      <p className="text-sm font-medium text-foreground mb-3">
                         🔍 Rechercher un artisan en dehors de la plateforme :
                       </p>
                       <div className="flex flex-col sm:flex-row gap-2">
@@ -529,7 +529,7 @@ function ProviderSearchModal({
                           "p-4 rounded-xl border-2 cursor-pointer transition-all",
                           isSelected 
                             ? "border-blue-500 bg-blue-50/50 dark:bg-blue-950/30" 
-                            : "border-slate-200 hover:border-blue-300 dark:border-slate-700"
+                            : "border-border hover:border-blue-300"
                         )}
                         onClick={() => toggleProvider(provider.id)}
                       >
@@ -550,7 +550,7 @@ function ProviderSearchModal({
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-semibold text-slate-900 dark:text-slate-100">
+                          <h4 className="font-semibold text-foreground">
                             {provider.prenom} {provider.nom}
                           </h4>
                           {provider.rating && provider.rating >= 4.5 && (
@@ -617,7 +617,7 @@ function ProviderSearchModal({
                     <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
                       <ExternalLink className="h-8 w-8 text-emerald-500" />
                     </div>
-                    <h4 className="font-semibold text-slate-700 dark:text-slate-300 mb-2">
+                    <h4 className="font-semibold text-foreground mb-2">
                       Aucun prestataire trouvé à proximité
                     </h4>
                     <p className="text-sm text-muted-foreground mb-4">
@@ -651,7 +651,7 @@ function ProviderSearchModal({
                         key={provider.id}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="p-4 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-700 transition-all"
+                        className="p-4 rounded-xl border border-border hover:border-emerald-300 dark:hover:border-emerald-700 transition-all"
                       >
                         <div className="flex items-start gap-4">
                           <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900 dark:to-teal-900 flex items-center justify-center overflow-hidden">
@@ -664,7 +664,7 @@ function ProviderSearchModal({
 
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="font-semibold text-slate-900 dark:text-slate-100">
+                              <h4 className="font-semibold text-foreground">
                                 {provider.name}
                               </h4>
                               {provider.is_open && (
@@ -729,7 +729,7 @@ function ProviderSearchModal({
           </div>
         </ScrollArea>
 
-        <DialogFooter className="px-6 py-4 border-t bg-slate-50/50 dark:bg-slate-900/50">
+        <DialogFooter className="px-6 py-4 border-t bg-muted/50">
           <div className="flex items-center justify-between w-full">
             <span className="text-sm text-muted-foreground">
               {activeTab === "platform" ? (
@@ -1009,7 +1009,7 @@ export default function TicketDetailPage() {
   if (!ticket) {
     return (
       <div className="p-6">
-        <Card className="bg-white/80 backdrop-blur-sm dark:bg-slate-900/80">
+        <Card className="bg-card/80 backdrop-blur-sm">
           <CardContent className="py-16 text-center">
             <Wrench className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Ticket introuvable</h3>
@@ -1063,7 +1063,7 @@ export default function TicketDetailPage() {
                     </Badge>
                   )}
                 </div>
-                <h1 className="text-2xl lg:text-3xl font-bold text-slate-900 dark:text-slate-100">
+                <h1 className="text-2xl lg:text-3xl font-bold text-foreground">
                   {ticket.titre}
                 </h1>
                 <p className="text-muted-foreground text-sm mt-2">
@@ -1079,7 +1079,7 @@ export default function TicketDetailPage() {
                   onValueChange={handleStatusChange}
                   disabled={updating}
                 >
-                  <SelectTrigger className="w-[180px] bg-white dark:bg-slate-900">
+                  <SelectTrigger className="w-[180px] bg-card">
                     <SelectValue placeholder="Changer le statut" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1123,7 +1123,7 @@ export default function TicketDetailPage() {
             {/* Main content */}
             <div className="lg:col-span-2 space-y-6">
               {/* Description */}
-              <Card className="bg-white/80 backdrop-blur-sm dark:bg-slate-900/80">
+              <Card className="bg-card/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <FileText className="h-5 w-5 text-blue-500" />
@@ -1131,14 +1131,14 @@ export default function TicketDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="whitespace-pre-wrap text-slate-700 dark:text-slate-300">
+                  <p className="whitespace-pre-wrap text-foreground">
                     {ticket.description}
                   </p>
                 </CardContent>
               </Card>
 
               {/* Comments / Échanges */}
-              <Card className="bg-white/80 backdrop-blur-sm dark:bg-slate-900/80">
+              <Card className="bg-card/80 backdrop-blur-sm">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <MessageSquare className="h-5 w-5 text-blue-500" />
@@ -1173,7 +1173,7 @@ export default function TicketDetailPage() {
                                 {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true, locale: fr })}
                               </span>
                             </div>
-                            <p className="text-sm bg-slate-50 dark:bg-slate-800 rounded-xl p-3 text-slate-700 dark:text-slate-300">
+                            <p className="text-sm bg-muted rounded-xl p-3 text-foreground">
                               {comment.content}
                             </p>
                           </div>
@@ -1196,7 +1196,7 @@ export default function TicketDetailPage() {
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       rows={3}
-                      className="bg-white dark:bg-slate-800 resize-none"
+                      className="bg-card resize-none"
                     />
                     <Button
                       onClick={handleAddComment}
@@ -1228,7 +1228,7 @@ export default function TicketDetailPage() {
 
               {/* Property info */}
               {ticket.property && (
-                <Card className="bg-white/80 backdrop-blur-sm dark:bg-slate-900/80">
+                <Card className="bg-card/80 backdrop-blur-sm">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <Building2 className="h-4 w-4 text-blue-500" />
@@ -1249,7 +1249,7 @@ export default function TicketDetailPage() {
 
               {/* Created by */}
               {ticket.created_by && (
-                <Card className="bg-white/80 backdrop-blur-sm dark:bg-slate-900/80">
+                <Card className="bg-card/80 backdrop-blur-sm">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm flex items-center gap-2">
                       <User className="h-4 w-4 text-blue-500" />
@@ -1283,7 +1283,7 @@ export default function TicketDetailPage() {
               )}
 
               {/* Timeline */}
-              <Card className="bg-white/80 backdrop-blur-sm dark:bg-slate-900/80">
+              <Card className="bg-card/80 backdrop-blur-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Clock className="h-4 w-4 text-blue-500" />
@@ -1292,7 +1292,7 @@ export default function TicketDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="relative">
-                    <div className="absolute left-[9px] top-3 bottom-3 w-0.5 bg-slate-200 dark:bg-slate-700" />
+                    <div className="absolute left-[9px] top-3 bottom-3 w-0.5 bg-border" />
                     
                     <div className="space-y-4 text-sm">
                       {/* Création */}
@@ -1301,7 +1301,7 @@ export default function TicketDetailPage() {
                           <Sparkles className="h-3 w-3 text-white" />
                         </div>
                         <div className="flex-1 pb-1">
-                          <p className="font-medium text-slate-900 dark:text-slate-100">Ticket créé</p>
+                          <p className="font-medium text-foreground">Ticket créé</p>
                           <p className="text-xs text-muted-foreground">
                             {format(new Date(ticket.created_at), "dd MMM yyyy 'à' HH:mm", { locale: fr })}
                           </p>
@@ -1315,7 +1315,7 @@ export default function TicketDetailPage() {
                             <MessageSquare className="h-3 w-3 text-white" />
                           </div>
                           <div className="flex-1 pb-1">
-                            <p className="font-medium text-slate-900 dark:text-slate-100">
+                            <p className="font-medium text-foreground">
                               {comment.author?.prenom || "Quelqu'un"} a commenté
                             </p>
                             <p className="text-xs text-muted-foreground">
@@ -1332,7 +1332,7 @@ export default function TicketDetailPage() {
                             <Receipt className="h-3 w-3 text-white" />
                           </div>
                           <div className="flex-1 pb-1">
-                            <p className="font-medium text-slate-900 dark:text-slate-100">
+                            <p className="font-medium text-foreground">
                               {quotesCount} devis reçu{quotesCount > 1 ? "s" : ""}
                             </p>
                             <p className="text-xs text-muted-foreground">
@@ -1349,7 +1349,7 @@ export default function TicketDetailPage() {
                             <HardHat className="h-3 w-3 text-white" />
                           </div>
                           <div className="flex-1 pb-1">
-                            <p className="font-medium text-slate-900 dark:text-slate-100">
+                            <p className="font-medium text-foreground">
                               Prestataire assigné
                             </p>
                             <p className="text-xs text-muted-foreground">
@@ -1373,7 +1373,7 @@ export default function TicketDetailPage() {
                             <StatusIcon className="h-3 w-3 text-white" />
                           </div>
                           <div className="flex-1 pb-1">
-                            <p className="font-medium text-slate-900 dark:text-slate-100">
+                            <p className="font-medium text-foreground">
                               {status.label}
                             </p>
                             <p className="text-xs text-muted-foreground">

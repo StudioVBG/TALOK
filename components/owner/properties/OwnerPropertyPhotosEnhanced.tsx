@@ -100,7 +100,7 @@ export function OwnerPropertyPhotosEnhanced({
 
   if (!photos || photos.length === 0) {
     return (
-      <Card className="backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border border-white/20 dark:border-slate-700/50 shadow-xl">
+      <Card className="backdrop-blur-xl bg-card/80 border border-border/20 shadow-xl">
         <CardContent className="py-12 text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -136,7 +136,7 @@ export function OwnerPropertyPhotosEnhanced({
 
   return (
     <>
-      <Card className="backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border border-white/20 dark:border-slate-700/50 shadow-xl overflow-hidden">
+      <Card className="backdrop-blur-xl bg-card/80 border border-border/20 shadow-xl overflow-hidden">
         <CardContent className="p-0">
           {/* Photo principale avec animation */}
           <motion.div
@@ -191,7 +191,7 @@ export function OwnerPropertyPhotosEnhanced({
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="shadow-lg backdrop-blur-sm bg-white/90"
+                  className="shadow-lg backdrop-blur-sm bg-card/90"
                   onClick={() => openLightbox(0)}
                 >
                   <ZoomIn className="mr-2 h-4 w-4" />

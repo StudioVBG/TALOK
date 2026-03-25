@@ -330,7 +330,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
                       <FileText className="h-5 w-5" />
                   </div>
                   <div className="space-y-1">
-                      <span className="font-semibold text-slate-900 block truncate max-w-[250px]" title={title}>
+                      <span className="font-semibold text-foreground block truncate max-w-[250px]" title={title}>
                         {title}
                       </span>
                       <div className="flex items-center gap-2">
@@ -355,7 +355,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
     {
         header: "Bien associé",
         cell: (doc: any) => (
-            <span className="text-sm text-slate-600 font-medium">
+            <span className="text-sm text-muted-foreground font-medium">
                 {doc.properties?.adresse_complete || doc.property?.adresse_complete || "Général"}
             </span>
         )
@@ -363,7 +363,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
     {
         header: "Date",
         cell: (doc: any) => (
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-muted-foreground">
                 {doc.created_at ? formatDateShort(doc.created_at) : "-"}
             </span>
         )
@@ -434,7 +434,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <span className="block">Vous êtes sur le point de supprimer :</span>
-                <span className="block font-medium text-slate-900">
+                <span className="block font-medium text-foreground">
                   {documentToDelete?.title || getTypeLabel(documentToDelete?.type || "")}
                 </span>
                 <span className="block text-red-600 font-medium mt-4">
@@ -482,7 +482,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
               {activeSection === "bibliotheque" && (
                 <>
                   {/* Toggle vue */}
-                  <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "table" | "cascade")} className="bg-white/80 rounded-lg border shadow-sm">
+                  <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "table" | "cascade")} className="bg-card/80 rounded-lg border shadow-sm">
                     <TabsList className="grid grid-cols-2 h-9">
                       <TabsTrigger value="cascade" className="flex items-center gap-1.5 text-xs px-3">
                         <Home className="h-3.5 w-3.5" />
@@ -739,14 +739,14 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
                     placeholder="Rechercher par nom, type ou adresse..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 bg-white border-slate-200"
+                    className="pl-10 bg-card border-border"
                     aria-label="Rechercher dans les documents"
                     />
                 </div>
                 </div>
                 {/* Filtre par catégorie */}
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="bg-white border-slate-200">
+                <SelectTrigger className="bg-card border-border">
                     <FolderOpen className="h-4 w-4 mr-2 text-muted-foreground" />
                     <SelectValue placeholder="Catégorie" />
                 </SelectTrigger>
@@ -760,7 +760,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
                 </Select>
                 {/* Filtre par source (inter-compte) */}
                 <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                <SelectTrigger className="bg-white border-slate-200">
+                <SelectTrigger className="bg-card border-border">
                     <SelectValue placeholder="Source" />
                 </SelectTrigger>
                 <SelectContent>
@@ -770,7 +770,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
                 </SelectContent>
                 </Select>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="bg-white border-slate-200">
+                <SelectTrigger className="bg-card border-border">
                     <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -783,7 +783,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
                 </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="bg-white border-slate-200">
+                <SelectTrigger className="bg-card border-border">
                     <SelectValue placeholder="Statut" />
                 </SelectTrigger>
                 <SelectContent>

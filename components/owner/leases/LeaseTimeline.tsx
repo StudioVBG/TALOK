@@ -247,7 +247,7 @@ export function LeaseTimeline({ lease, signers, edl, payments }: LeaseTimelinePr
   const previewEvents = isExpanded ? allEvents : [lastCompleted, ...futureSteps.slice(0, 1)].filter(Boolean);
 
   return (
-    <Card className="border-none shadow-sm bg-white overflow-hidden">
+    <Card className="border-none shadow-sm bg-card overflow-hidden">
       <CardHeader className="pb-2 border-b border-slate-50">
         <button
           onClick={() => setIsExpanded(!isExpanded)}

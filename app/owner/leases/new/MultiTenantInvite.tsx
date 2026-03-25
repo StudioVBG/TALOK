@@ -219,7 +219,7 @@ export function MultiTenantInvite({
                 "relative p-4 rounded-xl border-2 transition-all",
                 invitee.role === "principal"
                   ? "border-amber-300 bg-gradient-to-r from-amber-50/50 to-orange-50/50"
-                  : "border-slate-200 bg-white dark:bg-slate-900"
+                  : "border-border bg-card"
               )}
             >
               {/* Badge rôle */}
@@ -270,7 +270,7 @@ export function MultiTenantInvite({
                     placeholder="Marie Martin"
                     value={invitee.name}
                     onChange={(e) => updateInvitee(invitee.tempId, { name: e.target.value })}
-                    className="bg-white dark:bg-slate-800"
+                    className="bg-card"
                   />
                 </div>
 
@@ -287,7 +287,7 @@ export function MultiTenantInvite({
                     value={invitee.email}
                     onChange={(e) => updateInvitee(invitee.tempId, { email: e.target.value })}
                     className={cn(
-                      "bg-white dark:bg-slate-800",
+                      "bg-card",
                       emailErrors[invitee.tempId] && "border-red-500"
                     )}
                   />
@@ -307,7 +307,7 @@ export function MultiTenantInvite({
                       value={invitee.roomLabel || ""}
                       onValueChange={(value) => updateInvitee(invitee.tempId, { roomLabel: value })}
                     >
-                      <SelectTrigger className="bg-white dark:bg-slate-800">
+                      <SelectTrigger className="bg-card">
                         <SelectValue placeholder="Sélectionner" />
                       </SelectTrigger>
                       <SelectContent>
@@ -346,7 +346,7 @@ export function MultiTenantInvite({
                         onChange={(e) => updateInvitee(invitee.tempId, { 
                           weight: (parseFloat(e.target.value) || 0) / 100 
                         })}
-                        className="bg-white dark:bg-slate-800 w-24"
+                        className="bg-card w-24"
                       />
                       <span className="text-muted-foreground">%</span>
                       {invitee.weight !== undefined && totalRent > 0 && (

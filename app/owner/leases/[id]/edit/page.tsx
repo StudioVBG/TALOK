@@ -191,7 +191,7 @@ export default function EditLeasePage() {
   if (!lease) {
     return (
       <div className="p-6">
-        <Card className="bg-white/80 backdrop-blur-sm">
+        <Card className="bg-card/80 backdrop-blur-sm">
           <CardContent className="py-16 text-center">
             <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Bail introuvable</h3>
@@ -251,7 +251,7 @@ export default function EditLeasePage() {
           )}
 
           {/* Type de bail */}
-          <Card className="bg-white/80 backdrop-blur-sm">
+          <Card className="bg-card/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <FileText className="h-5 w-5 text-blue-500" />
@@ -263,7 +263,7 @@ export default function EditLeasePage() {
                 value={lease.type_bail}
                 onValueChange={handleTypeBailChange}
               >
-                <SelectTrigger className="bg-white">
+                <SelectTrigger className="bg-card">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -309,7 +309,7 @@ export default function EditLeasePage() {
           </Card>
 
           {/* Montants (lecture seule - viennent du BIEN) */}
-          <Card className="bg-white/80 backdrop-blur-sm">
+          <Card className="bg-card/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Euro className="h-5 w-5 text-blue-500" />
@@ -364,7 +364,7 @@ export default function EditLeasePage() {
                   value={lease.charges_type || "forfait"}
                   onValueChange={(value) => setLease({ ...lease, charges_type: value })}
                 >
-                  <SelectTrigger className="bg-white">
+                  <SelectTrigger className="bg-card">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -392,7 +392,7 @@ export default function EditLeasePage() {
           </Card>
 
           {/* Paiement */}
-          <Card className="bg-white/80 backdrop-blur-sm">
+          <Card className="bg-card/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5 text-blue-500" />
@@ -407,7 +407,7 @@ export default function EditLeasePage() {
                     value={lease.mode_paiement || "virement"}
                     onValueChange={(value) => setLease({ ...lease, mode_paiement: value })}
                   >
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-card">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -425,7 +425,7 @@ export default function EditLeasePage() {
                     value={String(lease.jour_paiement || 5)}
                     onValueChange={(value) => setLease({ ...lease, jour_paiement: parseInt(value) })}
                   >
-                    <SelectTrigger className="bg-white">
+                    <SelectTrigger className="bg-card">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -442,7 +442,7 @@ export default function EditLeasePage() {
           </Card>
 
           {/* Dates */}
-          <Card className="bg-white/80 backdrop-blur-sm">
+          <Card className="bg-card/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <CalendarIcon className="h-5 w-5 text-blue-500" />
@@ -458,7 +458,7 @@ export default function EditLeasePage() {
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-full justify-start text-left font-normal bg-white",
+                          "w-full justify-start text-left font-normal bg-card",
                           !lease.date_debut && "text-muted-foreground"
                         )}
                       >
@@ -489,7 +489,7 @@ export default function EditLeasePage() {
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-full justify-start text-left font-normal bg-white",
+                          "w-full justify-start text-left font-normal bg-card",
                           !lease.date_fin && "text-muted-foreground"
                         )}
                       >
@@ -517,7 +517,7 @@ export default function EditLeasePage() {
           </Card>
 
           {/* Clauses particulières */}
-          <Card className="bg-white/80 backdrop-blur-sm">
+          <Card className="bg-card/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ScrollText className="h-5 w-5 text-blue-500" />
@@ -529,7 +529,7 @@ export default function EditLeasePage() {
                 placeholder="Ajoutez ici les clauses particulières du bail (interdiction de fumer, animaux, travaux autorisés, etc.)"
                 value={lease.clauses_particulieres || ""}
                 onChange={(e) => setLease({ ...lease, clauses_particulieres: e.target.value })}
-                className="min-h-[120px] bg-white"
+                className="min-h-[120px] bg-card"
               />
               <p className="text-xs text-muted-foreground mt-2">
                 Ces clauses seront ajoutées au contrat de bail.

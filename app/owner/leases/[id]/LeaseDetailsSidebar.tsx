@@ -113,7 +113,7 @@ export function LeaseDetailsSidebar({
 }: LeaseDetailsSidebarProps) {
   return (
     <div className="lg:col-span-4 xl:col-span-3 order-1 lg:order-2 space-y-6">
-      <Card className="border-none shadow-sm bg-white overflow-hidden">
+      <Card className="border-none shadow-sm bg-card overflow-hidden">
         <CardHeader className="pb-2 border-b border-slate-50">
           <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
             Lecture métier unifiée
@@ -149,7 +149,7 @@ export function LeaseDetailsSidebar({
         </CardContent>
       </Card>
 
-      <Card className="border-none shadow-sm bg-white overflow-hidden">
+      <Card className="border-none shadow-sm bg-card overflow-hidden">
         <CardHeader className="pb-2 border-b border-slate-50">
           <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
             <ShieldCheck className="h-3 w-3 text-emerald-500" />
@@ -195,7 +195,7 @@ export function LeaseDetailsSidebar({
       )}
 
       {/* Carte Info Rapide */}
-      <Card className="border-none shadow-sm bg-white">
+      <Card className="border-none shadow-sm bg-card">
         <CardHeader className="pb-3 border-b border-slate-50">
           <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
             Détails Clés

@@ -207,7 +207,7 @@ export function LeasePaymentsTab({
               <FileText className="h-3.5 w-3.5" />
               Factures
             </h4>
-            <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+            <div className="bg-card rounded-lg border border-border divide-y divide-border/50">
               {invoices.slice(0, 12).map((invoice) => {
                 const invStatus = INVOICE_STATUS[invoice.statut] || INVOICE_STATUS.draft;
                 const isInitial = invoice.metadata?.type === "initial_invoice";
@@ -258,7 +258,7 @@ export function LeasePaymentsTab({
               <CreditCard className="h-3.5 w-3.5" />
               Paiements reçus
             </h4>
-            <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
+            <div className="bg-card rounded-lg border border-border divide-y divide-border/50">
               {payments.map((payment) => {
                 const statusConf = PAYMENT_STATUS[payment.statut] || PAYMENT_STATUS.pending;
                 const StatusIcon = statusConf.icon;

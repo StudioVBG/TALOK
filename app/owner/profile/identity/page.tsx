@@ -291,7 +291,7 @@ export default function OwnerIdentityPage() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="relative aspect-[3/2] rounded-lg overflow-hidden border bg-white"
+                className="relative aspect-[3/2] rounded-lg overflow-hidden border bg-card"
               >
                 <Image
                   src={previewUrl}
@@ -336,7 +336,7 @@ export default function OwnerIdentityPage() {
                       <span className="w-full border-t" />
                     </div>
                     <div className="relative flex justify-center text-[10px] uppercase">
-                      <span className="bg-white px-2 text-muted-foreground">Ou uploader un fichier</span>
+                      <span className="bg-card px-2 text-muted-foreground">Ou uploader un fichier</span>
                     </div>
                   </div>
 

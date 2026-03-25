@@ -367,7 +367,7 @@ export default function EditInspectionPage() {
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 {inspection.meter_readings.map((mr, i) => (
-                  <div key={i} className="space-y-4 p-4 border rounded-xl bg-white shadow-sm">
+                  <div key={i} className="space-y-4 p-4 border rounded-xl bg-card shadow-sm">
                     <div className="flex items-center justify-between border-b pb-2 mb-2">
                       <span className="font-bold uppercase text-[10px] tracking-wider text-slate-500">
                         {mr.type === 'water' ? '💧 Eau' : mr.type === 'electricity' ? '⚡ Électricité' : mr.type === 'gas' ? '🔥 Gaz' : mr.type}
@@ -473,7 +473,7 @@ export default function EditInspectionPage() {
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               {inspection.keys.map((key, i) => (
-                <div key={i} className="flex flex-col md:flex-row gap-4 p-4 border rounded-xl bg-white shadow-sm relative group">
+                <div key={i} className="flex flex-col md:flex-row gap-4 p-4 border rounded-xl bg-card shadow-sm relative group">
                   <div className="flex-1 space-y-2">
                     <Label>Type</Label>
                     <Select value={key.type} onValueChange={(v) => updateKey(i, 'type', v)}>
@@ -548,7 +548,7 @@ export default function EditInspectionPage() {
                                 }}
                                 className={cn(
                                   "px-3 py-1 rounded-full text-xs font-bold border transition-all",
-                                  item.condition === opt.value ? opt.color + " border-current shadow-sm" : "bg-white text-slate-400 border-slate-200"
+                                  item.condition === opt.value ? opt.color + " border-current shadow-sm" : "bg-card text-slate-400 border-slate-200"
                                 )}
                               >
                                 {opt.label}
@@ -564,7 +564,7 @@ export default function EditInspectionPage() {
                             setInspection({...inspection, sections: newSections});
                           }}
                           placeholder="Notes sur l'état..."
-                          className="bg-white resize-none text-sm h-20"
+                          className="bg-card resize-none text-sm h-20"
                         />
                       </div>
                     ))}

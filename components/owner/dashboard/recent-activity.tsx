@@ -42,7 +42,7 @@ const activityConfig = {
 export function OwnerRecentActivity({ activities }: OwnerRecentActivityProps) {
   if (!activities || activities.length === 0) {
     return (
-      <Card className="border-0 shadow-sm bg-white/60 backdrop-blur-sm">
+      <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm">
         <CardHeader>
           <CardTitle className="text-lg font-semibold">Activité récente</CardTitle>
         </CardHeader>
@@ -56,7 +56,7 @@ export function OwnerRecentActivity({ activities }: OwnerRecentActivityProps) {
   }
 
   return (
-    <Card className="border-0 shadow-sm bg-white/60 backdrop-blur-sm">
+    <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-semibold">Activité récente</CardTitle>
         <Badge variant="outline" className="font-normal text-xs">
@@ -79,7 +79,7 @@ export function OwnerRecentActivity({ activities }: OwnerRecentActivityProps) {
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="group flex items-start gap-4 p-2 rounded-lg hover:bg-slate-50 transition-colors"
+                className="group flex items-start gap-4 p-2 rounded-lg hover:bg-muted transition-colors"
               >
                 <div className={`p-2 rounded-full ${config.bgColor}`}>
                   <Icon className={`h-4 w-4 ${config.color}`} />

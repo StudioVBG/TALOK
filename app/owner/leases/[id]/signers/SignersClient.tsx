@@ -448,7 +448,7 @@ export function SignersClient({
 
             {/* Stats */}
             <div className="flex gap-3">
-              <div className="text-center px-4 py-2 bg-white rounded-lg border">
+              <div className="text-center px-4 py-2 bg-card rounded-lg border">
                 <p className="text-2xl font-bold text-slate-900">{signedCount}/{totalSigners}</p>
                 <p className="text-xs text-muted-foreground">Signatures</p>
               </div>

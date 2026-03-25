@@ -588,7 +588,7 @@ function DocumentRow({
         isPending ? "opacity-60 pointer-events-none" : ""
       }`}
     >
-      <div className="h-9 w-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
+      <div className="h-9 w-9 rounded-lg bg-card border border-border flex items-center justify-center flex-shrink-0">
         <Icon className="h-4 w-4 text-slate-500" />
       </div>
 
@@ -720,7 +720,7 @@ function WorkflowDocumentRow({
 
   return (
     <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-slate-200 bg-slate-50/80">
-      <div className="h-9 w-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
+      <div className="h-9 w-9 rounded-lg bg-card border border-border flex items-center justify-center flex-shrink-0">
         <Icon className="h-4 w-4 text-slate-500" />
       </div>
       <div className="flex-1 min-w-0">

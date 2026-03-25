@@ -329,7 +329,7 @@ function TaskItem({ task, index }: { task: CompletionTask; index: number }) {
           "flex items-center gap-2.5 xs:gap-3 sm:gap-4 p-2.5 xs:p-3 sm:p-4 rounded-lg xs:rounded-xl border transition-all duration-300 touch-target",
           task.completed
             ? "bg-green-50/50 border-green-200"
-            : "bg-white hover:bg-slate-50 border-slate-200 hover:border-blue-300 active:bg-slate-100 hover:shadow-md"
+            : "bg-card hover:bg-muted border-border hover:border-blue-300 active:bg-slate-100 hover:shadow-md"
         )}
       >
         {/* Icône - Taille adaptative */}
@@ -477,7 +477,7 @@ export function ProfileCompletionCard({ data, className }: ProfileCompletionCard
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        "relative overflow-hidden rounded-2xl bg-white border border-slate-200 shadow-sm",
+        "relative overflow-hidden rounded-2xl bg-card border border-border shadow-sm",
         className
       )}
     >
@@ -485,7 +485,7 @@ export function ProfileCompletionCard({ data, className }: ProfileCompletionCard
       <div className="hidden xs:block absolute top-0 right-0 w-48 sm:w-64 h-48 sm:h-64 bg-gradient-to-br from-blue-100/50 via-purple-100/50 to-pink-100/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
 
       {/* Header - Toujours en ligne */}
-      <div className="relative p-3 xs:p-4 sm:p-6 pb-3 sm:pb-4 border-b border-slate-100">
+      <div className="relative p-3 xs:p-4 sm:p-6 pb-3 sm:pb-4 border-b border-border">
         <div className="flex flex-row items-center gap-3 xs:gap-4 sm:gap-6">
           {/* Cercle de progression - Taille adaptative */}
           <CircularProgress 
@@ -565,7 +565,7 @@ export function ProfileCompletionCard({ data, className }: ProfileCompletionCard
       </div>
 
       {/* Footer motivant - Toujours en ligne */}
-      <div className="relative px-3 xs:px-4 sm:px-6 py-2.5 xs:py-3 sm:py-4 bg-gradient-to-r from-slate-50 to-blue-50/50 border-t border-slate-100">
+      <div className="relative px-3 xs:px-4 sm:px-6 py-2.5 xs:py-3 sm:py-4 bg-gradient-to-r from-muted to-blue-50/50 border-t border-border">
         <div className="flex flex-row items-center justify-between gap-2 xs:gap-3">
           <div className="flex items-center gap-1.5 xs:gap-2 text-[10px] xs:text-xs sm:text-sm text-slate-600 min-w-0">
             <Rocket className="w-3 h-3 xs:w-3.5 xs:h-3.5 sm:w-4 sm:h-4 text-blue-500 shrink-0" />

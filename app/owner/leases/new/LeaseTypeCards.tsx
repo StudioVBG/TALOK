@@ -343,10 +343,10 @@ export function LeaseTypeCards({ selectedType, onSelect, propertyType }: LeaseTy
 
               {/* Card */}
               <div className={cn(
-                "relative bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl rounded-xl border-2 overflow-hidden shadow-lg transition-all duration-300",
+                "relative bg-card/90 backdrop-blur-xl rounded-xl border-2 overflow-hidden shadow-lg transition-all duration-300",
                 isSelected 
                   ? "border-primary ring-2 ring-primary/20" 
-                  : "border-white/30 dark:border-slate-700/50 hover:border-slate-300"
+                  : "border-border/30 hover:border-border"
               )}>
                 {/* Header avec gradient */}
                 <div

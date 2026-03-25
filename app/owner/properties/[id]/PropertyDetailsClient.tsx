@@ -745,7 +745,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
         {allDisplayPhotos.length === 0 ? (
           // Aucune photo
           <div className="h-[300px] md:h-[400px] rounded-2xl overflow-hidden bg-slate-50 border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-500 gap-4">
-            <div className="p-4 bg-white rounded-full shadow-sm">
+            <div className="p-4 bg-card rounded-full shadow-sm">
               <ImageIcon className="w-10 h-10 text-slate-400" />
             </div>
             <div className="text-center">
@@ -809,7 +809,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                         <Button 
                           size="sm" 
                           variant="outline"
-                          className="bg-white"
+                          className="bg-card"
                           onClick={() => handleUnmarkPhotoForDeletion(mainPhoto.id)}
                         >
                           Annuler
@@ -900,7 +900,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                         <Button 
                           size="icon" 
                           variant="outline"
-                          className="h-7 w-7 bg-white"
+                          className="h-7 w-7 bg-card"
                           onClick={() => handleUnmarkPhotoForDeletion(photo.id)}
                         >
                           <Check className="w-4 h-4" />
@@ -944,7 +944,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
 
               {/* Info loyer si pas en mode édition */}
               {!isEditing && allDisplayPhotos.length <= 2 && (
-                <div className="flex-1 bg-white border rounded-xl p-4 flex flex-col justify-center items-center">
+                <div className="flex-1 bg-card border rounded-xl p-4 flex flex-col justify-center items-center">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Loyer</p>
                   <p className="text-2xl font-bold">{formatCurrency(property.loyer_hc || 0)}</p>
                   <span className="text-xs text-muted-foreground">/mois HC</span>
@@ -1124,7 +1124,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                     {property.digicode && (
                       <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/50">
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-white dark:bg-card flex items-center justify-center shadow-sm">
+                          <div className="h-8 w-8 rounded-lg bg-card flex items-center justify-center shadow-sm">
                             <Key className="h-4 w-4 text-indigo-600" />
                           </div>
                           <span className="text-sm font-medium text-muted-foreground">Digicode</span>
@@ -1137,7 +1137,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                     {property.interphone && (
                       <div className="flex items-center justify-between p-3 rounded-xl bg-muted border border-border">
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-white dark:bg-card flex items-center justify-center shadow-sm">
+                          <div className="h-8 w-8 rounded-lg bg-card flex items-center justify-center shadow-sm">
                             <Phone className="h-4 w-4 text-muted-foreground" />
                           </div>
                           <span className="text-sm font-medium text-muted-foreground">Interphone</span>
@@ -1493,7 +1493,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t shadow-lg md:hidden z-50"
+            className="fixed bottom-0 left-0 right-0 p-4 bg-card border-t shadow-lg md:hidden z-50"
           >
             <div className="flex gap-3">
               <Button variant="outline" onClick={handleCancelEditing} disabled={isSaving} className="flex-1">

@@ -216,7 +216,7 @@ export default function NewOwnerTicketPage() {
           </p>
         </div>
 
-        <Card className="bg-white/80 backdrop-blur-sm shadow-lg">
+        <Card className="bg-card/80 backdrop-blur-sm shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wrench className="h-5 w-5 text-blue-600" />
@@ -239,7 +239,7 @@ export default function NewOwnerTicketPage() {
                   onValueChange={(value) => setForm({ ...form, property_id: value })}
                   disabled={loadingProperties}
                 >
-                  <SelectTrigger className="bg-white">
+                  <SelectTrigger className="bg-card">
                     <SelectValue placeholder={loadingProperties ? "Chargement..." : "Sélectionner un bien"} />
                   </SelectTrigger>
                   <SelectContent>
@@ -260,7 +260,7 @@ export default function NewOwnerTicketPage() {
                   placeholder="Ex: Fuite d'eau dans la salle de bain"
                   value={form.titre}
                   onChange={(e) => setForm({ ...form, titre: e.target.value })}
-                  className="bg-white"
+                  className="bg-card"
                   required
                 />
               </div>
@@ -284,7 +284,7 @@ export default function NewOwnerTicketPage() {
                             "flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all",
                             isSelected
                               ? "border-blue-500 bg-blue-50"
-                              : "border-slate-200 hover:border-slate-300 bg-white"
+                              : "border-border hover:border-border bg-card"
                           )}
                         >
                           <Icon className={cn("h-5 w-5", isSelected ? "text-blue-600" : cat.color)} />
@@ -302,7 +302,7 @@ export default function NewOwnerTicketPage() {
                       value={form.priorite}
                       onValueChange={(value) => setForm({ ...form, priorite: value })}
                     >
-                      <SelectTrigger className="bg-white">
+                      <SelectTrigger className="bg-card">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -356,7 +356,7 @@ export default function NewOwnerTicketPage() {
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={5}
-                  className="bg-white resize-none"
+                  className="bg-card resize-none"
                   required
                 />
                 <p className="text-xs text-muted-foreground">

@@ -62,7 +62,7 @@ export function OwnerFinanceSummary({ chartData, kpis }: OwnerFinanceSummaryProp
   // Vérification de sécurité pour éviter les erreurs si les données ne sont pas encore chargées
   if (!kpis || !kpis.revenue_current_month || !kpis.revenue_last_month) {
     return (
-      <Card className="backdrop-blur-sm bg-white/80 border-white/20 shadow-xl">
+      <Card className="backdrop-blur-sm bg-card/80 border-border/20 shadow-xl">
         <CardContent className="py-12 text-center">
           <Skeleton className="h-64 w-full mb-4" />
           <Skeleton className="h-8 w-48 mx-auto" />
@@ -80,7 +80,7 @@ export function OwnerFinanceSummary({ chartData, kpis }: OwnerFinanceSummaryProp
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <Card className="backdrop-blur-sm bg-white/80 border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+      <Card className="backdrop-blur-sm bg-card/80 border-border/20 shadow-xl hover:shadow-2xl transition-all duration-300">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <motion.div

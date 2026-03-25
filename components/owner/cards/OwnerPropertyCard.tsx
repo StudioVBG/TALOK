@@ -33,7 +33,7 @@ export function OwnerPropertyCard({ property, index = 0 }: OwnerPropertyCardProp
       whileHover={{ y: -4, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
     >
-      <Card className="group relative overflow-hidden backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border border-white/20 dark:border-slate-700/50 hover:border-blue-300 dark:hover:border-blue-600 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer h-full flex flex-col">
+      <Card className="group relative overflow-hidden backdrop-blur-xl bg-card/80 border border-border/20 hover:border-blue-300 dark:hover:border-blue-600 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer h-full flex flex-col">
         {/* Image de couverture */}
         {property.cover_url ? (
           <div className="relative h-48 w-full overflow-hidden">

@@ -106,7 +106,7 @@ export function PropertySelector({ properties, selectedPropertyId, onSelect }: P
             placeholder="Rechercher par adresse, ville..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm"
+            className="pl-10 bg-card/80 backdrop-blur-sm"
           />
         </div>
       )}
@@ -131,7 +131,7 @@ export function PropertySelector({ properties, selectedPropertyId, onSelect }: P
             >
               <div className={cn(
                 "relative p-4 rounded-xl border-2 transition-all duration-300",
-                "bg-white dark:bg-slate-900",
+                "bg-card",
                 isSelected
                   ? "border-primary shadow-lg shadow-primary/10 ring-2 ring-primary/20"
                   : "border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:shadow-md"

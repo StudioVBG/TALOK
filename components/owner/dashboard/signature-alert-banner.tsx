@@ -106,7 +106,7 @@ export function SignatureAlertBanner({ className, dismissible = true }: Signatur
                 <Link
                   key={sig.id}
                   href={`/owner/leases/${sig.lease_id}`}
-                  className="group flex items-center justify-between p-3 bg-white/80 backdrop-blur rounded-xl border border-orange-100 hover:border-orange-300 hover:shadow-md transition-all duration-200"
+                  className="group flex items-center justify-between p-3 bg-card/80 backdrop-blur rounded-xl border border-orange-100 hover:border-orange-300 hover:shadow-md transition-all duration-200"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2 bg-orange-100 rounded-lg group-hover:bg-orange-200 transition-colors">

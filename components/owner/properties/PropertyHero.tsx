@@ -57,8 +57,8 @@ export function PropertyHero({ property, activeLease, onDelete, photos = [], pro
   if (photos.length === 0) {
     return (
       <div className="relative w-full max-w-7xl mx-auto mb-8">
-        <div className="h-[300px] md:h-[400px] rounded-2xl overflow-hidden bg-slate-50 border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-500 gap-4 shadow-inner">
-          <div className="p-4 bg-white rounded-full shadow-sm">
+        <div className="h-[300px] md:h-[400px] rounded-2xl overflow-hidden bg-muted border-2 border-dashed border-border flex flex-col items-center justify-center text-slate-500 gap-4 shadow-inner">
+          <div className="p-4 bg-card rounded-full shadow-sm">
             <ImageIcon className="w-10 h-10 text-slate-400" />
           </div>
           <div className="text-center">
@@ -249,7 +249,7 @@ export function PropertyHero({ property, activeLease, onDelete, photos = [], pro
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.5 }}
-            className="flex-1 bg-white/80 backdrop-blur-lg border border-white/20 p-6 rounded-xl flex flex-col justify-center items-center shadow-sm hover:shadow-md transition-all"
+            className="flex-1 bg-card/80 backdrop-blur-lg border border-border/20 p-6 rounded-xl flex flex-col justify-center items-center shadow-sm hover:shadow-md transition-all"
           >
             <div className="text-center w-full">
               <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-1">Loyer estimé</p>
@@ -259,7 +259,7 @@ export function PropertyHero({ property, activeLease, onDelete, photos = [], pro
                     value={property.loyer_hc}
                     type="currency"
                     onSave={(val) => handleUpdateField("loyer_hc", parseFloat(val))}
-                    className="text-2xl font-bold text-slate-900 tracking-tight hover:bg-slate-100 rounded px-2 -mx-2"
+                    className="text-2xl font-bold text-slate-900 tracking-tight hover:bg-muted rounded px-2 -mx-2"
                     inputClassName="text-center font-bold text-lg h-10"
                 />
               </div>
@@ -272,7 +272,7 @@ export function PropertyHero({ property, activeLease, onDelete, photos = [], pro
                         value={(property as any).charges_mensuelles}
                         type="currency"
                         onSave={(val) => handleUpdateField("charges_mensuelles", parseFloat(val))}
-                        className="text-[10px] text-muted-foreground hover:bg-slate-100 px-1 rounded"
+                        className="text-[10px] text-muted-foreground hover:bg-muted px-1 rounded"
                         inputClassName="h-6 w-20 text-xs"
                     />
                      <span className="text-[10px] text-muted-foreground">charges</span>
