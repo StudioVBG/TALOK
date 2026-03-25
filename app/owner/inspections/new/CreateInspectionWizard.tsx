@@ -1008,7 +1008,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                       const hasExistingEdl = !!existingEntree || !!existingSortie;
 
                       const EDL_STATUS_LABELS: Record<string, { label: string; color: string }> = {
-                        draft: { label: "Brouillon", color: "bg-slate-100 text-slate-700" },
+                        draft: { label: "Brouillon", color: "bg-muted text-foreground" },
                         scheduled: { label: "Planifié", color: "bg-blue-100 text-blue-700" },
                         in_progress: { label: "En cours", color: "bg-amber-100 text-amber-700" },
                         completed: { label: "Complété", color: "bg-indigo-100 text-indigo-700" },
@@ -1049,7 +1049,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                                   {existingEntree && (
                                     <Badge
                                       variant="outline"
-                                      className={`text-[10px] sm:text-xs ${EDL_STATUS_LABELS[existingEntree.status]?.color || "bg-slate-100 text-slate-700"}`}
+                                      className={`text-[10px] sm:text-xs ${EDL_STATUS_LABELS[existingEntree.status]?.color || "bg-muted text-foreground"}`}
                                     >
                                       <ClipboardList className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
                                       EDL Entrée : {EDL_STATUS_LABELS[existingEntree.status]?.label || existingEntree.status}
@@ -1058,7 +1058,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                                   {existingSortie && (
                                     <Badge
                                       variant="outline"
-                                      className={`text-[10px] sm:text-xs ${EDL_STATUS_LABELS[existingSortie.status]?.color || "bg-slate-100 text-slate-700"}`}
+                                      className={`text-[10px] sm:text-xs ${EDL_STATUS_LABELS[existingSortie.status]?.color || "bg-muted text-foreground"}`}
                                     >
                                       <ClipboardList className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
                                       EDL Sortie : {EDL_STATUS_LABELS[existingSortie.status]?.label || existingSortie.status}

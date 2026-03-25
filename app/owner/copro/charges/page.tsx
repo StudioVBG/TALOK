@@ -186,7 +186,7 @@ export default function BailleurChargesPage() {
             <h1 className="text-2xl font-bold text-white">
               Charges récupérables
             </h1>
-            <p className="text-slate-400">
+            <p className="text-muted-foreground">
               Détail des charges copropriété récupérables sur vos locataires
             </p>
           </div>
@@ -253,7 +253,7 @@ export default function BailleurChargesPage() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-400">Charges copro totales</p>
+                      <p className="text-sm text-muted-foreground">Charges copro totales</p>
                       <p className="text-2xl font-bold text-white">
                         {currentUnit.current_year_summary.total_copro.toLocaleString('fr-FR')} €
                       </p>
@@ -269,7 +269,7 @@ export default function BailleurChargesPage() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-400">Part récupérable</p>
+                      <p className="text-sm text-muted-foreground">Part récupérable</p>
                       <p className="text-2xl font-bold text-emerald-400">
                         {currentUnit.current_year_summary.total_recuperable.toLocaleString('fr-FR')} €
                       </p>
@@ -285,7 +285,7 @@ export default function BailleurChargesPage() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-400">Non récupérable</p>
+                      <p className="text-sm text-muted-foreground">Non récupérable</p>
                       <p className="text-2xl font-bold text-red-400">
                         {(currentUnit.current_year_summary.total_copro - currentUnit.current_year_summary.total_recuperable).toLocaleString('fr-FR')} €
                       </p>
@@ -307,13 +307,13 @@ export default function BailleurChargesPage() {
               <Card className="border-border/10 bg-card/5">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-slate-400">Taux de récupérabilité</span>
+                    <span className="text-muted-foreground">Taux de récupérabilité</span>
                     <span className="text-lg font-semibold text-emerald-400">
                       {recuperablePercentage.toFixed(1)}%
                     </span>
                   </div>
                   <Progress value={recuperablePercentage} className="h-3 bg-slate-700" />
-                  <div className="flex justify-between mt-2 text-xs text-slate-500">
+                  <div className="flex justify-between mt-2 text-xs text-muted-foreground">
                     <span>0%</span>
                     <span>Décret 87-713</span>
                     <span>100%</span>
@@ -360,20 +360,20 @@ export default function BailleurChargesPage() {
                             </div>
                             <div>
                               <p className="text-white font-medium">{service.label}</p>
-                              <p className="text-xs text-slate-400">
+                              <p className="text-xs text-muted-foreground">
                                 {SERVICE_TYPE_LABELS[service.service_type]}
                               </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-6">
                             <div className="text-right">
-                              <p className="text-sm text-slate-400">Copro</p>
+                              <p className="text-sm text-muted-foreground">Copro</p>
                               <p className="text-white font-medium">
                                 {service.copro_amount.toLocaleString('fr-FR')} €
                               </p>
                             </div>
                             <div className="text-right">
-                              <p className="text-sm text-slate-400">Récupérable</p>
+                              <p className="text-sm text-muted-foreground">Récupérable</p>
                               <p className={`font-semibold ${isRecuperable ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {service.recuperable_amount.toLocaleString('fr-FR')} €
                               </p>
@@ -416,16 +416,16 @@ export default function BailleurChargesPage() {
                         <div className="flex items-start justify-between">
                           <div>
                             <p className="text-white font-medium">{charge.label}</p>
-                            <p className="text-xs text-slate-400">{charge.period}</p>
+                            <p className="text-xs text-muted-foreground">{charge.period}</p>
                           </div>
                           <Badge className={charge.recuperable_ratio === 1 ? 'bg-emerald-500/20 text-emerald-400' : charge.recuperable_ratio > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}>
                             {(charge.recuperable_ratio * 100).toFixed(0)}%
                           </Badge>
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-sm">
-                          <div><p className="text-slate-400">Copro</p><p className="text-white">{charge.copro_amount.toLocaleString('fr-FR')} €</p></div>
-                          <div><p className="text-slate-400">Prorata</p><p className="text-slate-300">{(charge.prorata_ratio * 100).toFixed(0)}%</p></div>
-                          <div><p className="text-slate-400">Récupérable</p><p className={`font-semibold ${charge.recuperable_amount > 0 ? 'text-emerald-400' : 'text-red-400'}`}>{charge.recuperable_amount.toLocaleString('fr-FR')} €</p></div>
+                          <div><p className="text-muted-foreground">Copro</p><p className="text-white">{charge.copro_amount.toLocaleString('fr-FR')} €</p></div>
+                          <div><p className="text-muted-foreground">Prorata</p><p className="text-slate-300">{(charge.prorata_ratio * 100).toFixed(0)}%</p></div>
+                          <div><p className="text-muted-foreground">Récupérable</p><p className={`font-semibold ${charge.recuperable_amount > 0 ? 'text-emerald-400' : 'text-red-400'}`}>{charge.recuperable_amount.toLocaleString('fr-FR')} €</p></div>
                         </div>
                       </div>
                     ))}
@@ -435,12 +435,12 @@ export default function BailleurChargesPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-border/10">
-                        <TableHead className="text-slate-400">Période</TableHead>
-                        <TableHead className="text-slate-400">Poste</TableHead>
-                        <TableHead className="text-slate-400 text-right">Montant copro</TableHead>
-                        <TableHead className="text-slate-400 text-right">Ratio</TableHead>
-                        <TableHead className="text-slate-400 text-right">Prorata</TableHead>
-                        <TableHead className="text-slate-400 text-right">Récupérable</TableHead>
+                        <TableHead className="text-muted-foreground">Période</TableHead>
+                        <TableHead className="text-muted-foreground">Poste</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Montant copro</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Ratio</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Prorata</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Récupérable</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -460,7 +460,7 @@ export default function BailleurChargesPage() {
                               {(charge.recuperable_ratio * 100).toFixed(0)}%
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right text-slate-400">
+                          <TableCell className="text-right text-muted-foreground">
                             {(charge.prorata_ratio * 100).toFixed(0)}%
                           </TableCell>
                           <TableCell className={`text-right font-semibold ${

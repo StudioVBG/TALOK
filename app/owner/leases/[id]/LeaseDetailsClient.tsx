@@ -514,8 +514,8 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       };
     }
     return {
-      shell: "border-border bg-gradient-to-br from-slate-50 via-white to-slate-100",
-      badge: "bg-slate-100 text-slate-700",
+      shell: "border-border bg-gradient-to-br from-muted via-white to-muted",
+      badge: "bg-muted text-foreground",
       panel: "bg-card/80 border-border",
       button: "bg-slate-700 hover:bg-slate-800",
     };
@@ -576,7 +576,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   ]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100/50">
+    <div className="min-h-screen bg-gradient-to-br from-muted to-muted/50">
       {/* Breadcrumb */}
       <div className="container mx-auto px-4 pt-4">
         <Breadcrumb
@@ -636,7 +636,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   disabled={isActivating || !canActivateNow}
                   className={canActivateNow
                     ? "bg-green-600 hover:bg-green-700 shadow-sm"
-                    : "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none border border-border"
+                    : "bg-muted text-muted-foreground cursor-not-allowed shadow-none border border-border"
                   }
                   title={canActivateNow
                     ? "Activer le bail"
@@ -671,7 +671,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   <span className="hidden sm:inline">Télécharger PDF</span>
                   <span className="sm:hidden text-[10px]">PDF</span>
                 </Button>
-                <div className="hidden md:flex items-center gap-1 text-[10px] text-slate-400 font-medium uppercase tracking-wider px-2 py-1 bg-muted rounded border border-border">
+                <div className="hidden md:flex items-center gap-1 text-[10px] text-muted-foreground font-medium uppercase tracking-wider px-2 py-1 bg-muted rounded border border-border">
                   <Lock className="h-3 w-3" />
                   Scellé
                 </div>
@@ -702,9 +702,9 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                     {readinessState.hero.highlights.map((highlight) => (
                       <div
                         key={highlight}
-                        className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/80 px-3 py-1.5 text-xs font-medium text-muted-foreground"
+                        className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground"
                       >
-                        <Sparkles className="h-3.5 w-3.5 text-slate-400" />
+                        <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
                         {highlight}
                       </div>
                     ))}
@@ -791,7 +791,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
             >
               {/* Barre d'onglets */}
               <TabsList className="w-full justify-start bg-card border border-border rounded-t-xl rounded-b-none h-12 px-2 gap-1">
-                <TabsTrigger value="contrat" className="gap-2 data-[state=active]:bg-slate-100">
+                <TabsTrigger value="contrat" className="gap-2 data-[state=active]:bg-muted">
                   <FileText className="h-4 w-4" />
                   <span className="hidden sm:inline">Contrat</span>
                 </TabsTrigger>
@@ -811,7 +811,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                     <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="documents" className="gap-2 data-[state=active]:bg-slate-100">
+                <TabsTrigger value="documents" className="gap-2 data-[state=active]:bg-muted">
                   <FolderOpen className="h-4 w-4" />
                   <span className="hidden sm:inline">Documents</span>
                   <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
@@ -820,7 +820,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                 </TabsTrigger>
                 <TabsTrigger
                   value="paiements"
-                  className={`gap-2 data-[state=active]:bg-slate-100 ${
+                  className={`gap-2 data-[state=active]:bg-muted ${
                     !readinessState.tabs.paymentsEnabled ? "opacity-40 cursor-not-allowed" : ""
                   }`}
                   disabled={!readinessState.tabs.paymentsEnabled}
@@ -829,7 +829,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   <CreditCard className="h-4 w-4" />
                   <span className="hidden sm:inline">Paiements</span>
                   {!readinessState.tabs.paymentsEnabled && (
-                    <Badge variant="outline" className="text-[9px] h-4 px-1 border-border text-slate-400 hidden sm:inline-flex">
+                    <Badge variant="outline" className="text-[9px] h-4 px-1 border-border text-muted-foreground hidden sm:inline-flex">
                       après signature
                     </Badge>
                   )}
@@ -848,7 +848,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                             <span className="text-xs font-semibold text-emerald-700">Document scellé</span>
                           </div>
                           {sealedAt && (
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs text-muted-foreground">
                               le {new Date(sealedAt).toLocaleDateString("fr-FR")}
                             </span>
                           )}
@@ -880,7 +880,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                         title="Bail de location signé"
                       />
                       <div className="px-4 py-2 border-t bg-muted text-center">
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                           <Lock className="h-3 w-3 inline mr-1" />
                           Ce document est légalement scellé et ne peut plus être modifié.
                         </p>

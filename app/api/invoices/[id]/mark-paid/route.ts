@@ -201,7 +201,6 @@ export async function POST(
           propertyCodePostal: propertyData.code_postal || "75000",
         });
 
-        console.log("[mark-paid] Écritures comptables enregistrées pour invoice:", invoiceId);
       }
     } catch (accountingError) {
       // Log mais ne pas bloquer le paiement si la comptabilité échoue

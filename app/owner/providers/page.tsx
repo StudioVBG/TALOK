@@ -189,7 +189,7 @@ export default function ProvidersMarketplacePage() {
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-3">
               {["Recherche par métier", "Profils vérifiés", "Demande de devis contextualisée"].map((item) => (
-                <div key={item} className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+                <div key={item} className="rounded-xl border bg-card p-4 text-sm text-foreground">
                   {item}
                 </div>
               ))}

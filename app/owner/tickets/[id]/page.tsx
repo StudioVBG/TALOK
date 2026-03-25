@@ -1297,7 +1297,7 @@ export default function TicketDetailPage() {
                     <div className="space-y-4 text-sm">
                       {/* Création */}
                       <div className="flex items-start gap-3 relative">
-                        <div className="h-5 w-5 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900 shadow-sm z-10 mt-0.5 flex items-center justify-center">
+                        <div className="h-5 w-5 rounded-full bg-emerald-500 border-2 border-background shadow-sm z-10 mt-0.5 flex items-center justify-center">
                           <Sparkles className="h-3 w-3 text-white" />
                         </div>
                         <div className="flex-1 pb-1">
@@ -1311,7 +1311,7 @@ export default function TicketDetailPage() {
                       {/* Commentaires */}
                       {ticket.comments?.slice(0, 3).map((comment, index) => (
                         <div key={comment.id || index} className="flex items-start gap-3 relative">
-                          <div className="h-5 w-5 rounded-full bg-blue-500 border-2 border-white dark:border-slate-900 shadow-sm z-10 mt-0.5 flex items-center justify-center">
+                          <div className="h-5 w-5 rounded-full bg-blue-500 border-2 border-background shadow-sm z-10 mt-0.5 flex items-center justify-center">
                             <MessageSquare className="h-3 w-3 text-white" />
                           </div>
                           <div className="flex-1 pb-1">
@@ -1328,7 +1328,7 @@ export default function TicketDetailPage() {
                       {/* Devis reçus */}
                       {quotesCount > 0 && (
                         <div className="flex items-start gap-3 relative">
-                          <div className="h-5 w-5 rounded-full bg-amber-500 border-2 border-white dark:border-slate-900 shadow-sm z-10 mt-0.5 flex items-center justify-center">
+                          <div className="h-5 w-5 rounded-full bg-amber-500 border-2 border-background shadow-sm z-10 mt-0.5 flex items-center justify-center">
                             <Receipt className="h-3 w-3 text-white" />
                           </div>
                           <div className="flex-1 pb-1">
@@ -1345,7 +1345,7 @@ export default function TicketDetailPage() {
                       {/* Work order */}
                       {ticket.work_order && (
                         <div className="flex items-start gap-3 relative">
-                          <div className="h-5 w-5 rounded-full bg-violet-500 border-2 border-white dark:border-slate-900 shadow-sm z-10 mt-0.5 flex items-center justify-center">
+                          <div className="h-5 w-5 rounded-full bg-violet-500 border-2 border-background shadow-sm z-10 mt-0.5 flex items-center justify-center">
                             <HardHat className="h-3 w-3 text-white" />
                           </div>
                           <div className="flex-1 pb-1">
@@ -1363,7 +1363,7 @@ export default function TicketDetailPage() {
                       {ticket.statut !== "open" && (
                         <div className="flex items-start gap-3 relative">
                           <div className={cn(
-                            "h-5 w-5 rounded-full border-2 border-white dark:border-slate-900 shadow-sm z-10 mt-0.5 flex items-center justify-center",
+                            "h-5 w-5 rounded-full border-2 border-background shadow-sm z-10 mt-0.5 flex items-center justify-center",
                             ticket.statut === "resolved" || ticket.statut === "closed" 
                               ? "bg-green-500" 
                               : ticket.statut === "in_progress" 

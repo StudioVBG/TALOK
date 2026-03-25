@@ -57,12 +57,12 @@ export function PropertyHero({ property, activeLease, onDelete, photos = [], pro
   if (photos.length === 0) {
     return (
       <div className="relative w-full max-w-7xl mx-auto mb-8">
-        <div className="h-[300px] md:h-[400px] rounded-2xl overflow-hidden bg-muted border-2 border-dashed border-border flex flex-col items-center justify-center text-slate-500 gap-4 shadow-inner">
+        <div className="h-[300px] md:h-[400px] rounded-2xl overflow-hidden bg-muted border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-4 shadow-inner">
           <div className="p-4 bg-card rounded-full shadow-sm">
-            <ImageIcon className="w-10 h-10 text-slate-400" />
+            <ImageIcon className="w-10 h-10 text-muted-foreground" />
           </div>
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-slate-700">Aucune photo pour le moment</h3>
+            <h3 className="text-lg font-semibold text-foreground">Aucune photo pour le moment</h3>
             <p className="text-sm text-muted-foreground mb-4">Ajoutez des photos pour mettre en valeur votre bien</p>
             {propertyId && (
               <Button 
@@ -133,7 +133,7 @@ export function PropertyHero({ property, activeLease, onDelete, photos = [], pro
       </Dialog>
 
       {/* Layout Photos Responsive */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-[300px] md:h-[500px] rounded-2xl overflow-hidden shadow-2xl bg-slate-100">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-[300px] md:h-[500px] rounded-2xl overflow-hidden shadow-2xl bg-muted">
         {/* Grande photo principale (Mobile: Full width, Desktop: 3/4) */}
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
@@ -249,21 +249,21 @@ export function PropertyHero({ property, activeLease, onDelete, photos = [], pro
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.5 }}
-            className="flex-1 bg-card/80 backdrop-blur-lg border border-border/20 p-6 rounded-xl flex flex-col justify-center items-center shadow-sm hover:shadow-md transition-all"
+            className="flex-1 bg-card/80 backdrop-blur-lg border border-border p-6 rounded-xl flex flex-col justify-center items-center shadow-sm hover:shadow-md transition-all"
           >
             <div className="text-center w-full">
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-wider mb-1">Loyer estimé</p>
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider mb-1">Loyer estimé</p>
               
               <div className="flex justify-center">
                 <EditableText
                     value={property.loyer_hc}
                     type="currency"
                     onSave={(val) => handleUpdateField("loyer_hc", parseFloat(val))}
-                    className="text-2xl font-bold text-slate-900 tracking-tight hover:bg-muted rounded px-2 -mx-2"
+                    className="text-2xl font-bold text-foreground tracking-tight hover:bg-muted rounded px-2 -mx-2"
                     inputClassName="text-center font-bold text-lg h-10"
                 />
               </div>
-              <span className="text-xs text-slate-400 font-normal block -mt-1 mb-1">/mois (HC)</span>
+              <span className="text-xs text-muted-foreground font-normal block -mt-1 mb-1">/mois (HC)</span>
 
               {((property as any).charges_mensuelles || 0) > 0 && (
                  <div className="flex justify-center items-center gap-1 mt-1">

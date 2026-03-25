@@ -1000,7 +1000,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                           scale: isActive ? 1.1 : 1,
                           backgroundColor: isCompleted ? "rgb(34 197 94)" : isActive ? "rgb(37 99 235)" : "rgb(226 232 240)",
                         }}
-                        className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-colors", isActive || isCompleted ? "text-white" : "text-slate-500")}
+                        className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-colors", isActive || isCompleted ? "text-white" : "text-muted-foreground")}
                       >
                         {isCompleted ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
                       </motion.div>
@@ -1640,7 +1640,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                     "gap-1.5 sm:gap-2 h-10 sm:h-9 text-xs sm:text-sm transition-all duration-300",
                     canProceed 
                       ? "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30" 
-                      : "bg-slate-300"
+                      : "bg-muted"
                   )}
                 >
                   Suivant <ArrowRight className="h-4 w-4" />

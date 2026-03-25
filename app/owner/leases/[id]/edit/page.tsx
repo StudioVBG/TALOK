@@ -276,7 +276,7 @@ export default function EditLeasePage() {
               </Select>
 
               {/* Indice de révision IRL */}
-              <div className="p-3 bg-slate-50 rounded-lg border">
+              <div className="p-3 bg-muted rounded-lg border">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium">Indice de révision</p>
@@ -291,7 +291,7 @@ export default function EditLeasePage() {
               </div>
 
               {/* Révision autorisée */}
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
+              <div className="flex items-center justify-between p-3 bg-muted rounded-lg border">
                 <div>
                   <p className="text-sm font-medium">Révision annuelle du loyer</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -332,15 +332,15 @@ export default function EditLeasePage() {
 
               {/* Affichage en lecture seule */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 bg-slate-50 rounded-lg">
+                <div className="p-4 bg-muted rounded-lg">
                   <p className="text-xs text-muted-foreground">Loyer mensuel HC</p>
                   <p className="text-xl font-bold">{(lease.loyer ?? 0).toLocaleString("fr-FR")} €</p>
                 </div>
-                <div className="p-4 bg-slate-50 rounded-lg">
+                <div className="p-4 bg-muted rounded-lg">
                   <p className="text-xs text-muted-foreground">Charges</p>
                   <p className="text-xl font-bold">{(lease.charges_forfaitaires ?? 0).toLocaleString("fr-FR")} €</p>
                 </div>
-                <div className="p-4 bg-slate-50 rounded-lg">
+                <div className="p-4 bg-muted rounded-lg">
                   <p className="text-xs text-muted-foreground">Dépôt de garantie</p>
                   <p className="text-xl font-bold">{(lease.depot_garantie ?? 0).toLocaleString("fr-FR")} €</p>
                   <p className="text-xs text-muted-foreground">Max légal : {maxDepotLegal.toLocaleString("fr-FR")} €</p>

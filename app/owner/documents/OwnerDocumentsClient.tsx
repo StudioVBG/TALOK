@@ -242,17 +242,17 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
       attestation_assurance: { label: "Assurance", filterValue: "assurance", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
       assurance_pno: { label: "Assurance", filterValue: "assurance", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
       // Identité
-      piece_identite: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
-      cni_recto: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
-      cni_verso: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
-      passeport: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
-      justificatif_domicile: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
-      rib: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
+      piece_identite: { label: "Identité", filterValue: "identite", color: "bg-muted text-foreground border-border" },
+      cni_recto: { label: "Identité", filterValue: "identite", color: "bg-muted text-foreground border-border" },
+      cni_verso: { label: "Identité", filterValue: "identite", color: "bg-muted text-foreground border-border" },
+      passeport: { label: "Identité", filterValue: "identite", color: "bg-muted text-foreground border-border" },
+      justificatif_domicile: { label: "Identité", filterValue: "identite", color: "bg-muted text-foreground border-border" },
+      rib: { label: "Identité", filterValue: "identite", color: "bg-muted text-foreground border-border" },
       // Autres
       courrier: { label: "Courrier", filterValue: "courrier", color: "bg-pink-100 text-pink-700 border-pink-200" },
       photo: { label: "Photo", filterValue: "autre", color: "bg-amber-100 text-amber-700 border-amber-200" },
     };
-    return categories[type] || { label: "Autre", filterValue: "autre", color: "bg-gray-100 text-gray-700 border-gray-200" };
+    return categories[type] || { label: "Autre", filterValue: "autre", color: "bg-muted text-foreground border-border" };
   };
 
   // Filtrer les documents (filtrage côté client, le hook gère déjà propertyId)

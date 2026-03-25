@@ -122,11 +122,11 @@ function LeaseStatusBadge({ status }: { status: string }) {
     partially_signed: { label: "Partiellement signé", className: "bg-orange-100 text-orange-700 border-orange-200" },
     fully_signed: { label: "Signé", className: "bg-indigo-100 text-indigo-700 border-indigo-200" },
     amended: { label: "Avenant", className: "bg-blue-100 text-blue-700 border-blue-200" },
-    terminated: { label: "Terminé", className: "bg-slate-100 text-slate-600 border-slate-200" },
+    terminated: { label: "Terminé", className: "bg-muted text-muted-foreground border-border" },
     invitation_pending: { label: "Invitation envoyée", className: "bg-purple-100 text-purple-700 border-purple-200" },
   };
 
-  const { label, className } = config[status] || { label: status, className: "bg-slate-100 text-slate-600" };
+  const { label, className } = config[status] || { label: status, className: "bg-muted text-muted-foreground" };
 
   return (
     <Badge variant="outline" className={cn("font-medium", className)}>
@@ -179,7 +179,7 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <h3 className="text-lg font-semibold text-foreground">{fullName}</h3>
-                <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-0.5">
+                <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
                   <Home className="h-3.5 w-3.5" />
                   {tenant.property_address}
                 </p>
@@ -199,7 +199,7 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
                       </Link>
                     </DropdownMenuItem>
                   ) : (
-                    <DropdownMenuItem disabled className="text-slate-400">
+                    <DropdownMenuItem disabled className="text-muted-foreground">
                       <Clock className="h-4 w-4 mr-2" />
                       Profil en attente
                     </DropdownMenuItem>
@@ -486,7 +486,7 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
         {/* Filtres */}
         <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Rechercher par nom, adresse, email..."
               value={searchQuery}
@@ -497,7 +497,7 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
           
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-full sm:w-[180px] bg-card">
-              <Filter className="h-4 w-4 mr-2 text-slate-400" />
+              <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
               <SelectValue placeholder="Statut" />
             </SelectTrigger>
             <SelectContent>
@@ -510,7 +510,7 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
 
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger className="w-full sm:w-[180px] bg-card">
-              <ArrowUpDown className="h-4 w-4 mr-2 text-slate-400" />
+              <ArrowUpDown className="h-4 w-4 mr-2 text-muted-foreground" />
               <SelectValue placeholder="Trier par" />
             </SelectTrigger>
             <SelectContent>

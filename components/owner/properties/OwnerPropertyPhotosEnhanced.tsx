@@ -100,7 +100,7 @@ export function OwnerPropertyPhotosEnhanced({
 
   if (!photos || photos.length === 0) {
     return (
-      <Card className="backdrop-blur-xl bg-card/80 border border-border/20 shadow-xl">
+      <Card className="backdrop-blur-xl bg-card/80 border border-border shadow-xl">
         <CardContent className="py-12 text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -136,7 +136,7 @@ export function OwnerPropertyPhotosEnhanced({
 
   return (
     <>
-      <Card className="backdrop-blur-xl bg-card/80 border border-border/20 shadow-xl overflow-hidden">
+      <Card className="backdrop-blur-xl bg-card/80 border border-border shadow-xl overflow-hidden">
         <CardContent className="p-0">
           {/* Photo principale avec animation */}
           <motion.div

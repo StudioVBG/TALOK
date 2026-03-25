@@ -262,8 +262,8 @@ export default function OwnerIdentityPage() {
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 </div>
               ) : (
-                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-                  <CreditCard className="h-5 w-5 text-slate-500" />
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                  <CreditCard className="h-5 w-5 text-muted-foreground" />
                 </div>
               )}
               <div>
@@ -322,11 +322,11 @@ export default function OwnerIdentityPage() {
                 <div className="grid grid-cols-1 gap-3">
                   <Button
                     variant="outline"
-                    className="h-24 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-slate-200 hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-600 group transition-all"
+                    className="h-24 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border hover:border-blue-400 hover:bg-blue-50/50 hover:text-blue-600 group transition-all"
                     onClick={() => setIsScanning(side)}
                   >
-                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-blue-100">
-                      <FileImage className="h-5 w-5 text-slate-500 group-hover:text-blue-600" />
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center group-hover:bg-blue-100">
+                      <FileImage className="h-5 w-5 text-muted-foreground group-hover:text-blue-600" />
                     </div>
                     <span className="text-xs font-medium">Prendre une photo</span>
                   </Button>
@@ -347,7 +347,7 @@ export default function OwnerIdentityPage() {
                       cursor-pointer transition-all
                       ${isUploading 
                         ? "border-blue-300 bg-blue-50" 
-                        : "border-slate-200 hover:border-blue-400 hover:bg-blue-50/50"
+                        : "border-border hover:border-blue-400 hover:bg-blue-50/50"
                       }
                     `}
                   >
@@ -358,8 +358,8 @@ export default function OwnerIdentityPage() {
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 px-4">
-                        <Upload className="h-4 w-4 text-slate-500" />
-                        <span className="text-xs font-medium text-slate-700">
+                        <Upload className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs font-medium text-foreground">
                           Choisir un fichier
                         </span>
                       </div>
@@ -524,7 +524,7 @@ export default function OwnerIdentityPage() {
 
         {/* Données OCR extraites */}
         {hasOcrData && rectoMeta && (
-          <Card className="border-slate-200">
+          <Card className="border-border">
             <CardContent className="py-4">
               <h3 className="font-medium mb-3 flex items-center gap-2 text-sm">
                 <Shield className="h-4 w-4" />
@@ -622,7 +622,7 @@ export default function OwnerIdentityPage() {
         </div>
 
         {/* Info */}
-        <Card className="bg-slate-50 border-slate-200">
+        <Card className="bg-muted border-border">
           <CardContent className="py-4">
             <h3 className="font-medium mb-2 flex items-center gap-2">
               <FileImage className="h-4 w-4" />

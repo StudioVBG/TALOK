@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 import { ManualPaymentDialog } from "@/components/payments";
 
 const statusConfig = {
-  draft: { label: "Brouillon", color: "bg-slate-100 text-slate-700", icon: FileText },
+  draft: { label: "Brouillon", color: "bg-muted text-foreground", icon: FileText },
   sent: { label: "Envoyée", color: "bg-blue-100 text-blue-700", icon: Send },
   paid: { label: "Payée", color: "bg-green-100 text-green-700", icon: CheckCircle2 },
   late: { label: "En retard", color: "bg-red-100 text-red-700", icon: AlertCircle },

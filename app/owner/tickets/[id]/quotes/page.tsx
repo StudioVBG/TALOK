@@ -92,7 +92,7 @@ const statusConfig = {
   },
   expired: {
     label: "Expiré",
-    color: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300",
+    color: "bg-muted text-foreground",
     icon: AlertTriangle,
   },
 };

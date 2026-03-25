@@ -402,7 +402,7 @@ export function LeaseTypeCards({ selectedType, onSelect, propertyType }: LeaseTy
                 {/* Content */}
                 <div className="p-4 space-y-3">
                   <div>
-                    <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                    <h4 className="text-base font-bold text-foreground">
                       {config.name}
                     </h4>
                     <p className="text-xs text-muted-foreground mt-0.5">

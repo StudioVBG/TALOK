@@ -85,7 +85,7 @@ export function OwnerRecentActivity({ activities }: OwnerRecentActivityProps) {
                   <Icon className={`h-4 w-4 ${config.color}`} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                  <p className="text-sm font-medium text-foreground group-hover:text-blue-600 transition-colors truncate">
                     {activity.title}
                   </p>
                   <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
@@ -93,7 +93,7 @@ export function OwnerRecentActivity({ activities }: OwnerRecentActivityProps) {
                     {timeAgo}
                   </p>
                 </div>
-                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-400 transition-colors mt-1" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors mt-1" />
               </motion.div>
             );
           })}

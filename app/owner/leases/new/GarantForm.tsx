@@ -76,7 +76,7 @@ export function GarantForm({ garant, onGarantChange, hasGarant, onHasGarantChang
   return (
     <div className="space-y-4">
       {/* Toggle Garant */}
-      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border">
+      <div className="flex items-center justify-between p-4 bg-muted rounded-lg border">
         <div className="flex items-center gap-3">
           <Shield className="h-5 w-5 text-blue-500" />
           <div>

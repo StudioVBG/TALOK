@@ -113,10 +113,10 @@ export function SignatureAlertBanner({ className, dismissible = true }: Signatur
                       <PenLine className="h-4 w-4 text-orange-600" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-medium text-slate-900 truncate">
+                      <p className="font-medium text-foreground truncate">
                         {sig.property.adresse || "Adresse non renseignée"}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-muted-foreground">
                         {sig.lease.loyer ? `${formatCurrency(sig.lease.loyer)}/mois` : "Loyer non renseigné"}
                       </p>
                     </div>
@@ -125,7 +125,7 @@ export function SignatureAlertBanner({ className, dismissible = true }: Signatur
                     <span className="text-xs font-medium text-orange-600 bg-orange-100 px-2 py-1 rounded-full">
                       À signer
                     </span>
-                    <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-orange-600 group-hover:translate-x-1 transition-all" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-orange-600 group-hover:translate-x-1 transition-all" />
                   </div>
                 </Link>
               ))}

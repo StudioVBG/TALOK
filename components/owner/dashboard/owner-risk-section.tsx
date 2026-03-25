@@ -66,7 +66,7 @@ export function OwnerRiskSection({ risks }: OwnerRiskSectionProps) {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <Card className="backdrop-blur-sm bg-card/80 border-border/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+        <Card className="backdrop-blur-sm bg-card/80 border-border shadow-xl hover:shadow-2xl transition-all duration-300">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <motion.div
@@ -95,7 +95,7 @@ export function OwnerRiskSection({ risks }: OwnerRiskSectionProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <Card className="backdrop-blur-sm bg-card/80 border-border/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+      <Card className="backdrop-blur-sm bg-card/80 border-border shadow-xl hover:shadow-2xl transition-all duration-300">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <motion.div

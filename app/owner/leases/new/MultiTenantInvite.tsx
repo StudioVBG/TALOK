@@ -196,7 +196,7 @@ export function MultiTenantInvite({
       </div>
 
       {/* Indicateur de progression */}
-      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+      <div className="h-2 bg-muted rounded-full overflow-hidden">
         <motion.div
           className="h-full bg-gradient-to-r from-violet-500 to-purple-500"
           initial={{ width: 0 }}
@@ -251,7 +251,7 @@ export function MultiTenantInvite({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="absolute top-2 right-2 h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50"
+                  className="absolute top-2 right-2 h-8 w-8 text-muted-foreground hover:text-red-500 hover:bg-red-50"
                   onClick={() => removeInvitee(invitee.tempId)}
                 >
                   <X className="h-4 w-4" />
@@ -360,14 +360,14 @@ export function MultiTenantInvite({
               </div>
 
               {/* Garant */}
-              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="mt-4 pt-4 border-t border-border">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={invitee.hasGuarantor}
                       onChange={(e) => updateInvitee(invitee.tempId, { hasGuarantor: e.target.checked })}
-                      className="rounded border-slate-300"
+                      className="rounded border-border"
                     />
                     <Shield className="h-4 w-4 text-emerald-600" />
                     Ajouter un garant
@@ -386,7 +386,7 @@ export function MultiTenantInvite({
                         placeholder="Jean Martin"
                         value={invitee.guarantorName || ""}
                         onChange={(e) => updateInvitee(invitee.tempId, { guarantorName: e.target.value })}
-                        className="bg-slate-50 dark:bg-slate-800 h-9"
+                        className="bg-muted h-9"
                       />
                     </div>
                     <div className="space-y-1">
@@ -396,7 +396,7 @@ export function MultiTenantInvite({
                         placeholder="garant@email.com"
                         value={invitee.guarantorEmail || ""}
                         onChange={(e) => updateInvitee(invitee.tempId, { guarantorEmail: e.target.value })}
-                        className="bg-slate-50 dark:bg-slate-800 h-9"
+                        className="bg-muted h-9"
                       />
                     </div>
                   </motion.div>
@@ -490,7 +490,7 @@ export function MultiTenantInvite({
                   {inv.role === "principal" ? (
                     <Crown className="h-4 w-4 text-amber-500" />
                   ) : (
-                    <User className="h-4 w-4 text-slate-400" />
+                    <User className="h-4 w-4 text-muted-foreground" />
                   )}
                   <span className="font-medium">{inv.name || inv.email}</span>
                   {inv.hasGuarantor && (

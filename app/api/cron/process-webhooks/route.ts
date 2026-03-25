@@ -55,7 +55,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("[Cron] Starting webhook processing...");
 
     // Traiter les webhooks en attente
     const processedCount = await webhookRetryService.processPendingWebhooks(20);

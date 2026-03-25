@@ -248,7 +248,7 @@ export function LeaseTimeline({ lease, signers, edl, payments }: LeaseTimelinePr
 
   return (
     <Card className="border-none shadow-sm bg-card overflow-hidden">
-      <CardHeader className="pb-2 border-b border-slate-50">
+      <CardHeader className="pb-2 border-b border-border">
         <button
           onClick={() => setIsExpanded(!isExpanded)}
           className="w-full flex items-center justify-between group"
@@ -283,34 +283,34 @@ export function LeaseTimeline({ lease, signers, edl, payments }: LeaseTimelinePr
                 {!isLast && (
                   <div className={cn(
                     "absolute left-[11px] top-6 bottom-0 w-0.5",
-                    event.completed ? colors.line : "bg-slate-100"
+                    event.completed ? colors.line : "bg-muted"
                   )} />
                 )}
                 {/* Point/Icône */}
                 <div className={cn(
                   "relative z-10 flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center",
-                  event.completed ? colors.dot : "bg-slate-100 border-2 border-dashed border-slate-300"
+                  event.completed ? colors.dot : "bg-muted border-2 border-dashed border-border"
                 )}>
-                  <Icon className={cn("h-3 w-3", event.completed ? "text-white" : "text-slate-400")} />
+                  <Icon className={cn("h-3 w-3", event.completed ? "text-white" : "text-muted-foreground")} />
                 </div>
                 {/* Contenu */}
                 <div className="flex-1 min-w-0 pt-0.5">
                   <p className={cn(
                     "text-xs font-semibold leading-tight",
-                    event.completed ? "text-slate-800" : "text-slate-400"
+                    event.completed ? "text-foreground" : "text-muted-foreground"
                   )}>
                     {event.label}
                   </p>
                   {event.description && (
                     <p className={cn(
                       "text-[10px] mt-0.5",
-                      event.completed ? "text-slate-500" : "text-slate-400"
+                      event.completed ? "text-muted-foreground" : "text-muted-foreground"
                     )}>
                       {event.description}
                     </p>
                   )}
                   {event.completed && (
-                    <p className="text-[10px] text-slate-400 mt-0.5">
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
                       {event.date.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
                     </p>
                   )}
@@ -323,7 +323,7 @@ export function LeaseTimeline({ lease, signers, edl, payments }: LeaseTimelinePr
         {!isExpanded && allEvents.length > 2 && (
           <button
             onClick={() => setIsExpanded(true)}
-            className="w-full text-center pt-2 mt-2 border-t border-slate-50 text-[10px] text-blue-600 hover:text-blue-700 font-medium"
+            className="w-full text-center pt-2 mt-2 border-t border-border text-[10px] text-blue-600 hover:text-blue-700 font-medium"
           >
             Voir tout l&apos;historique ({allEvents.length} étapes)
           </button>

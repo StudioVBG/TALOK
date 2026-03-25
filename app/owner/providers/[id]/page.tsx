@@ -535,7 +535,7 @@ export default function ProviderDetailPage() {
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-full ${provider.kyc_status === 'verified' ? 'bg-green-100' : 'bg-muted'}`}>
-                      <Shield className={`h-5 w-5 ${provider.kyc_status === 'verified' ? 'text-green-600' : 'text-gray-400'}`} />
+                      <Shield className={`h-5 w-5 ${provider.kyc_status === 'verified' ? 'text-green-600' : 'text-muted-foreground'}`} />
                     </div>
                     <div>
                       <div className="font-medium">Assurance RC Pro</div>

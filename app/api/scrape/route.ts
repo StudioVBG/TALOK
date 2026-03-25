@@ -1097,12 +1097,10 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log(`\n[Scrape] 🔍 Analyse par ${user.email}: ${url}`);
     const startTime = Date.now();
 
     // Détecter le site source
     const site = detectSourceSite(url);
-    console.log(`[Scrape] 📍 Site détecté: ${site}`);
 
     // 6. Fetch avec timeout (10 secondes)
     const controller = new AbortController();
@@ -1225,11 +1223,6 @@ export async function POST(request: Request) {
     const duration = Date.now() - startTime;
     
     // Log final
-    console.log(`[Scrape] ✅ Terminé en ${duration}ms`);
-    console.log(`[Scrape] 💰 Prix: ${merged.loyer_hc || '?'}€ | 📐 Surface: ${merged.surface || '?'}m² | 🚪 Pièces: ${merged.nb_pieces || '?'}`);
-    console.log(`[Scrape] 📍 ${merged.ville || '?'} ${merged.code_postal || ''}`);
-    console.log(`[Scrape] 📷 ${merged.photos.length} photos | 🏷️ DPE: ${merged.dpe_classe_energie || '?'} | 🔥 ${merged.chauffage_type || '?'}`);
-    console.log(`[Scrape] 📊 Score: ${merged.extraction_quality.score}/100`);
 
     return NextResponse.json({ 
       success: true, 

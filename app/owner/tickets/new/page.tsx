@@ -48,12 +48,12 @@ const categories = [
   { value: "plomberie", label: "Plomberie", icon: Droplet, color: "text-blue-500" },
   { value: "electricite", label: "Électricité", icon: Zap, color: "text-yellow-500" },
   { value: "chauffage", label: "Chauffage/Climatisation", icon: Thermometer, color: "text-orange-500" },
-  { value: "serrurerie", label: "Serrurerie", icon: Lock, color: "text-slate-500" },
+  { value: "serrurerie", label: "Serrurerie", icon: Lock, color: "text-muted-foreground" },
   { value: "autre", label: "Autre", icon: HelpCircle, color: "text-purple-500" },
 ];
 
 const priorities = [
-  { value: "basse", label: "Basse", description: "Peut attendre quelques semaines", color: "bg-slate-100 text-slate-700", hasFees: false },
+  { value: "basse", label: "Basse", description: "Peut attendre quelques semaines", color: "bg-muted text-foreground", hasFees: false },
   { value: "normale", label: "Normale", description: "À traiter dans la semaine", color: "bg-blue-100 text-blue-700", hasFees: false },
   { value: "haute", label: "Haute", description: "Urgent - sous 48h", color: "bg-orange-100 text-orange-700", hasFees: false },
   { 

@@ -759,7 +759,7 @@ export function InspectionDetailClient({ data }: Props) {
                   </div>
                 )}
 
-                <p className="text-[10px] text-slate-500 italic text-center leading-relaxed">
+                <p className="text-[10px] text-muted-foreground italic text-center leading-relaxed">
                   L&apos;état des lieux fait partie intégrante du bail. Les deux parties doivent signer pour sceller le document.
                 </p>
               </CardContent>
@@ -811,7 +811,7 @@ export function InspectionDetailClient({ data }: Props) {
                             className="relative aspect-square rounded-lg bg-muted border border-border overflow-hidden group"
                           >
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <Image className="h-5 w-5 text-slate-300" />
+                              <Image className="h-5 w-5 text-muted-foreground" />
                             </div>
                             {media.room_name && (
                               <div className="absolute bottom-0 inset-x-0 bg-black/50 px-1 py-0.5">
@@ -844,7 +844,7 @@ export function InspectionDetailClient({ data }: Props) {
                 ) : (
                   <div className="text-center py-4 space-y-3">
                     <div className="mx-auto h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-                      <Camera className="h-5 w-5 text-slate-400" />
+                      <Camera className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
                       <p className="text-xs font-medium text-foreground">Aucune photo</p>
@@ -870,7 +870,7 @@ export function InspectionDetailClient({ data }: Props) {
             <Card className="border-none shadow-sm bg-card overflow-hidden">
               <CardHeader className="pb-2 border-b border-border">
                 <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                  <Home className="h-3 w-3 text-slate-400" />
+                  <Home className="h-3 w-3 text-muted-foreground" />
                   Logement concerné
                 </CardTitle>
               </CardHeader>
@@ -894,7 +894,7 @@ export function InspectionDetailClient({ data }: Props) {
               <Card className="border-none shadow-sm bg-card overflow-hidden">
                 <CardHeader className="pb-2 border-b border-border">
                   <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                    <Home className="h-3 w-3 text-slate-400" />
+                    <Home className="h-3 w-3 text-muted-foreground" />
                     Données techniques
                   </CardTitle>
                 </CardHeader>
@@ -902,7 +902,7 @@ export function InspectionDetailClient({ data }: Props) {
                   {unifiedMetersForDisplay.map((meter: any, index: number) => (
                     <div key={meter.id || `meter-${index}`} className="p-2 rounded-lg border border-border bg-muted/50">
                       <div className="flex justify-between items-start mb-1">
-                        <span className="text-[10px] font-bold uppercase text-slate-500">
+                        <span className="text-[10px] font-bold uppercase text-muted-foreground">
                           {meter.type === 'electricity' ? 'Électricité' : meter.type === 'gas' ? 'Gaz' : meter.type === 'water' ? 'Eau' : meter.type}
                         </span>
                         <Badge variant={meter.hasReading ? "secondary" : "outline"} className={`text-[10px] h-4 px-1 ${meter.hasReading ? "bg-green-100 text-green-700 border-none" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
