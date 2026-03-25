@@ -126,7 +126,7 @@ export function OwnerPortfolioByModule({ modules }: OwnerPortfolioByModuleProps)
                       </motion.div>
                       <h3 className="font-semibold">{module.label}</h3>
                     </div>
-                    <Badge variant="outline" className="bg-white/50">
+                    <Badge variant="outline" className="bg-card/50">
                       {module.module}
                     </Badge>
                   </div>

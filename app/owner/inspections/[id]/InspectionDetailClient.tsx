@@ -626,7 +626,7 @@ export function InspectionDetailClient({ data }: Props) {
 
           {/* Colonne de GAUCHE : L'APERÇU RÉEL DU DOCUMENT — Affiché en premier sur mobile */}
           <div className="lg:col-span-8 xl:col-span-9 order-1 lg:order-1">
-            <div className="bg-white rounded-xl shadow-sm border border-border overflow-hidden min-h-[300px] sm:min-h-[500px] lg:min-h-[800px]">
+            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden min-h-[300px] sm:min-h-[500px] lg:min-h-[800px]">
               <EDLPreview 
                 edlData={edlTemplateData} 
                 edlId={edl.id} 

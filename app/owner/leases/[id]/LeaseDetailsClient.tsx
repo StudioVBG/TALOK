@@ -148,7 +148,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; description?
   },
   archived: {
     label: "Archivé",
-    color: "bg-gray-200 text-gray-600 border-gray-300",
+    color: "bg-muted text-muted-foreground border-border",
     description: "Le bail est archivé",
   },
   cancelled: {
@@ -702,7 +702,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                     {readinessState.hero.highlights.map((highlight) => (
                       <div
                         key={highlight}
-                        className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground"
+                        className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground"
                       >
                         <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
                         {highlight}
@@ -838,7 +838,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : Contrat */}
               <TabsContent value="contrat" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-border overflow-hidden flex-1 flex flex-col min-h-[80vh]">
+                <div className="bg-card rounded-b-xl shadow-sm border border-t-0 border-border overflow-hidden flex-1 flex flex-col min-h-[80vh]">
                   {isSealed && signedPdfPath ? (
                     <div className="flex flex-col h-full">
                       <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-emerald-50 to-green-50">
@@ -910,7 +910,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : EDL d'entrée */}
               <TabsContent value="edl" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-border lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
+                <div className="bg-card rounded-b-xl shadow-sm border border-t-0 border-border lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
                   <LeaseEdlTab
                     leaseId={leaseId}
                     propertyId={property.id}
@@ -927,7 +927,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : Documents */}
               <TabsContent value="documents" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-border lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
+                <div className="bg-card rounded-b-xl shadow-sm border border-t-0 border-border lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
                   <LeaseDocumentsTab
                     leaseId={leaseId}
                     propertyId={property.id}
@@ -940,7 +940,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : Paiements */}
               <TabsContent value="paiements" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-border lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
+                <div className="bg-card rounded-b-xl shadow-sm border border-t-0 border-border lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
                   <LeasePaymentsTab
                     leaseId={leaseId}
                     payments={payments || []}

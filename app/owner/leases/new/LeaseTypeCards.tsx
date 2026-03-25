@@ -346,7 +346,7 @@ export function LeaseTypeCards({ selectedType, onSelect, propertyType }: LeaseTy
                 "relative bg-card/90 backdrop-blur-xl rounded-xl border-2 overflow-hidden shadow-lg transition-all duration-300",
                 isSelected 
                   ? "border-primary ring-2 ring-primary/20" 
-                  : "border-white/30/50 hover:border-border"
+                  : "border-border/30 hover:border-border"
               )}>
                 {/* Header avec gradient */}
                 <div

@@ -1567,7 +1567,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
 
                 {/* Colonne Droite : Live Preview avec onglets Bail / EDL */}
                 <div className="lg:col-span-7 bg-muted rounded-xl border overflow-hidden flex flex-col min-h-[400px] sm:min-h-[500px] lg:h-full">
-                  <div className="bg-border px-3 sm:px-4 py-2 border-b flex justify-between items-center">
+                  <div className="bg-muted px-3 sm:px-4 py-2 border-b flex justify-between items-center">
                     {/* Onglets Bail / EDL — touch-friendly */}
                     <div className="flex items-center gap-1">
                       <button

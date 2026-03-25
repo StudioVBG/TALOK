@@ -466,7 +466,7 @@ export default function ProviderDetailPage() {
                     {[1, 2, 3, 4, 5].map(i => (
                       <Star 
                         key={i} 
-                        className={`h-4 w-4 ${i <= Math.round(provider.rating) ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}`} 
+                        className={`h-4 w-4 ${i <= Math.round(provider.rating) ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground'}`} 
                       />
                     ))}
                   </div>
@@ -658,7 +658,7 @@ function ReviewCard({ review, showFull = false }: { review: Review; showFull?: b
               {[1, 2, 3, 4, 5].map(i => (
                 <Star 
                   key={i} 
-                  className={`h-4 w-4 ${i <= review.rating ? 'text-amber-400 fill-amber-400' : 'text-gray-300'}`} 
+                  className={`h-4 w-4 ${i <= review.rating ? 'text-amber-400 fill-amber-400' : 'text-muted-foreground'}`} 
                 />
               ))}
             </div>

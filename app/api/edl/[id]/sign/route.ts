@@ -625,6 +625,35 @@ export async function POST(
       } catch (postSignErr) {
         console.warn("[sign-edl] Exception post-signature EDL (non bloquant):", String(postSignErr));
       }
+
+      // Générer la facture initiale pour le bail (si pas encore créée)
+      if (edl.lease_id) {
+        try {
+          const { ensureInitialInvoiceForLease } = await import("@/lib/services/lease-initial-invoice.service");
+          const invoiceResult = await ensureInitialInvoiceForLease(serviceClient as any, edl.lease_id);
+          console.log("[sign-edl] Facture initiale:", {
+            invoiceId: invoiceResult.invoiceId,
+            created: invoiceResult.created,
+            amount: invoiceResult.amount,
+          });
+
+          if (invoiceResult.created) {
+            await serviceClient.from("outbox").insert({
+              event_type: "Invoice.InitialCreated",
+              payload: {
+                invoice_id: invoiceResult.invoiceId,
+                lease_id: edl.lease_id,
+                tenant_profile_id: invoiceResult.tenantProfileId,
+                owner_profile_id: invoiceResult.ownerProfileId,
+                amount: invoiceResult.amount,
+                deposit_amount: invoiceResult.depositAmount,
+              },
+            } as any);
+          }
+        } catch (invoiceErr) {
+          console.error("[sign-edl] Erreur génération facture initiale:", String(invoiceErr));
+        }
+      }
     }
 
     // Journaliser

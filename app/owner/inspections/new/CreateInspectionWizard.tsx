@@ -2013,7 +2013,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                 )}
                 {/* Indicateur de retry */}
                 {isRetrying && (
-                  <p className="text-sm text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-2">
+                  <p className="text-sm text-amber-600 mt-2 flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Nouvelle tentative en cours ({retryCount + 1}/3)...
                   </p>
@@ -2021,7 +2021,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
               </div>
 
               {/* Barre de progression linéaire */}
-              <div className="w-full bg-border rounded-full h-3 overflow-hidden">
+              <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-primary to-blue-500 rounded-full transition-all duration-300 ease-out"
                   style={{ width: `${uploadProgress}%` }}

@@ -162,7 +162,7 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
           <div className="relative h-20 bg-gradient-to-br from-slate-800 via-slate-700 to-indigo-800">
             <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
             <div className="absolute -bottom-8 left-6">
-              <Avatar className="h-16 w-16 border-4 border-white shadow-lg">
+              <Avatar className="h-16 w-16 border-4 border-border shadow-lg">
                 <AvatarImage src={tenant.avatar_url || undefined} />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-lg font-bold">
                   {initials}
@@ -300,7 +300,7 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
           </div>
 
           {/* Footer avec actions rapides */}
-          <div className="px-6 py-3 bg-muted/50 border-t border-slate-100 flex items-center justify-between">
+          <div className="px-6 py-3 bg-muted/50 border-t border-border flex items-center justify-between">
             <div className="text-xs text-muted-foreground">
               {tenant.last_payment_date 
                 ? `Dernier paiement: ${formatDateShort(tenant.last_payment_date)}`

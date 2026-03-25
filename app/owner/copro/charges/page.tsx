@@ -206,7 +206,7 @@ export default function BailleurChargesPage() {
           className="flex gap-4"
         >
           <Select value={selectedUnit || ''} onValueChange={setSelectedUnit}>
-            <SelectTrigger className="w-64 bg-white/5 border-white/10 text-white">
+            <SelectTrigger className="w-64 bg-card/5 border-border/10 text-white">
               <SelectValue placeholder="Sélectionner un lot" />
             </SelectTrigger>
             <SelectContent className="bg-slate-800 border-slate-700">
@@ -223,7 +223,7 @@ export default function BailleurChargesPage() {
           </Select>
 
           <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
-            <SelectTrigger className="w-40 bg-white/5 border-white/10 text-white">
+            <SelectTrigger className="w-40 bg-card/5 border-border/10 text-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-slate-800 border-slate-700">
@@ -249,7 +249,7 @@ export default function BailleurChargesPage() {
               transition={{ delay: 0.2 }}
               className="grid grid-cols-1 md:grid-cols-3 gap-4"
             >
-              <Card className="border-white/10 bg-white/5">
+              <Card className="border-border/10 bg-card/5">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -265,7 +265,7 @@ export default function BailleurChargesPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-gradient-to-br from-emerald-500/20 to-emerald-600/10">
+              <Card className="border-border/10 bg-gradient-to-br from-emerald-500/20 to-emerald-600/10">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -281,7 +281,7 @@ export default function BailleurChargesPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-gradient-to-br from-red-500/20 to-red-600/10">
+              <Card className="border-border/10 bg-gradient-to-br from-red-500/20 to-red-600/10">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
@@ -304,7 +304,7 @@ export default function BailleurChargesPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Card className="border-white/10 bg-white/5">
+              <Card className="border-border/10 bg-card/5">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-muted-foreground">Taux de récupérabilité</span>
@@ -328,7 +328,7 @@ export default function BailleurChargesPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <Card className="border-white/10 bg-white/5">
+              <Card className="border-border/10 bg-card/5">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
                     <FileText className="w-5 h-5 text-violet-400" />
@@ -400,10 +400,10 @@ export default function BailleurChargesPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
             >
-              <Card className="border-white/10 bg-white/5">
+              <Card className="border-border/10 bg-card/5">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-white">Détail par période</CardTitle>
-                  <Button variant="outline" size="sm" className="border-white/10 text-white">
+                  <Button variant="outline" size="sm" className="border-border/10 text-white">
                     <Download className="w-4 h-4 mr-2" />
                     Exporter
                   </Button>
@@ -434,7 +434,7 @@ export default function BailleurChargesPage() {
                   <div className="hidden md:block">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-white/10">
+                      <TableRow className="border-border/10">
                         <TableHead className="text-muted-foreground">Période</TableHead>
                         <TableHead className="text-muted-foreground">Poste</TableHead>
                         <TableHead className="text-muted-foreground text-right">Montant copro</TableHead>
@@ -445,7 +445,7 @@ export default function BailleurChargesPage() {
                     </TableHeader>
                     <TableBody>
                       {charges.map((charge) => (
-                        <TableRow key={charge.id} className="border-white/10">
+                        <TableRow key={charge.id} className="border-border/10">
                           <TableCell className="text-white">{charge.period}</TableCell>
                           <TableCell className="text-slate-300">{charge.label}</TableCell>
                           <TableCell className="text-right text-white">
@@ -510,17 +510,17 @@ function PageSkeleton() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        <Skeleton className="h-12 w-64 bg-white/10" />
+        <Skeleton className="h-12 w-64 bg-card/10" />
         <div className="flex gap-4">
-          <Skeleton className="h-10 w-64 bg-white/10" />
-          <Skeleton className="h-10 w-40 bg-white/10" />
+          <Skeleton className="h-10 w-64 bg-card/10" />
+          <Skeleton className="h-10 w-40 bg-card/10" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-28 bg-white/10" />
+            <Skeleton key={i} className="h-28 bg-card/10" />
           ))}
         </div>
-        <Skeleton className="h-64 bg-white/10" />
+        <Skeleton className="h-64 bg-card/10" />
       </div>
     </div>
   );

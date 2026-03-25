@@ -90,13 +90,13 @@ export default function OwnerProfileOnboardingPage() {
           </div>
           
           <div className="space-y-4">
-            <div className="p-4 bg-card rounded-xl shadow-sm border border-slate-100">
+            <div className="p-4 bg-card rounded-xl shadow-sm border border-border">
               <div className="text-sm font-medium text-muted-foreground mb-1">Type</div>
               <div className="text-lg font-semibold capitalize">{formData.type}</div>
             </div>
             
             {formData.type === 'societe' && (
-               <div className="p-4 bg-card rounded-xl shadow-sm border border-slate-100">
+               <div className="p-4 bg-card rounded-xl shadow-sm border border-border">
                 <div className="text-sm font-medium text-muted-foreground mb-1">Société</div>
                 <div className="font-semibold">{formData.raison_sociale || "..."}</div>
                 {formData.siret && <div className="text-sm text-muted-foreground font-mono mt-1">{formData.siret}</div>}
