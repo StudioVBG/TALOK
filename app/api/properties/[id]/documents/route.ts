@@ -121,7 +121,6 @@ export async function GET(
           errorWithCollection.message?.includes("column") ||
           errorWithCollection.code === "42703"
         ) {
-          console.log(`[GET /api/properties/${propertyId}/documents] Colonne collection manquante, réessai sans filtre`);
           const { data: docsWithoutCollection, error: errorWithoutCollection } = await serviceClient
             .from("documents")
             .select("*")

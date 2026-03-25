@@ -32,7 +32,6 @@ const sendMessageSchema = z.object({
 // ============================================
 
 export async function POST(request: NextRequest) {
-  console.log("[API Assistant] POST request received");
   
   try {
     // Vérifier la configuration OpenAI
@@ -44,7 +43,6 @@ export async function POST(request: NextRequest) {
         { status: 503 }
       );
     }
-    console.log("[API Assistant] OpenAI key configured ✓");
     
     // Authentification
     const supabase = await createClient();
@@ -60,7 +58,6 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    console.log("[API Assistant] User authenticated:", user.id);
     
     // Récupérer le profil
     const { data: profile, error: profileError } = await supabase
@@ -79,11 +76,9 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
-    console.log("[API Assistant] Profile found:", profile.id, profile.role);
     
     // Parser et valider le body
     const body = await request.json();
-    console.log("[API Assistant] Request body:", { message: body.message?.substring(0, 50), threadId: body.threadId });
     
     const validation = sendMessageSchema.safeParse(body);
     
@@ -101,7 +96,6 @@ export async function POST(request: NextRequest) {
     let currentThreadId = threadId;
     
     if (!currentThreadId) {
-      console.log("[API Assistant] Creating new thread...");
       try {
         const thread = await assistantService.createThread(
           profile.id,
@@ -117,7 +111,6 @@ export async function POST(request: NextRequest) {
         }
         
         currentThreadId = thread.id;
-        console.log("[API Assistant] Thread created:", currentThreadId);
       } catch (threadError: any) {
         console.error("[API Assistant] Thread creation error:", threadError.message);
         
@@ -132,7 +125,6 @@ export async function POST(request: NextRequest) {
         throw threadError;
       }
     } else {
-      console.log("[API Assistant] Using existing thread:", currentThreadId);
       // Vérifier que le thread existe et appartient à l'utilisateur
       const { data: existingThread, error: threadError } = await supabase
         .from("assistant_threads")
@@ -169,8 +161,6 @@ export async function POST(request: NextRequest) {
       ...context,
     };
     
-    console.log("[API Assistant] Sending message to assistant...");
-    console.log("[API Assistant] Context:", { role: fullContext.role, profileId: fullContext.profileId });
     
     // Envoyer le message à l'assistant
     try {
@@ -180,7 +170,6 @@ export async function POST(request: NextRequest) {
         fullContext
       );
       
-      console.log("[API Assistant] Response received, tools used:", result.toolsUsed);
       
       return NextResponse.json({
         success: true,

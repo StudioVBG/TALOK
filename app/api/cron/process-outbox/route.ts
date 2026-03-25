@@ -85,19 +85,16 @@ async function processEvent(event: any): Promise<void> {
     case "Lease.SealRetry": {
       const { handleLeaseFullySigned } = await import("@/lib/services/lease-post-signature.service");
       await handleLeaseFullySigned(payload.lease_id);
-      console.log(`[Outbox] Lease.SealRetry completed for ${payload.lease_id}`);
       break;
     }
 
     case "Lease.FullySigned": {
       // Notifications already handled inline in signing routes
-      console.log(`[Outbox] Lease.FullySigned for ${payload.lease_id} (user: ${payload.user_id})`);
       break;
     }
 
     case "Lease.TenantSigned":
     case "Lease.OwnerSigned": {
-      console.log(`[Outbox] ${event_type} for lease ${payload.lease_id}`);
       break;
     }
 

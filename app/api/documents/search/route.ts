@@ -74,7 +74,6 @@ export async function GET(request: Request) {
       results = (data as any[]) || [];
     } catch (rpcError) {
       // Fallback sur recherche LIKE si la fonction RPC n'existe pas
-      console.log("Fallback sur recherche LIKE:", rpcError);
 
       let baseQuery = supabase
         .from("documents")

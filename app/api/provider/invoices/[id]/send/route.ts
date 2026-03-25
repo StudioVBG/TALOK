@@ -103,7 +103,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // TODO: Envoyer l'email via le système de notifications
     // Pour l'instant, on log simplement l'action
-    console.log(`Invoice ${invoice.invoice_number} sent to ${sendToEmail}`);
 
     // Créer une notification pour le destinataire
     if (invoice.owner?.id) {
