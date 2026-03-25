@@ -84,32 +84,6 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
   const [gedUploadOpen, setGedUploadOpen] = useState(false);
   const [gedUploadDefaultType, setGedUploadDefaultType] = useState<string | undefined>();
 
-  // Détecter les assurances expirées dans les documents de la bibliothèque
-  // (attestations d'assurance dont la date de création > 1 an = probablement expiré)
-  const INSURANCE_TYPES = ["attestation_assurance", "assurance", "assurance_pno"];
-  const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
-  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
-  const now = new Date();
-
-  const legacyInsuranceAlerts = (documents || []).filter((doc: any) => {
-    if (!INSURANCE_TYPES.includes(doc.type)) return false;
-    // Si le document a une expiry_date explicite, l'utiliser
-    if (doc.expiry_date) {
-      return new Date(doc.expiry_date) < now;
-    }
-    // Sinon, les attestations d'assurance sont typiquement valides 1 an
-    if (doc.created_at) {
-      const createdAt = new Date(doc.created_at);
-      return (now.getTime() - createdAt.getTime()) > ONE_YEAR_MS;
-    }
-    return false;
-  });
-
-  // Alert badge count (inclure les alertes GED + les assurances legacy expirées)
-  const alertCount = (alertsSummary
-    ? alertsSummary.expired_count + alertsSummary.expiring_soon_count
-    : 0) + legacyInsuranceAlerts.length;
-
   // GED handlers
   const handleGedUploadForType = useCallback((docType: string) => {
     setGedUploadDefaultType(docType);
@@ -123,6 +97,23 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
     leaseId: leaseIdFilter,
   });
   const deleteDocumentMutation = useDeleteDocument();
+
+  // Détecter les assurances expirées dans les documents de la bibliothèque
+  const INSURANCE_TYPES = ["attestation_assurance", "assurance", "assurance_pno"];
+  const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+  const now = new Date();
+
+  const legacyInsuranceAlerts = (documents || []).filter((doc: any) => {
+    if (!INSURANCE_TYPES.includes(doc.type)) return false;
+    if (doc.expiry_date) return new Date(doc.expiry_date) < now;
+    if (doc.created_at) return (now.getTime() - new Date(doc.created_at).getTime()) > ONE_YEAR_MS;
+    return false;
+  });
+
+  // Alert badge count (GED + assurances legacy expirées)
+  const alertCount = (alertsSummary
+    ? alertsSummary.expired_count + alertsSummary.expiring_soon_count
+    : 0) + legacyInsuranceAlerts.length;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
