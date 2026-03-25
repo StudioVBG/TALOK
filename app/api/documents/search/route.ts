@@ -74,7 +74,6 @@ export async function GET(request: Request) {
       results = (data as any[]) || [];
     } catch (rpcError) {
       // Fallback sur recherche LIKE si la fonction RPC n'existe pas
-      console.log("Fallback sur recherche LIKE:", rpcError);
 
       // Sanitize query for PostgREST LIKE: escape %, _, and backslash
       const safeQuery = query

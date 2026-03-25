@@ -327,7 +327,6 @@ export const POST = withSecurity(async function POST(request: Request) {
         (document as any).metadata = ocrMetadata;
         (document as any).verification_status = verificationStatus;
 
-        console.log(`[POST /api/documents/upload] OCR completed for ${type}: confidence=${ocrResult.confidence}, valid=${ocrResult.isValid}, match=${identityMatch?.is_verified || 'n/a'}`);
       } catch (ocrError) {
         // L'OCR est non-bloquant : si ça échoue, le document est quand même uploadé
         console.error("[POST /api/documents/upload] OCR processing failed (non-blocking):", ocrError);

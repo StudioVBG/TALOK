@@ -109,7 +109,6 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("[POST /api/me/profile] Profil auto-créé pour user_id:", user.id, "role:", role);
 
     const profileId = (newProfile as { id: string }).id;
 

@@ -105,7 +105,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Send the invoice email to the owner
     try {
-      const providerName = `${profile.id}`; // Will be replaced below
       const { data: providerProf } = await supabase
         .from("profiles")
         .select("prenom, nom")
