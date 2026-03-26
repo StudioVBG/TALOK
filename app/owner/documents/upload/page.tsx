@@ -178,7 +178,7 @@ export default function OwnerDocumentsUploadPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold text-foreground">
             Téléverser un document
           </h1>
           <p className="text-muted-foreground mt-2 text-lg">
@@ -226,12 +226,12 @@ export default function OwnerDocumentsUploadPage() {
               )}>
                 <Upload className={cn(
                   "h-10 w-10 transition-colors",
-                  isDragOver ? "text-indigo-600" : "text-slate-400"
+                  isDragOver ? "text-indigo-600" : "text-muted-foreground"
                 )} />
               </div>
               
               <div>
-                <p className="text-lg font-medium text-slate-700">
+                <p className="text-lg font-medium text-foreground">
                   {isDragOver ? "Relâchez pour ajouter" : "Glissez vos fichiers ici"}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">

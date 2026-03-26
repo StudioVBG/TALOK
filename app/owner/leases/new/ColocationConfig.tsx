@@ -162,18 +162,18 @@ export function ColocationConfig({
               "relative flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all",
               config.bailType === "unique"
                 ? "border-violet-500 bg-violet-50/50 dark:bg-violet-950/30"
-                : "border-slate-200 hover:border-slate-300 dark:border-slate-700"
+                : "border-border hover:border-border"
             )}
           >
             <RadioGroupItem value="unique" className="absolute top-4 right-4" />
             <div className="flex items-center gap-2 mb-2">
               <div className={cn(
                 "p-2 rounded-lg",
-                config.bailType === "unique" ? "bg-violet-100" : "bg-slate-100"
+                config.bailType === "unique" ? "bg-violet-100" : "bg-muted"
               )}>
                 <FileText className={cn(
                   "h-5 w-5",
-                  config.bailType === "unique" ? "text-violet-600" : "text-slate-600"
+                  config.bailType === "unique" ? "text-violet-600" : "text-muted-foreground"
                 )} />
               </div>
               <span className="font-semibold">Bail unique</span>
@@ -195,18 +195,18 @@ export function ColocationConfig({
               "relative flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all",
               config.bailType === "individuel"
                 ? "border-violet-500 bg-violet-50/50 dark:bg-violet-950/30"
-                : "border-slate-200 hover:border-slate-300 dark:border-slate-700"
+                : "border-border hover:border-border"
             )}
           >
             <RadioGroupItem value="individuel" className="absolute top-4 right-4" />
             <div className="flex items-center gap-2 mb-2">
               <div className={cn(
                 "p-2 rounded-lg",
-                config.bailType === "individuel" ? "bg-violet-100" : "bg-slate-100"
+                config.bailType === "individuel" ? "bg-violet-100" : "bg-muted"
               )}>
                 <Home className={cn(
                   "h-5 w-5",
-                  config.bailType === "individuel" ? "text-violet-600" : "text-slate-600"
+                  config.bailType === "individuel" ? "text-violet-600" : "text-muted-foreground"
                 )} />
               </div>
               <span className="font-semibold">Baux individuels</span>
@@ -330,7 +330,7 @@ export function ColocationConfig({
               "relative flex flex-col p-3 rounded-lg border-2 cursor-pointer transition-all",
               config.splitMode === "equal"
                 ? "border-emerald-500 bg-emerald-50/50"
-                : "border-slate-200 hover:border-slate-300"
+                : "border-border hover:border-border"
             )}
           >
             <RadioGroupItem value="equal" className="absolute top-3 right-3 h-4 w-4" />
@@ -349,7 +349,7 @@ export function ColocationConfig({
               "relative flex flex-col p-3 rounded-lg border-2 cursor-pointer transition-all",
               config.splitMode === "by_room"
                 ? "border-emerald-500 bg-emerald-50/50"
-                : "border-slate-200 hover:border-slate-300"
+                : "border-border hover:border-border"
             )}
           >
             <RadioGroupItem value="by_room" className="absolute top-3 right-3 h-4 w-4" />
@@ -365,7 +365,7 @@ export function ColocationConfig({
               "relative flex flex-col p-3 rounded-lg border-2 cursor-pointer transition-all",
               config.splitMode === "custom"
                 ? "border-emerald-500 bg-emerald-50/50"
-                : "border-slate-200 hover:border-slate-300"
+                : "border-border hover:border-border"
             )}
           >
             <RadioGroupItem value="custom" className="absolute top-3 right-3 h-4 w-4" />
@@ -382,7 +382,7 @@ export function ColocationConfig({
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-800"
+        className="p-4 rounded-xl bg-muted border border-border"
       >
         <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
           <Check className="h-4 w-4 text-emerald-600" />

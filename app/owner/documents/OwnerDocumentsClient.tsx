@@ -84,11 +84,6 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
   const [gedUploadOpen, setGedUploadOpen] = useState(false);
   const [gedUploadDefaultType, setGedUploadDefaultType] = useState<string | undefined>();
 
-  // Alert badge count
-  const alertCount = alertsSummary
-    ? alertsSummary.expired_count + alertsSummary.expiring_soon_count
-    : 0;
-
   // GED handlers
   const handleGedUploadForType = useCallback((docType: string) => {
     setGedUploadDefaultType(docType);
@@ -102,6 +97,23 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
     leaseId: leaseIdFilter,
   });
   const deleteDocumentMutation = useDeleteDocument();
+
+  // Détecter les assurances expirées dans les documents de la bibliothèque
+  const INSURANCE_TYPES = ["attestation_assurance", "assurance", "assurance_pno"];
+  const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+  const now = new Date();
+
+  const legacyInsuranceAlerts = (documents || []).filter((doc: any) => {
+    if (!INSURANCE_TYPES.includes(doc.type)) return false;
+    if (doc.expiry_date) return new Date(doc.expiry_date) < now;
+    if (doc.created_at) return (now.getTime() - new Date(doc.created_at).getTime()) > ONE_YEAR_MS;
+    return false;
+  });
+
+  // Alert badge count (GED + assurances legacy expirées)
+  const alertCount = (alertsSummary
+    ? alertsSummary.expired_count + alertsSummary.expiring_soon_count
+    : 0) + legacyInsuranceAlerts.length;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -242,17 +254,17 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
       attestation_assurance: { label: "Assurance", filterValue: "assurance", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
       assurance_pno: { label: "Assurance", filterValue: "assurance", color: "bg-cyan-100 text-cyan-700 border-cyan-200" },
       // Identité
-      piece_identite: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
-      cni_recto: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
-      cni_verso: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
-      passeport: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
-      justificatif_domicile: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
-      rib: { label: "Identité", filterValue: "identite", color: "bg-slate-100 text-slate-700 border-slate-200" },
+      piece_identite: { label: "Identité", filterValue: "identite", color: "bg-muted text-foreground border-border" },
+      cni_recto: { label: "Identité", filterValue: "identite", color: "bg-muted text-foreground border-border" },
+      cni_verso: { label: "Identité", filterValue: "identite", color: "bg-muted text-foreground border-border" },
+      passeport: { label: "Identité", filterValue: "identite", color: "bg-muted text-foreground border-border" },
+      justificatif_domicile: { label: "Identité", filterValue: "identite", color: "bg-muted text-foreground border-border" },
+      rib: { label: "Identité", filterValue: "identite", color: "bg-muted text-foreground border-border" },
       // Autres
       courrier: { label: "Courrier", filterValue: "courrier", color: "bg-pink-100 text-pink-700 border-pink-200" },
       photo: { label: "Photo", filterValue: "autre", color: "bg-amber-100 text-amber-700 border-amber-200" },
     };
-    return categories[type] || { label: "Autre", filterValue: "autre", color: "bg-gray-100 text-gray-700 border-gray-200" };
+    return categories[type] || { label: "Autre", filterValue: "autre", color: "bg-muted text-foreground border-border" };
   };
 
   // Filtrer les documents (filtrage côté client, le hook gère déjà propertyId)
@@ -296,6 +308,27 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
     return DOCUMENT_TYPES[type] || type;
   };
 
+  // Formater un nom de fichier technique en nom lisible
+  const formatDocumentTitle = (doc: any): string => {
+    // 1. Utiliser le titre lisible s'il existe et n'est pas un nom technique
+    if (doc.display_name) return doc.display_name;
+    if (doc.name && !doc.name.includes("_") && !doc.name.match(/^[A-Z_]+$/)) return doc.name;
+
+    // 2. Utiliser le type label comme titre
+    const typeLabel = getTypeLabel(doc.type || "");
+    const tenantName = getTenantName(doc);
+
+    // 3. Si le titre est un nom technique (ATTESTATION_ASSURANCE, etc.), le formater
+    if (doc.title) {
+      const isRawFilename = doc.title.match(/^[A-Z_]+$/) || doc.title.includes("_");
+      if (!isRawFilename) return doc.title;
+    }
+
+    // 4. Construire un titre lisible à partir du type + locataire
+    if (tenantName) return `${typeLabel} — ${tenantName}`;
+    return typeLabel;
+  };
+
   // Helper pour obtenir le nom du locataire
   const getTenantName = (doc: any) => {
     // 1. Données enrichies par la jointure
@@ -330,7 +363,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
                       <FileText className="h-5 w-5" />
                   </div>
                   <div className="space-y-1">
-                      <span className="font-semibold text-slate-900 block truncate max-w-[250px]" title={title}>
+                      <span className="font-semibold text-foreground block truncate max-w-[250px]" title={title}>
                         {title}
                       </span>
                       <div className="flex items-center gap-2">
@@ -355,7 +388,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
     {
         header: "Bien associé",
         cell: (doc: any) => (
-            <span className="text-sm text-slate-600 font-medium">
+            <span className="text-sm text-muted-foreground font-medium">
                 {doc.properties?.adresse_complete || doc.property?.adresse_complete || "Général"}
             </span>
         )
@@ -363,7 +396,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
     {
         header: "Date",
         cell: (doc: any) => (
-            <span className="text-sm text-slate-500">
+            <span className="text-sm text-muted-foreground">
                 {doc.created_at ? formatDateShort(doc.created_at) : "-"}
             </span>
         )
@@ -434,7 +467,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <span className="block">Vous êtes sur le point de supprimer :</span>
-                <span className="block font-medium text-slate-900">
+                <span className="block font-medium text-foreground">
                   {documentToDelete?.title || getTypeLabel(documentToDelete?.type || "")}
                 </span>
                 <span className="block text-red-600 font-medium mt-4">
@@ -466,12 +499,12 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50 min-h-screen">
+      <div className="bg-background min-h-screen">
         <div className="space-y-8 container mx-auto px-4 py-8 max-w-7xl">
           {/* Header */}
           <div className="flex items-center justify-between animate-in fade-in slide-in-from-top-4 duration-700">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold text-foreground">
                 Documents
               </h1>
               <p className="text-muted-foreground mt-2 text-lg">
@@ -620,14 +653,28 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
                     d.expiry_status === "expiring_soon" ||
                     d.expiry_status === "expiring_notice"
                 );
+
+                // Ajouter les assurances expirées de la bibliothèque (legacy)
+                const legacyAlerts: typeof alertDocs = legacyInsuranceAlerts
+                  .filter((doc: any) => !gedDocuments.some((g) => g.id === doc.id))
+                  .map((doc: any) => ({
+                    ...doc,
+                    expiry_status: "expired" as const,
+                    type_label: getTypeLabel(doc.type || ""),
+                    title: doc.title || getTypeLabel(doc.type || ""),
+                    property: doc.properties || doc.property,
+                    valid_until: doc.expiry_date || doc.created_at,
+                  }));
+                const allAlertDocs = [...alertDocs, ...legacyAlerts];
+
                 const sortOrder = { expired: 0, expiring_soon: 1, expiring_notice: 2 };
-                alertDocs.sort(
+                allAlertDocs.sort(
                   (a, b) =>
                     (sortOrder[a.expiry_status as keyof typeof sortOrder] ?? 3) -
                     (sortOrder[b.expiry_status as keyof typeof sortOrder] ?? 3)
                 );
 
-                if (alertDocs.length === 0) {
+                if (allAlertDocs.length === 0) {
                   return (
                     <EmptyState
                       title="Aucune alerte"
@@ -637,9 +684,9 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
                   );
                 }
 
-                const expired = alertDocs.filter((d) => d.expiry_status === "expired");
-                const expiringSoon = alertDocs.filter((d) => d.expiry_status === "expiring_soon");
-                const expiringNotice = alertDocs.filter((d) => d.expiry_status === "expiring_notice");
+                const expired = allAlertDocs.filter((d) => d.expiry_status === "expired");
+                const expiringSoon = allAlertDocs.filter((d) => d.expiry_status === "expiring_soon");
+                const expiringNotice = allAlertDocs.filter((d) => d.expiry_status === "expiring_notice");
 
                 return (
                   <div className="space-y-6">
@@ -873,7 +920,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
           setPreviewUrl(null);
         }}
         documentUrl={previewUrl}
-        documentTitle={previewDocument?.title || getTypeLabel(previewDocument?.type || "")}
+        documentTitle={previewDocument ? formatDocumentTitle(previewDocument) : "Document"}
         documentType={previewDocument?.type}
       />
     </PageTransition>

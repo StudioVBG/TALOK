@@ -201,10 +201,10 @@ export function TenantInviteModal({
           </div>
 
           {/* Info signature */}
-          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+          <div className="p-3 bg-muted rounded-lg border border-border">
             <div className="flex items-start gap-2">
-              <Shield className="h-4 w-4 text-slate-500 mt-0.5 shrink-0" />
-              <div className="text-sm text-slate-600">
+              <Shield className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+              <div className="text-sm text-muted-foreground">
                 <p className="font-medium">Processus sécurisé</p>
                 <p className="text-xs mt-1">
                   La personne recevra un email avec un lien pour créer son compte

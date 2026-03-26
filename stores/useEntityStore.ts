@@ -127,8 +127,15 @@ export const useEntityStore = create<EntityState>()(
             entitySummaries[0].isDefault = true;
           }
 
+          // Valider que l'entité persistée (localStorage) existe toujours
+          const { activeEntityId } = get();
+          const resetEntity =
+            activeEntityId !== null &&
+            !entitySummaries.some((e) => e.id === activeEntityId);
+
           set({
             entities: entitySummaries,
+            activeEntityId: resetEntity ? null : activeEntityId,
             isLoading: false,
             lastFetchedAt: Date.now(),
           });

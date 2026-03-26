@@ -210,7 +210,7 @@ function DocumentGroup({
             <Icon className="h-5 w-5" />
           </div>
           <div className="text-left">
-            <h3 className="font-semibold text-slate-900">{title}</h3>
+            <h3 className="font-semibold text-foreground">{title}</h3>
             {subtitle && (
               <p className="text-sm text-muted-foreground">{subtitle}</p>
             )}
@@ -232,7 +232,7 @@ function DocumentGroup({
       {expanded && (
         <div 
           id={`group-content-${title.replace(/\s+/g, '-')}`}
-          className="border-t border-slate-100 p-4 space-y-3"
+          className="border-t border-border p-4 space-y-3"
           role="region"
           aria-label={`Documents de ${title}`}
         >
@@ -294,16 +294,19 @@ function DocumentMiniCard({
     new Date(doc.expiry_date) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
   return (
-    <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors">
+    <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors cursor-pointer" onClick={() => onPreview?.(doc)}>
       <div className="flex items-center gap-3">
         <div className="p-2 bg-indigo-50 rounded-lg">
           <FileText className="h-4 w-4 text-indigo-600" />
         </div>
         <div>
-          <p className="font-medium text-sm text-slate-900 truncate max-w-[200px]">
+          <p className="font-medium text-sm text-foreground truncate max-w-[200px]">
             {doc.title || typeLabel}
           </p>
           <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
+              {typeLabel}
+            </Badge>
             <span className="text-xs text-muted-foreground">
               {doc.created_at ? formatDateShort(doc.created_at) : "-"}
             </span>

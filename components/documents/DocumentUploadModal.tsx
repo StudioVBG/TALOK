@@ -160,7 +160,7 @@ export function DocumentUploadModal({ leaseId, propertyId }: DocumentUploadModal
               {file ? (
                 <div className="text-center">
                   <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500 mb-2" />
-                  <p className="text-sm font-medium text-slate-900">{file.name}</p>
+                  <p className="text-sm font-medium text-foreground">{file.name}</p>
                   <Button 
                     variant="ghost" 
                     size="sm" 
@@ -172,8 +172,8 @@ export function DocumentUploadModal({ leaseId, propertyId }: DocumentUploadModal
                 </div>
               ) : (
                 <div className="space-y-1 text-center">
-                  <FileText className="mx-auto h-10 w-10 text-slate-400" />
-                  <div className="flex text-sm text-slate-600">
+                  <FileText className="mx-auto h-10 w-10 text-muted-foreground" />
+                  <div className="flex text-sm text-muted-foreground">
                     <label
                       htmlFor="doc-file"
                       className="relative cursor-pointer bg-card rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"
@@ -189,7 +189,7 @@ export function DocumentUploadModal({ leaseId, propertyId }: DocumentUploadModal
                       />
                     </label>
                   </div>
-                  <p className="text-xs text-slate-500">ou glissez-déposez ici</p>
+                  <p className="text-xs text-muted-foreground">ou glissez-déposez ici</p>
                 </div>
               )}
             </div>

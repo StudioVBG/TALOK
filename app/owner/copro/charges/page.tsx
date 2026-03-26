@@ -186,7 +186,7 @@ export default function BailleurChargesPage() {
             <h1 className="text-2xl font-bold text-white">
               Charges récupérables
             </h1>
-            <p className="text-slate-400">
+            <p className="text-muted-foreground">
               Détail des charges copropriété récupérables sur vos locataires
             </p>
           </div>
@@ -206,7 +206,7 @@ export default function BailleurChargesPage() {
           className="flex gap-4"
         >
           <Select value={selectedUnit || ''} onValueChange={setSelectedUnit}>
-            <SelectTrigger className="w-64 bg-white/5 border-white/10 text-white">
+            <SelectTrigger className="w-64 bg-card/5 border-border/10 text-white">
               <SelectValue placeholder="Sélectionner un lot" />
             </SelectTrigger>
             <SelectContent className="bg-slate-800 border-slate-700">
@@ -223,7 +223,7 @@ export default function BailleurChargesPage() {
           </Select>
 
           <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
-            <SelectTrigger className="w-40 bg-white/5 border-white/10 text-white">
+            <SelectTrigger className="w-40 bg-card/5 border-border/10 text-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent className="bg-slate-800 border-slate-700">
@@ -249,11 +249,11 @@ export default function BailleurChargesPage() {
               transition={{ delay: 0.2 }}
               className="grid grid-cols-1 md:grid-cols-3 gap-4"
             >
-              <Card className="border-white/10 bg-white/5">
+              <Card className="border-border/10 bg-card/5">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-400">Charges copro totales</p>
+                      <p className="text-sm text-muted-foreground">Charges copro totales</p>
                       <p className="text-2xl font-bold text-white">
                         {currentUnit.current_year_summary.total_copro.toLocaleString('fr-FR')} €
                       </p>
@@ -265,11 +265,11 @@ export default function BailleurChargesPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-gradient-to-br from-emerald-500/20 to-emerald-600/10">
+              <Card className="border-border/10 bg-gradient-to-br from-emerald-500/20 to-emerald-600/10">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-400">Part récupérable</p>
+                      <p className="text-sm text-muted-foreground">Part récupérable</p>
                       <p className="text-2xl font-bold text-emerald-400">
                         {currentUnit.current_year_summary.total_recuperable.toLocaleString('fr-FR')} €
                       </p>
@@ -281,11 +281,11 @@ export default function BailleurChargesPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-white/10 bg-gradient-to-br from-red-500/20 to-red-600/10">
+              <Card className="border-border/10 bg-gradient-to-br from-red-500/20 to-red-600/10">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-slate-400">Non récupérable</p>
+                      <p className="text-sm text-muted-foreground">Non récupérable</p>
                       <p className="text-2xl font-bold text-red-400">
                         {(currentUnit.current_year_summary.total_copro - currentUnit.current_year_summary.total_recuperable).toLocaleString('fr-FR')} €
                       </p>
@@ -304,16 +304,16 @@ export default function BailleurChargesPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
             >
-              <Card className="border-white/10 bg-white/5">
+              <Card className="border-border/10 bg-card/5">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-slate-400">Taux de récupérabilité</span>
+                    <span className="text-muted-foreground">Taux de récupérabilité</span>
                     <span className="text-lg font-semibold text-emerald-400">
                       {recuperablePercentage.toFixed(1)}%
                     </span>
                   </div>
                   <Progress value={recuperablePercentage} className="h-3 bg-slate-700" />
-                  <div className="flex justify-between mt-2 text-xs text-slate-500">
+                  <div className="flex justify-between mt-2 text-xs text-muted-foreground">
                     <span>0%</span>
                     <span>Décret 87-713</span>
                     <span>100%</span>
@@ -328,7 +328,7 @@ export default function BailleurChargesPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
             >
-              <Card className="border-white/10 bg-white/5">
+              <Card className="border-border/10 bg-card/5">
                 <CardHeader>
                   <CardTitle className="text-white flex items-center gap-2">
                     <FileText className="w-5 h-5 text-violet-400" />
@@ -360,20 +360,20 @@ export default function BailleurChargesPage() {
                             </div>
                             <div>
                               <p className="text-white font-medium">{service.label}</p>
-                              <p className="text-xs text-slate-400">
+                              <p className="text-xs text-muted-foreground">
                                 {SERVICE_TYPE_LABELS[service.service_type]}
                               </p>
                             </div>
                           </div>
                           <div className="flex items-center gap-6">
                             <div className="text-right">
-                              <p className="text-sm text-slate-400">Copro</p>
+                              <p className="text-sm text-muted-foreground">Copro</p>
                               <p className="text-white font-medium">
                                 {service.copro_amount.toLocaleString('fr-FR')} €
                               </p>
                             </div>
                             <div className="text-right">
-                              <p className="text-sm text-slate-400">Récupérable</p>
+                              <p className="text-sm text-muted-foreground">Récupérable</p>
                               <p className={`font-semibold ${isRecuperable ? 'text-emerald-400' : 'text-red-400'}`}>
                                 {service.recuperable_amount.toLocaleString('fr-FR')} €
                               </p>
@@ -400,10 +400,10 @@ export default function BailleurChargesPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
             >
-              <Card className="border-white/10 bg-white/5">
+              <Card className="border-border/10 bg-card/5">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="text-white">Détail par période</CardTitle>
-                  <Button variant="outline" size="sm" className="border-white/10 text-white">
+                  <Button variant="outline" size="sm" className="border-border/10 text-white">
                     <Download className="w-4 h-4 mr-2" />
                     Exporter
                   </Button>
@@ -416,16 +416,16 @@ export default function BailleurChargesPage() {
                         <div className="flex items-start justify-between">
                           <div>
                             <p className="text-white font-medium">{charge.label}</p>
-                            <p className="text-xs text-slate-400">{charge.period}</p>
+                            <p className="text-xs text-muted-foreground">{charge.period}</p>
                           </div>
                           <Badge className={charge.recuperable_ratio === 1 ? 'bg-emerald-500/20 text-emerald-400' : charge.recuperable_ratio > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}>
                             {(charge.recuperable_ratio * 100).toFixed(0)}%
                           </Badge>
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-sm">
-                          <div><p className="text-slate-400">Copro</p><p className="text-white">{charge.copro_amount.toLocaleString('fr-FR')} €</p></div>
-                          <div><p className="text-slate-400">Prorata</p><p className="text-slate-300">{(charge.prorata_ratio * 100).toFixed(0)}%</p></div>
-                          <div><p className="text-slate-400">Récupérable</p><p className={`font-semibold ${charge.recuperable_amount > 0 ? 'text-emerald-400' : 'text-red-400'}`}>{charge.recuperable_amount.toLocaleString('fr-FR')} €</p></div>
+                          <div><p className="text-muted-foreground">Copro</p><p className="text-white">{charge.copro_amount.toLocaleString('fr-FR')} €</p></div>
+                          <div><p className="text-muted-foreground">Prorata</p><p className="text-slate-300">{(charge.prorata_ratio * 100).toFixed(0)}%</p></div>
+                          <div><p className="text-muted-foreground">Récupérable</p><p className={`font-semibold ${charge.recuperable_amount > 0 ? 'text-emerald-400' : 'text-red-400'}`}>{charge.recuperable_amount.toLocaleString('fr-FR')} €</p></div>
                         </div>
                       </div>
                     ))}
@@ -434,18 +434,18 @@ export default function BailleurChargesPage() {
                   <div className="hidden md:block">
                   <Table>
                     <TableHeader>
-                      <TableRow className="border-white/10">
-                        <TableHead className="text-slate-400">Période</TableHead>
-                        <TableHead className="text-slate-400">Poste</TableHead>
-                        <TableHead className="text-slate-400 text-right">Montant copro</TableHead>
-                        <TableHead className="text-slate-400 text-right">Ratio</TableHead>
-                        <TableHead className="text-slate-400 text-right">Prorata</TableHead>
-                        <TableHead className="text-slate-400 text-right">Récupérable</TableHead>
+                      <TableRow className="border-border/10">
+                        <TableHead className="text-muted-foreground">Période</TableHead>
+                        <TableHead className="text-muted-foreground">Poste</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Montant copro</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Ratio</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Prorata</TableHead>
+                        <TableHead className="text-muted-foreground text-right">Récupérable</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {charges.map((charge) => (
-                        <TableRow key={charge.id} className="border-white/10">
+                        <TableRow key={charge.id} className="border-border/10">
                           <TableCell className="text-white">{charge.period}</TableCell>
                           <TableCell className="text-slate-300">{charge.label}</TableCell>
                           <TableCell className="text-right text-white">
@@ -460,7 +460,7 @@ export default function BailleurChargesPage() {
                               {(charge.recuperable_ratio * 100).toFixed(0)}%
                             </Badge>
                           </TableCell>
-                          <TableCell className="text-right text-slate-400">
+                          <TableCell className="text-right text-muted-foreground">
                             {(charge.prorata_ratio * 100).toFixed(0)}%
                           </TableCell>
                           <TableCell className={`text-right font-semibold ${
@@ -510,17 +510,17 @@ function PageSkeleton() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
-        <Skeleton className="h-12 w-64 bg-white/10" />
+        <Skeleton className="h-12 w-64 bg-card/10" />
         <div className="flex gap-4">
-          <Skeleton className="h-10 w-64 bg-white/10" />
-          <Skeleton className="h-10 w-40 bg-white/10" />
+          <Skeleton className="h-10 w-64 bg-card/10" />
+          <Skeleton className="h-10 w-40 bg-card/10" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-28 bg-white/10" />
+            <Skeleton key={i} className="h-28 bg-card/10" />
           ))}
         </div>
-        <Skeleton className="h-64 bg-white/10" />
+        <Skeleton className="h-64 bg-card/10" />
       </div>
     </div>
   );

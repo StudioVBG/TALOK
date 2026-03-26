@@ -272,14 +272,14 @@ export function SignersClient({
           <div className="flex items-start gap-4">
             <Avatar className="h-12 w-12">
               <AvatarImage src={signer.profile?.avatar_url || undefined} />
-              <AvatarFallback className="bg-slate-100 text-slate-700">
+              <AvatarFallback className="bg-muted text-foreground">
                 {getInitials(signer.profile?.prenom, signer.profile?.nom)}
               </AvatarFallback>
             </Avatar>
 
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-slate-900">
+                <h3 className="font-semibold text-foreground">
                   {signer.profile
                     ? `${signer.profile.prenom} ${signer.profile.nom}`
                     : signer.invited_name || "En attente d'inscription"}
@@ -360,7 +360,7 @@ export function SignersClient({
                           {signer.profile 
                             ? `${signer.profile.prenom} ${signer.profile.nom} sera retiré du bail.`
                             : "Ce signataire sera retiré du bail."}
-                          <span className="block mt-2 font-medium text-slate-900">
+                          <span className="block mt-2 font-medium text-foreground">
                             Vous pourrez ensuite inviter le bon locataire.
                           </span>
                           {signer.signature_status === "signed" && (
@@ -398,10 +398,10 @@ export function SignersClient({
     title: string; 
     role: "locataire_principal" | "colocataire" | "garant";
   }) => (
-    <Card className="border-2 border-dashed border-slate-200 bg-slate-50/50">
+    <Card className="border-2 border-dashed border-border bg-muted/50">
       <CardContent className="p-6 text-center">
-        <UserPlus className="h-10 w-10 text-slate-300 mx-auto mb-3" />
-        <h3 className="font-semibold text-slate-700 mb-2">Aucun {title.toLowerCase()}</h3>
+        <UserPlus className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+        <h3 className="font-semibold text-foreground mb-2">Aucun {title.toLowerCase()}</h3>
         <p className="text-sm text-muted-foreground mb-4">
           {canEdit 
             ? "Invitez une personne pour qu'elle puisse signer le bail."
@@ -434,7 +434,7 @@ export function SignersClient({
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
                 <Users className="h-6 w-6 text-blue-600" />
                 Signataires du bail
               </h1>
@@ -448,8 +448,8 @@ export function SignersClient({
 
             {/* Stats */}
             <div className="flex gap-3">
-              <div className="text-center px-4 py-2 bg-white rounded-lg border">
-                <p className="text-2xl font-bold text-slate-900">{signedCount}/{totalSigners}</p>
+              <div className="text-center px-4 py-2 bg-card rounded-lg border">
+                <p className="text-2xl font-bold text-foreground">{signedCount}/{totalSigners}</p>
                 <p className="text-xs text-muted-foreground">Signatures</p>
               </div>
               {pendingCount > 0 && (
@@ -467,7 +467,7 @@ export function SignersClient({
           {/* Propriétaire */}
           {owner && (
             <section>
-              <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                 Bailleur
               </h2>
               <SignerCard signer={owner} roleLabel={ROLE_LABELS[owner.role]} showActions={false} />
@@ -477,7 +477,7 @@ export function SignersClient({
           {/* Locataire principal - TOUJOURS AFFICHÉ */}
             <section>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Locataire principal
               </h2>
               {mainTenant && canEdit && (
@@ -503,7 +503,7 @@ export function SignersClient({
           {isColocation && (
             <section>
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                 Colocataires ({cotenants.length})
               </h2>
                 {canEdit && (
@@ -528,7 +528,7 @@ export function SignersClient({
                 ))}
               </div>
               ) : (
-                <Card className="border-dashed border-slate-200 bg-slate-50/50">
+                <Card className="border-dashed border-border bg-muted/50">
                   <CardContent className="p-4 text-center text-sm text-muted-foreground">
                     Aucun colocataire pour le moment
                   </CardContent>
@@ -540,7 +540,7 @@ export function SignersClient({
           {/* Garants */}
           {guarantors.length > 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                 Garants ({guarantors.length})
               </h2>
               <div className="grid gap-3">

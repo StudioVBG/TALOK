@@ -60,8 +60,8 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload) return null;
 
   return (
-    <div className="bg-white border rounded-lg shadow-lg p-3 text-sm">
-      <p className="font-semibold text-slate-900 mb-2">{label}</p>
+    <div className="bg-card border rounded-lg shadow-lg p-3 text-sm">
+      <p className="font-semibold text-foreground mb-2">{label}</p>
       <div className="space-y-1">
         {payload.map((entry: any, index: number) => (
           <div key={index} className="flex items-center justify-between gap-4">
@@ -70,7 +70,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
                 className="w-3 h-3 rounded-full"
                 style={{ backgroundColor: entry.color }}
               />
-              <span className="text-slate-600">{entry.name}</span>
+              <span className="text-muted-foreground">{entry.name}</span>
             </div>
             <span className="font-medium">
               {formatCurrency(entry.value)}
@@ -230,9 +230,9 @@ export function CashflowWidget({ data, currentBalance = 0, className }: Cashflow
         </motion.div>
 
         {/* Info */}
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-slate-50 border border-slate-100">
-          <Info className="h-4 w-4 text-slate-500 mt-0.5 shrink-0" />
-          <p className="text-xs text-slate-600">
+        <div className="flex items-start gap-2 p-3 rounded-lg bg-muted border border-border">
+          <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+          <p className="text-xs text-muted-foreground">
             Les prévisions sont basées sur vos loyers actuels et les charges récurrentes. 
             Les dépenses exceptionnelles ne sont pas incluses.
           </p>
