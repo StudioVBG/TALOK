@@ -18,13 +18,6 @@ import { passwordRecoveryRequestSchema } from "@/lib/validations/auth/password-r
 
 export async function POST(request: NextRequest) {
   try {
-    console.log(
-      `[ForgotPassword] Step 0 — ENV: NODE_ENV=${process.env.NODE_ENV}, ` +
-      `EMAIL_FORCE_SEND=${process.env.EMAIL_FORCE_SEND || "unset"}, ` +
-      `RESEND_API_KEY=${process.env.RESEND_API_KEY ? "set" : "MISSING"}, ` +
-      `EMAIL_FROM=${process.env.EMAIL_FROM || process.env.RESEND_FROM_EMAIL || "unset"}, ` +
-      `APP_URL=${process.env.NEXT_PUBLIC_APP_URL || "MISSING"}`
-    );
 
     const body = await request.json();
     const parsed = passwordRecoveryRequestSchema.safeParse(body);
@@ -35,7 +28,6 @@ export async function POST(request: NextRequest) {
     }
 
     const email = parsed.data.email;
-    console.log(`[ForgotPassword] Step 1 — Zod OK for email: ${email.substring(0, 3)}***`);
 
     const ipRateLimit = await applyRateLimit(request, "email");
     if (ipRateLimit) {
@@ -52,7 +44,6 @@ export async function POST(request: NextRequest) {
       console.warn(`[ForgotPassword] Step 2 — Identity rate limit HIT`);
       return identityRateLimit as NextResponse;
     }
-    console.log("[ForgotPassword] Step 2 — Rate limit OK");
 
     const supabase = getServiceClient();
     const { ipAddress, userAgent } = getRequestClientInfo(request);
@@ -84,7 +75,6 @@ export async function POST(request: NextRequest) {
       console.error("[ForgotPassword] Step 3 — generateLink returned no action_link or no user.id");
       return NextResponse.json({ success: true });
     }
-    console.log(`[ForgotPassword] Step 3 — generateLink OK, userId=${linkData.user.id}, actionLink length=${actionLink.length}`);
 
     // Construire un lien direct vers /auth/callback avec le token_hash.
     // On bypass le redirect Supabase car generateLink() côté serveur ne pose
@@ -121,7 +111,6 @@ export async function POST(request: NextRequest) {
         },
       });
       resetRequestId = resetRequest.id;
-      console.log(`[ForgotPassword] Step 4 — Reset request created: ${resetRequestId}`);
     } catch (requestError) {
       console.error(
         "[ForgotPassword] Step 4 — Reset request creation FAILED (continuing to send email):",
@@ -148,7 +137,6 @@ export async function POST(request: NextRequest) {
       expiresIn: "1 heure",
     });
 
-    console.log(`[ForgotPassword] Step 5 — Calling sendEmail to=${email.substring(0, 3)}***, subject="${template.subject}"`);
 
     const emailResult = await sendEmail({
       to: email,
@@ -164,10 +152,6 @@ export async function POST(request: NextRequest) {
         await revokePasswordResetRequest(resetRequestId);
       }
     } else {
-      console.log(
-        `[ForgotPassword] Step 5 — sendEmail OK, messageId=${emailResult.messageId || "n/a"}, ` +
-        `simulated=${emailResult.simulated || false}`
-      );
       if (resetRequestId) {
         await logAuditEvent({
           user_id: linkData.user.id,

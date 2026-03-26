@@ -193,7 +193,7 @@ export default function OwnerBrandingPage() {
         {/* Loading */}
         {isLoading && (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
         )}
 
@@ -219,18 +219,18 @@ export default function OwnerBrandingPage() {
                     <Building2 className="w-8 h-8 text-white" />
                   </div>
 
-                  <h2 className="text-2xl font-bold text-slate-900 mb-3">
+                  <h2 className="text-2xl font-bold text-foreground mb-3">
                     White-Label non disponible
                   </h2>
 
-                  <p className="text-slate-600 mb-6">
+                  <p className="text-muted-foreground mb-6">
                     La personnalisation de marque blanche est disponible à partir du forfait
-                    <strong className="text-slate-900"> Enterprise M</strong>.
+                    <strong className="text-foreground"> Enterprise M</strong>.
                     Passez à un forfait supérieur pour personnaliser votre plateforme.
                   </p>
 
                   <div className="space-y-4 mb-8">
-                    <h3 className="font-medium text-slate-700">
+                    <h3 className="font-medium text-foreground">
                       Fonctionnalités disponibles :
                     </h3>
                     <FeatureList
@@ -264,17 +264,17 @@ export default function OwnerBrandingPage() {
 
         {/* Niveau actuel info */}
         {!isLoading && level !== "none" && (
-          <Card className="bg-slate-50 border-slate-200">
+          <Card className="bg-muted border-border">
             <CardHeader>
               <CardTitle className="text-base">Votre niveau actuel</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-slate-900">
+                  <p className="font-medium text-foreground">
                     {WHITE_LABEL_LEVEL_INFO[level].label}
                   </p>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-muted-foreground">
                     {WHITE_LABEL_LEVEL_INFO[level].description}
                   </p>
                 </div>

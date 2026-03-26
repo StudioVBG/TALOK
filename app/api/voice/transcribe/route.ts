@@ -61,7 +61,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[Transcribe] Processing ${audioFile.name} (${audioFile.size} bytes)`);
 
     // Transcription
     const result = await whisperService.transcribe(audioFile, {
@@ -69,7 +68,6 @@ export async function POST(request: NextRequest) {
       prompt: "Transcription d'un message vocal concernant un bien immobilier, un locataire, un loyer ou une maintenance.",
     });
 
-    console.log(`[Transcribe] Success: "${result.text.substring(0, 50)}..."`);
 
     return NextResponse.json({
       text: result.text,

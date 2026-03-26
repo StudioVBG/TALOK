@@ -425,7 +425,10 @@ export function Navbar() {
   }, [openMenu, closeMenu]);
 
   // Hide on dashboard routes
-  const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/admin", "/syndic", "/agency", "/copro", "/guarantor"];
+  const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/admin", "/syndic", "/agency", "/copro", "/guarantor", "/auth"];
+
+  // Hide on homepage — the marketing layout has its own navbar
+  if (pathname === "/") return null;
   if (hiddenPaths.some((path) => pathname?.startsWith(path))) {
     return null;
   }

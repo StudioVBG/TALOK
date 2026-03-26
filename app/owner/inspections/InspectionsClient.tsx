@@ -146,7 +146,7 @@ export function InspectionsClient({ inspections }: Props) {
       header: "Logement",
       cell: (edl: Inspection) => (
         <div className="min-w-0">
-          <p className="font-medium truncate max-w-[200px] sm:max-w-[280px] text-slate-900" title={edl.property_address}>{edl.property_address}</p>
+          <p className="font-medium truncate max-w-[200px] sm:max-w-[280px] text-foreground" title={edl.property_address}>{edl.property_address}</p>
           <p className="text-xs text-muted-foreground truncate">{edl.property_city}</p>
         </div>
       ),
@@ -154,7 +154,7 @@ export function InspectionsClient({ inspections }: Props) {
     {
       header: "Type",
       cell: (edl: Inspection) => (
-        <Badge variant="outline" className="bg-slate-50">
+        <Badge variant="outline" className="bg-muted">
           {edl.type === "entree" ? "Entrée" : "Sortie"}
         </Badge>
       ),
@@ -167,7 +167,7 @@ export function InspectionsClient({ inspections }: Props) {
     {
       header: "Date prévue",
       cell: (edl: Inspection) => (
-        <span className="text-sm text-slate-600">
+        <span className="text-sm text-muted-foreground">
           {edl.scheduled_date
             ? new Date(edl.scheduled_date).toLocaleDateString("fr-FR")
             : "—"}
@@ -324,8 +324,8 @@ export function InspectionsClient({ inspections }: Props) {
           <GlassCard className="border-amber-200 bg-amber-50/50">
             <CardContent className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
               <div>
-                <p className="font-semibold text-slate-900">Le template PDF reste disponible avec votre forfait actuel.</p>
-                <p className="text-sm text-slate-600">
+                <p className="font-semibold text-foreground">Le template PDF reste disponible avec votre forfait actuel.</p>
+                <p className="text-sm text-muted-foreground">
                   Pour créer un EDL numérique avec signature électronique, passez au forfait {PLANS[digitalRequiredPlan].name}.
                 </p>
               </div>
@@ -341,11 +341,11 @@ export function InspectionsClient({ inspections }: Props) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total</p>
-                  <p className="text-3xl font-bold text-slate-900">
+                  <p className="text-3xl font-bold text-foreground">
                     <AnimatedCounter value={inspections.length} />
                   </p>
                 </div>
-                <div className="p-3 bg-slate-100 rounded-full text-slate-600">
+                <div className="p-3 bg-muted rounded-full text-muted-foreground">
                   <ClipboardList className="h-6 w-6" />
                 </div>
               </div>
@@ -386,7 +386,7 @@ export function InspectionsClient({ inspections }: Props) {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 bg-white/50 backdrop-blur-sm p-1 rounded-xl border border-slate-200/50">
+        <div className="flex flex-col sm:flex-row gap-4 bg-card/50 backdrop-blur-sm p-1 rounded-xl border border-border/50">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -396,14 +396,14 @@ export function InspectionsClient({ inspections }: Props) {
               className="pl-9 bg-transparent border-none focus-visible:ring-0 shadow-none"
             />
           </div>
-          <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+          <div className="flex gap-1 bg-muted p-1 rounded-lg">
             {["all", "entree", "sortie"].map((type) => (
               <Button
                 key={type}
                 variant={typeFilter === type ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setTypeFilter(type)}
-                className={typeFilter === type ? "shadow-sm" : "hover:bg-white/50"}
+                className={typeFilter === type ? "shadow-sm" : "hover:bg-card/50"}
               >
                 {type === "all" ? "Tous" : type === "entree" ? "Entrée" : "Sortie"}
               </Button>
@@ -414,7 +414,7 @@ export function InspectionsClient({ inspections }: Props) {
         {/* Table */}
         {filteredInspections.length > 0 ? (
           <GlassCard className="p-0 overflow-hidden">
-            <CardHeader className="border-b bg-slate-50/50 px-6 py-4">
+            <CardHeader className="border-b bg-muted/50 px-6 py-4">
               <CardTitle className="text-base font-semibold">Liste des EDL</CardTitle>
               <CardDescription>
                 {filteredInspections.length} état{filteredInspections.length > 1 ? "s" : ""} des lieux affiché{filteredInspections.length > 1 ? "s" : ""}

@@ -161,16 +161,19 @@ export async function ensureReceiptDocument(
     .from("documents")
     .insert({
       type: "quittance",
-      name: `Quittance - ${paymentData.invoice.periode}`,
+      category: "finance",
       title: `Quittance de loyer - ${paymentData.invoice.periode}`,
+      original_filename: `quittance-${paymentData.invoice.periode}.pdf`,
       storage_path: storagePath,
+      mime_type: "application/pdf",
       lease_id: paymentData.invoice.lease_id,
       tenant_id: paymentData.invoice.tenant_id,
       owner_id: paymentData.invoice.owner_id,
       property_id: paymentData.invoice.lease.property.id,
       visible_tenant: true,
       is_archived: false,
-      status: "valid",
+      is_generated: true,
+      ged_status: "active",
       metadata: {
         invoice_id: paymentData.invoice.id,
         payment_id: paymentId,

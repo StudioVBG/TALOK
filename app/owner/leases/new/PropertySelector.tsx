@@ -77,9 +77,9 @@ export function PropertySelector({ properties, selectedPropertyId, onSelect }: P
 
   if (properties.length === 0) {
     return (
-      <div className="text-center py-12 bg-slate-50 dark:bg-slate-900/50 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700">
-        <Building2 className="h-12 w-12 mx-auto text-slate-400 mb-4" />
-        <h3 className="text-lg font-semibold text-slate-600 dark:text-slate-300">
+      <div className="text-center py-12 bg-muted rounded-xl border-2 border-dashed border-border">
+        <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+        <h3 className="text-lg font-semibold text-muted-foreground">
           Aucun bien disponible
         </h3>
         <p className="text-sm text-muted-foreground mt-1">
@@ -106,7 +106,7 @@ export function PropertySelector({ properties, selectedPropertyId, onSelect }: P
             placeholder="Rechercher par adresse, ville..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm"
+            className="pl-10 bg-card/80 backdrop-blur-sm"
           />
         </div>
       )}
@@ -131,10 +131,10 @@ export function PropertySelector({ properties, selectedPropertyId, onSelect }: P
             >
               <div className={cn(
                 "relative p-4 rounded-xl border-2 transition-all duration-300",
-                "bg-white dark:bg-slate-900",
+                "bg-card",
                 isSelected
                   ? "border-primary shadow-lg shadow-primary/10 ring-2 ring-primary/20"
-                  : "border-slate-200 dark:border-slate-700 hover:border-slate-300 hover:shadow-md"
+                  : "border-border hover:border-border hover:shadow-md"
               )}>
                 <div className="flex items-start gap-4">
                   {/* Icône */}
@@ -142,7 +142,7 @@ export function PropertySelector({ properties, selectedPropertyId, onSelect }: P
                     "p-3 rounded-xl shrink-0 transition-colors",
                     isSelected
                       ? "bg-primary text-white"
-                      : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                      : "bg-muted text-muted-foreground"
                   )}>
                     <Icon className="h-6 w-6" />
                   </div>
@@ -151,7 +151,7 @@ export function PropertySelector({ properties, selectedPropertyId, onSelect }: P
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-slate-900 dark:text-white truncate">
+                        <h4 className="font-semibold text-foreground truncate">
                           {address}
                         </h4>
                         <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
@@ -208,7 +208,7 @@ export function PropertySelector({ properties, selectedPropertyId, onSelect }: P
 
                     {/* Loyer suggéré */}
                     {totalRent > 0 && (
-                      <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+                      <div className="mt-3 pt-3 border-t border-border">
                         <div className="flex items-center justify-between">
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <Euro className="h-3 w-3" />

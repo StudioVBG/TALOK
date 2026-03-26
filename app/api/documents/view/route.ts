@@ -4,10 +4,11 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { checkStoragePathAccess } from "@/lib/helpers/document-access";
 
 /**
  * GET /api/documents/view?path=xxx
- * 
+ *
  * Retourne le contenu d'un document stocké dans Supabase Storage.
  * Vérifie les droits d'accès avant de servir le document.
  */
@@ -15,103 +16,35 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const storagePath = url.searchParams.get("path");
-    
+
     if (!storagePath) {
       return NextResponse.json({ error: "path requis" }, { status: 400 });
     }
-    
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    
+
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
-    
+
     const serviceClient = getServiceClient();
-    
+
     // Récupérer le profil de l'utilisateur
     const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
       .single();
-    
+
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
-    
-    // Vérifier les droits d'accès selon le type de document
-    // Le path contient généralement le type et l'ID (ex: leases/{lease_id}/xxx.html)
-    const pathParts = storagePath.split("/");
-    
-    // Vérifier les droits d'accès pour les documents liés à un bail
-    if ((pathParts[0] === "leases" || pathParts[0] === "bails") && pathParts[1]) {
-      const leaseId = pathParts[1];
 
-      const { data: lease } = await serviceClient
-        .from("leases")
-        .select(`
-          id,
-          property:properties!leases_property_id_fkey(owner_id),
-          signers:lease_signers(profile_id)
-        `)
-        .eq("id", leaseId)
-        .single();
-
-      if (!lease) {
-        return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
-      }
-
-      const isOwner = (lease as any).property?.owner_id === profile.id;
-      const isSigner = (lease as any).signers?.some((s: any) => s.profile_id === profile.id);
-      const isAdmin = profile.role === "admin";
-
-      if (!isOwner && !isSigner && !isAdmin) {
-        return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-      }
-    }
-
-    // Vérifier les droits d'accès pour les documents liés à un EDL
-    if (pathParts[0] === "edl" && pathParts[1]) {
-      const edlId = pathParts[1];
-
-      const { data: edlRecord } = await serviceClient
-        .from("edl")
-        .select(`
-          id, lease_id, property_id, created_by,
-          edl_signatures(signer_profile_id)
-        `)
-        .eq("id", edlId)
-        .single();
-
-      if (!edlRecord) {
-        return NextResponse.json({ error: "EDL non trouvé" }, { status: 404 });
-      }
-
-      let edlAccess = false;
-      const isAdmin = profile.role === "admin";
-      const isCreator = (edlRecord as any).created_by === profile.id;
-      const isEdlSigner = (edlRecord as any).edl_signatures?.some((s: any) => s.signer_profile_id === profile.id);
-
-      if (isAdmin || isCreator || isEdlSigner) {
-        edlAccess = true;
-      } else if ((edlRecord as any).lease_id) {
-        // Vérifier via le bail associé (propriétaire ou signataire)
-        const { data: lease } = await serviceClient
-          .from("leases")
-          .select(`id, property:properties!leases_property_id_fkey(owner_id), signers:lease_signers(profile_id)`)
-          .eq("id", (edlRecord as any).lease_id)
-          .single();
-        if (lease) {
-          const isOwner = (lease as any).property?.owner_id === profile.id;
-          const isSigner = (lease as any).signers?.some((s: any) => s.profile_id === profile.id);
-          if (isOwner || isSigner) edlAccess = true;
-        }
-      }
-
-      if (!edlAccess) {
-        return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-      }
+    // Vérifier les droits d'accès via le helper unifié
+    const hasAccess = await checkStoragePathAccess(serviceClient, storagePath, profile as any);
+    if (!hasAccess) {
+      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
     
     // Télécharger le fichier depuis Storage
