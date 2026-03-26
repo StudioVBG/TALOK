@@ -1,11 +1,9 @@
 "use client";
 
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronDown } from "lucide-react";
+import { fadeUp, staggerTight, defaultViewport } from "@/lib/marketing/animations";
 
 const FAQ_ITEMS = [
   {
@@ -14,7 +12,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "C'est adapté à la Martinique / Guadeloupe / Réunion ?",
-    a: "Oui, c'est même notre point fort. TVA locale, fuseaux horaires, codes postaux DOM-TOM — tout est intégré nativement. Pas de bidouillage.",
+    a: "Oui, c'est même notre point fort. TVA locale, fuseaux horaires, codes postaux DROM-COM — tout est intégré nativement. Pas de bidouillage.",
   },
   {
     q: "Comment mes locataires paient ?",
@@ -35,26 +33,66 @@ const FAQ_ITEMS = [
 ];
 
 export function FaqSection() {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
   return (
-    <section id="faq" className="py-20 md:py-28">
+    <motion.section
+      id="faq"
+      className="py-20 md:py-28"
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="visible"
+      viewport={defaultViewport}
+    >
       <div className="container mx-auto max-w-3xl px-4">
-        <h2 className="reveal text-center font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+        <h2 className="text-center font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
           Vous hésitez encore ? On répond à tout.
         </h2>
 
-        <Accordion type="single" collapsible className="reveal mt-14">
+        <motion.div
+          className="mt-14 space-y-2"
+          variants={staggerTight}
+          initial="hidden"
+          whileInView="visible"
+          viewport={defaultViewport}
+        >
           {FAQ_ITEMS.map((item, i) => (
-            <AccordionItem key={i} value={`faq-${i}`}>
-              <AccordionTrigger className="text-left text-base font-medium">
+            <motion.div
+              key={i}
+              variants={fadeUp}
+              className="rounded-xl border border-border bg-card"
+            >
+              <button
+                onClick={() => setOpenIndex(openIndex === i ? null : i)}
+                className="flex w-full items-center justify-between px-6 py-4 text-left text-base font-medium text-foreground"
+                aria-expanded={openIndex === i}
+              >
                 {item.q}
-              </AccordionTrigger>
-              <AccordionContent className="text-base leading-relaxed text-muted-foreground">
-                {item.a}
-              </AccordionContent>
-            </AccordionItem>
+                <ChevronDown
+                  className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200 ${
+                    openIndex === i ? "rotate-180" : ""
+                  }`}
+                />
+              </button>
+              <AnimatePresence>
+                {openIndex === i && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    style={{ overflow: "hidden" }}
+                  >
+                    <p className="px-6 pb-4 text-base leading-relaxed text-muted-foreground">
+                      {item.a}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
           ))}
-        </Accordion>
+        </motion.div>
       </div>
-    </section>
+    </motion.section>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -49,6 +50,8 @@ import {
   CreditCard,
   ClipboardCheck,
   PieChart,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -116,17 +119,6 @@ const MEGA_MENU = {
       { href: "/solutions/investisseurs", label: "Investisseurs", icon: Briefcase, desc: "Portefeuille multi-biens" },
       { href: "/solutions/agences", label: "Agences", icon: Building, desc: "Gestion professionnelle" },
       { href: "/solutions/outre-mer", label: "France d\u2019outre-mer", icon: MapPin, desc: "Ne en Martinique, fait pour vous" },
-    ],
-  },
-  ressources: {
-    label: "Ressources",
-    links: [
-      { href: "/blog", label: "Blog", icon: BookOpen, desc: "Actualites et conseils" },
-      { href: "/guides", label: "Guides & modeles", icon: FileText, desc: "8 guides pratiques gratuits" },
-      { href: "/faq", label: "FAQ", icon: HelpCircle, desc: "Questions frequentes" },
-      { href: "/temoignages", label: "Temoignages", icon: Star, desc: "+500 avis, note 4.8/5" },
-      { href: "/a-propos", label: "A propos", icon: Building2, desc: "Notre histoire et nos valeurs" },
-      { href: "/contact", label: "Contact", icon: MessageSquare, desc: "Ecrivez-nous" },
     ],
   },
 } as const;
@@ -381,6 +373,7 @@ function MobileMenuSection({
 export function Navbar() {
   const { user, profile, loading } = useAuth();
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -546,8 +539,8 @@ export function Navbar() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <Building2 className="h-5 w-5" />
                 </div>
-                <span className="text-xl font-bold hidden sm:inline-block">
-                  Talok
+                <span className="text-xl font-extrabold tracking-tight hidden sm:inline-block" style={{ color: "#1B2A6B" }}>
+                  TALOK
                 </span>
               </Link>
 
@@ -628,6 +621,24 @@ export function Navbar() {
                       className="text-sm"
                     >
                       Tarifs
+                    </Button>
+                  </Link>
+                  <Link href="/blog">
+                    <Button
+                      variant={pathname === "/blog" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="text-sm"
+                    >
+                      Blog
+                    </Button>
+                  </Link>
+                  <Link href="/faq">
+                    <Button
+                      variant={pathname === "/faq" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="text-sm"
+                    >
+                      FAQ
                     </Button>
                   </Link>
                 </div>
@@ -874,31 +885,27 @@ export function Navbar() {
                           })}
                         </MobileMenuSection>
 
-                        {/* Ressources section */}
-                        <MobileMenuSection title="Ressources">
-                          {MEGA_MENU.ressources.links.map((link) => {
-                            const Icon = link.icon;
-                            return (
-                              <Link
-                                key={link.href}
-                                href={link.href}
-                                onClick={() => setMobileOpen(false)}
-                                className="flex items-center gap-2.5 rounded-lg px-2 py-2.5 text-sm hover:bg-accent transition-colors min-h-[44px]"
-                              >
-                                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                                {link.label}
-                              </Link>
-                            );
-                          })}
-                        </MobileMenuSection>
-
-                        {/* Tarifs direct link */}
+                        {/* Tarifs, Blog, FAQ direct links */}
                         <Link
                           href="/pricing"
                           onClick={() => setMobileOpen(false)}
                           className="flex items-center py-3 text-sm font-medium border-b hover:text-primary transition-colors min-h-[44px]"
                         >
                           Tarifs
+                        </Link>
+                        <Link
+                          href="/blog"
+                          onClick={() => setMobileOpen(false)}
+                          className="flex items-center py-3 text-sm font-medium border-b hover:text-primary transition-colors min-h-[44px]"
+                        >
+                          Blog
+                        </Link>
+                        <Link
+                          href="/faq"
+                          onClick={() => setMobileOpen(false)}
+                          className="flex items-center py-3 text-sm font-medium border-b hover:text-primary transition-colors min-h-[44px]"
+                        >
+                          FAQ
                         </Link>
 
                         {/* Auth buttons */}
@@ -917,6 +924,16 @@ export function Navbar() {
                       </div>
                     </SheetContent>
                   </Sheet>
+
+                  {/* Theme toggle */}
+                  <button
+                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                    aria-label="Changer le thème"
+                  >
+                    <Sun className="h-4 w-4 dark:hidden" />
+                    <Moon className="hidden h-4 w-4 dark:block" />
+                  </button>
 
                   {/* Desktop auth buttons */}
                   <Link href="/auth/signin" className="hidden lg:block">
