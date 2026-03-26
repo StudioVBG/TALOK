@@ -178,7 +178,7 @@ export default function OwnerDocumentsUploadPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold text-foreground">
             Téléverser un document
           </h1>
           <p className="text-muted-foreground mt-2 text-lg">
