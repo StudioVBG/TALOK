@@ -33,6 +33,17 @@ const publicRoutes = [
   "/legal",
   "/demo",
   "/signature",
+  "/faq",
+  "/fonctionnalites",
+  "/solutions",
+  "/temoignages",
+  "/guides",
+  "/outils",
+  "/a-propos",
+  "/contact",
+  "/features",
+  "/modeles",
+  "/invite",
 ];
 
 export function middleware(request: NextRequest) {

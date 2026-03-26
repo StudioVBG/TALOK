@@ -90,13 +90,12 @@ const MEGA_MENU = {
       {
         title: "Fonctionnalites",
         links: [
-          { href: "/fonctionnalites/gestion-biens", label: "Gestion des biens", icon: Building2, desc: "Centralisez vos biens immobiliers" },
-          { href: "/fonctionnalites/gestion-locataires", label: "Gestion locataires", icon: Users, desc: "Suivi complet de vos locataires" },
-          { href: "/fonctionnalites/etats-des-lieux", label: "Etats des lieux", icon: ClipboardCheck, desc: "EDL numeriques avec photos" },
-          { href: "/fonctionnalites/signature-electronique", label: "Signature electronique", icon: FileSignature, desc: "eIDAS, valeur juridique garantie" },
-          { href: "/fonctionnalites/quittances-loyers", label: "Quittances & loyers", icon: Receipt, desc: "Automatisez vos quittances" },
-          { href: "/fonctionnalites/comptabilite-fiscalite", label: "Comptabilite & fiscalite", icon: PieChart, desc: "Export comptable et 2044" },
-          { href: "/fonctionnalites/paiements-en-ligne", label: "Paiements en ligne", icon: CreditCard, desc: "CB, SEPA, prelevement" },
+          { href: "/fonctionnalites#baux", label: "Gestion des baux", icon: FileText, desc: "Creez et gerez vos baux en ligne" },
+          { href: "/fonctionnalites#paiements", label: "Paiements en ligne", icon: CreditCard, desc: "CB, SEPA, prelevement automatique" },
+          { href: "/fonctionnalites#edl", label: "Etats des lieux", icon: ClipboardCheck, desc: "EDL numeriques avec photos" },
+          { href: "/fonctionnalites#documents", label: "Documents", icon: FileSignature, desc: "Quittances, contrats, attestations" },
+          { href: "/fonctionnalites#tickets", label: "Tickets & travaux", icon: Wrench, desc: "Suivi des incidents et interventions" },
+          { href: "/fonctionnalites#comptabilite", label: "Comptabilite", icon: PieChart, desc: "Export comptable et declaration 2044" },
         ],
       },
       {
@@ -113,11 +112,10 @@ const MEGA_MENU = {
   solutions: {
     label: "Solutions",
     links: [
-      { href: "/solutions/proprietaires-particuliers", label: "Proprietaires particuliers", icon: Home, desc: "1 a 3 biens, simplifiez tout" },
+      { href: "/solutions/proprietaires", label: "Proprietaires", icon: Home, desc: "Particuliers, SCI, 1 a 10 biens" },
       { href: "/solutions/investisseurs", label: "Investisseurs", icon: Briefcase, desc: "Portefeuille multi-biens" },
-      { href: "/solutions/administrateurs-biens", label: "Administrateurs de biens", icon: Building, desc: "Gestion professionnelle" },
-      { href: "/solutions/sci-familiales", label: "SCI familiales", icon: Users, desc: "Multi-associes, multi-biens" },
-      { href: "/solutions/dom-tom", label: "DOM-TOM", icon: MapPin, desc: "Le seul logiciel qui vous couvre" },
+      { href: "/solutions/agences", label: "Agences", icon: Building, desc: "Gestion professionnelle" },
+      { href: "/solutions/outre-mer", label: "France d\u2019outre-mer", icon: MapPin, desc: "Ne en Martinique, fait pour vous" },
     ],
   },
   ressources: {
@@ -429,11 +427,16 @@ export function Navbar() {
   // Hide on dashboard routes
   const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/admin", "/syndic", "/agency", "/copro", "/guarantor", "/auth"];
 
-  // Hide on homepage — the marketing layout has its own navbar
-  if (pathname === "/") return null;
-  if (hiddenPaths.some((path) => pathname?.startsWith(path))) {
-    return null;
-  }
+  // Determine if navbar should be hidden
+  const isAppRoute = hiddenPaths.some((path) => pathname?.startsWith(path));
+  const marketingPaths = ["/", "/pricing", "/faq", "/blog", "/fonctionnalites", "/solutions", "/temoignages", "/guides", "/outils", "/a-propos", "/contact", "/features", "/legal", "/modeles"];
+  const isMarketingPage = marketingPaths.some((p) =>
+    p === "/" ? pathname === "/" : pathname?.startsWith(p)
+  );
+  // Hide on app dashboard routes and marketing routes (MarketingNavbar handles those)
+  // Using CSS display:none instead of return null to avoid hydration mismatch
+  const shouldHide = isAppRoute || isMarketingPage;
+  if (shouldHide) return null;
 
   const handleMenuEnter = (key: string) => {
     if (closeTimeoutRef.current) {
@@ -566,7 +569,7 @@ export function Navbar() {
                 </div>
               )}
 
-              {/* Desktop Navigation - Public Mega-Menu */}
+              {/* Desktop Navigation - Marketing Mega-Menu (always on marketing pages) */}
               {!user && (
                 <div className="hidden lg:flex items-center gap-1">
                   {(Object.keys(MEGA_MENU) as Array<keyof typeof MEGA_MENU>).map(
