@@ -5,27 +5,29 @@ import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   FileText, CreditCard, ClipboardCheck, FolderOpen, Wrench, PieChart,
-  Building2, Briefcase, Building, MapPin,
+  Building2, Briefcase, Building, MapPin, Home,
   ChevronDown, Menu, X,
 } from "lucide-react"
+import { useAuth } from "@/lib/hooks/use-auth"
 
 const produitLinks = [
-  { label: "Gestion des baux", href: "/fonctionnalites/baux", icon: FileText },
-  { label: "Paiements en ligne", href: "/fonctionnalites/paiements", icon: CreditCard },
-  { label: "États des lieux", href: "/fonctionnalites/etats-des-lieux", icon: ClipboardCheck },
-  { label: "Documents", href: "/fonctionnalites/documents", icon: FolderOpen },
-  { label: "Tickets & travaux", href: "/fonctionnalites/tickets", icon: Wrench },
-  { label: "Comptabilité", href: "/fonctionnalites/comptabilite", icon: PieChart },
+  { label: "Gestion des baux", href: "/fonctionnalites#baux", icon: FileText },
+  { label: "Paiements en ligne", href: "/fonctionnalites#paiements", icon: CreditCard },
+  { label: "Etats des lieux", href: "/fonctionnalites#edl", icon: ClipboardCheck },
+  { label: "Documents", href: "/fonctionnalites#documents", icon: FolderOpen },
+  { label: "Tickets & travaux", href: "/fonctionnalites#tickets", icon: Wrench },
+  { label: "Comptabilite", href: "/fonctionnalites#comptabilite", icon: PieChart },
 ]
 
 const solutionsLinks = [
-  { label: "Propriétaires", href: "/solutions/proprietaires-particuliers", icon: Building2 },
-  { label: "Investisseurs & SCI", href: "/solutions/investisseurs-sci", icon: Briefcase },
+  { label: "Proprietaires", href: "/solutions/proprietaires", icon: Building2 },
+  { label: "Investisseurs", href: "/solutions/investisseurs", icon: Briefcase },
   { label: "Agences", href: "/solutions/agences", icon: Building },
   { label: "France d\u2019outre-mer", href: "/solutions/outre-mer", icon: MapPin },
 ]
 
 export function MarketingNavbar() {
+  const { user } = useAuth()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
@@ -84,28 +86,49 @@ export function MarketingNavbar() {
 
         {/* Desktop CTAs */}
         <div className="hidden items-center gap-3 lg:flex">
-          <Link
-            href="/connexion"
-            className="text-sm font-medium text-slate-600 transition-colors hover:text-[#1B2A6B]"
-          >
-            Se connecter
-          </Link>
-          <Link
-            href="/inscription"
-            className="rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-medium text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
-          >
-            Essayer gratuitement
-          </Link>
+          {user ? (
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-2 rounded-lg border border-[#2563EB]/30 px-4 py-2 text-sm font-medium text-[#2563EB] transition-colors hover:bg-[#2563EB]/5"
+            >
+              <Home className="h-4 w-4" />
+              Mon espace
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/auth/signin"
+                className="text-sm font-medium text-slate-600 transition-colors hover:text-[#1B2A6B]"
+              >
+                Se connecter
+              </Link>
+              <Link
+                href="/auth/signup"
+                className="rounded-lg bg-[#2563EB] px-4 py-2 text-sm font-medium text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
+              >
+                Essayer gratuitement
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile: CTA + hamburger */}
         <div className="flex items-center gap-2 lg:hidden">
-          <Link
-            href="/inscription"
-            className="rounded-lg bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white"
-          >
-            Essayer
-          </Link>
+          {user ? (
+            <Link
+              href="/dashboard"
+              className="rounded-lg border border-[#2563EB]/30 px-3 py-1.5 text-xs font-medium text-[#2563EB]"
+            >
+              Mon espace
+            </Link>
+          ) : (
+            <Link
+              href="/auth/signup"
+              className="rounded-lg bg-[#2563EB] px-3 py-1.5 text-xs font-medium text-white"
+            >
+              Essayer
+            </Link>
+          )}
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100"
@@ -142,20 +165,33 @@ export function MarketingNavbar() {
                 <MobileLink href="/faq" onClick={() => setMobileOpen(false)}>FAQ</MobileLink>
               </div>
               <div className="border-t border-slate-100 pt-4">
-                <Link
-                  href="/connexion"
-                  onClick={() => setMobileOpen(false)}
-                  className="mb-3 block text-center text-sm font-medium text-slate-600"
-                >
-                  Se connecter
-                </Link>
-                <Link
-                  href="/inscription"
-                  onClick={() => setMobileOpen(false)}
-                  className="block rounded-lg bg-[#2563EB] py-2.5 text-center text-sm font-medium text-white"
-                >
-                  Commencer gratuitement
-                </Link>
+                {user ? (
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setMobileOpen(false)}
+                    className="flex items-center justify-center gap-2 rounded-lg border border-[#2563EB]/30 py-2.5 text-sm font-medium text-[#2563EB]"
+                  >
+                    <Home className="h-4 w-4" />
+                    Mon espace
+                  </Link>
+                ) : (
+                  <>
+                    <Link
+                      href="/auth/signin"
+                      onClick={() => setMobileOpen(false)}
+                      className="mb-3 block text-center text-sm font-medium text-slate-600"
+                    >
+                      Se connecter
+                    </Link>
+                    <Link
+                      href="/auth/signup"
+                      onClick={() => setMobileOpen(false)}
+                      className="block rounded-lg bg-[#2563EB] py-2.5 text-center text-sm font-medium text-white"
+                    >
+                      Commencer gratuitement
+                    </Link>
+                  </>
+                )}
               </div>
             </motion.div>
           </>

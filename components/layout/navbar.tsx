@@ -427,18 +427,16 @@ export function Navbar() {
   // Hide on dashboard routes
   const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/admin", "/syndic", "/agency", "/copro", "/guarantor", "/auth"];
 
-  // Hide on homepage — the marketing layout has its own navbar
-  if (pathname === "/") return null;
-  if (hiddenPaths.some((path) => pathname?.startsWith(path))) {
-    return null;
-  }
-
-  // Marketing pages always show the marketing mega-menu, even when logged in
+  // Determine if navbar should be hidden
+  const isAppRoute = hiddenPaths.some((path) => pathname?.startsWith(path));
   const marketingPaths = ["/", "/pricing", "/faq", "/blog", "/fonctionnalites", "/solutions", "/temoignages", "/guides", "/outils", "/a-propos", "/contact", "/features", "/legal", "/modeles"];
   const isMarketingPage = marketingPaths.some((p) =>
     p === "/" ? pathname === "/" : pathname?.startsWith(p)
   );
-  const showMegaMenu = !user || isMarketingPage;
+  // Hide on app dashboard routes and marketing routes (MarketingNavbar handles those)
+  // Using CSS display:none instead of return null to avoid hydration mismatch
+  const shouldHide = isAppRoute || isMarketingPage;
+  if (shouldHide) return null;
 
   const handleMenuEnter = (key: string) => {
     if (closeTimeoutRef.current) {
@@ -553,8 +551,8 @@ export function Navbar() {
                 </span>
               </Link>
 
-              {/* Desktop Navigation - Authenticated (non-marketing pages) */}
-              {user && !isMarketingPage && mainNavItems.length > 0 && (
+              {/* Desktop Navigation - Authenticated */}
+              {user && mainNavItems.length > 0 && (
                 <div className="hidden md:flex items-center gap-1">
                   {mainNavItems.map((item) => (
                     <Link key={item.href} href={item.href}>
@@ -572,7 +570,7 @@ export function Navbar() {
               )}
 
               {/* Desktop Navigation - Marketing Mega-Menu (always on marketing pages) */}
-              {showMegaMenu && (
+              {!user && (
                 <div className="hidden lg:flex items-center gap-1">
                   {(Object.keys(MEGA_MENU) as Array<keyof typeof MEGA_MENU>).map(
                     (key) => (
@@ -648,175 +646,9 @@ export function Navbar() {
                 </Link>
               )}
 
-              {user && isMarketingPage ? (
+              {user ? (
                 <>
-                  {/* Logged-in user on marketing page: show "Mon espace" + avatar */}
-                  <Link href="/dashboard" className="hidden sm:block">
-                    <Button size="sm" variant="outline" className="gap-2 border-primary/30 text-primary hover:bg-primary/5">
-                      <Home className="h-4 w-4" />
-                      Mon espace
-                    </Button>
-                  </Link>
-                  {/* Mobile hamburger (marketing, logged in) */}
-                  <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-                    <SheetTrigger asChild>
-                      <Button variant="ghost" size="sm" className="lg:hidden">
-                        <Menu className="h-5 w-5" />
-                      </Button>
-                    </SheetTrigger>
-                    <SheetContent side="right" className="w-[300px] sm:w-[380px] overflow-y-auto">
-                      <SheetHeader>
-                        <SheetTitle className="flex items-center gap-2">
-                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                            <Building2 className="h-4 w-4" />
-                          </div>
-                          Talok
-                        </SheetTitle>
-                      </SheetHeader>
-                      <div className="mt-6">
-                        {/* Mon espace link */}
-                        <Link
-                          href="/dashboard"
-                          onClick={() => setMobileOpen(false)}
-                          className="flex items-center py-3 text-sm font-medium border-b text-primary hover:text-primary/80 transition-colors min-h-[44px]"
-                        >
-                          <Home className="h-4 w-4 mr-2" />
-                          Mon espace
-                        </Link>
-                        <MobileMenuSection title="Produit">
-                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 mt-1">
-                            Fonctionnalites
-                          </p>
-                          {MEGA_MENU.produit.sections[0].links.map((link) => {
-                            const Icon = link.icon;
-                            return (
-                              <Link
-                                key={link.href}
-                                href={link.href}
-                                onClick={() => setMobileOpen(false)}
-                                className="flex items-center gap-2.5 rounded-lg px-2 py-2.5 text-sm hover:bg-accent transition-colors min-h-[44px]"
-                              >
-                                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                                {link.label}
-                              </Link>
-                            );
-                          })}
-                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 mt-4">
-                            Outils gratuits
-                          </p>
-                          {MEGA_MENU.produit.sections[1].links.map((link) => {
-                            const Icon = link.icon;
-                            return (
-                              <Link
-                                key={link.href}
-                                href={link.href}
-                                onClick={() => setMobileOpen(false)}
-                                className="flex items-center gap-2.5 rounded-lg px-2 py-2.5 text-sm hover:bg-accent transition-colors min-h-[44px]"
-                              >
-                                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                                {link.label}
-                              </Link>
-                            );
-                          })}
-                        </MobileMenuSection>
-                        <MobileMenuSection title="Solutions">
-                          {MEGA_MENU.solutions.links.map((link) => {
-                            const Icon = link.icon;
-                            return (
-                              <Link
-                                key={link.href}
-                                href={link.href}
-                                onClick={() => setMobileOpen(false)}
-                                className="flex items-center gap-2.5 rounded-lg px-2 py-2.5 text-sm hover:bg-accent transition-colors min-h-[44px]"
-                              >
-                                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                                {link.label}
-                              </Link>
-                            );
-                          })}
-                        </MobileMenuSection>
-                        <MobileMenuSection title="Ressources">
-                          {MEGA_MENU.ressources.links.map((link) => {
-                            const Icon = link.icon;
-                            return (
-                              <Link
-                                key={link.href}
-                                href={link.href}
-                                onClick={() => setMobileOpen(false)}
-                                className="flex items-center gap-2.5 rounded-lg px-2 py-2.5 text-sm hover:bg-accent transition-colors min-h-[44px]"
-                              >
-                                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                                {link.label}
-                              </Link>
-                            );
-                          })}
-                        </MobileMenuSection>
-                        <Link
-                          href="/pricing"
-                          onClick={() => setMobileOpen(false)}
-                          className="flex items-center py-3 text-sm font-medium border-b hover:text-primary transition-colors min-h-[44px]"
-                        >
-                          Tarifs
-                        </Link>
-                        <div className="mt-6 pt-4 border-t">
-                          <Button
-                            variant="ghost"
-                            className="w-full justify-start gap-2 text-destructive"
-                            onClick={handleSignOut}
-                            disabled={isSigningOut}
-                          >
-                            <LogOut className="h-4 w-4" />
-                            {isSigningOut ? "Deconnexion..." : "Deconnexion"}
-                          </Button>
-                        </div>
-                      </div>
-                    </SheetContent>
-                  </Sheet>
-                  {/* User avatar dropdown */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="relative h-10 gap-2 px-2 hidden sm:flex">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={buildAvatarUrl(profile?.avatar_url) || undefined} />
-                          <AvatarFallback className="text-xs">{getInitials()}</AvatarFallback>
-                        </Avatar>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuLabel>
-                        <p className="text-sm font-medium">
-                          {formatFullName(profile?.prenom || null, profile?.nom || null) || "Utilisateur"}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{user.email}</p>
-                      </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <Link href="/dashboard">
-                        <DropdownMenuItem>
-                          <Home className="mr-2 h-4 w-4" />
-                          Mon espace
-                        </DropdownMenuItem>
-                      </Link>
-                      <Link href="/profile">
-                        <DropdownMenuItem>
-                          <User className="mr-2 h-4 w-4" />
-                          Mon profil
-                        </DropdownMenuItem>
-                      </Link>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={handleSignOut}
-                        disabled={isSigningOut}
-                      >
-                        <LogOut className="mr-2 h-4 w-4" />
-                        {isSigningOut ? "Deconnexion..." : "Deconnexion"}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
-              ) : user ? (
-                <>
-                  {/* Mobile Menu (authenticated, non-marketing) */}
+                  {/* Mobile Menu (authenticated) */}
                   <Sheet>
                     <SheetTrigger asChild>
                       <Button variant="ghost" size="sm" className="md:hidden">
@@ -1122,7 +954,7 @@ export function Navbar() {
 
       {/* Backdrop overlay */}
       <AnimatePresence>
-        {showMegaMenu && openMenu && (
+        {!user && openMenu && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1137,7 +969,7 @@ export function Navbar() {
 
       {/* Desktop Mega-Menu Panel */}
       <AnimatePresence>
-        {showMegaMenu && openMenu && (
+        {!user && openMenu && (
           <MegaMenuPanel
             key={openMenu}
             menuKey={openMenu as keyof typeof MEGA_MENU}
