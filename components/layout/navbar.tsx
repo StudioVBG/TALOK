@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -49,6 +50,8 @@ import {
   CreditCard,
   ClipboardCheck,
   PieChart,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -381,6 +384,7 @@ function MobileMenuSection({
 export function Navbar() {
   const { user, profile, loading } = useAuth();
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -917,6 +921,16 @@ export function Navbar() {
                       </div>
                     </SheetContent>
                   </Sheet>
+
+                  {/* Theme toggle */}
+                  <button
+                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                    aria-label="Changer le thème"
+                  >
+                    <Sun className="h-4 w-4 dark:hidden" />
+                    <Moon className="hidden h-4 w-4 dark:block" />
+                  </button>
 
                   {/* Desktop auth buttons */}
                   <Link href="/auth/signin" className="hidden lg:block">
