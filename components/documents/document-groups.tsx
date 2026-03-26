@@ -294,7 +294,7 @@ function DocumentMiniCard({
     new Date(doc.expiry_date) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
   return (
-    <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border hover:border-border/80 transition-colors cursor-pointer" onClick={() => onPreview?.(doc)}>
+    <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors cursor-pointer" onClick={() => onPreview?.(doc)}>
       <div className="flex items-center gap-3">
         <div className="p-2 bg-indigo-50 rounded-lg">
           <FileText className="h-4 w-4 text-indigo-600" />

@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import { DocumentCard } from "./document-card";
 import { DocumentUploadForm } from "./document-upload-form";
+import { GroupedDocumentCard } from "./grouped-document-card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { documentsService } from "../services/documents.service";
 import type { Document } from "@/lib/types";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { groupDocuments, type GroupedDocumentItem } from "@/lib/documents/group-documents";
 
 interface DocumentsListProps {
   propertyId?: string;
@@ -89,13 +91,17 @@ export function DocumentsList({ propertyId, leaseId, showUpload = true }: Docume
 
       {documents.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">Aucun document enregistré.</p>
+          <p className="text-muted-foreground">Aucun document enregistre.</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {documents.map((document) => (
-            <DocumentCard key={document.id} document={document} onDelete={fetchDocuments} />
-          ))}
+          {groupDocuments(documents as any).map((item) =>
+            item.kind === "group" ? (
+              <GroupedDocumentCard key={item.key} item={item} onDelete={fetchDocuments} />
+            ) : (
+              <DocumentCard key={item.key} document={item.document as any} onDelete={fetchDocuments} />
+            )
+          )}
         </div>
       )}
     </div>
