@@ -201,7 +201,7 @@ function DocumentGroup({
       {/* En-tête du groupe */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors"
+        className="w-full flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
         aria-expanded={expanded}
         aria-controls={`group-content-${title.replace(/\s+/g, '-')}`}
       >
@@ -238,7 +238,7 @@ function DocumentGroup({
         >
           {/* CNI groupées */}
           {groupedDocs.cniPairs.map((pair) => (
-            <div key={`cni-pair-${pair.recto?.id || pair.verso?.id}`} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+            <div key={`cni-pair-${pair.recto?.id || pair.verso?.id}`} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
               <div className="flex-1 grid grid-cols-2 gap-3">
                 {pair.recto && (
                   <DocumentMiniCard 
@@ -294,7 +294,7 @@ function DocumentMiniCard({
     new Date(doc.expiry_date) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
   return (
-    <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-100 hover:border-slate-200 transition-colors">
+    <div className="flex items-center justify-between p-3 bg-card rounded-lg border border-border hover:border-primary/30 transition-colors">
       <div className="flex items-center gap-3">
         <div className="p-2 bg-indigo-50 rounded-lg">
           <FileText className="h-4 w-4 text-indigo-600" />

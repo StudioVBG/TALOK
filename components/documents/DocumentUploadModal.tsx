@@ -156,7 +156,7 @@ export function DocumentUploadModal({ leaseId, propertyId }: DocumentUploadModal
 
           <div className="space-y-2">
             <Label htmlFor="doc-file">Fichier (PDF, JPG, PNG - max 10 Mo)</Label>
-            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-slate-300 rounded-xl hover:border-blue-400 transition-colors bg-slate-50/50">
+            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-border rounded-xl hover:border-blue-400 transition-colors bg-muted/50">
               {file ? (
                 <div className="text-center">
                   <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500 mb-2" />
@@ -176,7 +176,7 @@ export function DocumentUploadModal({ leaseId, propertyId }: DocumentUploadModal
                   <div className="flex text-sm text-slate-600">
                     <label
                       htmlFor="doc-file"
-                      className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"
+                      className="relative cursor-pointer bg-card rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"
                     >
                       <span>Sélectionner un fichier</span>
                       <input 
