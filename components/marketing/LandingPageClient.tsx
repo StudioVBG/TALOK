@@ -5,7 +5,7 @@ import { MarketingNavbar } from "@/components/marketing/Navbar"
 import { HeroSection } from "@/components/marketing/sections/HeroSection"
 import { InnovationBar } from "@/components/marketing/sections/InnovationBar"
 import { ProblemSolution } from "@/components/marketing/sections/ProblemSolution"
-import { Arguments } from "@/components/marketing/sections/Arguments"
+import { ArgumentsSection } from "@/components/landing/ArgumentsSection"
 import { Features } from "@/components/marketing/sections/Features"
 import { Testimonials } from "@/components/marketing/sections/Testimonials"
 import { PourQui } from "@/components/marketing/sections/PourQui"
@@ -27,7 +27,7 @@ export function LandingPageClient({ images }: Props) {
         <HeroSection />
         <InnovationBar />
         <ProblemSolution images={images} />
-        <Arguments images={images} />
+        <ArgumentsSection images={images} />
         <Features />
         <Testimonials />
         <PourQui images={images} />
