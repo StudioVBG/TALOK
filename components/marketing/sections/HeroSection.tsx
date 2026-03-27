@@ -70,7 +70,7 @@ function MagneticCTA() {
       className="inline-block"
     >
       <Link
-        href="/inscription"
+        href="/auth/signup"
         className="group relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-[#2563EB] px-8 py-3.5 text-base font-semibold text-white shadow-lg shadow-[#2563EB]/25 transition-transform hover:scale-[1.02] active:scale-[0.98]"
       >
         {/* Glow effect */}

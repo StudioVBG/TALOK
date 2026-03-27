@@ -176,7 +176,7 @@ export function Pricing() {
                   </ul>
 
                   <Link
-                    href="/inscription"
+                    href="/auth/signup"
                     className={`mt-6 block rounded-xl py-3 text-center text-sm font-semibold transition-transform hover:scale-[1.02] active:scale-[0.98] ${plan.ctaStyle}`}
                   >
                     {plan.cta}

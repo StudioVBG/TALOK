@@ -9,16 +9,16 @@ const columns = [
       { label: "Fonctionnalités", href: "/fonctionnalites" },
       { label: "Tarifs", href: "/pricing" },
       { label: "Nouveautés", href: "/blog" },
-      { label: "App mobile", href: "/fonctionnalites/app-mobile" },
+      { label: "App mobile", href: "/fonctionnalites" },
     ],
   },
   {
     title: "Solutions",
     links: [
       { label: "Propriétaires", href: "/solutions/proprietaires-particuliers" },
-      { label: "Investisseurs", href: "/solutions/investisseurs-sci" },
-      { label: "Agences", href: "/solutions/agences" },
-      { label: "France d\u2019outre-mer", href: "/solutions/outre-mer" },
+      { label: "Investisseurs", href: "/solutions/investisseurs" },
+      { label: "Agences", href: "/solutions/administrateurs-biens" },
+      { label: "France d\u2019outre-mer", href: "/solutions/dom-tom" },
     ],
   },
   {
