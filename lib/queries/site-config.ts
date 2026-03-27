@@ -24,7 +24,7 @@ export async function getSiteConfig(
 
   const result = {} as Record<SiteConfigKey, string>;
   for (const row of data ?? []) {
-    result[row.key as SiteConfigKey] = row.value;
+    result[row.key as SiteConfigKey] = row.value ?? "";
   }
   return result;
 }
