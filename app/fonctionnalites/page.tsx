@@ -42,7 +42,7 @@ const FEATURES = [
       "Documents et diagnostics centralisés",
       "Alertes échéances automatiques",
     ],
-    stats: { label: "biens gérés", value: "+50 000" },
+    stats: null,
   },
   {
     slug: "gestion-locataires",
@@ -56,7 +56,7 @@ const FEATURES = [
       "Historique des échanges",
       "Portail locataire dédié",
     ],
-    stats: { label: "locataires actifs", value: "+25 000" },
+    stats: null,
   },
   {
     slug: "etats-des-lieux",
@@ -70,7 +70,7 @@ const FEATURES = [
       "Signature électronique sur place",
       "PDF généré instantanément",
     ],
-    stats: { label: "EDL réalisés", value: "+15 000" },
+    stats: null,
   },
   {
     slug: "quittances-loyers",
@@ -80,25 +80,25 @@ const FEATURES = [
     gradient: "from-amber-500 to-orange-600",
     highlights: [
       "Envoi automatique chaque mois",
-      "Conformes à la loi ALUR",
+      "Conformes à la loi",
       "Historique complet",
       "Relances impayés automatiques",
     ],
-    stats: { label: "quittances/mois", value: "+100 000" },
+    stats: null,
   },
   {
     slug: "comptabilite-fiscalite",
     title: "Comptabilité & Fiscalité",
-    description: "Simplifiez votre déclaration fiscale avec des exports 2044 et FEC prêts à l'emploi.",
+    description: "Simplifiez votre déclaration fiscale avec des exports 2044 prêts à l'emploi.",
     icon: Calculator,
     gradient: "from-cyan-500 to-blue-600",
     highlights: [
       "Export déclaration 2044",
-      "Fichier FEC comptable",
+      "Export pour votre comptable",
       "Suivi charges et dépenses",
       "Rapports personnalisés",
     ],
-    stats: { label: "déclarations simplifiées", value: "+8 000" },
+    stats: null,
   },
   {
     slug: "signature-electronique",
@@ -107,39 +107,39 @@ const FEATURES = [
     icon: PenTool,
     gradient: "from-pink-500 to-rose-600",
     highlights: [
-      "Conforme eIDAS",
-      "Valeur juridique garantie",
+      "Valeur légale garantie",
       "Signature multi-parties",
       "Horodatage certifié",
+      "Suivi en temps réel",
     ],
-    stats: { label: "documents signés", value: "+30 000" },
+    stats: null,
   },
   {
     slug: "paiements-en-ligne",
     title: "Paiements en Ligne",
-    description: "Recevez les loyers par CB ou prélèvement SEPA. Réconciliation bancaire automatique.",
+    description: "Recevez les loyers par CB ou prélèvement automatique. Réconciliation bancaire automatique.",
     icon: CreditCard,
     gradient: "from-green-500 to-emerald-600",
     highlights: [
-      "Paiement CB et SEPA",
+      "Paiement CB et prélèvement",
       "Prélèvement automatique",
       "Réconciliation bancaire",
-      "Open Banking intégré",
+      "Connexion bancaire intégrée",
     ],
-    stats: { label: "transactions/mois", value: "+2M€" },
+    stats: null,
   },
 ];
 
 const BENEFITS = [
   {
     icon: Clock,
-    title: "Gagnez 5h/mois",
+    title: "Gagnez 3h par semaine",
     description: "Automatisez les tâches répétitives : quittances, relances, révisions IRL.",
   },
   {
     icon: Shield,
     title: "Conformité garantie",
-    description: "Documents conformes loi ALUR, signatures eIDAS, RGPD respecté.",
+    description: "Documents conformes à la loi, signatures à valeur légale, RGPD respecté.",
   },
   {
     icon: Zap,
@@ -237,9 +237,6 @@ export default function FonctionnalitesPage() {
                         <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${feature.gradient} flex items-center justify-center group-hover:scale-110 transition-transform`}>
                           <feature.icon className="w-6 h-6 text-white" />
                         </div>
-                        <Badge className="bg-slate-700/50 text-slate-300 border-slate-600">
-                          {feature.stats.value}
-                        </Badge>
                       </div>
                       <CardTitle className="text-xl text-white group-hover:text-indigo-300 transition-colors">
                         {feature.title}
@@ -283,7 +280,7 @@ export default function FonctionnalitesPage() {
               Prêt à simplifier votre gestion locative ?
             </h2>
             <p className="text-slate-300 mb-8">
-              Rejoignez +10 000 propriétaires qui gagnent du temps avec Talok.
+              Rejoignez les propriétaires qui gagnent du temps avec Talok.
               Premier mois offert, sans engagement.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

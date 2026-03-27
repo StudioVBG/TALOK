@@ -93,7 +93,7 @@ const MEGA_MENU = {
           { href: "/fonctionnalites/gestion-biens", label: "Gestion des biens", icon: Building2, desc: "Centralisez vos biens immobiliers" },
           { href: "/fonctionnalites/gestion-locataires", label: "Gestion locataires", icon: Users, desc: "Suivi complet de vos locataires" },
           { href: "/fonctionnalites/etats-des-lieux", label: "Etats des lieux", icon: ClipboardCheck, desc: "EDL numeriques avec photos" },
-          { href: "/fonctionnalites/signature-electronique", label: "Signature electronique", icon: FileSignature, desc: "eIDAS, valeur juridique garantie" },
+          { href: "/fonctionnalites/signature-electronique", label: "Signature electronique", icon: FileSignature, desc: "Valeur juridique garantie" },
           { href: "/fonctionnalites/quittances-loyers", label: "Quittances & loyers", icon: Receipt, desc: "Automatisez vos quittances" },
           { href: "/fonctionnalites/comptabilite-fiscalite", label: "Comptabilite & fiscalite", icon: PieChart, desc: "Export comptable et 2044" },
           { href: "/fonctionnalites/paiements-en-ligne", label: "Paiements en ligne", icon: CreditCard, desc: "CB, SEPA, prelevement" },
@@ -113,11 +113,10 @@ const MEGA_MENU = {
   solutions: {
     label: "Solutions",
     links: [
-      { href: "/solutions/proprietaires-particuliers", label: "Proprietaires particuliers", icon: Home, desc: "1 a 3 biens, simplifiez tout" },
+      { href: "/solutions/proprietaires-particuliers", label: "Proprietaires", icon: Home, desc: "1 a 3 biens, simplifiez tout" },
       { href: "/solutions/investisseurs", label: "Investisseurs", icon: Briefcase, desc: "Portefeuille multi-biens" },
-      { href: "/solutions/administrateurs-biens", label: "Administrateurs de biens", icon: Building, desc: "Gestion professionnelle" },
-      { href: "/solutions/sci-familiales", label: "SCI familiales", icon: Users, desc: "Multi-associes, multi-biens" },
-      { href: "/solutions/dom-tom", label: "DOM-TOM", icon: MapPin, desc: "Le seul logiciel qui vous couvre" },
+      { href: "/solutions/administrateurs-biens", label: "Agences", icon: Building, desc: "Gestion professionnelle" },
+      { href: "/solutions/dom-tom", label: "France d'outre-mer", icon: MapPin, desc: "Ne en Martinique, fait pour vous" },
     ],
   },
   ressources: {
@@ -380,13 +379,19 @@ function MobileMenuSection({
 // MAIN NAVBAR
 // ============================================
 
+// Pages with dark hero sections where navbar needs transparent treatment
+const DARK_HERO_PAGES = ["/fonctionnalites", "/pricing", "/faq"];
+
 export function Navbar() {
   const { user, profile, loading } = useAuth();
   const pathname = usePathname();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const headerRef = useRef<HTMLDivElement>(null);
+
+  const isDarkPage = DARK_HERO_PAGES.some((p) => pathname?.startsWith(p));
 
   const { signOut: handleSignOut, isLoading: isSigningOut } = useSignOut({
     redirectTo: "/",
@@ -425,6 +430,15 @@ export function Navbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [openMenu, closeMenu]);
+
+  // Track scroll position for dark page navbar
+  useEffect(() => {
+    if (!isDarkPage) return;
+    const onScroll = () => setScrolled(window.scrollY > 32);
+    onScroll(); // check initial state
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [isDarkPage]);
 
   // Hide on dashboard routes
   const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/admin", "/syndic", "/agency", "/copro", "/guarantor"];
@@ -529,7 +543,12 @@ export function Navbar() {
     <div ref={headerRef} className="sticky top-0 z-50">
       {/* Nav bar: visual styling with backdrop-blur */}
       <nav
-        className="relative border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+        className={cn(
+          "relative transition-colors duration-300",
+          isDarkPage && !scrolled && !openMenu
+            ? "border-b border-white/10 bg-transparent"
+            : "border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+        )}
         aria-label="Navigation principale"
       >
         <div className="container mx-auto px-4">
@@ -540,7 +559,10 @@ export function Navbar() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <Building2 className="h-5 w-5" />
                 </div>
-                <span className="text-xl font-bold hidden sm:inline-block">
+                <span className={cn(
+                  "text-xl font-bold hidden sm:inline-block",
+                  isDarkPage && !scrolled && !openMenu && "text-white"
+                )}>
                   Talok
                 </span>
               </Link>
@@ -581,8 +603,12 @@ export function Navbar() {
                           className={cn(
                             "gap-1 text-sm transition-colors duration-150",
                             openMenu === key
-                              ? "bg-accent text-foreground"
-                              : "text-muted-foreground hover:text-foreground"
+                              ? isDarkPage && !scrolled
+                                ? "bg-white/15 text-white"
+                                : "bg-accent text-foreground"
+                              : isDarkPage && !scrolled && !openMenu
+                                ? "text-white/80 hover:text-white hover:bg-white/10"
+                                : "text-muted-foreground hover:text-foreground"
                           )}
                           aria-expanded={openMenu === key}
                           aria-haspopup="true"
@@ -619,7 +645,11 @@ export function Navbar() {
                     <Button
                       variant={pathname === "/pricing" ? "secondary" : "ghost"}
                       size="sm"
-                      className="text-sm"
+                      className={cn(
+                        "text-sm",
+                        isDarkPage && !scrolled && !openMenu && pathname !== "/pricing"
+                          && "text-white/80 hover:text-white hover:bg-white/10"
+                      )}
                     >
                       Tarifs
                     </Button>
@@ -914,7 +944,11 @@ export function Navbar() {
 
                   {/* Desktop auth buttons */}
                   <Link href="/auth/signin" className="hidden lg:block">
-                    <Button variant="outline" size="sm" className="border-border/60 hover:bg-accent">
+                    <Button variant="outline" size="sm" className={cn(
+                      isDarkPage && !scrolled && !openMenu
+                        ? "border-white/30 text-white hover:bg-white/10"
+                        : "border-border/60 hover:bg-accent"
+                    )}>
                       Connexion
                     </Button>
                   </Link>
@@ -924,7 +958,11 @@ export function Navbar() {
 
                   {/* Tablet: show compact auth buttons */}
                   <Link href="/auth/signin" className="hidden sm:block lg:hidden">
-                    <Button variant="outline" size="sm" className="border-border/60 hover:bg-accent">
+                    <Button variant="outline" size="sm" className={cn(
+                      isDarkPage && !scrolled && !openMenu
+                        ? "border-white/30 text-white hover:bg-white/10"
+                        : "border-border/60 hover:bg-accent"
+                    )}>
                       Connexion
                     </Button>
                   </Link>
