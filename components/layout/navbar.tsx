@@ -379,19 +379,13 @@ function MobileMenuSection({
 // MAIN NAVBAR
 // ============================================
 
-// Pages with dark hero sections where navbar needs transparent treatment
-const DARK_HERO_PAGES = ["/fonctionnalites", "/pricing", "/faq"];
-
 export function Navbar() {
   const { user, profile, loading } = useAuth();
   const pathname = usePathname();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const headerRef = useRef<HTMLDivElement>(null);
-
-  const isDarkPage = DARK_HERO_PAGES.some((p) => pathname?.startsWith(p));
 
   const { signOut: handleSignOut, isLoading: isSigningOut } = useSignOut({
     redirectTo: "/",
@@ -431,18 +425,14 @@ export function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [openMenu, closeMenu]);
 
-  // Track scroll position for dark page navbar
-  useEffect(() => {
-    if (!isDarkPage) return;
-    const onScroll = () => setScrolled(window.scrollY > 32);
-    onScroll(); // check initial state
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [isDarkPage]);
-
-  // Hide on dashboard routes
-  const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/admin", "/syndic", "/agency", "/copro", "/guarantor"];
-  if (hiddenPaths.some((path) => pathname?.startsWith(path))) {
+  // Hide on dashboard routes and marketing routes (MarketingNavbar handles those)
+  const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/admin", "/syndic", "/agency", "/copro", "/guarantor", "/auth"];
+  const marketingPaths = ["/", "/pricing", "/faq", "/blog", "/fonctionnalites", "/solutions", "/temoignages", "/guides", "/outils", "/a-propos", "/contact", "/features", "/legal", "/modeles"];
+  const isAppRoute = hiddenPaths.some((path) => pathname?.startsWith(path));
+  const isMarketingPage = marketingPaths.some((p) =>
+    p === "/" ? pathname === "/" : pathname?.startsWith(p)
+  );
+  if (isAppRoute || isMarketingPage) {
     return null;
   }
 
@@ -543,12 +533,7 @@ export function Navbar() {
     <div ref={headerRef} className="sticky top-0 z-50">
       {/* Nav bar: visual styling with backdrop-blur */}
       <nav
-        className={cn(
-          "relative transition-colors duration-300",
-          isDarkPage && !scrolled && !openMenu
-            ? "border-b border-white/10 bg-transparent"
-            : "border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
-        )}
+        className="relative border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
         aria-label="Navigation principale"
       >
         <div className="container mx-auto px-4">
@@ -559,10 +544,7 @@ export function Navbar() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <Building2 className="h-5 w-5" />
                 </div>
-                <span className={cn(
-                  "text-xl font-bold hidden sm:inline-block",
-                  isDarkPage && !scrolled && !openMenu && "text-white"
-                )}>
+                <span className="text-xl font-bold hidden sm:inline-block">
                   Talok
                 </span>
               </Link>
@@ -603,12 +585,8 @@ export function Navbar() {
                           className={cn(
                             "gap-1 text-sm transition-colors duration-150",
                             openMenu === key
-                              ? isDarkPage && !scrolled
-                                ? "bg-white/15 text-white"
-                                : "bg-accent text-foreground"
-                              : isDarkPage && !scrolled && !openMenu
-                                ? "text-white/80 hover:text-white hover:bg-white/10"
-                                : "text-muted-foreground hover:text-foreground"
+                              ? "bg-accent text-foreground"
+                              : "text-muted-foreground hover:text-foreground"
                           )}
                           aria-expanded={openMenu === key}
                           aria-haspopup="true"
@@ -645,11 +623,7 @@ export function Navbar() {
                     <Button
                       variant={pathname === "/pricing" ? "secondary" : "ghost"}
                       size="sm"
-                      className={cn(
-                        "text-sm",
-                        isDarkPage && !scrolled && !openMenu && pathname !== "/pricing"
-                          && "text-white/80 hover:text-white hover:bg-white/10"
-                      )}
+                      className="text-sm"
                     >
                       Tarifs
                     </Button>
@@ -944,11 +918,7 @@ export function Navbar() {
 
                   {/* Desktop auth buttons */}
                   <Link href="/auth/signin" className="hidden lg:block">
-                    <Button variant="outline" size="sm" className={cn(
-                      isDarkPage && !scrolled && !openMenu
-                        ? "border-white/30 text-white hover:bg-white/10"
-                        : "border-border/60 hover:bg-accent"
-                    )}>
+                    <Button variant="outline" size="sm" className="border-border/60 hover:bg-accent">
                       Connexion
                     </Button>
                   </Link>
@@ -958,11 +928,7 @@ export function Navbar() {
 
                   {/* Tablet: show compact auth buttons */}
                   <Link href="/auth/signin" className="hidden sm:block lg:hidden">
-                    <Button variant="outline" size="sm" className={cn(
-                      isDarkPage && !scrolled && !openMenu
-                        ? "border-white/30 text-white hover:bg-white/10"
-                        : "border-border/60 hover:bg-accent"
-                    )}>
+                    <Button variant="outline" size="sm" className="border-border/60 hover:bg-accent">
                       Connexion
                     </Button>
                   </Link>
