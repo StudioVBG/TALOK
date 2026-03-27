@@ -51,7 +51,8 @@ export async function GET(request: Request, { params }: RouteParams) {
         tenant_id,
         property_id,
         lease_id,
-        type
+        type,
+        visible_tenant
       `)
       .eq("id", id)
       .single();
@@ -81,8 +82,8 @@ export async function GET(request: Request, { params }: RouteParams) {
         hasAccess = !!property;
       }
     } else if (profile.role === "tenant") {
-      // Locataire : document lié à son profil ou ses baux
-      if (document.tenant_id === profile.id) {
+      // Locataire : document lié à son profil ou ses baux (respect visible_tenant)
+      if (document.tenant_id === profile.id && (document as any).visible_tenant !== false) {
         hasAccess = true;
       } else if (document.lease_id) {
         // Vérifier si le locataire est signataire du bail
@@ -92,7 +93,8 @@ export async function GET(request: Request, { params }: RouteParams) {
           .eq("lease_id", document.lease_id)
           .eq("profile_id", profile.id)
           .single();
-        hasAccess = !!signer;
+        // Tenant via lease signer must also respect visible_tenant
+        hasAccess = !!signer && (document as any).visible_tenant !== false;
       }
     } else if (profile.role === "provider") {
       // Prestataire : documents liés à ses interventions

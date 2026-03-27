@@ -8,6 +8,8 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import { sendEmail } from "@/lib/services/email-service";
+import { emailTemplates } from "@/lib/emails/templates";
 
 const devisSchema = z.object({
   renovation_item_id: z.string().uuid(),
@@ -79,11 +81,31 @@ export async function POST(request: NextRequest) {
       .update({ status: "quote_requested" })
       .eq("id", validatedData.renovation_item_id);
 
-    // TODO: Envoyer les emails aux prestataires
-    // Pour chaque provider, envoyer un email avec les détails du travail
-    // Cela peut être fait via un service d'email (Resend, SendGrid, etc.)
+    // Send quote request emails to each provider
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+    const propertyAddress = (renovationItem.lease_end_process as any)?.property?.adresse_complete || "";
+    const description = validatedData.message || renovationItem.description || "Travaux de rénovation";
+    for (const provider of validatedData.providers) {
+      try {
+        const template = emailTemplates.renovationQuoteRequest({
+          providerName: provider.name,
+          propertyAddress,
+          description,
+          dashboardUrl: `${appUrl}/provider/quotes`,
+        });
+        await sendEmail({
+          to: provider.email,
+          subject: template.subject,
+          html: template.html,
+          tags: [{ name: "type", value: "renovation_quote_request" }],
+          idempotencyKey: `renovation-quote/${validatedData.renovation_item_id}/${provider.email}`,
+        });
+      } catch (e) {
+        console.error(`[POST /renovation/devis] Email to ${provider.email} failed:`, e);
+      }
+    }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       quotes: quotes || [],
       message: `${quotes?.length || 0} demande(s) de devis envoyée(s)`,
     });

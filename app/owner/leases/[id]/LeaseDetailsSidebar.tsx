@@ -113,21 +113,21 @@ export function LeaseDetailsSidebar({
 }: LeaseDetailsSidebarProps) {
   return (
     <div className="lg:col-span-4 xl:col-span-3 order-1 lg:order-2 space-y-6">
-      <Card className="border-none shadow-sm bg-white overflow-hidden">
+      <Card className="border-none shadow-sm bg-card overflow-hidden">
         <CardHeader className="pb-2 border-b border-slate-50">
           <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
             Lecture métier unifiée
           </CardTitle>
         </CardHeader>
         <CardContent className="p-4 space-y-3">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+          <div className="rounded-2xl border border-border bg-muted p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Étape actuelle
             </p>
-            <p className="mt-2 text-base font-semibold text-slate-900">
+            <p className="mt-2 text-base font-semibold text-foreground">
               {readinessState.hero.title}
             </p>
-            <p className="mt-1 text-xs text-slate-600">
+            <p className="mt-1 text-xs text-muted-foreground">
               {readinessState.hero.description}
             </p>
           </div>
@@ -149,7 +149,7 @@ export function LeaseDetailsSidebar({
         </CardContent>
       </Card>
 
-      <Card className="border-none shadow-sm bg-white overflow-hidden">
+      <Card className="border-none shadow-sm bg-card overflow-hidden">
         <CardHeader className="pb-2 border-b border-slate-50">
           <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
             <ShieldCheck className="h-3 w-3 text-emerald-500" />
@@ -195,7 +195,7 @@ export function LeaseDetailsSidebar({
       )}
 
       {/* Carte Info Rapide */}
-      <Card className="border-none shadow-sm bg-white">
+      <Card className="border-none shadow-sm bg-card">
         <CardHeader className="pb-3 border-b border-slate-50">
           <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
             Détails Clés
@@ -204,7 +204,7 @@ export function LeaseDetailsSidebar({
         <CardContent className="pt-4 space-y-4">
           <div>
             <p className="text-xs text-muted-foreground">Loyer mensuel</p>
-            <p className="text-2xl font-bold text-slate-900">
+            <p className="text-2xl font-bold text-foreground">
               {formatCurrency(displayLoyer + displayCharges)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -215,7 +215,7 @@ export function LeaseDetailsSidebar({
           <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-50">
             <div>
               <p className="text-xs text-muted-foreground">Dépôt de garantie</p>
-              <p className="text-base font-semibold text-slate-800">{formatCurrency(displayDepot)}</p>
+              <p className="text-base font-semibold text-foreground">{formatCurrency(displayDepot)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">1er versement</p>
@@ -418,7 +418,7 @@ function ChecklistRow({
       : status === "action_required"
         ? "bg-red-100"
         : status === "locked"
-          ? "bg-slate-100"
+          ? "bg-muted"
           : "bg-amber-100";
 
   const textColor =
@@ -427,7 +427,7 @@ function ChecklistRow({
       : status === "action_required"
         ? "text-red-700"
         : status === "locked"
-          ? "text-slate-500"
+          ? "text-muted-foreground"
           : "text-amber-700";
 
   return (
@@ -440,7 +440,7 @@ function ChecklistRow({
         ) : (
           <Clock
             className={`h-3 w-3 ${
-              status === "locked" ? "text-slate-400" : "text-amber-600"
+              status === "locked" ? "text-muted-foreground" : "text-amber-600"
             }`}
           />
         )}

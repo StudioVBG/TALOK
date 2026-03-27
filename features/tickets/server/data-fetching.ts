@@ -35,27 +35,24 @@ export async function getTickets(role: "owner" | "tenant" | "provider") {
     // Mes tickets créés
     query = query.eq("created_by_profile_id", profile.id);
   } else if (role === "owner") {
-    // Tickets sur mes propriétés
-    // Note: Cela suppose une Policy RLS correcte ou une jointure.
-    // Pour l'instant, on filtre par properties.owner_id via inner join si possible,
-    // mais Supabase JS le fait différemment.
-    // Le plus simple avec RLS bien configuré est de ne rien filtrer, la DB le fait.
-    // Mais pour être explicite :
+    // Tickets sur mes proprietes — filtre explicite par property_id
     const { data: properties } = await supabase
       .from("properties")
       .select("id")
       .eq("owner_id", profile.id);
-    
+
     const propertyIds = properties?.map(p => p.id) || [];
+    if (propertyIds.length === 0) return [];
     query = query.in("property_id", propertyIds);
   } else if (role === "provider") {
-    // Tickets liés à mes work_orders
+    // Tickets lies a mes work_orders
     const { data: jobs } = await supabase
       .from("work_orders")
       .select("ticket_id")
       .eq("provider_id", profile.id);
-      
-    const ticketIds = jobs?.map(j => j.ticket_id) || [];
+
+    const ticketIds = jobs?.map(j => j.ticket_id).filter(Boolean) || [];
+    if (ticketIds.length === 0) return [];
     query = query.in("id", ticketIds);
   }
 

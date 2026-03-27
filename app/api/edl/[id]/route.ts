@@ -172,7 +172,6 @@ export async function PUT(
     if (observations_generales !== undefined) updateData.general_notes = observations_generales;
     if (keys !== undefined) updateData.keys = keys || [];
 
-    console.log(`[PUT /api/edl/${edlId}] Updating with:`, Object.keys(updateData));
 
     try {
       const { error: updateError } = await serviceClient
@@ -199,7 +198,6 @@ export async function PUT(
     // Mettre à jour les sections (items) - batch operations to avoid timeout
     const sectionErrors: string[] = [];
     if (sections && Array.isArray(sections) && sections.length > 0) {
-      console.log(`[PUT /api/edl/${edlId}] Updating ${sections.length} sections`);
       try {
         // Collect all items to update and insert separately
         const itemsToUpdate: Array<{ id: string; data: any }> = [];

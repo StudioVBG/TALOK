@@ -291,6 +291,36 @@ export async function POST(
       } catch (postSignErr) {
         log.warn("Exception post-signature EDL via token (non bloquant)", { error: String(postSignErr) });
       }
+
+      // Générer la facture initiale pour le bail (si pas encore créée)
+      const leaseId = edlData?.lease_id;
+      if (leaseId) {
+        try {
+          const { ensureInitialInvoiceForLease } = await import("@/lib/services/lease-initial-invoice.service");
+          const invoiceResult = await ensureInitialInvoiceForLease(serviceClient as any, leaseId);
+          log.info("Facture initiale", {
+            invoiceId: invoiceResult.invoiceId,
+            created: invoiceResult.created,
+            amount: invoiceResult.amount,
+          });
+
+          if (invoiceResult.created) {
+            await serviceClient.from("outbox").insert({
+              event_type: "Invoice.InitialCreated",
+              payload: {
+                invoice_id: invoiceResult.invoiceId,
+                lease_id: leaseId,
+                tenant_profile_id: invoiceResult.tenantProfileId,
+                owner_profile_id: invoiceResult.ownerProfileId,
+                amount: invoiceResult.amount,
+                deposit_amount: invoiceResult.depositAmount,
+              },
+            } as any);
+          }
+        } catch (invoiceErr) {
+          log.warn("Erreur génération facture initiale", { error: String(invoiceErr) });
+        }
+      }
     }
 
     // FIX P1-8: Audit log (manquait totalement)

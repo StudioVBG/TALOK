@@ -148,7 +148,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; description?
   },
   archived: {
     label: "Archivé",
-    color: "bg-gray-200 text-gray-600 border-gray-300",
+    color: "bg-muted text-muted-foreground border-border",
     description: "Le bail est archivé",
   },
   cancelled: {
@@ -485,7 +485,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       return {
         shell: "border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-green-50",
         badge: "bg-emerald-100 text-emerald-700",
-        panel: "bg-white/80 border-emerald-100",
+        panel: "bg-card/80 border-emerald-100",
         button: "bg-emerald-600 hover:bg-emerald-700",
       };
     }
@@ -493,7 +493,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       return {
         shell: "border-indigo-200 bg-gradient-to-br from-indigo-50 via-white to-blue-50",
         badge: "bg-indigo-100 text-indigo-700",
-        panel: "bg-white/80 border-indigo-100",
+        panel: "bg-card/80 border-indigo-100",
         button: "bg-indigo-600 hover:bg-indigo-700",
       };
     }
@@ -501,7 +501,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       return {
         shell: "border-blue-200 bg-gradient-to-br from-blue-50 via-white to-cyan-50",
         badge: "bg-blue-100 text-blue-700",
-        panel: "bg-white/80 border-blue-100",
+        panel: "bg-card/80 border-blue-100",
         button: "bg-blue-600 hover:bg-blue-700",
       };
     }
@@ -509,14 +509,14 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       return {
         shell: "border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-50",
         badge: "bg-amber-100 text-amber-700",
-        panel: "bg-white/80 border-amber-100",
+        panel: "bg-card/80 border-amber-100",
         button: "bg-amber-600 hover:bg-amber-700",
       };
     }
     return {
-      shell: "border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-100",
-      badge: "bg-slate-100 text-slate-700",
-      panel: "bg-white/80 border-slate-200",
+      shell: "border-border bg-gradient-to-br from-muted via-white to-muted",
+      badge: "bg-muted text-foreground",
+      panel: "bg-card/80 border-border",
       button: "bg-slate-700 hover:bg-slate-800",
     };
   }, [readinessState.hero.tone]);
@@ -576,7 +576,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   ]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100/50">
+    <div className="min-h-screen bg-gradient-to-br from-muted to-muted/50">
       {/* Breadcrumb */}
       <div className="container mx-auto px-4 pt-4">
         <Breadcrumb
@@ -589,7 +589,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       </div>
 
       {/* Barre supérieure fixe (Header) */}
-      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200">
+      <div className="sticky top-0 z-30 bg-card/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
@@ -599,9 +599,9 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
               <ArrowLeft className="mr-2 h-4 w-4" />
               Retour
             </Link>
-            <div className="h-6 w-px bg-slate-200 hidden sm:block" />
+            <div className="h-6 w-px bg-border hidden sm:block" />
             <div className="flex items-center gap-3">
-              <h1 className="text-lg font-bold text-slate-900 hidden sm:block">
+              <h1 className="text-lg font-bold text-foreground hidden sm:block">
                 Bail {property.ville}
               </h1>
               <Badge className={statusConfig.color} variant="outline">
@@ -636,7 +636,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   disabled={isActivating || !canActivateNow}
                   className={canActivateNow
                     ? "bg-green-600 hover:bg-green-700 shadow-sm"
-                    : "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none border border-slate-200"
+                    : "bg-muted text-muted-foreground cursor-not-allowed shadow-none border border-border"
                   }
                   title={canActivateNow
                     ? "Activer le bail"
@@ -653,7 +653,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
             {!isSealed ? (
               <Link
                 href={`/owner/leases/${leaseId}/edit`}
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-white hover:bg-slate-50 border-slate-200")}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-card hover:bg-muted border-border")}
               >
                 <Edit className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Modifier</span>
@@ -671,7 +671,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   <span className="hidden sm:inline">Télécharger PDF</span>
                   <span className="sm:hidden text-[10px]">PDF</span>
                 </Button>
-                <div className="hidden md:flex items-center gap-1 text-[10px] text-slate-400 font-medium uppercase tracking-wider px-2 py-1 bg-slate-50 rounded border border-slate-100">
+                <div className="hidden md:flex items-center gap-1 text-[10px] text-muted-foreground font-medium uppercase tracking-wider px-2 py-1 bg-muted rounded border border-border">
                   <Lock className="h-3 w-3" />
                   Scellé
                 </div>
@@ -691,10 +691,10 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                     {readinessState.hero.eyebrow}
                   </Badge>
                   <div className="space-y-2">
-                    <h2 className="text-2xl md:text-3xl font-bold text-slate-950">
+                    <h2 className="text-2xl md:text-3xl font-bold text-foreground">
                       {readinessState.hero.title}
                     </h2>
-                    <p className="text-sm md:text-base text-slate-600 max-w-3xl">
+                    <p className="text-sm md:text-base text-muted-foreground max-w-3xl">
                       {readinessState.hero.description}
                     </p>
                   </div>
@@ -702,9 +702,9 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                     {readinessState.hero.highlights.map((highlight) => (
                       <div
                         key={highlight}
-                        className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-xs font-medium text-slate-700"
+                        className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground"
                       >
-                        <Sparkles className="h-3.5 w-3.5 text-slate-400" />
+                        <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
                         {highlight}
                       </div>
                     ))}
@@ -738,35 +738,35 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
                 <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
                   <div className={cn("rounded-2xl border p-4", heroToneClasses.panel)}>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                       Documents
                     </p>
-                    <p className="mt-2 text-2xl font-bold text-slate-900">
+                    <p className="mt-2 text-2xl font-bold text-foreground">
                       {readinessState.documentState.completedCount}/{readinessState.documentState.totalCount}
                     </p>
-                    <p className="mt-1 text-xs text-slate-600">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Prérequis visibles et réconciliés avec le workflow
                     </p>
                   </div>
                   <div className={cn("rounded-2xl border p-4", heroToneClasses.panel)}>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                       Paiement initial
                     </p>
-                    <p className="mt-2 text-base font-semibold text-slate-900">
+                    <p className="mt-2 text-base font-semibold text-foreground">
                       {readinessState.paymentState.label}
                     </p>
-                    <p className="mt-1 text-xs text-slate-600">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {readinessState.paymentState.description}
                     </p>
                   </div>
                   <div className={cn("rounded-2xl border p-4", heroToneClasses.panel)}>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                       Prochaine étape
                     </p>
-                    <p className="mt-2 text-base font-semibold text-slate-900">
+                    <p className="mt-2 text-base font-semibold text-foreground">
                       {readinessState.nextAction.label ?? "Aucune action requise"}
                     </p>
-                    <p className="mt-1 text-xs text-slate-600">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       {readinessState.nextAction.description}
                     </p>
                   </div>
@@ -790,8 +790,8 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
               className="flex flex-col lg:flex-1"
             >
               {/* Barre d'onglets */}
-              <TabsList className="w-full justify-start bg-white border border-slate-200 rounded-t-xl rounded-b-none h-12 px-2 gap-1">
-                <TabsTrigger value="contrat" className="gap-2 data-[state=active]:bg-slate-100">
+              <TabsList className="w-full justify-start bg-card border border-border rounded-t-xl rounded-b-none h-12 px-2 gap-1">
+                <TabsTrigger value="contrat" className="gap-2 data-[state=active]:bg-muted">
                   <FileText className="h-4 w-4" />
                   <span className="hidden sm:inline">Contrat</span>
                 </TabsTrigger>
@@ -811,7 +811,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                     <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="documents" className="gap-2 data-[state=active]:bg-slate-100">
+                <TabsTrigger value="documents" className="gap-2 data-[state=active]:bg-muted">
                   <FolderOpen className="h-4 w-4" />
                   <span className="hidden sm:inline">Documents</span>
                   <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
@@ -820,7 +820,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                 </TabsTrigger>
                 <TabsTrigger
                   value="paiements"
-                  className={`gap-2 data-[state=active]:bg-slate-100 ${
+                  className={`gap-2 data-[state=active]:bg-muted ${
                     !readinessState.tabs.paymentsEnabled ? "opacity-40 cursor-not-allowed" : ""
                   }`}
                   disabled={!readinessState.tabs.paymentsEnabled}
@@ -829,7 +829,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                   <CreditCard className="h-4 w-4" />
                   <span className="hidden sm:inline">Paiements</span>
                   {!readinessState.tabs.paymentsEnabled && (
-                    <Badge variant="outline" className="text-[9px] h-4 px-1 border-slate-200 text-slate-400 hidden sm:inline-flex">
+                    <Badge variant="outline" className="text-[9px] h-4 px-1 border-border text-muted-foreground hidden sm:inline-flex">
                       après signature
                     </Badge>
                   )}
@@ -838,7 +838,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : Contrat */}
               <TabsContent value="contrat" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 overflow-hidden flex-1 flex flex-col min-h-[80vh]">
+                <div className="bg-card rounded-b-xl shadow-sm border border-t-0 border-border overflow-hidden flex-1 flex flex-col min-h-[80vh]">
                   {isSealed && signedPdfPath ? (
                     <div className="flex flex-col h-full">
                       <div className="flex items-center justify-between px-4 py-3 border-b bg-gradient-to-r from-emerald-50 to-green-50">
@@ -848,7 +848,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                             <span className="text-xs font-semibold text-emerald-700">Document scellé</span>
                           </div>
                           {sealedAt && (
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs text-muted-foreground">
                               le {new Date(sealedAt).toLocaleDateString("fr-FR")}
                             </span>
                           )}
@@ -879,8 +879,8 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                         className="flex-1 w-full border-0 min-h-[70vh]"
                         title="Bail de location signé"
                       />
-                      <div className="px-4 py-2 border-t bg-slate-50 text-center">
-                        <p className="text-xs text-slate-500">
+                      <div className="px-4 py-2 border-t bg-muted text-center">
+                        <p className="text-xs text-muted-foreground">
                           <Lock className="h-3 w-3 inline mr-1" />
                           Ce document est légalement scellé et ne peut plus être modifié.
                         </p>
@@ -892,8 +892,8 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                         <Clock className="h-6 w-6 text-amber-600" />
                       </div>
                       <div className="text-center space-y-1">
-                        <p className="font-medium text-slate-800">PDF signé en cours de génération</p>
-                        <p className="text-sm text-slate-500 max-w-md">
+                        <p className="font-medium text-foreground">PDF signé en cours de génération</p>
+                        <p className="text-sm text-muted-foreground max-w-md">
                           Le document PDF du bail signé est en cours de préparation. Rafraîchissez la page dans quelques secondes.
                         </p>
                       </div>
@@ -910,7 +910,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : EDL d'entrée */}
               <TabsContent value="edl" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
+                <div className="bg-card rounded-b-xl shadow-sm border border-t-0 border-border lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
                   <LeaseEdlTab
                     leaseId={leaseId}
                     propertyId={property.id}
@@ -927,7 +927,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : Documents */}
               <TabsContent value="documents" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
+                <div className="bg-card rounded-b-xl shadow-sm border border-t-0 border-border lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
                   <LeaseDocumentsTab
                     leaseId={leaseId}
                     propertyId={property.id}
@@ -940,7 +940,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
 
               {/* Contenu : Paiements */}
               <TabsContent value="paiements" className="flex-1 mt-0">
-                <div className="bg-white rounded-b-xl shadow-sm border border-t-0 border-slate-200 lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
+                <div className="bg-card rounded-b-xl shadow-sm border border-t-0 border-border lg:overflow-auto p-6 pb-24 md:pb-6 lg:h-full">
                   <LeasePaymentsTab
                     leaseId={leaseId}
                     payments={payments || []}

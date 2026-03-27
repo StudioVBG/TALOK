@@ -199,6 +199,8 @@ export async function GET(request: Request) {
             return NextResponse.redirect(new URL("/guarantor/onboarding/context", origin));
           case "syndic":
             return NextResponse.redirect(new URL("/syndic/onboarding/profile", origin));
+          case "agency":
+            return NextResponse.redirect(new URL("/agency/onboarding/profile", origin));
         }
       }
 

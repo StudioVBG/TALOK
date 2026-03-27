@@ -61,9 +61,6 @@ export async function GET() {
             .from("lease_signers")
             .update({ profile_id: profile.id })
             .eq("id", orphan.id);
-          console.log(
-            `[my-leases] Auto-link: signer ${orphan.id} -> profile ${profile.id}`
-          );
         }
       }
     }

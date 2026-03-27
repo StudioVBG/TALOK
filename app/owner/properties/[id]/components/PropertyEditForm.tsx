@@ -110,7 +110,7 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
         )}
 
         {/* Sécurité */}
-        <div className="p-3 bg-slate-50 rounded-lg">
+        <div className="p-3 bg-muted rounded-lg">
           <Label className="text-xs font-medium mb-3 block">Sécurité</Label>
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2">
@@ -235,7 +235,7 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
         )}
 
         {/* Équipements */}
-        <div className="p-3 bg-slate-50 rounded-lg">
+        <div className="p-3 bg-muted rounded-lg">
           <Label className="text-xs font-medium mb-3 block">Équipements</Label>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <div className="flex items-center gap-2">
@@ -499,7 +499,7 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
       </div>
 
       {/* Extérieurs */}
-      <div className="p-3 bg-slate-50 rounded-lg">
+      <div className="p-3 bg-muted rounded-lg">
         <Label className="text-xs font-medium mb-3 block">Extérieurs & Annexes</Label>
         <div className="flex flex-wrap gap-4">
           <div className="flex items-center gap-2">

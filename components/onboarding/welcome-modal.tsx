@@ -161,12 +161,41 @@ const ROLE_CONFIG: Record<string, {
     ctaText: "Continuer",
     skipText: "Plus tard",
   },
+  agency: {
+    emoji: "🏢",
+    title: "Bienvenue sur Talok !",
+    subtitle: "Pilotez votre agence immobiliere",
+    features: [
+      {
+        icon: Building2,
+        title: "Mandats",
+        description: "Gerez vos mandats de gestion et de location",
+      },
+      {
+        icon: FileText,
+        title: "Baux & Documents",
+        description: "Creez et signez les baux pour vos proprietaires",
+      },
+      {
+        icon: CreditCard,
+        title: "Finances",
+        description: "Suivez les loyers et commissions",
+      },
+      {
+        icon: MessageSquare,
+        title: "Communication",
+        description: "Echangez avec proprietaires et locataires",
+      },
+    ],
+    ctaText: "Configurer mon agence",
+    skipText: "Plus tard",
+  },
   admin: {
     emoji: "⚙️",
     title: "Bienvenue Administrateur !",
-    subtitle: "Gérez la plateforme Talok",
+    subtitle: "Gerez la plateforme Talok",
     features: [],
-    ctaText: "Accéder au tableau de bord",
+    ctaText: "Acceder au tableau de bord",
     skipText: "Plus tard",
   },
   syndic: {

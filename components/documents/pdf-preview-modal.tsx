@@ -86,7 +86,7 @@ export function PDFPreviewModal({
         )}
       >
         {/* Header - Responsive avec toolbar adaptative */}
-        <DialogHeader className="px-3 sm:px-4 py-2 sm:py-3 border-b bg-slate-50 flex-shrink-0">
+        <DialogHeader className="px-3 sm:px-4 py-2 sm:py-3 border-b bg-muted flex-shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
             {/* Titre du document */}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -96,7 +96,9 @@ export function PDFPreviewModal({
               <div className="min-w-0">
                 <DialogTitle className="text-sm sm:text-lg font-semibold truncate">{documentTitle}</DialogTitle>
                 {documentType && (
-                  <span className="text-[10px] sm:text-xs text-muted-foreground uppercase">{documentType}</span>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground uppercase">
+                    {documentType.replace(/_/g, " ")}
+                  </span>
                 )}
               </div>
             </div>
@@ -126,7 +128,7 @@ export function PDFPreviewModal({
                 >
                   <ZoomIn className="h-4 w-4" />
                 </Button>
-                <div className="w-px h-5 sm:h-6 bg-slate-200 mx-1 sm:mx-2 hidden sm:block" aria-hidden="true" />
+                <div className="w-px h-5 sm:h-6 bg-border mx-1 sm:mx-2 hidden sm:block" aria-hidden="true" />
               </div>
 
               {/* Rotation */}
@@ -155,7 +157,7 @@ export function PDFPreviewModal({
                 )}
               </Button>
 
-              <div className="w-px h-5 sm:h-6 bg-slate-200 mx-1 sm:mx-2" aria-hidden="true" />
+              <div className="w-px h-5 sm:h-6 bg-border mx-1 sm:mx-2" aria-hidden="true" />
 
               {/* Télécharger - texte caché sur mobile */}
               <Button
@@ -173,9 +175,9 @@ export function PDFPreviewModal({
         </DialogHeader>
 
         {/* Content - Zone de prévisualisation responsive */}
-        <div className="flex-1 overflow-auto bg-slate-100 relative min-h-0">
+        <div className="flex-1 overflow-auto bg-muted/50 relative min-h-0">
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-100 z-10">
+            <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
               <div className="flex flex-col items-center gap-3 px-4 text-center">
                 <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-indigo-600" />
                 <span className="text-xs sm:text-sm text-muted-foreground">Chargement du document...</span>
@@ -184,7 +186,7 @@ export function PDFPreviewModal({
           )}
 
           {error && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-100 z-10">
+            <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
               <div className="flex flex-col items-center gap-3 text-center p-4 sm:p-6 max-w-sm">
                 <div className="p-2 sm:p-3 bg-red-100 rounded-full">
                   <X className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />

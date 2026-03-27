@@ -620,7 +620,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
 
       {/* Bouton retour */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <Link href="/owner/properties" className={cn(buttonVariants({ variant: "ghost" }), "pl-0 hover:pl-2 transition-all text-slate-500 hover:text-slate-900 w-fit")}>
+        <Link href="/owner/properties" className={cn(buttonVariants({ variant: "ghost" }), "pl-0 hover:pl-2 transition-all text-muted-foreground hover:text-foreground w-fit")}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Retour à la liste
         </Link>
@@ -744,12 +744,12 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
 
         {allDisplayPhotos.length === 0 ? (
           // Aucune photo
-          <div className="h-[300px] md:h-[400px] rounded-2xl overflow-hidden bg-slate-50 border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-500 gap-4">
-            <div className="p-4 bg-white rounded-full shadow-sm">
-              <ImageIcon className="w-10 h-10 text-slate-400" />
+          <div className="h-[300px] md:h-[400px] rounded-2xl overflow-hidden bg-muted border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-4">
+            <div className="p-4 bg-card rounded-full shadow-sm">
+              <ImageIcon className="w-10 h-10 text-muted-foreground" />
             </div>
             <div className="text-center">
-              <h3 className="text-lg font-semibold text-slate-700">Aucune photo</h3>
+              <h3 className="text-lg font-semibold text-foreground">Aucune photo</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {isEditing ? "Ajoutez des photos pour mettre en valeur votre bien" : "Cliquez sur 'Modifier le bien' pour ajouter des photos"}
               </p>
@@ -766,7 +766,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-[300px] md:h-[450px]">
             {/* Photo principale */}
             <div 
-              className="col-span-1 md:col-span-3 relative rounded-2xl overflow-hidden bg-slate-100 group cursor-pointer"
+              className="col-span-1 md:col-span-3 relative rounded-2xl overflow-hidden bg-muted group cursor-pointer"
               onClick={() => !isEditing && openGallery(0)}
             >
               {mainPhoto && (
@@ -809,7 +809,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                         <Button 
                           size="sm" 
                           variant="outline"
-                          className="bg-white"
+                          className="bg-card"
                           onClick={() => handleUnmarkPhotoForDeletion(mainPhoto.id)}
                         >
                           Annuler
@@ -900,7 +900,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                         <Button 
                           size="icon" 
                           variant="outline"
-                          className="h-7 w-7 bg-white"
+                          className="h-7 w-7 bg-card"
                           onClick={() => handleUnmarkPhotoForDeletion(photo.id)}
                         >
                           <Check className="w-4 h-4" />
@@ -934,17 +934,17 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="flex-1 bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-blue-400 transition-all min-h-[100px]"
+                  className="flex-1 bg-muted border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-muted/80 hover:border-blue-400 transition-all min-h-[100px]"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <Camera className="w-8 h-8 text-slate-400 mb-2" />
-                  <span className="text-sm text-slate-500 font-medium">Ajouter</span>
+                  <Camera className="w-8 h-8 text-muted-foreground mb-2" />
+                  <span className="text-sm text-muted-foreground font-medium">Ajouter</span>
                 </motion.div>
               )}
 
               {/* Info loyer si pas en mode édition */}
               {!isEditing && allDisplayPhotos.length <= 2 && (
-                <div className="flex-1 bg-white border rounded-xl p-4 flex flex-col justify-center items-center">
+                <div className="flex-1 bg-card border rounded-xl p-4 flex flex-col justify-center items-center">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Loyer</p>
                   <p className="text-2xl font-bold">{formatCurrency(property.loyer_hc || 0)}</p>
                   <span className="text-xs text-muted-foreground">/mois HC</span>
@@ -984,7 +984,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
             <CardContent>
               {/* Mode édition : afficher les champs d'adresse */}
               {isEditing && (
-                <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                <div className="mb-6 p-4 bg-muted rounded-lg border border-dashed border-border">
                   <p className="text-xs text-muted-foreground mb-3 font-medium flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
                     Modifier l'adresse
@@ -1124,7 +1124,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                     {property.digicode && (
                       <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/50">
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-white dark:bg-card flex items-center justify-center shadow-sm">
+                          <div className="h-8 w-8 rounded-lg bg-card flex items-center justify-center shadow-sm">
                             <Key className="h-4 w-4 text-indigo-600" />
                           </div>
                           <span className="text-sm font-medium text-muted-foreground">Digicode</span>
@@ -1137,7 +1137,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                     {property.interphone && (
                       <div className="flex items-center justify-between p-3 rounded-xl bg-muted border border-border">
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-white dark:bg-card flex items-center justify-center shadow-sm">
+                          <div className="h-8 w-8 rounded-lg bg-card flex items-center justify-center shadow-sm">
                             <Phone className="h-4 w-4 text-muted-foreground" />
                           </div>
                           <span className="text-sm font-medium text-muted-foreground">Interphone</span>
@@ -1493,7 +1493,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t shadow-lg md:hidden z-50"
+            className="fixed bottom-0 left-0 right-0 p-4 bg-card border-t shadow-lg md:hidden z-50"
           >
             <div className="flex gap-3">
               <Button variant="outline" onClick={handleCancelEditing} disabled={isSaving} className="flex-1">
