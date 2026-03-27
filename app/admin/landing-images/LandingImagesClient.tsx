@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Upload, Link as LinkIcon, Loader2 } from "lucide-react";
 
-interface SiteConfigEntry {
+export interface SiteConfigEntry {
   key: string;
   value: string | null;
   label: string | null;

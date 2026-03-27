@@ -64,7 +64,7 @@ export function FAQ() {
             <motion.div
               key={i}
               variants={blurUp}
-              className="group overflow-hidden rounded-xl border border-slate-200 bg-white transition-shadow hover:shadow-md"
+              className="group overflow-hidden rounded-xl border border-slate-200 bg-card transition-shadow hover:shadow-md"
             >
               <button
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}

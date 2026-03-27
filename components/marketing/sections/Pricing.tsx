@@ -39,7 +39,7 @@ const plans = [
     desc: "Pour découvrir",
     features: ["1 logement", "1 contrat", "Tableau de bord basique"],
     cta: "Commencer",
-    ctaStyle: "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+    ctaStyle: "border border-slate-200 bg-card text-slate-700 hover:bg-slate-50",
     featured: false,
   },
   {
@@ -49,7 +49,7 @@ const plans = [
     desc: "1 à 3 logements",
     features: ["3 logements", "1 Go de documents", "Paiements en ligne", "Reçus automatiques"],
     cta: "1er mois offert",
-    ctaStyle: "border border-[#2563EB] bg-white text-[#2563EB] hover:bg-[#2563EB]/5",
+    ctaStyle: "border border-[#2563EB] bg-card text-[#2563EB] hover:bg-[#2563EB]/5",
     featured: false,
   },
   {
@@ -81,7 +81,7 @@ const plans = [
       "Multi-utilisateurs (5)",
     ],
     cta: "1er mois offert",
-    ctaStyle: "border border-[#2563EB] bg-white text-[#2563EB] hover:bg-[#2563EB]/5",
+    ctaStyle: "border border-[#2563EB] bg-card text-[#2563EB] hover:bg-[#2563EB]/5",
     featured: false,
   },
 ]
@@ -137,7 +137,7 @@ export function Pricing() {
                 className={`flex h-full flex-col rounded-2xl border p-6 ${
                   plan.featured
                     ? "border-2 border-[#2563EB] bg-[#2563EB]/5 shadow-lg shadow-[#2563EB]/10"
-                    : "border-slate-200 bg-white shadow-sm"
+                    : "border-slate-200 bg-card shadow-sm"
                 }`}
               >
                 <motion.div {...(plan.featured ? glowPulse : {})}>

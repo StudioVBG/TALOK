@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
-import { LandingImagesClient } from "./LandingImagesClient";
+import { LandingImagesClient, type SiteConfigEntry } from "./LandingImagesClient";
 
 export default async function LandingImagesPage() {
   const supabase = await createClient();
@@ -24,11 +24,19 @@ export default async function LandingImagesPage() {
     redirect("/admin/dashboard");
   }
 
-  const { data: configs } = await supabase
+  const { data } = await supabase
     .from("site_config")
     .select("key, value, label, section, updated_at")
     .order("section")
     .order("key");
+
+  const configs: SiteConfigEntry[] = (data ?? []).map((row) => ({
+    key: String(row.key ?? ""),
+    value: row.value != null ? String(row.value) : null,
+    label: row.label != null ? String(row.label) : null,
+    section: row.section != null ? String(row.section) : null,
+    updated_at: row.updated_at != null ? String(row.updated_at) : null,
+  }));
 
   return (
     <div>
@@ -38,7 +46,7 @@ export default async function LandingImagesPage() {
           Gérez les images affichées sur la page d&apos;accueil. Les changements sont visibles sous 1h.
         </p>
       </div>
-      <LandingImagesClient configs={configs ?? []} />
+      <LandingImagesClient configs={configs} />
     </div>
   );
 }

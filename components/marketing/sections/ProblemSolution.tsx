@@ -58,10 +58,11 @@ export function ProblemSolution({ images }: { images?: Record<string, string> })
         <div className="absolute inset-0 -z-10">
           <Image
             src={images.landing_beforeafter_img}
-            alt=""
+            alt="Illustration de fond avant/après Talok"
             fill
             className="object-cover opacity-[0.04]"
             sizes="100vw"
+            loading="lazy"
           />
         </div>
       )}
@@ -159,6 +160,30 @@ export function ProblemSolution({ images }: { images?: Record<string, string> })
             </div>
           </motion.div>
         </div>
+
+        {/* Lifestyle photo with testimonial quote */}
+        {images?.landing_beforeafter_img && (
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-80px" }}
+            className="relative mt-16 rounded-2xl overflow-hidden h-64 md:h-80"
+          >
+            <Image
+              src={images.landing_beforeafter_img}
+              alt="Propriétaire serein gérant ses locations depuis son canapé"
+              fill
+              className="object-cover object-center"
+              loading="lazy"
+            />
+            <div className="absolute inset-0 bg-blue-900/50 flex items-center justify-center">
+              <p className="text-white text-2xl md:text-3xl font-extrabold text-center px-8">
+                &ldquo;Depuis Talok, je n&rsquo;y passe plus qu&rsquo;une heure par mois.&rdquo;
+              </p>
+            </div>
+          </motion.div>
+        )}
       </div>
     </section>
   )

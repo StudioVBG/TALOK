@@ -115,7 +115,7 @@ export function HeroSection() {
           >
             {/* Badge */}
             <motion.div variants={blurUp}>
-              <span className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-1.5 text-sm font-medium text-[#1B2A6B] shadow-sm ring-1 ring-slate-100">
+              <span className="inline-flex items-center gap-2 rounded-full bg-card px-4 py-1.5 text-sm font-medium text-[#1B2A6B] shadow-sm ring-1 ring-slate-100">
                 🇲🇶 Né en Martinique · Pour toute la France
               </span>
             </motion.div>
@@ -147,7 +147,7 @@ export function HeroSection() {
               <MagneticCTA />
               <a
                 href="#fonctionnalites"
-                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-8 py-3.5 text-base font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-card px-8 py-3.5 text-base font-semibold text-slate-700 transition-colors hover:bg-slate-50"
               >
                 Voir une démo
               </a>

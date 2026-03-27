@@ -62,7 +62,7 @@ export async function PUT(request: NextRequest) {
 
     const { error } = await supabase
       .from("site_config")
-      .update({ value, updated_at: new Date().toISOString() })
+      .update({ value })
       .eq("key", key);
 
     if (error) {

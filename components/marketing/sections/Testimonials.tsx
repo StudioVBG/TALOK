@@ -115,7 +115,7 @@ function TestimonialCard({ t }: { t: (typeof testimonials)[number] }) {
     <motion.div
       variants={fadeUp}
       whileHover={{ y: -4, transition: { duration: 0.2 } }}
-      className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm"
+      className="rounded-2xl border border-slate-200 bg-card p-7 shadow-sm"
     >
       {/* Stars with sequential scale-in */}
       <div className="mb-4 flex gap-0.5">
