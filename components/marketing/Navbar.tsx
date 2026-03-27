@@ -20,10 +20,10 @@ const produitLinks = [
 ]
 
 const solutionsLinks = [
-  { label: "Proprietaires", href: "/solutions/proprietaires", icon: Building2 },
+  { label: "Proprietaires", href: "/solutions/proprietaires-particuliers", icon: Building2 },
   { label: "Investisseurs", href: "/solutions/investisseurs", icon: Briefcase },
-  { label: "Agences", href: "/solutions/agences", icon: Building },
-  { label: "France d\u2019outre-mer", href: "/solutions/outre-mer", icon: MapPin },
+  { label: "Agences", href: "/solutions/administrateurs-biens", icon: Building },
+  { label: "France d\u2019outre-mer", href: "/solutions/dom-tom", icon: MapPin },
 ]
 
 export function MarketingNavbar() {
