@@ -83,7 +83,7 @@ export async function POST(request: Request) {
 
     // Lire le rôle et les metadata de l'utilisateur
     const metadata = user.user_metadata || {};
-    const role = metadata.role && ["admin", "owner", "tenant", "provider", "guarantor", "syndic"].includes(metadata.role)
+    const role = metadata.role && ["admin", "owner", "tenant", "provider", "guarantor", "syndic", "agency"].includes(metadata.role)
       ? metadata.role
       : "tenant";
 
@@ -125,6 +125,10 @@ export async function POST(request: Request) {
       await serviceClient
         .from("provider_profiles")
         .upsert({ profile_id: profileId, type_services: [] }, { onConflict: "profile_id", ignoreDuplicates: true });
+    } else if (role === "agency") {
+      await serviceClient
+        .from("agency_profiles")
+        .upsert({ profile_id: profileId }, { onConflict: "profile_id", ignoreDuplicates: true });
     }
 
     // Filet de sécurité : lier lease_signers orphelins + backfill invoices (au cas où le trigger DB n'a pas tourné)
