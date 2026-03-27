@@ -418,7 +418,7 @@ export function Navbar() {
   }, [openMenu, closeMenu]);
 
   // Hide on dashboard routes and marketing routes (MarketingNavbar handles those)
-  const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/admin", "/syndic", "/agency", "/copro", "/guarantor", "/auth"];
+  const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/admin", "/syndic", "/agency", "/copro", "/guarantor", "/auth", "/signup"];
   const isAppRoute = hiddenPaths.some((path) => pathname?.startsWith(path));
   const marketingPaths = ["/", "/pricing", "/faq", "/blog", "/fonctionnalites", "/solutions", "/temoignages", "/guides", "/outils", "/a-propos", "/contact", "/features", "/legal", "/modeles"];
   const isMarketingPage = marketingPaths.some((p) =>
