@@ -29,16 +29,11 @@ import {
   Building2,
   FileText,
   Euro,
-  ClipboardCheck,
-  Users,
-  HelpCircle,
   Rocket,
   Wrench,
   Bell,
-  Settings,
   FileCheck,
   Search,
-  FileSignature,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -126,31 +121,23 @@ function boostSidebarZIndex(boost: boolean): void {
 }
 
 // ============================================================================
-// OWNER TOUR - 12 étapes
+// OWNER TOUR - 8 étapes SOTA 2026
 // ============================================================================
 const ownerTourSteps: TourStep[] = [
   {
     id: "welcome",
-    title: "Bienvenue sur Talok !",
+    title: "Votre tableau de bord",
     description:
-      "Découvrez comment gérer vos biens locatifs simplement et efficacement. Ce tour rapide vous montrera les fonctionnalités essentielles en quelques étapes.",
-    position: "center",
-    icon: Sparkles,
-  },
-  {
-    id: "dashboard",
-    title: "Votre Tableau de Bord",
-    description:
-      "Vue d'ensemble de vos revenus, biens et actions urgentes. Les données se mettent à jour en temps réel pour un suivi instantané.",
+      "Ici, vous voyez en un coup d'oeil vos revenus du mois, vos biens et vos baux actifs. Tout ce qu'il faut pour piloter vos locations.",
     target: "[data-tour='dashboard-header']",
     position: "bottom",
     icon: Rocket,
   },
   {
     id: "properties",
-    title: "Gestion des Biens",
+    title: "Gerez vos logements",
     description:
-      "Ajoutez et gérez tous vos biens : appartements, maisons, parkings. Chaque bien possède sa fiche détaillée avec diagnostics, photos et documents.",
+      "Ajoutez vos biens, renseignez les details (surface, DPE, equipements) et suivez leur occupation. Commencez par votre premier logement.",
     target: "[data-tour='nav-properties']",
     position: "right",
     icon: Building2,
@@ -161,159 +148,113 @@ const ownerTourSteps: TourStep[] = [
   },
   {
     id: "leases",
-    title: "Baux & Locataires",
+    title: "Creez votre premier bail",
     description:
-      "Créez des baux conformes à la loi ALUR, invitez vos locataires à signer électroniquement, et gérez facilement la colocation.",
+      "Generez un contrat de location conforme a la loi en 5 minutes. Votre locataire signe depuis son telephone. Zero paperasse.",
     target: "[data-tour='nav-leases']",
     position: "right",
     icon: FileText,
-    action: {
-      label: "Créer un bail",
-      href: "/owner/leases/new",
-    },
   },
   {
     id: "money",
-    title: "Loyers & Quittances",
+    title: "Recevez vos loyers",
     description:
-      "Suivez vos paiements en temps réel, générez des quittances automatiquement et gérez les impayés. Export fiscal inclus pour votre déclaration.",
+      "Connectez votre compte bancaire pour recevoir les paiements de vos locataires. Les recus de loyer partent automatiquement.",
     target: "[data-tour='nav-money']",
     position: "right",
     icon: Euro,
   },
   {
-    id: "inspections",
-    title: "États des Lieux",
-    description:
-      "Réalisez des EDL numériques avec photos, signatures électroniques et génération PDF automatique. Conformité juridique garantie.",
-    target: "[data-tour='nav-inspections']",
-    position: "right",
-    icon: ClipboardCheck,
-  },
-  {
-    id: "tickets",
-    title: "Tickets & Maintenance",
-    description:
-      "Recevez et gérez les demandes de maintenance de vos locataires. Suivez l'avancement et coordonnez les interventions facilement.",
-    target: "[data-tour='nav-tickets']",
-    position: "right",
-    icon: Wrench,
-  },
-  {
     id: "documents",
-    title: "Documents & Coffre-fort",
+    title: "Tous vos documents au meme endroit",
     description:
-      "Centralisez tous vos documents : baux, diagnostics, quittances, assurances. Stockage sécurisé accessible 24h/24.",
+      "Baux signes, etats des lieux, quittances, assurances — tout est archive ici. Cherchez en 1 clic, partagez en 1 clic.",
     target: "[data-tour='nav-documents']",
     position: "right",
     icon: FileCheck,
   },
   {
-    id: "command-palette",
-    title: "Recherche Rapide",
+    id: "tickets",
+    title: "Vos locataires vous signalent un probleme ?",
     description:
-      "Appuyez sur Ctrl+K (ou Cmd+K) à tout moment pour accéder instantanément à n'importe quelle page, bien ou locataire.",
+      "Les demandes d'intervention arrivent ici. Assignez un prestataire, suivez l'avancement, validez la facture.",
+    target: "[data-tour='nav-tickets']",
+    position: "right",
+    icon: Wrench,
+  },
+  {
+    id: "command-palette",
+    title: "Retrouvez tout instantanement",
+    description:
+      "Recherchez un locataire, un bien, un document, une facture. La recherche couvre toute votre gestion.",
     target: "[data-tour='search-button']",
     position: "bottom",
     icon: Search,
   },
   {
-    id: "notifications",
-    title: "Notifications",
+    id: "complete",
+    title: "Ne ratez rien",
     description:
-      "Restez informé en temps réel : nouveaux paiements, demandes de maintenance, signatures en attente. Personnalisez vos alertes.",
+      "Loyer en retard, bail a renouveler, document expirant — vous etes alerte en temps reel. Bonne gestion !",
     target: "[data-tour='notifications-bell']",
     position: "bottom",
     icon: Bell,
-  },
-  {
-    id: "support",
-    title: "Aide & Support",
-    description:
-      "Besoin d'aide ? Accédez à notre centre d'aide, FAQ, et support client directement depuis la barre latérale. Notre équipe est là pour vous.",
-    target: "[data-tour='nav-support']",
-    position: "right",
-    icon: HelpCircle,
-  },
-  {
-    id: "complete",
-    title: "Vous êtes prêt !",
-    description:
-      "Vous connaissez maintenant les bases de Talok. Explorez, ajoutez vos biens et commencez à gérer votre patrimoine sereinement. Bon courage !",
-    position: "center",
-    icon: Check,
     action: {
-      label: "Commencer à utiliser Talok",
+      label: "Commencer ma gestion",
     },
   },
 ];
 
 // ============================================================================
-// TENANT TOUR - 7 étapes
+// TENANT TOUR - 5 étapes SOTA 2026
 // ============================================================================
 const tenantTourSteps: TourStep[] = [
   {
-    id: "welcome-tenant",
-    title: "Bienvenue chez vous !",
-    description:
-      "Talok vous accompagne dans toute votre vie locative. Laissez-nous vous montrer comment tirer le meilleur parti de votre espace.",
-    position: "center",
-    icon: Sparkles,
-  },
-  {
     id: "dashboard-tenant",
-    title: "Votre Tableau de Bord",
+    title: "Votre espace locataire",
     description:
-      "Suivez ici les étapes clés de votre emménagement : signature du bail, état des lieux et vérification d'identité.",
-    target: "[data-tour='nav-dashboard']",
-    position: "right",
+      "Bienvenue ! Ici vous gerez tout ce qui concerne votre location depuis votre telephone.",
+    target: "[data-tour='tenant-onboarding']",
+    position: "bottom",
     icon: Rocket,
   },
   {
-    id: "payments-tenant",
-    title: "Gestion des Loyers",
-    description:
-      "Consultez votre loyer, téléchargez vos quittances et payez en ligne en toute sécurité.",
-    target: "[data-tour='nav-payments']",
-    position: "right",
-    icon: Euro,
-  },
-  {
     id: "lease-tenant",
-    title: "Votre Logement",
+    title: "Votre contrat de location",
     description:
-      "Retrouvez toutes les informations sur votre logement, les contacts utiles et les documents du bail.",
+      "Consultez votre bail, les conditions, et signez les documents directement depuis l'app.",
     target: "[data-tour='nav-lease']",
     position: "right",
     icon: Building2,
   },
   {
-    id: "documents-tenant",
-    title: "Votre Coffre-fort",
+    id: "payments-tenant",
+    title: "Payez votre loyer en 1 clic",
     description:
-      "Tous vos documents (bail, quittances, assurances) sont stockés ici en sécurité et accessibles 24/7.",
+      "Reglez par carte bancaire ou prelevement automatique. Votre recu est genere instantanement.",
+    target: "[data-tour='nav-payments']",
+    position: "right",
+    icon: Euro,
+  },
+  {
+    id: "documents-tenant",
+    title: "Vos documents accessibles partout",
+    description:
+      "Quittances, contrat signe, etat des lieux — telechargez-les a tout moment, meme sur mobile.",
     target: "[data-tour='nav-documents']",
     position: "right",
     icon: FileText,
   },
   {
     id: "requests-tenant",
-    title: "Assistance & SAV",
+    title: "Signalez un probleme",
     description:
-      "Un problème technique ? Une question ? Signalez-le ici et suivez la résolution en temps réel.",
+      "Fuite, panne, travaux — signalez directement a votre proprietaire avec photos. Suivez l'avancement.",
     target: "[data-tour='nav-requests']",
     position: "right",
     icon: Wrench,
-  },
-  {
-    id: "complete-tenant",
-    title: "Tout est prêt !",
-    description:
-      "Vous avez maintenant toutes les clés en main. Profitez bien de votre logement !",
-    position: "center",
-    icon: Check,
     action: {
-      label: "Accéder à mon tableau de bord",
+      label: "Acceder a mon tableau de bord",
     },
   },
 ];

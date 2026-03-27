@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
+import { TalokLogo } from "@/components/marketing/TalokLogo";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -49,6 +50,9 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-[80vh] items-center justify-center px-4">
       <Card className="w-full max-w-md">
         <CardHeader>
+          <div className="flex justify-center mb-4">
+            <TalokLogo variant="light" size="md" />
+          </div>
           <CardTitle>Mot de passe oublié</CardTitle>
           <CardDescription>
             Saisissez l'adresse email de votre compte pour recevoir un lien de réinitialisation.
