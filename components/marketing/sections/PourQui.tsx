@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { motion } from "framer-motion"
 import { fadeUp } from "@/components/marketing/AnimatedSection"
 import { bounceIn, blurUp } from "@/components/marketing/hooks"
@@ -9,6 +10,7 @@ const ease = [0.22, 1, 0.36, 1] as const
 const personas = [
   {
     emoji: "🏡",
+    imageKey: "landing_profile_owner_img",
     title: "Propriétaire particulier",
     subtitle: "1 à 10 logements",
     body: "Vous voulez gérer vous-même, sans agence, sans vous tromper juridiquement. TALOK vous guide pas à pas.",
@@ -17,6 +19,7 @@ const personas = [
   },
   {
     emoji: "📈",
+    imageKey: "landing_profile_investor_img",
     title: "Investisseur / SCI",
     subtitle: "Plusieurs biens & entités",
     body: "Vision patrimoniale globale, comptabilité pour votre expert-comptable, gestion multi-entités. TALOK s\u2019adapte à votre complexité.",
@@ -25,6 +28,7 @@ const personas = [
   },
   {
     emoji: "🏢",
+    imageKey: "landing_profile_agency_img",
     title: "Agence / Gestionnaire",
     subtitle: "Portefeuille multi-propriétaires",
     body: "Votre propre marque, vos propres couleurs, API complète. Gérez des centaines de biens sous votre identité.",
@@ -45,7 +49,7 @@ const glowPulse = {
   },
 }
 
-export function PourQui() {
+export function PourQui({ images }: { images?: Record<string, string> }) {
   return (
     <section className="py-16 md:py-24">
       <div className="mx-auto max-w-[1100px] px-4">
@@ -98,15 +102,34 @@ export function PourQui() {
                   Le plus populaire
                 </span>
               )}
-              <motion.span
-                variants={bounceIn}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                className="inline-block text-3xl"
-              >
-                {p.emoji}
-              </motion.span>
+              {/* Image or emoji fallback */}
+              {images?.[p.imageKey] ? (
+                <motion.div
+                  variants={bounceIn}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  className="relative h-40 w-full overflow-hidden rounded-xl"
+                >
+                  <Image
+                    src={images[p.imageKey]}
+                    alt={p.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                  />
+                </motion.div>
+              ) : (
+                <motion.span
+                  variants={bounceIn}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  className="inline-block text-3xl"
+                >
+                  {p.emoji}
+                </motion.span>
+              )}
               <h3 className="mt-3 font-display text-lg font-bold text-[#1B2A6B]">{p.title}</h3>
               <p className="text-xs text-slate-400">{p.subtitle}</p>
               <p className="mt-3 text-sm leading-relaxed text-slate-500">{p.body}</p>

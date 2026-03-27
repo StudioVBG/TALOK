@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { motion } from "framer-motion"
 import { fadeUp, staggerContainer } from "@/components/marketing/AnimatedSection"
 import { blurUp, drawPath } from "@/components/marketing/hooks"
@@ -50,9 +51,20 @@ const strikeLine = {
   },
 }
 
-export function ProblemSolution() {
+export function ProblemSolution({ images }: { images?: Record<string, string> }) {
   return (
-    <section className="py-16 md:py-24">
+    <section className="relative overflow-hidden py-16 md:py-24">
+      {images?.landing_beforeafter_img && (
+        <div className="absolute inset-0 -z-10">
+          <Image
+            src={images.landing_beforeafter_img}
+            alt=""
+            fill
+            className="object-cover opacity-[0.04]"
+            sizes="100vw"
+          />
+        </div>
+      )}
       <div className="mx-auto max-w-[1100px] px-4">
         {/* Header */}
         <motion.div

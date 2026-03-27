@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { motion } from "framer-motion"
 import { fadeUp, staggerContainer } from "@/components/marketing/AnimatedSection"
 import { bounceIn, blurUp, use3DTilt, useCountUp } from "@/components/marketing/hooks"
@@ -14,6 +15,7 @@ function CountUpValue({ target, suffix }: { target: number; suffix: string }) {
 const cards = [
   {
     emoji: "⏱️",
+    imageKey: "landing_arg_time_img",
     title: "Gagnez 3h par semaine",
     body: "Loyers encaissés, reçus envoyés, relances faites — tout automatiquement. Vous vous occupez du reste.",
     badge: "3h économisées par semaine",
@@ -23,6 +25,7 @@ const cards = [
   },
   {
     emoji: "💶",
+    imageKey: "landing_arg_money_img",
     title: "Économisez jusqu\u2019à 2\u00A0000\u00A0€/an",
     body: "Une agence prend 7 à 8\u00A0% de vos loyers. TALOK vous coûte 35\u00A0€/mois. Sans intermédiaire.",
     badge: "Vs une agence classique",
@@ -32,6 +35,7 @@ const cards = [
   },
   {
     emoji: "📋",
+    imageKey: "landing_arg_contract_img",
     title: "Contrats signés en 5 minutes",
     body: "Votre locataire signe depuis son téléphone. Pas d\u2019imprimante, pas de déplacement. La signature a la même valeur légale qu\u2019un original papier.",
     badge: "Valeur légale garantie",
@@ -41,6 +45,7 @@ const cards = [
   },
   {
     emoji: "🛡️",
+    imageKey: "landing_arg_sleep_img",
     title: "Dormez tranquille",
     body: "La loi change souvent. TALOK se met à jour automatiquement. Vos contrats sont toujours dans les règles. Zéro risque juridique.",
     badge: "Mis à jour à chaque nouvelle loi",
@@ -65,7 +70,7 @@ function TiltCard({ children, className }: { children: React.ReactNode; classNam
   )
 }
 
-export function Arguments() {
+export function Arguments({ images }: { images?: Record<string, string> }) {
   return (
     <section className="bg-slate-50 py-16 md:py-24">
       <motion.div
@@ -78,16 +83,34 @@ export function Arguments() {
         {cards.map((card) => (
           <motion.div key={card.title} variants={fadeUp}>
             <TiltCard className="h-full rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition-shadow hover:shadow-lg md:p-8">
-              {/* Emoji with bounce */}
-              <motion.span
-                variants={bounceIn}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-                className="inline-block text-3xl"
-              >
-                {card.emoji}
-              </motion.span>
+              {/* Image or emoji fallback */}
+              {images?.[card.imageKey] ? (
+                <motion.div
+                  variants={bounceIn}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  className="relative h-32 w-full overflow-hidden rounded-xl"
+                >
+                  <Image
+                    src={images[card.imageKey]}
+                    alt={card.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 100vw, 50vw"
+                  />
+                </motion.div>
+              ) : (
+                <motion.span
+                  variants={bounceIn}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true }}
+                  className="inline-block text-3xl"
+                >
+                  {card.emoji}
+                </motion.span>
+              )}
               <h3 className="mt-4 font-display text-[18px] font-semibold text-[#1B2A6B]">
                 {card.title}
               </h3>
