@@ -1,6 +1,8 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { Check } from "lucide-react";
+import { fadeUp, staggerWide, defaultViewport } from "@/lib/marketing/animations";
 
 const CHECKS = [
   "Paiement en ligne par carte ou virement",
@@ -17,9 +19,18 @@ const BIENS = [
 
 export function FeatureLoyers() {
   return (
-    <div className="reveal grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+    <motion.div
+      className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16"
+      variants={staggerWide}
+      initial="hidden"
+      whileInView="visible"
+      viewport={defaultViewport}
+    >
       {/* Mockup left (inversé) */}
-      <div className="order-2 lg:order-1 rounded-2xl border bg-white p-6 shadow-lg">
+      <motion.div
+        variants={fadeUp}
+        className="order-2 lg:order-1 rounded-2xl border border-border bg-card p-6 shadow-lg"
+      >
         <div className="flex items-center justify-between">
           <h4 className="font-display text-sm font-semibold text-foreground">Mars 2026</h4>
           <span className="rounded-full bg-talok-vert/10 px-3 py-1 text-xs font-semibold text-talok-vert">
@@ -35,7 +46,7 @@ export function FeatureLoyers() {
         </div>
 
         {/* Property lines */}
-        <div className="mt-6 divide-y">
+        <div className="mt-6 divide-y divide-border">
           {BIENS.map((b) => (
             <div key={b.name} className="flex items-center justify-between py-3">
               <div>
@@ -49,17 +60,17 @@ export function FeatureLoyers() {
             </div>
           ))}
         </div>
-      </div>
+      </motion.div>
 
       {/* Text right */}
-      <div className="order-1 lg:order-2">
-        <span className="inline-block rounded-full bg-talok-vert/10 px-3 py-1 text-xs font-semibold text-talok-vert">
+      <motion.div variants={fadeUp} className="order-1 lg:order-2">
+        <span className="inline-block rounded-full bg-talok-vert/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-talok-vert">
           Suivi des loyers
         </span>
         <h3 className="mt-4 font-display text-2xl font-bold text-foreground md:text-3xl">
           Voyez en un clin d&apos;œil qui a payé et qui est en retard
         </h3>
-        <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+        <p className="mt-4 text-base font-normal leading-relaxed text-muted-foreground">
           Plus besoin de vérifier votre relevé bancaire ligne par ligne. Talok
           suit les paiements pour vous, envoie les relances automatiquement, et
           vous montre combien vous rapporte chaque bien.
@@ -72,8 +83,8 @@ export function FeatureLoyers() {
             </li>
           ))}
         </ul>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -94,7 +105,7 @@ function SummaryBar({
         <span className="text-muted-foreground">{label}</span>
         <span className="font-medium text-foreground">{amount}</span>
       </div>
-      <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-100">
+      <div className="mt-1 h-2 overflow-hidden rounded-full bg-secondary">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${percentage}%` }} />
       </div>
     </div>

@@ -35,7 +35,7 @@ import { cn } from "@/lib/utils";
 import { ManualPaymentDialog } from "@/components/payments";
 
 const statusConfig = {
-  draft: { label: "Brouillon", color: "bg-slate-100 text-slate-700", icon: FileText },
+  draft: { label: "Brouillon", color: "bg-muted text-foreground", icon: FileText },
   sent: { label: "Envoyée", color: "bg-blue-100 text-blue-700", icon: Send },
   paid: { label: "Payée", color: "bg-green-100 text-green-700", icon: CheckCircle2 },
   late: { label: "En retard", color: "bg-red-100 text-red-700", icon: AlertCircle },
@@ -186,7 +186,7 @@ export default function InvoiceDetailPage() {
   if (!invoice) {
     return (
       <div className="p-6">
-        <Card className="bg-white/80 backdrop-blur-sm">
+        <Card className="bg-card/80 backdrop-blur-sm">
           <CardContent className="py-16 text-center">
             <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Facture introuvable</h3>
@@ -274,7 +274,7 @@ export default function InvoiceDetailPage() {
           {/* Main content */}
           <div className="md:col-span-2 space-y-6">
             {/* Montants */}
-            <Card className="bg-white/80 backdrop-blur-sm">
+            <Card className="bg-card/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Euro className="h-5 w-5 text-blue-500" />
@@ -314,7 +314,7 @@ export default function InvoiceDetailPage() {
             </Card>
 
             {/* Paiements */}
-            <Card className="bg-white/80 backdrop-blur-sm">
+            <Card className="bg-card/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-blue-500" />
@@ -327,7 +327,7 @@ export default function InvoiceDetailPage() {
                     {invoice.payments.map((payment) => (
                       <div
                         key={payment.id}
-                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
+                        className="flex items-center justify-between p-3 bg-muted rounded-lg"
                       >
                         <div>
                           <p className="font-medium">{payment.montant.toLocaleString("fr-FR")} €</p>
@@ -370,7 +370,7 @@ export default function InvoiceDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Dates */}
-            <Card className="bg-white/80 backdrop-blur-sm">
+            <Card className="bg-card/80 backdrop-blur-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-blue-500" />
@@ -403,7 +403,7 @@ export default function InvoiceDetailPage() {
 
             {/* Property */}
             {invoice.property && (
-              <Card className="bg-white/80 backdrop-blur-sm">
+              <Card className="bg-card/80 backdrop-blur-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-blue-500" />
@@ -423,7 +423,7 @@ export default function InvoiceDetailPage() {
 
             {/* Tenant */}
             {invoice.tenant && (
-              <Card className="bg-white/80 backdrop-blur-sm">
+              <Card className="bg-card/80 backdrop-blur-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <User className="h-4 w-4 text-blue-500" />

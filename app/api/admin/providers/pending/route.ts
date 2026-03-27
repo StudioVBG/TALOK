@@ -9,9 +9,7 @@ import { requireAdmin } from "@/lib/helpers/auth-helper";
  */
 export async function GET(request: Request) {
   try {
-    console.log("GET /api/admin/providers/pending - Début de la requête");
     const cookieHeader = request.headers.get("cookie");
-    console.log("Cookies reçus:", cookieHeader ? "présents" : "absents");
     
     const { error, user, supabase } = await requireAdmin(request);
 
@@ -28,7 +26,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    console.log("Admin authentifié:", user.email);
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
@@ -72,7 +69,6 @@ export async function GET(request: Request) {
       );
     }
 
-    console.log(`Found ${providersData?.length || 0} provider profiles with status '${status}'`);
 
     const providersArray = (providersData || []) as any[];
     

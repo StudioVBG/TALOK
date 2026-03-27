@@ -106,17 +106,17 @@ export function SignatureAlertBanner({ className, dismissible = true }: Signatur
                 <Link
                   key={sig.id}
                   href={`/owner/leases/${sig.lease_id}`}
-                  className="group flex items-center justify-between p-3 bg-white/80 backdrop-blur rounded-xl border border-orange-100 hover:border-orange-300 hover:shadow-md transition-all duration-200"
+                  className="group flex items-center justify-between p-3 bg-card/80 backdrop-blur rounded-xl border border-orange-100 hover:border-orange-300 hover:shadow-md transition-all duration-200"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="p-2 bg-orange-100 rounded-lg group-hover:bg-orange-200 transition-colors">
                       <PenLine className="h-4 w-4 text-orange-600" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-medium text-slate-900 truncate">
+                      <p className="font-medium text-foreground truncate">
                         {sig.property.adresse || "Adresse non renseignée"}
                       </p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-muted-foreground">
                         {sig.lease.loyer ? `${formatCurrency(sig.lease.loyer)}/mois` : "Loyer non renseigné"}
                       </p>
                     </div>
@@ -125,7 +125,7 @@ export function SignatureAlertBanner({ className, dismissible = true }: Signatur
                     <span className="text-xs font-medium text-orange-600 bg-orange-100 px-2 py-1 rounded-full">
                       À signer
                     </span>
-                    <ChevronRight className="h-4 w-4 text-slate-400 group-hover:text-orange-600 group-hover:translate-x-1 transition-all" />
+                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-orange-600 group-hover:translate-x-1 transition-all" />
                   </div>
                 </Link>
               ))}

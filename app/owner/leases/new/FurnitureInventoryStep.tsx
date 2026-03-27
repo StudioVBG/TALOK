@@ -226,7 +226,7 @@ export function FurnitureInventoryStep({
               className={cn(
                 "flex items-center gap-3 p-3 rounded-lg border transition-colors",
                 isPresent
-                  ? "bg-white border-slate-200"
+                  ? "bg-card border-border"
                   : "bg-red-50 border-red-200"
               )}
             >
@@ -304,7 +304,7 @@ export function FurnitureInventoryStep({
           {value.additionalItems.map((item, index) => (
             <div
               key={index}
-              className="flex items-center gap-3 p-2 rounded-lg border bg-white"
+              className="flex items-center gap-3 p-2 rounded-lg border bg-card"
             >
               <div className="flex-1 text-sm">{item.name}</div>
               <Select

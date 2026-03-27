@@ -90,7 +90,7 @@ export default function AccountCreationPage() {
   const [draft, setDraft] = useState<AccountDraft>(INITIAL_DRAFT);
 
   useEffect(() => {
-    if (!role || !["owner", "tenant", "provider", "guarantor", "syndic"].includes(role)) {
+    if (!role || !["owner", "tenant", "provider", "guarantor", "syndic", "agency"].includes(role)) {
       router.push("/signup/role");
     }
   }, [role, router]);

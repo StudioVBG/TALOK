@@ -5,7 +5,7 @@ export default function DashboardLoading() {
     <div className="space-y-8 p-6 animate-in fade-in duration-500">
       {/* Header */}
       <div className="relative overflow-hidden">
-        <div className="relative flex items-center justify-between p-6 bg-white/50 rounded-2xl border border-white/20 shadow-xl">
+        <div className="relative flex items-center justify-between p-6 bg-card/50 rounded-2xl border border-border/20 shadow-xl">
           <div className="space-y-2">
             <Skeleton className="h-10 w-64" />
             <Skeleton className="h-5 w-96" />

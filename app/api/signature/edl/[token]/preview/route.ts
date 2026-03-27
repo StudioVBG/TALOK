@@ -92,7 +92,6 @@ export async function POST(
         
         if (signedUrlData?.signedUrl) {
           (sig as any).signature_image_url = signedUrlData.signedUrl;
-          console.log("[EDL Token Preview] ✅ Generated signed URL for signature:", sig.signer_role);
         }
       }
     }

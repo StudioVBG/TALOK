@@ -156,9 +156,6 @@ export async function POST(request: Request) {
       } else {
         leaseLinked = (updatedSigners?.length || 0) > 0;
         if (leaseLinked) {
-          console.log(
-            `[accept-invitation] Profile ${profile.id} lié au lease_signers pour bail ${leaseId}`
-          );
         }
       }
 

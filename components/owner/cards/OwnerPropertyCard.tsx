@@ -33,7 +33,7 @@ export function OwnerPropertyCard({ property, index = 0 }: OwnerPropertyCardProp
       whileHover={{ y: -4, scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
     >
-      <Card className="group relative overflow-hidden backdrop-blur-xl bg-white/80 dark:bg-slate-900/80 border border-white/20 dark:border-slate-700/50 hover:border-blue-300 dark:hover:border-blue-600 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer h-full flex flex-col">
+      <Card className="group relative overflow-hidden backdrop-blur-xl bg-card/80 border border-border hover:border-blue-300 dark:hover:border-blue-600 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer h-full flex flex-col">
         {/* Image de couverture */}
         {property.cover_url ? (
           <div className="relative h-48 w-full overflow-hidden">
@@ -53,8 +53,8 @@ export function OwnerPropertyCard({ property, index = 0 }: OwnerPropertyCardProp
             </div>
           </div>
         ) : (
-          <div className="relative h-48 w-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-            <ImageIcon className="h-16 w-16 text-slate-400" />
+          <div className="relative h-48 w-full bg-gradient-to-br from-muted to-muted flex items-center justify-center">
+            <ImageIcon className="h-16 w-16 text-muted-foreground" />
             <div className="absolute top-3 right-3">
               <Badge variant={statusVariants[property.status] || "outline"}>
                 {PROPERTY_STATUS_LABELS[property.status] || property.status}

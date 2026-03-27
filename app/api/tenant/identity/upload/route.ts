@@ -74,7 +74,6 @@ export async function POST(request: Request) {
             .from("lease_signers")
             .update({ profile_id: profile.id })
             .eq("id", signerByEmail.id);
-          console.log(`[Upload CNI] Auto-link: signer ${signerByEmail.id} -> profile ${profile.id}`);
         }
         signer = signerByEmail;
       }
@@ -145,7 +144,6 @@ export async function POST(request: Request) {
       .eq("is_archived", false);
 
     if (existingDocs && existingDocs.length > 0) {
-      console.log(`[Upload CNI] Archivage de ${existingDocs.length} ancien(s) document(s) ${docType}`);
       
       // Archiver toutes les anciennes
       await serviceClient
@@ -315,7 +313,6 @@ export async function POST(request: Request) {
       }
     }
 
-    console.log("[Upload CNI] Succès:", newDoc?.id, "renewal:", isRenewal);
 
     return NextResponse.json({
       success: true,
