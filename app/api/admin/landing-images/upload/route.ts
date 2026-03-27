@@ -78,7 +78,7 @@ export async function POST(request: Request) {
     // Update site_config with the new URL
     const { error: updateError } = await supabase
       .from("site_config")
-      .update({ value: urlData.publicUrl, updated_at: new Date().toISOString() })
+      .update({ value: urlData.publicUrl })
       .eq("key", key);
 
     if (updateError) {
