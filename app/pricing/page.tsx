@@ -12,6 +12,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/hooks/use-auth";
@@ -893,11 +894,11 @@ export default function PricingPage() {
               à compter de la souscription.
             </p>
             <p>
-              <a href="/legal/cgv" className="underline hover:text-slate-300 transition-colors">Conditions Générales de Vente</a>
+              <Link href="/legal/cgv" className="underline hover:text-slate-300 transition-colors">Conditions Générales de Vente</Link>
               {" — "}
-              <a href="/legal/cgu" className="underline hover:text-slate-300 transition-colors">Conditions Générales d&apos;Utilisation</a>
+              <Link href="/legal/cgu" className="underline hover:text-slate-300 transition-colors">Conditions Générales d&apos;Utilisation</Link>
               {" — "}
-              <a href="/legal/privacy" className="underline hover:text-slate-300 transition-colors">Politique de confidentialité</a>
+              <Link href="/legal/privacy" className="underline hover:text-slate-300 transition-colors">Politique de confidentialité</Link>
             </p>
           </div>
         </div>

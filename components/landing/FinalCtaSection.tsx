@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { fadeUp, stagger, ctaPulse, defaultViewport } from "@/lib/marketing/animations";
+import { track } from "@/lib/analytics/posthog";
 
 export function FinalCtaSection() {
   return (
@@ -41,14 +42,14 @@ export function FinalCtaSection() {
         <motion.div variants={fadeUp} className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <motion.div variants={ctaPulse} animate="animate">
             <Button size="lg" className="bg-white text-[#1E293B] hover:bg-white/90" asChild>
-              <Link href="/inscription">
+              <Link href="/signup/role" onClick={() => track("cta_final_signup_clicked", { source: "final_cta" })}>
                 Commencer gratuitement
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
           </motion.div>
           <Button size="lg" variant="outline" className="border-white/30 text-white hover:bg-white/10" asChild>
-            <Link href="/demo">Demander une démo</Link>
+            <Link href="/contact?subject=demo">Demander une démo</Link>
           </Button>
         </motion.div>
       </motion.div>

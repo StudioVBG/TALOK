@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { fadeUp, stagger, floatVariants, ctaPulse } from "@/lib/marketing/animations";
+import { track } from "@/lib/analytics/posthog";
 
 // ============================================
 // STATIC DATA — no useEffect, no fetch
@@ -54,14 +55,14 @@ export function HeroSection() {
             <motion.div variants={fadeUp} className="mt-8 flex flex-col gap-3 sm:flex-row">
               <motion.div variants={ctaPulse} animate="animate">
                 <Button size="lg" className="bg-[#2563EB] text-white hover:bg-[#1D4ED8]" asChild>
-                  <Link href="/inscription">
+                  <Link href="/signup/role" onClick={() => track("cta_hero_signup_clicked", { source: "hero" })}>
                     Commencer gratuitement
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
               </motion.div>
               <Button size="lg" variant="outline" asChild>
-                <a href="#comment-ca-marche">Comment ça marche ?</a>
+                <a href="#comment-ca-marche" onClick={() => track("cta_hero_demo_clicked", { source: "hero" })}>Comment ça marche ?</a>
               </Button>
             </motion.div>
 
