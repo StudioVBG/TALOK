@@ -417,19 +417,14 @@ export function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [openMenu, closeMenu]);
 
-  // Hide on dashboard routes
+  // Hide on dashboard routes and marketing routes (MarketingNavbar handles those)
   const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/admin", "/syndic", "/agency", "/copro", "/guarantor", "/auth"];
-
-  // Determine if navbar should be hidden
   const isAppRoute = hiddenPaths.some((path) => pathname?.startsWith(path));
   const marketingPaths = ["/", "/pricing", "/faq", "/blog", "/fonctionnalites", "/solutions", "/temoignages", "/guides", "/outils", "/a-propos", "/contact", "/features", "/legal", "/modeles"];
   const isMarketingPage = marketingPaths.some((p) =>
     p === "/" ? pathname === "/" : pathname?.startsWith(p)
   );
-  // Hide on app dashboard routes and marketing routes (MarketingNavbar handles those)
-  // Using CSS display:none instead of return null to avoid hydration mismatch
-  const shouldHide = isAppRoute || isMarketingPage;
-  if (shouldHide) return null;
+  if (isAppRoute || isMarketingPage) return null;
 
   const handleMenuEnter = (key: string) => {
     if (closeTimeoutRef.current) {
