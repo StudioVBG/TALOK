@@ -91,50 +91,51 @@ export function PourQui({ images }: { images?: Record<string, string> }) {
               } : fadeUp}
               whileHover={{ y: -4, transition: { duration: 0.2 } }}
               {...(p.featured ? glowPulse : {})}
-              className={`rounded-2xl border p-6 md:p-8 ${
+              className={`relative rounded-2xl border bg-card overflow-hidden ${
                 p.featured
-                  ? "border-[#2563EB] bg-[#2563EB]/5 shadow-lg"
-                  : "border-slate-200 bg-white shadow-sm"
+                  ? "border-[#2563EB] shadow-lg"
+                  : "border-slate-200 shadow-sm"
               }`}
             >
               {p.featured && (
-                <span className="mb-4 inline-block rounded-full bg-[#2563EB] px-3 py-0.5 text-[10px] font-bold text-white">
+                <span className="absolute top-3 left-3 z-10 inline-block rounded-full bg-[#2563EB] px-3 py-0.5 text-[10px] font-bold text-white">
                   Le plus populaire
                 </span>
               )}
-              {/* Image or emoji fallback */}
+              {/* Image header with gradient overlay */}
               {images?.[p.imageKey] ? (
-                <motion.div
-                  variants={bounceIn}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  className="relative h-40 w-full overflow-hidden rounded-xl"
-                >
+                <div className="relative h-40">
                   <Image
                     src={images[p.imageKey]}
                     alt={p.title}
                     fill
                     className="object-cover"
                     sizes="(max-width: 768px) 100vw, 33vw"
+                    loading="lazy"
                   />
-                </motion.div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-card/80 to-transparent" />
+                </div>
               ) : (
-                <motion.span
-                  variants={bounceIn}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  className="inline-block text-3xl"
-                >
-                  {p.emoji}
-                </motion.span>
+                <div className="px-6 pt-6 md:px-8 md:pt-8">
+                  <motion.span
+                    variants={bounceIn}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true }}
+                    className="inline-block text-3xl"
+                  >
+                    {p.emoji}
+                  </motion.span>
+                </div>
               )}
-              <h3 className="mt-3 font-display text-lg font-bold text-[#1B2A6B]">{p.title}</h3>
-              <p className="text-xs text-slate-400">{p.subtitle}</p>
-              <p className="mt-3 text-sm leading-relaxed text-slate-500">{p.body}</p>
-              <div className="mt-5 rounded-lg bg-slate-50 px-3 py-2 text-center text-xs font-semibold text-[#1B2A6B]">
-                {p.price}
+              {/* Card content */}
+              <div className="p-6 md:p-8">
+                <h3 className="font-display text-lg font-bold text-[#1B2A6B]">{p.title}</h3>
+                <p className="text-xs text-slate-400">{p.subtitle}</p>
+                <p className="mt-3 text-sm leading-relaxed text-slate-500">{p.body}</p>
+                <div className="mt-5 rounded-lg bg-slate-50 px-3 py-2 text-center text-xs font-semibold text-[#1B2A6B]">
+                  {p.price}
+                </div>
               </div>
             </motion.div>
           ))}

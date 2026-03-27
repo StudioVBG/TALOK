@@ -82,7 +82,7 @@ export function Arguments({ images }: { images?: Record<string, string> }) {
       >
         {cards.map((card) => (
           <motion.div key={card.title} variants={fadeUp}>
-            <TiltCard className="h-full rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition-shadow hover:shadow-lg md:p-8">
+            <TiltCard className="h-full rounded-2xl border bg-card p-8 shadow-sm transition-shadow hover:shadow-lg flex flex-col gap-4">
               {/* Image or emoji fallback */}
               {images?.[card.imageKey] ? (
                 <motion.div
@@ -90,7 +90,7 @@ export function Arguments({ images }: { images?: Record<string, string> }) {
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
-                  className="relative h-32 w-full overflow-hidden rounded-xl"
+                  className="relative h-40 w-full overflow-hidden rounded-xl"
                 >
                   <Image
                     src={images[card.imageKey]}
@@ -98,6 +98,7 @@ export function Arguments({ images }: { images?: Record<string, string> }) {
                     fill
                     className="object-cover"
                     sizes="(max-width: 640px) 100vw, 50vw"
+                    loading="lazy"
                   />
                 </motion.div>
               ) : (
@@ -111,10 +112,10 @@ export function Arguments({ images }: { images?: Record<string, string> }) {
                   {card.emoji}
                 </motion.span>
               )}
-              <h3 className="mt-4 font-display text-[18px] font-semibold text-[#1B2A6B]">
+              <h3 className="font-display text-xl font-extrabold text-[#1B2A6B]">
                 {card.title}
               </h3>
-              <p className="mt-2 text-[14px] leading-[1.7] text-[#64748B]">
+              <p className="text-[14px] leading-[1.7] text-[#64748B]">
                 {card.body}
               </p>
               {/* Badge with spring entrance */}
@@ -130,7 +131,7 @@ export function Arguments({ images }: { images?: Record<string, string> }) {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true }}
-                className={`mt-4 inline-block rounded-full px-3.5 py-1.5 text-[13px] font-semibold ${card.badgeColor}`}
+                className={`inline-block rounded-full px-3.5 py-1.5 text-[13px] font-semibold ${card.badgeColor}`}
               >
                 {card.badge}
               </motion.span>
