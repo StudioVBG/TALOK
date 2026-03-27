@@ -90,7 +90,7 @@ export function PublicFooter({ variant = "dark", compact = false }: PublicFooter
 
             {/* Copyright */}
             <p className={`text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}>
-              2026 Talok. Tous droits reserves.
+              © {new Date().getFullYear()} Talok. Tous droits reserves.
             </p>
           </div>
         </div>
@@ -145,7 +145,7 @@ export function PublicFooter({ variant = "dark", compact = false }: PublicFooter
         {/* Bottom Bar */}
         <div className={`pt-8 border-t ${isDark ? "border-slate-800" : "border-slate-200"} flex flex-col md:flex-row items-center justify-between gap-4`}>
           <p className={`text-sm ${isDark ? "text-slate-500" : "text-slate-400"}`}>
-            2026 Talok. Tous droits reserves. Fait avec passion en France.
+            © {new Date().getFullYear()} Talok. Tous droits reserves. Fait avec passion en France.
           </p>
           <div className="flex items-center gap-4">
             <span className={`text-xs ${isDark ? "text-slate-600" : "text-slate-400"}`}>

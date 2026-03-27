@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fadeUp, stagger, ctaPulse, defaultViewport } from "@/lib/marketing/animations";
+import { track } from "@/lib/analytics/posthog";
 
 const PLANS = [
   {
@@ -22,7 +23,7 @@ const PLANS = [
       "Tableau de bord basique",
     ],
     cta: "Commencer gratuitement",
-    href: "/inscription",
+    href: "/signup/role",
     featured: false,
   },
   {
@@ -41,7 +42,7 @@ const PLANS = [
       "Support prioritaire",
     ],
     cta: "Essayer 14 jours gratuit",
-    href: "/inscription?plan=pro",
+    href: "/signup/role?plan=pro",
     featured: true,
   },
   {
@@ -139,7 +140,7 @@ export function PricingSection() {
                     className="w-full bg-[#2563EB] text-white hover:bg-[#1D4ED8]"
                     asChild
                   >
-                    <Link href={plan.href}>{plan.cta}</Link>
+                    <Link href={plan.href} onClick={() => track("cta_pricing_plan_clicked", { plan: plan.name.toLowerCase(), source: "landing_pricing" })}>{plan.cta}</Link>
                   </Button>
                 </motion.div>
               ) : (
@@ -148,7 +149,7 @@ export function PricingSection() {
                   variant="outline"
                   asChild
                 >
-                  <Link href={plan.href}>{plan.cta}</Link>
+                  <Link href={plan.href} onClick={() => track("cta_pricing_plan_clicked", { plan: plan.name.toLowerCase(), source: "landing_pricing" })}>{plan.cta}</Link>
                 </Button>
               )}
             </motion.div>
