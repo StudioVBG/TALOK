@@ -1,38 +1,10 @@
-"use client"
+import { getSiteConfigMap } from "@/lib/queries/site-config"
+import { LandingPageClient } from "@/components/marketing/LandingPageClient"
 
-import { ScrollProgressBar } from "@/components/marketing/ScrollProgressBar"
-import { MarketingNavbar } from "@/components/marketing/Navbar"
-import { HeroSection } from "@/components/marketing/sections/HeroSection"
-import { InnovationBar } from "@/components/marketing/sections/InnovationBar"
-import { ProblemSolution } from "@/components/marketing/sections/ProblemSolution"
-import { Arguments } from "@/components/marketing/sections/Arguments"
-import { Features } from "@/components/marketing/sections/Features"
-import { Testimonials } from "@/components/marketing/sections/Testimonials"
-import { PourQui } from "@/components/marketing/sections/PourQui"
-import { OutreMer } from "@/components/marketing/sections/OutreMer"
-import { Pricing } from "@/components/marketing/sections/Pricing"
-import { FAQ } from "@/components/marketing/sections/FAQ"
-import { FinalCTA, StickyMobileCTA } from "@/components/marketing/sections/FinalCTA"
+export const revalidate = 3600
 
-export default function LandingPage() {
-  return (
-    <>
-      <ScrollProgressBar />
-      <MarketingNavbar />
-      <div className="scroll-smooth">
-        <HeroSection />
-        <InnovationBar />
-        <ProblemSolution />
-        <Arguments />
-        <Features />
-        <Testimonials />
-        <PourQui />
-        <OutreMer />
-        <Pricing />
-        <FAQ />
-        <FinalCTA />
-      </div>
-      <StickyMobileCTA />
-    </>
-  )
+export default async function LandingPage() {
+  const images = await getSiteConfigMap()
+
+  return <LandingPageClient images={images} />
 }
