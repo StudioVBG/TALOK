@@ -122,7 +122,6 @@ export async function GET(request: Request, { params }: RouteParams) {
     const isPropertyDeleted = !property || property.etat === "deleted" || property.deleted_at;
     
     if (isPropertyDeleted && profile.role !== "admin") {
-      console.log(`[GET /api/leases] Propriété supprimée pour bail ${leaseId}`);
     }
 
     // Vérifier les permissions
@@ -317,7 +316,6 @@ export const PUT = withSecurity(async function PUT(request: Request, { params }:
     } else if (body.loyer !== undefined || body.type_bail !== undefined) {
       // Loyer ou type change sans dépôt fourni → recalculer automatiquement
       newDepot = getMaxDepotLegal(newTypeBail, newLoyer);
-      console.log(`[PUT /api/leases] Dépôt recalculé automatiquement: ${newDepot}€ (${newTypeBail}, loyer: ${newLoyer}€)`);
     } else {
       // Aucun changement financier
       newDepot = currentLease.depot_de_garantie;
@@ -357,7 +355,6 @@ export const PUT = withSecurity(async function PUT(request: Request, { params }:
 
     // Si erreur de colonne manquante, réessayer avec seulement les champs de base
     if (updateError && updateError.message?.includes("column")) {
-      console.log("Colonnes étendues non disponibles, mise à jour avec champs de base uniquement");
       const result = await serviceClient
         .from("leases")
         .update(baseUpdateData)

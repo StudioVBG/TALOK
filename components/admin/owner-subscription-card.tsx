@@ -569,8 +569,8 @@ export function OwnerSubscriptionCard({
           )}
         >
           {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-          <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-card/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-card/5 rounded-full translate-y-1/2 -translate-x-1/2" />
 
           <CardHeader className="relative pb-2">
             <div className="flex items-start justify-between">
@@ -578,7 +578,7 @@ export function OwnerSubscriptionCard({
                 <motion.div
                   whileHover={{ scale: 1.05, rotate: 5 }}
                   className={cn(
-                    "p-2.5 rounded-xl bg-white/80 shadow-sm",
+                    "p-2.5 rounded-xl bg-card/80 shadow-sm",
                     `ring-2 ${theme.ring}`
                   )}
                 >
@@ -670,7 +670,7 @@ export function OwnerSubscriptionCard({
             </AnimatePresence>
 
             {/* Usage stats */}
-            <div className="space-y-3 p-3 rounded-xl bg-white/40 dark:bg-black/20">
+            <div className="space-y-3 p-3 rounded-xl bg-card/40">
               <UsageBar
                 label="Biens"
                 used={subscription.properties_count}
@@ -687,13 +687,13 @@ export function OwnerSubscriptionCard({
 
             {/* Period info */}
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-2.5 rounded-lg bg-white/30 dark:bg-black/10">
+              <div className="p-2.5 rounded-lg bg-card/30">
                 <span className="text-muted-foreground block mb-0.5">Cycle</span>
                 <span className="font-medium">
                   {subscription.billing_cycle === "yearly" ? "Annuel" : "Mensuel"}
                 </span>
               </div>
-              <div className="p-2.5 rounded-lg bg-white/30 dark:bg-black/10">
+              <div className="p-2.5 rounded-lg bg-card/30">
                 <span className="text-muted-foreground block mb-0.5">Prochaine échéance</span>
                 <span className="font-medium">
                   {subscription.current_period_end
@@ -708,7 +708,7 @@ export function OwnerSubscriptionCard({
               <Button
                 variant="outline"
                 size="sm"
-                className="flex-1 bg-white/50 hover:bg-white/80"
+                className="flex-1 bg-card/50 hover:bg-card/80"
                 onClick={() =>
                   window.open(
                     `/admin/subscriptions?search=${encodeURIComponent(ownerEmail || "")}`,
@@ -724,7 +724,7 @@ export function OwnerSubscriptionCard({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="bg-white/50 hover:bg-white/80"
+                    className="bg-card/50 hover:bg-card/80"
                     onClick={() => setChangeDialogOpen(true)}
                   >
                     <Gift className="h-3.5 w-3.5" />

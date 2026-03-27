@@ -499,7 +499,6 @@ async function emitPaymentSucceededEvent(
       });
     }
 
-    console.log(`[Payment] ✅ Events emitted for payment ${paymentId}`);
   } catch (error) {
     console.error("[Payment] Error emitting events:", error);
   }
@@ -543,7 +542,6 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceRoleClient();
 
-  console.log(`[Stripe Webhook] Received event: ${event.type}`);
 
   try {
     const { data: existingWebhook } = await supabase
@@ -572,7 +570,6 @@ export async function POST(request: NextRequest) {
         const tenantId = session.metadata?.tenant_id;
         
         if (invoiceId) {
-          console.log(`[Stripe Webhook] Processing payment for invoice: ${invoiceId}`);
           const providerRef = session.payment_intent as string;
           const paidAt = new Date().toISOString();
           const paymentResult = providerRef
@@ -682,7 +679,6 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          console.log(`[Stripe Webhook] Invoice ${invoiceId} payment synchronized`);
         }
         break;
       }
@@ -715,7 +711,6 @@ export async function POST(request: NextRequest) {
 
           const settlement = await syncInvoiceStatusFromPayments(supabase as any, invoiceId, paidAt);
 
-          console.log(`[Stripe Webhook] Payment intent ${paymentIntent.id} processed`);
           if (paymentId && paymentResult.newlySucceeded) {
             const sourceTransactionId = await resolveSourceTransactionId(stripe, paymentIntent.id);
             const receiptGenerated = !!settlement?.isSettled;
@@ -769,7 +764,6 @@ export async function POST(request: NextRequest) {
 
           await syncInvoiceStatusFromPayments(supabase as any, invoiceId, null);
 
-          console.log(`[Stripe Webhook] Payment failed for invoice ${invoiceId}`);
         }
         break;
       }
@@ -837,7 +831,6 @@ export async function POST(request: NextRequest) {
             { onConflict: "stripe_invoice_id" }
           );
 
-          console.log(`[Stripe Webhook] Subscription invoice paid: ${invoice.id}`);
         }
         break;
       }
@@ -877,7 +870,6 @@ export async function POST(request: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription;
 
         await syncSubscriptionStateFromStripeSubscription(supabase, subscription);
-        console.log(`[Stripe Webhook] Subscription updated: ${subscription.id}`);
         break;
       }
 
@@ -970,7 +962,6 @@ export async function POST(request: NextRequest) {
             });
           }
 
-          console.log(`[Stripe Webhook] Subscription canceled: ${subscription.id}`);
         }
         break;
       }
@@ -1033,7 +1024,6 @@ export async function POST(request: NextRequest) {
             .eq("id", connectAccount.id as string);
 
           if (!updateError) {
-            console.log(`[Stripe Webhook] Connect account updated: ${account.id}`);
 
             // Notifier le propriétaire si l'onboarding est terminé
             if (account.charges_enabled && account.payouts_enabled && connectAccount.profile_id) {
@@ -1107,7 +1097,6 @@ export async function POST(request: NextRequest) {
             });
           }
 
-          console.log(`[Stripe Webhook] Transfer created: ${transfer.id}`);
         }
         break;
       }
@@ -1127,7 +1116,6 @@ export async function POST(request: NextRequest) {
           })
           .eq("stripe_transfer_id", transfer.id);
 
-        console.log(`[Stripe Webhook] Transfer failed: ${transfer.id}`);
         break;
       }
 
@@ -1168,7 +1156,6 @@ export async function POST(request: NextRequest) {
       // AUTRES ÉVÉNEMENTS
       // ===============================================
       default:
-        console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
     }
 
     // Enregistrer l'événement dans le log d'audit

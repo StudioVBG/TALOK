@@ -1,38 +1,19 @@
-"use client";
+import { getSiteConfig } from "@/lib/queries/site-config"
+import { LandingPageClient } from "@/components/marketing/LandingPageClient"
 
-import { useScrollReveal } from "@/hooks/use-scroll-reveal";
-import { HeroSection } from "@/components/landing/HeroSection";
-import { BeforeAfterSection } from "@/components/landing/BeforeAfterSection";
-import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
-import { ExperienceSlider } from "@/components/landing/ExperienceSlider";
-import { HumanSection } from "@/components/landing/HumanSection";
-import { ArgumentsSection } from "@/components/landing/ArgumentsSection";
-import { FeaturesSection } from "@/components/landing/FeaturesSection";
-import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
-import { DomTomSection } from "@/components/landing/DomTomSection";
-import { PricingSection } from "@/components/landing/PricingSection";
-import { ReassuranceSection } from "@/components/landing/ReassuranceSection";
-import { FaqSection } from "@/components/landing/FaqSection";
-import { FinalCtaSection } from "@/components/landing/FinalCtaSection";
+export const revalidate = 3600
 
-export default function LandingPage() {
-  const containerRef = useScrollReveal();
+export default async function LandingPage() {
+  const config = await getSiteConfig([
+    "landing_arg_time_img",
+    "landing_arg_money_img",
+    "landing_arg_contract_img",
+    "landing_arg_sleep_img",
+    "landing_profile_owner_img",
+    "landing_profile_investor_img",
+    "landing_profile_agency_img",
+    "landing_beforeafter_img",
+  ])
 
-  return (
-    <div ref={containerRef} className="scroll-smooth">
-      <HeroSection />
-      <BeforeAfterSection />
-      <HowItWorksSection />
-      <ExperienceSlider />
-      <HumanSection />
-      <ArgumentsSection />
-      <FeaturesSection />
-      <TestimonialsSection />
-      <DomTomSection />
-      <PricingSection />
-      <ReassuranceSection />
-      <FaqSection />
-      <FinalCtaSection />
-    </div>
-  );
+  return <LandingPageClient images={config} />
 }

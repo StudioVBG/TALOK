@@ -71,7 +71,7 @@ export function OwnerPortfolioByModule({ modules }: OwnerPortfolioByModuleProps)
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <Card className="backdrop-blur-sm bg-white/80 border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+        <Card className="backdrop-blur-sm bg-card/80 border-border shadow-xl hover:shadow-2xl transition-all duration-300">
           <CardHeader>
             <CardTitle>Portefeuille par module</CardTitle>
             <CardDescription>Commencer avec votre premier bien</CardDescription>
@@ -95,7 +95,7 @@ export function OwnerPortfolioByModule({ modules }: OwnerPortfolioByModuleProps)
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <Card className="backdrop-blur-sm bg-white/80 border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+      <Card className="backdrop-blur-sm bg-card/80 border-border shadow-xl hover:shadow-2xl transition-all duration-300">
         <CardHeader>
           <CardTitle>Portefeuille par module</CardTitle>
           <CardDescription>Vue d'ensemble de vos biens par catégorie</CardDescription>
@@ -104,7 +104,7 @@ export function OwnerPortfolioByModule({ modules }: OwnerPortfolioByModuleProps)
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {safeModules.map((module, index) => {
               const Icon = moduleIcons[module.module] || Building2; // Icône par défaut
-              const colorClass = moduleColors[module.module] || "bg-slate-50 text-slate-700 border-slate-200";
+              const colorClass = moduleColors[module.module] || "bg-muted text-foreground border-border";
               
               return (
                 <motion.div
@@ -126,7 +126,7 @@ export function OwnerPortfolioByModule({ modules }: OwnerPortfolioByModuleProps)
                       </motion.div>
                       <h3 className="font-semibold">{module.label}</h3>
                     </div>
-                    <Badge variant="outline" className="bg-white/50">
+                    <Badge variant="outline" className="bg-card/50">
                       {module.module}
                     </Badge>
                   </div>

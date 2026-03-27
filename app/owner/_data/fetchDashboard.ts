@@ -199,7 +199,7 @@ async function fetchDashboardDirect(
     invoices: {
       total: invoices.length,
       paid: invoices.filter((i: { statut: string }) => i.statut === "paid").length,
-      pending: invoices.filter((i: { statut: string }) => i.statut === "sent").length,
+      pending: invoices.filter((i: { statut: string }) => ["sent", "draft"].includes(i.statut)).length,
       late: invoices.filter((i: { statut: string }) => i.statut === "late").length,
     },
     tickets: {

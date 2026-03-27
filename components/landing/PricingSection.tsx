@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { fadeUp, stagger, ctaPulse, defaultViewport } from "@/lib/marketing/animations";
+import { track } from "@/lib/analytics/posthog";
 
 const PLANS = [
   {
@@ -20,7 +23,7 @@ const PLANS = [
       "Tableau de bord basique",
     ],
     cta: "Commencer gratuitement",
-    href: "/inscription",
+    href: "/signup/role",
     featured: false,
   },
   {
@@ -39,7 +42,7 @@ const PLANS = [
       "Support prioritaire",
     ],
     cta: "Essayer 14 jours gratuit",
-    href: "/inscription?plan=pro",
+    href: "/signup/role?plan=pro",
     featured: true,
   },
   {
@@ -63,31 +66,46 @@ const PLANS = [
 
 export function PricingSection() {
   return (
-    <section id="tarifs" className="py-20 md:py-28">
+    <motion.section
+      id="tarifs"
+      className="py-20 md:py-28"
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="visible"
+      viewport={defaultViewport}
+    >
       <div className="container mx-auto max-w-6xl px-4">
-        <div className="reveal mx-auto max-w-3xl text-center">
+        <div className="mx-auto max-w-3xl text-center">
           <h2 className="font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
             Un prix simple. Pas de mauvaise surprise.
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
+          <p className="mt-4 text-base font-normal leading-relaxed text-muted-foreground">
             Commencez gratuitement avec 2 biens. Montez en gamme quand vous êtes
             prêt. Zéro engagement.
           </p>
         </div>
 
-        <div className="mt-14 grid gap-8 md:grid-cols-3">
+        <motion.div
+          className="mt-14 grid gap-8 md:grid-cols-3"
+          variants={stagger}
+          initial="hidden"
+          whileInView="visible"
+          viewport={defaultViewport}
+        >
           {PLANS.map((plan) => (
-            <div
+            <motion.div
               key={plan.name}
+              variants={fadeUp}
               className={cn(
-                "reveal relative flex flex-col rounded-2xl border p-6 shadow-sm",
+                "relative flex flex-col rounded-2xl border p-6 shadow-sm cursor-pointer",
                 plan.featured
-                  ? "border-talok-bleu-marque bg-white ring-2 ring-talok-bleu-marque/20"
-                  : "bg-white"
+                  ? "border-[#2563EB] bg-card ring-2 ring-[#2563EB]/20"
+                  : "border-border bg-card"
               )}
+              whileHover={{ y: -4, transition: { duration: 0.2 } }}
             >
               {plan.badge && (
-                <Badge className="absolute -top-3 left-6 bg-talok-bleu-marque text-white">
+                <Badge className="absolute -top-3 left-6 bg-[#2563EB] text-white">
                   {plan.badge}
                 </Badge>
               )}
@@ -116,27 +134,33 @@ export function PricingSection() {
                 ))}
               </ul>
 
-              <Button
-                className={cn(
-                  "mt-8 w-full",
-                  plan.featured
-                    ? "bg-talok-bleu-marque text-white hover:bg-talok-bleu-marque/90"
-                    : ""
-                )}
-                variant={plan.featured ? "default" : "outline"}
-                asChild
-              >
-                <Link href={plan.href}>{plan.cta}</Link>
-              </Button>
-            </div>
+              {plan.featured ? (
+                <motion.div variants={ctaPulse} animate="animate" className="mt-8">
+                  <Button
+                    className="w-full bg-[#2563EB] text-white hover:bg-[#1D4ED8]"
+                    asChild
+                  >
+                    <Link href={plan.href} onClick={() => track("cta_pricing_plan_clicked", { plan: plan.name.toLowerCase(), source: "landing_pricing" })}>{plan.cta}</Link>
+                  </Button>
+                </motion.div>
+              ) : (
+                <Button
+                  className="mt-8 w-full"
+                  variant="outline"
+                  asChild
+                >
+                  <Link href={plan.href} onClick={() => track("cta_pricing_plan_clicked", { plan: plan.name.toLowerCase(), source: "landing_pricing" })}>{plan.cta}</Link>
+                </Button>
+              )}
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
-        <p className="reveal mt-8 text-center text-sm text-muted-foreground">
+        <p className="mt-8 text-center text-sm text-muted-foreground">
           Envie d&apos;économiser ? Le plan annuel Confort à 380 €/an vous offre 2
           mois gratuits.
         </p>
       </div>
-    </section>
+    </motion.section>
   );
 }

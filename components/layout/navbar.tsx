@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -49,6 +50,8 @@ import {
   CreditCard,
   ClipboardCheck,
   PieChart,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -90,13 +93,12 @@ const MEGA_MENU = {
       {
         title: "Fonctionnalites",
         links: [
-          { href: "/fonctionnalites/gestion-biens", label: "Gestion des biens", icon: Building2, desc: "Centralisez vos biens immobiliers" },
-          { href: "/fonctionnalites/gestion-locataires", label: "Gestion locataires", icon: Users, desc: "Suivi complet de vos locataires" },
-          { href: "/fonctionnalites/etats-des-lieux", label: "Etats des lieux", icon: ClipboardCheck, desc: "EDL numeriques avec photos" },
-          { href: "/fonctionnalites/signature-electronique", label: "Signature electronique", icon: FileSignature, desc: "eIDAS, valeur juridique garantie" },
-          { href: "/fonctionnalites/quittances-loyers", label: "Quittances & loyers", icon: Receipt, desc: "Automatisez vos quittances" },
-          { href: "/fonctionnalites/comptabilite-fiscalite", label: "Comptabilite & fiscalite", icon: PieChart, desc: "Export comptable et 2044" },
-          { href: "/fonctionnalites/paiements-en-ligne", label: "Paiements en ligne", icon: CreditCard, desc: "CB, SEPA, prelevement" },
+          { href: "/fonctionnalites#baux", label: "Gestion des baux", icon: FileText, desc: "Creez et gerez vos baux en ligne" },
+          { href: "/fonctionnalites#paiements", label: "Paiements en ligne", icon: CreditCard, desc: "CB, SEPA, prelevement automatique" },
+          { href: "/fonctionnalites#edl", label: "Etats des lieux", icon: ClipboardCheck, desc: "EDL numeriques avec photos" },
+          { href: "/fonctionnalites#documents", label: "Documents", icon: FileSignature, desc: "Quittances, contrats, attestations" },
+          { href: "/fonctionnalites#tickets", label: "Tickets & travaux", icon: Wrench, desc: "Suivi des incidents et interventions" },
+          { href: "/fonctionnalites#comptabilite", label: "Comptabilite", icon: PieChart, desc: "Export comptable et declaration 2044" },
         ],
       },
       {
@@ -113,22 +115,10 @@ const MEGA_MENU = {
   solutions: {
     label: "Solutions",
     links: [
-      { href: "/solutions/proprietaires-particuliers", label: "Proprietaires particuliers", icon: Home, desc: "1 a 3 biens, simplifiez tout" },
+      { href: "/solutions/proprietaires", label: "Proprietaires", icon: Home, desc: "Particuliers, SCI, 1 a 10 biens" },
       { href: "/solutions/investisseurs", label: "Investisseurs", icon: Briefcase, desc: "Portefeuille multi-biens" },
-      { href: "/solutions/administrateurs-biens", label: "Administrateurs de biens", icon: Building, desc: "Gestion professionnelle" },
-      { href: "/solutions/sci-familiales", label: "SCI familiales", icon: Users, desc: "Multi-associes, multi-biens" },
-      { href: "/solutions/dom-tom", label: "DOM-TOM", icon: MapPin, desc: "Le seul logiciel qui vous couvre" },
-    ],
-  },
-  ressources: {
-    label: "Ressources",
-    links: [
-      { href: "/blog", label: "Blog", icon: BookOpen, desc: "Actualites et conseils" },
-      { href: "/guides", label: "Guides & modeles", icon: FileText, desc: "8 guides pratiques gratuits" },
-      { href: "/faq", label: "FAQ", icon: HelpCircle, desc: "Questions frequentes" },
-      { href: "/temoignages", label: "Temoignages", icon: Star, desc: "+500 avis, note 4.8/5" },
-      { href: "/a-propos", label: "A propos", icon: Building2, desc: "Notre histoire et nos valeurs" },
-      { href: "/contact", label: "Contact", icon: MessageSquare, desc: "Ecrivez-nous" },
+      { href: "/solutions/agences", label: "Agences", icon: Building, desc: "Gestion professionnelle" },
+      { href: "/solutions/outre-mer", label: "France d\u2019outre-mer", icon: MapPin, desc: "Ne en Martinique, fait pour vous" },
     ],
   },
 } as const;
@@ -383,6 +373,7 @@ function MobileMenuSection({
 export function Navbar() {
   const { user, profile, loading } = useAuth();
   const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -426,11 +417,14 @@ export function Navbar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [openMenu, closeMenu]);
 
-  // Hide on dashboard routes
-  const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/admin", "/syndic", "/agency", "/copro", "/guarantor"];
-  if (hiddenPaths.some((path) => pathname?.startsWith(path))) {
-    return null;
-  }
+  // Hide on dashboard routes and marketing routes (MarketingNavbar handles those)
+  const hiddenPaths = ["/owner", "/tenant", "/provider", "/vendor", "/admin", "/syndic", "/agency", "/copro", "/guarantor", "/auth"];
+  const isAppRoute = hiddenPaths.some((path) => pathname?.startsWith(path));
+  const marketingPaths = ["/", "/pricing", "/faq", "/blog", "/fonctionnalites", "/solutions", "/temoignages", "/guides", "/outils", "/a-propos", "/contact", "/features", "/legal", "/modeles"];
+  const isMarketingPage = marketingPaths.some((p) =>
+    p === "/" ? pathname === "/" : pathname?.startsWith(p)
+  );
+  if (isAppRoute || isMarketingPage) return null;
 
   const handleMenuEnter = (key: string) => {
     if (closeTimeoutRef.current) {
@@ -540,8 +534,8 @@ export function Navbar() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                   <Building2 className="h-5 w-5" />
                 </div>
-                <span className="text-xl font-bold hidden sm:inline-block">
-                  Talok
+                <span className="text-xl font-extrabold tracking-tight hidden sm:inline-block" style={{ color: "#1B2A6B" }}>
+                  TALOK
                 </span>
               </Link>
 
@@ -563,7 +557,7 @@ export function Navbar() {
                 </div>
               )}
 
-              {/* Desktop Navigation - Public Mega-Menu */}
+              {/* Desktop Navigation - Marketing Mega-Menu (always on marketing pages) */}
               {!user && (
                 <div className="hidden lg:flex items-center gap-1">
                   {(Object.keys(MEGA_MENU) as Array<keyof typeof MEGA_MENU>).map(
@@ -622,6 +616,24 @@ export function Navbar() {
                       className="text-sm"
                     >
                       Tarifs
+                    </Button>
+                  </Link>
+                  <Link href="/blog">
+                    <Button
+                      variant={pathname === "/blog" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="text-sm"
+                    >
+                      Blog
+                    </Button>
+                  </Link>
+                  <Link href="/faq">
+                    <Button
+                      variant={pathname === "/faq" ? "secondary" : "ghost"}
+                      size="sm"
+                      className="text-sm"
+                    >
+                      FAQ
                     </Button>
                   </Link>
                 </div>
@@ -868,31 +880,27 @@ export function Navbar() {
                           })}
                         </MobileMenuSection>
 
-                        {/* Ressources section */}
-                        <MobileMenuSection title="Ressources">
-                          {MEGA_MENU.ressources.links.map((link) => {
-                            const Icon = link.icon;
-                            return (
-                              <Link
-                                key={link.href}
-                                href={link.href}
-                                onClick={() => setMobileOpen(false)}
-                                className="flex items-center gap-2.5 rounded-lg px-2 py-2.5 text-sm hover:bg-accent transition-colors min-h-[44px]"
-                              >
-                                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                                {link.label}
-                              </Link>
-                            );
-                          })}
-                        </MobileMenuSection>
-
-                        {/* Tarifs direct link */}
+                        {/* Tarifs, Blog, FAQ direct links */}
                         <Link
                           href="/pricing"
                           onClick={() => setMobileOpen(false)}
                           className="flex items-center py-3 text-sm font-medium border-b hover:text-primary transition-colors min-h-[44px]"
                         >
                           Tarifs
+                        </Link>
+                        <Link
+                          href="/blog"
+                          onClick={() => setMobileOpen(false)}
+                          className="flex items-center py-3 text-sm font-medium border-b hover:text-primary transition-colors min-h-[44px]"
+                        >
+                          Blog
+                        </Link>
+                        <Link
+                          href="/faq"
+                          onClick={() => setMobileOpen(false)}
+                          className="flex items-center py-3 text-sm font-medium border-b hover:text-primary transition-colors min-h-[44px]"
+                        >
+                          FAQ
                         </Link>
 
                         {/* Auth buttons */}
@@ -911,6 +919,16 @@ export function Navbar() {
                       </div>
                     </SheetContent>
                   </Sheet>
+
+                  {/* Theme toggle */}
+                  <button
+                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                    className="rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                    aria-label="Changer le thème"
+                  >
+                    <Sun className="h-4 w-4 dark:hidden" />
+                    <Moon className="hidden h-4 w-4 dark:block" />
+                  </button>
 
                   {/* Desktop auth buttons */}
                   <Link href="/auth/signin" className="hidden lg:block">

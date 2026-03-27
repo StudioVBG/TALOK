@@ -45,12 +45,12 @@ function baseLayout(content: string, preheader?: string): string {
   </noscript>
   <![endif]-->
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
     
     body {
       margin: 0;
       padding: 0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
       background-color: ${COLORS.gray[100]};
       -webkit-font-smoothing: antialiased;
     }
@@ -1847,5 +1847,105 @@ export const emailTemplates = {
       `, `Rappel : loyer ${data.period} en attente (${data.amount.toLocaleString('fr-FR')} €)`),
     };
   },
+
+  guarantorEngagement: (data: {
+    guarantorName: string;
+    tenantName: string;
+    propertyAddress: string;
+    rentAmount: number;
+    chargesAmount: number;
+    dashboardUrl: string;
+  }) => ({
+    subject: `Vous êtes désigné garant pour ${data.tenantName}`,
+    html: baseLayout(`
+      <div class="content">
+        <h1>Engagement de cautionnement</h1>
+        <p>Bonjour ${escapeHtml(data.guarantorName)},</p>
+        <p>Vous avez été désigné comme garant pour <strong>${escapeHtml(data.tenantName)}</strong> dans le cadre d'un bail locatif.</p>
+
+        <div class="highlight-box">
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Bien concerné</p>
+          <p style="font-weight: 600; color: ${COLORS.gray[900]};">${escapeHtml(data.propertyAddress)}</p>
+          <div style="display: flex; gap: 24px; margin-top: 12px;">
+            <div>
+              <p style="color: ${COLORS.gray[500]}; font-size: 13px; margin-bottom: 2px;">Loyer</p>
+              <p style="font-weight: 600; color: ${COLORS.gray[900]};">${data.rentAmount.toLocaleString('fr-FR')} €</p>
+            </div>
+            <div>
+              <p style="color: ${COLORS.gray[500]}; font-size: 13px; margin-bottom: 2px;">Charges</p>
+              <p style="font-weight: 600; color: ${COLORS.gray[900]};">${data.chargesAmount.toLocaleString('fr-FR')} €</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="text-align: center;">
+          <a href="${data.dashboardUrl}" class="button">Accéder à mon espace garant</a>
+        </div>
+
+        <p style="font-size: 13px; color: ${COLORS.gray[500]}; margin-top: 24px;">
+          En tant que garant, vous vous engagez à couvrir les obligations locatives du locataire en cas de défaillance.
+        </p>
+      </div>
+    `, `Vous êtes garant pour ${escapeHtml(data.tenantName)}`),
+  }),
+
+  providerInvite: (data: {
+    providerName: string;
+    email: string;
+    tempPassword: string;
+    loginUrl: string;
+  }) => ({
+    subject: 'Votre accès Talok Prestataire',
+    html: baseLayout(`
+      <div class="content">
+        <h1>Bienvenue sur Talok !</h1>
+        <p>Bonjour ${escapeHtml(data.providerName)},</p>
+        <p>Un compte prestataire a été créé pour vous sur la plateforme Talok.</p>
+
+        <div class="highlight-box">
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 8px;">Vos identifiants de connexion</p>
+          <p style="margin: 4px 0;"><strong>Email :</strong> ${escapeHtml(data.email)}</p>
+          <p style="margin: 4px 0;"><strong>Mot de passe temporaire :</strong> <code style="background: ${COLORS.gray[100]}; padding: 2px 6px; border-radius: 4px;">${escapeHtml(data.tempPassword)}</code></p>
+        </div>
+
+        <div style="background: #fef3c7; border-radius: 8px; padding: 12px 16px; margin: 16px 0;">
+          <p style="margin: 0; color: #92400e; font-size: 14px;">
+            <strong>Important :</strong> Changez votre mot de passe dès votre première connexion.
+          </p>
+        </div>
+
+        <div style="text-align: center;">
+          <a href="${data.loginUrl}" class="button">Se connecter</a>
+        </div>
+      </div>
+    `, 'Votre accès prestataire Talok'),
+  }),
+
+  renovationQuoteRequest: (data: {
+    providerName: string;
+    propertyAddress: string;
+    description: string;
+    dashboardUrl: string;
+  }) => ({
+    subject: `Demande de devis — ${data.propertyAddress}`,
+    html: baseLayout(`
+      <div class="content">
+        <h1>Demande de devis</h1>
+        <p>Bonjour ${escapeHtml(data.providerName)},</p>
+        <p>Un propriétaire vous a sélectionné pour un devis de travaux de rénovation.</p>
+
+        <div class="highlight-box">
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Bien concerné</p>
+          <p style="font-weight: 600; color: ${COLORS.gray[900]};">${escapeHtml(data.propertyAddress)}</p>
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-top: 12px; margin-bottom: 4px;">Description des travaux</p>
+          <p style="color: ${COLORS.gray[700]}; white-space: pre-line;">${escapeHtml(data.description)}</p>
+        </div>
+
+        <div style="text-align: center;">
+          <a href="${data.dashboardUrl}" class="button">Voir la demande et répondre</a>
+        </div>
+      </div>
+    `, `Demande de devis pour ${escapeHtml(data.propertyAddress)}`),
+  }),
 };
 
