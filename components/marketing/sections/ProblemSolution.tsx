@@ -58,10 +58,11 @@ export function ProblemSolution({ images }: { images?: Record<string, string> })
         <div className="absolute inset-0 -z-10">
           <Image
             src={images.landing_beforeafter_img}
-            alt=""
+            alt="Illustration de fond avant/après Talok"
             fill
             className="object-cover opacity-[0.04]"
             sizes="100vw"
+            loading="lazy"
           />
         </div>
       )}

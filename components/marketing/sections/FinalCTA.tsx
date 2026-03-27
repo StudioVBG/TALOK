@@ -130,7 +130,7 @@ export function StickyMobileCTA() {
       animate={{ y: 0 }}
       exit={{ y: 100 }}
       transition={{ type: "spring" as const, stiffness: 300, damping: 25 }}
-      className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-white/90 p-3 backdrop-blur-lg md:hidden"
+      className="fixed bottom-0 left-0 right-0 z-40 border-t border-slate-200 bg-card/90 p-3 backdrop-blur-lg md:hidden"
     >
       <Link
         href="/auth/signup"

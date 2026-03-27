@@ -104,7 +104,7 @@ export function PourQui({ images }: { images?: Record<string, string> }) {
               )}
               {/* Image header with gradient overlay */}
               {images?.[p.imageKey] ? (
-                <div className="relative h-40">
+                <div className="relative h-32 md:h-40">
                   <Image
                     src={images[p.imageKey]}
                     alt={p.title}

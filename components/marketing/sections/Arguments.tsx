@@ -90,7 +90,7 @@ export function Arguments({ images }: { images?: Record<string, string> }) {
                   initial="hidden"
                   whileInView="visible"
                   viewport={{ once: true }}
-                  className="relative h-40 w-full overflow-hidden rounded-xl"
+                  className="relative h-32 md:h-40 w-full overflow-hidden rounded-xl"
                 >
                   <Image
                     src={images[card.imageKey]}
