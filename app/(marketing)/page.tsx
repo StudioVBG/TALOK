@@ -6,6 +6,7 @@ import { BeforeAfterSection } from "@/components/landing/BeforeAfterSection";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
 import { ExperienceSlider } from "@/components/landing/ExperienceSlider";
 import { HumanSection } from "@/components/landing/HumanSection";
+import { ArgumentsSection } from "@/components/landing/ArgumentsSection";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection";
 import { DomTomSection } from "@/components/landing/DomTomSection";
@@ -24,6 +25,7 @@ export default function LandingPage() {
       <HowItWorksSection />
       <ExperienceSlider />
       <HumanSection />
+      <ArgumentsSection />
       <FeaturesSection />
       <TestimonialsSection />
       <DomTomSection />
