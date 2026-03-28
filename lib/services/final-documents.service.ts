@@ -39,10 +39,28 @@ async function findDocumentByMetadata(
   return data as { id?: string; storage_path?: string } | null;
 }
 
+export interface EnsureReceiptResult {
+  created: boolean;
+  storagePath: string;
+  documentId?: string | null;
+  /** PDF bytes — only present when created=true */
+  pdfBytes?: Uint8Array;
+  /** Tenant/payment metadata — only present when created=true */
+  receiptMeta?: {
+    tenantEmail: string;
+    tenantName: string;
+    period: string;
+    totalAmount: number;
+    paymentDate: string;
+    paymentMethod: string;
+    propertyAddress: string;
+  };
+}
+
 export async function ensureReceiptDocument(
   supabase: SupabaseLike,
   paymentId: string
-): Promise<{ created: boolean; storagePath: string; documentId?: string | null } | null> {
+): Promise<EnsureReceiptResult | null> {
   const existingDoc = await findDocumentByMetadata(supabase, "quittance", "payment_id", paymentId);
   if (existingDoc?.storage_path) {
     return {
@@ -185,10 +203,49 @@ export async function ensureReceiptDocument(
     .select("id")
     .single();
 
+  // Populate receipts table (idempotent, non-blocking)
+  try {
+    const { data: existingReceipt } = await supabase
+      .from("receipts")
+      .select("id")
+      .eq("invoice_id", paymentData.invoice.id)
+      .maybeSingle();
+
+    if (!existingReceipt) {
+      await supabase.from("receipts").insert({
+        payment_id: paymentId,
+        lease_id: paymentData.invoice.lease_id,
+        invoice_id: paymentData.invoice.id,
+        tenant_id: paymentData.invoice.tenant_id,
+        owner_id: paymentData.invoice.owner_id,
+        period: paymentData.invoice.periode,
+        montant_loyer: receiptData.rentAmount,
+        montant_charges: receiptData.chargesAmount,
+        montant_total: receiptData.totalAmount,
+        pdf_storage_path: storagePath,
+        generated_at: new Date().toISOString(),
+      });
+    }
+  } catch (receiptErr) {
+    console.error("[Receipt] receipts table insert failed:", receiptErr);
+  }
+
+  const tenantProfileData = tenantProfile as { prenom?: string; nom?: string; email?: string } | null;
+
   return {
     created: true,
     storagePath,
     documentId: (insertedDoc as { id?: string } | null)?.id ?? null,
+    pdfBytes,
+    receiptMeta: {
+      tenantEmail: tenantProfileData?.email || "",
+      tenantName: receiptData.tenantName,
+      period: receiptData.period,
+      totalAmount: receiptData.totalAmount,
+      paymentDate: receiptData.paymentDate,
+      paymentMethod: receiptData.paymentMethod,
+      propertyAddress: receiptData.propertyAddress,
+    },
   };
 }
 

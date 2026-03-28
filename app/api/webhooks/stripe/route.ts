@@ -37,10 +37,37 @@ function getStripe(): Stripe {
   });
 }
 
-// Fonction utilitaire pour générer et sauvegarder la quittance de façon idempotente
+// Fonction utilitaire pour générer et sauvegarder la quittance de façon idempotente,
+// puis envoyer la quittance PDF par email au locataire.
 async function processReceiptGeneration(supabase: any, _invoiceId: string, paymentId: string, _amount: number) {
   try {
-    await ensureReceiptDocument(supabase, paymentId);
+    const result = await ensureReceiptDocument(supabase, paymentId);
+
+    // Envoyer la quittance par email au locataire (seulement si nouvelle)
+    if (result?.created && result.pdfBytes && result.receiptMeta?.tenantEmail) {
+      try {
+        const { sendReceiptEmail } = await import("@/lib/emails/send-receipt-email");
+        await sendReceiptEmail({
+          tenantEmail: result.receiptMeta.tenantEmail,
+          tenantName: result.receiptMeta.tenantName,
+          period: result.receiptMeta.period,
+          totalAmount: result.receiptMeta.totalAmount,
+          propertyAddress: result.receiptMeta.propertyAddress,
+          paymentDate: result.receiptMeta.paymentDate,
+          paymentMethod: result.receiptMeta.paymentMethod,
+          pdfBytes: result.pdfBytes,
+          paymentId,
+        });
+
+        // Marquer la quittance comme envoyée
+        await supabase
+          .from("receipts")
+          .update({ sent_at: new Date().toISOString() })
+          .eq("payment_id", paymentId);
+      } catch (emailError) {
+        console.error("[Receipt] Email to tenant failed:", emailError);
+      }
+    }
   } catch (error) {
     console.error("[Receipt] Generation failed:", error);
   }
