@@ -1,7 +1,7 @@
-"use client";
+'use client'
 
-import Image from "next/image";
-import { Check } from "lucide-react";
+import Image from 'next/image'
+import { Check } from 'lucide-react'
 
 export interface FeatureCardData {
   id: string;
@@ -76,16 +76,6 @@ export const FEATURE_CARDS: FeatureCardData[] = [
     configKey: "landing_arg_sleep_img",
   },
 ];
-
-export const DEFAULT_IMAGES: Record<string, string> = {
-  time: "https://images.unsplash.com/photo-1556761175-4b46a572b786?w=600&q=80",
-  money:
-    "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=600&q=80",
-  contract:
-    "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&q=80",
-  sleep:
-    "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=600&q=80",
-};
 
 interface FeatureCardProps {
   feature: FeatureCardData;
