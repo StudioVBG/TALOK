@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { LANDING_IMAGE_DEFAULTS } from "@/lib/config/landing-image-defaults";
 
 export type SiteConfigKey =
   | "landing_arg_time_img"
@@ -12,20 +13,34 @@ export type SiteConfigKey =
 
 /**
  * Récupère un sous-ensemble typé de clés site_config.
+ * Merge avec les defaults pour garantir un affichage même
+ * si la table n'existe pas encore.
  */
 export async function getSiteConfig(
   keys: SiteConfigKey[]
 ): Promise<Record<SiteConfigKey, string>> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("site_config")
-    .select("key, value")
-    .in("key", keys);
-
+  // Start with defaults for requested keys
   const result = {} as Record<SiteConfigKey, string>;
-  for (const row of data ?? []) {
-    result[row.key as SiteConfigKey] = row.value ?? "";
+  for (const k of keys) {
+    result[k] = LANDING_IMAGE_DEFAULTS[k] ?? "";
   }
+
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("site_config")
+      .select("key, value")
+      .in("key", keys);
+
+    for (const row of data ?? []) {
+      if (row.value) {
+        result[row.key as SiteConfigKey] = row.value;
+      }
+    }
+  } catch {
+    // Table doesn't exist yet — defaults already in result
+  }
+
   return result;
 }
 
@@ -33,15 +48,21 @@ export async function getSiteConfig(
  * Récupère toutes les entrées site_config sous forme de map clé → valeur.
  */
 export async function getSiteConfigMap(): Promise<Record<string, string>> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("site_config")
-    .select("key, value");
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("site_config")
+      .select("key, value");
 
-  if (!data) return {};
-  return Object.fromEntries(
-    data.filter((r) => r.value).map((r) => [r.key, r.value as string])
-  );
+    if (!data) return { ...LANDING_IMAGE_DEFAULTS };
+
+    const dbValues = Object.fromEntries(
+      data.filter((r) => r.value).map((r) => [r.key, r.value as string])
+    );
+    return { ...LANDING_IMAGE_DEFAULTS, ...dbValues };
+  } catch {
+    return { ...LANDING_IMAGE_DEFAULTS };
+  }
 }
 
 /**

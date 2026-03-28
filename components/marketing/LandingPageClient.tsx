@@ -1,7 +1,5 @@
 "use client"
 
-import { ScrollProgressBar } from "@/components/marketing/ScrollProgressBar"
-import { MarketingNavbar } from "@/components/marketing/Navbar"
 import { HeroSection } from "@/components/marketing/sections/HeroSection"
 import { InnovationBar } from "@/components/marketing/sections/InnovationBar"
 import { ProblemSolution } from "@/components/marketing/sections/ProblemSolution"
@@ -21,8 +19,6 @@ interface Props {
 export function LandingPageClient({ images }: Props) {
   return (
     <>
-      <ScrollProgressBar />
-      <MarketingNavbar />
       <div className="scroll-smooth">
         <HeroSection />
         <InnovationBar />
