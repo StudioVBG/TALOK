@@ -13,6 +13,7 @@ import {
 } from "@/features/legal-entities/services/legal-entities.service";
 import type { CreateLegalEntityDTO } from "@/lib/types/legal-entity";
 import { isValidSiret, isValidSiren } from "@/lib/entities/siret-validation";
+import { withFeatureAccess } from "@/lib/middleware/subscription-check";
 
 /**
  * GET /api/owner/legal-entities
@@ -116,6 +117,20 @@ export async function POST(request: NextRequest) {
     if (!profile || profile.role !== "owner") {
       return NextResponse.json(
         { error: "Accès réservé aux propriétaires" },
+        { status: 403 }
+      );
+    }
+
+    // Vérifier le plan — multi_mandants
+    const featureCheck = await withFeatureAccess(profile.id, "multi_mandants");
+    if (!featureCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: featureCheck.message,
+          code: "FEATURE_NOT_AVAILABLE",
+          requiredPlan: featureCheck.requiredPlan,
+          upgrade_url: "/owner/money?tab=forfait",
+        },
         { status: 403 }
       );
     }

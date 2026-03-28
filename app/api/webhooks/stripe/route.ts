@@ -1153,6 +1153,67 @@ export async function POST(request: NextRequest) {
       }
 
       // ===============================================
+      // CONTESTATION SEPA (DISPUTE)
+      // ===============================================
+      case "charge.dispute.created": {
+        const dispute = event.data.object as Stripe.Dispute;
+        const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+        const paymentIntentId = typeof dispute.payment_intent === "string"
+          ? dispute.payment_intent
+          : dispute.payment_intent?.id || null;
+
+        // Logger la contestation
+        await supabase.from("webhook_logs").insert({
+          provider: "stripe",
+          event_type: "charge.dispute.created",
+          event_id: event.id,
+          payload: {
+            dispute_id: dispute.id,
+            charge_id: chargeId,
+            payment_intent_id: paymentIntentId,
+            amount: dispute.amount,
+            reason: dispute.reason,
+            status: dispute.status,
+          } as Json,
+          processed_at: new Date().toISOString(),
+          status: "success",
+        });
+
+        // Trouver le paiement lié
+        if (paymentIntentId) {
+          const { data: payment } = await supabase
+            .from("payments")
+            .select("id, invoice_id, invoice:invoices(owner_id, tenant_id, lease_id)")
+            .eq("provider_ref", paymentIntentId)
+            .maybeSingle();
+
+          if (payment) {
+            // Marquer le paiement comme contesté
+            await supabase
+              .from("payments")
+              .update({ statut: "disputed" })
+              .eq("id", payment.id);
+
+            const invoice = payment.invoice as any;
+
+            // Notifier le propriétaire
+            if (invoice?.owner_id) {
+              await supabase.rpc("create_notification", {
+                p_recipient_id: invoice.owner_id,
+                p_type: "alert",
+                p_title: "Contestation de paiement",
+                p_message: `Un prélèvement de ${(dispute.amount / 100).toFixed(2)}€ a été contesté par le locataire. Motif : ${dispute.reason || 'non spécifié'}.`,
+                p_link: "/owner/money",
+                p_related_id: payment.invoice_id,
+                p_related_type: "invoice",
+              });
+            }
+          }
+        }
+        break;
+      }
+
+      // ===============================================
       // AUTRES ÉVÉNEMENTS
       // ===============================================
       default:
