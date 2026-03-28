@@ -2,13 +2,6 @@
 
 import { FeatureCard, FEATURE_CARDS, DEFAULT_IMAGES } from "./FeatureCard";
 
-const CONFIG_KEY_MAP: Record<string, string> = {
-  time: "landing_arg_time_img",
-  money: "landing_arg_money_img",
-  contract: "landing_arg_contract_img",
-  sleep: "landing_arg_sleep_img",
-};
-
 interface ArgumentsSectionProps {
   images?: Record<string, string>;
 }
@@ -33,9 +26,8 @@ export function ArgumentsSection({ images }: ArgumentsSectionProps) {
         {/* Cards */}
         <div className="space-y-20 md:space-y-24">
           {FEATURE_CARDS.map((feature, index) => {
-            const configKey = CONFIG_KEY_MAP[feature.id];
             const imageSrc =
-              (configKey && images?.[configKey]) ||
+              images?.[feature.configKey] ||
               DEFAULT_IMAGES[feature.id] ||
               "";
             return (

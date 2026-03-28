@@ -12,15 +12,14 @@ export interface FeatureCardData {
   title: string;
   bullets: string[];
   highlight: string | null;
-  imageSrc: string;
+  configKey: string;
 }
 
-export const FEATURE_CARDS: Omit<FeatureCardData, "imageSrc">[] = [
+export const FEATURE_CARDS: FeatureCardData[] = [
   {
     id: "time",
     imagePosition: "left",
-    imageAlt:
-      "Propriétaire qui gère ses loyers depuis son téléphone, sereinement",
+    imageAlt: "Propriétaire qui gère ses loyers depuis son téléphone, sereinement",
     badge: "Inclus dans tous les plans",
     title: "Gagnez 3h par semaine",
     bullets: [
@@ -29,14 +28,13 @@ export const FEATURE_CARDS: Omit<FeatureCardData, "imageSrc">[] = [
       "Quittances envoyées sans action de votre part.",
       "Historique complet de tous les paiements accessible en un clic.",
     ],
-    highlight:
-      "3h économisées par semaine \u2014 c\u2019est le temps moyen que nos propriétaires récupèrent dès le premier mois.",
+    highlight: "3h économisées par semaine — c\u2019est le temps moyen que nos propriétaires récupèrent dès le premier mois.",
+    configKey: "landing_arg_time_img",
   },
   {
     id: "money",
     imagePosition: "right",
-    imageAlt:
-      "Propriétaire qui économise sur les frais d\u2019agence grâce à Talok",
+    imageAlt: "Propriétaire qui économise sur les frais d\u2019agence grâce à Talok",
     badge: "Inclus dans tous les plans",
     title: "Économisez jusqu\u2019à 2\u202f000\u202f\u20ac/an",
     bullets: [
@@ -45,40 +43,38 @@ export const FEATURE_CARDS: Omit<FeatureCardData, "imageSrc">[] = [
       "Pas d\u2019intermédiaire entre vous et votre locataire.",
       "Résiliable à tout moment, sans engagement ni frais cachés.",
     ],
-    highlight:
-      "Une agence prend 7 à 8\u202f% de vos loyers. Sur 1\u202f000\u202f\u20ac/mois, c\u2019est 960\u202f\u20ac par an. Talok vous coûte 35\u202f\u20ac/mois.",
+    highlight: "Une agence prend 7 à 8\u202f% de vos loyers. Sur 1\u202f000\u202f\u20ac/mois, c\u2019est 960\u202f\u20ac par an. Talok vous coûte 35\u202f\u20ac/mois.",
+    configKey: "landing_arg_money_img",
   },
   {
     id: "contract",
     imagePosition: "left",
-    imageAlt:
-      "Locataire qui signe son bail de location depuis son smartphone",
+    imageAlt: "Locataire qui signe son bail de location depuis son smartphone",
     badge: "Inclus dans tous les plans",
     title: "Contrats signés en 5 minutes, sans imprimante",
     bullets: [
       "Bail généré automatiquement selon le type de location.",
       "Votre locataire signe depuis son téléphone, où qu\u2019il soit.",
-      "La même valeur légale qu\u2019un original papier \u2014 sans déplacement.",
+      "La même valeur légale qu\u2019un original papier — sans déplacement.",
       "Document archivé automatiquement pour les deux parties.",
     ],
     highlight: null,
+    configKey: "landing_arg_contract_img",
   },
   {
     id: "sleep",
     imagePosition: "right",
-    imageAlt:
-      "Propriétaire tranquille sachant que ses contrats sont conformes à la loi",
+    imageAlt: "Propriétaire tranquille sachant que ses contrats sont conformes à la loi",
     badge: "Inclus dans tous les plans",
-    title:
-      "Dormez tranquille \u2014 vos contrats sont toujours à jour",
+    title: "Dormez tranquille — vos contrats sont toujours à jour",
     bullets: [
       "La loi mise à jour automatiquement dans vos contrats.",
       "Plafonnement des loyers intégré selon votre zone géographique.",
-      "Notices obligatoires incluses automatiquement \u2014 rien à vérifier.",
+      "Notices obligatoires incluses automatiquement — rien à vérifier.",
       "Zéro risque juridique pour vous en tant que propriétaire.",
     ],
-    highlight:
-      "La loi locative a changé 7 fois depuis 2022. Talok s\u2019est mis à jour à chaque fois \u2014 automatiquement.",
+    highlight: "La loi locative a changé 7 fois depuis 2022. Talok s\u2019est mis à jour à chaque fois — automatiquement.",
+    configKey: "landing_arg_sleep_img",
   },
 ];
 
@@ -93,7 +89,7 @@ export const DEFAULT_IMAGES: Record<string, string> = {
 };
 
 interface FeatureCardProps {
-  feature: Omit<FeatureCardData, "imageSrc">;
+  feature: FeatureCardData;
   imageSrc: string;
   index: number;
 }
