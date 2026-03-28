@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import { Check } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export interface FeatureCardData {
   id: string;
@@ -91,92 +90,210 @@ export const DEFAULT_IMAGES: Record<string, string> = {
 interface FeatureCardProps {
   feature: FeatureCardData;
   imageSrc: string;
-  index: number;
 }
 
-export function FeatureCard({ feature, imageSrc, index }: FeatureCardProps) {
+export function FeatureCard({ feature, imageSrc }: FeatureCardProps) {
   const isRight = feature.imagePosition === "right";
-  const isOdd = index % 2 === 0; // 0-indexed: cards 0,2 = "impaires" (1st,3rd)
-  const rotation = isOdd ? "rotate-[-3deg]" : "rotate-[3deg]";
 
   return (
-    <div className="reveal overflow-visible flex justify-center">
+    /*
+     * STRUCTURE CRITIQUE — 3 niveaux d'overflow :
+     * [Section]  → overflow: visible (défaut)
+     * [Carte]    → overflow: visible  ← LE FIX (sinon la photo est clippée)
+     * [Photo div intérieure] → overflow: hidden  (pour clipper l'image)
+     */
+    <div
+      className="relative py-16 px-4 md:px-8 flex justify-center"
+      style={{ overflow: "visible" }}
+    >
       <div
-        className={cn(
-          "relative max-w-4xl w-full bg-white dark:bg-card",
-          "rounded-3xl shadow-2xl overflow-visible",
-          "flex flex-col md:flex-row items-stretch",
-          isRight && "md:flex-row-reverse"
-        )}
+        className="relative w-full max-w-4xl bg-white dark:bg-card shadow-2xl"
+        style={{
+          borderRadius: "24px",
+          overflow: "visible",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
       >
-        {/* Photo débordante */}
-        <div
-          className={cn(
-            "relative flex-shrink-0 z-10",
-            "w-60 h-64 md:w-72 md:h-80",
-            "mx-auto md:mx-0",
-            "-mt-12 md:-mt-8",
-            !isRight
-              ? "md:-ml-10 md:self-center"
-              : "md:-mr-10 md:self-center",
-            rotation
-          )}
-        >
-          <div className="w-full h-full rounded-[18px] overflow-hidden border-4 border-white shadow-xl">
-            <Image
-              src={imageSrc}
-              alt={feature.imageAlt}
-              fill
-              className="object-cover object-top"
-              loading="lazy"
-              sizes="(max-width: 768px) 240px, 288px"
-            />
-          </div>
-        </div>
-
-        {/* Contenu */}
-        <div
-          className={cn(
-            "flex-1 p-8 md:py-10",
-            !isRight ? "md:pl-8 md:pr-10" : "md:pr-8 md:pl-10"
-          )}
-        >
-          {/* Badge */}
-          <div className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 text-xs font-bold px-3 py-1 rounded-full mb-3">
-            <Check size={12} strokeWidth={3} />
-            {feature.badge}
-          </div>
-
-          {/* Titre */}
-          <h3
-            className="text-xl md:text-2xl font-extrabold text-[#1B2A6B] dark:text-white mb-5 leading-tight"
-            style={{ fontFamily: "Manrope, sans-serif" }}
+        <div className="w-full flex flex-col md:flex-row items-center">
+          <div
+            className="w-full flex items-center"
+            style={{ flexDirection: isRight ? "row-reverse" : "row" }}
           >
-            {feature.title}
-          </h3>
-
-          {/* Bullets */}
-          <ul className="space-y-3 mb-5">
-            {feature.bullets.map((bullet, i) => (
-              <li key={i} className="flex items-start gap-3">
-                <div className="flex-shrink-0 mt-0.5 w-[18px] h-[18px] rounded bg-green-500 flex items-center justify-center">
-                  <Check size={11} className="text-white" strokeWidth={3.5} />
-                </div>
-                <span className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                  {bullet}
-                </span>
-              </li>
-            ))}
-          </ul>
-
-          {/* Highlight stat */}
-          {feature.highlight && (
-            <div className="bg-blue-50 dark:bg-blue-900/30 border-l-[3px] border-[#2563EB] rounded-r-lg px-4 py-3">
-              <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
-                {feature.highlight}
-              </p>
+            {/* ===== PHOTO DESKTOP — déborde hors de la carte ===== */}
+            <div
+              className="flex-shrink-0 hidden md:block"
+              style={{
+                position: "relative",
+                width: "260px",
+                height: "300px",
+                marginTop: "-32px",
+                marginBottom: "-32px",
+                ...(isRight
+                  ? { marginRight: "-28px" }
+                  : { marginLeft: "-28px" }),
+                zIndex: 10,
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "18px",
+                  overflow: "hidden",
+                  border: "4px solid white",
+                  boxShadow: "0 16px 48px rgba(0,0,0,0.22)",
+                  transform: isRight ? "rotate(3deg)" : "rotate(-3deg)",
+                }}
+              >
+                <Image
+                  src={imageSrc}
+                  alt={feature.imageAlt}
+                  fill
+                  className="object-cover object-top"
+                  loading="lazy"
+                  sizes="260px"
+                />
+              </div>
             </div>
-          )}
+
+            {/* ===== PHOTO MOBILE — déborde par le haut ===== */}
+            <div
+              className="block md:hidden flex-shrink-0 self-start"
+              style={{
+                position: "relative",
+                width: "180px",
+                height: "200px",
+                marginTop: "-28px",
+                marginLeft: "auto",
+                marginRight: "auto",
+                zIndex: 10,
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: "14px",
+                  overflow: "hidden",
+                  border: "3px solid white",
+                  boxShadow: "0 12px 32px rgba(0,0,0,0.20)",
+                  transform: "rotate(-2deg)",
+                }}
+              >
+                <Image
+                  src={imageSrc}
+                  alt={feature.imageAlt}
+                  fill
+                  className="object-cover object-top"
+                  loading="lazy"
+                  sizes="180px"
+                />
+              </div>
+            </div>
+
+            {/* ===== CONTENU ===== */}
+            <div
+              className="flex-1"
+              style={{
+                padding: isRight
+                  ? "40px 40px 40px 28px"
+                  : "40px 28px 40px 40px",
+              }}
+            >
+              {/* Badge */}
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  background: "#DCFCE7",
+                  color: "#15803D",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  padding: "4px 12px",
+                  borderRadius: "20px",
+                  marginBottom: "12px",
+                  fontFamily: "Manrope, sans-serif",
+                }}
+              >
+                <Check size={12} strokeWidth={3} />
+                {feature.badge}
+              </div>
+
+              {/* Titre */}
+              <h2
+                style={{
+                  fontFamily: "Manrope, sans-serif",
+                  fontWeight: 800,
+                  fontSize: "clamp(18px, 2.2vw, 24px)",
+                  color: "#1B2A6B",
+                  marginBottom: "20px",
+                  lineHeight: 1.25,
+                }}
+                className="dark:!text-white"
+              >
+                {feature.title}
+              </h2>
+
+              {/* Bullets */}
+              <ul style={{ listStyle: "none", marginBottom: "16px" }}>
+                {feature.bullets.map((bullet, i) => (
+                  <li
+                    key={i}
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: "10px",
+                      marginBottom: "10px",
+                      fontFamily: "Manrope, sans-serif",
+                      fontSize: "14px",
+                      lineHeight: 1.6,
+                      color: "#475569",
+                    }}
+                    className="dark:!text-slate-400"
+                  >
+                    <span
+                      style={{
+                        flexShrink: 0,
+                        width: "18px",
+                        height: "18px",
+                        background: "#22C55E",
+                        borderRadius: "4px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginTop: "2px",
+                      }}
+                    >
+                      <Check size={11} color="white" strokeWidth={3.5} />
+                    </span>
+                    {bullet}
+                  </li>
+                ))}
+              </ul>
+
+              {/* Highlight stat */}
+              {feature.highlight && (
+                <div
+                  style={{
+                    background: "#EFF6FF",
+                    borderLeft: "3px solid #2563EB",
+                    borderRadius: "0 8px 8px 0",
+                    padding: "10px 14px",
+                    fontFamily: "Manrope, sans-serif",
+                    fontSize: "13px",
+                    color: "#1E40AF",
+                    lineHeight: 1.6,
+                  }}
+                  className="dark:!bg-blue-900/30 dark:!text-blue-200"
+                >
+                  {feature.highlight}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

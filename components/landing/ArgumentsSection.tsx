@@ -24,8 +24,8 @@ export function ArgumentsSection({ images }: ArgumentsSectionProps) {
         </div>
 
         {/* Cards */}
-        <div className="space-y-20 md:space-y-24">
-          {FEATURE_CARDS.map((feature, index) => {
+        <div className="space-y-8">
+          {FEATURE_CARDS.map((feature) => {
             const imageSrc =
               images?.[feature.configKey] ||
               DEFAULT_IMAGES[feature.id] ||
@@ -35,7 +35,6 @@ export function ArgumentsSection({ images }: ArgumentsSectionProps) {
                 key={feature.id}
                 feature={feature}
                 imageSrc={imageSrc}
-                index={index}
               />
             );
           })}
