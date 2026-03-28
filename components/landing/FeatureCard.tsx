@@ -20,33 +20,33 @@ export const FEATURE_CARDS: Omit<FeatureCardData, "imageSrc">[] = [
     id: "time",
     imagePosition: "left",
     imageAlt:
-      "Propri\u00e9taire qui g\u00e8re ses loyers depuis son t\u00e9l\u00e9phone, sereinement",
+      "Propriétaire qui gère ses loyers depuis son téléphone, sereinement",
     badge: "Inclus dans tous les plans",
     title: "Gagnez 3h par semaine",
     bullets: [
-      "Loyers encaiss\u00e9s automatiquement chaque mois.",
+      "Loyers encaissés automatiquement chaque mois.",
       "Relance email automatique en cas de retard.",
-      "Quittances envoy\u00e9es sans action de votre part.",
+      "Quittances envoyées sans action de votre part.",
       "Historique complet de tous les paiements accessible en un clic.",
     ],
     highlight:
-      "3h \u00e9conomis\u00e9es par semaine \u2014 c\u2019est le temps moyen que nos propri\u00e9taires r\u00e9cup\u00e8rent d\u00e8s le premier mois.",
+      "3h économisées par semaine \u2014 c\u2019est le temps moyen que nos propriétaires récupèrent dès le premier mois.",
   },
   {
     id: "money",
     imagePosition: "right",
     imageAlt:
-      "Propri\u00e9taire qui \u00e9conomise sur les frais d\u2019agence gr\u00e2ce \u00e0 Talok",
+      "Propriétaire qui économise sur les frais d\u2019agence grâce à Talok",
     badge: "Inclus dans tous les plans",
-    title: "\u00c9conomisez jusqu\u2019\u00e0 2\u202f000\u202f\u20ac/an",
+    title: "Économisez jusqu\u2019à 2\u202f000\u202f\u20ac/an",
     bullets: [
-      "Aucune commission pr\u00e9lev\u00e9e sur vos loyers encaiss\u00e9s.",
-      "Talok remplace une agence \u00e0 8\u202f% pour seulement 35\u202f\u20ac/mois.",
-      "Pas d\u2019interm\u00e9diaire entre vous et votre locataire.",
-      "R\u00e9siliable \u00e0 tout moment, sans engagement ni frais cach\u00e9s.",
+      "Aucune commission prélevée sur vos loyers encaissés.",
+      "Talok remplace une agence à 8\u202f% pour seulement 35\u202f\u20ac/mois.",
+      "Pas d\u2019intermédiaire entre vous et votre locataire.",
+      "Résiliable à tout moment, sans engagement ni frais cachés.",
     ],
     highlight:
-      "Une agence prend 7 \u00e0 8\u202f% de vos loyers. Sur 1\u202f000\u202f\u20ac/mois, c\u2019est 960\u202f\u20ac par an. Talok vous co\u00fbte 35\u202f\u20ac/mois.",
+      "Une agence prend 7 à 8\u202f% de vos loyers. Sur 1\u202f000\u202f\u20ac/mois, c\u2019est 960\u202f\u20ac par an. Talok vous coûte 35\u202f\u20ac/mois.",
   },
   {
     id: "contract",
@@ -54,12 +54,12 @@ export const FEATURE_CARDS: Omit<FeatureCardData, "imageSrc">[] = [
     imageAlt:
       "Locataire qui signe son bail de location depuis son smartphone",
     badge: "Inclus dans tous les plans",
-    title: "Contrats sign\u00e9s en 5 minutes, sans imprimante",
+    title: "Contrats signés en 5 minutes, sans imprimante",
     bullets: [
-      "Bail g\u00e9n\u00e9r\u00e9 automatiquement selon le type de location.",
-      "Votre locataire signe depuis son t\u00e9l\u00e9phone, o\u00f9 qu\u2019il soit.",
-      "La m\u00eame valeur l\u00e9gale qu\u2019un original papier \u2014 sans d\u00e9placement.",
-      "Document archiv\u00e9 automatiquement pour les deux parties.",
+      "Bail généré automatiquement selon le type de location.",
+      "Votre locataire signe depuis son téléphone, où qu\u2019il soit.",
+      "La même valeur légale qu\u2019un original papier \u2014 sans déplacement.",
+      "Document archivé automatiquement pour les deux parties.",
     ],
     highlight: null,
   },
@@ -67,18 +67,18 @@ export const FEATURE_CARDS: Omit<FeatureCardData, "imageSrc">[] = [
     id: "sleep",
     imagePosition: "right",
     imageAlt:
-      "Propri\u00e9taire tranquille sachant que ses contrats sont conformes \u00e0 la loi",
+      "Propriétaire tranquille sachant que ses contrats sont conformes à la loi",
     badge: "Inclus dans tous les plans",
     title:
-      "Dormez tranquille \u2014 vos contrats sont toujours \u00e0 jour",
+      "Dormez tranquille \u2014 vos contrats sont toujours à jour",
     bullets: [
-      "La loi mise \u00e0 jour automatiquement dans vos contrats.",
-      "Plafonnement des loyers int\u00e9gr\u00e9 selon votre zone g\u00e9ographique.",
-      "Notices obligatoires incluses automatiquement \u2014 rien \u00e0 v\u00e9rifier.",
-      "Z\u00e9ro risque juridique pour vous en tant que propri\u00e9taire.",
+      "La loi mise à jour automatiquement dans vos contrats.",
+      "Plafonnement des loyers intégré selon votre zone géographique.",
+      "Notices obligatoires incluses automatiquement \u2014 rien à vérifier.",
+      "Zéro risque juridique pour vous en tant que propriétaire.",
     ],
     highlight:
-      "La loi locative a chang\u00e9 7 fois depuis 2022. Talok s\u2019est mis \u00e0 jour \u00e0 chaque fois \u2014 automatiquement.",
+      "La loi locative a changé 7 fois depuis 2022. Talok s\u2019est mis à jour à chaque fois \u2014 automatiquement.",
   },
 ];
 
@@ -95,29 +95,35 @@ export const DEFAULT_IMAGES: Record<string, string> = {
 interface FeatureCardProps {
   feature: Omit<FeatureCardData, "imageSrc">;
   imageSrc: string;
+  index: number;
 }
 
-export function FeatureCard({ feature, imageSrc }: FeatureCardProps) {
+export function FeatureCard({ feature, imageSrc, index }: FeatureCardProps) {
   const isRight = feature.imagePosition === "right";
+  const isOdd = index % 2 === 0; // 0-indexed: cards 0,2 = "impaires" (1st,3rd)
+  const rotation = isOdd ? "rotate-[-3deg]" : "rotate-[3deg]";
 
   return (
-    <div className="reveal overflow-visible px-4 py-14 md:px-8 flex justify-center">
+    <div className="reveal overflow-visible flex justify-center">
       <div
         className={cn(
           "relative max-w-4xl w-full bg-white dark:bg-card",
           "rounded-3xl shadow-2xl overflow-visible",
-          "flex flex-col md:flex-row items-center",
+          "flex flex-col md:flex-row items-stretch",
           isRight && "md:flex-row-reverse"
         )}
       >
-        {/* Photo d\u00e9bordante */}
+        {/* Photo débordante */}
         <div
           className={cn(
-            "relative flex-shrink-0 w-56 h-64 md:w-64 md:h-72 z-10",
-            "-mt-10 md:-mt-0",
+            "relative flex-shrink-0 z-10",
+            "w-60 h-64 md:w-72 md:h-80",
+            "mx-auto md:mx-0",
+            "-mt-12 md:-mt-8",
             !isRight
-              ? "md:-ml-8 rotate-[-3deg]"
-              : "md:-mr-8 rotate-[3deg]"
+              ? "md:-ml-10 md:self-center"
+              : "md:-mr-10 md:self-center",
+            rotation
           )}
         >
           <div className="w-full h-full rounded-[18px] overflow-hidden border-4 border-white shadow-xl">
@@ -127,7 +133,7 @@ export function FeatureCard({ feature, imageSrc }: FeatureCardProps) {
               fill
               className="object-cover object-top"
               loading="lazy"
-              sizes="(max-width: 768px) 224px, 256px"
+              sizes="(max-width: 768px) 240px, 288px"
             />
           </div>
         </div>
@@ -135,8 +141,8 @@ export function FeatureCard({ feature, imageSrc }: FeatureCardProps) {
         {/* Contenu */}
         <div
           className={cn(
-            "flex-1 p-8 md:p-10",
-            !isRight ? "md:pl-6" : "md:pr-6"
+            "flex-1 p-8 md:py-10",
+            !isRight ? "md:pl-8 md:pr-10" : "md:pr-8 md:pl-10"
           )}
         >
           {/* Badge */}
@@ -146,12 +152,12 @@ export function FeatureCard({ feature, imageSrc }: FeatureCardProps) {
           </div>
 
           {/* Titre */}
-          <h2
+          <h3
             className="text-xl md:text-2xl font-extrabold text-[#1B2A6B] dark:text-white mb-5 leading-tight"
             style={{ fontFamily: "Manrope, sans-serif" }}
           >
             {feature.title}
-          </h2>
+          </h3>
 
           {/* Bullets */}
           <ul className="space-y-3 mb-5">
