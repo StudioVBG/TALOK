@@ -1,22 +1,12 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/database.types";
 import { generateReceiptPDF, type ReceiptData } from "@/lib/services/receipt-generator";
 import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 import { getInvoiceSettlement } from "@/lib/services/invoice-status.service";
 import { resolveReceiptTotalAmount } from "@/lib/services/receipt-amount";
 
-type SupabaseLike = {
-  from: (table: string) => {
-    select: (...args: unknown[]) => any;
-    insert: (values: Record<string, unknown>) => any;
-    update?: (values: Record<string, unknown>) => any;
-  };
-  storage: {
-    from: (bucket: string) => {
-      upload: (path: string, body: Uint8Array | Buffer, options?: Record<string, unknown>) => Promise<{ error: { message?: string } | null }>;
-      createSignedUrl?: (path: string, expiresIn: number) => Promise<{ data?: { signedUrl?: string }; error?: { message?: string } | null }>;
-    };
-  };
-};
+type SupabaseLike = SupabaseClient<Database>;
 
 function normalizeDate(value?: string | null): string {
   if (!value) return new Date().toISOString().split("T")[0];
