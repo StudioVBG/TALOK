@@ -590,7 +590,7 @@ export function ContractsClient() {
                           <Link 
                             key={lease.id}
                             href={`/owner/leases/${lease.id}`}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-orange-200 rounded-lg text-sm font-medium text-orange-800 hover:bg-orange-50 hover:border-orange-300 transition-all"
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-card border border-orange-200 rounded-lg text-sm font-medium text-orange-800 hover:bg-orange-50 hover:border-orange-300 transition-all"
                           >
                             <PenLine className="h-3 w-3" />
                             {property?.adresse_complete?.slice(0, 30) || "Bail"}{property?.adresse_complete?.length > 30 ? "..." : ""}
@@ -621,7 +621,7 @@ export function ContractsClient() {
 
           {/* SOTA 2026 — Onglets Hub Gestion Locative */}
           <Tabs defaultValue="leases" className="space-y-4 md:space-y-6">
-            <TabsList className="bg-white/50 backdrop-blur-sm border w-full sm:w-auto overflow-x-auto">
+            <TabsList className="bg-card/50 backdrop-blur-sm border w-full sm:w-auto overflow-x-auto">
               <TabsTrigger value="leases" className="text-xs sm:text-sm gap-1.5">
                 <FileText className="h-3.5 w-3.5" />
                 Baux & contrats
@@ -658,12 +658,12 @@ export function ContractsClient() {
                       placeholder="Rechercher par adresse ou locataire..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 bg-white/80 backdrop-blur-sm"
+                      className="pl-10 bg-card/80 backdrop-blur-sm"
                     />
                   </div>
                 </div>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="bg-white/80 backdrop-blur-sm">
+                  <SelectTrigger className="bg-card/80 backdrop-blur-sm">
                     <SelectValue placeholder="Type bail" />
                   </SelectTrigger>
                   <SelectContent>
@@ -679,7 +679,7 @@ export function ContractsClient() {
                   </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="bg-white/80 backdrop-blur-sm">
+                  <SelectTrigger className="bg-card/80 backdrop-blur-sm">
                     <SelectValue placeholder="Statut" />
                   </SelectTrigger>
                   <SelectContent>

@@ -103,13 +103,11 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json().catch(() => ({}));
-    console.log("[PUT /api/me/owner-profile] Body reçu:", body);
 
     // Valider les données
     let validated;
     try {
       validated = ownerProfileSchema.parse(body);
-      console.log("[PUT /api/me/owner-profile] Validé:", validated);
     } catch (zodError) {
       console.error("[PUT /api/me/owner-profile] Validation Zod échouée:", zodError);
       throw zodError;
@@ -157,7 +155,6 @@ export async function PUT(request: Request) {
         throw new Error(updateError.message);
       }
       ownerProfile = data;
-      console.log("[PUT /api/me/owner-profile] Profil mis à jour:", ownerProfile);
     } else {
       // Créer
       let { data, error: insertError } = await supabase
@@ -195,7 +192,6 @@ export async function PUT(request: Request) {
         throw new Error(insertError.message);
       }
       ownerProfile = data;
-      console.log("[PUT /api/me/owner-profile] Profil créé:", ownerProfile);
     }
 
     return NextResponse.json(ownerProfile);

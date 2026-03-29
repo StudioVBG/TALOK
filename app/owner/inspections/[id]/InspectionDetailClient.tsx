@@ -522,7 +522,7 @@ export function InspectionDetailClient({ data }: Props) {
   const actualSignaturesCount = (edl.edl_signatures || []).filter((s: any) => (s.signature_image_path || s.signature_image) && s.signed_at).length;
 
   return (
-    <div className="min-h-screen bg-slate-50/50 flex flex-col">
+    <div className="min-h-screen bg-muted/50 flex flex-col">
       {/* Breadcrumb */}
       <div className="container mx-auto px-4 pt-4">
         <Breadcrumb
@@ -535,7 +535,7 @@ export function InspectionDetailClient({ data }: Props) {
       </div>
 
       {/* Barre supérieure fixe (Header) */}
-      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200">
+      <div className="sticky top-0 z-30 bg-card/80 backdrop-blur-md border-b border-border">
         <div className="container mx-auto px-3 sm:px-4 h-14 sm:h-16 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <Link
@@ -545,9 +545,9 @@ export function InspectionDetailClient({ data }: Props) {
               <ArrowLeft className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Retour</span>
             </Link>
-            <div className="h-6 w-px bg-slate-200 hidden sm:block flex-shrink-0" />
+            <div className="h-6 w-px bg-border hidden sm:block flex-shrink-0" />
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <h1 className="text-sm sm:text-lg font-bold text-slate-900 hidden md:block truncate">
+              <h1 className="text-sm sm:text-lg font-bold text-foreground hidden md:block truncate">
                 EDL {edl.type === "entree" ? "Entrée" : "Sortie"} - {edl.lease?.property?.ville}
               </h1>
               <Badge className={`${status.color} flex-shrink-0`} variant="outline">
@@ -610,7 +610,7 @@ export function InspectionDetailClient({ data }: Props) {
             {["draft", "scheduled", "in_progress", "completed"].includes(edl.status) && (
               <Link
                 href={`/owner/inspections/${edl.id}/edit`}
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-white border-slate-200 shadow-sm hover:bg-slate-50 h-9 sm:h-10 px-2.5 sm:px-3")}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-card border-border shadow-sm hover:bg-muted h-9 sm:h-10 px-2.5 sm:px-3")}
                 aria-label="Modifier l'état des lieux"
               >
                 <Edit className="h-4 w-4 sm:mr-2 text-indigo-600" />
@@ -626,7 +626,7 @@ export function InspectionDetailClient({ data }: Props) {
 
           {/* Colonne de GAUCHE : L'APERÇU RÉEL DU DOCUMENT — Affiché en premier sur mobile */}
           <div className="lg:col-span-8 xl:col-span-9 order-1 lg:order-1">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden min-h-[300px] sm:min-h-[500px] lg:min-h-[800px]">
+            <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden min-h-[300px] sm:min-h-[500px] lg:min-h-[800px]">
               <EDLPreview 
                 edlData={edlTemplateData} 
                 edlId={edl.id} 
@@ -638,8 +638,8 @@ export function InspectionDetailClient({ data }: Props) {
           <div className="lg:col-span-4 xl:col-span-3 order-2 lg:order-2 space-y-4 sm:space-y-6">
             
             {/* Carte de Progression */}
-            <Card className="border-none shadow-sm bg-white overflow-hidden">
-              <CardHeader className="pb-2 border-b border-slate-50">
+            <Card className="border-none shadow-sm bg-card overflow-hidden">
+              <CardHeader className="pb-2 border-b border-border">
                 <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                   <ClipboardList className="h-3 w-3 text-blue-500" />
                   Progression de l&apos;inspection
@@ -649,11 +649,11 @@ export function InspectionDetailClient({ data }: Props) {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground text-xs font-medium">Éléments inspectés</span>
-                    <span className="font-bold text-slate-900 text-xs">
+                    <span className="font-bold text-foreground text-xs">
                       {stats.completedItems} / {stats.totalItems}
                     </span>
                   </div>
-                  <Progress value={completionPercentage} className="h-2 bg-slate-100" />
+                  <Progress value={completionPercentage} className="h-2 bg-muted" />
                   <p className="text-[10px] text-muted-foreground text-right">
                     {completionPercentage}% complété
                   </p>
@@ -682,13 +682,13 @@ export function InspectionDetailClient({ data }: Props) {
               </CardHeader>
               <CardContent className="p-4 space-y-4">
                 {/* Propriétaire */}
-                <div className={`p-3 rounded-lg border flex items-center justify-between ${ownerSigned ? "bg-green-50 border-green-200" : "bg-white border-slate-200 shadow-sm"}`}>
+                <div className={`p-3 rounded-lg border flex items-center justify-between ${ownerSigned ? "bg-green-50 border-green-200" : "bg-card border-border shadow-sm"}`}>
                   <div className="flex items-center gap-3">
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${ownerSigned ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-400"}`}>
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${ownerSigned ? "bg-green-100 text-green-600" : "bg-muted text-muted-foreground"}`}>
                       {ownerSigned ? <CheckCircle2 className="h-4 w-4" /> : <User className="h-4 w-4" />}
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-slate-900">Bailleur</p>
+                      <p className="text-xs font-bold text-foreground">Bailleur</p>
                       <p className="text-[10px] text-muted-foreground">{ownerSigned ? `Signé le ${new Date(ownerSignature.signed_at).toLocaleDateString()}` : "En attente"}</p>
                     </div>
                   </div>
@@ -699,16 +699,16 @@ export function InspectionDetailClient({ data }: Props) {
 
                 {/* Locataire */}
                 <div className={`p-3 rounded-lg border flex items-center justify-between ${
-                  tenantSigned ? "bg-green-50 border-green-200" : "bg-white border-slate-200 shadow-sm"
+                  tenantSigned ? "bg-green-50 border-green-200" : "bg-card border-border shadow-sm"
                 }`}>
                   <div className="flex items-center gap-3">
                     <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
-                      tenantSigned ? "bg-green-100 text-green-600" : "bg-slate-100 text-slate-400"
+                      tenantSigned ? "bg-green-100 text-green-600" : "bg-muted text-muted-foreground"
                     }`}>
                       {tenantSigned ? <CheckCircle2 className="h-4 w-4" /> : <User className="h-4 w-4" />}
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-slate-900">{tenantName}</p>
+                      <p className="text-xs font-bold text-foreground">{tenantName}</p>
                       <p className="text-[10px] text-muted-foreground">
                         {tenantSigned 
                           ? `Signé le ${new Date(tenantSignature.signed_at).toLocaleDateString()}` 
@@ -759,7 +759,7 @@ export function InspectionDetailClient({ data }: Props) {
                   </div>
                 )}
 
-                <p className="text-[10px] text-slate-500 italic text-center leading-relaxed">
+                <p className="text-[10px] text-muted-foreground italic text-center leading-relaxed">
                   L&apos;état des lieux fait partie intégrante du bail. Les deux parties doivent signer pour sceller le document.
                 </p>
               </CardContent>
@@ -790,8 +790,8 @@ export function InspectionDetailClient({ data }: Props) {
             )}
 
             {/* Carte Photos de l'inspection */}
-            <Card className="border-none shadow-sm bg-white overflow-hidden">
-              <CardHeader className="pb-2 border-b border-slate-50">
+            <Card className="border-none shadow-sm bg-card overflow-hidden">
+              <CardHeader className="pb-2 border-b border-border">
                 <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                   <Camera className="h-3 w-3 text-indigo-500" />
                   Photos de l&apos;inspection
@@ -808,10 +808,10 @@ export function InspectionDetailClient({ data }: Props) {
                         .map((media: any, index: number) => (
                           <div
                             key={media.id || `photo-${index}`}
-                            className="relative aspect-square rounded-lg bg-slate-100 border border-slate-200 overflow-hidden group"
+                            className="relative aspect-square rounded-lg bg-muted border border-border overflow-hidden group"
                           >
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <Image className="h-5 w-5 text-slate-300" />
+                              <Image className="h-5 w-5 text-muted-foreground" />
                             </div>
                             {media.room_name && (
                               <div className="absolute bottom-0 inset-x-0 bg-black/50 px-1 py-0.5">
@@ -826,8 +826,8 @@ export function InspectionDetailClient({ data }: Props) {
                         + {adaptedMedia.filter((m: any) => m.type === "photo").length - 6} autre(s) photo(s)
                       </p>
                     )}
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-50">
-                      <span className="text-xs font-semibold text-slate-700">
+                    <div className="flex items-center justify-between pt-2 border-t border-border">
+                      <span className="text-xs font-semibold text-foreground">
                         {stats.totalPhotos} photo{stats.totalPhotos > 1 ? "s" : ""}
                       </span>
                       {["draft", "scheduled", "in_progress", "completed"].includes(edl.status) && (
@@ -843,11 +843,11 @@ export function InspectionDetailClient({ data }: Props) {
                   </div>
                 ) : (
                   <div className="text-center py-4 space-y-3">
-                    <div className="mx-auto h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center">
-                      <Camera className="h-5 w-5 text-slate-400" />
+                    <div className="mx-auto h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                      <Camera className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-700">Aucune photo</p>
+                      <p className="text-xs font-medium text-foreground">Aucune photo</p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
                         Ajoutez des photos pour documenter l&apos;état de chaque pièce
                       </p>
@@ -867,20 +867,20 @@ export function InspectionDetailClient({ data }: Props) {
             </Card>
 
             {/* Détails du Logement */}
-            <Card className="border-none shadow-sm bg-white overflow-hidden">
-              <CardHeader className="pb-2 border-b border-slate-50">
+            <Card className="border-none shadow-sm bg-card overflow-hidden">
+              <CardHeader className="pb-2 border-b border-border">
                 <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                  <Home className="h-3 w-3 text-slate-400" />
+                  <Home className="h-3 w-3 text-muted-foreground" />
                   Logement concerné
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4">
                 <div className="flex items-start gap-3 text-left">
-                  <div className="p-2 rounded bg-slate-50 border border-slate-100 flex-shrink-0">
-                    <Home className="h-4 w-4 text-slate-600" />
+                  <div className="p-2 rounded bg-muted border border-border flex-shrink-0">
+                    <Home className="h-4 w-4 text-muted-foreground" />
                   </div>
                   <div className="text-left">
-                    <p className="text-xs font-bold text-slate-900">{edl.lease?.property?.adresse_complete}</p>
+                    <p className="text-xs font-bold text-foreground">{edl.lease?.property?.adresse_complete}</p>
                     <p className="text-[10px] text-muted-foreground">
                       {edl.lease?.property?.code_postal} {edl.lease?.property?.ville}
                     </p>
@@ -891,25 +891,25 @@ export function InspectionDetailClient({ data }: Props) {
 
             {/* Compteurs du bien - 🔧 FIX: Utiliser unifiedMetersForDisplay */}
             {unifiedMetersForDisplay.length > 0 && (
-              <Card className="border-none shadow-sm bg-white overflow-hidden">
-                <CardHeader className="pb-2 border-b border-slate-50">
+              <Card className="border-none shadow-sm bg-card overflow-hidden">
+                <CardHeader className="pb-2 border-b border-border">
                   <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                    <Home className="h-3 w-3 text-slate-400" />
+                    <Home className="h-3 w-3 text-muted-foreground" />
                     Données techniques
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4 space-y-3">
                   {unifiedMetersForDisplay.map((meter: any, index: number) => (
-                    <div key={meter.id || `meter-${index}`} className="p-2 rounded-lg border border-slate-100 bg-slate-50/50">
+                    <div key={meter.id || `meter-${index}`} className="p-2 rounded-lg border border-border bg-muted/50">
                       <div className="flex justify-between items-start mb-1">
-                        <span className="text-[10px] font-bold uppercase text-slate-500">
+                        <span className="text-[10px] font-bold uppercase text-muted-foreground">
                           {meter.type === 'electricity' ? 'Électricité' : meter.type === 'gas' ? 'Gaz' : meter.type === 'water' ? 'Eau' : meter.type}
                         </span>
                         <Badge variant={meter.hasReading ? "secondary" : "outline"} className={`text-[10px] h-4 px-1 ${meter.hasReading ? "bg-green-100 text-green-700 border-none" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
                           {meter.hasReading ? "Relevé effectué" : "À relever"}
                         </Badge>
                       </div>
-                      <p className="text-[11px] font-medium text-slate-900 leading-none">N° {meter.meter_number || meter.serial_number || "Non renseigné"}</p>
+                      <p className="text-[11px] font-medium text-foreground leading-none">N° {meter.meter_number || meter.serial_number || "Non renseigné"}</p>
                       {meter.hasReading && meter.readingValue !== null && (
                         <p className="text-[10px] text-blue-600 font-semibold mt-1">{meter.readingValue.toLocaleString('fr-FR')} {meter.readingUnit}</p>
                       )}

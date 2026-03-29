@@ -120,7 +120,7 @@ export function PublicFooter({
             <p
               className={`text-xs ${isDark ? "text-slate-500" : "text-slate-400"}`}
             >
-              © 2026 Talok. Tous droits réservés.
+              © {new Date().getFullYear()} Talok. Tous droits réservés.
             </p>
           </div>
         </div>
@@ -197,8 +197,8 @@ export function PublicFooter({
           <p
             className={`text-sm ${isDark ? "text-slate-500" : "text-slate-400"}`}
           >
-            © 2026 Talok. Tous droits réservés. Né en Martinique 🇲🇶 · Pour
-            toute la France.
+            © {new Date().getFullYear()} Talok. Tous droits réservés. Né en
+            Martinique 🇲🇶 · Pour toute la France.
           </p>
           <div className="flex items-center gap-4">
             <span

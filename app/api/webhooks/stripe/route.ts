@@ -37,10 +37,37 @@ function getStripe(): Stripe {
   });
 }
 
-// Fonction utilitaire pour générer et sauvegarder la quittance de façon idempotente
+// Fonction utilitaire pour générer et sauvegarder la quittance de façon idempotente,
+// puis envoyer la quittance PDF par email au locataire.
 async function processReceiptGeneration(supabase: any, _invoiceId: string, paymentId: string, _amount: number) {
   try {
-    await ensureReceiptDocument(supabase, paymentId);
+    const result = await ensureReceiptDocument(supabase, paymentId);
+
+    // Envoyer la quittance par email au locataire (seulement si nouvelle)
+    if (result?.created && result.pdfBytes && result.receiptMeta?.tenantEmail) {
+      try {
+        const { sendReceiptEmail } = await import("@/lib/emails/send-receipt-email");
+        await sendReceiptEmail({
+          tenantEmail: result.receiptMeta.tenantEmail,
+          tenantName: result.receiptMeta.tenantName,
+          period: result.receiptMeta.period,
+          totalAmount: result.receiptMeta.totalAmount,
+          propertyAddress: result.receiptMeta.propertyAddress,
+          paymentDate: result.receiptMeta.paymentDate,
+          paymentMethod: result.receiptMeta.paymentMethod,
+          pdfBytes: result.pdfBytes,
+          paymentId,
+        });
+
+        // Marquer la quittance comme envoyée
+        await supabase
+          .from("receipts")
+          .update({ sent_at: new Date().toISOString() })
+          .eq("payment_id", paymentId);
+      } catch (emailError) {
+        console.error("[Receipt] Email to tenant failed:", emailError);
+      }
+    }
   } catch (error) {
     console.error("[Receipt] Generation failed:", error);
   }
@@ -499,7 +526,6 @@ async function emitPaymentSucceededEvent(
       });
     }
 
-    console.log(`[Payment] ✅ Events emitted for payment ${paymentId}`);
   } catch (error) {
     console.error("[Payment] Error emitting events:", error);
   }
@@ -543,7 +569,6 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceRoleClient();
 
-  console.log(`[Stripe Webhook] Received event: ${event.type}`);
 
   try {
     const { data: existingWebhook } = await supabase
@@ -572,7 +597,6 @@ export async function POST(request: NextRequest) {
         const tenantId = session.metadata?.tenant_id;
         
         if (invoiceId) {
-          console.log(`[Stripe Webhook] Processing payment for invoice: ${invoiceId}`);
           const providerRef = session.payment_intent as string;
           const paidAt = new Date().toISOString();
           const paymentResult = providerRef
@@ -682,7 +706,6 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          console.log(`[Stripe Webhook] Invoice ${invoiceId} payment synchronized`);
         }
         break;
       }
@@ -715,7 +738,6 @@ export async function POST(request: NextRequest) {
 
           const settlement = await syncInvoiceStatusFromPayments(supabase as any, invoiceId, paidAt);
 
-          console.log(`[Stripe Webhook] Payment intent ${paymentIntent.id} processed`);
           if (paymentId && paymentResult.newlySucceeded) {
             const sourceTransactionId = await resolveSourceTransactionId(stripe, paymentIntent.id);
             const receiptGenerated = !!settlement?.isSettled;
@@ -769,7 +791,6 @@ export async function POST(request: NextRequest) {
 
           await syncInvoiceStatusFromPayments(supabase as any, invoiceId, null);
 
-          console.log(`[Stripe Webhook] Payment failed for invoice ${invoiceId}`);
         }
         break;
       }
@@ -837,7 +858,6 @@ export async function POST(request: NextRequest) {
             { onConflict: "stripe_invoice_id" }
           );
 
-          console.log(`[Stripe Webhook] Subscription invoice paid: ${invoice.id}`);
         }
         break;
       }
@@ -877,7 +897,6 @@ export async function POST(request: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription;
 
         await syncSubscriptionStateFromStripeSubscription(supabase, subscription);
-        console.log(`[Stripe Webhook] Subscription updated: ${subscription.id}`);
         break;
       }
 
@@ -970,7 +989,6 @@ export async function POST(request: NextRequest) {
             });
           }
 
-          console.log(`[Stripe Webhook] Subscription canceled: ${subscription.id}`);
         }
         break;
       }
@@ -1033,7 +1051,6 @@ export async function POST(request: NextRequest) {
             .eq("id", connectAccount.id as string);
 
           if (!updateError) {
-            console.log(`[Stripe Webhook] Connect account updated: ${account.id}`);
 
             // Notifier le propriétaire si l'onboarding est terminé
             if (account.charges_enabled && account.payouts_enabled && connectAccount.profile_id) {
@@ -1107,7 +1124,6 @@ export async function POST(request: NextRequest) {
             });
           }
 
-          console.log(`[Stripe Webhook] Transfer created: ${transfer.id}`);
         }
         break;
       }
@@ -1127,7 +1143,6 @@ export async function POST(request: NextRequest) {
           })
           .eq("stripe_transfer_id", transfer.id);
 
-        console.log(`[Stripe Webhook] Transfer failed: ${transfer.id}`);
         break;
       }
 
@@ -1165,10 +1180,70 @@ export async function POST(request: NextRequest) {
       }
 
       // ===============================================
+      // CONTESTATION SEPA (DISPUTE)
+      // ===============================================
+      case "charge.dispute.created": {
+        const dispute = event.data.object as Stripe.Dispute;
+        const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+        const paymentIntentId = typeof dispute.payment_intent === "string"
+          ? dispute.payment_intent
+          : dispute.payment_intent?.id || null;
+
+        // Logger la contestation
+        await supabase.from("webhook_logs").insert({
+          provider: "stripe",
+          event_type: "charge.dispute.created",
+          event_id: event.id,
+          payload: {
+            dispute_id: dispute.id,
+            charge_id: chargeId,
+            payment_intent_id: paymentIntentId,
+            amount: dispute.amount,
+            reason: dispute.reason,
+            status: dispute.status,
+          } as Json,
+          processed_at: new Date().toISOString(),
+          status: "success",
+        });
+
+        // Trouver le paiement lié
+        if (paymentIntentId) {
+          const { data: payment } = await supabase
+            .from("payments")
+            .select("id, invoice_id, invoice:invoices(owner_id, tenant_id, lease_id)")
+            .eq("provider_ref", paymentIntentId)
+            .maybeSingle();
+
+          if (payment) {
+            // Marquer le paiement comme contesté
+            await supabase
+              .from("payments")
+              .update({ statut: "disputed" })
+              .eq("id", payment.id);
+
+            const invoice = payment.invoice as any;
+
+            // Notifier le propriétaire
+            if (invoice?.owner_id) {
+              await supabase.rpc("create_notification", {
+                p_recipient_id: invoice.owner_id,
+                p_type: "alert",
+                p_title: "Contestation de paiement",
+                p_message: `Un prélèvement de ${(dispute.amount / 100).toFixed(2)}€ a été contesté par le locataire. Motif : ${dispute.reason || 'non spécifié'}.`,
+                p_link: "/owner/money",
+                p_related_id: payment.invoice_id,
+                p_related_type: "invoice",
+              });
+            }
+          }
+        }
+        break;
+      }
+
+      // ===============================================
       // AUTRES ÉVÉNEMENTS
       // ===============================================
       default:
-        console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
     }
 
     // Enregistrer l'événement dans le log d'audit
