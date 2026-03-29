@@ -29,87 +29,130 @@ const FAQ_CATEGORIES = [
     items: [
       {
         question: "Qu'est-ce que Talok ?",
-        answer: "Talok est un logiciel de gestion locative tout-en-un pour propriétaires bailleurs. Il permet de gérer vos biens, locataires, baux, quittances, états des lieux et comptabilité depuis une seule plateforme. Conçu en Martinique, Talok est le seul logiciel qui couvre spécifiquement les DOM-TOM.",
+        answer: "Talok est un logiciel de gestion locative tout-en-un. Il permet de gérer vos biens, locataires, baux, quittances, états des lieux, collecte de loyers et comptabilité depuis une seule plateforme. Né en Martinique, Talok est le seul logiciel conçu nativement pour toute la France, y compris la France d'outre-mer.",
       },
       {
         question: "Pour qui est fait Talok ?",
-        answer: "Talok s'adresse aux propriétaires particuliers (1-3 biens), investisseurs (5-50 biens), SCI familiales, et administrateurs de biens professionnels (50+ biens). Chaque profil dispose de fonctionnalités adaptées à ses besoins.",
+        answer: "Talok s'adresse aux propriétaires particuliers (1 à 3 biens), investisseurs et SCI (5 à 50 biens), agences immobilières, syndics de copropriété, et prestataires du bâtiment. Chaque profil dispose de fonctionnalités adaptées à ses besoins.",
       },
       {
         question: "Puis-je essayer Talok gratuitement ?",
-        answer: "Oui ! Talok propose un essai gratuit de 14 jours sur tous les plans payants, sans carte bancaire requise. Vous avez également un plan gratuit permanent pour 1 bien avec les fonctionnalités essentielles.",
+        answer: "Oui ! Les offres payantes bénéficient d'un essai gratuit de 7 jours sans engagement et sans carte bancaire. De plus, le plan Gratuit est permanent et vous permet de gérer jusqu'à 2 biens avec les fonctionnalités essentielles.",
       },
     ],
   },
   {
-    title: "Tarifs & Abonnements",
+    title: "Inscription et compte",
+    items: [
+      {
+        question: "Comment créer un compte ?",
+        answer: "Inscrivez-vous en quelques clics depuis la page d'accueil. Choisissez votre rôle (propriétaire, locataire, etc.), confirmez votre email, et commencez à utiliser la plateforme immédiatement.",
+      },
+      {
+        question: "Puis-je avoir plusieurs rôles (propriétaire et locataire) ?",
+        answer: "Non, chaque adresse email est associée à un seul rôle. Si vous êtes à la fois propriétaire et locataire, vous pouvez créer deux comptes avec deux adresses email différentes.",
+      },
+    ],
+  },
+  {
+    title: "Forfaits et tarifs",
     items: [
       {
         question: "Combien coûte Talok ?",
-        answer: "Talok propose plusieurs plans : Gratuit (1 bien), Starter à 9€/mois (3 biens), Confort à 35€/mois (10 biens), Pro à 69€/mois (50 biens), et des offres Enterprise à partir de 249€/mois. Réduction de 20% sur l'abonnement annuel.",
+        answer: "Gratuit (2 biens), Confort à 24,90 €/mois (10 biens, 5 signatures, collecte de loyers), Pro à 59,90 €/mois (50 biens, signatures illimitées, agent IA). Réduction de 17 % sur l'abonnement annuel : 249 €/an (Confort) ou 599 €/an (Pro). TVA en sus selon votre localisation.",
       },
       {
         question: "Y a-t-il des frais cachés ?",
-        answer: "Non, le prix affiché est le prix payé. Les seuls coûts supplémentaires possibles sont les biens au-delà du quota (2-3€/bien) et les signatures électroniques supplémentaires au-delà du quota inclus dans votre plan.",
+        answer: "Non, aucun frais caché. Le prix affiché est le prix hors taxes. Une commission est prélevée uniquement si vous utilisez la collecte automatique de loyers : 2,5 % (Confort) ou 1,5 % (Pro) sur chaque loyer collecté. La TVA s'applique selon votre territoire.",
       },
       {
         question: "Puis-je changer de forfait à tout moment ?",
-        answer: "Oui, vous pouvez upgrader ou downgrader votre forfait à tout moment. En cas d'upgrade, vous payez la différence au prorata. En cas de downgrade, le nouveau tarif s'applique à la prochaine période de facturation.",
+        answer: "Oui, vous pouvez upgrader ou downgrader votre forfait à tout moment depuis votre espace client. En cas d'upgrade, vous payez la différence au prorata. En cas de downgrade, le nouveau tarif s'applique à la prochaine période de facturation.",
       },
       {
-        question: "Comment fonctionne le 1er mois offert ?",
-        answer: "Le 1er mois est entièrement gratuit sur tous les forfaits payants. Vous enregistrez votre moyen de paiement à l'inscription mais vous ne serez prélevé qu'à partir du 2ème mois. Vous pouvez annuler à tout moment.",
+        question: "Comment fonctionne la réduction annuelle ?",
+        answer: "L'abonnement annuel offre -17 % par rapport au mensuel. Par exemple, le plan Confort passe de 298,80 € (12 × 24,90 €) à 249 €/an, soit une économie de près de 50 €.",
       },
     ],
   },
   {
-    title: "Fonctionnalités",
+    title: "Paiements et loyers",
     items: [
       {
-        question: "Les documents sont-ils conformes à la loi ALUR ?",
-        answer: "Oui, tous nos documents (baux, quittances, états des lieux) sont conformes à la loi ALUR et régulièrement mis à jour par notre équipe juridique. Vous avez la garantie d'utiliser des documents légaux.",
+        question: "Comment fonctionne la collecte automatique des loyers ?",
+        answer: "À partir du plan Confort, vos locataires paient par prélèvement automatique. Le loyer est prélevé à la date choisie, une quittance est générée automatiquement, et le montant net (après commission) est reversé sur votre compte sous 5 à 7 jours ouvrés.",
+      },
+      {
+        question: "Quels sont les frais sur les loyers collectés ?",
+        answer: "La commission est de 2,5 % (plan Confort) ou 1,5 % (plan Pro et Enterprise) du montant du loyer collecté. Par exemple, sur un loyer de 700 €, la commission est de 17,50 € (Confort) ou 10,50 € (Pro).",
+      },
+      {
+        question: "Le locataire doit-il créer un compte ?",
+        answer: "Oui, le locataire reçoit une invitation par email pour créer son compte gratuit. Il dispose ensuite de son propre espace avec ses quittances, documents et un accès à la messagerie avec le propriétaire.",
+      },
+    ],
+  },
+  {
+    title: "Documents et signatures",
+    items: [
+      {
+        question: "Les baux sont-ils conformes à la loi ?",
+        answer: "Oui, tous les documents générés par Talok (baux d'habitation, baux meublés, quittances, avis d'échéance, états des lieux) sont conformes aux lois ALUR et ELAN en vigueur, et régulièrement mis à jour.",
       },
       {
         question: "Comment fonctionne la signature électronique ?",
-        answer: "Talok intègre une signature électronique conforme au règlement européen eIDAS. Vos signataires reçoivent un email avec un lien sécurisé. Ils peuvent signer depuis n'importe quel appareil. Le document signé a la même valeur juridique qu'une signature manuscrite.",
+        answer: "Les signataires reçoivent un email avec un lien sécurisé. Ils vérifient leur identité, signent depuis n'importe quel appareil, et le document signé a la même valeur légale qu'un original papier.",
       },
       {
-        question: "Qu'est-ce que le scoring IA des locataires ?",
-        answer: "Notre algorithme d'intelligence artificielle analyse les dossiers de candidature et attribue un score de solvabilité de 0 à 100. Il prend en compte les revenus, charges, situation professionnelle et historique. Précision de 94% pour prédire les risques d'impayés.",
-      },
-      {
-        question: "Puis-je importer mes biens depuis Excel ?",
-        answer: "Oui, Talok permet d'importer vos biens et locataires depuis un fichier Excel ou CSV. Notre système de mapping intelligent associe automatiquement vos colonnes aux champs Talok. Import en moins de 30 minutes pour un portefeuille de 50 biens.",
+        question: "Combien de signatures sont incluses ?",
+        answer: "Le plan Gratuit n'inclut pas de signature. Le plan Confort inclut 5 signatures par mois. Le plan Pro offre des signatures illimitées. Des packs de 10 signatures supplémentaires sont disponibles à 19 €.",
       },
     ],
   },
   {
-    title: "Support & Sécurité",
+    title: "Baux et contrats",
     items: [
       {
-        question: "Comment contacter le support ?",
-        answer: "Notre support est disponible par email (support@talok.fr), téléphone (Métropole et Antilles), et chat dans l'application. Temps de réponse moyen : moins de 2 heures en jours ouvrés.",
+        question: "Puis-je gérer des colocations ?",
+        answer: "Oui, Talok gère les colocations avec baux individuels ou collectifs, répartition des charges, planning de ménage et règlement intérieur partagé.",
       },
+      {
+        question: "Comment résilier un bail ?",
+        answer: "Depuis la fiche du bail, vous pouvez lancer la procédure de congé (préavis propriétaire ou locataire), générer la lettre de congé, planifier l'état des lieux de sortie et calculer la restitution du dépôt de garantie.",
+      },
+    ],
+  },
+  {
+    title: "Sécurité et données",
+    items: [
       {
         question: "Mes données sont-elles sécurisées ?",
-        answer: "Oui, vos données sont hébergées en France sur des serveurs sécurisés. Nous utilisons le chiffrement TLS, sommes conformes RGPD, et effectuons des sauvegardes quotidiennes. Vos documents sont conservés 10 ans minimum.",
+        answer: "Oui. Vos données sont hébergées en Union Européenne sur des serveurs sécurisés. Nous utilisons le chiffrement TLS en transit et AES-256 au repos, la double vérification de sécurité (2FA), et l'isolation stricte des données entre utilisateurs. Talok est conforme au RGPD.",
       },
       {
-        question: "Puis-je exporter mes données si je résilie ?",
-        answer: "Absolument. Vous pouvez exporter toutes vos données à tout moment depuis votre compte. Après résiliation, vos données sont conservées 30 jours avant suppression définitive.",
+        question: "Puis-je exporter mes données ?",
+        answer: "Oui, conformément à l'article 20 du RGPD (droit à la portabilité), vous pouvez exporter toutes vos données à tout moment depuis votre espace client. Après résiliation, vos données sont conservées 90 jours avant suppression.",
+      },
+      {
+        question: "Comment contacter le support ?",
+        answer: "Par email à support@talok.fr (réponse sous 48h pour le plan Gratuit, 24h pour Confort, prioritaire pour Pro). Un chat en direct est disponible pour les utilisateurs Pro.",
       },
     ],
   },
   {
-    title: "DOM-TOM",
+    title: "France d'outre-mer",
     items: [
       {
-        question: "Talok est-il adapté aux DOM-TOM ?",
-        answer: "Oui, Talok est né en Martinique et a été conçu spécifiquement pour les réalités des DOM-TOM. Support sur le fuseau horaire des Antilles, délais postaux intégrés, fiscalité Pinel Outre-Mer, réglementations locales.",
+        question: "Talok est-il adapté à l'outre-mer ?",
+        answer: "Talok est né en Martinique. Il n'a pas été « adapté » à l'outre-mer — il a été conçu ici. TVA spécifique par territoire (8,5 % Martinique/Guadeloupe/Réunion, 2,1 % Guyane, 0 % Mayotte), codes postaux, réglementations locales : tout est intégré nativement.",
       },
       {
         question: "Quels territoires sont couverts ?",
-        answer: "Talok couvre tous les DOM-TOM : Martinique, Guadeloupe, Guyane, La Réunion, Mayotte, ainsi que les COM (Saint-Martin, Saint-Barthélemy, Polynésie française, Nouvelle-Calédonie).",
+        answer: "Talok couvre l'ensemble de la France : métropole et les DROM (Martinique, Guadeloupe, Guyane, La Réunion, Mayotte). Les COM (Saint-Martin, Saint-Barthélemy) sont également supportées.",
+      },
+      {
+        question: "La TVA est-elle calculée automatiquement ?",
+        answer: "Oui. Talok applique automatiquement le bon taux de TVA selon le territoire du bien : 20 % en métropole, 8,5 % en Martinique/Guadeloupe/Réunion, 2,1 % en Guyane, 0 % à Mayotte.",
       },
     ],
   },

@@ -257,7 +257,7 @@ function baseLayout(content: string, preheader?: string): string {
         <p>
           © ${new Date().getFullYear()} Talok. Tous droits réservés.<br>
           <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr'}/legal/privacy">Politique de confidentialité</a> · 
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr'}/legal/terms">Conditions d'utilisation</a>
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr'}/legal/cgu">Conditions d'utilisation</a>
         </p>
       </div>
     </div>
