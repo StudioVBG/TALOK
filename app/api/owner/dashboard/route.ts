@@ -37,7 +37,8 @@ export async function GET(request: Request) {
     const ownerId = profile.id;
 
     // 1. Récupérer les propriétés (inclure type_bien pour support V3)
-    const { data: properties } = await supabase
+    // Utiliser serviceClient pour bypasser RLS — la sécurité est assurée par le filtre owner_id vérifié en amont
+    const { data: properties } = await serviceClient
       .from("properties")
       .select("id, type, type_bien, adresse_complete, surface, nb_pieces")
       .eq("owner_id", ownerId)
@@ -86,8 +87,8 @@ export async function GET(request: Request) {
       { data: leases },
       { data: invoices },
     ] = await Promise.all([
-      // Récupérer les baux actifs
-      supabase
+      // Récupérer les baux actifs (serviceClient pour bypasser RLS)
+      serviceClient
         .from("leases")
         .select(`
           id,
@@ -102,8 +103,8 @@ export async function GET(request: Request) {
         `)
         .in("property_id", propertyIds)
         .not("statut", "in", '("draft","cancelled","archived")'),
-      // Récupérer les factures des 6 derniers mois
-      supabase
+      // Récupérer les factures des 6 derniers mois (serviceClient pour bypasser RLS)
+      serviceClient
         .from("invoices")
         .select("id, lease_id, periode, montant_total, statut, montant_loyer, montant_charges")
         .eq("owner_id", ownerId)
@@ -114,7 +115,7 @@ export async function GET(request: Request) {
 
     // 4. Récupérer les signataires en attente (après avoir les leaseIds)
     const { data: pendingSignatures } = leaseIds.length > 0
-      ? await supabase
+      ? await serviceClient
           .from("lease_signers")
           .select(`
             id,
@@ -432,7 +433,7 @@ export async function GET(request: Request) {
     
     // ✅ DPE: Vérifier les dates d'expiration DPE si colonne existe
     try {
-      const { data: propertiesWithDPEDates } = await supabase
+      const { data: propertiesWithDPEDates } = await serviceClient
         .from("properties")
         .select("id, energie, dpe_date_expiration")
         .in("id", propertyIds)
@@ -474,7 +475,7 @@ export async function GET(request: Request) {
     } | null = null;
     
     try {
-      const { data: propertiesWithPrice } = await supabase
+      const { data: propertiesWithPrice } = await serviceClient
         .from("properties")
         .select("id, prix_achat, loyer_base")
         .in("id", propertyIds)
