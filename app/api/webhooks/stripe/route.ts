@@ -37,10 +37,37 @@ function getStripe(): Stripe {
   });
 }
 
-// Fonction utilitaire pour générer et sauvegarder la quittance de façon idempotente
+// Fonction utilitaire pour générer et sauvegarder la quittance de façon idempotente,
+// puis envoyer la quittance PDF par email au locataire.
 async function processReceiptGeneration(supabase: any, _invoiceId: string, paymentId: string, _amount: number) {
   try {
-    await ensureReceiptDocument(supabase, paymentId);
+    const result = await ensureReceiptDocument(supabase, paymentId);
+
+    // Envoyer la quittance par email au locataire (seulement si nouvelle)
+    if (result?.created && result.pdfBytes && result.receiptMeta?.tenantEmail) {
+      try {
+        const { sendReceiptEmail } = await import("@/lib/emails/send-receipt-email");
+        await sendReceiptEmail({
+          tenantEmail: result.receiptMeta.tenantEmail,
+          tenantName: result.receiptMeta.tenantName,
+          period: result.receiptMeta.period,
+          totalAmount: result.receiptMeta.totalAmount,
+          propertyAddress: result.receiptMeta.propertyAddress,
+          paymentDate: result.receiptMeta.paymentDate,
+          paymentMethod: result.receiptMeta.paymentMethod,
+          pdfBytes: result.pdfBytes,
+          paymentId,
+        });
+
+        // Marquer la quittance comme envoyée
+        await supabase
+          .from("receipts")
+          .update({ sent_at: new Date().toISOString() })
+          .eq("payment_id", paymentId);
+      } catch (emailError) {
+        console.error("[Receipt] Email to tenant failed:", emailError);
+      }
+    }
   } catch (error) {
     console.error("[Receipt] Generation failed:", error);
   }
@@ -1149,6 +1176,67 @@ export async function POST(request: NextRequest) {
       case "payout.canceled": {
         const payout = event.data.object as Stripe.Payout;
         await upsertStripePayout(supabase, event.account, payout, "canceled");
+        break;
+      }
+
+      // ===============================================
+      // CONTESTATION SEPA (DISPUTE)
+      // ===============================================
+      case "charge.dispute.created": {
+        const dispute = event.data.object as Stripe.Dispute;
+        const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+        const paymentIntentId = typeof dispute.payment_intent === "string"
+          ? dispute.payment_intent
+          : dispute.payment_intent?.id || null;
+
+        // Logger la contestation
+        await supabase.from("webhook_logs").insert({
+          provider: "stripe",
+          event_type: "charge.dispute.created",
+          event_id: event.id,
+          payload: {
+            dispute_id: dispute.id,
+            charge_id: chargeId,
+            payment_intent_id: paymentIntentId,
+            amount: dispute.amount,
+            reason: dispute.reason,
+            status: dispute.status,
+          } as Json,
+          processed_at: new Date().toISOString(),
+          status: "success",
+        });
+
+        // Trouver le paiement lié
+        if (paymentIntentId) {
+          const { data: payment } = await supabase
+            .from("payments")
+            .select("id, invoice_id, invoice:invoices(owner_id, tenant_id, lease_id)")
+            .eq("provider_ref", paymentIntentId)
+            .maybeSingle();
+
+          if (payment) {
+            // Marquer le paiement comme contesté
+            await supabase
+              .from("payments")
+              .update({ statut: "disputed" })
+              .eq("id", payment.id);
+
+            const invoice = payment.invoice as any;
+
+            // Notifier le propriétaire
+            if (invoice?.owner_id) {
+              await supabase.rpc("create_notification", {
+                p_recipient_id: invoice.owner_id,
+                p_type: "alert",
+                p_title: "Contestation de paiement",
+                p_message: `Un prélèvement de ${(dispute.amount / 100).toFixed(2)}€ a été contesté par le locataire. Motif : ${dispute.reason || 'non spécifié'}.`,
+                p_link: "/owner/money",
+                p_related_id: payment.invoice_id,
+                p_related_type: "invoice",
+              });
+            }
+          }
+        }
         break;
       }
 

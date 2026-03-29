@@ -1,22 +1,12 @@
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/database.types";
 import { generateReceiptPDF, type ReceiptData } from "@/lib/services/receipt-generator";
 import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 import { getInvoiceSettlement } from "@/lib/services/invoice-status.service";
 import { resolveReceiptTotalAmount } from "@/lib/services/receipt-amount";
 
-type SupabaseLike = {
-  from: (table: string) => {
-    select: (...args: unknown[]) => any;
-    insert: (values: Record<string, unknown>) => any;
-    update?: (values: Record<string, unknown>) => any;
-  };
-  storage: {
-    from: (bucket: string) => {
-      upload: (path: string, body: Uint8Array | Buffer, options?: Record<string, unknown>) => Promise<{ error: { message?: string } | null }>;
-      createSignedUrl?: (path: string, expiresIn: number) => Promise<{ data?: { signedUrl?: string }; error?: { message?: string } | null }>;
-    };
-  };
-};
+type SupabaseLike = SupabaseClient<Database>;
 
 function normalizeDate(value?: string | null): string {
   if (!value) return new Date().toISOString().split("T")[0];
@@ -39,10 +29,28 @@ async function findDocumentByMetadata(
   return data as { id?: string; storage_path?: string } | null;
 }
 
+export interface EnsureReceiptResult {
+  created: boolean;
+  storagePath: string;
+  documentId?: string | null;
+  /** PDF bytes — only present when created=true */
+  pdfBytes?: Uint8Array;
+  /** Tenant/payment metadata — only present when created=true */
+  receiptMeta?: {
+    tenantEmail: string;
+    tenantName: string;
+    period: string;
+    totalAmount: number;
+    paymentDate: string;
+    paymentMethod: string;
+    propertyAddress: string;
+  };
+}
+
 export async function ensureReceiptDocument(
   supabase: SupabaseLike,
   paymentId: string
-): Promise<{ created: boolean; storagePath: string; documentId?: string | null } | null> {
+): Promise<EnsureReceiptResult | null> {
   const existingDoc = await findDocumentByMetadata(supabase, "quittance", "payment_id", paymentId);
   if (existingDoc?.storage_path) {
     return {
@@ -185,10 +193,50 @@ export async function ensureReceiptDocument(
     .select("id")
     .single();
 
+  // Populate receipts table (idempotent, non-blocking)
+  // Populate receipts table — not in generated Database types yet, use `as any`
+  try {
+    const { data: existingReceipt } = await (supabase as any)
+      .from("receipts")
+      .select("id")
+      .eq("invoice_id", paymentData.invoice.id)
+      .maybeSingle();
+
+    if (!existingReceipt) {
+      await (supabase as any).from("receipts").insert({
+        payment_id: paymentId,
+        lease_id: paymentData.invoice.lease_id,
+        invoice_id: paymentData.invoice.id,
+        tenant_id: paymentData.invoice.tenant_id,
+        owner_id: paymentData.invoice.owner_id,
+        period: paymentData.invoice.periode,
+        montant_loyer: receiptData.rentAmount,
+        montant_charges: receiptData.chargesAmount,
+        montant_total: receiptData.totalAmount,
+        pdf_storage_path: storagePath,
+        generated_at: new Date().toISOString(),
+      });
+    }
+  } catch (receiptErr) {
+    console.error("[Receipt] receipts table insert failed:", receiptErr);
+  }
+
+  const tenantProfileData = tenantProfile as { prenom?: string; nom?: string; email?: string } | null;
+
   return {
     created: true,
     storagePath,
     documentId: (insertedDoc as { id?: string } | null)?.id ?? null,
+    pdfBytes,
+    receiptMeta: {
+      tenantEmail: tenantProfileData?.email || "",
+      tenantName: receiptData.tenantName,
+      period: receiptData.period,
+      totalAmount: receiptData.totalAmount,
+      paymentDate: receiptData.paymentDate,
+      paymentMethod: receiptData.paymentMethod,
+      propertyAddress: receiptData.propertyAddress,
+    },
   };
 }
 
