@@ -74,7 +74,7 @@ export function EntityProvider({ children }: EntityProviderProps) {
           }
         }
 
-        // FIX 1: Auto-select first entity if activeEntityId is null
+        // Auto-select default or first entity if activeEntityId is still null
         const state = useEntityStore.getState();
         if (!state.activeEntityId && state.entities.length > 0 && !autoSelectDoneRef.current) {
           autoSelectDoneRef.current = true;
@@ -88,6 +88,16 @@ export function EntityProvider({ children }: EntityProviderProps) {
 
     loadEntities();
   }, [profile?.id, fetchEntities, setActiveEntity]);
+
+  // Reactive guard: if entities arrive after initial render and activeEntityId is still null
+  const entities = useEntityStore((s) => s.entities);
+  const activeEntityId = useEntityStore((s) => s.activeEntityId);
+
+  useEffect(() => {
+    if (!activeEntityId && entities.length > 0) {
+      setActiveEntity(entities[0].id);
+    }
+  }, [entities, activeEntityId, setActiveEntity]);
 
   return <>{children}</>;
 }
