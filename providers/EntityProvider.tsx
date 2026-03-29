@@ -11,7 +11,7 @@
  * (React strict mode, onglets multiples).
  */
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useEntityStore } from "@/stores/useEntityStore";
 import { useAuth } from "@/lib/hooks/use-auth";
 
@@ -25,6 +25,8 @@ let ensureDefaultPromise: Promise<void> | null = null;
 export function EntityProvider({ children }: EntityProviderProps) {
   const { profile } = useAuth();
   const fetchEntities = useEntityStore((s) => s.fetchEntities);
+  const setActiveEntity = useEntityStore((s) => s.setActiveEntity);
+  const hasAutoSelected = useRef(false);
 
   useEffect(() => {
     if (!profile?.id) return;
@@ -63,13 +65,30 @@ export function EntityProvider({ children }: EntityProviderProps) {
             await ensureDefaultPromise;
           }
         }
+
+        // FIX 1: Auto-sélectionner la première entité si aucune n'est active
+        const { activeEntityId, entities: finalEntities } = useEntityStore.getState();
+        if (!activeEntityId && finalEntities.length > 0 && !hasAutoSelected.current) {
+          hasAutoSelected.current = true;
+          setActiveEntity(finalEntities[0].id);
+        }
       } catch (err) {
         console.error("[EntityProvider] Error loading entities:", err);
       }
     };
 
     loadEntities();
-  }, [profile?.id, fetchEntities]);
+  }, [profile?.id, fetchEntities, setActiveEntity]);
+
+  // FIX 1: Réagir aussi quand entities change dans le store (ex: après ensureDefaultEntity)
+  const entities = useEntityStore((s) => s.entities);
+  const activeEntityId = useEntityStore((s) => s.activeEntityId);
+
+  useEffect(() => {
+    if (!activeEntityId && entities.length > 0) {
+      setActiveEntity(entities[0].id);
+    }
+  }, [entities, activeEntityId, setActiveEntity]);
 
   return <>{children}</>;
 }

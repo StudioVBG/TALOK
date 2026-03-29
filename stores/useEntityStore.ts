@@ -127,8 +127,13 @@ export const useEntityStore = create<EntityState>()(
             entitySummaries[0].isDefault = true;
           }
 
+          // FIX 5: Auto-sélectionner la première entité si aucune n'est active
+          const currentActiveId = get().activeEntityId;
+          const hasValidActive = currentActiveId && entitySummaries.some(e => e.id === currentActiveId);
+
           set({
             entities: entitySummaries,
+            activeEntityId: hasValidActive ? currentActiveId : (entitySummaries[0]?.id ?? null),
             isLoading: false,
             lastFetchedAt: Date.now(),
           });

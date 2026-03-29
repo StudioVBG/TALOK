@@ -28,6 +28,8 @@ const publicRoutes = [
   "/auth/reset-password",
   "/recovery/password",
   "/signup",
+  "/login",
+  "/signout",
   "/pricing",
   "/blog",
   "/legal",
