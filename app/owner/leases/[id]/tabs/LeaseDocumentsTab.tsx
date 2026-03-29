@@ -65,6 +65,8 @@ import type {
   LeaseReadinessState,
   LeaseWorkflowDocument,
 } from "@/app/owner/_data/lease-readiness";
+import { groupDocuments } from "@/lib/documents/group-documents";
+import { GroupedDocumentCard } from "@/features/documents/components/grouped-document-card";
 
 // ============================================
 // TYPES
@@ -446,7 +448,7 @@ export function LeaseDocumentsTab({
         </div>
       )}
 
-      {/* Section: Documents optionnels */}
+      {/* Section: Documents optionnels — groupés (CNI recto/verso, etc.) */}
       {filteredOptional.length > 0 &&
         filter !== "required" && (
           <div>
@@ -454,28 +456,32 @@ export function LeaseDocumentsTab({
               Annexes &amp; optionnels ({filteredOptional.length})
             </p>
             <div className="space-y-1.5">
-              {filteredOptional
-                .sort(
-                  (a, b) =>
-                    new Date(b.created_at).getTime() -
-                    new Date(a.created_at).getTime()
-                )
-                .map((doc) => {
-                  const config = LEASE_DOCUMENT_TYPE_MAP[doc.type];
+              {groupDocuments(filteredOptional as any).map((item) => {
+                if (item.kind === "group") {
                   return (
-                    <DocumentRow
-                      key={doc.id}
-                      doc={doc}
-                      config={config}
-                      isPending={isPending}
-                      onToggleVisibility={() =>
-                        handleToggleVisibility(doc)
-                      }
-                      onDelete={() => handleDelete(doc)}
-                      onReplace={() => handleReplace(doc)}
+                    <GroupedDocumentCard
+                      key={item.key}
+                      item={item}
+                      onDelete={() => router.refresh()}
                     />
                   );
-                })}
+                }
+                const doc = item.document as DocumentItem;
+                const config = LEASE_DOCUMENT_TYPE_MAP[doc.type];
+                return (
+                  <DocumentRow
+                    key={doc.id}
+                    doc={doc}
+                    config={config}
+                    isPending={isPending}
+                    onToggleVisibility={() =>
+                      handleToggleVisibility(doc)
+                    }
+                    onDelete={() => handleDelete(doc)}
+                    onReplace={() => handleReplace(doc)}
+                  />
+                );
+              })}
             </div>
           </div>
         )}
