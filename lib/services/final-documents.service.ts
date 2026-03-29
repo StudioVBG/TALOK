@@ -194,15 +194,16 @@ export async function ensureReceiptDocument(
     .single();
 
   // Populate receipts table (idempotent, non-blocking)
+  // Populate receipts table — not in generated Database types yet, use `as any`
   try {
-    const { data: existingReceipt } = await supabase
+    const { data: existingReceipt } = await (supabase as any)
       .from("receipts")
       .select("id")
       .eq("invoice_id", paymentData.invoice.id)
       .maybeSingle();
 
     if (!existingReceipt) {
-      await supabase.from("receipts").insert({
+      await (supabase as any).from("receipts").insert({
         payment_id: paymentId,
         lease_id: paymentData.invoice.lease_id,
         invoice_id: paymentData.invoice.id,

@@ -159,7 +159,7 @@ export async function POST(
         });
         emailSent = true;
 
-        await serviceClient
+        await (serviceClient as any)
           .from("receipts")
           .update({ sent_at: new Date().toISOString() })
           .eq("payment_id", payment.id);
