@@ -90,6 +90,7 @@ export default function NewOwnerTicketPage() {
   const [loadingProperties, setLoadingProperties] = useState(true);
 
   const preselectedPropertyId = searchParams.get("propertyId");
+  const preselectedLeaseId = searchParams.get("leaseId");
 
   const [form, setForm] = useState({
     titre: "",
@@ -97,7 +98,32 @@ export default function NewOwnerTicketPage() {
     categorie: "",
     priorite: "normale",
     property_id: preselectedPropertyId || "",
+    lease_id: preselectedLeaseId || "",
   });
+
+  // Charger les baux pour le bien sélectionné
+  const [leases, setLeases] = useState<Array<{ id: string; date_debut: string; statut: string }>>([]);
+  const [loadingLeases, setLoadingLeases] = useState(false);
+
+  useEffect(() => {
+    if (!form.property_id) {
+      setLeases([]);
+      return;
+    }
+    setLoadingLeases(true);
+    fetch(`/api/properties/${form.property_id}/leases`)
+      .then((res) => (res.ok ? res.json() : { leases: [] }))
+      .then((data) => {
+        const list = data.leases || data || [];
+        setLeases(list);
+        // Auto-sélectionner le bail actif s'il n'y en a qu'un
+        if (!form.lease_id && list.length === 1) {
+          setForm((prev) => ({ ...prev, lease_id: list[0].id }));
+        }
+      })
+      .catch(() => setLeases([]))
+      .finally(() => setLoadingLeases(false));
+  }, [form.property_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Charger les propriétés
   useEffect(() => {
@@ -167,6 +193,7 @@ export default function NewOwnerTicketPage() {
           priorite: form.priorite,
           categorie: form.categorie || "autre",
           property_id: form.property_id,
+          ...(form.lease_id ? { lease_id: form.lease_id } : {}),
         }),
       });
 
@@ -251,6 +278,34 @@ export default function NewOwnerTicketPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Bail associé */}
+              {leases.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                    Bail associé (optionnel)
+                  </Label>
+                  <Select
+                    value={form.lease_id}
+                    onValueChange={(value) => setForm({ ...form, lease_id: value === "__none__" ? "" : value })}
+                    disabled={loadingLeases}
+                  >
+                    <SelectTrigger className="bg-card">
+                      <SelectValue placeholder="Aucun bail sélectionné" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Aucun</SelectItem>
+                      {leases.map((lease) => (
+                        <SelectItem key={lease.id} value={lease.id}>
+                          Bail du {new Date(lease.date_debut).toLocaleDateString("fr-FR")}
+                          {lease.statut === "active" ? " (actif)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Titre */}
               <div className="space-y-2">

@@ -18,6 +18,7 @@ export async function getTickets(role: "owner" | "tenant" | "provider") {
     .select(`
       *,
       property:properties(adresse_complete),
+      lease:leases(id, date_debut, date_fin, statut),
       creator:profiles!created_by_profile_id(nom, prenom, role),
       messages:ticket_messages(count),
       work_orders(

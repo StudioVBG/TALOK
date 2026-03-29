@@ -24,6 +24,7 @@ interface PDFPreviewModalProps {
   documentUrl: string | null;
   documentTitle?: string;
   documentType?: string;
+  mimeType?: string | null;
 }
 
 export function PDFPreviewModal({
@@ -32,6 +33,7 @@ export function PDFPreviewModal({
   documentUrl,
   documentTitle = "Document",
   documentType,
+  mimeType,
 }: PDFPreviewModalProps) {
   const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);
@@ -65,12 +67,20 @@ export function PDFPreviewModal({
     }
   };
 
-  // Extraire l'URL sans les paramètres de requête pour détecter le type
+  // Détection du type de fichier — priorité au mimeType explicite, puis URL, puis documentType
   const urlWithoutParams = documentUrl?.split("?")[0] || "";
-  const isPDF = urlWithoutParams.toLowerCase().includes(".pdf") || documentType === "application/pdf";
-  const isImage = urlWithoutParams.match(/\.(jpg|jpeg|png|gif|webp)$/i) || 
-                  documentType?.startsWith("cni") || 
-                  documentType?.includes("identite");
+  const isPDF =
+    mimeType === "application/pdf" ||
+    urlWithoutParams.toLowerCase().endsWith(".pdf") ||
+    documentType === "application/pdf";
+  const isImage =
+    mimeType?.startsWith("image/") ||
+    !!urlWithoutParams.match(/\.(jpg|jpeg|png|gif|webp|heic)$/i) ||
+    documentType?.startsWith("cni") ||
+    documentType?.includes("identite");
+  const isHTML =
+    mimeType === "text/html" ||
+    urlWithoutParams.toLowerCase().endsWith(".html");
 
   return (
     <Dialog open={isOpen} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
@@ -231,11 +241,22 @@ export function PDFPreviewModal({
                     setError("L'image n'a pas pu être chargée");
                   }}
                 />
+              ) : isHTML ? (
+                <iframe
+                  src={documentUrl}
+                  className="w-full h-full min-h-[50vh] sm:min-h-[60vh] bg-white shadow-lg rounded-lg"
+                  onLoad={() => setIsLoading(false)}
+                  onError={() => {
+                    setIsLoading(false);
+                    setError("Le document n'a pas pu être chargé");
+                  }}
+                  title={documentTitle}
+                />
               ) : (
                 <div className="flex flex-col items-center gap-3 sm:gap-4 text-center p-4 sm:p-8">
                   <FileText className="h-12 w-12 sm:h-16 sm:w-16 text-slate-400" />
                   <p className="text-sm sm:text-base text-muted-foreground">
-                    Prévisualisation non disponible pour ce type de fichier
+                    Télécharger pour consulter ce document
                   </p>
                   <Button onClick={handleDownload} size="sm" className="sm:text-base">
                     <Download className="mr-2 h-4 w-4" />

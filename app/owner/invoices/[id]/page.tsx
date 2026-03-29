@@ -29,9 +29,8 @@ import {
   Plus,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { safeDate, safeDateFormat } from "@/lib/helpers/safe-date";
 import { ManualPaymentDialog } from "@/components/payments";
 
 const statusConfig = {
@@ -352,7 +351,7 @@ export default function InvoiceDetailPage() {
                             {payment.statut === "failed" && "Échoué"}
                           </Badge>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {format(new Date(payment.date_paiement), "dd/MM/yyyy", { locale: fr })}
+                            {safeDateFormat(payment.date_paiement)}
                           </p>
                         </div>
                       </div>
@@ -380,21 +379,21 @@ export default function InvoiceDetailPage() {
               <CardContent className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Émission</span>
-                  <span>{format(new Date(invoice.date_emission), "dd/MM/yyyy", { locale: fr })}</span>
+                  <span>{safeDateFormat(invoice.date_emission)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Échéance</span>
                   <span className={cn(
-                    new Date(invoice.date_echeance) < new Date() && !isPaid && "text-red-600 font-medium"
+                    safeDate(invoice.date_echeance) && safeDate(invoice.date_echeance)! < new Date() && !isPaid && "text-red-600 font-medium"
                   )}>
-                    {format(new Date(invoice.date_echeance), "dd/MM/yyyy", { locale: fr })}
+                    {safeDateFormat(invoice.date_echeance)}
                   </span>
                 </div>
                 {invoice.date_paiement && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Paiement</span>
                     <span className="text-green-600">
-                      {format(new Date(invoice.date_paiement), "dd/MM/yyyy", { locale: fr })}
+                      {safeDateFormat(invoice.date_paiement)}
                     </span>
                   </div>
                 )}

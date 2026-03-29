@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     }
 
     // 🔒 Récupérer owner_id et property_id via le bail pour la visibilité
-    const { data: leaseWithProperty } = await serviceClient
+    const { data: leaseWithProperty, error: leaseError } = await serviceClient
       .from("leases")
       .select(`
         id,
@@ -97,9 +97,9 @@ export async function POST(request: Request) {
       .eq("id", leaseId)
       .single();
 
-    if (!leaseWithProperty) {
+    if (leaseError || !leaseWithProperty) {
       return NextResponse.json(
-        { error: "Bail non trouvé ou vous n'avez pas accès à ce bail" },
+        { error: leaseError?.message || "Bail non trouvé ou vous n'avez pas accès à ce bail" },
         { status: 404 }
       );
     }

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import * as Sentry from "@sentry/nextjs";
 import { logger } from "@/lib/monitoring";
 
 /**
@@ -22,6 +23,11 @@ export default function OwnerError({
       error,
       digest: error.digest,
       section: "owner",
+    });
+
+    // Envoyer à Sentry
+    Sentry.captureException(error, {
+      tags: { boundary: "owner", digest: error.digest },
     });
   }, [error]);
 

@@ -25,6 +25,7 @@ import {
   Palette,
   Brain,
   UserCheck,
+  FolderOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,7 @@ const adminNavItems: NavCategory[] = [
       { href: "/admin/tenants", label: "Locataires", icon: UserCheck },
       { href: "/admin/properties", label: "Parc immobilier", icon: Building2 },
       { href: "/admin/reports", label: "Rapports", icon: FileText },
+      { href: "/admin/documents", label: "Documents", icon: FolderOpen },
     ],
   },
   {

@@ -531,6 +531,117 @@ async function emitPaymentSucceededEvent(
   }
 }
 
+/**
+ * Gère les notifications et relances suite à un échec de paiement.
+ * - Notifie le locataire et le propriétaire (notifications in-app)
+ * - Envoie un email de rappel au locataire
+ * - Programme les relances via outbox : J+1, J+3, J+7
+ */
+async function processPaymentFailedNotifications(
+  supabase: any,
+  invoiceId: string,
+  paymentIntent: Stripe.PaymentIntent
+) {
+  // Récupérer les infos complètes de la facture
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select(`
+      id, montant_total, periode, date_echeance, owner_id, tenant_id,
+      lease:leases(
+        id,
+        property:properties(
+          adresse_complete, ville
+        )
+      )
+    `)
+    .eq("id", invoiceId)
+    .single();
+
+  if (!invoice) return;
+
+  const [{ data: tenantProfile }, { data: ownerProfile }] = await Promise.all([
+    supabase.from("profiles").select("id, prenom, nom, email, user_id").eq("id", invoice.tenant_id).single(),
+    supabase.from("profiles").select("id, prenom, nom, email, user_id").eq("id", invoice.owner_id).single(),
+  ]);
+
+  const tenantName = `${tenantProfile?.prenom || ""} ${tenantProfile?.nom || ""}`.trim() || "Locataire";
+  const propertyAddress = invoice.lease?.property?.adresse_complete || invoice.lease?.property?.ville || "le logement";
+  const amount = (paymentIntent.amount / 100).toFixed(2);
+  const failureMessage = paymentIntent.last_payment_error?.message || "Paiement refusé";
+
+  // 1. Notification in-app au locataire
+  if (tenantProfile?.user_id) {
+    await supabase.rpc("create_notification", {
+      p_recipient_id: tenantProfile.user_id,
+      p_type: "alert",
+      p_title: "Échec de paiement",
+      p_message: `Votre paiement de ${amount}€ pour ${propertyAddress} a échoué. ${failureMessage}`,
+      p_link: `/tenant/payments?invoice=${invoiceId}`,
+      p_related_id: invoiceId,
+      p_related_type: "invoice",
+    });
+  }
+
+  // 2. Notification in-app au propriétaire
+  if (ownerProfile?.user_id) {
+    await supabase.rpc("create_notification", {
+      p_recipient_id: ownerProfile.user_id,
+      p_type: "alert",
+      p_title: "Paiement locataire échoué",
+      p_message: `Le paiement de ${amount}€ de ${tenantName} pour ${propertyAddress} a échoué.`,
+      p_link: `/owner/money`,
+      p_related_id: invoiceId,
+      p_related_type: "invoice",
+    });
+  }
+
+  // 3. Email de rappel au locataire
+  if (tenantProfile?.email) {
+    try {
+      const { sendPaymentReminder } = await import("@/lib/emails/resend.service");
+      const dueDate = invoice.date_echeance || invoice.periode;
+      const now = new Date();
+      const dueDateObj = new Date(dueDate);
+      const daysLate = Math.max(0, Math.floor((now.getTime() - dueDateObj.getTime()) / (1000 * 60 * 60 * 24)));
+
+      await sendPaymentReminder({
+        tenantEmail: tenantProfile.email,
+        tenantName,
+        amount: paymentIntent.amount / 100,
+        dueDate,
+        daysLate,
+        invoiceId,
+      });
+    } catch (emailErr) {
+      console.error("[Payment Failed] Email reminder error:", emailErr);
+    }
+  }
+
+  // 4. Programmer les relances automatiques via outbox (J+1, J+3, J+7)
+  const retryDelays = [1, 3, 7]; // jours
+  for (const delayDays of retryDelays) {
+    const scheduledAt = new Date();
+    scheduledAt.setDate(scheduledAt.getDate() + delayDays);
+
+    await supabase.from("outbox").insert({
+      event_type: "Payment.FailedRetry",
+      payload: {
+        invoice_id: invoiceId,
+        tenant_id: invoice.tenant_id,
+        owner_id: invoice.owner_id,
+        amount: paymentIntent.amount / 100,
+        retry_day: delayDays,
+        property_address: propertyAddress,
+        tenant_name: tenantName,
+        tenant_email: tenantProfile?.email || null,
+        failure_reason: failureMessage,
+        stripe_payment_intent_id: paymentIntent.id,
+      },
+      scheduled_at: scheduledAt.toISOString(),
+    });
+  }
+}
+
 export async function POST(request: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   
@@ -775,10 +886,10 @@ export async function POST(request: NextRequest) {
         const invoiceId = paymentIntent.metadata?.invoice_id;
 
         if (invoiceId) {
-          await upsertPaymentAttempt(supabase, {
+          const paymentResult = await upsertPaymentAttempt(supabase, {
             invoiceId,
             amount: paymentIntent.amount / 100,
-            method: "cb",
+            method: paymentIntent.payment_method_types?.[0] || "cb",
             providerRef: paymentIntent.id,
             status: "failed",
             paidAt: new Date().toISOString(),
@@ -791,6 +902,14 @@ export async function POST(request: NextRequest) {
 
           await syncInvoiceStatusFromPayments(supabase as any, invoiceId, null);
 
+          // Notifications et relances — seulement si c'est un nouvel échec
+          if (paymentResult.newlyFailed) {
+            try {
+              await processPaymentFailedNotifications(supabase, invoiceId, paymentIntent);
+            } catch (notifError) {
+              console.error("[Stripe Webhook] Payment failed notifications error:", notifError);
+            }
+          }
         }
         break;
       }
