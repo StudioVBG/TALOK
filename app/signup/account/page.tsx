@@ -564,7 +564,7 @@ export default function AccountCreationPage() {
                 <div>
                   <Label htmlFor="terms" className="cursor-pointer font-semibold">
                     J’accepte les{" "}
-                    <a href="/legal/terms" target="_blank" className="text-white underline-offset-4 hover:underline">
+                    <a href="/legal/cgu" target="_blank" className="text-white underline-offset-4 hover:underline">
                       conditions d’utilisation
                     </a>{" "}
                     (v{TERMS_VERSION})
