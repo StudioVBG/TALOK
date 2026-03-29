@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ import {
   CalendarClock,
   Trash2,
   MoreHorizontal,
+  TrendingUp,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -286,6 +288,9 @@ export function LeaseDetailsSidebar({
         </CardContent>
       </Card>
 
+      {/* Score de ponctualité */}
+      <PunctualityBadge leaseId={leaseId} leaseStatus={lease?.statut} />
+
       {/* Chronologie */}
       <LeaseTimeline
         lease={lease}
@@ -447,5 +452,60 @@ function ChecklistRow({
       </div>
       <span className={`text-xs font-medium ${textColor}`}>{label}</span>
     </div>
+  );
+}
+
+function PunctualityBadge({ leaseId, leaseStatus }: { leaseId: string; leaseStatus?: string }) {
+  const [data, setData] = useState<{ score: number | null; label: string; variant: string } | null>(null);
+
+  useEffect(() => {
+    // Ne charger que pour les baux actifs ou terminés
+    if (!leaseStatus || !["active", "terminated", "renewed"].includes(leaseStatus)) return;
+
+    fetch(`/api/leases/${leaseId}/punctuality`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((d) => { if (d) setData(d); })
+      .catch(() => {});
+  }, [leaseId, leaseStatus]);
+
+  if (!data || data.score === null) return null;
+
+  const colorClass =
+    data.score >= 90
+      ? "text-emerald-600 bg-emerald-50 border-emerald-200"
+      : data.score >= 70
+        ? "text-blue-600 bg-blue-50 border-blue-200"
+        : data.score >= 50
+          ? "text-amber-600 bg-amber-50 border-amber-200"
+          : "text-red-600 bg-red-50 border-red-200";
+
+  const iconColor =
+    data.score >= 90
+      ? "text-emerald-500"
+      : data.score >= 70
+        ? "text-blue-500"
+        : data.score >= 50
+          ? "text-amber-500"
+          : "text-red-500";
+
+  return (
+    <Card className="border-none shadow-sm bg-card overflow-hidden">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center", colorClass)}>
+            <TrendingUp className={cn("h-5 w-5", iconColor)} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground">Score de ponctualité</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-lg font-bold">{data.score}%</span>
+              <Badge variant="secondary" className="text-[10px] h-5">
+                {data.label}
+              </Badge>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
