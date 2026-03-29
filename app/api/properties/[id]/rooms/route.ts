@@ -168,7 +168,6 @@ export async function POST(
     if (errorWithAll) {
       // Si l'erreur est due à une colonne manquante, réessayer sans etat et type
       if (errorWithAll.message?.includes("does not exist") || errorWithAll.message?.includes("column") || errorWithAll.code === "42703") {
-        console.log(`[POST /api/properties/${id}/rooms] Colonne manquante détectée, réessai avec colonnes minimales`);
         const { data: propertyMinimal, error: errorMinimal } = await serviceClient
           .from("properties")
           .select("owner_id")
@@ -204,7 +203,6 @@ export async function POST(
       return NextResponse.json({ error: "Logement introuvable" }, { status: 404 });
     }
 
-    console.log(`[POST /api/properties/${id}/rooms] Propriété trouvée: owner_id=${property.owner_id}, etat=${property.etat || "N/A"}, type=${property.type || "N/A"}`);
 
     const profileData = profile as any;
     const isAdmin = profileData.role === "admin";

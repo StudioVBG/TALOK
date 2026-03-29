@@ -93,7 +93,6 @@ export async function POST(request: Request) {
             oldStatus: lease.statut,
             newStatus: newStatus,
           });
-          console.log(`✅ Bail ${lease.id} corrigé: ${lease.statut} → ${newStatus}`);
         } else {
           console.error(`❌ Erreur correction bail ${lease.id}:`, updateError);
         }

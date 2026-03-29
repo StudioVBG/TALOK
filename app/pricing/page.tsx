@@ -12,6 +12,7 @@
  */
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/hooks/use-auth";
@@ -80,15 +81,15 @@ const FAQ_ITEMS = [
   },
   {
     question: "Quels sont les tarifs des différents plans ?",
-    answer: "Gratuit (1 bien), Starter 9 € HT (3 biens), Confort 35 € HT (10 biens + 2 signatures), Pro 69 € HT (50 biens + 10 signatures). Enterprise à partir de 249 € HT avec Account Manager inclus. -20 % sur l'abonnement annuel. TVA en sus (20 % en France métropolitaine).",
+    answer: "Gratuit (2 biens), Confort 24,90 € HT/mois (10 biens + 5 signatures), Pro 59,90 € HT/mois (50 biens + signatures illimitées). Enterprise sur devis. -17 % sur l'abonnement annuel (249 €/an Confort, 599 €/an Pro). TVA en sus selon votre localisation (20 % métropole, 8,5 % Martinique/Guadeloupe/Réunion, 2,1 % Guyane, 0 % Mayotte).",
   },
   {
     question: "Y a-t-il des frais cachés ?",
     answer: "Non, aucun frais caché. Le prix affiché est le prix hors taxes. Les seuls coûts supplémentaires sont les biens au-delà du quota (+2 € à +3 €/bien selon le plan) et les signatures électroniques au-delà du quota inclus. La TVA applicable s'ajoute selon votre localisation.",
   },
   {
-    question: "Comment fonctionnent les frais de paiement ?",
-    answer: "Les frais sont de 2,2 % pour les paiements CB et 0,50 € par prélèvement SEPA. Les clients Enterprise bénéficient de tarifs réduits (1,9 % CB, 0,40 € SEPA). Les virements bancaires sont gratuits.",
+    question: "Comment fonctionne la collecte de loyers ?",
+    answer: "À partir du plan Confort, vos locataires paient par prélèvement automatique. Une commission de 2,5 % (Confort) ou 1,5 % (Pro) est prélevée sur chaque loyer collecté. Le montant net est reversé sous 5-7 jours ouvrés.",
   },
   {
     question: "Puis-je récupérer mes données si je résilie ?",
@@ -893,11 +894,11 @@ export default function PricingPage() {
               à compter de la souscription.
             </p>
             <p>
-              <a href="/legal/cgv" className="underline hover:text-slate-300 transition-colors">Conditions Générales de Vente</a>
+              <Link href="/legal/cgv" className="underline hover:text-slate-300 transition-colors">Conditions Générales de Vente</Link>
               {" — "}
-              <a href="/legal/cgu" className="underline hover:text-slate-300 transition-colors">Conditions Générales d&apos;Utilisation</a>
+              <Link href="/legal/cgu" className="underline hover:text-slate-300 transition-colors">Conditions Générales d&apos;Utilisation</Link>
               {" — "}
-              <a href="/legal/privacy" className="underline hover:text-slate-300 transition-colors">Politique de confidentialité</a>
+              <Link href="/legal/privacy" className="underline hover:text-slate-300 transition-colors">Politique de confidentialité</Link>
             </p>
           </div>
         </div>

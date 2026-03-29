@@ -48,14 +48,12 @@ export async function GET(
       );
     }
 
-    console.log(`[GET /api/edl/${edlId}/meter-readings] Entering`);
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-      console.log(`[GET /api/edl/${edlId}/meter-readings] 401: Non authentifié`);
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
@@ -177,14 +175,12 @@ export async function POST(
       );
     }
 
-    console.log(`[POST /api/edl/${edlId}/meter-readings] Entering`);
     const supabase = await createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
 
     if (!user) {
-      console.log(`[POST /api/edl/${edlId}/meter-readings] 401: Non authentifié`);
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
@@ -277,24 +273,12 @@ export async function POST(
       );
     }
 
-    // 🔧 DEBUG: Tracer les données reçues pour diagnostic
-    console.log(`[POST /api/edl/${edlId}/meter-readings] Received data:`, {
-      meterId,
-      meterNumber,
-      manualValue,
-      manualValueType: typeof manualValue,
-      edlPropertyId,
-      hasPhoto: !!photo,
-      hasPhotoPath: !!photoPath
-    });
-
     let finalMeterId = meterId;
     let actualMeterData = null;
 
     if (!meterId || String(meterId).startsWith("temp_")) {
       // 🔧 FIX: Priorité au type envoyé dans le body, puis header, puis défaut
       const meterType = (meterTypeFromBody || request.headers.get("x-meter-type") || "electricity") as MeterType;
-      console.log(`[POST /api/edl/${edlId}/meter-readings] Looking for/Creating meter type: ${meterType}`);
       
       let existingMeter = null;
       if (meterNumber) {
@@ -322,7 +306,6 @@ export async function POST(
       }
 
       if (existingMeter) {
-        console.log(`[POST /api/edl/${edlId}/meter-readings] Existing meter found: ${existingMeter.id}`);
         finalMeterId = existingMeter.id;
         actualMeterData = existingMeter;
       } else {
@@ -333,7 +316,6 @@ export async function POST(
           unit: readingUnit || (meterType === "electricity" ? "kWh" : "m³"),
         };
 
-        console.log(`[POST /api/edl/${edlId}/meter-readings] Creating new meter:`, meterPayload);
 
         try {
           const { data: newMeter, error: createError } = await serviceClient
@@ -434,7 +416,6 @@ export async function POST(
       if (!actualMeterData) {
         return NextResponse.json({ error: "Données du compteur manquantes" }, { status: 400 });
       }
-      console.log(`[POST /api/edl/${edlId}/meter-readings] Uploading photo...`);
       const photoBuffer = Buffer.from(await photo.arrayBuffer());
       const timestamp = Date.now();
       const fileName = `edl/${edlId}/meters/${actualMeterData.type}_${finalMeterId}_${timestamp}.jpg`;
@@ -487,24 +468,20 @@ export async function POST(
       // Valeur saisie manuellement - considérée comme validée
       finalValue = parsedManualValue;
       isValidated = true;
-      console.log(`[POST /api/edl/${edlId}/meter-readings] Manual value: ${finalValue}`);
     } else if (ocrResult.value !== null) {
       // Valeur OCR - validée si confiance >= 80%
       finalValue = ocrResult.value;
       isValidated = ocrResult.confidence >= 80;
       needsManualValidation = !isValidated;
-      console.log(`[POST /api/edl/${edlId}/meter-readings] OCR value: ${finalValue}, confidence: ${ocrResult.confidence}%, validated: ${isValidated}`);
     } else if (finalPhotoPath) {
       // 🔧 FIX: Photo présente mais OCR a échoué - marquer comme nécessitant validation
       needsManualValidation = true;
-      console.log(`[POST /api/edl/${edlId}/meter-readings] Photo uploaded but OCR failed - needs manual validation`);
     }
 
     // FIX: Si on a une valeur manuelle, on peut créer le relevé même sans photo
     // C'est le cas typique lors de la création d'EDL depuis le wizard
     if (finalValue === null && !finalPhotoPath) {
       // Pas de valeur et pas de photo - on ne peut pas créer de relevé
-      console.log(`[POST /api/edl/${edlId}/meter-readings] No value or photo, just updating meter.`);
       return NextResponse.json({
         success: true,
         message: "Compteur mis à jour (sans relevé)",
@@ -535,7 +512,6 @@ export async function POST(
 
     if (isUpdate) {
       // Update existing reading
-      console.log(`[POST /api/edl/${edlId}/meter-readings] Updating existing reading:`, existingReading.id);
 
       const updatePayload: any = {
         reading_value: finalValue,
@@ -579,7 +555,6 @@ export async function POST(
       }
     } else {
       // Insert new reading
-      console.log(`[POST /api/edl/${edlId}/meter-readings] Inserting reading:`, readingPayload);
 
       try {
         const { data: reading, error: insertError } = await serviceClient

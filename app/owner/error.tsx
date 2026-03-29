@@ -40,7 +40,7 @@ export default function OwnerError({
 
         <CardContent className="space-y-4">
           {process.env.NODE_ENV === "development" && (
-            <details className="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 text-sm">
+            <details className="bg-muted rounded-lg p-3 text-sm">
               <summary className="cursor-pointer font-medium">
                 Détails de l&apos;erreur (dev uniquement)
               </summary>

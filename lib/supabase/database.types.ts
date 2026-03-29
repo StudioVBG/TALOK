@@ -2622,6 +2622,30 @@ export type Database = {
           { foreignKeyName: "user_context_embeddings_profile_id_fkey"; columns: ["profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
         ]
       }
+      site_config: {
+        Row: {
+          key: string
+          value: string | null
+          label: string | null
+          section: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          key: string
+          value?: string | null
+          label?: string | null
+          section?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          key?: string
+          value?: string | null
+          label?: string | null
+          section?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: Record<string, { Row: Record<string, unknown>; Relationships: Array<{ foreignKeyName: string; columns: string[]; isOneToOne: boolean; referencedRelation: string; referencedColumns: string[] }> }>
     Functions: Record<string, { Args: Record<string, unknown>; Returns: unknown }>

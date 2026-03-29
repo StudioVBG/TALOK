@@ -1,16 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
-import { NextResponse, type NextRequest } from "next/server";
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-/**
- * GET /signout — Déconnexion et redirection vers /auth/signin
- *
- * Permet aux liens externes de déclencher une déconnexion propre
- * au lieu d'obtenir un 404.
- */
-export async function GET(request: NextRequest) {
+import { createClient } from "@/lib/supabase/server";
+import { NextResponse } from "next/server";
+
+export async function GET(request: Request) {
   const supabase = await createClient();
   await supabase.auth.signOut();
-
-  const redirectUrl = new URL("/auth/signin", request.url);
-  return NextResponse.redirect(redirectUrl);
+  return NextResponse.redirect(new URL("/auth/signin", request.url));
 }

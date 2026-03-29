@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   Search,
+  ImageIcon,
   ScrollText,
   CreditCard,
   Wallet,
@@ -74,9 +75,11 @@ const adminNavItems: NavCategory[] = [
   {
     category: "Contenu & communication",
     items: [
+      { href: "/admin/site-content", label: "Contenu du site", icon: FileText },
       { href: "/admin/templates", label: "Templates Baux", icon: ScrollText },
       { href: "/admin/email-templates", label: "Templates Email", icon: Mail },
       { href: "/admin/blog", label: "Blog", icon: BookOpen },
+      { href: "/admin/landing-images", label: "Images Vitrine", icon: ImageIcon },
     ],
   },
   {

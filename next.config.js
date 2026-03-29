@@ -75,12 +75,14 @@ const nextConfig = {
   
   // Fix pour Zod v3.24+ avec Next.js (problème de module resolution)
   webpack: (config, { isServer }) => {
-    // Fix pour les exports ESM de Zod
+    // Fix pour les exports ESM de Zod — use require.resolve for worktree compat
     const path = require('path');
+    const zodDir = path.dirname(require.resolve('zod/package.json'));
     config.resolve.alias = {
       ...config.resolve.alias,
-      'zod': path.resolve(__dirname, 'node_modules/zod'),
-      'zod/v3': path.resolve(__dirname, 'node_modules/zod'),
+      'zod': zodDir,
+      'zod/v3': path.join(zodDir, 'v3'),
+      'zod/v4': path.join(zodDir, 'v4'),
     };
     
     // Éviter les problèmes de résolution de modules côté serveur
