@@ -90,7 +90,7 @@ export default function AccountCreationPage() {
   const [draft, setDraft] = useState<AccountDraft>(INITIAL_DRAFT);
 
   useEffect(() => {
-    if (!role || !["owner", "tenant", "provider", "guarantor", "syndic"].includes(role)) {
+    if (!role || !["owner", "tenant", "provider", "guarantor", "syndic", "agency"].includes(role)) {
       router.push("/signup/role");
     }
   }, [role, router]);
@@ -383,7 +383,7 @@ export default function AccountCreationPage() {
                 onChange={(e) => updateForm("prenom", e.target.value)}
                 required
                 disabled={loading}
-                className="text-slate-900"
+                className="bg-white text-slate-900"
               />
             </div>
             <div className="space-y-2">
@@ -395,7 +395,7 @@ export default function AccountCreationPage() {
                 onChange={(e) => updateForm("nom", e.target.value)}
                 required
                 disabled={loading}
-                className="text-slate-900"
+                className="bg-white text-slate-900"
               />
             </div>
             <div className="space-y-2">
@@ -406,7 +406,7 @@ export default function AccountCreationPage() {
                   onValueChange={(value: string) => autosave({ formData: { ...draft.formData, phoneCountry: value } })}
                   disabled={loading || draft.skipPhone}
                 >
-                  <SelectTrigger className="text-slate-900">
+                  <SelectTrigger className="bg-white text-slate-900">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -429,7 +429,7 @@ export default function AccountCreationPage() {
                     value={draft.formData.telephone}
                     onChange={(e) => updateForm("telephone", e.target.value)}
                     disabled={loading || draft.skipPhone}
-                    className="pl-10 text-slate-900"
+                    className="bg-white pl-10 text-slate-900"
                   />
                 </div>
               </div>
@@ -462,7 +462,7 @@ export default function AccountCreationPage() {
                   onChange={(e) => updateForm("email", e.target.value)}
                   required
                   disabled={loading}
-                  className="pl-10 text-slate-900"
+                  className="bg-white pl-10 text-slate-900"
                 />
               </div>
             </div>
@@ -517,7 +517,7 @@ export default function AccountCreationPage() {
                       onChange={(e) => updateForm("password", e.target.value)}
                       required
                       disabled={loading}
-                      className="pl-10 text-slate-900"
+                      className="bg-white pl-10 text-slate-900"
                     />
                   </div>
                   <PasswordStrength password={draft.formData.password} />
@@ -534,7 +534,7 @@ export default function AccountCreationPage() {
                     onChange={(e) => updateForm("confirmPassword", e.target.value)}
                     required
                     disabled={loading}
-                    className="text-slate-900"
+                    className="bg-white text-slate-900"
                   />
                 </div>
               </div>
@@ -564,7 +564,7 @@ export default function AccountCreationPage() {
                 <div>
                   <Label htmlFor="terms" className="cursor-pointer font-semibold">
                     J’accepte les{" "}
-                    <a href="/legal/terms" target="_blank" className="text-white underline-offset-4 hover:underline">
+                    <a href="/legal/cgu" target="_blank" className="text-white underline-offset-4 hover:underline">
                       conditions d’utilisation
                     </a>{" "}
                     (v{TERMS_VERSION})

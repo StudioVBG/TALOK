@@ -67,7 +67,6 @@ export async function GET(
         .eq("owner_id", profile.user_id);
       
       if (propertiesByUserId && propertiesByUserId.length > 0) {
-        console.log(`[GET /api/admin/people/owners/${ownerId}] Propriétés trouvées via user_id=${profile.user_id}`);
         properties = propertiesByUserId;
       }
     }

@@ -1008,7 +1008,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                       const hasExistingEdl = !!existingEntree || !!existingSortie;
 
                       const EDL_STATUS_LABELS: Record<string, { label: string; color: string }> = {
-                        draft: { label: "Brouillon", color: "bg-slate-100 text-slate-700" },
+                        draft: { label: "Brouillon", color: "bg-muted text-foreground" },
                         scheduled: { label: "Planifié", color: "bg-blue-100 text-blue-700" },
                         in_progress: { label: "En cours", color: "bg-amber-100 text-amber-700" },
                         completed: { label: "Complété", color: "bg-indigo-100 text-indigo-700" },
@@ -1049,7 +1049,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                                   {existingEntree && (
                                     <Badge
                                       variant="outline"
-                                      className={`text-[10px] sm:text-xs ${EDL_STATUS_LABELS[existingEntree.status]?.color || "bg-slate-100 text-slate-700"}`}
+                                      className={`text-[10px] sm:text-xs ${EDL_STATUS_LABELS[existingEntree.status]?.color || "bg-muted text-foreground"}`}
                                     >
                                       <ClipboardList className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
                                       EDL Entrée : {EDL_STATUS_LABELS[existingEntree.status]?.label || existingEntree.status}
@@ -1058,7 +1058,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                                   {existingSortie && (
                                     <Badge
                                       variant="outline"
-                                      className={`text-[10px] sm:text-xs ${EDL_STATUS_LABELS[existingSortie.status]?.color || "bg-slate-100 text-slate-700"}`}
+                                      className={`text-[10px] sm:text-xs ${EDL_STATUS_LABELS[existingSortie.status]?.color || "bg-muted text-foreground"}`}
                                     >
                                       <ClipboardList className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-1" />
                                       EDL Sortie : {EDL_STATUS_LABELS[existingSortie.status]?.label || existingSortie.status}
@@ -1236,7 +1236,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                 {meterReadings.map((meter, index) => {
                   const meterType = METER_TYPES.find(m => m.type === meter.type);
                   return (
-                    <div key={index} className="p-4 border rounded-lg bg-slate-50/50 space-y-4">
+                    <div key={index} className="p-4 border rounded-lg bg-muted/50 space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="text-2xl">{meterType?.icon}</span>
@@ -1514,7 +1514,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                           variant="secondary" 
                           size="sm"
                           onClick={() => document.getElementById(`global-photo-${currentRoomIndex}`)?.click()}
-                          className="bg-white hover:bg-slate-50"
+                          className="bg-card hover:bg-muted"
                         >
                           <Plus className="h-4 w-4 mr-1" />
                           Ajouter
@@ -1546,9 +1546,9 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                   <div className="space-y-4">
                     <h4 className="font-medium text-sm text-muted-foreground uppercase tracking-wider">Éléments détaillés</h4>
                     {currentRoom.items.map((item, itemIndex) => (
-                    <div key={itemIndex} className="p-3 sm:p-4 rounded-lg border space-y-3 sm:space-y-4 shadow-sm bg-white">
+                    <div key={itemIndex} className="p-3 sm:p-4 rounded-lg border space-y-3 sm:space-y-4 shadow-sm bg-card">
                       <div className="flex items-start sm:items-center justify-between gap-2">
-                        <h4 className="font-medium text-slate-800 text-sm sm:text-base">{item.name}</h4>
+                        <h4 className="font-medium text-foreground text-sm sm:text-base">{item.name}</h4>
                         <div className="flex gap-1.5 sm:gap-2 flex-shrink-0">
                           <Input
                             type="file"
@@ -1674,7 +1674,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
               <CardContent className="space-y-6">
                 <div className="space-y-4">
                   {keys.map((keyItem, index) => (
-                    <div key={index} className="p-4 border rounded-lg bg-slate-50/50 space-y-4">
+                    <div key={index} className="p-4 border rounded-lg bg-muted/50 space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="font-medium text-sm text-muted-foreground uppercase tracking-wider">
                           Clé #{index + 1}
@@ -1703,7 +1703,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                                 setKeys(newKeys);
                               }}
                             >
-                              <SelectTrigger className="bg-white">
+                              <SelectTrigger className="bg-card">
                                 <SelectValue placeholder="Choisir un type..." />
                               </SelectTrigger>
                               <SelectContent>
@@ -1716,7 +1716,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                             {keyItem.type === "Autre" && (
                               <Input 
                                 placeholder="Précisez..." 
-                                className="bg-white"
+                                className="bg-card"
                                 onChange={(e) => {
                                   // Logic to handle custom type if needed
                                 }}
@@ -1735,7 +1735,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                               newKeys[index].count = parseInt(e.target.value) || 1;
                               setKeys(newKeys);
                             }}
-                            className="bg-white"
+                            className="bg-card"
                           />
                         </div>
                       </div>
@@ -1749,7 +1749,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                             newKeys[index].notes = e.target.value;
                             setKeys(newKeys);
                           }}
-                          className="bg-white"
+                          className="bg-card"
                         />
                       </div>
                     </div>
@@ -1845,7 +1845,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {meterReadings.filter(m => m.reading.trim() !== "").map((m, i) => (
-                        <div key={i} className="p-2.5 rounded-lg bg-slate-50 border flex items-center justify-between">
+                        <div key={i} className="p-2.5 rounded-lg bg-muted border flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="text-lg">{
                               m.type === "electricity" ? "⚡" :
@@ -1968,7 +1968,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
       {/* Overlay de progression lors de la création */}
       {isSubmitting && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl p-6 w-[90%] max-w-md mx-4 border">
+          <div className="bg-card rounded-2xl shadow-2xl p-6 w-[90%] max-w-md mx-4 border">
             <div className="text-center space-y-5">
               {/* Icône animée */}
               <div className="flex justify-center">
@@ -1981,7 +1981,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
                       stroke="currentColor"
                       strokeWidth="8"
                       fill="none"
-                      className="text-slate-200 dark:text-slate-700"
+                      className="text-muted"
                     />
                     <circle
                       cx="50"
@@ -2003,17 +2003,17 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
 
               {/* Texte de progression */}
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                <h3 className="text-lg font-semibold text-foreground">
                   {uploadStep || "Création en cours..."}
                 </h3>
                 {uploadDetails && (
-                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     {uploadDetails}
                   </p>
                 )}
                 {/* Indicateur de retry */}
                 {isRetrying && (
-                  <p className="text-sm text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-2">
+                  <p className="text-sm text-amber-600 mt-2 flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Nouvelle tentative en cours ({retryCount + 1}/3)...
                   </p>
@@ -2021,7 +2021,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
               </div>
 
               {/* Barre de progression linéaire */}
-              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden">
+              <div className="w-full bg-muted rounded-full h-3 overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-primary to-blue-500 rounded-full transition-all duration-300 ease-out"
                   style={{ width: `${uploadProgress}%` }}
@@ -2029,7 +2029,7 @@ export function CreateInspectionWizard({ leases, preselectedLeaseId, preselected
               </div>
 
               {/* Message d'avertissement */}
-              <p className="text-xs text-slate-400 dark:text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Ne fermez pas cette page pendant la création
               </p>
             </div>

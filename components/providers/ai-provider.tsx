@@ -3,16 +3,25 @@
 /**
  * AI Provider - Fournit les composants AI globaux
  * SOTA 2026 - Architecture AI-First
- * 
+ *
  * Ce provider ajoute :
  * - La Command Palette AI (⌘K)
  * - Le bouton flottant Copilot
  */
 
 import { ReactNode } from "react";
-import { AICommandPalette } from "@/components/ai/ai-command-palette";
-import { AICopilotButton } from "@/components/ai/ai-copilot-button";
+import dynamic from "next/dynamic";
 import { useAICommandStore } from "@/lib/hooks/use-ai-command";
+
+// Dynamic imports avec ssr:false pour éviter le crash si ai/react ne résout pas zod
+const AICommandPalette = dynamic(
+  () => import("@/components/ai/ai-command-palette").then((m) => m.AICommandPalette),
+  { ssr: false }
+);
+const AICopilotButton = dynamic(
+  () => import("@/components/ai/ai-copilot-button").then((m) => m.AICopilotButton),
+  { ssr: false }
+);
 
 interface AIProviderProps {
   children: ReactNode;
@@ -53,4 +62,3 @@ export function AIProvider({
 }
 
 export default AIProvider;
-

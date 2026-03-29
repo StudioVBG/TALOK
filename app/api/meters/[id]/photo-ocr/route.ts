@@ -83,7 +83,6 @@ export async function POST(
       ocrValue = result.value;
       ocrConfidence = result.confidence;
       
-      console.log(`[OCR] Valeur détectée: ${ocrValue} (confiance: ${ocrConfidence}%)`);
     } catch (ocrError: unknown) {
       console.warn("[OCR] Échec de l'analyse OCR:", ocrError instanceof Error ? ocrError.message : ocrError);
     }

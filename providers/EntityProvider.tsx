@@ -11,7 +11,7 @@
  * (React strict mode, onglets multiples).
  */
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useEntityStore } from "@/stores/useEntityStore";
 import { useAuth } from "@/lib/hooks/use-auth";
 
@@ -25,12 +25,12 @@ let ensureDefaultPromise: Promise<void> | null = null;
 export function EntityProvider({ children }: EntityProviderProps) {
   const { profile } = useAuth();
   const fetchEntities = useEntityStore((s) => s.fetchEntities);
+  const setActiveEntity = useEntityStore((s) => s.setActiveEntity);
+  const autoSelectDoneRef = useRef(false);
 
   useEffect(() => {
     if (!profile?.id) return;
 
-    // owner_profiles.profile_id === profiles.id === legal_entities.owner_profile_id
-    // No intermediate query needed — profile.id is the owner_profile_id FK value.
     const loadEntities = async () => {
       try {
         const { entities, lastFetchedAt } = useEntityStore.getState();
@@ -49,7 +49,6 @@ export function EntityProvider({ children }: EntityProviderProps) {
         // Si toujours vide après fetch, auto-créer l'entité par défaut
         const currentEntities = useEntityStore.getState().entities;
         if (currentEntities.length === 0) {
-          // Dédupliquer les appels concurrents (strict mode, multi-tab)
           if (ensureDefaultPromise) {
             await ensureDefaultPromise;
           } else {
@@ -74,13 +73,21 @@ export function EntityProvider({ children }: EntityProviderProps) {
             await ensureDefaultPromise;
           }
         }
+
+        // FIX 1: Auto-select first entity if activeEntityId is null
+        const state = useEntityStore.getState();
+        if (!state.activeEntityId && state.entities.length > 0 && !autoSelectDoneRef.current) {
+          autoSelectDoneRef.current = true;
+          const defaultEntity = state.entities.find((e) => e.isDefault);
+          setActiveEntity(defaultEntity?.id ?? state.entities[0].id);
+        }
       } catch (err) {
         console.error("[EntityProvider] Error loading entities:", err);
       }
     };
 
     loadEntities();
-  }, [profile?.id, fetchEntities]);
+  }, [profile?.id, fetchEntities, setActiveEntity]);
 
   return <>{children}</>;
 }

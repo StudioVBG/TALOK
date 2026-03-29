@@ -188,13 +188,25 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // ============================================
   const legalPages: MetadataRoute.Sitemap = [
     {
-      url: `${BASE_URL}/legal/privacy`,
+      url: `${BASE_URL}/legal/mentions`,
       lastModified: now,
       changeFrequency: "yearly",
       priority: 0.3,
     },
     {
-      url: `${BASE_URL}/legal/terms`,
+      url: `${BASE_URL}/legal/cgu`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: `${BASE_URL}/legal/cgv`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
+      url: `${BASE_URL}/legal/privacy`,
       lastModified: now,
       changeFrequency: "yearly",
       priority: 0.3,
@@ -204,6 +216,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: "yearly",
       priority: 0.2,
+    },
+    {
+      url: `${BASE_URL}/faq`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
+      url: `${BASE_URL}/contact`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.4,
+    },
+    {
+      url: `${BASE_URL}/a-propos`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.4,
     },
   ];
 

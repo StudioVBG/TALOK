@@ -5,10 +5,12 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { createClient } from "@supabase/supabase-js";
 import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
-import { validateFile, ALLOWED_MIME_TYPES } from "@/lib/security/file-validation";
+import { validateFile } from "@/lib/security/file-validation";
+import { DOCUMENT_TYPES, ALLOWED_MIME_TYPES } from "@/lib/documents/constants";
 import { withSecurity } from "@/lib/api/with-security";
 import { withSubscriptionLimit, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 import { tesseractOCRService } from "@/lib/ocr/tesseract.service";
+import { getDisplayName } from "@/lib/documents/format-name";
 
 /**
  * POST /api/documents/upload - Upload un document
@@ -27,20 +29,7 @@ export const POST = withSecurity(async function POST(request: Request) {
     const propertyId = formData.get("property_id") as string | null;
     const leaseId = formData.get("lease_id") as string | null;
     const type = formData.get("type") as string | null;
-    const allowedDocumentTypes = [
-      "bail", "avenant", "engagement_garant", "bail_signe_locataire", "bail_signe_proprietaire",
-      "piece_identite", "cni_recto", "cni_verso", "passeport", "titre_sejour",
-      "quittance", "facture", "rib", "avis_imposition", "bulletin_paie", "attestation_loyer",
-      "attestation_assurance", "assurance_pno",
-      "diagnostic", "dpe", "diagnostic_gaz", "diagnostic_electricite", "diagnostic_plomb", "diagnostic_amiante", "diagnostic_termites", "erp",
-      "EDL_entree", "EDL_sortie", "inventaire",
-      "candidature_identite", "candidature_revenus", "candidature_domicile", "candidature_garantie",
-      "garant_identite", "garant_revenus", "garant_domicile", "garant_engagement",
-      "devis", "ordre_mission", "rapport_intervention",
-      "taxe_fonciere", "taxe_sejour", "copropriete", "proces_verbal", "appel_fonds",
-      "consentement", "courrier", "photo", "justificatif_revenus", "autre",
-    ];
-    if (type && !allowedDocumentTypes.includes(type)) {
+    if (type && !(DOCUMENT_TYPES as readonly string[]).includes(type)) {
       return NextResponse.json({ error: `Type de document invalide: ${type}` }, { status: 400 });
     }
 
@@ -54,7 +43,7 @@ export const POST = withSecurity(async function POST(request: Request) {
         ...ALLOWED_MIME_TYPES.documents,
         ...ALLOWED_MIME_TYPES.images,
         ...ALLOWED_MIME_TYPES.spreadsheets,
-      ],
+      ] as string[],
     });
     if (!fileValidation.valid) {
       return NextResponse.json(
@@ -224,6 +213,10 @@ export const POST = withSecurity(async function POST(request: Request) {
         property_id: resolvedPropertyId || null,
         lease_id: resolvedLeaseId || null,
         type: type || "autre",
+        title: getDisplayName(file.name, type),
+        original_filename: file.name,
+        file_size: file.size,
+        mime_type: file.type || null,
         storage_path: filePath,
         created_by_profile_id: profileAny.id,
         uploaded_by: profileAny.id,
@@ -327,7 +320,6 @@ export const POST = withSecurity(async function POST(request: Request) {
         (document as any).metadata = ocrMetadata;
         (document as any).verification_status = verificationStatus;
 
-        console.log(`[POST /api/documents/upload] OCR completed for ${type}: confidence=${ocrResult.confidence}, valid=${ocrResult.isValid}, match=${identityMatch?.is_verified || 'n/a'}`);
       } catch (ocrError) {
         // L'OCR est non-bloquant : si ça échoue, le document est quand même uploadé
         console.error("[POST /api/documents/upload] OCR processing failed (non-blocking):", ocrError);
