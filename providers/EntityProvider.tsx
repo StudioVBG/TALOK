@@ -40,6 +40,12 @@ export function EntityProvider({ children }: EntityProviderProps) {
           await fetchEntities(profile.id);
         }
 
+        // Auto-sélectionner la première entité si aucune n'est active
+        const { entities: freshEntities, activeEntityId } = useEntityStore.getState();
+        if (!activeEntityId && freshEntities.length > 0) {
+          useEntityStore.getState().setActiveEntity(freshEntities[0].id);
+        }
+
         // Si toujours vide après fetch, auto-créer l'entité par défaut
         const currentEntities = useEntityStore.getState().entities;
         if (currentEntities.length === 0) {
@@ -54,6 +60,11 @@ export function EntityProvider({ children }: EntityProviderProps) {
                 const result = await ensureDefaultEntity();
                 if (result.success) {
                   await fetchEntities(profile.id);
+                  // Auto-sélectionner la nouvelle entité
+                  const { entities: newEntities, activeEntityId: currentId } = useEntityStore.getState();
+                  if (!currentId && newEntities.length > 0) {
+                    useEntityStore.getState().setActiveEntity(newEntities[0].id);
+                  }
                 }
               } finally {
                 ensureDefaultPromise = null;
