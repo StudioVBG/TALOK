@@ -628,6 +628,7 @@ export async function POST(
             title: `État des lieux ${edlLabel} — Signé`,
             storage_path: `edl/${edlId}/signed_document.html`,
             is_archived: false,
+            visible_tenant: true,
             metadata: {
               edl_id: edlId,
               signed_at: new Date().toISOString(),
