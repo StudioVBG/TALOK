@@ -207,23 +207,30 @@ export const POST = withSecurity(async function POST(request: Request) {
     }
 
     // Créer l'entrée dans la table documents
+    const documentInsert: Record<string, unknown> = {
+      property_id: resolvedPropertyId || null,
+      lease_id: resolvedLeaseId || null,
+      type: type || "autre",
+      title: getDisplayName(file.name, type),
+      original_filename: file.name,
+      file_size: file.size,
+      mime_type: file.type || null,
+      storage_path: filePath,
+      created_by_profile_id: profileAny.id,
+      uploaded_by: profileAny.id,
+      owner_id: resolvedOwnerId,
+      tenant_id: profileAny.role === "tenant" ? profileAny.id : null,
+      entity_id: resolvedEntityId,
+    };
+
+    // Garde-fou : un document auto-généré doit toujours être visible par le locataire
+    if (documentInsert.is_generated) {
+      documentInsert.visible_tenant = true;
+    }
+
     const { data: document, error: docError } = await serviceClient
       .from("documents")
-      .insert({
-        property_id: resolvedPropertyId || null,
-        lease_id: resolvedLeaseId || null,
-        type: type || "autre",
-        title: getDisplayName(file.name, type),
-        original_filename: file.name,
-        file_size: file.size,
-        mime_type: file.type || null,
-        storage_path: filePath,
-        created_by_profile_id: profileAny.id,
-        uploaded_by: profileAny.id,
-        owner_id: resolvedOwnerId,
-        tenant_id: profileAny.role === "tenant" ? profileAny.id : null,
-        entity_id: resolvedEntityId,
-      })
+      .insert(documentInsert)
       .select()
       .single();
 
