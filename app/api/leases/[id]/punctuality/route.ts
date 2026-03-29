@@ -39,7 +39,7 @@ export async function GET(
 
   const { data: lease, error: leaseError } = await supabase
     .from("leases")
-    .select("id, punctuality_score, owner_id")
+    .select("id, owner_id")
     .eq("id", leaseId)
     .single();
 
@@ -51,8 +51,15 @@ export async function GET(
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
   }
 
-  const score = lease.punctuality_score != null
-    ? Number(lease.punctuality_score)
+  // punctuality_score exists in DB (migration 20260329170000) but not yet in generated types
+  const { data: scoreRow } = await supabase
+    .from("leases")
+    .select("punctuality_score" as any)
+    .eq("id", leaseId)
+    .single();
+
+  const score = (scoreRow as any)?.punctuality_score != null
+    ? Number((scoreRow as any).punctuality_score)
     : null;
 
   const label =
