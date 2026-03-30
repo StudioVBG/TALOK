@@ -25,6 +25,7 @@ import { RealtimeRevenueWidget, RealtimeStatusIndicator } from "@/components/own
 import { useRealtimeDashboard } from "@/lib/hooks/use-realtime-dashboard";
 import { StartTourButton } from "@/components/onboarding";
 import { SecondaryContentPanel } from "@/components/layout/secondary-content-panel";
+import { StripeConnectBanner } from "@/components/owner/dashboard/stripe-connect-banner";
 
 // Lazy loading des composants lourds
 const OwnerFinanceSummary = dynamic(
@@ -295,6 +296,9 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
         <motion.section variants={itemVariants}>
           <UrgentActionsSection actions={primaryUrgentActions} />
         </motion.section>
+
+        {/* Bandeau Stripe Connect si non configuré */}
+        <StripeConnectBanner />
 
         {/* SOTA Header - Responsive pour tous appareils 2025-2026 */}
         <motion.header

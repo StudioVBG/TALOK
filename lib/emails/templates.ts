@@ -45,12 +45,12 @@ function baseLayout(content: string, preheader?: string): string {
   </noscript>
   <![endif]-->
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
+
     body {
       margin: 0;
       padding: 0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Manrope', Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background-color: ${COLORS.gray[100]};
       -webkit-font-smoothing: antialiased;
     }
@@ -1845,6 +1845,51 @@ export const emailTemplates = {
           </p>
         </div>
       `, `Rappel : loyer ${data.period} en attente (${data.amount.toLocaleString('fr-FR')} €)`),
+    };
+  },
+
+  /**
+   * Confirmation d'email (brandé Talok)
+   *
+   * IMPORTANT — ACTION MANUELLE REQUISE :
+   * Supabase Auth envoie la confirmation email via son SMTP natif.
+   * Pour utiliser ce template à la place :
+   * 1. Dans le dashboard Supabase → Auth → Email Templates → "Confirm signup"
+   * 2. Copier le HTML généré par cette fonction (appeler emailTemplates.emailConfirmation({ ... }))
+   * 3. Remplacer le template par défaut dans Supabase
+   * 4. Utiliser {{ .ConfirmationURL }} comme variable Supabase pour le lien
+   *
+   * Alternative : configurer un Auth Hook (Send Email) pour intercepter et envoyer via Resend.
+   */
+  emailConfirmation: (data: {
+    userName: string;
+    confirmationUrl: string;
+  }) => {
+    const safeUserName = escapeHtml(data.userName);
+    return {
+      subject: "Confirmez votre email — Talok",
+      html: baseLayout(`
+        <div style="padding: 32px 24px;">
+          <h1 style="color: ${COLORS.gray[900]}; margin: 0 0 16px; font-size: 24px;">
+            Bienvenue sur Talok !
+          </h1>
+          <p style="color: ${COLORS.gray[700]}; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+            Bonjour ${safeUserName}, confirmez votre adresse email pour activer votre compte et commencer à gérer vos locations.
+          </p>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${data.confirmationUrl}" class="button">Confirmer mon email</a>
+          </div>
+
+          <p style="font-size: 13px; color: ${COLORS.gray[500]}; margin-top: 24px; line-height: 1.5;">
+            Ce lien expire dans 24 heures. Si vous n'avez pas créé de compte sur Talok, ignorez cet email.
+          </p>
+
+          <p style="font-size: 13px; color: ${COLORS.gray[500]}; margin-top: 16px;">
+            Besoin d'aide ? Contactez <a href="mailto:support@talok.fr" style="color: ${COLORS.primary};">support@talok.fr</a>
+          </p>
+        </div>
+      `, `Confirmez votre email pour activer votre compte Talok`),
     };
   },
 };

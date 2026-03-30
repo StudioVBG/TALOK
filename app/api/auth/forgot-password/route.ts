@@ -14,6 +14,7 @@ import {
   hashEmail,
   revokePasswordResetRequest,
 } from "@/lib/auth/password-recovery.service";
+import { verifyTurnstileToken } from "@/lib/security/turnstile";
 import { passwordRecoveryRequestSchema } from "@/lib/validations/auth/password-recovery";
 
 export async function POST(request: NextRequest) {
@@ -27,6 +28,13 @@ export async function POST(request: NextRequest) {
     );
 
     const body = await request.json();
+
+    // Verify Turnstile CAPTCHA token
+    const turnstileResult = await verifyTurnstileToken(body.turnstileToken);
+    if (!turnstileResult.success) {
+      return NextResponse.json({ success: true }); // Anti-enumeration: don't reveal failure
+    }
+
     const parsed = passwordRecoveryRequestSchema.safeParse(body);
 
     if (!parsed.success) {

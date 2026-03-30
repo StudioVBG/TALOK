@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { authService } from "../services/auth.service";
 import type { SignInData } from "../services/auth.service";
+import { TurnstileWidget } from "@/components/auth/TurnstileWidget";
 
 // Icône SVG pour Google OAuth
 const GoogleIcon = () => (
@@ -64,6 +65,7 @@ export function SignInForm() {
     email: "",
     password: "",
   });
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const redirectTo = getSafeRedirectUrl(searchParams.get("redirect"));
 
@@ -292,6 +294,7 @@ export function SignInForm() {
               disabled={loading || googleLoading}
             />
           </div>
+          <TurnstileWidget onSuccess={setTurnstileToken} />
           <Button type="submit" className="w-full" disabled={loading || googleLoading}>
             {loading ? "Connexion..." : "Se connecter"}
           </Button>

@@ -182,15 +182,6 @@ const ownerTourSteps: TourStep[] = [
     icon: Euro,
   },
   {
-    id: "inspections",
-    title: "États des Lieux",
-    description:
-      "Réalisez des EDL numériques avec photos, signatures électroniques et génération PDF automatique. Conformité juridique garantie.",
-    target: "[data-tour='nav-inspections']",
-    position: "right",
-    icon: ClipboardCheck,
-  },
-  {
     id: "tickets",
     title: "Tickets & Maintenance",
     description:
@@ -225,15 +216,6 @@ const ownerTourSteps: TourStep[] = [
     target: "[data-tour='notifications-bell']",
     position: "bottom",
     icon: Bell,
-  },
-  {
-    id: "support",
-    title: "Aide & Support",
-    description:
-      "Besoin d'aide ? Accédez à notre centre d'aide, FAQ, et support client directement depuis la barre latérale. Notre équipe est là pour vous.",
-    target: "[data-tour='nav-support']",
-    position: "right",
-    icon: HelpCircle,
   },
   {
     id: "complete",
@@ -334,45 +316,11 @@ function Spotlight({ target, isActive }: { target?: string; isActive: boolean })
     const isSidebar = isSidebarTarget(target);
     const mobile = isMobileViewport();
 
-    // Sur mobile, si on cible un item de la sidebar :
-    // 1. Ouvrir la sidebar
-    // 2. Booster son z-index au-dessus de l'overlay
+    // Sur mobile, la sidebar n'existe pas (seulement SharedBottomNav)
+    // → on affiche le tooltip centré au lieu de cibler un élément absent
     if (mobile && isSidebar) {
-      requestSidebarState(true);
-      // Attendre que la sidebar s'ouvre (transition CSS ~200ms)
-      const openTimeout = setTimeout(() => {
-        boostSidebarZIndex(true);
-      }, 50);
-
-      const findAndObserve = setTimeout(() => {
-        const element = document.querySelector(target);
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "nearest" });
-          const updateRect = () => setRect(element.getBoundingClientRect());
-          updateRect();
-
-          // ResizeObserver pour suivre les changements de taille/position
-          observerRef.current = new ResizeObserver(updateRect);
-          observerRef.current.observe(element);
-
-          window.addEventListener("resize", updateRect);
-          window.addEventListener("scroll", updateRect, true);
-
-          return () => {
-            window.removeEventListener("resize", updateRect);
-            window.removeEventListener("scroll", updateRect, true);
-          };
-        }
-      }, 300); // Laisser la sidebar s'ouvrir complètement
-
-      return () => {
-        clearTimeout(openTimeout);
-        clearTimeout(findAndObserve);
-        observerRef.current?.disconnect();
-        // Restaurer le z-index et fermer la sidebar
-        boostSidebarZIndex(false);
-        requestSidebarState(false);
-      };
+      setRect(null);
+      return;
     }
 
     // Desktop ou cible non-sidebar
@@ -711,7 +659,7 @@ export function OnboardingTourProvider({
   children,
   role = "owner",
   profileId,
-  storageKey = "lokatif-tour-completed",
+  storageKey = "talok-tour-completed",
 }: OnboardingTourProviderProps) {
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
@@ -836,7 +784,7 @@ export function OnboardingTourProvider({
 
   const resetTour = useCallback(() => {
     localStorage.removeItem(storageKey);
-    localStorage.removeItem("lokatif-tour-prompt-dismissed");
+    localStorage.removeItem("talok-tour-prompt-dismissed");
     setHasCompletedTour(false);
     setCurrentStep(0);
 
@@ -917,14 +865,14 @@ export function AutoTourPrompt() {
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    const dismissedKey = "lokatif-tour-prompt-dismissed";
+    const dismissedKey = "talok-tour-prompt-dismissed";
     setDismissed(localStorage.getItem(dismissedKey) === "true");
   }, []);
 
   if (hasCompletedTour || dismissed || isActive) return null;
 
   const handleDismiss = () => {
-    localStorage.setItem("lokatif-tour-prompt-dismissed", "true");
+    localStorage.setItem("talok-tour-prompt-dismissed", "true");
     setDismissed(true);
   };
 

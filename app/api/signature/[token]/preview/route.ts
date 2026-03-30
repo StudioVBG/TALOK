@@ -159,7 +159,7 @@ export async function GET(request: Request, { params }: PageProps) {
     console.log("[Preview GET] Token reçu:", token?.substring(0, 20) + "...");
 
     // FIX: Utiliser verifyTokenCompat pour supporter les deux formats (HMAC + legacy)
-    const tokenData = verifyTokenCompat(token, 7);
+    const tokenData = verifyTokenCompat(token, 30);
     if (!tokenData) {
       console.log("[Preview GET] ❌ Token invalide ou expiré");
       return NextResponse.json(
@@ -293,7 +293,7 @@ export async function POST(request: Request, { params }: PageProps) {
     console.log("[Preview POST] Token reçu, données profil:", { nom: body.nom, prenom: body.prenom });
 
     // FIX: Utiliser verifyTokenCompat pour supporter les deux formats (HMAC + legacy)
-    const tokenDataPost = verifyTokenCompat(token, 7);
+    const tokenDataPost = verifyTokenCompat(token, 30);
     if (!tokenDataPost) {
       console.log("[Preview POST] ❌ Token invalide ou expiré");
       return NextResponse.json(

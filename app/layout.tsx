@@ -6,6 +6,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { LocalStorageMigration } from "@/components/utils/LocalStorageMigration";
 
 /**
  * Configuration des polices avec next/font/local pour éviter :
@@ -268,6 +269,7 @@ export default function RootLayout({
                         <main id="main-content" className="flex-1" tabIndex={-1}>{children}</main>
                       </PageTransition>
                       <Toaster />
+                      <LocalStorageMigration />
                     </div>
                   </AIProvider>
                 </SubscriptionProvider>
