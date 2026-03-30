@@ -14,7 +14,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "C'est adapté à la Martinique / Guadeloupe / Réunion ?",
-    a: "Oui, c'est même notre point fort. TVA locale, fuseaux horaires, codes postaux DOM-TOM — tout est intégré nativement. Pas de bidouillage.",
+    a: "Oui, c'est même notre point fort. TVA locale, fuseaux horaires, codes postaux DROM-COM — tout est intégré nativement. Pas de bidouillage.",
   },
   {
     q: "Comment mes locataires paient ?",

@@ -20,7 +20,7 @@ export function FinalCtaSection() {
         </p>
         <div className="reveal mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <Button size="lg" className="bg-white text-talok-bleu-nuit hover:bg-white/90" asChild>
-            <Link href="/inscription">
+            <Link href="/signup/plan">
               Commencer gratuitement
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>

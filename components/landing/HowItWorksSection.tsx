@@ -11,7 +11,7 @@ const STEPS = [
     items: [
       "Appartement, maison, local commercial",
       "Photos, DPE, surface, équipements",
-      "Codes postaux DOM-TOM reconnus",
+      "Codes postaux DROM-COM reconnus",
     ],
     color: "bg-talok-bleu-marque",
   },

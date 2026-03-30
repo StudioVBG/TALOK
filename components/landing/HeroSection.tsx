@@ -27,7 +27,7 @@ export function HeroSection() {
           <div>
             <Badge variant="secondary" className="gap-1.5 px-3 py-1.5">
               <MapPin className="h-3.5 w-3.5" />
-              Disponible en France &amp; DOM-TOM
+              Disponible en France &amp; DROM-COM
             </Badge>
 
             <h1 className="mt-6 font-display text-4xl font-bold tracking-tight text-foreground md:text-5xl lg:text-6xl">
@@ -42,7 +42,7 @@ export function HeroSection() {
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Button size="lg" className="bg-talok-bleu-marque text-white hover:bg-talok-bleu-marque/90" asChild>
-                <Link href="/inscription">
+                <Link href="/signup/plan">
                   Essayer gratuitement
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
