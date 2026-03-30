@@ -28,6 +28,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { PasswordStrength } from "@/components/ui/password-strength";
 import { cn } from "@/lib/utils";
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
+import { TurnstileWidget } from "@/components/auth/TurnstileWidget";
 
 const TERMS_VERSION = "1.0";
 const PRIVACY_VERSION = "1.0";
@@ -82,6 +83,7 @@ export default function AccountCreationPage() {
   const [autosaving, setAutosaving] = useState(false);
   const [lastAutosave, setLastAutosave] = useState<Date | null>(null);
   const [emailSent, setEmailSent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const role = searchParams.get("role") as UserRole | null;
   const inviteToken = searchParams.get("invite");
@@ -277,6 +279,7 @@ export default function AccountCreationPage() {
           prenom: minimalValidated.prenom,
           nom: minimalValidated.nom,
           telephone: minimalValidated.telephone || undefined,
+          turnstileToken: turnstileToken || undefined,
         });
 
         await autosave({
@@ -667,6 +670,8 @@ export default function AccountCreationPage() {
               Votre compte sera créé et vous accéderez à l’étape suivante.
             </div>
           )}
+
+          <TurnstileWidget onSuccess={setTurnstileToken} />
 
           <Button
             type="submit"

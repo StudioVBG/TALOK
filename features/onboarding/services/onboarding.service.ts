@@ -220,6 +220,7 @@ export class OnboardingService {
           "tenant_file",
           "tenant_identity",  // Vérification d'identité KYC
           "tenant_payment",
+          "lease_signed",
         ];
       case "provider":
         return [

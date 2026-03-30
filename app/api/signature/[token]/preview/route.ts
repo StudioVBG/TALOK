@@ -158,7 +158,7 @@ export async function GET(request: Request, { params }: PageProps) {
     const { token } = await params;
 
     // FIX: Utiliser verifyTokenCompat pour supporter les deux formats (HMAC + legacy)
-    const tokenData = verifyTokenCompat(token, 7);
+    const tokenData = verifyTokenCompat(token, 30);
     if (!tokenData) {
       return NextResponse.json(
         { error: "Lien d'invitation invalide ou expiré" },
@@ -289,7 +289,7 @@ export async function POST(request: Request, { params }: PageProps) {
     const body = await request.json();
 
     // FIX: Utiliser verifyTokenCompat pour supporter les deux formats (HMAC + legacy)
-    const tokenDataPost = verifyTokenCompat(token, 7);
+    const tokenDataPost = verifyTokenCompat(token, 30);
     if (!tokenDataPost) {
       return NextResponse.json(
         { error: "Lien d'invitation invalide ou expiré" },

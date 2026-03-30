@@ -7,6 +7,7 @@ import { supabaseAdmin } from "@/app/api/_lib/supabase";
 import { apiError, apiSuccess, validateBody, logAudit } from "@/lib/api/middleware";
 import { RegisterSchema } from "@/lib/api/schemas";
 import { applyRateLimit } from "@/lib/security/rate-limit";
+import { verifyTurnstileToken } from "@/lib/security/turnstile";
 import { getAuthCallbackUrl } from "@/lib/utils/redirect-url";
 import { sendWelcomeEmail } from "@/lib/services/email-service";
 
@@ -21,6 +22,13 @@ export async function POST(request: NextRequest) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const body = await request.json();
+
+    // Verify Turnstile CAPTCHA token
+    const turnstileResult = await verifyTurnstileToken(body.turnstileToken);
+    if (!turnstileResult.success) {
+      return apiError(turnstileResult.error || "Vérification anti-spam échouée", 400, "CAPTCHA_FAILED");
+    }
+
     const { data, error: validationError } = validateBody(RegisterSchema, body);
 
     if (validationError) return validationError;
