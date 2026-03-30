@@ -42,7 +42,7 @@ export function FinalCtaSection() {
         <motion.div variants={fadeUp} className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <motion.div variants={ctaPulse} animate="animate">
             <Button size="lg" className="bg-white text-[#1E293B] hover:bg-white/90" asChild>
-              <Link href="/signup/role" onClick={() => track("cta_final_signup_clicked", { source: "final_cta" })}>
+              <Link href="/signup/plan" onClick={() => track("cta_final_signup_clicked", { source: "final_cta" })}>
                 Commencer gratuitement
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

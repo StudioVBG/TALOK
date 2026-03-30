@@ -55,7 +55,7 @@ export function HeroSection() {
             <motion.div variants={fadeUp} className="mt-8 flex flex-col gap-3 sm:flex-row">
               <motion.div variants={ctaPulse} animate="animate">
                 <Button size="lg" className="bg-[#2563EB] text-white hover:bg-[#1D4ED8]" asChild>
-                  <Link href="/signup/role" onClick={() => track("cta_hero_signup_clicked", { source: "hero" })}>
+                  <Link href="/signup/plan" onClick={() => track("cta_hero_signup_clicked", { source: "hero" })}>
                     Commencer gratuitement
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
