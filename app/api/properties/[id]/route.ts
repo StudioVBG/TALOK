@@ -802,8 +802,8 @@ export async function DELETE(
     // Marquer comme supprimé plutôt que supprimer définitivement
     const { data: softDeletedProperty, error: softDeleteError } = await serviceClient
       .from("properties")
-      .update({ 
-        etat: "deleted",
+      .update({
+        etat: "archived",
         deleted_at: new Date().toISOString(),
         deleted_by: profile.id
       })

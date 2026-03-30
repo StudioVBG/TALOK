@@ -221,7 +221,16 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
       await apiClient.delete(`/properties/${id}`);
     },
     successMessage: "Bien supprimé avec succès",
-    errorMessage: "Impossible de supprimer le bien.",
+    errorMessage: (error: Error) => {
+      const msg = (error as Error & { response?: { error?: string; details?: string } })?.response;
+      if (msg?.details?.includes("bail actif") || msg?.details?.includes("active")) {
+        return "Impossible de supprimer : ce bien a un bail en cours. Résiliez-le d'abord.";
+      }
+      if (msg?.details?.includes("bail") || msg?.details?.includes("lease")) {
+        return "Impossible de supprimer : ce bien a un bail en attente de signature.";
+      }
+      return msg?.error || msg?.details || "Impossible de supprimer le bien.";
+    },
     invalidateQueries: ["property-details", propertyId],
     onSuccess: () => {
       refreshSubscription();
@@ -360,7 +369,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
           surface: parseFloat(editedValues.surface) || 0,
           nb_pieces: parseInt(editedValues.nb_pieces, 10) || 0,
           nb_chambres: parseInt(editedValues.nb_chambres, 10) || 0,
-          etage: editedValues.etage !== "" ? parseInt(editedValues.etage, 10) : null,
+          etage: editedValues.etage !== "" && String(editedValues.etage).trim() !== "" ? parseInt(String(editedValues.etage).trim(), 10) : null,
           ascenseur: editedValues.ascenseur || false,
           meuble: editedValues.meuble || false,
           dpe_classe_energie: editedValues.dpe_classe_energie || null,
@@ -397,7 +406,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
         Object.assign(payload, {
           surface: parseFloat(editedValues.surface) || parseFloat(editedValues.local_surface_totale) || 0,
           local_surface_totale: parseFloat(editedValues.local_surface_totale) || parseFloat(editedValues.surface) || 0,
-          etage: editedValues.etage !== "" ? parseInt(editedValues.etage, 10) : null,
+          etage: editedValues.etage !== "" && String(editedValues.etage).trim() !== "" ? parseInt(String(editedValues.etage).trim(), 10) : null,
           local_type: editedValues.local_type || null,
           local_has_vitrine: editedValues.local_has_vitrine || false,
           local_access_pmr: editedValues.local_access_pmr || false,
@@ -677,18 +686,18 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
             transition={{ duration: 0.4, ease: "easeOut" }}
             className="mb-6"
           >
-            <Card className="border-green-200 bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 shadow-lg">
+            <Card className="border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 dark:from-green-950/40 dark:via-emerald-950/40 dark:to-teal-950/40 shadow-lg">
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
                       <CheckCircle2 className="h-6 w-6 text-green-600" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-green-900">
+                      <h3 className="text-lg font-bold text-green-900 dark:text-green-100">
                         Bien enregistré avec succès !
                       </h3>
-                      <p className="text-sm text-green-700 mt-1">
+                      <p className="text-sm text-green-700 dark:text-green-300 mt-1">
                         {leaseCta.description}{" "}
                         <span className="font-medium">Prochaine étape : créer le contrat de location.</span>
                       </p>
@@ -1412,7 +1421,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
 
           {/* ========== VISITE VIRTUELLE (si renseignée) ========== */}
           {property.visite_virtuelle_url && !isEditing && (
-            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Video className="h-5 w-5 text-blue-600" />
@@ -1465,7 +1474,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
               <CardTitle className="text-base">Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Link href={`/owner/properties/${propertyId}/diagnostics`} className={cn(buttonVariants({ variant: "outline" }), "w-full justify-start border-blue-200 text-blue-700 hover:bg-blue-50")}>
+              <Link href={`/owner/properties/${propertyId}/diagnostics`} className={cn(buttonVariants({ variant: "outline" }), "w-full justify-start border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30")}>
                 <Shield className="mr-2 h-4 w-4" />
                 Diagnostics (DDT)
               </Link>
@@ -1512,7 +1521,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         title="Supprimer ce bien ?"
-        description={`Cette action est irréversible. Le bien "${property?.adresse_complete}" sera supprimé.`}
+        description={`Le bien "${property?.adresse_complete}" sera archivé et retiré de la liste de vos biens. Ses documents et historique resteront consultables.`}
         onConfirm={handleDelete}
         variant="destructive"
         loading={deleteProperty.isPending}
