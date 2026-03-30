@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
 
 /**
@@ -14,8 +15,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // En production, envoyer à Sentry ou autre service de monitoring
-    console.error("Critical global error:", error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (

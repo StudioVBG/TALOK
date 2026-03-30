@@ -3,11 +3,20 @@ export const runtime = 'nodejs';
 import { openai } from '@ai-sdk/openai';
 import { streamText } from 'ai';
 import { updatePropertySchema, addRoomSchema, updateOwnerProfileSchema, createTicketSchema } from '@/lib/ai/tools-schema';
+import { createClient } from '@/lib/supabase/server';
+import { NextResponse } from 'next/server';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
+  // Auth check — P0 fix: cette route était accessible sans authentification
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+  }
+
   const { messages, context } = await req.json(); // 'context' permet de savoir où on est (property ou onboarding)
 
   // Prompt dynamique selon le contexte

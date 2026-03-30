@@ -13,12 +13,12 @@ export function safeDate(value: string | Date | null | undefined): Date | null {
 
 /**
  * Formate une date de manière sécurisée.
- * Retourne le fallback (défaut : "Date non renseignée") si la valeur est invalide.
+ * Retourne le fallback (défaut : "—") si la valeur est invalide.
  */
 export function safeDateFormat(
   value: string | Date | null | undefined,
   pattern: string = "dd/MM/yyyy",
-  fallback: string = "Date non renseignée"
+  fallback: string = "—"
 ): string {
   const d = safeDate(value);
   if (!d) return fallback;

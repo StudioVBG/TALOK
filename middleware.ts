@@ -48,6 +48,25 @@ const publicRoutes = [
   "/invite",
 ];
 
+/**
+ * Valide un chemin de redirection pour bloquer les open redirects.
+ * Accepte uniquement les chemins relatifs internes (ex: /owner/dashboard).
+ */
+function getSafeRedirectPath(path: string | null): string {
+  if (!path) return "/dashboard";
+  // Bloquer protocol-relative URLs, URLs absolues, et backslash tricks
+  if (
+    path.startsWith("//") ||
+    path.includes("://") ||
+    path.startsWith("\\") ||
+    path.startsWith("/\\") ||
+    !path.startsWith("/")
+  ) {
+    return "/dashboard";
+  }
+  return path;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const host = request.headers.get("host") || "";
@@ -71,6 +90,14 @@ export function middleware(request: NextRequest) {
 
     // Le reste de la logique s'applique normalement
     // L'app résoudra le branding via l'API /api/white-label/resolve
+  }
+
+  // 0.5. Bloquer les routes /dev/ et /debug/ en production
+  if (
+    process.env.NODE_ENV === "production" &&
+    (pathname.startsWith("/api/dev/") || pathname.startsWith("/api/debug/"))
+  ) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   // 1. Laisser passer les assets statiques, les routes API et les routes publiques
@@ -113,10 +140,7 @@ export function middleware(request: NextRequest) {
   if (hasAuthCookie && authPages.some((p) => pathname === p)) {
     const url = request.nextUrl.clone();
     const redirectParam = request.nextUrl.searchParams.get("redirect");
-    const safeRedirect = redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
-      ? redirectParam
-      : "/dashboard";
-    url.pathname = safeRedirect;
+    url.pathname = getSafeRedirectPath(redirectParam);
     url.search = "";
     return NextResponse.redirect(url);
   }

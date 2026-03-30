@@ -20,6 +20,7 @@ import { useTenantPaymentMethods } from "@/lib/hooks/use-tenant-payment-methods"
 import { toPaymentMethodDisplay } from "@/lib/types/payment-methods";
 import type { TenantPaymentMethod } from "@/lib/types/payment-methods";
 import { cn } from "@/lib/utils";
+import { getStripeFrenchError } from "@/lib/stripe/error-messages-fr";
 
 interface PaymentCheckoutProps {
   invoiceId: string;
@@ -123,7 +124,7 @@ function CheckoutForm({ invoiceId, amount, description, showFees = true, feePerc
         setPaymentStatus("error");
         toast({
           title: "Erreur de paiement",
-          description: error instanceof Error ? error.message : "Une erreur est survenue",
+          description: getStripeFrenchError((error as any).code, error.message),
           variant: "destructive",
         });
       } else if (paymentIntent?.status === "succeeded") {
@@ -402,7 +403,7 @@ function SavedMethodQuickPay({
         setPaymentStatus("error");
         toast({
           title: "Paiement échoué",
-          description: error.message || "Veuillez réessayer",
+          description: getStripeFrenchError((error as any).code, error.message),
           variant: "destructive",
         });
       } else if (paymentIntent?.status === "succeeded") {
