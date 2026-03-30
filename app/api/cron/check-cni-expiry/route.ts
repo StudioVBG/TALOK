@@ -37,7 +37,6 @@ export async function GET(request: Request) {
     }
 
     if (!expiringCNIs || expiringCNIs.length === 0) {
-      console.log("[CRON CNI] Aucune CNI expirant bientôt");
       return NextResponse.json({ 
         success: true, 
         message: "Aucune CNI expirant", 
@@ -45,7 +44,6 @@ export async function GET(request: Request) {
       });
     }
 
-    console.log(`[CRON CNI] ${expiringCNIs.length} CNI(s) à notifier`);
 
     const results = {
       processed: 0,
@@ -255,7 +253,6 @@ export async function GET(request: Request) {
       }
     }
 
-    console.log("[CRON CNI] Terminé:", results);
 
     return NextResponse.json({
       success: true,

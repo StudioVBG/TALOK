@@ -331,7 +331,7 @@ export default function EditInspectionPage() {
   if (!inspection) return <div className="p-6 text-center"><h3 className="text-lg font-semibold">EDL introuvable</h3></div>;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-slate-50 min-h-screen pb-20">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-muted min-h-screen pb-20">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Breadcrumb
           items={[
@@ -367,12 +367,12 @@ export default function EditInspectionPage() {
             <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 {inspection.meter_readings.map((mr, i) => (
-                  <div key={i} className="space-y-4 p-4 border rounded-xl bg-white shadow-sm">
+                  <div key={i} className="space-y-4 p-4 border rounded-xl bg-card shadow-sm">
                     <div className="flex items-center justify-between border-b pb-2 mb-2">
-                      <span className="font-bold uppercase text-[10px] tracking-wider text-slate-500">
+                      <span className="font-bold uppercase text-[10px] tracking-wider text-muted-foreground">
                         {mr.type === 'water' ? '💧 Eau' : mr.type === 'electricity' ? '⚡ Électricité' : mr.type === 'gas' ? '🔥 Gaz' : mr.type}
                       </span>
-                      <Badge variant="outline" className="text-[10px] bg-slate-50">
+                      <Badge variant="outline" className="text-[10px] bg-muted">
                         {mr.id ? "Enregistré" : "Nouveau"}
                       </Badge>
                     </div>
@@ -408,7 +408,7 @@ export default function EditInspectionPage() {
                           className="text-lg font-mono font-bold"
                           placeholder="00000"
                         />
-                        <div className="bg-slate-100 px-3 flex items-center rounded-md font-bold text-slate-500">{mr.unit}</div>
+                        <div className="bg-muted px-3 flex items-center rounded-md font-bold text-muted-foreground">{mr.unit}</div>
                         
                         <div className="relative">
                           <Input
@@ -441,7 +441,7 @@ export default function EditInspectionPage() {
                   </div>
                 ))}
                 {inspection.meter_readings.length === 0 && (
-                  <p className="text-sm text-slate-400 italic md:col-span-2 text-center py-4">Aucun compteur enregistré sur cet EDL.</p>
+                  <p className="text-sm text-muted-foreground italic md:col-span-2 text-center py-4">Aucun compteur enregistré sur cet EDL.</p>
                 )}
               </div>
 
@@ -473,7 +473,7 @@ export default function EditInspectionPage() {
             </CardHeader>
             <CardContent className="p-6 space-y-4">
               {inspection.keys.map((key, i) => (
-                <div key={i} className="flex flex-col md:flex-row gap-4 p-4 border rounded-xl bg-white shadow-sm relative group">
+                <div key={i} className="flex flex-col md:flex-row gap-4 p-4 border rounded-xl bg-card shadow-sm relative group">
                   <div className="flex-1 space-y-2">
                     <Label>Type</Label>
                     <Select value={key.type} onValueChange={(v) => updateKey(i, 'type', v)}>
@@ -517,7 +517,7 @@ export default function EditInspectionPage() {
             </h3>
             {inspection.sections.map((section, sectionIdx) => (
               <Card key={sectionIdx} className="shadow-sm overflow-hidden">
-                <CardHeader className="bg-slate-50 border-b py-3">
+                <CardHeader className="bg-muted border-b py-3">
                   <div className="flex items-center justify-between">
                     <Input 
                       value={section.name} 
@@ -534,9 +534,9 @@ export default function EditInspectionPage() {
                 <CardContent className="p-0">
                   <div className="divide-y">
                     {section.items.map((item, itemIdx) => (
-                      <div key={itemIdx} className="p-4 space-y-3 hover:bg-slate-50/50 transition-colors">
+                      <div key={itemIdx} className="p-4 space-y-3 hover:bg-muted/50 transition-colors">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                          <span className="font-medium text-slate-700">{item.name}</span>
+                          <span className="font-medium text-foreground">{item.name}</span>
                           <div className="flex flex-wrap gap-2">
                             {stateOptions.map((opt) => (
                               <button
@@ -548,7 +548,7 @@ export default function EditInspectionPage() {
                                 }}
                                 className={cn(
                                   "px-3 py-1 rounded-full text-xs font-bold border transition-all",
-                                  item.condition === opt.value ? opt.color + " border-current shadow-sm" : "bg-white text-slate-400 border-slate-200"
+                                  item.condition === opt.value ? opt.color + " border-current shadow-sm" : "bg-card text-muted-foreground border-border"
                                 )}
                               >
                                 {opt.label}
@@ -564,7 +564,7 @@ export default function EditInspectionPage() {
                             setInspection({...inspection, sections: newSections});
                           }}
                           placeholder="Notes sur l'état..."
-                          className="bg-white resize-none text-sm h-20"
+                          className="bg-card resize-none text-sm h-20"
                         />
                       </div>
                     ))}

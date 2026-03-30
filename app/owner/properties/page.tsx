@@ -572,20 +572,20 @@ export default function OwnerPropertiesPage() {
             </motion.div>
 
             <motion.div variants={itemVariants} className="mb-6">
-              <Card className="border-slate-200 bg-white/80">
+              <Card className="border-border bg-card/80">
                 <CardContent className="flex flex-col gap-3 p-5 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <p className="font-semibold text-slate-900">
+                    <p className="font-semibold text-foreground">
                       Quota global de biens : {propertyQuotaSummary.usageLabel}
                       {currentPlanConfig.limits.max_properties === -1 ? " (illimite)" : ""}
                     </p>
-                    <p className="text-sm text-slate-600">
+                    <p className="text-sm text-muted-foreground">
                       Le blocage d'ajout se base sur le total reel compte pour votre forfait, pas uniquement sur les cartes visibles a l'ecran.
                     </p>
                     {propertyQuotaSummary.showScopedHint && propertyQuotaSummary.scopedHint && (
                       <p className="mt-1 text-sm text-amber-700">{propertyQuotaSummary.scopedHint}</p>
                     )}
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs text-muted-foreground">
                       Le badge sur chaque carte indique l'occupation ou l'etat du bail, pas le paiement du forfait.
                     </p>
                   </div>
@@ -604,10 +604,10 @@ export default function OwnerPropertiesPage() {
                 <Card className="border-blue-200 bg-blue-50/60">
                   <CardContent className="flex flex-col gap-3 p-5 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <p className="font-semibold text-slate-900">
+                      <p className="font-semibold text-foreground">
                         Votre quota inclus est atteint, mais vous pouvez continuer.
                       </p>
-                      <p className="text-sm text-slate-600">
+                      <p className="text-sm text-muted-foreground">
                         Chaque bien supplémentaire ajoute {formatCurrency(extraPropertyPrice)} HT/mois à votre forfait {currentPlanConfig.name}.
                       </p>
                     </div>
@@ -721,10 +721,17 @@ export default function OwnerPropertiesPage() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <EmptyState 
-                    title="Aucun bien"
-                    description="Aucun bien ne correspond à vos critères de recherche."
-                  />
+                  {entityFilterId === "personal" && properties.length === 0 ? (
+                    <EmptyState
+                      title="Aucun bien en nom propre"
+                      description="Vos biens sont associés à une entité juridique. Sélectionnez une entité dans le menu ou choisissez « Tous mes biens » pour les voir."
+                    />
+                  ) : (
+                    <EmptyState
+                      title="Aucun bien"
+                      description="Aucun bien ne correspond à vos critères de recherche."
+                    />
+                  )}
                 </motion.div>
               ) : !isLoading ? (
                 viewMode === "grid" ? (
@@ -775,7 +782,7 @@ export default function OwnerPropertiesPage() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="bg-white/50 backdrop-blur-sm rounded-xl border overflow-hidden"
+                    className="bg-card/50 backdrop-blur-sm rounded-xl border overflow-hidden"
                   >
                     <ResponsiveTable
                       data={filteredProperties}

@@ -172,10 +172,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(
-      `[API Email] Email envoyé avec succès à ${emailValidation.validEmails.length} destinataire(s), ID: ${result.messageId}`
-    );
-
     return NextResponse.json({
       success: true,
       message: "Email envoyé avec succès",

@@ -177,7 +177,6 @@ export async function PATCH(
     const body = await request.json();
     
     // DEBUG: Log les données reçues pour diagnostiquer les problèmes de sauvegarde
-    console.log(`[PATCH /api/properties/${id}] Body reçu:`, JSON.stringify(body, null, 2));
     
     // Utiliser safeParse pour avoir des logs détaillés en cas d'erreur de validation
     const parseResult = propertyGeneralUpdateSchema.safeParse(body);
@@ -188,7 +187,6 @@ export async function PATCH(
     const validated = parseResult.data;
     
     // DEBUG: Log les données après validation
-    console.log(`[PATCH /api/properties/${id}] ✅ Validé:`, JSON.stringify(validated, null, 2));
 
     // ✅ PERMISSIONS: Récupérer le profil avec serviceClient pour éviter les problèmes RLS
     const { data: profile, error: profileError } = await serviceClient
@@ -215,7 +213,6 @@ export async function PATCH(
     if (errorWithAll) {
       // Si l'erreur est due à une colonne manquante, réessayer sans etat et type
       if (errorWithAll.message?.includes("does not exist") || errorWithAll.message?.includes("column") || errorWithAll.code === "42703") {
-        console.log(`[PATCH /api/properties/${id}] Colonne manquante détectée, réessai avec colonnes minimales`);
         const { data: propertyMinimal, error: errorMinimal } = await serviceClient
           .from("properties")
           .select("owner_id")
@@ -354,7 +351,6 @@ export async function PATCH(
     }
 
     // DEBUG: Log les updates qui vont être appliqués
-    console.log(`[PATCH /api/properties/${id}] Updates à appliquer:`, JSON.stringify(updates, null, 2));
 
     // ✅ MISE À JOUR: Utiliser serviceClient pour la mise à jour pour éviter les problèmes RLS
     const { data: updatedProperty, error: updateError } = await serviceClient
@@ -393,15 +389,6 @@ export async function PATCH(
       );
     }
     
-    // DEBUG: Log le résultat de la mise à jour
-    console.log(`[PATCH /api/properties/${id}] Propriété mise à jour:`, {
-      surface: updatedProperty.surface,
-      surface_habitable_m2: updatedProperty.surface_habitable_m2,
-      nb_pieces: updatedProperty.nb_pieces,
-      nb_chambres: updatedProperty.nb_chambres,
-      loyer_hc: updatedProperty.loyer_hc,
-    });
-
     // ✅ SOTA 2026: Émettre notification si publication
     if (updates.etat === "published" && property.etat !== "published") {
       try {

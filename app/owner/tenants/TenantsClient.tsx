@@ -122,11 +122,11 @@ function LeaseStatusBadge({ status }: { status: string }) {
     partially_signed: { label: "Partiellement signé", className: "bg-orange-100 text-orange-700 border-orange-200" },
     fully_signed: { label: "Signé", className: "bg-indigo-100 text-indigo-700 border-indigo-200" },
     amended: { label: "Avenant", className: "bg-blue-100 text-blue-700 border-blue-200" },
-    terminated: { label: "Terminé", className: "bg-slate-100 text-slate-600 border-slate-200" },
+    terminated: { label: "Terminé", className: "bg-muted text-muted-foreground border-border" },
     invitation_pending: { label: "Invitation envoyée", className: "bg-purple-100 text-purple-700 border-purple-200" },
   };
 
-  const { label, className } = config[status] || { label: status, className: "bg-slate-100 text-slate-600" };
+  const { label, className } = config[status] || { label: status, className: "bg-muted text-muted-foreground" };
 
   return (
     <Badge variant="outline" className={cn("font-medium", className)}>
@@ -156,13 +156,13 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
 
   return (
     <motion.div variants={itemVariants}>
-      <Card className="group hover:shadow-xl transition-all duration-300 hover:scale-[1.01] border-slate-200/60 bg-white/80 backdrop-blur-sm overflow-hidden">
+      <Card className="group hover:shadow-xl transition-all duration-300 hover:scale-[1.01] border-border/60 bg-card/80 backdrop-blur-sm overflow-hidden">
         <CardContent className="p-0">
           {/* Header avec gradient */}
           <div className="relative h-20 bg-gradient-to-br from-slate-800 via-slate-700 to-indigo-800">
             <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
             <div className="absolute -bottom-8 left-6">
-              <Avatar className="h-16 w-16 border-4 border-white shadow-lg">
+              <Avatar className="h-16 w-16 border-4 border-border shadow-lg">
                 <AvatarImage src={tenant.avatar_url || undefined} />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-lg font-bold">
                   {initials}
@@ -178,8 +178,8 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
           <div className="pt-10 px-6 pb-4">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-slate-900">{fullName}</h3>
-                <p className="text-sm text-slate-500 flex items-center gap-1.5 mt-0.5">
+                <h3 className="text-lg font-semibold text-foreground">{fullName}</h3>
+                <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5">
                   <Home className="h-3.5 w-3.5" />
                   {tenant.property_address}
                 </p>
@@ -199,7 +199,7 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
                       </Link>
                     </DropdownMenuItem>
                   ) : (
-                    <DropdownMenuItem disabled className="text-slate-400">
+                    <DropdownMenuItem disabled className="text-muted-foreground">
                       <Clock className="h-4 w-4 mr-2" />
                       Profil en attente
                     </DropdownMenuItem>
@@ -240,7 +240,7 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
             {/* Badges */}
             <div className="flex flex-wrap gap-2 mb-4">
               <LeaseStatusBadge status={tenant.lease_status} />
-              <Badge variant="outline" className="bg-slate-50">
+              <Badge variant="outline" className="bg-muted">
                 <Calendar className="h-3 w-3 mr-1" />
                 {leaseDuration()}
               </Badge>
@@ -248,9 +248,9 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
 
             {/* Métriques */}
             <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="p-3 rounded-lg bg-slate-50">
-                <p className="text-xs text-slate-500 mb-0.5">Loyer mensuel</p>
-                <p className="text-lg font-bold text-slate-900">
+              <div className="p-3 rounded-lg bg-muted">
+                <p className="text-xs text-muted-foreground mb-0.5">Loyer mensuel</p>
+                <p className="text-lg font-bold text-foreground">
                   {formatCurrency(tenant.loyer + tenant.charges)}
                 </p>
               </div>
@@ -258,7 +258,7 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
                 "p-3 rounded-lg",
                 tenant.current_balance > 0 ? "bg-red-50" : "bg-emerald-50"
               )}>
-                <p className="text-xs text-slate-500 mb-0.5">Solde</p>
+                <p className="text-xs text-muted-foreground mb-0.5">Solde</p>
                 <p className={cn(
                   "text-lg font-bold",
                   tenant.current_balance > 0 ? "text-red-600" : "text-emerald-600"
@@ -274,7 +274,7 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
             {/* Barre de paiements */}
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-slate-600">Paiements à l'heure</span>
+                <span className="text-muted-foreground">Paiements à l'heure</span>
                 <span className={cn(
                   "font-semibold",
                   paymentRate >= 90 ? "text-emerald-600" :
@@ -283,7 +283,7 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
                   {paymentRate}%
                 </span>
               </div>
-              <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div 
                   className={cn(
                     "h-full rounded-full transition-all duration-500",
@@ -293,15 +293,15 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
                   style={{ width: `${paymentRate}%` }}
                 />
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-muted-foreground">
                 {tenant.payments_on_time} à l'heure • {tenant.payments_late} en retard sur {tenant.payments_total} paiements
               </p>
             </div>
           </div>
 
           {/* Footer avec actions rapides */}
-          <div className="px-6 py-3 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
-            <div className="text-xs text-slate-500">
+          <div className="px-6 py-3 bg-muted/50 border-t border-border flex items-center justify-between">
+            <div className="text-xs text-muted-foreground">
               {tenant.last_payment_date 
                 ? `Dernier paiement: ${formatDateShort(tenant.last_payment_date)}`
                 : "Aucun paiement enregistré"
@@ -422,7 +422,7 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
             <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
               Mes Locataires
             </h1>
-            <p className="text-slate-500 mt-1">
+            <p className="text-muted-foreground mt-1">
               Gérez vos {stats.total} locataire{stats.total > 1 ? 's' : ''} et suivez leurs paiements
             </p>
           </div>
@@ -436,8 +436,8 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
                 <Users className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-900">{stats.active}</p>
-                <p className="text-xs text-slate-500">Locataires actifs</p>
+                <p className="text-2xl font-bold text-foreground">{stats.active}</p>
+                <p className="text-xs text-muted-foreground">Locataires actifs</p>
               </div>
             </div>
           </GlassCard>
@@ -448,8 +448,8 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
                 <Euro className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-900">{formatCurrency(stats.totalMonthlyRent)}</p>
-                <p className="text-xs text-slate-500">Revenus mensuels</p>
+                <p className="text-2xl font-bold text-foreground">{formatCurrency(stats.totalMonthlyRent)}</p>
+                <p className="text-xs text-muted-foreground">Revenus mensuels</p>
               </div>
             </div>
           </GlassCard>
@@ -463,7 +463,7 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
                 <p className={cn("text-2xl font-bold", stats.totalBalance > 0 ? "text-red-600" : "text-emerald-600")}>
                   {stats.totalBalance > 0 ? formatCurrency(stats.totalBalance) : "0 €"}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                   {stats.withBalance > 0 ? `${stats.withBalance} impayé(s)` : "Aucun impayé"}
                 </p>
               </div>
@@ -476,8 +476,8 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
                 <Star className="h-5 w-5 text-amber-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-slate-900">{stats.avgScore}/5</p>
-                <p className="text-xs text-slate-500">Score moyen</p>
+                <p className="text-2xl font-bold text-foreground">{stats.avgScore}/5</p>
+                <p className="text-xs text-muted-foreground">Score moyen</p>
               </div>
             </div>
           </GlassCard>
@@ -486,18 +486,18 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
         {/* Filtres */}
         <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Rechercher par nom, adresse, email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 bg-white"
+              className="pl-10 bg-card"
             />
           </div>
           
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[180px] bg-white">
-              <Filter className="h-4 w-4 mr-2 text-slate-400" />
+            <SelectTrigger className="w-full sm:w-[180px] bg-card">
+              <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
               <SelectValue placeholder="Statut" />
             </SelectTrigger>
             <SelectContent>
@@ -509,8 +509,8 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
           </Select>
 
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-full sm:w-[180px] bg-white">
-              <ArrowUpDown className="h-4 w-4 mr-2 text-slate-400" />
+            <SelectTrigger className="w-full sm:w-[180px] bg-card">
+              <ArrowUpDown className="h-4 w-4 mr-2 text-muted-foreground" />
               <SelectValue placeholder="Trier par" />
             </SelectTrigger>
             <SelectContent>
@@ -524,11 +524,11 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
 
         {filteredTenants.length > 0 && (
           <motion.div variants={itemVariants}>
-            <Card className="border-slate-200/70 bg-slate-50/80">
+            <Card className="border-border/70 bg-muted/80">
               <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <p className="text-sm font-semibold text-slate-900">{visibleTenantsLabel}</p>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm font-semibold text-foreground">{visibleTenantsLabel}</p>
+                  <p className="text-sm text-muted-foreground">
                     {hasActiveFilters
                       ? `Affichage filtré sur ${stats.total} locataire${stats.total > 1 ? "s" : ""}.`
                       : "Tous les locataires chargés sont affichés ci-dessous."}
@@ -565,8 +565,8 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
           <motion.div variants={itemVariants}>
             <Card className="p-6 sm:p-8 md:p-12 text-center">
               <Search className="h-12 w-12 mx-auto text-slate-300 mb-4" />
-              <h3 className="text-lg font-semibold text-slate-700 mb-2">Aucun résultat</h3>
-              <p className="text-slate-500 mb-4">
+              <h3 className="text-lg font-semibold text-foreground mb-2">Aucun résultat</h3>
+              <p className="text-muted-foreground mb-4">
                 Aucun locataire ne correspond à vos critères de recherche.
               </p>
               <Button variant="outline" onClick={() => {

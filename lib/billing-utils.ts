@@ -115,7 +115,35 @@ export function formatDateShort(date: string | Date): string {
 export function daysUntil(date: string | Date): number {
   const target = new Date(date);
   const now = new Date();
-  return Math.max(0, Math.ceil((target.getTime() - now.getTime()) / 86400000));
+  target.setHours(0, 0, 0, 0);
+  now.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((target.getTime() - now.getTime()) / 86400000));
+}
+
+/**
+ * Formats a countdown to a billing date as a human-readable French string.
+ * Handles edge cases: expired, today, tomorrow, near future, and far future.
+ */
+export function formatBillingCountdown(date: string | Date | null | undefined): string {
+  if (!date) return "Date non disponible";
+
+  const target = new Date(date);
+  const now = new Date();
+  target.setHours(0, 0, 0, 0);
+  now.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.round((target.getTime() - now.getTime()) / 86400000);
+
+  if (diffDays < 0) return "Renouvellement en cours";
+  if (diffDays === 0) return "Aujourd\u2019hui";
+  if (diffDays === 1) return "Demain";
+  if (diffDays <= 30) return `Dans ${diffDays} jour${diffDays > 1 ? "s" : ""}`;
+
+  return target.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 export function isExpiringSoon(expMonth: number, expYear: number, thresholdDays: number): boolean {

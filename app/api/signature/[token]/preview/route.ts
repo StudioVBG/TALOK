@@ -156,12 +156,10 @@ function mapLeaseToTemplateData(
 export async function GET(request: Request, { params }: PageProps) {
   try {
     const { token } = await params;
-    console.log("[Preview GET] Token reçu:", token?.substring(0, 20) + "...");
 
     // FIX: Utiliser verifyTokenCompat pour supporter les deux formats (HMAC + legacy)
     const tokenData = verifyTokenCompat(token, 30);
     if (!tokenData) {
-      console.log("[Preview GET] ❌ Token invalide ou expiré");
       return NextResponse.json(
         { error: "Lien d'invitation invalide ou expiré" },
         { status: 410 }
@@ -169,7 +167,6 @@ export async function GET(request: Request, { params }: PageProps) {
     }
     const leaseId = tokenData.entityId;
     const tenantEmail = tokenData.email;
-    console.log("[Preview GET] Token décodé:", { leaseId, email: tenantEmail });
 
     const serviceClient = getServiceClient();
 
@@ -290,12 +287,10 @@ export async function POST(request: Request, { params }: PageProps) {
   try {
     const { token } = await params;
     const body = await request.json();
-    console.log("[Preview POST] Token reçu, données profil:", { nom: body.nom, prenom: body.prenom });
 
     // FIX: Utiliser verifyTokenCompat pour supporter les deux formats (HMAC + legacy)
     const tokenDataPost = verifyTokenCompat(token, 30);
     if (!tokenDataPost) {
-      console.log("[Preview POST] ❌ Token invalide ou expiré");
       return NextResponse.json(
         { error: "Lien d'invitation invalide ou expiré" },
         { status: 410 }
@@ -303,7 +298,6 @@ export async function POST(request: Request, { params }: PageProps) {
     }
     const postLeaseId = tokenDataPost.entityId;
     const postTenantEmail = tokenDataPost.email;
-    console.log("[Preview POST] Token décodé:", { leaseId: postLeaseId });
 
     const serviceClient = getServiceClient();
 
@@ -344,7 +338,6 @@ export async function POST(request: Request, { params }: PageProps) {
       );
     }
     
-    console.log("[Preview POST] ✅ Bail trouvé:", lease.id, "Type:", lease.type_bail);
 
     // Résoudre l'identité du propriétaire via le résolveur centralisé (entity-first + fallback)
     const ownerProfile = await resolveOwnerIdentity(serviceClient, {

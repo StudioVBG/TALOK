@@ -93,12 +93,12 @@ export async function POST(request: NextRequest) {
       const propAny = property as any;
       const isOwner = propAny.owner_id === profileAny.id;
       
-      // Vérifier si le user est locataire lié à cette propriété
+      // Vérifier si le user est locataire lié à CETTE propriété (via bail)
       const { data: leaseLink } = await serviceClient
         .from("lease_signers")
-        .select("id")
+        .select("id, lease:leases!inner(property_id)")
         .eq("profile_id", profileAny.id)
-        .limit(1);
+        .eq("lease.property_id", property_id);
 
       const isTenantLinked = leaseLink && leaseLink.length > 0;
 

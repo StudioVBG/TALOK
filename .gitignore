@@ -55,3 +55,4 @@ public/workbox-*.js.map
 
 # Local Netlify folder
 .netlify
+.claude/

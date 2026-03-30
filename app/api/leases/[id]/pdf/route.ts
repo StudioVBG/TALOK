@@ -95,6 +95,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         type: "bail",
         title: `Bail - ${property?.adresse_complete || property?.ville || leaseId.slice(0, 8)}`,
         storage_path: storagePath,
+        visible_tenant: true,
         metadata: { hash: dataHash, type_bail: typeBail, generated_at: new Date().toISOString() },
       };
 

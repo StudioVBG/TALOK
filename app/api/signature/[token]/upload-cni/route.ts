@@ -172,7 +172,6 @@ export async function POST(request: Request, { params }: PageProps) {
 
     // Si le bucket n'existe pas, essayer de le créer
     if (uploadError && uploadError.message?.includes("Bucket not found")) {
-      console.log("[Upload CNI] Bucket 'documents' non trouvé, tentative de création...");
       
       // Créer le bucket
       const { error: createError } = await serviceClient.storage.createBucket("documents", {
@@ -215,7 +214,6 @@ export async function POST(request: Request, { params }: PageProps) {
       (!ocrData.nom && !ocrData.numero_cni && !ocrData.date_expiration);
     
     if (needsServerOCR) {
-      console.log(`[Upload CNI] OCR serveur nécessaire (client: ${ocrAttempted ? 'échoué' : 'non tenté'}${ocrClientError ? ` - ${ocrClientError}` : ''})`);
       
       try {
         await loadOCRServices();
@@ -225,7 +223,6 @@ export async function POST(request: Request, { params }: PageProps) {
         
         if (mindeeService) {
           try {
-            console.log("[Upload CNI] Tentative OCR Mindee...");
             serverOcrResult = await mindeeService.analyzeIdCard(buffer, file.name);
             
             if (serverOcrResult && serverOcrResult.confidence > 0.5) {
@@ -241,7 +238,6 @@ export async function POST(request: Request, { params }: PageProps) {
                 ocr_confidence: serverOcrResult.confidence,
               };
               ocrSource = "server";
-              console.log("[Upload CNI] OCR Mindee réussi, confiance:", serverOcrResult.confidence);
             }
           } catch (mindeeError: any) {
             console.warn("[Upload CNI] OCR Mindee échoué:", mindeeError?.message);
@@ -251,7 +247,6 @@ export async function POST(request: Request, { params }: PageProps) {
         // Fallback sur Tesseract si Mindee n'a pas fonctionné
         if (ocrSource !== "server" && tesseractOCRService) {
           try {
-            console.log("[Upload CNI] Tentative OCR Tesseract...");
             serverOcrResult = await tesseractOCRService.analyzeIdCard(buffer, file.name);
             
             if (serverOcrResult && serverOcrResult.confidence > 0.3) {
@@ -267,7 +262,6 @@ export async function POST(request: Request, { params }: PageProps) {
                 ocr_confidence: serverOcrResult.confidence,
               };
               ocrSource = "server";
-              console.log("[Upload CNI] OCR Tesseract réussi, confiance:", serverOcrResult.confidence);
             }
           } catch (tesseractError: any) {
             console.warn("[Upload CNI] OCR Tesseract échoué:", tesseractError?.message);
@@ -341,7 +335,6 @@ export async function POST(request: Request, { params }: PageProps) {
       .eq("is_archived", false);
 
     if (existingDocs && existingDocs.length > 0) {
-      console.log(`[Upload CNI] Archivage de ${existingDocs.length} ancien(s) document(s) ${docType}`);
       await serviceClient
         .from("documents")
         .update({ is_archived: true })
@@ -397,7 +390,6 @@ export async function POST(request: Request, { params }: PageProps) {
       }, { status: 500 });
     }
 
-    console.log("[Upload CNI] Document créé:", docData?.id, "expiry_date:", expiryDate);
 
     // Synchroniser tenant_profiles (si le locataire a déjà un compte)
     if (docData && tenantProfileId) {

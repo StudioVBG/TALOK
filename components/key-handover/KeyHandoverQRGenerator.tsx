@@ -118,6 +118,36 @@ export function KeyHandoverQRGenerator({ leaseId, className }: KeyHandoverQRGene
     }
   }, [leaseId, qrData, copyLink]);
 
+  // Confirmation manuelle par le propriétaire
+  const [isConfirmingManual, setIsConfirmingManual] = useState(false);
+  const handleOwnerConfirm = useCallback(async () => {
+    setIsConfirmingManual(true);
+    try {
+      const res = await fetch(`/api/leases/${leaseId}/key-handover/owner-confirm`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Erreur lors de la confirmation");
+      }
+      setStatus("confirmed");
+      toast({
+        title: "Clés remises",
+        description: "La remise des clés est confirmée et le bail est maintenant actif.",
+      });
+      // Reload pour refléter le nouveau statut
+      window.location.reload();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Impossible de confirmer la remise",
+      });
+    } finally {
+      setIsConfirmingManual(false);
+    }
+  }, [leaseId, toast]);
+
   if (status === "confirmed") {
     return (
       <GlassCard className={cn("p-6 border-emerald-200 bg-emerald-50 space-y-4", className)}>
@@ -165,18 +195,38 @@ export function KeyHandoverQRGenerator({ leaseId, className }: KeyHandoverQRGene
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            className="space-y-3"
           >
+            <Button
+              onClick={handleOwnerConfirm}
+              disabled={isConfirmingManual}
+              className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-200"
+            >
+              {isConfirmingManual ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+              )}
+              {isConfirmingManual ? "Confirmation..." : "Confirmer la remise des clés"}
+            </Button>
+            <div className="relative flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border" />
+              </div>
+              <span className="relative bg-card px-3 text-[10px] text-muted-foreground uppercase tracking-widest">ou</span>
+            </div>
             <Button
               onClick={generateQR}
               disabled={isGenerating}
-              className="w-full h-12 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200"
+              variant="outline"
+              className="w-full h-10 font-medium rounded-xl"
             >
               {isGenerating ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <QrCode className="h-4 w-4 mr-2" />
               )}
-              {isGenerating ? "Génération..." : "Générer le QR code"}
+              {isGenerating ? "Génération..." : "Générer un QR code pour le locataire"}
             </Button>
           </motion.div>
         ) : (

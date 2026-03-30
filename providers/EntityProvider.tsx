@@ -11,7 +11,7 @@
  * (React strict mode, onglets multiples).
  */
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useEntityStore } from "@/stores/useEntityStore";
 import { useAuth } from "@/lib/hooks/use-auth";
 
@@ -25,12 +25,12 @@ let ensureDefaultPromise: Promise<void> | null = null;
 export function EntityProvider({ children }: EntityProviderProps) {
   const { profile } = useAuth();
   const fetchEntities = useEntityStore((s) => s.fetchEntities);
+  const setActiveEntity = useEntityStore((s) => s.setActiveEntity);
+  const autoSelectDoneRef = useRef(false);
 
   useEffect(() => {
     if (!profile?.id) return;
 
-    // owner_profiles.profile_id === profiles.id === legal_entities.owner_profile_id
-    // No intermediate query needed — profile.id is the owner_profile_id FK value.
     const loadEntities = async () => {
       try {
         const { entities, lastFetchedAt } = useEntityStore.getState();
@@ -40,10 +40,15 @@ export function EntityProvider({ children }: EntityProviderProps) {
           await fetchEntities(profile.id);
         }
 
+        // Auto-sélectionner la première entité si aucune n'est active
+        const { entities: freshEntities, activeEntityId } = useEntityStore.getState();
+        if (!activeEntityId && freshEntities.length > 0) {
+          useEntityStore.getState().setActiveEntity(freshEntities[0].id);
+        }
+
         // Si toujours vide après fetch, auto-créer l'entité par défaut
         const currentEntities = useEntityStore.getState().entities;
         if (currentEntities.length === 0) {
-          // Dédupliquer les appels concurrents (strict mode, multi-tab)
           if (ensureDefaultPromise) {
             await ensureDefaultPromise;
           } else {
@@ -55,6 +60,11 @@ export function EntityProvider({ children }: EntityProviderProps) {
                 const result = await ensureDefaultEntity();
                 if (result.success) {
                   await fetchEntities(profile.id);
+                  // Auto-sélectionner la nouvelle entité
+                  const { entities: newEntities, activeEntityId: currentId } = useEntityStore.getState();
+                  if (!currentId && newEntities.length > 0) {
+                    useEntityStore.getState().setActiveEntity(newEntities[0].id);
+                  }
                 }
               } finally {
                 ensureDefaultPromise = null;
@@ -63,13 +73,31 @@ export function EntityProvider({ children }: EntityProviderProps) {
             await ensureDefaultPromise;
           }
         }
+
+        // Auto-select default or first entity if activeEntityId is still null
+        const state = useEntityStore.getState();
+        if (!state.activeEntityId && state.entities.length > 0 && !autoSelectDoneRef.current) {
+          autoSelectDoneRef.current = true;
+          const defaultEntity = state.entities.find((e) => e.isDefault);
+          setActiveEntity(defaultEntity?.id ?? state.entities[0].id);
+        }
       } catch (err) {
         console.error("[EntityProvider] Error loading entities:", err);
       }
     };
 
     loadEntities();
-  }, [profile?.id, fetchEntities]);
+  }, [profile?.id, fetchEntities, setActiveEntity]);
+
+  // Reactive guard: if entities arrive after initial render and activeEntityId is still null
+  const entities = useEntityStore((s) => s.entities);
+  const activeEntityId = useEntityStore((s) => s.activeEntityId);
+
+  useEffect(() => {
+    if (!activeEntityId && entities.length > 0) {
+      setActiveEntity(entities[0].id);
+    }
+  }, [entities, activeEntityId, setActiveEntity]);
 
   return <>{children}</>;
 }
