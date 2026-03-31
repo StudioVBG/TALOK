@@ -7,18 +7,21 @@
 // TYPES DE BASE
 // ============================================
 
-export type PropertyType = 
-  | "appartement" 
-  | "maison" 
-  | "studio" 
-  | "colocation" 
+export type PropertyType =
+  | "appartement"
+  | "maison"
+  | "studio"
+  | "colocation"
   | "saisonnier"
-  | "parking" 
+  | "parking"
   | "box"
-  | "local_commercial" 
-  | "bureaux" 
-  | "entrepot" 
-  | "fonds_de_commerce";
+  | "local_commercial"
+  | "bureaux"
+  | "entrepot"
+  | "fonds_de_commerce"
+  | "immeuble"
+  | "terrain_agricole"
+  | "exploitation_agricole";
 
 /**
  * Statut opérationnel de propriété (vue composants)
@@ -292,10 +295,16 @@ export const HABITATION_TYPES: PropertyType[] = [
 export const PARKING_TYPES: PropertyType[] = ["parking", "box"];
 
 export const PRO_TYPES: PropertyType[] = [
-  "local_commercial", 
-  "bureaux", 
-  "entrepot", 
-  "fonds_de_commerce"
+  "local_commercial",
+  "bureaux",
+  "entrepot",
+  "fonds_de_commerce",
+  "immeuble"
+];
+
+export const AGRICOLE_TYPES: PropertyType[] = [
+  "terrain_agricole",
+  "exploitation_agricole"
 ];
 
 export function isHabitationType(type: PropertyType): boolean {
@@ -317,6 +326,10 @@ export const STATUS_CONFIG: Record<PropertyDisplayStatus, { label: string; color
   signature_en_cours: { label: "Signature en cours", color: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" },
 };
 
+export function isAgricoleType(type: PropertyType): boolean {
+  return AGRICOLE_TYPES.includes(type);
+}
+
 export const TYPE_LABELS: Record<PropertyType, string> = {
   appartement: "Appartement",
   maison: "Maison",
@@ -328,6 +341,9 @@ export const TYPE_LABELS: Record<PropertyType, string> = {
   local_commercial: "Local commercial",
   bureaux: "Bureaux",
   entrepot: "Entrepôt",
+  immeuble: "Immeuble",
+  terrain_agricole: "Terrain agricole",
+  exploitation_agricole: "Exploitation agricole",
   fonds_de_commerce: "Fonds de commerce",
 };
 
