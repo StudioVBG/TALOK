@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PLANS, formatPrice } from "@/lib/subscriptions/plans";
+import { PLANS } from "@/lib/subscriptions/plans";
 import { PricingClient } from "./PricingClient";
 
 // ============================================
