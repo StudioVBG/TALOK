@@ -25,7 +25,6 @@ export async function GET(
     const resolvedParams = await params;
     meterId = resolvedParams.id;
 
-    console.log(`[GET /api/meters/${meterId}/readings] Entering`);
 
     // Validate meter ID format
     const parseResult = uuidSchema.safeParse(meterId);
@@ -42,7 +41,6 @@ export async function GET(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      console.log(`[GET /api/meters/${meterId}/readings] 401: Non authentifié`);
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
@@ -63,7 +61,6 @@ export async function GET(
       .single();
 
     if (meterError || !meter) {
-      console.log(`[GET /api/meters/${meterId}/readings] 404: Compteur non trouvé`);
       return NextResponse.json({ error: "Compteur non trouvé" }, { status: 404 });
     }
 
@@ -126,7 +123,6 @@ export async function GET(
       );
     }
 
-    console.log(`[GET /api/meters/${meterId}/readings] Success: ${readings?.length || 0} readings`);
     return NextResponse.json({
       meter_id: meterId,
       meter,
@@ -158,7 +154,6 @@ export async function POST(
     const resolvedParams = await params;
     meterId = resolvedParams.id;
 
-    console.log(`[POST /api/meters/${meterId}/readings] Entering`);
 
     // Validate meter ID format
     const parseResult = uuidSchema.safeParse(meterId);
@@ -176,7 +171,6 @@ export async function POST(
     } = await supabase.auth.getUser();
 
     if (!user) {
-      console.log(`[POST /api/meters/${meterId}/readings] 401: Non authentifié`);
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
@@ -201,11 +195,6 @@ export async function POST(
       : NaN;
 
     if (isNaN(readingValue) || !readingDate) {
-      console.log(`[POST /api/meters/${meterId}/readings] 400: Données manquantes`, {
-        readingValueStr,
-        readingValue,
-        readingDate
-      });
       return NextResponse.json(
         { error: "reading_value et reading_date requis" },
         { status: 400 }
@@ -220,7 +209,6 @@ export async function POST(
       .single();
 
     if (meterError || !meter) {
-      console.log(`[POST /api/meters/${meterId}/readings] 404: Compteur non trouvé`, meterError);
       return NextResponse.json({ error: "Compteur non trouvé" }, { status: 404 });
     }
 
@@ -261,7 +249,6 @@ export async function POST(
       .maybeSingle();
 
     if (existingReading) {
-      console.log(`[POST /api/meters/${meterId}/readings] Reading already exists for date ${readingDate}, updating...`);
       const updateData: Record<string, any> = {
         reading_value: readingValue,
         source: photoFile ? "ocr" : "manual",
@@ -300,7 +287,6 @@ export async function POST(
         );
       }
 
-      console.log(`[POST /api/meters/${meterId}/readings] Updated existing reading:`, updatedReading?.id);
       return NextResponse.json({ reading: updatedReading });
     }
 
@@ -348,7 +334,6 @@ export async function POST(
       );
     }
 
-    console.log(`[POST /api/meters/${meterId}/readings] Success:`, reading?.id);
     return NextResponse.json({ reading });
   } catch (error: unknown) {
     console.error(`[POST /api/meters/${meterId}/readings] Fatal Error:`, error);

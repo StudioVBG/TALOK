@@ -82,8 +82,8 @@ export function RealtimeRevenueWidget() {
           <Euro className="h-6 w-6 text-emerald-600" />
         </div>
         <div>
-          <h3 className="font-semibold text-slate-800">Revenus du mois</h3>
-          <p className="text-xs text-slate-500">
+          <h3 className="font-semibold text-foreground">Revenus du mois</h3>
+          <p className="text-xs text-muted-foreground">
             Mise à jour en temps réel
           </p>
         </div>
@@ -96,12 +96,12 @@ export function RealtimeRevenueWidget() {
           initial={{ scale: 1 }}
           animate={{ scale: [1, 1.02, 1] }}
           transition={{ duration: 0.3 }}
-          className="text-4xl font-bold text-slate-900"
+          className="text-4xl font-bold text-foreground"
         >
           <AnimatedCounter value={totalRevenue} type="currency" />
         </motion.div>
         {lastUpdate && (
-          <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
+          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
             <Activity className="h-3 w-3" />
             Mis à jour {formatDistanceToNow(lastUpdate, { addSuffix: true, locale: fr })}
           </p>
@@ -133,9 +133,9 @@ export function RealtimeRevenueWidget() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="border-t border-slate-100 pt-4"
+            className="border-t border-border pt-4"
           >
-            <h4 className="text-xs font-medium text-slate-500 mb-2 flex items-center gap-1">
+            <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
               <Zap className="h-3 w-3" />
               Activité récente
             </h4>
@@ -160,8 +160,8 @@ export function RealtimeRevenueWidget() {
                     {event.type === "signature" && <CheckCircle2 className="h-3 w-3" />}
                     {event.type === "ticket" && <AlertTriangle className="h-3 w-3" />}
                   </div>
-                  <span className="text-slate-700 truncate flex-1">{event.title}</span>
-                  <span className="text-xs text-slate-400">
+                  <span className="text-foreground truncate flex-1">{event.title}</span>
+                  <span className="text-xs text-muted-foreground">
                     {formatDistanceToNow(event.timestamp, { addSuffix: true, locale: fr })}
                   </span>
                 </motion.div>
@@ -193,7 +193,7 @@ export function RealtimeStatusIndicator({ isConnected = false, loading = false }
           isConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500"
         )}
       />
-      <span className="text-xs text-slate-500">
+      <span className="text-xs text-muted-foreground">
         {isConnected ? "Temps réel" : "Déconnecté"}
       </span>
     </div>

@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import { useProfileQuery } from "@/lib/hooks/use-profile-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,34 +69,28 @@ export default function ProviderSettingsPage() {
     sms_urgent: false,
   });
 
-  // Charger le profil
+  // Charger le profil via React Query (cache partagé, pas de duplication)
+  const { data: profileData, isLoading: profileLoading } = useProfileQuery();
   useEffect(() => {
-    async function fetchProfile() {
+    if (profileLoading) {
       setLoading(true);
-      try {
-        const response = await fetch("/api/me/profile");
-        if (response.ok) {
-          const data = await response.json();
-          setProfile({
-            prenom: data.prenom || "",
-            nom: data.nom || "",
-            email: data.email || "",
-            telephone: data.telephone || "",
-            adresse: data.adresse || "",
-            siret: data.siret || "",
-            description: data.description || "",
-            zones_intervention: data.zones_intervention || [],
-            services: data.services || [],
-          });
-        }
-      } catch (error) {
-        console.error("Erreur chargement profil:", error);
-      } finally {
-        setLoading(false);
-      }
+      return;
     }
-    fetchProfile();
-  }, []);
+    setLoading(false);
+    if (profileData) {
+      setProfile({
+        prenom: profileData.prenom || "",
+        nom: profileData.nom || "",
+        email: (profileData as any).email || "",
+        telephone: profileData.telephone || "",
+        adresse: (profileData as any).adresse || "",
+        siret: (profileData as any).siret || "",
+        description: (profileData as any).description || "",
+        zones_intervention: (profileData as any).zones_intervention || [],
+        services: (profileData as any).services || [],
+      });
+    }
+  }, [profileData, profileLoading]);
 
   const handleSave = async () => {
     setSaving(true);

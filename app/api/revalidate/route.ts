@@ -140,7 +140,6 @@ export async function POST(request: Request) {
       }
       revalidatePath(path);
       revalidatedPath = true;
-      console.log(`[revalidate] Path revalidated: ${path}`);
     }
 
     if (tag) {
@@ -152,7 +151,6 @@ export async function POST(request: Request) {
       }
       revalidateTag(tag);
       revalidatedTag = true;
-      console.log(`[revalidate] Tag revalidated: ${tag}`);
     }
 
     // 5. Revalider les tags standards si aucun tag spécifié (pour les admins uniquement)
@@ -161,7 +159,6 @@ export async function POST(request: Request) {
       revalidateTag("admin:properties");
       revalidateTag("owner:leases");
       revalidateTag("owner:dashboard");
-      console.log("[revalidate] Tags standards revalidated");
     }
 
     return NextResponse.json({

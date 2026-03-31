@@ -6,6 +6,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { LocalStorageMigration } from "@/components/utils/LocalStorageMigration";
 
 /**
  * Configuration des polices avec next/font/local pour éviter :
@@ -114,7 +115,7 @@ export const metadata: Metadata = {
   },
   title: {
     default: "Talok | Logiciel de Gestion Locative n°1 en France",
-    template: "%s | Talok - Gestion Locative",
+    template: "%s | Talok",
   },
   description:
     "Logiciel de gestion locative tout-en-un pour propriétaires. Baux automatiques ALUR, signatures électroniques, scoring IA locataires, Open Banking. +10 000 propriétaires en France et DROM. 1er mois offert.",
@@ -268,6 +269,7 @@ export default function RootLayout({
                         <main id="main-content" className="flex-1" tabIndex={-1}>{children}</main>
                       </PageTransition>
                       <Toaster />
+                      <LocalStorageMigration />
                     </div>
                   </AIProvider>
                 </SubscriptionProvider>
