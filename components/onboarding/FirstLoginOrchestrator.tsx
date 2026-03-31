@@ -40,7 +40,7 @@ export function FirstLoginOrchestrator({
     }
 
     // Check localStorage first for speed
-    const welcomeSeen = localStorage.getItem("lokatif-welcome-seen");
+    const welcomeSeen = localStorage.getItem("talok-welcome-seen");
     if (welcomeSeen === "true") {
       setChecked(true);
       return;
@@ -57,7 +57,7 @@ export function FirstLoginOrchestrator({
         .then(({ data }) => {
           if (data?.tour_completed_at) {
             // Tour already completed, nothing to show
-            localStorage.setItem("lokatif-welcome-seen", "true");
+            localStorage.setItem("talok-welcome-seen", "true");
             setChecked(true);
             return;
           }
@@ -67,7 +67,7 @@ export function FirstLoginOrchestrator({
             setShowWelcome(true);
           } else if (data?.welcome_seen_at) {
             // Welcome already seen, sync to localStorage
-            localStorage.setItem("lokatif-welcome-seen", "true");
+            localStorage.setItem("talok-welcome-seen", "true");
           }
 
           setChecked(true);
@@ -80,7 +80,7 @@ export function FirstLoginOrchestrator({
 
   const handleStartOnboarding = () => {
     // Mark welcome as seen
-    localStorage.setItem("lokatif-welcome-seen", "true");
+    localStorage.setItem("talok-welcome-seen", "true");
     setShowWelcome(false);
 
     // Persist to Supabase
@@ -102,7 +102,7 @@ export function FirstLoginOrchestrator({
   };
 
   const handleSkipOnboarding = () => {
-    localStorage.setItem("lokatif-welcome-seen", "true");
+    localStorage.setItem("talok-welcome-seen", "true");
     setShowWelcome(false);
 
     // Persist skip to Supabase
@@ -124,7 +124,7 @@ export function FirstLoginOrchestrator({
   };
 
   const handleClose = () => {
-    localStorage.setItem("lokatif-welcome-seen", "true");
+    localStorage.setItem("talok-welcome-seen", "true");
     setShowWelcome(false);
 
     if (profileId) {

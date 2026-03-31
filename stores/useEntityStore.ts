@@ -127,8 +127,13 @@ export const useEntityStore = create<EntityState>()(
             entitySummaries[0].isDefault = true;
           }
 
+          // Auto-select: keep valid persisted entity, or fall back to first
+          const currentActiveId = get().activeEntityId;
+          const hasValidActive = currentActiveId && entitySummaries.some(e => e.id === currentActiveId);
+
           set({
             entities: entitySummaries,
+            activeEntityId: hasValidActive ? currentActiveId : (entitySummaries[0]?.id ?? null),
             isLoading: false,
             lastFetchedAt: Date.now(),
           });

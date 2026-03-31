@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -19,6 +20,7 @@ import {
   CalendarClock,
   Trash2,
   MoreHorizontal,
+  TrendingUp,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -113,43 +115,7 @@ export function LeaseDetailsSidebar({
 }: LeaseDetailsSidebarProps) {
   return (
     <div className="lg:col-span-4 xl:col-span-3 order-1 lg:order-2 space-y-6">
-      <Card className="border-none shadow-sm bg-white overflow-hidden">
-        <CardHeader className="pb-2 border-b border-slate-50">
-          <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-            Lecture métier unifiée
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 space-y-3">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-              Étape actuelle
-            </p>
-            <p className="mt-2 text-base font-semibold text-slate-900">
-              {readinessState.hero.title}
-            </p>
-            <p className="mt-1 text-xs text-slate-600">
-              {readinessState.hero.description}
-            </p>
-          </div>
-
-          {readinessState.blockingReasons.length > 0 && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">
-                Blocages restants
-              </p>
-              <div className="mt-2 space-y-1.5">
-                {readinessState.blockingReasons.map((reason) => (
-                  <p key={reason} className="text-xs text-amber-800">
-                    {reason}
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-none shadow-sm bg-white overflow-hidden">
+      <Card className="border-none shadow-sm bg-card overflow-hidden">
         <CardHeader className="pb-2 border-b border-slate-50">
           <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
             <ShieldCheck className="h-3 w-3 text-emerald-500" />
@@ -195,7 +161,7 @@ export function LeaseDetailsSidebar({
       )}
 
       {/* Carte Info Rapide */}
-      <Card className="border-none shadow-sm bg-white">
+      <Card className="border-none shadow-sm bg-card">
         <CardHeader className="pb-3 border-b border-slate-50">
           <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
             Détails Clés
@@ -204,7 +170,7 @@ export function LeaseDetailsSidebar({
         <CardContent className="pt-4 space-y-4">
           <div>
             <p className="text-xs text-muted-foreground">Loyer mensuel</p>
-            <p className="text-2xl font-bold text-slate-900">
+            <p className="text-2xl font-bold text-foreground">
               {formatCurrency(displayLoyer + displayCharges)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
@@ -215,7 +181,7 @@ export function LeaseDetailsSidebar({
           <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-50">
             <div>
               <p className="text-xs text-muted-foreground">Dépôt de garantie</p>
-              <p className="text-base font-semibold text-slate-800">{formatCurrency(displayDepot)}</p>
+              <p className="text-base font-semibold text-foreground">{formatCurrency(displayDepot)}</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">1er versement</p>
@@ -285,6 +251,9 @@ export function LeaseDetailsSidebar({
           </div>
         </CardContent>
       </Card>
+
+      {/* Score de ponctualité */}
+      <PunctualityBadge leaseId={leaseId} leaseStatus={lease?.statut} />
 
       {/* Chronologie */}
       <LeaseTimeline
@@ -418,7 +387,7 @@ function ChecklistRow({
       : status === "action_required"
         ? "bg-red-100"
         : status === "locked"
-          ? "bg-slate-100"
+          ? "bg-muted"
           : "bg-amber-100";
 
   const textColor =
@@ -427,7 +396,7 @@ function ChecklistRow({
       : status === "action_required"
         ? "text-red-700"
         : status === "locked"
-          ? "text-slate-500"
+          ? "text-muted-foreground"
           : "text-amber-700";
 
   return (
@@ -440,12 +409,67 @@ function ChecklistRow({
         ) : (
           <Clock
             className={`h-3 w-3 ${
-              status === "locked" ? "text-slate-400" : "text-amber-600"
+              status === "locked" ? "text-muted-foreground" : "text-amber-600"
             }`}
           />
         )}
       </div>
       <span className={`text-xs font-medium ${textColor}`}>{label}</span>
     </div>
+  );
+}
+
+function PunctualityBadge({ leaseId, leaseStatus }: { leaseId: string; leaseStatus?: string }) {
+  const [data, setData] = useState<{ score: number | null; label: string; variant: string } | null>(null);
+
+  useEffect(() => {
+    // Ne charger que pour les baux actifs ou terminés
+    if (!leaseStatus || !["active", "terminated", "renewed"].includes(leaseStatus)) return;
+
+    fetch(`/api/leases/${leaseId}/punctuality`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((d) => { if (d) setData(d); })
+      .catch(() => {});
+  }, [leaseId, leaseStatus]);
+
+  if (!data || data.score === null) return null;
+
+  const colorClass =
+    data.score >= 90
+      ? "text-emerald-600 bg-emerald-50 border-emerald-200"
+      : data.score >= 70
+        ? "text-blue-600 bg-blue-50 border-blue-200"
+        : data.score >= 50
+          ? "text-amber-600 bg-amber-50 border-amber-200"
+          : "text-red-600 bg-red-50 border-red-200";
+
+  const iconColor =
+    data.score >= 90
+      ? "text-emerald-500"
+      : data.score >= 70
+        ? "text-blue-500"
+        : data.score >= 50
+          ? "text-amber-500"
+          : "text-red-500";
+
+  return (
+    <Card className="border-none shadow-sm bg-card overflow-hidden">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center", colorClass)}>
+            <TrendingUp className={cn("h-5 w-5", iconColor)} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-muted-foreground">Score de ponctualité</p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-lg font-bold">{data.score}%</span>
+              <Badge variant="secondary" className="text-[10px] h-5">
+                {data.label}
+              </Badge>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

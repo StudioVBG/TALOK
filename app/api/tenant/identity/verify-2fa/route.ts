@@ -34,7 +34,7 @@ export async function GET(request: Request) {
     const redirectUrl = buildRedirectUrl(leaseId);
 
     if (!user) {
-      return NextResponse.redirect(`${BASE_URL}/auth/login?redirect_to=${encodeURIComponent(request.url)}`);
+      return NextResponse.redirect(`${BASE_URL}/auth/signin?redirect_to=${encodeURIComponent(request.url)}`);
     }
     if (!token) {
       return NextResponse.redirect(redirectUrl);

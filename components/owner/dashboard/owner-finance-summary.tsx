@@ -62,7 +62,7 @@ export function OwnerFinanceSummary({ chartData, kpis }: OwnerFinanceSummaryProp
   // Vérification de sécurité pour éviter les erreurs si les données ne sont pas encore chargées
   if (!kpis || !kpis.revenue_current_month || !kpis.revenue_last_month) {
     return (
-      <Card className="backdrop-blur-sm bg-white/80 border-white/20 shadow-xl">
+      <Card className="backdrop-blur-sm bg-card/80 border-border shadow-xl">
         <CardContent className="py-12 text-center">
           <Skeleton className="h-64 w-full mb-4" />
           <Skeleton className="h-8 w-48 mx-auto" />
@@ -80,7 +80,7 @@ export function OwnerFinanceSummary({ chartData, kpis }: OwnerFinanceSummaryProp
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <Card className="backdrop-blur-sm bg-white/80 border-white/20 shadow-xl hover:shadow-2xl transition-all duration-300">
+      <Card className="backdrop-blur-sm bg-card/80 border-border shadow-xl hover:shadow-2xl transition-all duration-300">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <motion.div
@@ -120,7 +120,7 @@ export function OwnerFinanceSummary({ chartData, kpis }: OwnerFinanceSummaryProp
                 value: kpis.revenue_last_month.collected,
                 diff: lastMonthDiff,
                 percentage: kpis.revenue_last_month.percentage,
-                gradient: "from-slate-50 to-slate-100/50",
+                gradient: "from-muted to-muted/50",
               },
               {
                 label: "Impayés",
@@ -138,9 +138,9 @@ export function OwnerFinanceSummary({ chartData, kpis }: OwnerFinanceSummaryProp
                 whileHover={{ scale: 1.02, y: -2 }}
                 className={`p-4 rounded-lg border bg-gradient-to-br ${kpi.gradient} cursor-pointer transition-all duration-300`}
               >
-                <p className="text-xs font-medium text-slate-600 mb-1">{kpi.label}</p>
+                <p className="text-xs font-medium text-muted-foreground mb-1">{kpi.label}</p>
                 <motion.p
-                  className={`text-2xl font-bold ${kpi.isArrears ? "text-red-600" : "text-slate-900"}`}
+                  className={`text-2xl font-bold ${kpi.isArrears ? "text-red-600" : "text-foreground"}`}
                   initial={{ scale: 0.8 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: index * 0.1 + 0.3, type: "spring", stiffness: 200 }}
@@ -168,19 +168,19 @@ export function OwnerFinanceSummary({ chartData, kpis }: OwnerFinanceSummaryProp
                       {formatCurrency(Math.abs(kpi.diff))}
                     </span>
                     {kpi.expected && (
-                      <span className="text-xs text-slate-500">
+                      <span className="text-xs text-muted-foreground">
                         / {formatCurrency(kpi.expected)} attendus
                       </span>
                     )}
                   </div>
                 )}
                 {kpi.percentage !== undefined && (
-                  <p className="text-xs text-slate-500 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     {kpi.percentage.toFixed(1)}% du montant attendu
                   </p>
                 )}
                 {kpi.isArrears && (
-                  <p className="text-xs text-slate-500 mt-2">Montant total en retard</p>
+                  <p className="text-xs text-muted-foreground mt-2">Montant total en retard</p>
                 )}
               </motion.div>
             ))}
