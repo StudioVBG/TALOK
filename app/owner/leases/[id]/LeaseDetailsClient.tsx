@@ -682,7 +682,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                 </Button>
                 <div className="hidden md:flex items-center gap-1 text-[10px] text-muted-foreground font-medium uppercase tracking-wider px-2 py-1 bg-muted rounded border border-border">
                   <Lock className="h-3 w-3" />
-                  Scellé
+                  Document certifié
                 </div>
               </div>
             )}

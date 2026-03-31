@@ -138,9 +138,9 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
         </div>
 
         {/* Accès & Sécurité */}
-        <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+        <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-200 dark:border-indigo-800">
           <Label className="text-xs font-medium mb-3 block flex items-center gap-2">
-            <Key className="h-4 w-4 text-indigo-600" />
+            <Key className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
             Accès & Sécurité
           </Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -166,9 +166,9 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
         </div>
 
         {/* Visite virtuelle */}
-        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
           <Label className="text-xs font-medium mb-2 flex items-center gap-2">
-            <Video className="h-4 w-4 text-blue-600" />
+            <Video className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             Visite virtuelle (optionnel)
           </Label>
           <Input
@@ -274,9 +274,9 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
         </div>
 
         {/* Accès & Sécurité */}
-        <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+        <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-200 dark:border-indigo-800">
           <Label className="text-xs font-medium mb-3 block flex items-center gap-2">
-            <Key className="h-4 w-4 text-indigo-600" />
+            <Key className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
             Accès & Sécurité
           </Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -302,9 +302,9 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
         </div>
 
         {/* Visite virtuelle */}
-        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
           <Label className="text-xs font-medium mb-2 flex items-center gap-2">
-            <Video className="h-4 w-4 text-blue-600" />
+            <Video className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             Visite virtuelle (optionnel)
           </Label>
           <Input
@@ -382,7 +382,7 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
       </div>
 
       {/* DPE */}
-      <div className="p-3 bg-green-50 rounded-lg">
+      <div className="p-3 bg-green-50 dark:bg-green-950/30 rounded-lg">
         <Label className="text-xs font-medium mb-3 block">DPE - Diagnostic de Performance Énergétique</Label>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -396,8 +396,8 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
                   className={`flex-1 h-8 rounded text-sm font-bold text-white transition-all ${
                     cls === "A" ? "bg-green-600" :
                     cls === "B" ? "bg-lime-500" :
-                    cls === "C" ? "bg-yellow-400 text-black" :
-                    cls === "D" ? "bg-amber-400 text-black" :
+                    cls === "C" ? "bg-yellow-400 text-yellow-900" :
+                    cls === "D" ? "bg-amber-400 text-amber-900" :
                     cls === "E" ? "bg-orange-500" :
                     cls === "F" ? "bg-red-500" : "bg-red-700"
                   } ${getValue("dpe_classe_energie") === cls ? "ring-2 ring-offset-1 ring-primary scale-105" : "opacity-60 hover:opacity-100"}`}
@@ -434,7 +434,7 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
 
       {/* Chauffage & Eau chaude */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="p-3 bg-orange-50 rounded-lg">
+        <div className="p-3 bg-orange-50 dark:bg-orange-950/30 rounded-lg">
           <Label className="text-xs font-medium mb-2 block">Chauffage</Label>
           <Select value={String(getValue("chauffage_type") || "")} onValueChange={(v) => handleFieldChange("chauffage_type", v)}>
             <SelectTrigger className="h-9 mb-2"><SelectValue placeholder="Type..." /></SelectTrigger>
@@ -459,7 +459,7 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
           )}
         </div>
 
-        <div className="p-3 bg-blue-50 rounded-lg">
+        <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
           <Label className="text-xs font-medium mb-2 block">Eau chaude</Label>
           <Select value={String(getValue("eau_chaude_type") || "")} onValueChange={(v) => handleFieldChange("eau_chaude_type", v)}>
             <SelectTrigger className="h-9"><SelectValue placeholder="Type..." /></SelectTrigger>
@@ -475,7 +475,7 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
       </div>
 
       {/* Climatisation */}
-      <div className="p-3 bg-cyan-50 rounded-lg">
+      <div className="p-3 bg-cyan-50 dark:bg-cyan-950/30 rounded-lg">
         <Label className="text-xs font-medium mb-2 block">Climatisation</Label>
         <div className="flex items-center gap-4">
           <Select value={String(getValue("clim_presence") || "aucune")} onValueChange={(v) => handleFieldChange("clim_presence", v)}>
@@ -522,9 +522,9 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
       </div>
 
       {/* Accès & Sécurité */}
-      <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+      <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg border border-indigo-200 dark:border-indigo-800">
         <Label className="text-xs font-medium mb-3 block flex items-center gap-2">
-          <Key className="h-4 w-4 text-indigo-600" />
+          <Key className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
           Accès & Sécurité
         </Label>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -553,9 +553,9 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
       </div>
 
       {/* Visite virtuelle */}
-      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+      <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
         <Label className="text-xs font-medium mb-2 flex items-center gap-2">
-          <Video className="h-4 w-4 text-blue-600" />
+          <Video className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           Visite virtuelle (optionnel)
         </Label>
         <Input
