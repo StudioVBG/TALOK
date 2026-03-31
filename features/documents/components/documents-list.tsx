@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { DocumentCard } from "./document-card";
+import { GroupedDocumentCard } from "./grouped-document-card";
 import { DocumentUploadForm } from "./document-upload-form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { documentsService } from "../services/documents.service";
 import type { Document } from "@/lib/types";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { groupDocuments } from "@/lib/documents/group-documents";
 
 interface DocumentsListProps {
   propertyId?: string;
@@ -21,6 +23,8 @@ export function DocumentsList({ propertyId, leaseId, showUpload = true }: Docume
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUploadForm, setShowUploadForm] = useState(false);
+
+  const displayDocs = useMemo(() => groupDocuments(documents), [documents]);
 
   useEffect(() => {
     fetchDocuments();
@@ -69,7 +73,7 @@ export function DocumentsList({ propertyId, leaseId, showUpload = true }: Docume
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Documents ({documents.length})</h2>
+        <h2 className="text-2xl font-bold">Documents ({displayDocs.length})</h2>
         {showUpload && !showUploadForm && (
           <Button onClick={() => setShowUploadForm(true)}>Ajouter un document</Button>
         )}
@@ -93,9 +97,13 @@ export function DocumentsList({ propertyId, leaseId, showUpload = true }: Docume
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {documents.map((document) => (
-            <DocumentCard key={document.id} document={document} onDelete={fetchDocuments} />
-          ))}
+          {displayDocs.map((doc) =>
+            "group_type" in doc ? (
+              <GroupedDocumentCard key={doc.id} document={doc} onDelete={fetchDocuments} />
+            ) : (
+              <DocumentCard key={doc.id} document={doc} onDelete={fetchDocuments} />
+            )
+          )}
         </div>
       )}
     </div>

@@ -32,6 +32,18 @@ import { useToast } from "@/components/ui/use-toast";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+
+/** Retourne un Date valide ou null pour éviter les RangeError sur les dates nulles/invalides */
+function safeDate(value: string | null | undefined): Date | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+function safeDateFormat(value: string | null | undefined, fmt: string): string {
+  const d = safeDate(value);
+  return d ? format(d, fmt, { locale: fr }) : "—";
+}
 import { ManualPaymentDialog } from "@/components/payments";
 
 const statusConfig = {
@@ -352,7 +364,7 @@ export default function InvoiceDetailPage() {
                             {payment.statut === "failed" && "Échoué"}
                           </Badge>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {format(new Date(payment.date_paiement), "dd/MM/yyyy", { locale: fr })}
+                            {safeDateFormat(payment.date_paiement, "dd/MM/yyyy")}
                           </p>
                         </div>
                       </div>
@@ -380,21 +392,21 @@ export default function InvoiceDetailPage() {
               <CardContent className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Émission</span>
-                  <span>{format(new Date(invoice.date_emission), "dd/MM/yyyy", { locale: fr })}</span>
+                  <span>{safeDateFormat(invoice.date_emission, "dd/MM/yyyy")}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Échéance</span>
                   <span className={cn(
-                    new Date(invoice.date_echeance) < new Date() && !isPaid && "text-red-600 font-medium"
+                    safeDate(invoice.date_echeance) !== null && safeDate(invoice.date_echeance)! < new Date() && !isPaid && "text-red-600 font-medium"
                   )}>
-                    {format(new Date(invoice.date_echeance), "dd/MM/yyyy", { locale: fr })}
+                    {safeDateFormat(invoice.date_echeance, "dd/MM/yyyy")}
                   </span>
                 </div>
                 {invoice.date_paiement && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Paiement</span>
                     <span className="text-green-600">
-                      {format(new Date(invoice.date_paiement), "dd/MM/yyyy", { locale: fr })}
+                      {safeDateFormat(invoice.date_paiement, "dd/MM/yyyy")}
                     </span>
                   </div>
                 )}

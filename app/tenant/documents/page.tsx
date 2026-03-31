@@ -61,6 +61,8 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
 import { DocumentCard, DOCUMENT_CONFIG, type DocumentCardDoc } from "@/components/documents/DocumentCard";
+import { groupDocuments } from "@/lib/documents/group-documents";
+import { GroupedDocumentCard } from "@/features/documents/components/grouped-document-card";
 import Link from "next/link";
 import { useTenantPendingActions } from "@/lib/hooks/use-tenant-pending-actions";
 
@@ -313,6 +315,9 @@ export default function TenantDocumentsPage() {
 
     return result;
   }, [documents, searchQuery, typeFilter, sourceFilter, periodFilter, sortBy, profile?.id]);
+
+  // Groupement CNI recto/verso pour la vue grille
+  const displayDocs = useMemo(() => groupDocuments(filteredDocuments as any[]), [filteredDocuments]);
 
   const fetchSignedUrl = useCallback(async (docId: string): Promise<string | null> => {
     try {
@@ -732,7 +737,17 @@ export default function TenantDocumentsPage() {
             ) : (
               // ── Vue grille ──
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {filteredDocuments.map((doc: any) => {
+                {displayDocs.map((doc: any) => {
+                  if ("group_type" in doc) {
+                    return (
+                      <GroupedDocumentCard
+                        key={doc.id}
+                        document={doc}
+                        onPreview={handlePreview}
+                        onDownload={handleDownload}
+                      />
+                    );
+                  }
                   const type = detectType(doc);
                   const config = DOCUMENT_CONFIG[type] || DOCUMENT_CONFIG.autre;
                   const source = profile?.id ? getDocumentSource(doc, profile.id) : undefined;

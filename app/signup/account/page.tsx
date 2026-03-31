@@ -83,9 +83,10 @@ export default function AccountCreationPage() {
   const [lastAutosave, setLastAutosave] = useState<Date | null>(null);
   const [emailSent, setEmailSent] = useState(false);
 
-  const role = searchParams.get("role") as UserRole | null;
-  const inviteToken = searchParams.get("invite");
-  const propertyCode = searchParams.get("code");
+  // Guard: useSearchParams() peut retourner null pendant le SSR sans Suspense boundary
+  const role = (searchParams?.get("role") ?? null) as UserRole | null;
+  const inviteToken = searchParams?.get("invite") ?? null;
+  const propertyCode = searchParams?.get("code") ?? null;
 
   const [draft, setDraft] = useState<AccountDraft>(INITIAL_DRAFT);
 

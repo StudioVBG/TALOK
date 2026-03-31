@@ -68,10 +68,10 @@ export function OwnerRecentActivity({ activities }: OwnerRecentActivityProps) {
           {activities.map((activity, index) => {
             const config = activityConfig[activity.type] || activityConfig.invoice;
             const Icon = config.icon;
-            const timeAgo = formatDistanceToNow(new Date(activity.date), {
-              addSuffix: true,
-              locale: fr,
-            });
+            const activityDate = (() => { const d = new Date(activity.date); return isNaN(d.getTime()) ? null : d; })();
+            const timeAgo = activityDate
+              ? formatDistanceToNow(activityDate, { addSuffix: true, locale: fr })
+              : "—";
 
             return (
               <motion.div
