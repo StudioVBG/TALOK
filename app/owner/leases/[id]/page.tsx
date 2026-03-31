@@ -7,24 +7,32 @@ import { createClient } from "@/lib/supabase/server";
 import { fetchLeaseDetails } from "../../_data/fetchLeaseDetails";
 import { LeaseDetailsClient } from "./LeaseDetailsClient";
 
-interface PageProps {
-  params: Promise<{ id: string }>;
-}
-
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
+  try {
+    const supabase = await createClient();
+    // Requête légère : lease → property → ville
+    const { data } = await supabase
+      .from("leases")
+      .select("properties:property_id(ville), units:unit_id(properties:property_id(ville))")
+      .eq("id", id)
+      .maybeSingle();
 
-  const { data } = await supabase
-    .from("leases")
-    .select("property:properties(ville)")
-    .eq("id", id)
-    .maybeSingle();
+    const ville =
+      (data?.properties as { ville?: string } | null)?.ville ||
+      (data?.units as { properties?: { ville?: string } } | null)?.properties?.ville;
 
-  const ville = (data?.property as { ville?: string } | null)?.ville;
-  const title = ville ? `Bail ${ville} | Talok` : "Bail | Talok";
+    if (ville) {
+      return { title: `Bail ${ville}` };
+    }
+  } catch {
+    // silence — fallback au titre default
+  }
+  return { title: "Détail du bail" };
+}
 
-  return { title };
+interface PageProps {
+  params: Promise<{ id: string }>;
 }
 
 export default async function OwnerContractDetailPage({ params }: PageProps) {

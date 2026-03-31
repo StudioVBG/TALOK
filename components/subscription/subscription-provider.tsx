@@ -259,7 +259,7 @@ export function SubscriptionProvider({
     const {
       data: { subscription: authSub },
     } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+      if (event === "SIGNED_IN") {
         fetchSubscription();
       }
       if (event === "SIGNED_OUT") {

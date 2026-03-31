@@ -41,8 +41,8 @@ export function EntityProvider({ children }: EntityProviderProps) {
         }
 
         // Auto-sélectionner la première entité si aucune n'est active
-        const { entities: freshEntities, activeEntityId } = useEntityStore.getState();
-        if (!activeEntityId && freshEntities.length > 0) {
+        const { entities: freshEntities, activeEntityId: initialActiveEntityId } = useEntityStore.getState();
+        if (!initialActiveEntityId && freshEntities.length > 0) {
           useEntityStore.getState().setActiveEntity(freshEntities[0].id);
         }
 
@@ -74,12 +74,31 @@ export function EntityProvider({ children }: EntityProviderProps) {
           }
         }
 
-        // Auto-select default or first entity if activeEntityId is still null
+        // Auto-sélectionner l'entité si aucune n'est active ou si l'entité
+        // active n'existe plus dans la liste (supprimée, archivée, etc.)
         const state = useEntityStore.getState();
-        if (!state.activeEntityId && state.entities.length > 0 && !autoSelectDoneRef.current) {
-          autoSelectDoneRef.current = true;
-          const defaultEntity = state.entities.find((e) => e.isDefault);
-          setActiveEntity(defaultEntity?.id ?? state.entities[0].id);
+        const { activeEntityId, setActiveEntity } = state;
+        const finalEntities = state.entities;
+
+        if (finalEntities.length > 0) {
+          const activeStillExists =
+            activeEntityId &&
+            finalEntities.some((e) => e.id === activeEntityId);
+
+          if (!activeStillExists) {
+            // Stratégie : sélectionner l'entité avec le plus de biens actifs,
+            // puis de baux actifs. À propriétés égales, prendre la default.
+            const best = [...finalEntities].sort((a, b) => {
+              if (b.propertyCount !== a.propertyCount)
+                return b.propertyCount - a.propertyCount;
+              if (b.activeLeaseCount !== a.activeLeaseCount)
+                return b.activeLeaseCount - a.activeLeaseCount;
+              if (b.isDefault !== a.isDefault) return b.isDefault ? 1 : -1;
+              return 0;
+            })[0];
+
+            setActiveEntity(best.id);
+          }
         }
       } catch (err) {
         console.error("[EntityProvider] Error loading entities:", err);

@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { usePageTitleStore } from "@/stores/usePageTitleStore";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
@@ -172,6 +173,14 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   } = details;
   const router = useRouter();
   const { toast } = useToast();
+  const setPageTitle = usePageTitleStore((s) => s.setPageTitle);
+
+  // Titre dynamique pour le header layout
+  useEffect(() => {
+    setPageTitle(`Bail ${property?.ville || ""}`);
+    return () => setPageTitle(null);
+  }, [property?.ville, setPageTitle]);
+
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
@@ -737,17 +746,19 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                  <div className={cn("rounded-2xl border p-4", heroToneClasses.panel)}>
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                      Documents
-                    </p>
-                    <p className="mt-2 text-2xl font-bold text-foreground">
-                      {readinessState.documentState.completedCount}/{readinessState.documentState.totalCount}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Prérequis visibles et réconciliés avec le workflow
-                    </p>
-                  </div>
+                  {readinessState.documentState.totalCount > 0 && (
+                    <div className={cn("rounded-2xl border p-4", heroToneClasses.panel)}>
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                        Documents
+                      </p>
+                      <p className="mt-2 text-2xl font-bold text-foreground">
+                        {readinessState.documentState.completedCount}/{readinessState.documentState.totalCount}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Documents requis complétés
+                      </p>
+                    </div>
+                  )}
                   <div className={cn("rounded-2xl border p-4", heroToneClasses.panel)}>
                     <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                       Paiement initial
@@ -845,7 +856,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                         <div className="flex items-center gap-2">
                           <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 rounded-full">
                             <Lock className="h-3.5 w-3.5 text-emerald-700" />
-                            <span className="text-xs font-semibold text-emerald-700">Document scellé</span>
+                            <span className="text-xs font-semibold text-emerald-700">Document certifié</span>
                           </div>
                           {sealedAt && (
                             <span className="text-xs text-muted-foreground">
@@ -882,7 +893,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
                       <div className="px-4 py-2 border-t bg-muted text-center">
                         <p className="text-xs text-muted-foreground">
                           <Lock className="h-3 w-3 inline mr-1" />
-                          Ce document est légalement scellé et ne peut plus être modifié.
+                          Ce document est certifié et ne peut plus être modifié.
                         </p>
                       </div>
                     </div>
