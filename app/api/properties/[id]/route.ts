@@ -9,6 +9,7 @@ import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { propertyIdParamSchema } from "@/lib/validations/params";
 import type { ServiceSupabaseClient, MediaDocument, SupabaseError } from "@/lib/types/supabase-client";
 import { syncPropertyBillingToStripe } from "@/lib/stripe/sync-property-billing";
+import { canDeleteProperty, cleanupPropertyPhotos } from "@/lib/properties/guards";
 
 /**
  * GET /api/properties/[id] - Récupérer une propriété par ID
@@ -690,53 +691,22 @@ export async function DELETE(
       throw new ApiError(403, "Vous n'avez pas la permission de supprimer cette propriété");
     }
 
-    // ✅ VALIDATION MÉTIER: Bloquer uniquement les biens en cours de validation admin
-    if (!isAdmin && property.etat === "pending_review") {
-      throw new ApiError(400, "Impossible de supprimer un bien en cours de validation. Veuillez attendre la fin de la vérification.");
-    }
+    // ✅ SOTA 2026: Guard réutilisable — vérification baux actifs, pending_review, etc.
+    if (!isAdmin) {
+      const guard = await canDeleteProperty(serviceClient, propertyId, profile.id);
 
-    // ✅ SOTA 2026: Vérifier s'il y a des baux actifs
-    const { data: activeLeases, error: leasesError } = await serviceClient
-      .from("leases")
-      .select(`
-        id, 
-        statut,
-        type_bail,
-        signers:lease_signers(
-          profile_id,
-          role,
-          signature_status,
-          invited_email,
-          invited_name,
-          profile:profiles(id, prenom, nom, email)
-        )
-      `)
-      .eq("property_id", propertyId)
-      .in("statut", ["active", "pending_signature", "partially_signed", "fully_signed"]);
-
-    if (leasesError) {
-      console.error("[DELETE Property] Erreur vérification baux:", leasesError);
-    }
-
-    // ✅ BLOQUER si bail actif (sauf admin)
-    if (!isAdmin && activeLeases && activeLeases.length > 0) {
-      const activeLease = activeLeases[0] as any;
-      const tenantSigner = activeLease.signers?.find((s: any) => 
-        s.role === "locataire_principal" || s.role === "colocataire"
-      );
-      const tenantName = tenantSigner?.profile 
-        ? `${tenantSigner.profile.prenom || ""} ${tenantSigner.profile.nom || ""}`.trim() || tenantSigner.profile.email
-        : "un locataire";
-
-      throw new ApiError(
-        400, 
-        `Impossible de supprimer : bail ${activeLease.statut === "active" ? "actif" : "en cours de signature"} avec ${tenantName}. Terminez d'abord le bail.`,
-        { 
-          leaseId: activeLease.id, 
-          leaseStatus: activeLease.statut,
-          tenantName 
-        }
-      );
+      if (!guard.canArchive) {
+        throw new ApiError(
+          guard.blockers.some(b => b.includes("bail")) ? 400 : 409,
+          guard.blockers[0] || "Suppression impossible",
+          {
+            code: "DELETE_BLOCKED",
+            blockers: guard.blockers,
+            warnings: guard.warnings,
+            linkedData: guard.linkedData,
+          }
+        );
+      }
     }
 
     // ✅ SOTA 2026: Récupérer l'adresse pour les notifications
@@ -824,11 +794,14 @@ export async function DELETE(
         throw new ApiError(500, "Erreur lors de la suppression", deleteError);
       }
 
-      // Sync facturation Stripe après hard-delete
+      // Nettoyage photos storage (non bloquant) + Stripe sync
       try {
-        await syncPropertyBillingToStripe(property.owner_id);
-      } catch (billingError) {
-        console.warn("[DELETE Property] Stripe billing sync failed:", billingError);
+        await Promise.all([
+          cleanupPropertyPhotos(serviceClient, propertyId),
+          syncPropertyBillingToStripe(property.owner_id),
+        ]);
+      } catch (err) {
+        console.warn("[DELETE Property] Post-delete cleanup error:", err);
       }
 
       return NextResponse.json({
@@ -838,11 +811,17 @@ export async function DELETE(
       });
     }
 
-    // Sync facturation Stripe après soft-delete
+    // Nettoyage photos storage (non bloquant) + Stripe sync après soft-delete
     try {
-      await syncPropertyBillingToStripe(property.owner_id);
-    } catch (billingError) {
-      console.warn("[DELETE Property] Stripe billing sync failed:", billingError);
+      const [photoResult] = await Promise.all([
+        cleanupPropertyPhotos(serviceClient, propertyId),
+        syncPropertyBillingToStripe(property.owner_id),
+      ]);
+      if (photoResult.cleaned > 0) {
+        console.info(`[DELETE Property] ${photoResult.cleaned} photo(s) nettoyée(s) du storage`);
+      }
+    } catch (err) {
+      console.warn("[DELETE Property] Post-delete cleanup error:", err);
     }
 
     return NextResponse.json({

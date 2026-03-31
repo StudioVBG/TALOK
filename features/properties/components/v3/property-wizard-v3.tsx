@@ -12,6 +12,7 @@ import { ImportStep } from "./immersive/steps/ImportStep";
 import type { Property } from "@/lib/types";
 import { propertySchemaV3 } from "@/lib/validations/property-v3";
 import { propertiesService } from "@/features/properties/services/properties.service";
+import { TYPES_WITHOUT_ROOMS } from "@/lib/properties/constants";
 
 // Dynamically import steps for code splitting
 const TypeStep = dynamic(() => import("./immersive/steps/TypeStep").then((mod) => ({ default: mod.TypeStep })), {
@@ -69,18 +70,8 @@ const stepComponents: Record<WizardStep, React.ElementType> = {
 };
 
 // Types de biens qui n'ont PAS d'étape "rooms"
-// ⚠️ Aligné avec wizard-store.ts et TypeStep.tsx
-const TYPES_WITHOUT_ROOMS_STEP = [
-  "parking",
-  "box",
-  "local_commercial",
-  "bureaux",
-  "entrepot",
-  "fonds_de_commerce",
-  "immeuble",             // SOTA 2026 - Les immeubles ont building_config au lieu de rooms
-  "terrain_agricole",     // Bail rural - pas de pièces intérieures
-  "exploitation_agricole" // Bail rural - configuration spécifique
-];
+// Source unique : @/lib/properties/constants (TYPES_WITHOUT_ROOMS)
+const TYPES_WITHOUT_ROOMS_STEP = TYPES_WITHOUT_ROOMS;
 
 // Titres des étapes selon le type de bien
 function getStepTitle(step: WizardStep, propertyType: string): string {

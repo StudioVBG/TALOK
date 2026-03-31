@@ -1,27 +1,43 @@
 /**
  * Types partagés pour les composants de visualisation des propriétés
  * Architecture SOTA 2025 - Composition Pattern
+ *
+ * Les types de biens (PropertyType) et catégories sont importés depuis
+ * la source unique de vérité : @/lib/properties/constants
  */
 
 // ============================================
-// TYPES DE BASE
+// RE-EXPORT — Source unique de vérité
 // ============================================
 
-export type PropertyType =
-  | "appartement"
-  | "maison"
-  | "studio"
-  | "colocation"
-  | "saisonnier"
-  | "parking"
-  | "box"
-  | "local_commercial"
-  | "bureaux"
-  | "entrepot"
-  | "fonds_de_commerce"
-  | "immeuble"
-  | "terrain_agricole"
-  | "exploitation_agricole";
+export type { PropertyType } from "@/lib/properties/constants";
+export {
+  PROPERTY_TYPES,
+  HABITATION_TYPES,
+  PARKING_TYPES,
+  PRO_TYPES,
+  AGRICOLE_TYPES,
+  ENSEMBLE_TYPES,
+  PROPERTY_TYPE_LABELS as TYPE_LABELS,
+  PROPERTY_TYPE_LABELS,
+  PROPERTY_CATEGORIES,
+  PROPERTY_CATEGORY_LABELS,
+  isHabitationType,
+  isParkingType,
+  isProType,
+  isAgricoleType,
+  isEnsembleType,
+  getPropertyCategory,
+  TYPES_WITHOUT_ROOMS,
+  TYPES_WITH_DPE,
+  TYPES_WITH_HEATING,
+} from "@/lib/properties/constants";
+
+import type { PropertyType } from "@/lib/properties/constants";
+
+// ============================================
+// TYPES DE BASE (composants-spécifiques)
+// ============================================
 
 /**
  * Statut opérationnel de propriété (vue composants)
@@ -103,11 +119,11 @@ export interface PropertyData {
   adresse_complete: string;
   code_postal: string;
   ville: string;
-  
+
   // Coordonnées GPS
   latitude?: number;
   longitude?: number;
-  
+
   // Caractéristiques communes
   surface?: number;
   nb_pieces?: number;
@@ -115,7 +131,7 @@ export interface PropertyData {
   nb_salles_de_bain?: number;
   etage?: number;
   ascenseur?: boolean;
-  
+
   // Habitation
   meuble?: boolean;
   dpe_classe_energie?: string;
@@ -125,13 +141,13 @@ export interface PropertyData {
   eau_chaude_type?: string;
   clim_presence?: string;
   clim_type?: string;
-  
+
   // Extérieurs
   has_balcon?: boolean;
   has_terrasse?: boolean;
   has_jardin?: boolean;
   has_cave?: boolean;
-  
+
   // Parking
   parking_type?: string;
   parking_numero?: string;
@@ -140,7 +156,7 @@ export interface PropertyData {
   parking_portail_securise?: boolean;
   parking_video_surveillance?: boolean;
   parking_gardien?: boolean;
-  
+
   // Local pro
   local_type?: string;
   local_surface_totale?: number;
@@ -152,15 +168,15 @@ export interface PropertyData {
   local_rideau_metal?: boolean;
   local_acces_camion?: boolean;
   local_parking_clients?: boolean;
-  
+
   // Financier
   loyer_hc?: number;
   charges_mensuelles?: number;
   depot_garantie?: number;
-  
+
   // Média
   visite_virtuelle_url?: string;
-  
+
   // Metadata
   created_at: string;
   updated_at?: string;
@@ -241,10 +257,10 @@ export interface PropertyDetailsViewProps {
   lease?: PropertyLease | null;
   owner?: PropertyOwner | null;
   meters?: PropertyMeter[];
-  
+
   // Configuration du viewer
   viewerRole: ViewerRole;
-  
+
   // Visibilité des sections
   showPhotos?: boolean;
   showMap?: boolean;
@@ -254,17 +270,17 @@ export interface PropertyDetailsViewProps {
   showMeters?: boolean;
   showOwnerInfo?: boolean;
   showVirtualTour?: boolean;
-  
+
   // Permissions
   canEdit?: boolean;
   canDelete?: boolean;
   canCreateLease?: boolean;
-  
+
   // Slots pour actions personnalisées
   headerActions?: React.ReactNode;
   footerActions?: React.ReactNode;
   sidebarSlot?: React.ReactNode;
-  
+
   // URLs personnalisées
   backHref?: string;
   backLabel?: string;
@@ -272,52 +288,17 @@ export interface PropertyDetailsViewProps {
   ownerProfileHref?: string;
   createLeaseHref?: string;
   viewLeaseHref?: (leaseId: string) => string;
-  
+
   // Callbacks
   onEdit?: () => void;
   onDelete?: () => void;
-  
+
   className?: string;
 }
 
 // ============================================
-// HELPERS DE TYPE
+// STATUS CONFIG (composants-spécifique)
 // ============================================
-
-export const HABITATION_TYPES: PropertyType[] = [
-  "appartement", 
-  "maison", 
-  "studio", 
-  "colocation", 
-  "saisonnier"
-];
-
-export const PARKING_TYPES: PropertyType[] = ["parking", "box"];
-
-export const PRO_TYPES: PropertyType[] = [
-  "local_commercial",
-  "bureaux",
-  "entrepot",
-  "fonds_de_commerce",
-  "immeuble"
-];
-
-export const AGRICOLE_TYPES: PropertyType[] = [
-  "terrain_agricole",
-  "exploitation_agricole"
-];
-
-export function isHabitationType(type: PropertyType): boolean {
-  return HABITATION_TYPES.includes(type);
-}
-
-export function isParkingType(type: PropertyType): boolean {
-  return PARKING_TYPES.includes(type);
-}
-
-export function isProType(type: PropertyType): boolean {
-  return PRO_TYPES.includes(type);
-}
 
 export const STATUS_CONFIG: Record<PropertyDisplayStatus, { label: string; color: string }> = {
   vacant: { label: "Vacant", color: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400" },
@@ -325,25 +306,3 @@ export const STATUS_CONFIG: Record<PropertyDisplayStatus, { label: string; color
   en_travaux: { label: "En travaux", color: "bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-400" },
   signature_en_cours: { label: "Signature en cours", color: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400" },
 };
-
-export function isAgricoleType(type: PropertyType): boolean {
-  return AGRICOLE_TYPES.includes(type);
-}
-
-export const TYPE_LABELS: Record<PropertyType, string> = {
-  appartement: "Appartement",
-  maison: "Maison",
-  studio: "Studio",
-  colocation: "Colocation",
-  saisonnier: "Saisonnier",
-  parking: "Parking",
-  box: "Box",
-  local_commercial: "Local commercial",
-  bureaux: "Bureaux",
-  entrepot: "Entrepôt",
-  immeuble: "Immeuble",
-  terrain_agricole: "Terrain agricole",
-  exploitation_agricole: "Exploitation agricole",
-  fonds_de_commerce: "Fonds de commerce",
-};
-
