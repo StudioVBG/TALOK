@@ -177,7 +177,7 @@ export async function GET(
 
     // 8. Retourner le PDF
     const filename = `quittance_${inv.periode || "loyer"}.pdf`;
-    return new NextResponse(pdfBytes, {
+    return new NextResponse(Buffer.from(pdfBytes), {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
