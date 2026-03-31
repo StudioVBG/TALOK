@@ -40,14 +40,44 @@ export function PDFPreviewModal({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
 
+  // Fetch le document en blob pour bypass les restrictions CSP frame-src
   useEffect(() => {
-    if (isOpen) {
-      setIsLoading(true);
-      setError(null);
-      setZoom(100);
-      setRotation(0);
+    if (!isOpen || !documentUrl) {
+      setBlobUrl(null);
+      return;
     }
+
+    let revoked = false;
+    let currentBlobUrl: string | null = null;
+
+    setIsLoading(true);
+    setError(null);
+    setZoom(100);
+    setRotation(0);
+
+    fetch(documentUrl)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.blob();
+      })
+      .then((blob) => {
+        if (revoked) return;
+        currentBlobUrl = URL.createObjectURL(blob);
+        setBlobUrl(currentBlobUrl);
+      })
+      .catch(() => {
+        if (!revoked) {
+          setError("Impossible de charger le document");
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      revoked = true;
+      if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+    };
   }, [isOpen, documentUrl]);
 
   const handleZoomIn = () => setZoom((prev) => Math.min(prev + 25, 200));
@@ -220,19 +250,21 @@ export function PDFPreviewModal({
               }}
             >
               {isPDF ? (
-                <iframe
-                  src={`${documentUrl}#toolbar=0&navpanes=0`}
-                  className="w-full h-full min-h-[50vh] sm:min-h-[60vh] bg-white shadow-lg rounded-lg"
-                  onLoad={() => setIsLoading(false)}
-                  onError={() => {
-                    setIsLoading(false);
-                    setError("Le PDF n'a pas pu être chargé");
-                  }}
-                  title={documentTitle}
-                />
+                blobUrl ? (
+                  <iframe
+                    src={`${blobUrl}#toolbar=0&navpanes=0`}
+                    className="w-full h-full min-h-[50vh] sm:min-h-[60vh] bg-white shadow-lg rounded-lg"
+                    onLoad={() => setIsLoading(false)}
+                    onError={() => {
+                      setIsLoading(false);
+                      setError("Le PDF n'a pas pu être chargé");
+                    }}
+                    title={documentTitle}
+                  />
+                ) : null
               ) : isImage ? (
                 <img
-                  src={documentUrl}
+                  src={blobUrl ?? documentUrl}
                   alt={documentTitle}
                   className="max-w-full max-h-full object-contain shadow-lg rounded-lg"
                   onLoad={() => setIsLoading(false)}
