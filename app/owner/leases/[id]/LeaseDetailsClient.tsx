@@ -154,7 +154,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; description?
   },
   cancelled: {
     label: "Annulé",
-    color: "bg-red-100 text-red-600 border-red-300",
+    color: "bg-gray-100 text-gray-700 border-gray-300",
     description: "Le bail a été annulé",
   },
 };
@@ -188,6 +188,10 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
   const [showRenewalWizard, setShowRenewalWizard] = useState(false);
   const [showTerminateDialog, setShowTerminateDialog] = useState(false);
   const [isTerminating, setIsTerminating] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelType, setCancelType] = useState<string>("owner_withdrawal");
+  const [cancelReason, setCancelReason] = useState("");
   const [isActivating, setIsActivating] = useState(false);
   const [isResendingTenant, setIsResendingTenant] = useState(false);
   
@@ -399,15 +403,52 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
     }
   };
 
+  // Annuler le bail
+  const handleCancel = async () => {
+    setIsCancelling(true);
+    try {
+      const response = await fetch(`/api/leases/${leaseId}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: cancelType,
+          reason: cancelReason || undefined,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "Erreur lors de l'annulation");
+      }
+      toast({
+        title: "Bail annulé",
+        description: "Le bail a été annulé avec succès.",
+      });
+      router.refresh();
+    } catch (error: unknown) {
+      console.error("Erreur annulation:", error);
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Impossible d'annuler le bail",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCancelling(false);
+      setShowCancelDialog(false);
+      setCancelReason("");
+    }
+  };
+
   // Callback après renouvellement
   const handleRenewalSuccess = (newLeaseId: string) => {
     router.push(`/owner/leases/${newLeaseId}`);
     router.refresh();
   };
 
-  // Peut-on renouveler ou résilier ?
+  // Peut-on renouveler, résilier ou annuler ?
   const canRenew = lease.statut === "active";
   const canTerminate = lease.statut === "active";
+  const canCancel = ["draft", "sent", "pending_signature", "partially_signed", "pending_owner_signature", "fully_signed"].includes(lease.statut)
+    || (lease.statut === "active" && (!payments || payments.filter((p: any) => p.statut === "succeeded" || p.statut === "paid").length === 0));
 
   // ===== TÉLÉCHARGEMENT PDF SCELLÉ =====
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
@@ -987,6 +1028,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
             premierVersement={premierVersement}
             canRenew={canRenew}
             canTerminate={canTerminate}
+            canCancel={canCancel}
             isActivating={isActivating}
             isResendingTenant={isResendingTenant}
             onActivate={handleActivate}
@@ -996,6 +1038,14 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
             onShowTerminateDialog={setShowTerminateDialog}
             isTerminating={isTerminating}
             onTerminate={handleTerminate}
+            showCancelDialog={showCancelDialog}
+            onShowCancelDialog={setShowCancelDialog}
+            isCancelling={isCancelling}
+            onCancel={handleCancel}
+            cancelType={cancelType}
+            onCancelTypeChange={setCancelType}
+            cancelReason={cancelReason}
+            onCancelReasonChange={setCancelReason}
             showDeleteDialog={showDeleteDialog}
             onShowDeleteDialog={setShowDeleteDialog}
             isDeleting={isDeleting}

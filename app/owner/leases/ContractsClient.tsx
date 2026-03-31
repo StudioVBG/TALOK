@@ -183,6 +183,8 @@ export function ContractsClient() {
       filteredLeases = filteredLeases.filter((l: any) => l.statut === "notice_given");
     } else if (statusFilter === "terminated") {
       filteredLeases = filteredLeases.filter((l: any) => l.statut === "terminated");
+    } else if (statusFilter === "cancelled") {
+      filteredLeases = filteredLeases.filter((l: any) => l.statut === "cancelled");
     }
   }
 
@@ -690,6 +692,7 @@ export function ContractsClient() {
                     <SelectItem value="pending_signature">En signature</SelectItem>
                     <SelectItem value="draft">Brouillons</SelectItem>
                     <SelectItem value="terminated">Terminés</SelectItem>
+                    <SelectItem value="cancelled">Annulés</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
