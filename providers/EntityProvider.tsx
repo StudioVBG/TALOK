@@ -41,8 +41,8 @@ export function EntityProvider({ children }: EntityProviderProps) {
         }
 
         // Auto-sélectionner la première entité si aucune n'est active
-        const { entities: freshEntities, activeEntityId } = useEntityStore.getState();
-        if (!activeEntityId && freshEntities.length > 0) {
+        const { entities: freshEntities, activeEntityId: initialActiveEntityId } = useEntityStore.getState();
+        if (!initialActiveEntityId && freshEntities.length > 0) {
           useEntityStore.getState().setActiveEntity(freshEntities[0].id);
         }
 
