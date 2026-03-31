@@ -3,13 +3,14 @@
  *
  * Génère un PDF conforme avec pdf-lib, l'uploade dans Supabase Storage
  * et crée l'entrée dans la table documents.
+ *
+ * Idempotent : ne génère pas si un document bail/is_generated existe déjà.
  */
 
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from "pdf-lib";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { TYPE_TO_LABEL } from "@/lib/documents/constants";
 
 // ============================================
 // TYPES
@@ -128,11 +129,32 @@ function safeDateFormat(value: string | null | undefined, pattern = "d MMMM yyyy
 /**
  * Génère un PDF de contrat de bail signé et l'uploade dans Supabase Storage.
  * Crée l'entrée document correspondante.
+ *
+ * Idempotent : si un document bail/is_generated existe déjà pour ce lease, skip.
  */
 export async function generateSignedLeasePDF(
   leaseId: string
-): Promise<GeneratedDocument> {
+): Promise<GeneratedDocument | null> {
   const serviceClient = getServiceClient();
+
+  // ── Idempotence : vérifier qu'un PDF signé n'existe pas déjà ──
+  const { data: existing } = await serviceClient
+    .from("documents")
+    .select("id, storage_path, type")
+    .eq("lease_id", leaseId)
+    .eq("type", "bail" as any)
+    .eq("is_generated", true)
+    .maybeSingle();
+
+  if (existing) {
+    console.log("[lease-pdf-generator] PDF déjà généré pour le bail:", leaseId);
+    return {
+      id: (existing as any).id,
+      storage_path: (existing as any).storage_path,
+      type: (existing as any).type,
+      title: "Contrat de bail signé",
+    };
+  }
 
   // 1. Récupérer les données complètes
   const { data: lease, error: leaseError } = await serviceClient
@@ -216,6 +238,7 @@ export async function generateSignedLeasePDF(
       lease_id: leaseId,
       property_id: property.id,
       owner_id: property.owner_id,
+      tenant_id: tenantProfile.id || null,
       storage_path: storagePath,
       title,
       original_filename: `contrat_signe_${leaseId.substring(0, 8)}.pdf`,
@@ -229,12 +252,46 @@ export async function generateSignedLeasePDF(
         sealed_at: leaseData.sealed_at,
         generator: "lease-pdf-generator",
       },
-    })
+    } as any)
     .select("id")
     .single();
 
   if (docError) {
     throw new Error(`Erreur création document : ${docError.message}`);
+  }
+
+  // 5. Marquer le bail comme ayant un PDF généré
+  await serviceClient
+    .from("leases")
+    .update({ signed_pdf_generated: true } as any)
+    .eq("id", leaseId);
+
+  console.log("[lease-pdf-generator] PDF signé généré:", { leaseId, docId: doc.id, storagePath });
+
+  // 6. Envoyer email au locataire (non bloquant)
+  try {
+    if (tenantProfile.email) {
+      const { sendEmail } = await import("@/lib/emails/resend.service");
+      await sendEmail({
+        to: tenantProfile.email,
+        subject: "Votre contrat de bail signé est disponible",
+        html: `
+          <p>Bonjour ${tenantProfile.prenom || ""} ${tenantProfile.nom || ""},</p>
+          <p>Votre contrat de bail a été signé par toutes les parties.</p>
+          <p>Le document PDF signé est désormais disponible dans votre espace documents.</p>
+          <p>
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr"}/tenant/documents"
+               style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;">
+              Consulter mes documents
+            </a>
+          </p>
+          <p>Cordialement,<br/>L'équipe Talok</p>
+        `,
+      });
+      console.log("[lease-pdf-generator] Email envoyé au locataire:", tenantProfile.email);
+    }
+  } catch (emailErr) {
+    console.warn("[lease-pdf-generator] Erreur envoi email (non bloquant):", String(emailErr));
   }
 
   return {
@@ -341,7 +398,6 @@ async function buildLeasePDF(
   }
 
   // ======== EN-TÊTE ========
-  // Logo text
   page.drawText("TALOK", {
     x: margin,
     y,
@@ -382,7 +438,6 @@ async function buildLeasePDF(
   // ======== PARTIES ========
   drawSection("PARTIES AU CONTRAT");
 
-  // Bailleur
   y -= 5;
   page.drawText("LE BAILLEUR", {
     x: margin,
@@ -530,7 +585,6 @@ async function buildLeasePDF(
   const signedSigners = signers.filter((s) => s.signature_status === "signed");
   if (signedSigners.length > 0) {
     ensureSpace(60);
-    // Fond gris
     page.drawRectangle({
       x: margin,
       y: y - 50,

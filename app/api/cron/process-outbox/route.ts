@@ -85,16 +85,26 @@ async function processEvent(event: any): Promise<void> {
     case "Lease.SealRetry": {
       const { handleLeaseFullySigned } = await import("@/lib/services/lease-post-signature.service");
       await handleLeaseFullySigned(payload.lease_id);
+      console.log(`[Outbox] Lease.SealRetry completed for ${payload.lease_id}`);
       break;
     }
 
     case "Lease.FullySigned": {
-      // Notifications already handled inline in signing routes
+      // Générer le PDF signé du bail (non-bloquant — fire-and-forget)
+      const fullySignedLeaseId = payload.lease_id;
+      if (fullySignedLeaseId) {
+        const { generateSignedLeasePDF } = await import("@/lib/documents/lease-pdf-generator");
+        generateSignedLeasePDF(fullySignedLeaseId).catch((err) =>
+          console.error("[cron/process-outbox] generateSignedLeasePDF failed:", err)
+        );
+      }
+      console.log(`[Outbox] Lease.FullySigned for ${payload.lease_id} — PDF generation triggered`);
       break;
     }
 
     case "Lease.TenantSigned":
     case "Lease.OwnerSigned": {
+      console.log(`[Outbox] ${event_type} for lease ${payload.lease_id}`);
       break;
     }
 
