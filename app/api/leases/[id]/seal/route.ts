@@ -186,7 +186,9 @@ export async function POST(
       owner_id: propertyOwnerId,
       storage_path: storagePath,
       title: "Bail de location signé",
+      original_filename: fileName,
       visible_tenant: true,
+      is_generated: true,
       metadata: {
         final: true,
         sealed_at: new Date().toISOString(),

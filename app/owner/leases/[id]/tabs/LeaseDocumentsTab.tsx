@@ -836,9 +836,22 @@ function MissingDocumentRow({
 // HELPERS
 // ============================================
 
+/** Labels humains pour les types de documents non couverts par LEASE_DOCUMENT_TYPE_MAP */
+const FALLBACK_TYPE_LABELS: Record<string, string> = {
+  cni_recto: "Pièce d'identité (recto)",
+  cni_verso: "Pièce d'identité (verso)",
+  piece_identite: "Pièce d'identité",
+  justificatif_revenus: "Justificatif de revenus",
+  justificatif_domicile: "Justificatif de domicile",
+  attestation_assurance: "Attestation d'assurance habitation",
+};
+
 function getDocLabel(doc: DocumentItem): string {
-  if (doc.title) return doc.title;
+  // Si le titre est un type technique connu, utiliser le label humain à la place
+  if (doc.title && !FALLBACK_TYPE_LABELS[doc.title] && !LEASE_DOCUMENT_TYPE_MAP[doc.title]) {
+    return doc.title;
+  }
   const config = LEASE_DOCUMENT_TYPE_MAP[doc.type];
   if (config) return config.label;
-  return doc.name || doc.type;
+  return FALLBACK_TYPE_LABELS[doc.type] || doc.title || doc.name || doc.type;
 }
