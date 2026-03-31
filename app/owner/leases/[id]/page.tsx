@@ -1,6 +1,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { fetchLeaseDetails } from "../../_data/fetchLeaseDetails";
@@ -8,6 +9,22 @@ import { LeaseDetailsClient } from "./LeaseDetailsClient";
 
 interface PageProps {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from("leases")
+    .select("property:properties(ville)")
+    .eq("id", id)
+    .maybeSingle();
+
+  const ville = (data?.property as { ville?: string } | null)?.ville;
+  const title = ville ? `Bail ${ville} | Talok` : "Bail | Talok";
+
+  return { title };
 }
 
 export default async function OwnerContractDetailPage({ params }: PageProps) {

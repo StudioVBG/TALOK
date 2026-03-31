@@ -117,42 +117,6 @@ export function LeaseDetailsSidebar({
     <div className="lg:col-span-4 xl:col-span-3 order-1 lg:order-2 space-y-6">
       <Card className="border-none shadow-sm bg-card overflow-hidden">
         <CardHeader className="pb-2 border-b border-slate-50">
-          <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-            Lecture métier unifiée
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 space-y-3">
-          <div className="rounded-2xl border border-border bg-muted p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Étape actuelle
-            </p>
-            <p className="mt-2 text-base font-semibold text-foreground">
-              {readinessState.hero.title}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {readinessState.hero.description}
-            </p>
-          </div>
-
-          {readinessState.blockingReasons.length > 0 && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-amber-700">
-                Blocages restants
-              </p>
-              <div className="mt-2 space-y-1.5">
-                {readinessState.blockingReasons.map((reason) => (
-                  <p key={reason} className="text-xs text-amber-800">
-                    {reason}
-                  </p>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-none shadow-sm bg-card overflow-hidden">
-        <CardHeader className="pb-2 border-b border-slate-50">
           <CardTitle className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
             <ShieldCheck className="h-3 w-3 text-emerald-500" />
             Checklist d&apos;activation
