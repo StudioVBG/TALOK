@@ -3,12 +3,14 @@ import { generateReceiptPDF, type ReceiptData } from "@/lib/services/receipt-gen
 import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
 import { getInvoiceSettlement } from "@/lib/services/invoice-status.service";
 import { resolveReceiptTotalAmount } from "@/lib/services/receipt-amount";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 
 type SupabaseLike = {
   from: (table: string) => {
     select: (...args: unknown[]) => any;
     insert: (values: Record<string, unknown>) => any;
-    update?: (values: Record<string, unknown>) => any;
+    update: (values: Record<string, unknown>) => any;
   };
   storage: {
     from: (bucket: string) => {
@@ -21,6 +23,17 @@ type SupabaseLike = {
 function normalizeDate(value?: string | null): string {
   if (!value) return new Date().toISOString().split("T")[0];
   return value.includes("T") ? value.split("T")[0] : value;
+}
+
+function formatReceiptTitle(periode: string): string {
+  try {
+    const [year, month] = periode.split("-");
+    const date = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const mois = format(date, "MMMM", { locale: fr });
+    return `Quittance de loyer \u2014 ${mois} ${year}`;
+  } catch {
+    return `Quittance de loyer \u2014 ${periode}`;
+  }
 }
 
 async function findDocumentByMetadata(
@@ -157,18 +170,21 @@ export async function ensureReceiptDocument(
     throw new Error(uploadError.message || "Erreur lors du stockage de la quittance");
   }
 
+  const receiptTitle = formatReceiptTitle(paymentData.invoice.periode);
+
   const { data: insertedDoc } = await supabase
     .from("documents")
     .insert({
       type: "quittance",
-      name: `Quittance - ${paymentData.invoice.periode}`,
-      title: `Quittance de loyer - ${paymentData.invoice.periode}`,
+      name: receiptTitle,
+      title: receiptTitle,
       storage_path: storagePath,
       lease_id: paymentData.invoice.lease_id,
       tenant_id: paymentData.invoice.tenant_id,
       owner_id: paymentData.invoice.owner_id,
       property_id: paymentData.invoice.lease.property.id,
       visible_tenant: true,
+      is_generated: true,
       is_archived: false,
       status: "valid",
       metadata: {
@@ -181,6 +197,12 @@ export async function ensureReceiptDocument(
     })
     .select("id")
     .single();
+
+  // Mark invoice as receipt generated
+  await supabase
+    .from("invoices")
+    .update({ receipt_generated: true })
+    .eq("id", paymentData.invoice.id);
 
   return {
     created: true,
