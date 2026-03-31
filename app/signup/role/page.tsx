@@ -17,6 +17,7 @@ import {
   Bot,
   Building2,
 } from "lucide-react";
+import { track } from "@/lib/analytics/posthog";
 import { TalokLogo } from "@/components/marketing/TalokLogo";
 
 export default function RoleChoicePage() {
@@ -47,6 +48,7 @@ export default function RoleChoicePage() {
     options?: { propertyCode?: string }
   ) => {
     setLoading(true);
+    track("signup_role_selected", { role });
     try {
       if (typeof window !== "undefined") {
         const draft = {
