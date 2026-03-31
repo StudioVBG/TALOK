@@ -51,7 +51,7 @@ export async function GET() {
       .select("lease_id")
       .eq("profile_id", profile.id)
       .eq("signature_status", "pending")
-      .eq("role", "locataire_principal");
+      .in("role", ["locataire_principal", "colocataire", "garant"]);
 
     if (signersError || !pendingSigners || pendingSigners.length === 0) {
       return NextResponse.json({ signatureLinks: [] });

@@ -160,7 +160,7 @@ export function DocumentUploadDialog({
         <div className="space-y-4">
           {/* Type selector */}
           <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1.5 block">
+            <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
               Type de document
             </label>
             <div className="grid grid-cols-2 gap-1.5">
@@ -171,7 +171,7 @@ export function DocumentUploadDialog({
                   className={`text-left px-3 py-2 rounded-lg border text-xs transition-colors ${
                     selectedType === config.type
                       ? "border-blue-300 bg-blue-50 text-blue-700 font-semibold"
-                      : "border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                      : "border-border text-muted-foreground hover:border-border hover:bg-muted"
                   }`}
                 >
                   {config.label}
@@ -185,7 +185,7 @@ export function DocumentUploadDialog({
 
           {/* Dropzone */}
           <div>
-            <label className="text-xs font-semibold text-slate-600 mb-1.5 block">
+            <label className="text-xs font-semibold text-muted-foreground mb-1.5 block">
               Fichier
             </label>
             {!file ? (
@@ -200,17 +200,17 @@ export function DocumentUploadDialog({
                 className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
                   dragOver
                     ? "border-blue-400 bg-blue-50"
-                    : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                    : "border-border hover:border-border hover:bg-muted"
                 }`}
               >
-                <Upload className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">
+                <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">
                   Glissez un fichier ici ou{" "}
                   <span className="text-blue-600 font-medium">
                     cliquez pour parcourir
                   </span>
                 </p>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   PDF, JPG, PNG · 10 Mo max
                 </p>
                 <input
@@ -228,16 +228,16 @@ export function DocumentUploadDialog({
               <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
                 <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-700 truncate">
+                  <p className="text-sm font-medium text-foreground truncate">
                     {file.name}
                   </p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted-foreground">
                     {(file.size / 1024 / 1024).toFixed(1)} Mo
                   </p>
                 </div>
                 <button
                   onClick={() => setFile(null)}
-                  className="text-slate-400 hover:text-slate-600"
+                  className="text-muted-foreground hover:text-muted-foreground"
                 >
                   <X className="h-4 w-4" />
                 </button>

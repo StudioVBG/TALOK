@@ -34,7 +34,7 @@ function FinanceChart({ chartData }: FinanceChartProps) {
   return (
     <ResponsiveContainer width="100%" height={256} minHeight={256}>
       <LineChart data={chartData}>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-slate-200" />
+        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
         <XAxis
           dataKey="period"
           className="text-xs"
