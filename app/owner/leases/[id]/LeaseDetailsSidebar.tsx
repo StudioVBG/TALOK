@@ -19,6 +19,7 @@ import {
   CalendarClock,
   Trash2,
   MoreHorizontal,
+  XCircle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -62,6 +63,7 @@ interface LeaseDetailsSidebarProps {
   premierVersement: number;
   canRenew: boolean;
   canTerminate: boolean;
+  canCancel: boolean;
   isActivating: boolean;
   isResendingTenant: boolean;
   onActivate: (force: boolean) => void;
@@ -71,6 +73,14 @@ interface LeaseDetailsSidebarProps {
   onShowTerminateDialog: (show: boolean) => void;
   isTerminating: boolean;
   onTerminate: () => void;
+  showCancelDialog: boolean;
+  onShowCancelDialog: (show: boolean) => void;
+  isCancelling: boolean;
+  onCancel: () => void;
+  cancelType: string;
+  onCancelTypeChange: (type: string) => void;
+  cancelReason: string;
+  onCancelReasonChange: (reason: string) => void;
   showDeleteDialog: boolean;
   onShowDeleteDialog: (show: boolean) => void;
   isDeleting: boolean;
@@ -96,6 +106,7 @@ export function LeaseDetailsSidebar({
   premierVersement,
   canRenew,
   canTerminate,
+  canCancel,
   isActivating,
   isResendingTenant,
   onActivate,
@@ -105,6 +116,14 @@ export function LeaseDetailsSidebar({
   onShowTerminateDialog,
   isTerminating,
   onTerminate,
+  showCancelDialog,
+  onShowCancelDialog,
+  isCancelling,
+  onCancel,
+  cancelType,
+  onCancelTypeChange,
+  cancelReason,
+  onCancelReasonChange,
   showDeleteDialog,
   onShowDeleteDialog,
   isDeleting,
@@ -338,7 +357,13 @@ export function LeaseDetailsSidebar({
               Résilier le bail
             </DropdownMenuItem>
           )}
-          {(canRenew || canTerminate) && <DropdownMenuSeparator />}
+          {canCancel && (
+            <DropdownMenuItem onClick={() => onShowCancelDialog(true)} className="text-gray-600 focus:text-gray-700">
+              <XCircle className="h-4 w-4 mr-2" />
+              Annuler ce bail
+            </DropdownMenuItem>
+          )}
+          {(canRenew || canTerminate || canCancel) && <DropdownMenuSeparator />}
           <DropdownMenuItem onClick={() => onShowDeleteDialog(true)} className="text-red-500 focus:text-red-700 focus:bg-red-50">
             <Trash2 className="h-4 w-4 mr-2" />
             Supprimer ce bail
@@ -373,6 +398,74 @@ export function LeaseDetailsSidebar({
                 </>
               ) : (
                 "Confirmer la résiliation"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Dialog annulation de bail */}
+      <AlertDialog open={showCancelDialog} onOpenChange={onShowCancelDialog}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-gray-700 flex items-center gap-2">
+              <XCircle className="h-5 w-5" />
+              Annuler ce bail ?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p>
+                  Cette action annulera le bail. Les documents associés seront archivés
+                  et les factures en attente seront annulées. Le locataire sera notifié.
+                </p>
+                <div className="space-y-2">
+                  <label htmlFor="cancel-type" className="text-xs font-medium text-gray-700">
+                    Motif d&apos;annulation
+                  </label>
+                  <select
+                    id="cancel-type"
+                    value={cancelType}
+                    onChange={(e) => onCancelTypeChange(e.target.value)}
+                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="tenant_withdrawal">Rétractation du locataire</option>
+                    <option value="owner_withdrawal">Retrait du propriétaire</option>
+                    <option value="mutual_agreement">Accord mutuel</option>
+                    <option value="never_activated">Jamais activé</option>
+                    <option value="error">Erreur de saisie</option>
+                    <option value="duplicate">Bail en doublon</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="cancel-reason" className="text-xs font-medium text-gray-700">
+                    Commentaire (optionnel)
+                  </label>
+                  <textarea
+                    id="cancel-reason"
+                    value={cancelReason}
+                    onChange={(e) => onCancelReasonChange(e.target.value)}
+                    placeholder="Précisez le motif si nécessaire..."
+                    rows={2}
+                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm resize-none"
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isCancelling}>Retour</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={onCancel}
+              disabled={isCancelling}
+              className="bg-gray-600 hover:bg-gray-700"
+            >
+              {isCancelling ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Annulation...
+                </>
+              ) : (
+                "Confirmer l'annulation"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
