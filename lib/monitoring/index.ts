@@ -72,15 +72,15 @@ export const logger = {
 };
 
 /**
- * Capture une exception pour Sentry (stub - à remplacer par vraie intégration)
+ * Capture une exception pour Sentry
  */
 export function captureException(error: Error, options?: { extra?: Record<string, any> }) {
-  // Si Sentry est configuré, envoyer l'erreur
-  // Pour l'instant, on log juste
   if (SENTRY_DSN) {
-    // TODO: Intégrer @sentry/nextjs
-    // Sentry.captureException(error, { extra: options?.extra });
-    console.error("[Sentry] Would capture:", error.message, options?.extra);
+    import("@sentry/nextjs").then((Sentry) => {
+      Sentry.captureException(error, { extra: options?.extra });
+    }).catch(() => {
+      console.error("[Sentry] Failed to load, logging:", error.message, options?.extra);
+    });
   }
 }
 
@@ -89,9 +89,11 @@ export function captureException(error: Error, options?: { extra?: Record<string
  */
 export function captureMessage(message: string, level: "info" | "warning" | "error" = "info") {
   if (SENTRY_DSN) {
-    // TODO: Intégrer @sentry/nextjs
-    // Sentry.captureMessage(message, level);
-    console.log(`[Sentry] Would capture message (${level}):`, message);
+    import("@sentry/nextjs").then((Sentry) => {
+      Sentry.captureMessage(message, level);
+    }).catch(() => {
+      console.log(`[Sentry] Failed to load, logging message (${level}):`, message);
+    });
   }
 }
 

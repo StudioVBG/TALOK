@@ -29,25 +29,12 @@ import {
   Plus,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-
-/** Retourne un Date valide ou null pour éviter les RangeError sur les dates nulles/invalides */
-function safeDate(value: string | null | undefined): Date | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return isNaN(d.getTime()) ? null : d;
-}
-
-function safeDateFormat(value: string | null | undefined, fmt: string): string {
-  const d = safeDate(value);
-  return d ? format(d, fmt, { locale: fr }) : "—";
-}
+import { safeDate, safeDateFormat } from "@/lib/helpers/safe-date";
 import { ManualPaymentDialog } from "@/components/payments";
 
 const statusConfig = {
-  draft: { label: "Brouillon", color: "bg-slate-100 text-slate-700", icon: FileText },
+  draft: { label: "Brouillon", color: "bg-muted text-foreground", icon: FileText },
   sent: { label: "Envoyée", color: "bg-blue-100 text-blue-700", icon: Send },
   paid: { label: "Payée", color: "bg-green-100 text-green-700", icon: CheckCircle2 },
   late: { label: "En retard", color: "bg-red-100 text-red-700", icon: AlertCircle },
@@ -198,7 +185,7 @@ export default function InvoiceDetailPage() {
   if (!invoice) {
     return (
       <div className="p-6">
-        <Card className="bg-white/80 backdrop-blur-sm">
+        <Card className="bg-card/80 backdrop-blur-sm">
           <CardContent className="py-16 text-center">
             <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Facture introuvable</h3>
@@ -286,7 +273,7 @@ export default function InvoiceDetailPage() {
           {/* Main content */}
           <div className="md:col-span-2 space-y-6">
             {/* Montants */}
-            <Card className="bg-white/80 backdrop-blur-sm">
+            <Card className="bg-card/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Euro className="h-5 w-5 text-blue-500" />
@@ -326,7 +313,7 @@ export default function InvoiceDetailPage() {
             </Card>
 
             {/* Paiements */}
-            <Card className="bg-white/80 backdrop-blur-sm">
+            <Card className="bg-card/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-blue-500" />
@@ -339,7 +326,7 @@ export default function InvoiceDetailPage() {
                     {invoice.payments.map((payment) => (
                       <div
                         key={payment.id}
-                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
+                        className="flex items-center justify-between p-3 bg-muted rounded-lg"
                       >
                         <div>
                           <p className="font-medium">{payment.montant.toLocaleString("fr-FR")} €</p>
@@ -364,7 +351,7 @@ export default function InvoiceDetailPage() {
                             {payment.statut === "failed" && "Échoué"}
                           </Badge>
                           <p className="text-xs text-muted-foreground mt-1">
-                            {safeDateFormat(payment.date_paiement, "dd/MM/yyyy")}
+                            {safeDateFormat(payment.date_paiement)}
                           </p>
                         </div>
                       </div>
@@ -382,7 +369,7 @@ export default function InvoiceDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Dates */}
-            <Card className="bg-white/80 backdrop-blur-sm">
+            <Card className="bg-card/80 backdrop-blur-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-blue-500" />
@@ -392,21 +379,21 @@ export default function InvoiceDetailPage() {
               <CardContent className="space-y-3 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Émission</span>
-                  <span>{safeDateFormat(invoice.date_emission, "dd/MM/yyyy")}</span>
+                  <span>{safeDateFormat(invoice.date_emission)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Échéance</span>
                   <span className={cn(
-                    safeDate(invoice.date_echeance) !== null && safeDate(invoice.date_echeance)! < new Date() && !isPaid && "text-red-600 font-medium"
+                    safeDate(invoice.date_echeance) && safeDate(invoice.date_echeance)! < new Date() && !isPaid && "text-red-600 font-medium"
                   )}>
-                    {safeDateFormat(invoice.date_echeance, "dd/MM/yyyy")}
+                    {safeDateFormat(invoice.date_echeance)}
                   </span>
                 </div>
                 {invoice.date_paiement && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Paiement</span>
                     <span className="text-green-600">
-                      {safeDateFormat(invoice.date_paiement, "dd/MM/yyyy")}
+                      {safeDateFormat(invoice.date_paiement)}
                     </span>
                   </div>
                 )}
@@ -415,7 +402,7 @@ export default function InvoiceDetailPage() {
 
             {/* Property */}
             {invoice.property && (
-              <Card className="bg-white/80 backdrop-blur-sm">
+              <Card className="bg-card/80 backdrop-blur-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <Building2 className="h-4 w-4 text-blue-500" />
@@ -435,7 +422,7 @@ export default function InvoiceDetailPage() {
 
             {/* Tenant */}
             {invoice.tenant && (
-              <Card className="bg-white/80 backdrop-blur-sm">
+              <Card className="bg-card/80 backdrop-blur-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <User className="h-4 w-4 text-blue-500" />

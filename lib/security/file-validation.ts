@@ -6,42 +6,13 @@
  * @security CRITICAL - Prévention upload malveillant (XSS stored, exécutables)
  */
 
-/**
- * Types MIME autorisés par catégorie
- */
-export const ALLOWED_MIME_TYPES = {
-  /** Documents */
-  documents: [
-    "application/pdf",
-    "application/msword",
-    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    "application/vnd.oasis.opendocument.text",
-    "text/plain",
-  ],
-  /** Images */
-  images: [
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "image/heic",
-    "image/heif",
-  ],
-  /** Tableurs */
-  spreadsheets: [
-    "application/vnd.ms-excel",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "text/csv",
-  ],
-} as const;
+import {
+  ALLOWED_MIME_TYPES,
+  ALL_ALLOWED_MIME_TYPES,
+} from "@/lib/documents/constants";
 
-/**
- * Tous les types MIME autorisés (union de toutes les catégories)
- */
-export const ALL_ALLOWED_MIME_TYPES: readonly string[] = [
-  ...ALLOWED_MIME_TYPES.documents,
-  ...ALLOWED_MIME_TYPES.images,
-  ...ALLOWED_MIME_TYPES.spreadsheets,
-];
+// Re-export pour compatibilite avec les imports existants
+export { ALLOWED_MIME_TYPES, ALL_ALLOWED_MIME_TYPES };
 
 /**
  * Extensions de fichiers autorisées (mapping depuis les MIME types)
@@ -78,9 +49,9 @@ const BLOCKED_EXTENSIONS = new Set([
 ]);
 
 /**
- * Taille maximale par défaut (10 MB)
+ * Taille maximale par défaut (50 MB — aligne avec bucket Supabase)
  */
-export const DEFAULT_MAX_FILE_SIZE = 10 * 1024 * 1024;
+export const DEFAULT_MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 /**
  * Tailles maximales par contexte

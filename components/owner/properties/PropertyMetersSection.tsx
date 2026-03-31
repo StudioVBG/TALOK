@@ -350,7 +350,7 @@ export function PropertyMetersSection({ propertyId, className }: PropertyMetersS
                   key={meter.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center justify-between p-4 rounded-lg border bg-white dark:bg-slate-800"
+                  className="flex items-center justify-between p-4 rounded-lg border bg-card"
                 >
                   <div className="flex items-center gap-4">
                     <div className={cn("p-3 rounded-xl", config.bgColor)}>

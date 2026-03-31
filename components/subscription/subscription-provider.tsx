@@ -7,6 +7,8 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { PROFILE_QUERY_KEY } from "@/lib/hooks/use-profile-query";
 import {
   PLANS,
   type PlanSlug,
@@ -78,6 +80,7 @@ export function SubscriptionProvider({
   const [error, setError] = useState<string | null>(null);
 
   const supabase = createClient();
+  const queryClient = useQueryClient();
 
   // SOTA 2026: Ref pour compter les retries (ne déclenche pas de re-render)
   const retryCountRef = React.useRef(0);
@@ -120,17 +123,25 @@ export function SubscriptionProvider({
         .maybeSingle();
 
       if (profileError) {
-        // Si erreur de récursion RLS, utiliser la route API en fallback
+        // Si erreur de récursion RLS, utiliser le cache React Query ou la route API en fallback
         if (profileError.code === '42P17' || profileError.message?.includes('infinite recursion')) {
-          console.warn("[SubscriptionProvider] RLS recursion detected, using API fallback");
-          try {
-            const response = await fetch("/api/me/profile", { credentials: "include" });
-            if (response.ok) {
-              const apiProfile = await response.json();
-              profile = { id: apiProfile.id };
+          console.warn("[SubscriptionProvider] RLS recursion detected, using cache/API fallback");
+          // Essayer d'abord le cache React Query (évite un appel réseau)
+          const cached = queryClient.getQueryData<{ id: string }>(PROFILE_QUERY_KEY);
+          if (cached?.id) {
+            profile = { id: cached.id };
+          } else {
+            try {
+              const response = await fetch("/api/me/profile", { credentials: "include" });
+              if (response.ok) {
+                const apiProfile = await response.json();
+                profile = { id: apiProfile.id };
+                // Peupler le cache pour les autres consommateurs
+                queryClient.setQueryData(PROFILE_QUERY_KEY, apiProfile);
+              }
+            } catch (apiError) {
+              console.error("[SubscriptionProvider] API fallback error:", apiError);
             }
-          } catch (apiError) {
-            console.error("[SubscriptionProvider] API fallback error:", apiError);
           }
         }
       } else {
@@ -248,7 +259,7 @@ export function SubscriptionProvider({
     const {
       data: { subscription: authSub },
     } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+      if (event === "SIGNED_IN") {
         fetchSubscription();
       }
       if (event === "SIGNED_OUT") {

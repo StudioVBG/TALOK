@@ -34,9 +34,9 @@ export function RestartTourCard() {
 
     try {
       // Clear localStorage
-      localStorage.removeItem("lokatif-tour-completed");
-      localStorage.removeItem("lokatif-tour-prompt-dismissed");
-      localStorage.removeItem("lokatif-welcome-seen");
+      localStorage.removeItem("talok-tour-completed");
+      localStorage.removeItem("talok-tour-prompt-dismissed");
+      localStorage.removeItem("talok-welcome-seen");
 
       // Clear Supabase (non-blocking)
       if (profile?.id) {

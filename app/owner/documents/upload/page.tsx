@@ -178,7 +178,7 @@ export default function OwnerDocumentsUploadPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold text-foreground">
             Téléverser un document
           </h1>
           <p className="text-muted-foreground mt-2 text-lg">
@@ -207,7 +207,7 @@ export default function OwnerDocumentsUploadPage() {
               "hover:border-indigo-400 hover:bg-indigo-50/50",
               isDragOver 
                 ? "border-indigo-500 bg-indigo-50 scale-[1.02]" 
-                : "border-slate-300 bg-slate-50/50"
+                : "border-border bg-muted/50"
             )}
           >
             <input
@@ -222,16 +222,16 @@ export default function OwnerDocumentsUploadPage() {
             <div className="flex flex-col items-center justify-center text-center gap-3">
               <div className={cn(
                 "p-4 rounded-full transition-colors",
-                isDragOver ? "bg-indigo-100" : "bg-slate-100"
+                isDragOver ? "bg-indigo-100" : "bg-muted"
               )}>
                 <Upload className={cn(
                   "h-10 w-10 transition-colors",
-                  isDragOver ? "text-indigo-600" : "text-slate-400"
+                  isDragOver ? "text-indigo-600" : "text-muted-foreground"
                 )} />
               </div>
               
               <div>
-                <p className="text-lg font-medium text-slate-700">
+                <p className="text-lg font-medium text-foreground">
                   {isDragOver ? "Relâchez pour ajouter" : "Glissez vos fichiers ici"}
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -256,7 +256,7 @@ export default function OwnerDocumentsUploadPage() {
                 {files.map((file, index) => (
                   <div 
                     key={`${file.name}-${index}`}
-                    className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200 group"
+                    className="flex items-center justify-between p-3 bg-muted rounded-lg border border-border group"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="p-2 bg-indigo-100 rounded-lg">

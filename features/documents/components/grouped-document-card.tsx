@@ -1,181 +1,121 @@
 "use client";
 
-/**
- * GroupedDocumentCard — Affiche une paire CNI recto+verso comme une seule carte.
- *
- * Utilisé dans :
- *   - features/documents/components/documents-list.tsx  (onDelete)
- *   - app/tenant/documents/page.tsx                     (onPreview / onDownload)
- */
-
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { User, Download, Eye, Trash2 } from "lucide-react";
 import { documentsService } from "../services/documents.service";
 import { formatDateShort } from "@/lib/helpers/format";
-import type { GroupedDocument } from "@/lib/documents/group-documents";
+import { CreditCard } from "lucide-react";
+import type { GroupedDocumentItem, DocumentLike } from "@/lib/documents/group-documents";
 
 interface GroupedDocumentCardProps {
-  document: GroupedDocument;
-  /** Callback après suppression (contexte features/) */
+  item: GroupedDocumentItem;
   onDelete?: () => void;
-  /** Callback preview (contexte tenant) */
-  onPreview?: (doc: { id: string; type: string; created_at: string; [key: string]: any }) => void;
-  /** Callback download (contexte tenant) */
-  onDownload?: (doc: { id: string; type: string; created_at: string; [key: string]: any }) => void;
 }
 
-export function GroupedDocumentCard({
-  document: grouped,
-  onDelete,
-  onPreview,
-  onDownload,
-}: GroupedDocumentCardProps) {
+export function GroupedDocumentCard({ item, onDelete }: GroupedDocumentCardProps) {
   const { toast } = useToast();
-  const [deleting, setDeleting] = useState(false);
-  const [downloading, setDownloading] = useState<"recto" | "verso" | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLabel, setPreviewLabel] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleDownloadDoc = async (side: "recto" | "verso") => {
-    const doc = side === "recto" ? grouped.recto : grouped.verso;
-    if (!doc) return;
+  const parts = item.parts || [];
+  const recto = parts.find((p) => p.type === "cni_recto");
+  const verso = parts.find((p) => p.type === "cni_verso");
 
-    if (onDownload) {
-      onDownload(doc);
-      return;
-    }
-
-    setDownloading(side);
+  const handlePreview = async (doc: DocumentLike, label: string) => {
+    setLoading(true);
     try {
-      const url = await documentsService.getSignedUrl(doc);
-      window.open(url, "_blank");
-    } catch (error: unknown) {
+      const url = await documentsService.getSignedUrl(doc as any);
+      setPreviewUrl(url);
+      setPreviewLabel(label);
+      setPreviewOpen(true);
+    } catch {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Impossible de télécharger.",
+        description: "Impossible de charger l'apercu.",
         variant: "destructive",
       });
     } finally {
-      setDownloading(null);
-    }
-  };
-
-  const handlePreviewDoc = (side: "recto" | "verso") => {
-    const doc = side === "recto" ? grouped.recto : grouped.verso;
-    if (!doc || !onPreview) return;
-    onPreview(doc);
-  };
-
-  const handleDelete = async () => {
-    if (!confirm("Supprimer la pièce d'identité (recto et verso) ?")) return;
-
-    setDeleting(true);
-    try {
-      await documentsService.deleteDocument(grouped.recto.id);
-      if (grouped.verso) {
-        await documentsService.deleteDocument(grouped.verso.id);
-      }
-      toast({ title: "Documents supprimés" });
-      onDelete?.();
-    } catch (error: unknown) {
-      toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Impossible de supprimer.",
-        variant: "destructive",
-      });
-    } finally {
-      setDeleting(false);
+      setLoading(false);
     }
   };
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex justify-between items-start gap-2">
-          <div className="flex items-center gap-2">
-            <User className="h-4 w-4 text-purple-600" />
-            <div>
-              <CardTitle className="text-lg">Pièce d'identité</CardTitle>
-              <CardDescription>
-                Ajouté le {formatDateShort(grouped.created_at)}
-              </CardDescription>
+    <>
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex justify-between items-start gap-2">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <CardTitle className="text-lg">{item.label}</CardTitle>
+                <CardDescription>
+                  {parts.length === 2 ? "Recto + Verso" : `${parts.length} face(s)`}
+                  {item.latestDate && ` - ${formatDateShort(item.latestDate)}`}
+                </CardDescription>
+              </div>
             </div>
+            <Badge variant={parts.length === 2 ? "default" : "secondary"}>
+              {parts.length}/2
+            </Badge>
           </div>
-          <Badge
-            variant="outline"
-            className="text-purple-600 border-purple-200 bg-purple-50"
-          >
-            {grouped.verso ? "Recto + Verso" : "Recto seulement"}
-          </Badge>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-3">
-        {/* Recto */}
-        <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-          <span className="text-sm font-medium text-muted-foreground">Recto</span>
-          <div className="flex gap-1">
-            {onPreview && (
-              <Button variant="ghost" size="sm" onClick={() => handlePreviewDoc("recto")}>
-                <Eye className="h-3.5 w-3.5" />
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleDownloadDoc("recto")}
-              disabled={downloading === "recto"}
-            >
-              <Download className="h-3.5 w-3.5 mr-1" />
-              {downloading === "recto" ? "..." : "Recto"}
-            </Button>
-          </div>
-        </div>
-
-        {/* Verso */}
-        {grouped.verso ? (
-          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
-            <span className="text-sm font-medium text-muted-foreground">Verso</span>
-            <div className="flex gap-1">
-              {onPreview && (
-                <Button variant="ghost" size="sm" onClick={() => handlePreviewDoc("verso")}>
-                  <Eye className="h-3.5 w-3.5" />
-                </Button>
-              )}
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            {recto && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => handleDownloadDoc("verso")}
-                disabled={downloading === "verso"}
+                className="flex-1"
+                disabled={loading}
+                onClick={() => handlePreview(recto, "Recto")}
               >
-                <Download className="h-3.5 w-3.5 mr-1" />
-                {downloading === "verso" ? "..." : "Verso"}
+                Recto
               </Button>
-            </div>
+            )}
+            {verso && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                disabled={loading}
+                onClick={() => handlePreview(verso, "Verso")}
+              >
+                Verso
+              </Button>
+            )}
+            {!recto && (
+              <span className="text-xs text-muted-foreground">Recto manquant</span>
+            )}
+            {!verso && (
+              <span className="text-xs text-muted-foreground">Verso manquant</span>
+            )}
           </div>
-        ) : (
-          <p className="text-xs text-muted-foreground text-center py-1">
-            Verso non encore uploadé
-          </p>
-        )}
+        </CardContent>
+      </Card>
 
-        {/* Bouton suppression (contexte owner/features) */}
-        {onDelete && (
-          <div className="flex justify-end pt-1">
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              <Trash2 className="h-3.5 w-3.5 mr-1" />
-              {deleting ? "Suppression..." : "Supprimer"}
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{item.label} - {previewLabel}</DialogTitle>
+          </DialogHeader>
+          {previewUrl && (
+            <div className="flex items-center justify-center min-h-[300px]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewUrl}
+                alt={`${item.label} ${previewLabel}`}
+                className="max-w-full max-h-[60vh] object-contain rounded-lg"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

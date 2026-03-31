@@ -237,7 +237,7 @@ export default function TenantDocumentsPage() {
 
     for (const doc of sorted) {
       const type = detectType(doc);
-      if (!bail && (type === "bail" || type === "lease" || type === "contrat")) bail = doc;
+      if (!bail && (type === "contrat_bail" || type === "bail" || type === "lease" || type === "contrat")) bail = doc;
       if (!quittance && (type === "quittance" || type === "receipt")) quittance = doc;
       if (!edlEntree && (type === "EDL_entree" || type === "edl_entree" || type === "edl")) edlEntree = doc;
       if (!assurance && (type === "attestation_assurance" || type === "assurance")) assurance = doc;

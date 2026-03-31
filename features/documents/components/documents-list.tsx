@@ -9,7 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { documentsService } from "../services/documents.service";
 import type { Document } from "@/lib/types";
 import { useAuth } from "@/lib/hooks/use-auth";
-import { groupDocuments } from "@/lib/documents/group-documents";
+import { groupDocuments, type GroupedDocumentItem } from "@/lib/documents/group-documents";
 
 interface DocumentsListProps {
   propertyId?: string;
@@ -93,15 +93,15 @@ export function DocumentsList({ propertyId, leaseId, showUpload = true }: Docume
 
       {documents.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">Aucun document enregistré.</p>
+          <p className="text-muted-foreground">Aucun document enregistre.</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {displayDocs.map((doc) =>
-            "group_type" in doc ? (
-              <GroupedDocumentCard key={doc.id} document={doc} onDelete={fetchDocuments} />
+          {displayDocs.map((item) =>
+            item.kind === "group" ? (
+              <GroupedDocumentCard key={item.key} item={item} onDelete={fetchDocuments} />
             ) : (
-              <DocumentCard key={doc.id} document={doc} onDelete={fetchDocuments} />
+              <DocumentCard key={item.key} document={item.document as any} onDelete={fetchDocuments} />
             )
           )}
         </div>
@@ -109,4 +109,3 @@ export function DocumentsList({ propertyId, leaseId, showUpload = true }: Docume
     </div>
   );
 }
-

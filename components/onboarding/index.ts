@@ -22,10 +22,6 @@ export { OnboardingShell, OnboardingProgress } from "./onboarding-shell";
 // Modal de bienvenue
 export { WelcomeModal } from "./welcome-modal";
 
-// Tour guidé amélioré
-export { GuidedTour, useTour, OWNER_TOUR_STEPS, TENANT_TOUR_STEPS } from "./guided-tour";
-export type { GuidedTourProps } from "./guided-tour";
-
 // Indicateurs d'étapes
 export { StepIndicator, ONBOARDING_STEPS } from "./step-indicator";
 export type { StepIndicatorProps } from "./step-indicator";

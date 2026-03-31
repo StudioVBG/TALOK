@@ -143,25 +143,28 @@ const settingsRoutes: Record<AppShellRole, string> = {
 function buildOwnerNavigation(
   hasFeature: (feature: FeatureKey) => boolean
 ): NavSection[] {
-  const premiumItems: NavItem[] = [
+  // Items conditionnels par feature — masqués si le plan ne les inclut pas
+  const conditionalItems: Array<NavItem & { show: boolean }> = [
     {
       name: "Inspections",
       href: "/owner/inspections",
       icon: FileSignature,
       feature: "edl_digital",
+      show: true, // Toujours visible, mais locked si pas la feature
     },
     {
       name: "Prestataires",
       href: "/owner/providers",
       icon: Users,
       feature: "providers_management",
+      show: true, // Toujours visible, mais locked si pas la feature
     },
   ];
 
-  const visiblePremiumItems = premiumItems
-    .filter((item) => item.feature)
-    .map((item) => {
-      const hasAccess = hasFeature(item.feature!);
+  const visiblePremiumItems = conditionalItems
+    .filter((item) => item.show)
+    .map(({ show: _show, ...item }) => {
+      const hasAccess = item.feature ? hasFeature(item.feature) : true;
       return hasAccess
         ? item
         : {
@@ -172,23 +175,28 @@ function buildOwnerNavigation(
           };
     });
 
+  // Items masqués selon le plan (mode "hide")
+  const hasPaymentOnline = hasFeature("tenant_payment_online");
+  const hasBankReconciliation = hasFeature("bank_reconciliation");
+
+  // Section principale — toujours visible
+  const mainItems: NavItem[] = [
+    { name: "Tableau de bord", href: "/owner", icon: LayoutDashboard },
+    { name: "Mes biens", href: "/owner/properties", icon: Building2 },
+    { name: "Baux", href: "/owner/leases", icon: FileText },
+    { name: "Finances", href: "/owner/money", icon: Euro },
+  ];
+
+  // Section gestion — filtrage conditionnel
+  const gestionItems: NavItem[] = [
+    { name: "Tickets", href: "/owner/tickets", icon: Wrench },
+    { name: "Documents", href: "/owner/documents", icon: FileCheck },
+    ...visiblePremiumItems,
+  ];
+
   return [
-    {
-      items: [
-        { name: "Tableau de bord", href: "/owner", icon: LayoutDashboard },
-        { name: "Mes biens", href: "/owner/properties", icon: Building2 },
-        { name: "Baux", href: "/owner/leases", icon: FileText },
-        { name: "Finances", href: "/owner/money", icon: Euro },
-      ],
-    },
-    {
-      title: "Gestion",
-      items: [
-        { name: "Tickets", href: "/owner/tickets", icon: Wrench },
-        { name: "Documents", href: "/owner/documents", icon: FileCheck },
-        ...visiblePremiumItems,
-      ],
-    },
+    { items: mainItems },
+    { title: "Gestion", items: gestionItems },
     {
       items: [
         { name: "Aide", href: "/owner/support", icon: HelpCircle },

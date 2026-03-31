@@ -488,7 +488,7 @@ export function PhotosStep() {
                         <button
                           onClick={(e) => { e.stopPropagation(); handleSetMain(photo.id); }}
                           aria-label={`Définir la photo ${index + 1} comme principale`}
-                          className="bg-white/95 text-foreground text-[10px] px-2.5 py-1.5 rounded-full font-medium hover:bg-white flex items-center gap-1 shadow-sm transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary"
+                          className="bg-white/95 dark:bg-slate-800/95 text-foreground text-[10px] px-2.5 py-1.5 rounded-full font-medium hover:bg-white dark:hover:bg-slate-700 flex items-center gap-1 shadow-sm transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary"
                         >
                           <Star className="h-3 w-3" aria-hidden="true" /> Principale
                         </button>

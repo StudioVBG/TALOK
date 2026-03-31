@@ -25,6 +25,7 @@ import { RealtimeRevenueWidget, RealtimeStatusIndicator } from "@/components/own
 import { useRealtimeDashboard } from "@/lib/hooks/use-realtime-dashboard";
 import { StartTourButton } from "@/components/onboarding";
 import { SecondaryContentPanel } from "@/components/layout/secondary-content-panel";
+import { StripeConnectBanner } from "@/components/owner/dashboard/stripe-connect-banner";
 
 // Lazy loading des composants lourds
 const OwnerFinanceSummary = dynamic(
@@ -117,7 +118,7 @@ interface DashboardClientProps {
 export function DashboardClient({ profileCompletion }: DashboardClientProps) {
   const { dashboard, apiData, isLoadingApi, error } = useOwnerData();
   // Single realtime hook instance shared between RealtimeRevenueWidget (via its own hook) and RealtimeStatusIndicator (via props)
-  const realtimeStatus = useRealtimeDashboard({ showToasts: false });
+  const realtimeStatus = useRealtimeDashboard({ showToasts: true });
   const completionPercentage = profileCompletion ? calculateCompletionPercentage(profileCompletion) : 0;
 
   if (error) {
@@ -296,6 +297,9 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
           <UrgentActionsSection actions={primaryUrgentActions} />
         </motion.section>
 
+        {/* Bandeau Stripe Connect si non configuré */}
+        <StripeConnectBanner />
+
         {/* SOTA Header - Responsive pour tous appareils 2025-2026 */}
         <motion.header
           variants={itemVariants}
@@ -345,7 +349,7 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
           <div className="mt-4 sm:mt-6 lg:mt-8 grid grid-cols-2 lg:grid-cols-4 gap-2.5 xs:gap-3 sm:gap-4 border-t border-white/10 pt-4 sm:pt-6">
              {/* KPI 1: Revenus */}
              <div className="min-w-0">
-                <p className="text-slate-400 text-[10px] xs:text-xs sm:text-sm font-medium truncate">Revenus du mois</p>
+                <p className="text-muted-foreground text-[10px] xs:text-xs sm:text-sm font-medium truncate">Revenus du mois</p>
                 {isLoadingApi ? (
                   <Skeleton className="h-7 w-24 mt-0.5 sm:mt-1 bg-white/20" />
                 ) : (
@@ -356,21 +360,21 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
              </div>
              {/* KPI 2: Biens */}
              <div className="min-w-0">
-                <p className="text-slate-400 text-[10px] xs:text-xs sm:text-sm font-medium truncate">Biens gérés</p>
+                <p className="text-muted-foreground text-[10px] xs:text-xs sm:text-sm font-medium truncate">Biens gérés</p>
                 <p className="text-base xs:text-lg sm:text-xl lg:text-2xl font-bold mt-0.5 sm:mt-1">
                    <AnimatedCounter value={dashboard.properties?.total || 0} />
                 </p>
              </div>
              {/* KPI 3: Baux */}
              <div className="min-w-0">
-                <p className="text-slate-400 text-[10px] xs:text-xs sm:text-sm font-medium truncate">Baux actifs</p>
+                <p className="text-muted-foreground text-[10px] xs:text-xs sm:text-sm font-medium truncate">Baux actifs</p>
                 <p className="text-base xs:text-lg sm:text-xl lg:text-2xl font-bold mt-0.5 sm:mt-1">
                    <AnimatedCounter value={dashboard.leases?.active || 0} />
                 </p>
              </div>
              {/* KPI 4: Taux d'occupation */}
              <div className="min-w-0">
-                <p className="text-slate-400 text-[10px] xs:text-xs sm:text-sm font-medium truncate">Taux d'occupation</p>
+                <p className="text-muted-foreground text-[10px] xs:text-xs sm:text-sm font-medium truncate">Taux d'occupation</p>
                 {(() => {
                   const rate = dashboard.properties?.total > 0 
                     ? Math.round(((dashboard.leases?.active || 0) / dashboard.properties.total) * 100) 
