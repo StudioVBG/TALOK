@@ -15,9 +15,10 @@ import {
   KeyRound,
   ArrowRight,
   Bot,
-  Sparkles,
   Building2,
 } from "lucide-react";
+import { track } from "@/lib/analytics/posthog";
+import { TalokLogo } from "@/components/marketing/TalokLogo";
 
 export default function RoleChoicePage() {
   const router = useRouter();
@@ -47,6 +48,7 @@ export default function RoleChoicePage() {
     options?: { propertyCode?: string }
   ) => {
     setLoading(true);
+    track("signup_role_selected", { role });
     try {
       if (typeof window !== "undefined") {
         const draft = {
@@ -178,10 +180,10 @@ export default function RoleChoicePage() {
       <div className="relative mx-auto flex max-w-6xl flex-col gap-10 px-4 pb-16 pt-16">
         <div className="mx-auto max-w-3xl space-y-4 text-center">
           <Badge className="bg-white/10 text-white backdrop-blur">Étape 1 / 3 – Sélectionnez votre expérience</Badge>
-          <div className="flex items-center justify-center gap-3">
-            <h1 className="text-4xl font-semibold tracking-tight">Bienvenue sur Talok 👋</h1>
-            <Sparkles className="h-6 w-6 text-indigo-200" />
+          <div className="flex items-center justify-center mb-4">
+            <TalokLogo variant="dark" size="lg" noLink />
           </div>
+          <h1 className="text-4xl font-semibold tracking-tight">Bienvenue 👋</h1>
           <p className="text-lg text-slate-200">
             Choisissez votre profil pour débloquer un parcours personnalisé avec assistants IA, automatisations et
             support premium.
@@ -203,7 +205,7 @@ export default function RoleChoicePage() {
               >
                 <Card
                   className={`relative h-full overflow-hidden border border-white/10 bg-white/5 p-4 text-white shadow-2xl backdrop-blur transition-all duration-300 ${
-                    isActive ? "ring-2 ring-indigo-400" : "hover:-translate-y-1 hover:ring-1 hover:ring-white/40"
+                    isActive ? "ring-2 ring-blue-400" : "hover:-translate-y-1 hover:ring-1 hover:ring-white/40"
                   }`}
                 >
                   <div className={`pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br ${option.gradient}`} />

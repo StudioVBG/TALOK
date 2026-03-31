@@ -75,12 +75,14 @@ const nextConfig = {
   
   // Fix pour Zod v3.24+ avec Next.js (problème de module resolution)
   webpack: (config, { isServer }) => {
-    // Fix pour les exports ESM de Zod
+    // Fix pour les exports ESM de Zod — use require.resolve for worktree compat
     const path = require('path');
+    const zodDir = path.dirname(require.resolve('zod/package.json'));
     config.resolve.alias = {
       ...config.resolve.alias,
-      'zod': path.resolve(__dirname, 'node_modules/zod'),
-      'zod/v3': path.resolve(__dirname, 'node_modules/zod'),
+      'zod': zodDir,
+      'zod/v3': path.join(zodDir, 'v3'),
+      'zod/v4': path.join(zodDir, 'v4'),
     };
     
     // Éviter les problèmes de résolution de modules côté serveur
@@ -254,7 +256,7 @@ const nextConfig = {
               "frame-ancestors 'self'",
               "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
-              "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
+              "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.supabase.co https://*.supabase.in blob:",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://api-adresse.data.gouv.fr https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org https://api.stripe.com",
               "img-src 'self' blob: data: https://*.supabase.co https://*.googleapis.com https://images.unsplash.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://a.tile.openstreetmap.org https://b.tile.openstreetmap.org https://c.tile.openstreetmap.org https://unpkg.com https://*.stripe.com",
               "font-src 'self' https://fonts.gstatic.com",

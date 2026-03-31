@@ -86,7 +86,6 @@ export async function POST(
 
     for (const url of urlsToProcess) {
       try {
-        console.log(`[ImportPhoto] Téléchargement: ${url}`);
         
         // Télécharger l'image
         const imageResponse = await fetch(url, {
@@ -163,7 +162,6 @@ export async function POST(
 
         ordre++;
         results.push({ url, success: true, photoId: photoRecord.id });
-        console.log(`[ImportPhoto] ✅ Photo importée: ${photoRecord.id}`);
 
       } catch (err: any) {
         console.error(`[ImportPhoto] Error for ${url}:`, err);
@@ -172,7 +170,6 @@ export async function POST(
     }
 
     const successCount = results.filter(r => r.success).length;
-    console.log(`[ImportPhoto] ${successCount}/${urlsToProcess.length} photos importées`);
 
     return NextResponse.json({
       success: true,

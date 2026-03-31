@@ -91,7 +91,7 @@ export function TenantInvite({
                   placeholder="Marie Martin"
                   value={tenantName}
                   onChange={(e) => onNameChange(e.target.value)}
-                  className="bg-white dark:bg-slate-900"
+                  className="bg-card"
                 />
               </div>
 
@@ -108,7 +108,7 @@ export function TenantInvite({
                   value={tenantEmail}
                   onChange={handleEmailChange}
                   className={cn(
-                    "bg-white dark:bg-slate-900",
+                    "bg-card",
                     emailError && "border-red-500 focus-visible:ring-red-500"
                   )}
                 />
@@ -161,7 +161,7 @@ export function TenantInvite({
                   placeholder="Laisser vide pour un bail vierge"
                   value={tenantName}
                   onChange={(e) => onNameChange(e.target.value)}
-                  className="bg-white dark:bg-slate-900"
+                  className="bg-card"
                 />
               </div>
             </div>

@@ -119,12 +119,12 @@ export function CompanySwitcher({ variant = "sidebar" }: CompanySwitcherProps) {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">
-              {activeEntity?.nom || "Toutes les entités"}
+              {activeEntity?.nom || "Tous mes biens"}
             </p>
             <p className="text-xs text-muted-foreground">
               {activeEntity
                 ? getEntityTypeLabel(activeEntity.entityType)
-                : `${entities.length} entité${entities.length > 1 ? "s" : ""}`}
+                : `${entities.length} entité${entities.length > 1 ? "s" : ""} · vue globale`}
             </p>
           </div>
           <ArrowUpDown className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -185,9 +185,9 @@ function EntityList({
       >
         <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
         <div className="flex-1 text-left min-w-0">
-          <p className="font-medium truncate">Toutes les entités</p>
+          <p className="font-medium truncate">Tous mes biens</p>
           <p className="text-xs text-muted-foreground">
-            {totalProperties} bien{totalProperties > 1 ? "s" : ""}
+            {totalProperties} bien{totalProperties > 1 ? "s" : ""} · vue globale
           </p>
         </div>
         {activeEntityId === null && (

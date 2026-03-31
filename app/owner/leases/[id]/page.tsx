@@ -1,10 +1,35 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { fetchLeaseDetails } from "../../_data/fetchLeaseDetails";
 import { LeaseDetailsClient } from "./LeaseDetailsClient";
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  try {
+    const supabase = await createClient();
+    // Requête légère : lease → property → ville
+    const { data } = await supabase
+      .from("leases")
+      .select("properties:property_id(ville), units:unit_id(properties:property_id(ville))")
+      .eq("id", id)
+      .maybeSingle();
+
+    const ville =
+      (data?.properties as { ville?: string } | null)?.ville ||
+      (data?.units as { properties?: { ville?: string } } | null)?.properties?.ville;
+
+    if (ville) {
+      return { title: `Bail ${ville}` };
+    }
+  } catch {
+    // silence — fallback au titre default
+  }
+  return { title: "Détail du bail" };
+}
 
 interface PageProps {
   params: Promise<{ id: string }>;

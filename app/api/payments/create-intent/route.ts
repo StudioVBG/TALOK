@@ -138,11 +138,8 @@ export async function POST(request: NextRequest) {
         }
       | null;
 
-    if (
-      typedPendingPayment?.id &&
-      typedPendingPayment.provider_ref &&
-      isRecentPendingPayment(typedPendingPayment.created_at)
-    ) {
+    // If a pending payment exists, always try to reuse it (regardless of age)
+    if (typedPendingPayment?.id && typedPendingPayment.provider_ref) {
       try {
         const existingIntent = await stripe.paymentIntents.retrieve(typedPendingPayment.provider_ref);
         const existingIntentStatus = existingIntent.status;
@@ -168,8 +165,25 @@ export async function POST(request: NextRequest) {
             reused: true,
           });
         }
+
+        // Intent exists but is no longer reusable (expired/cancelled) — cancel old payment
+        if (["canceled", "succeeded"].includes(existingIntentStatus)) {
+          await serviceClient
+            .from("payments")
+            .update({ statut: existingIntentStatus === "succeeded" ? "succeeded" : "failed" })
+            .eq("id", typedPendingPayment.id);
+        } else {
+          // Intent in unexpected state — block duplicate creation
+          throw new ApiError(409, "Un paiement est deja en cours pour cette facture");
+        }
       } catch (error) {
-        console.warn("[create-intent] Impossible de reutiliser le PaymentIntent existant:", error);
+        if (error instanceof ApiError) throw error;
+        // Stripe retrieval failed (invalid intent) — clean up stale payment
+        console.warn("[create-intent] PaymentIntent invalide, nettoyage du paiement stale:", error);
+        await serviceClient
+          .from("payments")
+          .update({ statut: "failed" })
+          .eq("id", typedPendingPayment.id);
       }
     }
 

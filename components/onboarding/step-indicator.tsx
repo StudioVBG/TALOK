@@ -327,6 +327,21 @@ export const ONBOARDING_STEPS = {
     { id: "financial", label: "Finances", description: "Votre capacité" },
     { id: "sign", label: "Signature", description: "Acte de caution" },
   ],
-};
+  syndic: [
+    { id: "profile", label: "Profil", description: "Informations du syndic" },
+    { id: "site", label: "Copropriété", description: "Configuration du site" },
+    { id: "buildings", label: "Immeubles", description: "Vos immeubles" },
+    { id: "units", label: "Lots", description: "Les lots" },
+    { id: "tantiemes", label: "Tantièmes", description: "Répartition des charges" },
+    { id: "owners", label: "Copropriétaires", description: "Les propriétaires" },
+    { id: "complete", label: "Finalisation", description: "Vérification finale" },
+  ],
+  agency: [
+    { id: "profile", label: "Profil", description: "Informations de l'agence" },
+    { id: "mandates", label: "Mandats", description: "Types de mandats" },
+    { id: "team", label: "Équipe", description: "Vos collaborateurs" },
+    { id: "review", label: "Validation", description: "Vérification finale" },
+  ],
+} as Record<string, Array<{ id: string; label: string; description: string }>>;
 
 export default StepIndicator;

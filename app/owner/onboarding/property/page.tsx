@@ -229,7 +229,7 @@ export default function FirstPropertyPage() {
                 id="is_colocation"
                 checked={formData.is_colocation}
                 onChange={(e) => setFormData({ ...formData, is_colocation: e.target.checked })}
-                className="rounded border-gray-300"
+                className="rounded border-border"
               />
               <Label htmlFor="is_colocation" className="text-sm font-normal cursor-pointer">
                 C'est une colocation

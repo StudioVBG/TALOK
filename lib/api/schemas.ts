@@ -17,7 +17,7 @@ export const RegisterSchema = z.object({
     .regex(/[a-z]/, "Le mot de passe doit contenir au moins une minuscule")
     .regex(/[0-9]/, "Le mot de passe doit contenir au moins un chiffre")
     .regex(/[^A-Za-z0-9]/, "Le mot de passe doit contenir au moins un caractère spécial"),
-  role: z.enum(["owner", "tenant", "provider", "guarantor", "syndic"]),
+  role: z.enum(["owner", "tenant", "provider", "guarantor", "syndic", "agency"]),
   prenom: z.string().min(1, "Prénom requis").max(80).regex(/^[\p{L}\s'\-]+$/u, "Caractères non autorisés dans le prénom"),
   nom: z.string().min(1, "Nom requis").max(80).regex(/^[\p{L}\s'\-]+$/u, "Caractères non autorisés dans le nom"),
 });
