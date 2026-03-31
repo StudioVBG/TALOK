@@ -18,6 +18,7 @@ import {
   Sparkles,
   Building2,
 } from "lucide-react";
+import { track } from "@/lib/analytics/posthog";
 
 export default function RoleChoicePage() {
   const router = useRouter();
@@ -47,6 +48,7 @@ export default function RoleChoicePage() {
     options?: { propertyCode?: string }
   ) => {
     setLoading(true);
+    track("signup_role_selected", { role });
     try {
       if (typeof window !== "undefined") {
         const draft = {

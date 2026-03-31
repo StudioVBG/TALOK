@@ -28,6 +28,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { PasswordStrength } from "@/components/ui/password-strength";
 import { cn } from "@/lib/utils";
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
+import { track } from "@/lib/analytics/posthog";
 
 const TERMS_VERSION = "1.0";
 const PRIVACY_VERSION = "1.0";
@@ -90,7 +91,7 @@ export default function AccountCreationPage() {
   const [draft, setDraft] = useState<AccountDraft>(INITIAL_DRAFT);
 
   useEffect(() => {
-    if (!role || !["owner", "tenant", "provider", "guarantor", "syndic"].includes(role)) {
+    if (!role || !["owner", "tenant", "provider", "guarantor", "syndic", "agency"].includes(role)) {
       router.push("/signup/role");
     }
   }, [role, router]);
@@ -215,6 +216,7 @@ export default function AccountCreationPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    track("signup_form_submitted", { role });
 
     try {
       // Utiliser le pays sélectionné pour le téléphone
@@ -255,6 +257,8 @@ export default function AccountCreationPage() {
       if (draft.useMagicLink) {
         await authService.sendMagicLink(validated.email);
         setEmailSent(true);
+        track("signup_completed", { role, method: "magic_link" });
+
         toast({
           title: "Lien magique envoyé",
           description: "Vérifiez votre email pour vous connecter.",
@@ -286,6 +290,8 @@ export default function AccountCreationPage() {
           },
           consents: validatedConsents,
         });
+
+        track("signup_completed", { role, method: "password" });
 
         toast({
           title: "Compte créé",
