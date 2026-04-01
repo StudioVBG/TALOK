@@ -3,6 +3,8 @@
 // =====================================================
 
 import { createClient } from '@/lib/supabase/client';
+import { sendEmail as sendEmailService } from '@/lib/services/email-service';
+import { emailTemplates } from '@/lib/emails/templates';
 import type {
   CoproService,
   ServiceContract,
@@ -488,7 +490,52 @@ export async function sendCall(id: string): Promise<CallForFunds> {
     })
     .eq('call_id', id);
   
-  // TODO: Envoyer les emails
+  // Send emails to all co-owners for this call
+  try {
+    const callData = data as any;
+    const { data: items } = await supabase
+      .from('call_for_funds_items')
+      .select('lot_number, amount, owner_profile_id')
+      .eq('call_id', id);
+
+    if (items && items.length > 0) {
+      // Collect unique owner profile IDs
+      const ownerIds = [...new Set(items.map((i: any) => i.owner_profile_id).filter(Boolean))];
+
+      for (const ownerId of ownerIds) {
+        try {
+          const { data: ownerProfile } = await supabase
+            .from('profiles')
+            .select('prenom, nom, user_id')
+            .eq('id', ownerId)
+            .single();
+          if (ownerProfile?.user_id) {
+            const { data: { user: ownerUser } } = await supabase.auth.admin.getUserById(ownerProfile.user_id);
+            if (ownerUser?.email) {
+              const ownerName = `${ownerProfile.prenom || ''} ${ownerProfile.nom || ''}`.trim() || 'Copropriétaire';
+              const ownerItems = items.filter((i: any) => i.owner_profile_id === ownerId);
+              const totalOwner = ownerItems.reduce((sum: number, i: any) => sum + (i.amount || 0), 0);
+              const template = emailTemplates.genericReminder({
+                subject: `Appel de fonds — ${totalOwner.toLocaleString('fr-FR')} €`,
+                content: `Bonjour ${ownerName},\n\nUn appel de fonds d'un montant de ${totalOwner.toLocaleString('fr-FR')} € vous a été adressé.\n\nPériode : ${callData.period_label || callData.period || ''}\n\nConnectez-vous à votre espace Talok pour consulter le détail et procéder au règlement.`,
+              });
+              await sendEmailService({
+                to: ownerUser.email,
+                subject: template.subject,
+                html: template.html,
+                tags: [{ name: 'type', value: 'call_for_funds' }],
+                idempotencyKey: `call-for-funds/${id}/${ownerId}`,
+              });
+            }
+          }
+        } catch (e) {
+          console.error(`[CallForFunds] Email to owner ${ownerId} failed:`, e);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('[CallForFunds] Email sending error:', e);
+  }
 
   return data as unknown as CallForFunds;
 }

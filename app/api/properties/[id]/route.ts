@@ -177,7 +177,6 @@ export async function PATCH(
     const body = await request.json();
     
     // DEBUG: Log les données reçues pour diagnostiquer les problèmes de sauvegarde
-    console.log(`[PATCH /api/properties/${id}] Body reçu:`, JSON.stringify(body, null, 2));
     
     // Utiliser safeParse pour avoir des logs détaillés en cas d'erreur de validation
     const parseResult = propertyGeneralUpdateSchema.safeParse(body);
@@ -188,7 +187,6 @@ export async function PATCH(
     const validated = parseResult.data;
     
     // DEBUG: Log les données après validation
-    console.log(`[PATCH /api/properties/${id}] ✅ Validé:`, JSON.stringify(validated, null, 2));
 
     // ✅ PERMISSIONS: Récupérer le profil avec serviceClient pour éviter les problèmes RLS
     const { data: profile, error: profileError } = await serviceClient
@@ -215,7 +213,6 @@ export async function PATCH(
     if (errorWithAll) {
       // Si l'erreur est due à une colonne manquante, réessayer sans etat et type
       if (errorWithAll.message?.includes("does not exist") || errorWithAll.message?.includes("column") || errorWithAll.code === "42703") {
-        console.log(`[PATCH /api/properties/${id}] Colonne manquante détectée, réessai avec colonnes minimales`);
         const { data: propertyMinimal, error: errorMinimal } = await serviceClient
           .from("properties")
           .select("owner_id")
@@ -354,7 +351,6 @@ export async function PATCH(
     }
 
     // DEBUG: Log les updates qui vont être appliqués
-    console.log(`[PATCH /api/properties/${id}] Updates à appliquer:`, JSON.stringify(updates, null, 2));
 
     // ✅ MISE À JOUR: Utiliser serviceClient pour la mise à jour pour éviter les problèmes RLS
     const { data: updatedProperty, error: updateError } = await serviceClient
@@ -393,15 +389,6 @@ export async function PATCH(
       );
     }
     
-    // DEBUG: Log le résultat de la mise à jour
-    console.log(`[PATCH /api/properties/${id}] Propriété mise à jour:`, {
-      surface: updatedProperty.surface,
-      surface_habitable_m2: updatedProperty.surface_habitable_m2,
-      nb_pieces: updatedProperty.nb_pieces,
-      nb_chambres: updatedProperty.nb_chambres,
-      loyer_hc: updatedProperty.loyer_hc,
-    });
-
     // ✅ SOTA 2026: Émettre notification si publication
     if (updates.etat === "published" && property.etat !== "published") {
       try {
@@ -708,11 +695,11 @@ export async function DELETE(
       throw new ApiError(400, "Impossible de supprimer un bien en cours de validation. Veuillez attendre la fin de la vérification.");
     }
 
-    // ✅ SOTA 2026: Vérifier s'il y a des baux actifs
-    const { data: activeLeases, error: leasesError } = await serviceClient
+    // ✅ SOTA 2026: Vérifier s'il y a des baux non-terminés
+    const { data: blockingLeases, error: leasesError } = await serviceClient
       .from("leases")
       .select(`
-        id, 
+        id,
         statut,
         type_bail,
         signers:lease_signers(
@@ -725,29 +712,45 @@ export async function DELETE(
         )
       `)
       .eq("property_id", propertyId)
-      .in("statut", ["active", "pending_signature", "partially_signed", "fully_signed"]);
+      .not("statut", "in", '("terminated","archived","cancelled")');
 
     if (leasesError) {
       console.error("[DELETE Property] Erreur vérification baux:", leasesError);
     }
 
-    // ✅ BLOQUER si bail actif (sauf admin)
-    if (!isAdmin && activeLeases && activeLeases.length > 0) {
-      const activeLease = activeLeases[0] as any;
-      const tenantSigner = activeLease.signers?.find((s: any) => 
+    // ✅ BLOQUER si bail non-terminé (sauf admin) — avec messages contextuels
+    if (!isAdmin && blockingLeases && blockingLeases.length > 0) {
+      const lease = blockingLeases[0] as any;
+      const tenantSigner = lease.signers?.find((s: any) =>
         s.role === "locataire_principal" || s.role === "colocataire"
       );
-      const tenantName = tenantSigner?.profile 
+      const tenantName = tenantSigner?.profile
         ? `${tenantSigner.profile.prenom || ""} ${tenantSigner.profile.nom || ""}`.trim() || tenantSigner.profile.email
         : "un locataire";
 
+      // Message contextuel selon l'état du bail
+      let message: string;
+      let actionHint: string;
+      if (lease.statut === "active") {
+        message = `Impossible de supprimer : bail actif avec ${tenantName}.`;
+        actionHint = "terminate";
+      } else if (lease.statut === "draft" || lease.statut === "sent") {
+        message = `Ce bien a un bail en brouillon. Supprimez ou annulez le bail avant de supprimer le bien.`;
+        actionHint = "cancel_draft";
+      } else {
+        // pending_signature, partially_signed, fully_signed, pending_owner_signature
+        message = `Ce bien a un bail signé mais jamais activé avec ${tenantName}. Annulez le bail pour pouvoir supprimer le bien.`;
+        actionHint = "cancel_zombie";
+      }
+
       throw new ApiError(
-        400, 
-        `Impossible de supprimer : bail ${activeLease.statut === "active" ? "actif" : "en cours de signature"} avec ${tenantName}. Terminez d'abord le bail.`,
-        { 
-          leaseId: activeLease.id, 
-          leaseStatus: activeLease.statut,
-          tenantName 
+        400,
+        message,
+        {
+          leaseId: lease.id,
+          leaseStatus: lease.statut,
+          tenantName,
+          actionHint,
         }
       );
     }
@@ -815,8 +818,8 @@ export async function DELETE(
     // Marquer comme supprimé plutôt que supprimer définitivement
     const { data: softDeletedProperty, error: softDeleteError } = await serviceClient
       .from("properties")
-      .update({ 
-        etat: "deleted",
+      .update({
+        etat: "archived",
         deleted_at: new Date().toISOString(),
         deleted_by: profile.id
       })

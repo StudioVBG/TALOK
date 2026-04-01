@@ -1,12 +1,14 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
+import { fadeUp, stagger, defaultViewport } from "@/lib/marketing/animations";
 
 const CARDS = [
   {
     emoji: "💰",
     title: "La bonne TVA, au bon endroit",
-    text: "Talok applique automatiquement la TVA de votre territoire : 8,5% en Martinique et Guadeloupe, 2,1% en Guyane. Pas besoin de calculer vous-même.",
+    text: "Talok applique automatiquement la TVA de votre territoire : 8,5 % en Martinique, Guadeloupe et Réunion — 2,1 % en Guyane — 0 % à Mayotte. Pas besoin de calculer vous-même.",
   },
   {
     emoji: "🕐",
@@ -21,33 +23,47 @@ const CARDS = [
 ];
 
 const TERRITORIES = [
-  "Martinique",
-  "Guadeloupe",
-  "La Réunion",
-  "Guyane",
-  "Mayotte",
-  "Métropole",
+  { name: "Martinique", tva: "8,5 %" },
+  { name: "Guadeloupe", tva: "8,5 %" },
+  { name: "La Réunion", tva: "8,5 %" },
+  { name: "Guyane", tva: "2,1 %" },
+  { name: "Mayotte", tva: "0 %" },
+  { name: "Métropole", tva: null },
 ];
 
 export function DomTomSection() {
   return (
-    <section className="py-20 md:py-28">
+    <motion.section
+      className="py-20 md:py-28"
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="visible"
+      viewport={defaultViewport}
+    >
       <div className="container mx-auto max-w-6xl px-4">
-        <div className="reveal mx-auto max-w-3xl text-center">
+        <div className="mx-auto max-w-3xl text-center">
           <h2 className="font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
             Pensé pour la Martinique, la Guadeloupe, la Réunion — et toute la France
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Les autres plateformes sont faites pour Paris. Talok est la première
-            conçue pour les réalités de l&apos;Outre-mer.
+          <p className="mt-4 text-base font-normal leading-relaxed text-muted-foreground">
+            Les autres plateformes sont faites pour Paris. Talok est née en
+            Martinique — pas adaptée, née ici.
           </p>
         </div>
 
-        <div className="mt-14 grid gap-6 md:grid-cols-3">
+        <motion.div
+          className="mt-14 grid gap-6 md:grid-cols-3"
+          variants={stagger}
+          initial="hidden"
+          whileInView="visible"
+          viewport={defaultViewport}
+        >
           {CARDS.map((card) => (
-            <div
+            <motion.div
               key={card.title}
-              className="reveal rounded-2xl border bg-white p-6 shadow-sm"
+              variants={fadeUp}
+              className="rounded-2xl border border-border bg-card p-6 shadow-sm cursor-pointer"
+              whileHover={{ y: -4, transition: { duration: 0.2 } }}
             >
               <span className="text-3xl">{card.emoji}</span>
               <h3 className="mt-4 font-display text-lg font-semibold text-foreground">
@@ -56,22 +72,22 @@ export function DomTomSection() {
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 {card.text}
               </p>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
 
-        <div className="reveal mt-10 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
           {TERRITORIES.map((t) => (
             <Badge
-              key={t}
+              key={t.name}
               variant="secondary"
               className="px-4 py-1.5 text-sm"
             >
-              {t}
+              {t.name}{t.tva ? ` · TVA ${t.tva}` : ""}
             </Badge>
           ))}
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

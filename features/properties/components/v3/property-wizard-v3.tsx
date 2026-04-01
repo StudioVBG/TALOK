@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 import dynamic from "next/dynamic";
 import { usePropertyWizardStore, WizardStep, WizardMode } from "@/features/properties/stores/wizard-store";
@@ -137,6 +138,7 @@ interface PropertyWizardV3Props {
 export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel }: PropertyWizardV3Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   
   // Mapping interne des étapes pour calculs (doit correspondre à wizard-store.ts)
@@ -470,17 +472,21 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
       return;
     }
 
+    // Invalider le cache des propriétés pour que la liste se mette à jour
+    queryClient.invalidateQueries({ queryKey: ["properties"] });
+    queryClient.invalidateQueries({ queryKey: ["subscription"] });
+
     // 🎉 Déclencher le confetti avant la redirection
     setShowConfetti(true);
-    
+
     toast({
       title: "🎉 Bien enregistré !",
       description: "Votre annonce est prête. Redirection en cours...",
     });
-    
+
     // Attendre un peu pour voir le confetti
     await new Promise(resolve => setTimeout(resolve, 1500));
-    
+
     // 🔧 Réinitialiser le wizard après publication pour permettre une nouvelle création
     const finishedPropertyId = storePropertyId;
     reset();

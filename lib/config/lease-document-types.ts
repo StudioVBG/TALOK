@@ -90,6 +90,18 @@ export const LEASE_DOCUMENT_TYPES: LeaseDocumentTypeConfig[] = [
   },
   // — Documents optionnels —
   {
+    type: "piece_identite",
+    label: "Pièce d'identité (recto/verso)",
+    icon: "IdCard",
+    required: false,
+    hasExpiry: true,
+    expiryWarningDays: 60,
+    category: "administratif",
+    visibleTenantDefault: false,
+    canDelete: true,
+    canReplace: true,
+  },
+  {
     type: "diagnostic_amiante",
     label: "Diagnostic amiante",
     icon: "AlertTriangle",

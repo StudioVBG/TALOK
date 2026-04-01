@@ -45,9 +45,17 @@ const LEASE_TYPE_LABELS: Record<string, string> = {
 const STATUS_CONFIG: Record<string, { status: "success" | "warning" | "error" | "info" | "neutral"; label: string }> = {
   active: { status: "success", label: "Actif" },
   pending_signature: { status: "warning", label: "En attente" },
+  partially_signed: { status: "info", label: "Partiellement signé" },
+  pending_owner_signature: { status: "warning", label: "Attente propriétaire" },
+  fully_signed: { status: "info", label: "Signé" },
   draft: { status: "neutral", label: "Brouillon" },
+  sent: { status: "info", label: "Envoyé" },
+  notice_given: { status: "warning", label: "Préavis" },
+  amended: { status: "info", label: "Avenant" },
   terminated: { status: "error", label: "Terminé" },
+  archived: { status: "neutral", label: "Archivé" },
   expired: { status: "error", label: "Expiré" },
+  cancelled: { status: "neutral", label: "Annulé" },
 };
 
 /**

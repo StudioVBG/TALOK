@@ -181,11 +181,9 @@ export async function POST(request: Request) {
             .select("*, meter:meters(*)")
             .eq("edl_id", edlId);
 
-          console.log(`[EDL PDF] Found ${meterReadings?.length || 0} meter readings for EDL ${edlId}`);
 
           // 🔧 FIX: Récupérer tous les compteurs du bien pour les inclure dans le PDF même sans relevé
           const propertyId = (edl as any).property_id || (edl as any).lease?.property_id || (edl as any).lease?.property?.id;
-          console.log(`[EDL PDF] Property ID for meters: ${propertyId}`);
 
           let allMeters: any[] = [];
           if (propertyId) {
@@ -196,14 +194,12 @@ export async function POST(request: Request) {
 
             // Filtrer en JS pour éviter l'erreur si la colonne is_active n'existe pas
             allMeters = meters?.filter(m => m.is_active !== false) || [];
-            console.log(`[EDL PDF] Found ${allMeters.length} active meters for property ${propertyId}`);
           }
 
           // 🔧 FIX AMÉLIORÉ: Mapper les relevés existants avec URLs signées
           // Les compteurs des relevés sont la source de vérité pour les valeurs
           const recordedMeterIds = new Set((meterReadings || []).map((r: any) => r.meter_id));
 
-          console.log(`[EDL PDF] Recorded meter IDs: ${Array.from(recordedMeterIds).join(', ')}`);
 
           // 🔧 FIX: Générer des URLs signées pour les photos des compteurs
           const finalMeterReadings = [];
@@ -219,7 +215,6 @@ export async function POST(request: Request) {
                 .createSignedUrl(r.photo_path, 3600);
               photoUrl = signedUrlData?.signedUrl || null;
               if (photoUrl) {
-                console.log(`[EDL PDF] ✅ Signed meter photo URL: ${r.photo_path}`);
               }
             }
 
@@ -238,7 +233,6 @@ export async function POST(request: Request) {
           allMeters.forEach((m: any) => {
             const alreadyRecordedById = recordedMeterIds.has(m.id);
 
-            console.log(`[EDL PDF] Checking meter ${m.id} (${m.type}): recorded=${alreadyRecordedById}`);
 
             if (!alreadyRecordedById) {
               finalMeterReadings.push({
@@ -252,7 +246,6 @@ export async function POST(request: Request) {
             }
           });
 
-          console.log(`[EDL PDF] Final meter readings count: ${finalMeterReadings.length}`);
 
           fullEdlData = mapDatabaseToEDLComplet(
             { ...edl, meter_readings: finalMeterReadings },

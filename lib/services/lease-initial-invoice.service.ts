@@ -117,7 +117,7 @@ async function resolveTenantProfileId(
   const { data: profile } = await supabase
     .from("profiles")
     .select("id")
-    .eq("email", invitedSigner.invited_email)
+    .ilike("email", invitedSigner.invited_email)
     .maybeSingle();
 
   return (profile as { id?: string } | null)?.id ?? null;

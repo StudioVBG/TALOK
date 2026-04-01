@@ -957,7 +957,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
+    <div className="min-h-screen bg-muted pb-20">
       <div className={cn("container mx-auto px-4 py-8", currentStep === 3 ? "max-w-7xl" : "max-w-5xl")}>
         {/* Header */}
         <div className="mb-8">
@@ -973,7 +973,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
               <FileText className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              <h1 className="text-2xl font-bold text-foreground">
                 Nouveau bail
               </h1>
               <p className="text-muted-foreground">
@@ -1000,7 +1000,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                           scale: isActive ? 1.1 : 1,
                           backgroundColor: isCompleted ? "rgb(34 197 94)" : isActive ? "rgb(37 99 235)" : "rgb(226 232 240)",
                         }}
-                        className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-colors", isActive || isCompleted ? "text-white" : "text-slate-500")}
+                        className={cn("w-10 h-10 rounded-full flex items-center justify-center transition-colors", isActive || isCompleted ? "text-white" : "text-muted-foreground")}
                       >
                         {isCompleted ? <Check className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
                       </motion.div>
@@ -1009,7 +1009,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                       </span>
                     </div>
                     {index < STEPS.length - 1 && (
-                      <div className="flex-1 mx-4 h-0.5 bg-slate-200 dark:bg-slate-700">
+                      <div className="flex-1 mx-4 h-0.5 bg-border">
                         <motion.div initial={false} animate={{ width: currentStep > step.id ? "100%" : "0%" }} className="h-full bg-green-500" transition={{ duration: 0.3 }} />
                       </div>
                     )}
@@ -1031,7 +1031,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
           >
             {/* Étape 1 : Type de bail */}
             {currentStep === 1 && (
-              <div className="bg-white rounded-xl border shadow-sm p-6">
+              <div className="bg-card rounded-xl border shadow-sm p-6">
                 <LeaseTypeCards
                   selectedType={selectedType}
                   onSelect={handleTypeSelect}
@@ -1045,7 +1045,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
               <div className="space-y-6">
                 {/* Sélecteur d'entité signataire */}
                 {entities.length > 0 && (
-                  <div className="bg-white rounded-xl border shadow-sm p-6">
+                  <div className="bg-card rounded-xl border shadow-sm p-6">
                     <EntitySelector
                       value={selectedEntityId}
                       onChange={setSelectedEntityId}
@@ -1057,7 +1057,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                   </div>
                 )}
 
-                <div className="bg-white rounded-xl border shadow-sm p-6">
+                <div className="bg-card rounded-xl border shadow-sm p-6">
                   {initialPropertyId && selectedProperty ? (
                     <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 mb-6">
                       <div className="flex items-center gap-3 mb-2">
@@ -1312,7 +1312,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                                     id="sous-location"
                                     checked={sousLocationAutorisee}
                                     onChange={(e) => setSousLocationAutorisee(e.target.checked)}
-                                    className="rounded border-gray-300"
+                                    className="rounded border-border"
                                   />
                                   <Label htmlFor="sous-location" className="text-sm font-normal cursor-pointer">
                                     Sous-location autorisée
@@ -1324,7 +1324,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                                     id="droit-preference"
                                     checked={droitPreference}
                                     onChange={(e) => setDroitPreference(e.target.checked)}
-                                    className="rounded border-gray-300"
+                                    className="rounded border-border"
                                   />
                                   <Label htmlFor="droit-preference" className="text-sm font-normal cursor-pointer">
                                     Droit de préférence du locataire (Art. L.145-46-1)
@@ -1520,7 +1520,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:h-[calc(100vh-200px)] pb-20 lg:pb-0">
                 {/* Colonne Gauche : Formulaire (Scrollable) */}
                 <div className="lg:col-span-5 lg:overflow-y-auto lg:pr-2">
-                  <div className="bg-white rounded-xl border shadow-sm p-4 sm:p-6 space-y-5 sm:space-y-6">
+                  <div className="bg-card rounded-xl border shadow-sm p-4 sm:p-6 space-y-5 sm:space-y-6">
                     <div>
                       <h3 className="text-base sm:text-lg font-bold mb-1">Finalisation</h3>
                       <p className="text-xs sm:text-sm text-muted-foreground">Complétez les informations du locataire</p>
@@ -1566,8 +1566,8 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                 </div>
 
                 {/* Colonne Droite : Live Preview avec onglets Bail / EDL */}
-                <div className="lg:col-span-7 bg-slate-100 rounded-xl border overflow-hidden flex flex-col min-h-[400px] sm:min-h-[500px] lg:h-full">
-                  <div className="bg-slate-200 px-3 sm:px-4 py-2 border-b flex justify-between items-center">
+                <div className="lg:col-span-7 bg-muted rounded-xl border overflow-hidden flex flex-col min-h-[400px] sm:min-h-[500px] lg:h-full">
+                  <div className="bg-muted px-3 sm:px-4 py-2 border-b flex justify-between items-center">
                     {/* Onglets Bail / EDL — touch-friendly */}
                     <div className="flex items-center gap-1">
                       <button
@@ -1576,8 +1576,8 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                         className={cn(
                           "flex items-center gap-1 sm:gap-1.5 px-3 py-2 sm:py-1.5 rounded-md text-xs font-semibold uppercase tracking-wider transition-colors min-h-[36px]",
                           previewTab === "bail"
-                            ? "bg-white text-slate-800 shadow-sm"
-                            : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                            ? "bg-card text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
                         )}
                         aria-label="Aperçu du bail"
                       >
@@ -1590,8 +1590,8 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                         className={cn(
                           "flex items-center gap-1 sm:gap-1.5 px-3 py-2 sm:py-1.5 rounded-md text-xs font-semibold uppercase tracking-wider transition-colors min-h-[36px]",
                           previewTab === "edl"
-                            ? "bg-white text-slate-800 shadow-sm"
-                            : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                            ? "bg-card text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
                         )}
                         aria-label="Aperçu de l'état des lieux d'entrée"
                       >
@@ -1600,11 +1600,11 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                         <span className="sm:hidden">EDL</span>
                       </button>
                     </div>
-                    <Badge variant="outline" className="bg-white text-[10px] sm:text-xs">
+                    <Badge variant="outline" className="bg-card text-[10px] sm:text-xs">
                       {selectedType?.toUpperCase()}
                     </Badge>
                   </div>
-                  <div className="flex-1 overflow-auto bg-slate-50 p-2 sm:p-4">
+                  <div className="flex-1 overflow-auto bg-muted p-2 sm:p-4">
                     {previewTab === "bail" ? (
                       <div className="lg:scale-90 lg:origin-top-left lg:w-[111%] lg:h-[111%]">
                         <LeasePreview typeBail={selectedType! as any} bailData={previewData as any} />
@@ -1620,7 +1620,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
         </AnimatePresence>
 
         {/* Navigation Bar (Fixed Bottom) — responsive avec safe area */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t p-3 sm:p-4 z-50 safe-area-bottom">
+        <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t p-3 sm:p-4 z-50 safe-area-bottom">
           <div className="container mx-auto max-w-5xl flex justify-between items-center gap-3">
             <Button variant="outline" onClick={goBack} disabled={currentStep === 1} className="gap-1.5 sm:gap-2 h-10 sm:h-9 text-xs sm:text-sm">
               <ArrowLeft className="h-4 w-4" />
@@ -1640,7 +1640,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                     "gap-1.5 sm:gap-2 h-10 sm:h-9 text-xs sm:text-sm transition-all duration-300",
                     canProceed 
                       ? "bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/30" 
-                      : "bg-slate-300"
+                      : "bg-muted"
                   )}
                 >
                   Suivant <ArrowRight className="h-4 w-4" />

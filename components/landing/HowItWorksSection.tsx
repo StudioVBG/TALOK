@@ -1,6 +1,8 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { Home, FileText, Rocket, Check } from "lucide-react";
+import { fadeUp, stagger, defaultViewport } from "@/lib/marketing/animations";
 
 const STEPS = [
   {
@@ -11,7 +13,7 @@ const STEPS = [
     items: [
       "Appartement, maison, local commercial",
       "Photos, DPE, surface, équipements",
-      "Codes postaux DOM-TOM reconnus",
+      "Codes postaux DROM-COM reconnus",
     ],
     color: "bg-talok-bleu-marque",
   },
@@ -43,21 +45,39 @@ const STEPS = [
 
 export function HowItWorksSection() {
   return (
-    <section id="comment-ca-marche" className="bg-[hsl(var(--talok-gris-fond))] py-20 md:py-28">
+    <motion.section
+      id="comment-ca-marche"
+      className="bg-secondary py-20 md:py-28"
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="visible"
+      viewport={defaultViewport}
+    >
       <div className="container mx-auto max-w-6xl px-4">
-        <div className="reveal mx-auto max-w-3xl text-center">
+        <div className="mx-auto max-w-3xl text-center">
           <h2 className="font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
             Opérationnel en 10 minutes, pas en 10 jours
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
+          <p className="mt-4 text-base font-normal leading-relaxed text-muted-foreground">
             Trois étapes. Pas de formation. Pas de consultant. Vous créez votre
             compte et vous êtes parti.
           </p>
         </div>
 
-        <div className="mt-14 grid gap-8 md:grid-cols-3">
+        <motion.div
+          className="mt-14 grid gap-8 md:grid-cols-3"
+          variants={stagger}
+          initial="hidden"
+          whileInView="visible"
+          viewport={defaultViewport}
+        >
           {STEPS.map((step) => (
-            <div key={step.number} className="reveal rounded-2xl border bg-white p-6 shadow-sm">
+            <motion.div
+              key={step.number}
+              variants={fadeUp}
+              className="rounded-2xl border border-border bg-card p-6 shadow-sm cursor-pointer"
+              whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            >
               <div className="flex items-center gap-3">
                 <span
                   className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white ${step.color}`}
@@ -80,10 +100,10 @@ export function HowItWorksSection() {
                   </li>
                 ))}
               </ul>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
-    </section>
+    </motion.section>
   );
 }

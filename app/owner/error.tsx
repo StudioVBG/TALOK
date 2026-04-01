@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { AlertTriangle, RefreshCw, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import * as Sentry from "@sentry/nextjs";
 import { logger } from "@/lib/monitoring";
 
 /**
@@ -23,6 +24,11 @@ export default function OwnerError({
       digest: error.digest,
       section: "owner",
     });
+
+    // Envoyer à Sentry
+    Sentry.captureException(error, {
+      tags: { boundary: "owner", digest: error.digest },
+    });
   }, [error]);
 
   return (
@@ -40,7 +46,7 @@ export default function OwnerError({
 
         <CardContent className="space-y-4">
           {process.env.NODE_ENV === "development" && (
-            <details className="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 text-sm">
+            <details className="bg-muted rounded-lg p-3 text-sm">
               <summary className="cursor-pointer font-medium">
                 Détails de l&apos;erreur (dev uniquement)
               </summary>

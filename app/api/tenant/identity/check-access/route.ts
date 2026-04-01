@@ -83,9 +83,6 @@ export async function GET(request: Request) {
             .update({ profile_id: profile.id })
             .eq("id", signerByEmail.id);
 
-          console.log(
-            `[check-access] Auto-link: signer ${signerByEmail.id} -> profile ${profile.id} (email: ${user.email})`
-          );
         }
         signer = signerByEmail;
       }

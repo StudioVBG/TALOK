@@ -65,6 +65,8 @@ import type {
   LeaseReadinessState,
   LeaseWorkflowDocument,
 } from "@/app/owner/_data/lease-readiness";
+import { groupDocuments } from "@/lib/documents/group-documents";
+import { GroupedDocumentCard } from "@/features/documents/components/grouped-document-card";
 
 // ============================================
 // TYPES
@@ -318,13 +320,13 @@ export function LeaseDocumentsTab({
       {/* Toolbar */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-slate-700">
+          <span className="text-sm font-semibold text-foreground">
             Documents du bail
           </span>
           <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
             {activeDocs.length}
           </Badge>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-muted-foreground">
             {completedRequired}/{totalRequired} requis
           </span>
         </div>
@@ -362,7 +364,7 @@ export function LeaseDocumentsTab({
             className={`text-xs px-3 py-1 rounded-full border transition-colors ${
               filter === f.key
                 ? "bg-blue-50 border-blue-200 text-blue-700 font-semibold"
-                : "border-slate-100 text-slate-400 hover:border-slate-200"
+                : "border-border text-muted-foreground hover:border-border"
             }`}
           >
             {f.label}
@@ -405,7 +407,7 @@ export function LeaseDocumentsTab({
       {/* Section: Documents requis */}
       {(filter === "all" || filter === "required" || filter === "expired") && (
         <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
             Documents obligatoires
           </p>
           <div className="space-y-1.5">
@@ -446,36 +448,40 @@ export function LeaseDocumentsTab({
         </div>
       )}
 
-      {/* Section: Documents optionnels */}
+      {/* Section: Documents optionnels — groupés (CNI recto/verso, etc.) */}
       {filteredOptional.length > 0 &&
         filter !== "required" && (
           <div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2">
               Annexes &amp; optionnels ({filteredOptional.length})
             </p>
             <div className="space-y-1.5">
-              {filteredOptional
-                .sort(
-                  (a, b) =>
-                    new Date(b.created_at).getTime() -
-                    new Date(a.created_at).getTime()
-                )
-                .map((doc) => {
-                  const config = LEASE_DOCUMENT_TYPE_MAP[doc.type];
+              {groupDocuments(filteredOptional as any).map((item) => {
+                if (item.kind === "group") {
                   return (
-                    <DocumentRow
-                      key={doc.id}
-                      doc={doc}
-                      config={config}
-                      isPending={isPending}
-                      onToggleVisibility={() =>
-                        handleToggleVisibility(doc)
-                      }
-                      onDelete={() => handleDelete(doc)}
-                      onReplace={() => handleReplace(doc)}
+                    <GroupedDocumentCard
+                      key={item.key}
+                      item={item}
+                      onDelete={() => router.refresh()}
                     />
                   );
-                })}
+                }
+                const doc = item.document as DocumentItem;
+                const config = LEASE_DOCUMENT_TYPE_MAP[doc.type];
+                return (
+                  <DocumentRow
+                    key={doc.id}
+                    doc={doc}
+                    config={config}
+                    isPending={isPending}
+                    onToggleVisibility={() =>
+                      handleToggleVisibility(doc)
+                    }
+                    onDelete={() => handleDelete(doc)}
+                    onReplace={() => handleReplace(doc)}
+                  />
+                );
+              })}
             </div>
           </div>
         )}
@@ -484,7 +490,7 @@ export function LeaseDocumentsTab({
       {activeDocs.length === 0 && filter === "all" && (
         <div className="flex flex-col items-center justify-center py-12">
           <FolderOpen className="h-10 w-10 text-slate-200 mb-3" />
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-muted-foreground">
             Aucun document lié à ce bail
           </p>
           <Button
@@ -500,7 +506,7 @@ export function LeaseDocumentsTab({
       )}
 
       {/* Footer: compteur + lien GED */}
-      <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+      <div className="flex items-center justify-between pt-2 border-t border-border">
         <p className="text-xs text-muted-foreground">
           {activeDocs.length} document{activeDocs.length > 1 ? "s" : ""}{" "}
           actif{activeDocs.length > 1 ? "s" : ""}
@@ -584,17 +590,17 @@ function DocumentRow({
 
   return (
     <div
-      className={`flex items-center gap-3 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors group ${
+      className={`flex items-center gap-3 p-3 rounded-lg bg-muted hover:bg-muted transition-colors group ${
         isPending ? "opacity-60 pointer-events-none" : ""
       }`}
     >
-      <div className="h-9 w-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
-        <Icon className="h-4 w-4 text-slate-500" />
+      <div className="h-9 w-9 rounded-lg bg-card border border-border flex items-center justify-center flex-shrink-0">
+        <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-slate-800 truncate">
+          <p className="text-sm font-medium text-foreground truncate">
             {getDocLabel(doc)}
           </p>
           {status !== "valid" && (
@@ -606,10 +612,10 @@ function DocumentRow({
             </Badge>
           )}
           {doc.visible_tenant === false && (
-            <EyeOff className="h-3 w-3 text-slate-300 flex-shrink-0" />
+            <EyeOff className="h-3 w-3 text-muted-foreground flex-shrink-0" />
           )}
         </div>
-        <p className="text-xs text-slate-400 mt-0.5">
+        <p className="text-xs text-muted-foreground mt-0.5">
           Ajouté le{" "}
           {new Date(doc.created_at).toLocaleDateString("fr-FR")}
           {doc.expiry_date &&
@@ -719,13 +725,13 @@ function WorkflowDocumentRow({
           : "Produit par le workflow";
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-slate-200 bg-slate-50/80">
-      <div className="h-9 w-9 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
-        <Icon className="h-4 w-4 text-slate-500" />
+    <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed border-border bg-muted/80">
+      <div className="h-9 w-9 rounded-lg bg-card border border-border flex items-center justify-center flex-shrink-0">
+        <Icon className="h-4 w-4 text-muted-foreground" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className="text-sm font-medium text-slate-800">{config.label}</p>
+          <p className="text-sm font-medium text-foreground">{config.label}</p>
           <Badge variant="outline" className="text-[10px] h-5 px-1.5">
             {workflowDoc.source === "diagnostics" ? "Diagnostics" : "Workflow"}
           </Badge>
@@ -737,13 +743,13 @@ function WorkflowDocumentRow({
                 ? "bg-emerald-100 text-emerald-700"
                 : readinessStatus === "expired"
                   ? "bg-red-100 text-red-700"
-                  : "bg-slate-100 text-slate-700"
+                  : "bg-muted text-foreground"
             )}
           >
             {statusLabel}
           </Badge>
         </div>
-        <p className="text-xs text-slate-500 mt-0.5">{workflowDoc.description}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{workflowDoc.description}</p>
       </div>
       <div className="flex-shrink-0">
         {workflowDoc.storagePath ? (
@@ -796,7 +802,7 @@ function MissingDocumentRow({
         <Icon className="h-4 w-4 text-orange-500" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-slate-600">{config.label}</p>
+        <p className="text-sm font-medium text-muted-foreground">{config.label}</p>
         <p className="text-xs text-orange-500">Document requis non fourni</p>
       </div>
       {isDPE ? (
@@ -830,9 +836,22 @@ function MissingDocumentRow({
 // HELPERS
 // ============================================
 
+/** Labels humains pour les types de documents non couverts par LEASE_DOCUMENT_TYPE_MAP */
+const FALLBACK_TYPE_LABELS: Record<string, string> = {
+  cni_recto: "Pièce d'identité (recto)",
+  cni_verso: "Pièce d'identité (verso)",
+  piece_identite: "Pièce d'identité",
+  justificatif_revenus: "Justificatif de revenus",
+  justificatif_domicile: "Justificatif de domicile",
+  attestation_assurance: "Attestation d'assurance habitation",
+};
+
 function getDocLabel(doc: DocumentItem): string {
-  if (doc.title) return doc.title;
+  // Si le titre est un type technique connu, utiliser le label humain à la place
+  if (doc.title && !FALLBACK_TYPE_LABELS[doc.title] && !LEASE_DOCUMENT_TYPE_MAP[doc.title]) {
+    return doc.title;
+  }
   const config = LEASE_DOCUMENT_TYPE_MAP[doc.type];
   if (config) return config.label;
-  return doc.name || doc.type;
+  return FALLBACK_TYPE_LABELS[doc.type] || doc.title || doc.name || doc.type;
 }

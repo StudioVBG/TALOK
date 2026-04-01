@@ -26,7 +26,6 @@ export async function GET(request: Request) {
     const now = new Date();
     const targetMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-    console.log(`[Cron] Lancement de la génération des factures pour ${targetMonth}`);
 
     const { data, error } = await supabase.rpc("generate_monthly_invoices", {
       p_target_month: targetMonth
