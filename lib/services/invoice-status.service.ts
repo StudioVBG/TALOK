@@ -112,6 +112,7 @@ export async function getInitialInvoiceSettlement(
   supabase: SupabaseLike,
   leaseId: string
 ): Promise<InvoiceSettlement | null> {
+  // 1. Chercher par metadata.type = "initial_invoice"
   const { data: invoice } = await supabase
     .from("invoices")
     .select("id")
@@ -125,6 +126,7 @@ export async function getInitialInvoiceSettlement(
     return getInvoiceSettlement(supabase, metadataInvoiceId);
   }
 
+  // 2. Chercher par colonne type = "initial_invoice"
   const { data: typedInvoice } = await supabase
     .from("invoices")
     .select("id")
@@ -133,10 +135,25 @@ export async function getInitialInvoiceSettlement(
     .order("created_at", { ascending: true })
     .maybeSingle();
 
-  const invoiceId = (typedInvoice as { id?: string } | null)?.id;
-  if (!invoiceId) {
+  const typedInvoiceId = (typedInvoice as { id?: string } | null)?.id;
+  if (typedInvoiceId) {
+    return getInvoiceSettlement(supabase, typedInvoiceId);
+  }
+
+  // 3. Fallback: première facture du bail par date de création
+  //    Aligne le comportement avec resolveFirstInvoice (lease-readiness.ts)
+  const { data: firstInvoice } = await supabase
+    .from("invoices")
+    .select("id")
+    .eq("lease_id", leaseId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  const firstInvoiceId = (firstInvoice as { id?: string } | null)?.id;
+  if (!firstInvoiceId) {
     return null;
   }
 
-  return getInvoiceSettlement(supabase, invoiceId);
+  return getInvoiceSettlement(supabase, firstInvoiceId);
 }

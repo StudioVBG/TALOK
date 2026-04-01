@@ -849,6 +849,33 @@ export async function POST(request: NextRequest) {
 
           const settlement = await syncInvoiceStatusFromPayments(supabase as any, invoiceId, paidAt);
 
+          // Marquer initial_payment_confirmed sur le bail si la facture est soldée
+          if (settlement?.isSettled) {
+            let targetLeaseId: string | undefined = paymentIntent.metadata?.lease_id;
+            if (!targetLeaseId) {
+              // Fallback: retrouver le lease_id via la facture
+              const { data: inv } = await supabase
+                .from("invoices")
+                .select("lease_id")
+                .eq("id", invoiceId)
+                .maybeSingle();
+              if (inv) {
+                targetLeaseId = (inv as { lease_id?: string }).lease_id;
+              }
+            }
+            if (targetLeaseId) {
+              await supabase
+                .from("leases")
+                .update({
+                  initial_payment_confirmed: true,
+                  initial_payment_date: paidAt,
+                  initial_payment_stripe_pi: paymentIntent.id,
+                } as any)
+                .eq("id", targetLeaseId)
+                .eq("initial_payment_confirmed", false);
+            }
+          }
+
           if (paymentId && paymentResult.newlySucceeded) {
             const sourceTransactionId = await resolveSourceTransactionId(stripe, paymentIntent.id);
             const receiptGenerated = !!settlement?.isSettled;
