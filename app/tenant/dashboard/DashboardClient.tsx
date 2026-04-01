@@ -31,6 +31,7 @@ import {
   Wrench,
   Zap,
   Bell,
+  Scale,
 } from "lucide-react";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { Badge } from "@/components/ui/badge";
@@ -781,6 +782,31 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
               </div>
               <Wrench className="absolute -right-4 -bottom-4 h-24 w-24 text-white/10 rotate-12" />
             </GlassCard>
+          </motion.div>
+        )}
+
+        {/* U8: Accès rapide "Mes droits" */}
+        {hasLeaseData && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <Link href="/tenant/legal-rights">
+              <GlassCard hoverEffect className="p-5 flex items-center justify-between gap-4 cursor-pointer border-indigo-100 dark:border-indigo-900/40 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/20 dark:to-purple-950/20">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
+                    <Scale className="h-6 w-6 text-indigo-600" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-foreground">Mes droits de locataire</h3>
+                      <Badge className="bg-indigo-600 text-white text-[10px] px-1.5 py-0">Nouveau</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Contacts utiles, protocoles de protection et ressources juridiques
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />
+              </GlassCard>
+            </Link>
           </motion.div>
         )}
 
