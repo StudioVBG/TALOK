@@ -8,12 +8,12 @@ import { cn } from "@/lib/utils";
 
 const PLANS = [
   {
-    name: "Découverte",
+    name: "Gratuit",
     price: "0€",
     period: "gratuit sans limite",
     description: "Pour démarrer et tester à votre rythme",
     features: [
-      "Jusqu'à 2 biens",
+      "Jusqu'à 1 bien",
       "Création de baux",
       "Quittances manuelles",
       "Messagerie avec vos locataires",
@@ -24,39 +24,40 @@ const PLANS = [
     featured: false,
   },
   {
-    name: "Pro",
-    price: "19,90€",
+    name: "Confort",
+    price: "35€",
     period: "/mois",
     description: "Pour ceux qui veulent que ça tourne tout seul",
-    badge: "Le plus choisi",
+    badge: "Recommandé",
     features: [
-      "Biens illimités",
+      "Jusqu'à 10 biens",
       "Relances et quittances automatiques",
       "Paiement en ligne pour vos locataires",
-      "Signature électronique",
+      "2 signatures électroniques/mois",
       "Suivi rentabilité par bien",
       "État des lieux numérique",
-      "Support prioritaire",
+      "5 Go de stockage",
     ],
-    cta: "Essayer 14 jours gratuit",
-    href: "/inscription?plan=pro",
+    cta: "1er mois offert",
+    href: "/inscription?plan=confort",
     featured: true,
   },
   {
-    name: "Premium",
-    price: "49,90€",
+    name: "Pro",
+    price: "69€",
     period: "/mois",
-    description: "Pour gérer plusieurs structures (SCI, SARL…)",
+    description: "Pour les investisseurs et multi-biens",
     features: [
-      "Tout le plan Pro",
+      "Jusqu'à 50 biens",
+      "10 signatures électroniques/mois",
+      "Multi-utilisateurs (5 comptes)",
       "Multi-entités (SCI, SARL, SAS…)",
-      "Module copropriété",
-      "Export comptable",
-      "Intégrations avancées",
-      "Support dédié",
+      "Export comptable FEC",
+      "30 Go de stockage",
+      "Support prioritaire",
     ],
-    cta: "Contacter l'équipe",
-    href: "/contact",
+    cta: "1er mois offert",
+    href: "/inscription?plan=pro",
     featured: false,
   },
 ];
@@ -133,8 +134,7 @@ export function PricingSection() {
         </div>
 
         <p className="reveal mt-8 text-center text-sm text-muted-foreground">
-          Envie d&apos;économiser ? Le plan annuel Confort à 380 €/an vous offre 2
-          mois gratuits.
+          Envie d&apos;économiser ? Le plan annuel Confort à 336 €/an (−20%) vous offre 2 mois gratuits.
         </p>
       </div>
     </section>
