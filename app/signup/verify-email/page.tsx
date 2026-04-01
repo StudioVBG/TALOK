@@ -1,16 +1,24 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { authService } from "@/features/auth/services/auth.service";
-import { Mail, RefreshCw, CheckCircle2, ArrowRight } from "lucide-react";
+import { Mail, RefreshCw, CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
 
 export default function VerifyEmailOnboardingPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-950"><Loader2 className="h-8 w-8 animate-spin text-indigo-400" /></div>}>
+      <VerifyEmailContent />
+    </Suspense>
+  );
+}
+
+function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();

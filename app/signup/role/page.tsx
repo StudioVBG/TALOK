@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,9 +17,26 @@ import {
   Bot,
   Sparkles,
   Building2,
+  Loader2,
 } from "lucide-react";
 
+function RoleChoiceLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-950">
+      <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+    </div>
+  );
+}
+
 export default function RoleChoicePage() {
+  return (
+    <Suspense fallback={<RoleChoiceLoading />}>
+      <RoleChoiceContent />
+    </Suspense>
+  );
+}
+
+function RoleChoiceContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
