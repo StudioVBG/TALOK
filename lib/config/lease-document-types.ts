@@ -162,6 +162,18 @@ export const LEASE_DOCUMENT_TYPES: LeaseDocumentTypeConfig[] = [
     canReplace: true,
   },
   {
+    type: "pv_remise_cles",
+    label: "Procès-verbal de remise des clés",
+    icon: "Key",
+    required: false,
+    hasExpiry: false,
+    expiryWarningDays: 0,
+    category: "contractuel",
+    visibleTenantDefault: true,
+    canDelete: false,
+    canReplace: false,
+  },
+  {
     type: "autre",
     label: "Document annexe",
     icon: "File",

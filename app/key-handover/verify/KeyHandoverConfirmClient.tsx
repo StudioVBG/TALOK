@@ -49,33 +49,55 @@ export default function KeyHandoverConfirmClient({ token, leaseId }: KeyHandover
     expires_at: string;
   } | null>(null);
   const [loadingInfo, setLoadingInfo] = useState(true);
+  const [paymentBlocked, setPaymentBlocked] = useState(false);
+  const [refreshingPayment, setRefreshingPayment] = useState(false);
 
-  // Load handover info
-  useEffect(() => {
-    async function loadInfo() {
-      try {
-        const res = await fetch(`/api/leases/${leaseId}/key-handover`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.confirmed) {
-            setStep("success");
-          }
-          if (data.handover) {
-            setHandoverInfo({
-              keys: data.handover.keys_list || [],
-              property_address: "",
-              expires_at: data.handover.expires_at,
-            });
-          }
+  // Load handover info + check payment readiness
+  const loadInfo = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/leases/${leaseId}/key-handover`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.confirmed) {
+          setStep("success");
+          setPaymentBlocked(false);
+          return;
         }
-      } catch {
-        // Ignore
-      } finally {
-        setLoadingInfo(false);
+        if (data.handover) {
+          setHandoverInfo({
+            keys: data.handover.keys_list || [],
+            property_address: "",
+            expires_at: data.handover.expires_at,
+          });
+        }
       }
+
+      // Check payment status via the lease endpoint
+      const leaseRes = await fetch(`/api/leases/${leaseId}`);
+      if (leaseRes.ok) {
+        const leaseData = await leaseRes.json();
+        if (leaseData.has_paid_initial === false) {
+          setPaymentBlocked(true);
+        } else {
+          setPaymentBlocked(false);
+        }
+      }
+    } catch {
+      // Ignore
+    } finally {
+      setLoadingInfo(false);
+      setRefreshingPayment(false);
     }
-    loadInfo();
   }, [leaseId]);
+
+  useEffect(() => {
+    loadInfo();
+  }, [loadInfo]);
+
+  const handleRefreshPayment = useCallback(() => {
+    setRefreshingPayment(true);
+    loadInfo();
+  }, [loadInfo]);
 
   // Request geolocation
   const requestGeolocation = useCallback(() => {
@@ -202,6 +224,52 @@ export default function KeyHandoverConfirmClient({ token, leaseId }: KeyHandover
   }
 
   const keys = handoverInfo?.keys || [];
+
+  if (paymentBlocked) {
+    return (
+      <PageTransition>
+        <div className="container mx-auto px-4 max-w-lg space-y-8">
+          <div className="text-center space-y-2">
+            <div className="inline-flex items-center justify-center p-3 bg-amber-100 rounded-2xl mb-2">
+              <AlertCircle className="h-8 w-8 text-amber-600" />
+            </div>
+            <h1 className="text-3xl font-black text-slate-900">Remise des clés</h1>
+          </div>
+
+          <Alert className="rounded-xl border-amber-200 bg-amber-50">
+            <AlertCircle className="h-4 w-4 text-amber-600" />
+            <AlertTitle className="text-amber-800">En attente de paiement</AlertTitle>
+            <AlertDescription className="text-amber-700">
+              En attente de la confirmation du paiement initial. Vous pourrez signer la remise des clés une fois le paiement validé.
+            </AlertDescription>
+          </Alert>
+
+          <Button
+            onClick={handleRefreshPayment}
+            disabled={refreshingPayment}
+            variant="outline"
+            className="w-full h-12 rounded-xl font-bold"
+          >
+            {refreshingPayment ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Vérification en cours...
+              </>
+            ) : (
+              "Rafraîchir"
+            )}
+          </Button>
+
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 text-slate-400 text-sm font-medium">
+              <ShieldCheck className="h-4 w-4" />
+              Preuve horodatée et géolocalisée conforme eIDAS
+            </div>
+          </div>
+        </div>
+      </PageTransition>
+    );
+  }
 
   return (
     <PageTransition>

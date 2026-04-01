@@ -152,7 +152,15 @@ export async function getInitialInvoiceSettlement(
 
   const firstInvoiceId = (firstInvoice as { id?: string } | null)?.id;
   if (!firstInvoiceId) {
-    return null;
+    // No invoice exists for this lease — nothing to pay,
+    // so the settlement condition is considered met.
+    return {
+      invoice: null,
+      totalPaid: 0,
+      remaining: 0,
+      status: "paid",
+      isSettled: true,
+    };
   }
 
   return getInvoiceSettlement(supabase, firstInvoiceId);

@@ -298,6 +298,9 @@ export type DocumentType =
   | "proces_verbal"
   | "appel_fonds"
 
+  // Remise des clés
+  | "pv_remise_cles"
+
   // Divers
   | "annexe_pinel"
   | "etat_travaux"
@@ -391,6 +394,9 @@ export const DOCUMENT_TYPE_TO_CATEGORY: Record<DocumentType, DocumentCategory> =
   proces_verbal: "copropriete",
   appel_fonds: "copropriete",
 
+  // Remise des clés
+  pv_remise_cles: "contrat",
+
   // Divers
   annexe_pinel: "autre",
   etat_travaux: "autre",
@@ -451,6 +457,7 @@ export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
   copropriete: "Document copropriété",
   proces_verbal: "Procès-verbal",
   appel_fonds: "Appel de fonds",
+  pv_remise_cles: "Procès-verbal de remise des clés",
   annexe_pinel: "Annexe Pinel",
   etat_travaux: "État des travaux",
   publication_jal: "Publication JAL",
