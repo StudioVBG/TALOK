@@ -17,6 +17,7 @@ import { revalidatePath } from "next/cache";
 import { verifyHandoverToken } from "../utils";
 import { getInitialInvoiceSettlement } from "@/lib/services/invoice-status.service";
 import { ensureKeyHandoverAttestation } from "@/lib/services/final-documents.service";
+import { generateKeyHandoverPDF } from "@/lib/documents/key-handover-pdf-generator";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -188,6 +189,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     } catch (docErr) {
       console.warn("[key-handover confirm] Document generation error (non-blocking):", docErr);
     }
+
+    // Générer le PV de remise des clés (non-bloquant)
+    generateKeyHandoverPDF(leaseId).catch((err) => {
+      console.error("Erreur génération PV remise des clés:", err);
+    });
 
     // Audit log
     try {

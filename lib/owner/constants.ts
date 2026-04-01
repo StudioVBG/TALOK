@@ -90,6 +90,7 @@ export const DOCUMENT_TYPES = {
   ordre_mission: "Ordre de mission",
   rapport_intervention: "Rapport d'intervention",
   engagement_garant: "Acte de cautionnement",
+  pv_remise_cles: "Procès-verbal de remise des clés",
   consentement: "Consentement RGPD",
   courrier: "Courrier",
   photo: "Photo / Justificatif visuel",
