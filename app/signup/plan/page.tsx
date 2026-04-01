@@ -5,7 +5,7 @@
  * Le propriétaire choisit son forfait, le 1er mois est offert
  */
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -46,6 +46,14 @@ const PLAN_ICONS: Record<PlanSlug, React.ReactNode> = {
 const SIGNUP_PLANS: PlanSlug[] = ["gratuit", "starter", "confort", "pro"];
 
 export default function SignupPlanPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-950"><Loader2 className="h-8 w-8 animate-spin text-indigo-400" /></div>}>
+      <SignupPlanContent />
+    </Suspense>
+  );
+}
+
+function SignupPlanContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();

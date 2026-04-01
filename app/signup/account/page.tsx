@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
   FileText,
   Cookie,
   CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import { PasswordInput } from "@/components/ui/password-input";
 import { PasswordStrength } from "@/components/ui/password-strength";
@@ -77,6 +78,14 @@ const INITIAL_DRAFT: AccountDraft = {
 };
 
 export default function AccountCreationPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-950"><Loader2 className="h-8 w-8 animate-spin text-indigo-400" /></div>}>
+      <AccountCreationContent />
+    </Suspense>
+  );
+}
+
+function AccountCreationContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
