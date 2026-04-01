@@ -738,13 +738,11 @@ export default function TenantDocumentsPage() {
               // ── Vue grille ──
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 {displayDocs.map((doc: any) => {
-                  if ("group_type" in doc) {
+                  if (doc.kind === "group") {
                     return (
                       <GroupedDocumentCard
-                        key={doc.id}
-                        document={doc}
-                        onPreview={handlePreview}
-                        onDownload={handleDownload}
+                        key={doc.key}
+                        item={doc}
                       />
                     );
                   }
