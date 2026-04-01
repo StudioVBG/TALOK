@@ -4,6 +4,29 @@ import { twMerge } from "tailwind-merge";
 // Re-export common format utilities for convenience
 export { formatCurrency, formatDate } from "@/lib/helpers/format";
 
+/**
+ * Safe Date parser — returns null for invalid/null/undefined date strings.
+ * Use everywhere instead of raw `new Date(dateString)` to prevent RangeError crashes.
+ */
+export function safeDate(d: string | null | undefined): Date | null {
+  if (!d) return null;
+  const parsed = new Date(d);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/**
+ * Format a date string safely — returns fallback string if date is invalid.
+ */
+export function safeDateFormat(
+  d: string | null | undefined,
+  formatFn: (date: Date) => string,
+  fallback = "—"
+): string {
+  const parsed = safeDate(d);
+  if (!parsed) return fallback;
+  return formatFn(parsed);
+}
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

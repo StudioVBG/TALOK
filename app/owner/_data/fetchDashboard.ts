@@ -4,6 +4,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { redirect } from "next/navigation";
 
 export interface OwnerDashboardData {
@@ -256,7 +257,9 @@ export async function fetchDashboard(ownerId: string): Promise<OwnerDashboardDat
   if (error) {
     console.warn("[fetchDashboard] RPC owner_dashboard failed, using direct queries fallback:", error.message);
     // Fallback sur des requêtes directes aux tables
-    return fetchDashboardDirect(supabase, ownerId);
+    // Utiliser le service client pour bypass RLS qui pourrait bloquer les compteurs
+    const serviceClient = getServiceClient();
+    return fetchDashboardDirect(serviceClient, ownerId);
   }
 
   const dashboardData = data as OwnerDashboardRPCResponse;

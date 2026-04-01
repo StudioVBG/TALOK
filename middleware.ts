@@ -108,6 +108,13 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // B5: Redirect authenticated users from /pricing to their dashboard
+  if (hasAuthCookie && pathname === "/pricing") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/owner/dashboard";
+    return NextResponse.redirect(url);
+  }
+
   // 6. Redirection si non authentifié vers les zones protégées
   const protectedPaths = [
     "/tenant",
