@@ -851,8 +851,7 @@ export async function POST(request: NextRequest) {
 
           // Marquer initial_payment_confirmed sur le bail si la facture est soldée
           if (settlement?.isSettled) {
-            const leaseIdFromMeta = paymentIntent.metadata?.lease_id;
-            let targetLeaseId = leaseIdFromMeta;
+            let targetLeaseId: string | undefined = paymentIntent.metadata?.lease_id;
             if (!targetLeaseId) {
               // Fallback: retrouver le lease_id via la facture
               const { data: inv } = await supabase
@@ -860,7 +859,9 @@ export async function POST(request: NextRequest) {
                 .select("lease_id")
                 .eq("id", invoiceId)
                 .maybeSingle();
-              targetLeaseId = (inv as { lease_id?: string } | null)?.lease_id;
+              if (inv) {
+                targetLeaseId = (inv as { lease_id?: string }).lease_id;
+              }
             }
             if (targetLeaseId) {
               await supabase
