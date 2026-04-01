@@ -49,13 +49,14 @@ export default function SignupPlanPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  
+
   const [billing, setBilling] = useState<BillingCycle>("monthly");
   const [selectedPlan, setSelectedPlan] = useState<PlanSlug>("confort");
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  
-  const role = searchParams.get("role") || "owner";
+
+  // Guard: useSearchParams() peut retourner null pendant le SSR sans Suspense boundary
+  const role = searchParams?.get("role") || "owner";
 
   // Vérifier que l'utilisateur est connecté et a un email vérifié
   useEffect(() => {
@@ -141,7 +142,7 @@ export default function SignupPlanPage() {
 
   // Vérifier si on revient de Stripe avec un canceled
   useEffect(() => {
-    const canceled = searchParams.get("canceled");
+    const canceled = searchParams?.get("canceled");
     if (canceled === "true") {
       toast({
         title: "Paiement annulé",

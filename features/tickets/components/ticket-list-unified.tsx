@@ -101,7 +101,7 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
                     {ticket.priorite}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    {format(new Date(ticket.created_at), "d MMM yyyy", { locale: fr })}
+                    {(() => { const d = new Date(ticket.created_at); return isNaN(d.getTime()) ? "—" : format(d, "d MMM yyyy", { locale: fr }); })()}
                   </span>
                 </div>
                 

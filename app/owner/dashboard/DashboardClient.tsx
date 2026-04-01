@@ -350,9 +350,13 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
              {/* KPI 1: Revenus */}
              <div className="min-w-0">
                 <p className="text-muted-foreground text-[10px] xs:text-xs sm:text-sm font-medium truncate">Revenus du mois</p>
-                <p className="text-base xs:text-lg sm:text-xl lg:text-2xl font-bold mt-0.5 sm:mt-1 truncate">
-                   <AnimatedCounter value={transformedData.zone2_finances.kpis.revenue_current_month.collected} type="currency" />
-                </p>
+                {isLoadingApi ? (
+                  <Skeleton className="h-7 w-24 mt-0.5 sm:mt-1 bg-white/20" />
+                ) : (
+                  <p className="text-base xs:text-lg sm:text-xl lg:text-2xl font-bold mt-0.5 sm:mt-1 truncate">
+                     <AnimatedCounter value={transformedData.zone2_finances.kpis.revenue_current_month.collected} type="currency" />
+                  </p>
+                )}
              </div>
              {/* KPI 2: Biens */}
              <div className="min-w-0">

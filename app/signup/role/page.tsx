@@ -29,11 +29,12 @@ export default function RoleChoicePage() {
   const [selectedRole, setSelectedRole] = useState<"owner" | "tenant" | "provider" | "guarantor" | "syndic" | "agency" | null>(null);
 
   // Vérifier si on a un token d'invitation (rôle verrouillé)
-  const inviteToken = searchParams.get("invite");
-  const lockedRole = searchParams.get("role");
+  // Guard: useSearchParams() peut retourner null pendant le SSR sans Suspense boundary
+  const inviteToken = searchParams?.get("invite") ?? null;
+  const lockedRole = searchParams?.get("role") ?? null;
 
   // Pré-remplir le code logement si transmis depuis /rejoindre-logement
-  const codeFromUrl = searchParams.get("code");
+  const codeFromUrl = searchParams?.get("code") ?? null;
   const [propertyCode, setPropertyCode] = useState(codeFromUrl || "");
 
   useEffect(() => {
