@@ -285,7 +285,7 @@ export function CompteBancaireTab() {
                           Éléments à compléter
                         </p>
                         <ul className="space-y-1 text-sm text-amber-800 dark:text-amber-200">
-                          {connectAccount.missing_requirements.slice(0, 5).map((item) => (
+                          {[...new Set(connectAccount.missing_requirements)].slice(0, 5).map((item) => (
                             <li key={item}>- {formatRequirementLabel(item)}</li>
                           ))}
                         </ul>

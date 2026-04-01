@@ -361,7 +361,38 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
               </motion.p>
             </div>
             
-            {/* ✅ SOTA 2026: Bouton "Ajouter un bien" supprimé du header - déjà présent dans quick-links */}
+            {/* U2: CTA primaire contextuel */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.5 }}
+              className="shrink-0"
+            >
+              {!hasLeases ? (
+                <Button
+                  asChild
+                  className="bg-white text-slate-900 hover:bg-white/90 font-bold shadow-lg gap-2"
+                >
+                  <Link href={`${OWNER_ROUTES.contracts.path}/new`}>
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Créer un bail</span>
+                    <span className="sm:hidden">Bail</span>
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  asChild
+                  variant="outline"
+                  className="border-white/30 text-white hover:bg-white/10 font-medium gap-2"
+                >
+                  <Link href={`${OWNER_ROUTES.properties.path}/new`}>
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Ajouter un bien</span>
+                    <span className="sm:hidden">Bien</span>
+                  </Link>
+                </Button>
+              )}
+            </motion.div>
           </div>
 
           {/* Quick Stats in Header - Grid responsive */}
