@@ -104,12 +104,12 @@ async function IndexationContent() {
           </div>
         </div>
 
-        <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">
+        <div className="bg-muted border border-slate-100 rounded-xl p-4">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="h-8 w-8 text-slate-500" />
+            <AlertTriangle className="h-8 w-8 text-muted-foreground" />
             <div>
-              <p className="text-2xl font-bold text-slate-700">{declined.length}</p>
-              <p className="text-sm text-slate-600">Non appliquées</p>
+              <p className="text-2xl font-bold text-foreground">{declined.length}</p>
+              <p className="text-sm text-muted-foreground">Non appliquées</p>
             </div>
           </div>
         </div>
@@ -139,11 +139,11 @@ export default function IndexationPage() {
             </Button>
           </Link>
         </div>
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 flex items-center gap-3">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
           <TrendingUp className="h-8 w-8 text-blue-600" />
           Révisions de loyer (IRL)
         </h1>
-        <p className="text-slate-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Gérez les révisions annuelles de loyer selon l'Indice de Référence des Loyers
         </p>
       </div>

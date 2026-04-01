@@ -37,10 +37,37 @@ function getStripe(): Stripe {
   });
 }
 
-// Fonction utilitaire pour générer et sauvegarder la quittance de façon idempotente
+// Fonction utilitaire pour générer et sauvegarder la quittance de façon idempotente,
+// puis envoyer la quittance PDF par email au locataire.
 async function processReceiptGeneration(supabase: any, _invoiceId: string, paymentId: string, _amount: number) {
   try {
-    await ensureReceiptDocument(supabase, paymentId);
+    const result = await ensureReceiptDocument(supabase, paymentId);
+
+    // Envoyer la quittance par email au locataire (seulement si nouvelle)
+    if (result?.created && result.pdfBytes && result.receiptMeta?.tenantEmail) {
+      try {
+        const { sendReceiptEmail } = await import("@/lib/emails/send-receipt-email");
+        await sendReceiptEmail({
+          tenantEmail: result.receiptMeta.tenantEmail,
+          tenantName: result.receiptMeta.tenantName,
+          period: result.receiptMeta.period,
+          totalAmount: result.receiptMeta.totalAmount,
+          propertyAddress: result.receiptMeta.propertyAddress,
+          paymentDate: result.receiptMeta.paymentDate,
+          paymentMethod: result.receiptMeta.paymentMethod,
+          pdfBytes: result.pdfBytes,
+          paymentId,
+        });
+
+        // Marquer la quittance comme envoyée
+        await supabase
+          .from("receipts")
+          .update({ sent_at: new Date().toISOString() })
+          .eq("payment_id", paymentId);
+      } catch (emailError) {
+        console.error("[Receipt] Email to tenant failed:", emailError);
+      }
+    }
   } catch (error) {
     console.error("[Receipt] Generation failed:", error);
   }
@@ -499,9 +526,119 @@ async function emitPaymentSucceededEvent(
       });
     }
 
-    console.log(`[Payment] ✅ Events emitted for payment ${paymentId}`);
   } catch (error) {
     console.error("[Payment] Error emitting events:", error);
+  }
+}
+
+/**
+ * Gère les notifications et relances suite à un échec de paiement.
+ * - Notifie le locataire et le propriétaire (notifications in-app)
+ * - Envoie un email de rappel au locataire
+ * - Programme les relances via outbox : J+1, J+3, J+7
+ */
+async function processPaymentFailedNotifications(
+  supabase: any,
+  invoiceId: string,
+  paymentIntent: Stripe.PaymentIntent
+) {
+  // Récupérer les infos complètes de la facture
+  const { data: invoice } = await supabase
+    .from("invoices")
+    .select(`
+      id, montant_total, periode, date_echeance, owner_id, tenant_id,
+      lease:leases(
+        id,
+        property:properties(
+          adresse_complete, ville
+        )
+      )
+    `)
+    .eq("id", invoiceId)
+    .single();
+
+  if (!invoice) return;
+
+  const [{ data: tenantProfile }, { data: ownerProfile }] = await Promise.all([
+    supabase.from("profiles").select("id, prenom, nom, email, user_id").eq("id", invoice.tenant_id).single(),
+    supabase.from("profiles").select("id, prenom, nom, email, user_id").eq("id", invoice.owner_id).single(),
+  ]);
+
+  const tenantName = `${tenantProfile?.prenom || ""} ${tenantProfile?.nom || ""}`.trim() || "Locataire";
+  const propertyAddress = invoice.lease?.property?.adresse_complete || invoice.lease?.property?.ville || "le logement";
+  const amount = (paymentIntent.amount / 100).toFixed(2);
+  const failureMessage = paymentIntent.last_payment_error?.message || "Paiement refusé";
+
+  // 1. Notification in-app au locataire
+  if (tenantProfile?.user_id) {
+    await supabase.rpc("create_notification", {
+      p_recipient_id: tenantProfile.user_id,
+      p_type: "alert",
+      p_title: "Échec de paiement",
+      p_message: `Votre paiement de ${amount}€ pour ${propertyAddress} a échoué. ${failureMessage}`,
+      p_link: `/tenant/payments?invoice=${invoiceId}`,
+      p_related_id: invoiceId,
+      p_related_type: "invoice",
+    });
+  }
+
+  // 2. Notification in-app au propriétaire
+  if (ownerProfile?.user_id) {
+    await supabase.rpc("create_notification", {
+      p_recipient_id: ownerProfile.user_id,
+      p_type: "alert",
+      p_title: "Paiement locataire échoué",
+      p_message: `Le paiement de ${amount}€ de ${tenantName} pour ${propertyAddress} a échoué.`,
+      p_link: `/owner/money`,
+      p_related_id: invoiceId,
+      p_related_type: "invoice",
+    });
+  }
+
+  // 3. Email de rappel au locataire
+  if (tenantProfile?.email) {
+    try {
+      const { sendPaymentReminder } = await import("@/lib/emails/resend.service");
+      const dueDate = invoice.date_echeance || invoice.periode;
+      const now = new Date();
+      const dueDateObj = new Date(dueDate);
+      const daysLate = Math.max(0, Math.floor((now.getTime() - dueDateObj.getTime()) / (1000 * 60 * 60 * 24)));
+
+      await sendPaymentReminder({
+        tenantEmail: tenantProfile.email,
+        tenantName,
+        amount: paymentIntent.amount / 100,
+        dueDate,
+        daysLate,
+        invoiceId,
+      });
+    } catch (emailErr) {
+      console.error("[Payment Failed] Email reminder error:", emailErr);
+    }
+  }
+
+  // 4. Programmer les relances automatiques via outbox (J+1, J+3, J+7)
+  const retryDelays = [1, 3, 7]; // jours
+  for (const delayDays of retryDelays) {
+    const scheduledAt = new Date();
+    scheduledAt.setDate(scheduledAt.getDate() + delayDays);
+
+    await supabase.from("outbox").insert({
+      event_type: "Payment.FailedRetry",
+      payload: {
+        invoice_id: invoiceId,
+        tenant_id: invoice.tenant_id,
+        owner_id: invoice.owner_id,
+        amount: paymentIntent.amount / 100,
+        retry_day: delayDays,
+        property_address: propertyAddress,
+        tenant_name: tenantName,
+        tenant_email: tenantProfile?.email || null,
+        failure_reason: failureMessage,
+        stripe_payment_intent_id: paymentIntent.id,
+      },
+      scheduled_at: scheduledAt.toISOString(),
+    });
   }
 }
 
@@ -543,7 +680,6 @@ export async function POST(request: NextRequest) {
 
   const supabase = createServiceRoleClient();
 
-  console.log(`[Stripe Webhook] Received event: ${event.type}`);
 
   try {
     const { data: existingWebhook } = await supabase
@@ -572,7 +708,6 @@ export async function POST(request: NextRequest) {
         const tenantId = session.metadata?.tenant_id;
         
         if (invoiceId) {
-          console.log(`[Stripe Webhook] Processing payment for invoice: ${invoiceId}`);
           const providerRef = session.payment_intent as string;
           const paidAt = new Date().toISOString();
           const paymentResult = providerRef
@@ -682,7 +817,6 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          console.log(`[Stripe Webhook] Invoice ${invoiceId} payment synchronized`);
         }
         break;
       }
@@ -715,7 +849,33 @@ export async function POST(request: NextRequest) {
 
           const settlement = await syncInvoiceStatusFromPayments(supabase as any, invoiceId, paidAt);
 
-          console.log(`[Stripe Webhook] Payment intent ${paymentIntent.id} processed`);
+          // Marquer initial_payment_confirmed sur le bail si la facture est soldée
+          if (settlement?.isSettled) {
+            let targetLeaseId: string | undefined = paymentIntent.metadata?.lease_id;
+            if (!targetLeaseId) {
+              // Fallback: retrouver le lease_id via la facture
+              const { data: inv } = await supabase
+                .from("invoices")
+                .select("lease_id")
+                .eq("id", invoiceId)
+                .maybeSingle();
+              if (inv) {
+                targetLeaseId = (inv as { lease_id?: string }).lease_id;
+              }
+            }
+            if (targetLeaseId) {
+              await supabase
+                .from("leases")
+                .update({
+                  initial_payment_confirmed: true,
+                  initial_payment_date: paidAt,
+                  initial_payment_stripe_pi: paymentIntent.id,
+                } as any)
+                .eq("id", targetLeaseId)
+                .eq("initial_payment_confirmed", false);
+            }
+          }
+
           if (paymentId && paymentResult.newlySucceeded) {
             const sourceTransactionId = await resolveSourceTransactionId(stripe, paymentIntent.id);
             const receiptGenerated = !!settlement?.isSettled;
@@ -753,10 +913,10 @@ export async function POST(request: NextRequest) {
         const invoiceId = paymentIntent.metadata?.invoice_id;
 
         if (invoiceId) {
-          await upsertPaymentAttempt(supabase, {
+          const paymentResult = await upsertPaymentAttempt(supabase, {
             invoiceId,
             amount: paymentIntent.amount / 100,
-            method: "cb",
+            method: paymentIntent.payment_method_types?.[0] || "cb",
             providerRef: paymentIntent.id,
             status: "failed",
             paidAt: new Date().toISOString(),
@@ -769,7 +929,14 @@ export async function POST(request: NextRequest) {
 
           await syncInvoiceStatusFromPayments(supabase as any, invoiceId, null);
 
-          console.log(`[Stripe Webhook] Payment failed for invoice ${invoiceId}`);
+          // Notifications et relances — seulement si c'est un nouvel échec
+          if (paymentResult.newlyFailed) {
+            try {
+              await processPaymentFailedNotifications(supabase, invoiceId, paymentIntent);
+            } catch (notifError) {
+              console.error("[Stripe Webhook] Payment failed notifications error:", notifError);
+            }
+          }
         }
         break;
       }
@@ -837,7 +1004,6 @@ export async function POST(request: NextRequest) {
             { onConflict: "stripe_invoice_id" }
           );
 
-          console.log(`[Stripe Webhook] Subscription invoice paid: ${invoice.id}`);
         }
         break;
       }
@@ -877,7 +1043,6 @@ export async function POST(request: NextRequest) {
         const subscription = event.data.object as Stripe.Subscription;
 
         await syncSubscriptionStateFromStripeSubscription(supabase, subscription);
-        console.log(`[Stripe Webhook] Subscription updated: ${subscription.id}`);
         break;
       }
 
@@ -970,7 +1135,6 @@ export async function POST(request: NextRequest) {
             });
           }
 
-          console.log(`[Stripe Webhook] Subscription canceled: ${subscription.id}`);
         }
         break;
       }
@@ -1033,7 +1197,6 @@ export async function POST(request: NextRequest) {
             .eq("id", connectAccount.id as string);
 
           if (!updateError) {
-            console.log(`[Stripe Webhook] Connect account updated: ${account.id}`);
 
             // Notifier le propriétaire si l'onboarding est terminé
             if (account.charges_enabled && account.payouts_enabled && connectAccount.profile_id) {
@@ -1107,7 +1270,6 @@ export async function POST(request: NextRequest) {
             });
           }
 
-          console.log(`[Stripe Webhook] Transfer created: ${transfer.id}`);
         }
         break;
       }
@@ -1127,7 +1289,6 @@ export async function POST(request: NextRequest) {
           })
           .eq("stripe_transfer_id", transfer.id);
 
-        console.log(`[Stripe Webhook] Transfer failed: ${transfer.id}`);
         break;
       }
 
@@ -1165,10 +1326,70 @@ export async function POST(request: NextRequest) {
       }
 
       // ===============================================
+      // CONTESTATION SEPA (DISPUTE)
+      // ===============================================
+      case "charge.dispute.created": {
+        const dispute = event.data.object as Stripe.Dispute;
+        const chargeId = typeof dispute.charge === "string" ? dispute.charge : dispute.charge?.id;
+        const paymentIntentId = typeof dispute.payment_intent === "string"
+          ? dispute.payment_intent
+          : dispute.payment_intent?.id || null;
+
+        // Logger la contestation
+        await supabase.from("webhook_logs").insert({
+          provider: "stripe",
+          event_type: "charge.dispute.created",
+          event_id: event.id,
+          payload: {
+            dispute_id: dispute.id,
+            charge_id: chargeId,
+            payment_intent_id: paymentIntentId,
+            amount: dispute.amount,
+            reason: dispute.reason,
+            status: dispute.status,
+          } as Json,
+          processed_at: new Date().toISOString(),
+          status: "success",
+        });
+
+        // Trouver le paiement lié
+        if (paymentIntentId) {
+          const { data: payment } = await supabase
+            .from("payments")
+            .select("id, invoice_id, invoice:invoices(owner_id, tenant_id, lease_id)")
+            .eq("provider_ref", paymentIntentId)
+            .maybeSingle();
+
+          if (payment) {
+            // Marquer le paiement comme contesté
+            await supabase
+              .from("payments")
+              .update({ statut: "disputed" })
+              .eq("id", payment.id);
+
+            const invoice = payment.invoice as any;
+
+            // Notifier le propriétaire
+            if (invoice?.owner_id) {
+              await supabase.rpc("create_notification", {
+                p_recipient_id: invoice.owner_id,
+                p_type: "alert",
+                p_title: "Contestation de paiement",
+                p_message: `Un prélèvement de ${(dispute.amount / 100).toFixed(2)}€ a été contesté par le locataire. Motif : ${dispute.reason || 'non spécifié'}.`,
+                p_link: "/owner/money",
+                p_related_id: payment.invoice_id,
+                p_related_type: "invoice",
+              });
+            }
+          }
+        }
+        break;
+      }
+
+      // ===============================================
       // AUTRES ÉVÉNEMENTS
       // ===============================================
       default:
-        console.log(`[Stripe Webhook] Unhandled event type: ${event.type}`);
     }
 
     // Enregistrer l'événement dans le log d'audit

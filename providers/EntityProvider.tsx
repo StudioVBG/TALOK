@@ -11,7 +11,7 @@
  * (React strict mode, onglets multiples).
  */
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useEntityStore } from "@/stores/useEntityStore";
 import { useAuth } from "@/lib/hooks/use-auth";
 
@@ -25,12 +25,12 @@ let ensureDefaultPromise: Promise<void> | null = null;
 export function EntityProvider({ children }: EntityProviderProps) {
   const { profile } = useAuth();
   const fetchEntities = useEntityStore((s) => s.fetchEntities);
+  const setActiveEntity = useEntityStore((s) => s.setActiveEntity);
+  const autoSelectDoneRef = useRef(false);
 
   useEffect(() => {
     if (!profile?.id) return;
 
-    // owner_profiles.profile_id === profiles.id === legal_entities.owner_profile_id
-    // No intermediate query needed — profile.id is the owner_profile_id FK value.
     const loadEntities = async () => {
       try {
         const { entities, lastFetchedAt } = useEntityStore.getState();
@@ -40,10 +40,15 @@ export function EntityProvider({ children }: EntityProviderProps) {
           await fetchEntities(profile.id);
         }
 
+        // Auto-sélectionner la première entité si aucune n'est active
+        const { entities: freshEntities, activeEntityId: initialActiveEntityId } = useEntityStore.getState();
+        if (!initialActiveEntityId && freshEntities.length > 0) {
+          useEntityStore.getState().setActiveEntity(freshEntities[0].id);
+        }
+
         // Si toujours vide après fetch, auto-créer l'entité par défaut
         const currentEntities = useEntityStore.getState().entities;
         if (currentEntities.length === 0) {
-          // Dédupliquer les appels concurrents (strict mode, multi-tab)
           if (ensureDefaultPromise) {
             await ensureDefaultPromise;
           } else {
@@ -55,6 +60,11 @@ export function EntityProvider({ children }: EntityProviderProps) {
                 const result = await ensureDefaultEntity();
                 if (result.success) {
                   await fetchEntities(profile.id);
+                  // Auto-sélectionner la nouvelle entité
+                  const { entities: newEntities, activeEntityId: currentId } = useEntityStore.getState();
+                  if (!currentId && newEntities.length > 0) {
+                    useEntityStore.getState().setActiveEntity(newEntities[0].id);
+                  }
                 }
               } finally {
                 ensureDefaultPromise = null;
@@ -63,13 +73,50 @@ export function EntityProvider({ children }: EntityProviderProps) {
             await ensureDefaultPromise;
           }
         }
+
+        // Auto-sélectionner l'entité si aucune n'est active ou si l'entité
+        // active n'existe plus dans la liste (supprimée, archivée, etc.)
+        const state = useEntityStore.getState();
+        const { activeEntityId, setActiveEntity } = state;
+        const finalEntities = state.entities;
+
+        if (finalEntities.length > 0) {
+          const activeStillExists =
+            activeEntityId &&
+            finalEntities.some((e) => e.id === activeEntityId);
+
+          if (!activeStillExists) {
+            // Stratégie : sélectionner l'entité avec le plus de biens actifs,
+            // puis de baux actifs. À propriétés égales, prendre la default.
+            const best = [...finalEntities].sort((a, b) => {
+              if (b.propertyCount !== a.propertyCount)
+                return b.propertyCount - a.propertyCount;
+              if (b.activeLeaseCount !== a.activeLeaseCount)
+                return b.activeLeaseCount - a.activeLeaseCount;
+              if (b.isDefault !== a.isDefault) return b.isDefault ? 1 : -1;
+              return 0;
+            })[0];
+
+            setActiveEntity(best.id);
+          }
+        }
       } catch (err) {
         console.error("[EntityProvider] Error loading entities:", err);
       }
     };
 
     loadEntities();
-  }, [profile?.id, fetchEntities]);
+  }, [profile?.id, fetchEntities, setActiveEntity]);
+
+  // Reactive guard: if entities arrive after initial render and activeEntityId is still null
+  const entities = useEntityStore((s) => s.entities);
+  const activeEntityId = useEntityStore((s) => s.activeEntityId);
+
+  useEffect(() => {
+    if (!activeEntityId && entities.length > 0) {
+      setActiveEntity(entities[0].id);
+    }
+  }, [entities, activeEntityId, setActiveEntity]);
 
   return <>{children}</>;
 }

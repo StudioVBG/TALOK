@@ -8,10 +8,8 @@ import { documentSchema } from "@/lib/validations";
 import { ensureDocumentGallerySupport } from "@/lib/server/document-gallery";
 import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { validateFile } from "@/lib/security/file-validation";
+import { DOCUMENT_TYPES, MAX_FILE_SIZE } from "@/lib/documents/constants";
 import { withSecurity } from "@/lib/api/with-security";
-
-
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 function isImage(mimeType: string) {
   return mimeType.startsWith("image/");
@@ -54,20 +52,7 @@ export const POST = withSecurity(async function POST(request: Request) {
     if (!type) {
       return NextResponse.json({ error: "Le type de document est requis." }, { status: 400 });
     }
-    const allowedTypes = [
-      "bail", "avenant", "engagement_garant", "bail_signe_locataire", "bail_signe_proprietaire",
-      "piece_identite", "cni_recto", "cni_verso", "passeport", "titre_sejour",
-      "quittance", "facture", "rib", "avis_imposition", "bulletin_paie", "attestation_loyer",
-      "attestation_assurance", "assurance_pno",
-      "diagnostic", "dpe", "diagnostic_gaz", "diagnostic_electricite", "diagnostic_plomb", "diagnostic_amiante", "diagnostic_termites", "erp",
-      "EDL_entree", "EDL_sortie", "inventaire",
-      "candidature_identite", "candidature_revenus", "candidature_domicile", "candidature_garantie",
-      "garant_identite", "garant_revenus", "garant_domicile", "garant_engagement",
-      "devis", "ordre_mission", "rapport_intervention",
-      "taxe_fonciere", "taxe_sejour", "copropriete", "proces_verbal", "appel_fonds",
-      "consentement", "courrier", "photo", "justificatif_revenus", "autre",
-    ];
-    if (!allowedTypes.includes(type)) {
+    if (!(DOCUMENT_TYPES as readonly string[]).includes(type)) {
       return NextResponse.json({ error: `Type de document invalide: ${type}` }, { status: 400 });
     }
 

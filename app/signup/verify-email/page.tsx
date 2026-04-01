@@ -27,9 +27,10 @@ function VerifyEmailContent() {
   const [emailSent, setEmailSent] = useState(false);
   const [verified, setVerified] = useState(false);
 
-  const emailParam = searchParams.get("email");
-  const isMagicLink = searchParams.get("magic") === "true";
-  const role = searchParams.get("role");
+  // Guard: useSearchParams() peut retourner null pendant le SSR sans Suspense boundary
+  const emailParam = searchParams?.get("email") ?? null;
+  const isMagicLink = searchParams?.get("magic") === "true";
+  const role = searchParams?.get("role") ?? null;
 
   useEffect(() => {
     if (emailParam) {

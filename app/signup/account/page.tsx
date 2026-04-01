@@ -29,6 +29,8 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { PasswordStrength } from "@/components/ui/password-strength";
 import { cn } from "@/lib/utils";
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
+import { track } from "@/lib/analytics/posthog";
+import { TurnstileWidget } from "@/components/auth/TurnstileWidget";
 
 const TERMS_VERSION = "1.0";
 const PRIVACY_VERSION = "1.0";
@@ -91,15 +93,17 @@ function AccountCreationContent() {
   const [autosaving, setAutosaving] = useState(false);
   const [lastAutosave, setLastAutosave] = useState<Date | null>(null);
   const [emailSent, setEmailSent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
-  const role = searchParams.get("role") as UserRole | null;
-  const inviteToken = searchParams.get("invite");
-  const propertyCode = searchParams.get("code");
+  // Guard: useSearchParams() peut retourner null pendant le SSR sans Suspense boundary
+  const role = (searchParams?.get("role") ?? null) as UserRole | null;
+  const inviteToken = searchParams?.get("invite") ?? null;
+  const propertyCode = searchParams?.get("code") ?? null;
 
   const [draft, setDraft] = useState<AccountDraft>(INITIAL_DRAFT);
 
   useEffect(() => {
-    if (!role || !["owner", "tenant", "provider", "guarantor", "syndic"].includes(role)) {
+    if (!role || !["owner", "tenant", "provider", "guarantor", "syndic", "agency"].includes(role)) {
       router.push("/signup/role");
     }
   }, [role, router]);
@@ -224,6 +228,7 @@ function AccountCreationContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    track("signup_form_submitted", { role });
 
     try {
       // Utiliser le pays sélectionné pour le téléphone
@@ -264,6 +269,8 @@ function AccountCreationContent() {
       if (draft.useMagicLink) {
         await authService.sendMagicLink(validated.email);
         setEmailSent(true);
+        track("signup_completed", { role, method: "magic_link" });
+
         toast({
           title: "Lien magique envoyé",
           description: "Vérifiez votre email pour vous connecter.",
@@ -286,6 +293,7 @@ function AccountCreationContent() {
           prenom: minimalValidated.prenom,
           nom: minimalValidated.nom,
           telephone: minimalValidated.telephone || undefined,
+          turnstileToken: turnstileToken || undefined,
         });
 
         await autosave({
@@ -295,6 +303,8 @@ function AccountCreationContent() {
           },
           consents: validatedConsents,
         });
+
+        track("signup_completed", { role, method: "password" });
 
         toast({
           title: "Compte créé",
@@ -392,7 +402,7 @@ function AccountCreationContent() {
                 onChange={(e) => updateForm("prenom", e.target.value)}
                 required
                 disabled={loading}
-                className="text-slate-900"
+                className="bg-white text-slate-900"
               />
             </div>
             <div className="space-y-2">
@@ -404,7 +414,7 @@ function AccountCreationContent() {
                 onChange={(e) => updateForm("nom", e.target.value)}
                 required
                 disabled={loading}
-                className="text-slate-900"
+                className="bg-white text-slate-900"
               />
             </div>
             <div className="space-y-2">
@@ -415,7 +425,7 @@ function AccountCreationContent() {
                   onValueChange={(value: string) => autosave({ formData: { ...draft.formData, phoneCountry: value } })}
                   disabled={loading || draft.skipPhone}
                 >
-                  <SelectTrigger className="text-slate-900">
+                  <SelectTrigger className="bg-white text-slate-900">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -438,7 +448,7 @@ function AccountCreationContent() {
                     value={draft.formData.telephone}
                     onChange={(e) => updateForm("telephone", e.target.value)}
                     disabled={loading || draft.skipPhone}
-                    className="pl-10 text-slate-900"
+                    className="bg-white pl-10 text-slate-900"
                   />
                 </div>
               </div>
@@ -471,7 +481,7 @@ function AccountCreationContent() {
                   onChange={(e) => updateForm("email", e.target.value)}
                   required
                   disabled={loading}
-                  className="pl-10 text-slate-900"
+                  className="bg-white pl-10 text-slate-900"
                 />
               </div>
             </div>
@@ -526,7 +536,7 @@ function AccountCreationContent() {
                       onChange={(e) => updateForm("password", e.target.value)}
                       required
                       disabled={loading}
-                      className="pl-10 text-slate-900"
+                      className="bg-white pl-10 text-slate-900"
                     />
                   </div>
                   <PasswordStrength password={draft.formData.password} />
@@ -543,7 +553,7 @@ function AccountCreationContent() {
                     onChange={(e) => updateForm("confirmPassword", e.target.value)}
                     required
                     disabled={loading}
-                    className="text-slate-900"
+                    className="bg-white text-slate-900"
                   />
                 </div>
               </div>
@@ -573,7 +583,7 @@ function AccountCreationContent() {
                 <div>
                   <Label htmlFor="terms" className="cursor-pointer font-semibold">
                     J’accepte les{" "}
-                    <a href="/legal/terms" target="_blank" className="text-white underline-offset-4 hover:underline">
+                    <a href="/legal/cgu" target="_blank" className="text-white underline-offset-4 hover:underline">
                       conditions d’utilisation
                     </a>{" "}
                     (v{TERMS_VERSION})
@@ -676,6 +686,8 @@ function AccountCreationContent() {
               Votre compte sera créé et vous accéderez à l’étape suivante.
             </div>
           )}
+
+          <TurnstileWidget onSuccess={setTurnstileToken} />
 
           <Button
             type="submit"

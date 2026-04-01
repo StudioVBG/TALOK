@@ -75,13 +75,11 @@ async function findAuthUserByEmail(email: string): Promise<string | null> {
       .maybeSingle();
 
     if (error) {
-      console.log("[Signature] Erreur recherche profil par email:", error.message);
       return null;
     }
 
     return data?.user_id || null;
   } catch (e) {
-    console.log("[Signature] Erreur recherche auth user:", e);
     return null;
   }
 }
@@ -95,7 +93,7 @@ export async function POST(request: Request, { params }: PageProps) {
     const { token } = await params;
 
     // FIX: Utiliser verifyTokenCompat pour supporter les deux formats (HMAC + legacy)
-    const tokenData = verifyTokenCompat(token, 7);
+    const tokenData = verifyTokenCompat(token, 30);
     if (!tokenData) {
       return NextResponse.json(
         { error: "Lien d'invitation invalide ou expiré" },
@@ -154,7 +152,6 @@ export async function POST(request: Request, { params }: PageProps) {
     // 1. Chercher si un utilisateur auth existe avec cet email
     authUserId = await findAuthUserByEmail(tenantEmail);
     if (authUserId) {
-      console.log("[Signature] ✅ Utilisateur auth trouvé:", authUserId);
     }
 
     // 2. Chercher un profil existant par user_id ou email
@@ -169,7 +166,6 @@ export async function POST(request: Request, { params }: PageProps) {
         
         if (!error && data) {
           existingProfile = data;
-          console.log("[Signature] ✅ Profil trouvé par user_id:", data.id);
         }
       }
 
@@ -178,18 +174,15 @@ export async function POST(request: Request, { params }: PageProps) {
         const { data, error } = await serviceClient
           .from("profiles")
           .select("id, user_id")
-          .eq("email", tenantEmail)
+          .ilike("email", tenantEmail)
           .maybeSingle();
-        
+
         if (!error && data) {
           existingProfile = data;
-          console.log("[Signature] ✅ Profil trouvé par email:", data.id);
         } else if (error) {
-          console.log("[Signature] Recherche par email échouée:", error.message);
         }
       }
     } catch (e) {
-      console.log("[Signature] Erreur recherche profil, on continue...");
     }
 
     if (existingProfile) {
@@ -207,7 +200,6 @@ export async function POST(request: Request, { params }: PageProps) {
         // CRITIQUE: Lier le profil au compte auth si pas déjà fait
         if (authUserId && !existingProfile.user_id) {
           updateData.user_id = authUserId;
-          console.log("[Signature] 🔗 Liaison profil → compte auth:", authUserId);
         }
 
         await serviceClient
@@ -215,9 +207,7 @@ export async function POST(request: Request, { params }: PageProps) {
           .update(updateData)
           .eq("id", tenantProfileId);
         
-        console.log("[Signature] ✅ Profil existant mis à jour:", tenantProfileId);
       } catch (e) {
-        console.log("[Signature] Erreur mise à jour profil (non bloquante)");
       }
     } else {
       // Créer un nouveau profil pour le locataire
@@ -231,7 +221,6 @@ export async function POST(request: Request, { params }: PageProps) {
       // CRITIQUE: Lier au compte auth existant si disponible
       if (authUserId) {
         profileData.user_id = authUserId;
-        console.log("[Signature] 🔗 Nouveau profil sera lié au compte:", authUserId);
       }
 
       // Essayer d'ajouter l'email
@@ -244,11 +233,9 @@ export async function POST(request: Request, { params }: PageProps) {
 
         if (!profileError && newProfile) {
           tenantProfileId = newProfile.id;
-          console.log("[Signature] ✅ Nouveau profil créé avec email:", tenantProfileId);
         } else if (profileError) {
           // Si erreur de colonne manquante, réessayer sans email
           if (profileError.message?.includes("email") || profileError.code === "42703") {
-            console.log("[Signature] Colonne email manquante, création sans email...");
             
             const { data: newProfile2, error: profileError2 } = await serviceClient
               .from("profiles")
@@ -258,7 +245,6 @@ export async function POST(request: Request, { params }: PageProps) {
 
             if (!profileError2 && newProfile2) {
               tenantProfileId = newProfile2.id;
-              console.log("[Signature] ✅ Nouveau profil créé sans email:", tenantProfileId);
             } else {
               throw profileError2 || new Error("Impossible de créer le profil");
             }
@@ -286,7 +272,6 @@ export async function POST(request: Request, { params }: PageProps) {
             
             if (retryProfile) {
               tenantProfileId = retryProfile.id;
-              console.log("[Signature] ✅ Profil récupéré après doublon:", tenantProfileId);
               
               // Lier au compte auth si pas fait
               if (authUserId) {
@@ -355,9 +340,7 @@ export async function POST(request: Request, { params }: PageProps) {
             .from("profiles")
             .update({ date_naissance: validated.dateNaissance })
             .eq("id", tenantProfileId);
-          console.log("[Signature] ✅ date_naissance mise à jour");
         } catch (e: any) {
-          console.log("[Signature] ⚠️ date_naissance non mise à jour:", e?.message);
         }
       }
       
@@ -368,9 +351,7 @@ export async function POST(request: Request, { params }: PageProps) {
             .from("profiles")
             .update({ lieu_naissance: validated.lieuNaissance })
             .eq("id", tenantProfileId);
-          console.log("[Signature] ✅ lieu_naissance mis à jour");
         } catch (e: any) {
-          console.log("[Signature] ⚠️ lieu_naissance non mis à jour (colonne peut-être manquante)");
         }
       }
       
@@ -381,9 +362,7 @@ export async function POST(request: Request, { params }: PageProps) {
             .from("profiles")
             .update({ adresse: validated.adresseActuelle })
             .eq("id", tenantProfileId);
-          console.log("[Signature] ✅ adresse mise à jour");
         } catch (e: any) {
-          console.log("[Signature] ⚠️ adresse non mise à jour (colonne peut-être manquante)");
         }
       }
 
@@ -394,7 +373,6 @@ export async function POST(request: Request, { params }: PageProps) {
             .from("tenant_profiles")
             .update(tenantProfileData)
             .eq("profile_id", tenantProfileId);
-          console.log("[Signature] ✅ tenant_profiles mis à jour");
         } else {
           await serviceClient
             .from("tenant_profiles")
@@ -402,12 +380,10 @@ export async function POST(request: Request, { params }: PageProps) {
               profile_id: tenantProfileId,
               ...tenantProfileData,
             });
-          console.log("[Signature] ✅ tenant_profiles créé");
         }
       }
     } catch (tenantProfileError: any) {
       // Non bloquant - les données supplémentaires sont optionnelles
-      console.log("[Signature] ⚠️ Erreur tenant_profiles (non bloquant):", tenantProfileError?.message);
     }
 
     // Chercher le signataire existant par invited_email (prioritaire) ou par profile_id
@@ -418,12 +394,11 @@ export async function POST(request: Request, { params }: PageProps) {
       .from("lease_signers")
       .select("id, role, profile_id")
       .eq("lease_id", lease.id)
-      .eq("invited_email", tenantEmail)
+      .ilike("invited_email", tenantEmail)
       .maybeSingle();
     
     if (signerByEmail) {
       existingSigner = signerByEmail;
-      console.log("[Signature] ✅ Signataire trouvé par invited_email:", signerByEmail.id, "rôle:", signerByEmail.role);
     }
     
     // 2. Sinon par profile_id si le profil existe déjà
@@ -437,7 +412,6 @@ export async function POST(request: Request, { params }: PageProps) {
       
       if (signerByProfile) {
         existingSigner = signerByProfile;
-        console.log("[Signature] ✅ Signataire trouvé par profile_id:", signerByProfile.id);
       }
     }
 
@@ -452,10 +426,8 @@ export async function POST(request: Request, { params }: PageProps) {
         })
         .eq("id", existingSigner.id);
       
-      console.log("[Signature] ✅ Signataire mis à jour avec profile_id:", tenantProfileId);
     } else {
       // Aucun signataire trouvé - créer un nouveau (cas rare, normalement le signataire existe déjà)
-      console.log("[Signature] ⚠️ Aucun signataire trouvé, création d'un nouveau...");
       
       const { error: insertError } = await serviceClient
         .from("lease_signers")

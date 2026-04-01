@@ -221,7 +221,16 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
       await apiClient.delete(`/properties/${id}`);
     },
     successMessage: "Bien supprimé avec succès",
-    errorMessage: "Impossible de supprimer le bien.",
+    errorMessage: (error: Error) => {
+      const msg = (error as Error & { response?: { error?: string; details?: string } })?.response;
+      if (msg?.details?.includes("bail actif") || msg?.details?.includes("active")) {
+        return "Impossible de supprimer : ce bien a un bail en cours. Résiliez-le d'abord.";
+      }
+      if (msg?.details?.includes("bail") || msg?.details?.includes("lease")) {
+        return "Impossible de supprimer : ce bien a un bail en attente de signature.";
+      }
+      return msg?.error || msg?.details || "Impossible de supprimer le bien.";
+    },
     invalidateQueries: ["property-details", propertyId],
     onSuccess: () => {
       refreshSubscription();
@@ -360,7 +369,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
           surface: parseFloat(editedValues.surface) || 0,
           nb_pieces: parseInt(editedValues.nb_pieces, 10) || 0,
           nb_chambres: parseInt(editedValues.nb_chambres, 10) || 0,
-          etage: editedValues.etage !== "" ? parseInt(editedValues.etage, 10) : null,
+          etage: editedValues.etage !== "" && String(editedValues.etage).trim() !== "" ? parseInt(String(editedValues.etage).trim(), 10) : null,
           ascenseur: editedValues.ascenseur || false,
           meuble: editedValues.meuble || false,
           dpe_classe_energie: editedValues.dpe_classe_energie || null,
@@ -397,7 +406,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
         Object.assign(payload, {
           surface: parseFloat(editedValues.surface) || parseFloat(editedValues.local_surface_totale) || 0,
           local_surface_totale: parseFloat(editedValues.local_surface_totale) || parseFloat(editedValues.surface) || 0,
-          etage: editedValues.etage !== "" ? parseInt(editedValues.etage, 10) : null,
+          etage: editedValues.etage !== "" && String(editedValues.etage).trim() !== "" ? parseInt(String(editedValues.etage).trim(), 10) : null,
           local_type: editedValues.local_type || null,
           local_has_vitrine: editedValues.local_has_vitrine || false,
           local_access_pmr: editedValues.local_access_pmr || false,
@@ -620,7 +629,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
 
       {/* Bouton retour */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <Link href="/owner/properties" className={cn(buttonVariants({ variant: "ghost" }), "pl-0 hover:pl-2 transition-all text-slate-500 hover:text-slate-900 w-fit")}>
+        <Link href="/owner/properties" className={cn(buttonVariants({ variant: "ghost" }), "pl-0 hover:pl-2 transition-all text-muted-foreground hover:text-foreground w-fit")}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Retour à la liste
         </Link>
@@ -677,18 +686,18 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
             transition={{ duration: 0.4, ease: "easeOut" }}
             className="mb-6"
           >
-            <Card className="border-green-200 bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 shadow-lg">
+            <Card className="border-green-200 dark:border-green-800 bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 dark:from-green-950/40 dark:via-emerald-950/40 dark:to-teal-950/40 shadow-lg">
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-start gap-4">
-                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
                       <CheckCircle2 className="h-6 w-6 text-green-600" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-green-900">
+                      <h3 className="text-lg font-bold text-green-900 dark:text-green-100">
                         Bien enregistré avec succès !
                       </h3>
-                      <p className="text-sm text-green-700 mt-1">
+                      <p className="text-sm text-green-700 dark:text-green-300 mt-1">
                         {leaseCta.description}{" "}
                         <span className="font-medium">Prochaine étape : créer le contrat de location.</span>
                       </p>
@@ -744,12 +753,12 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
 
         {allDisplayPhotos.length === 0 ? (
           // Aucune photo
-          <div className="h-[300px] md:h-[400px] rounded-2xl overflow-hidden bg-slate-50 border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-500 gap-4">
-            <div className="p-4 bg-white rounded-full shadow-sm">
-              <ImageIcon className="w-10 h-10 text-slate-400" />
+          <div className="h-[300px] md:h-[400px] rounded-2xl overflow-hidden bg-muted border-2 border-dashed border-border flex flex-col items-center justify-center text-muted-foreground gap-4">
+            <div className="p-4 bg-card rounded-full shadow-sm">
+              <ImageIcon className="w-10 h-10 text-muted-foreground" />
             </div>
             <div className="text-center">
-              <h3 className="text-lg font-semibold text-slate-700">Aucune photo</h3>
+              <h3 className="text-lg font-semibold text-foreground">Aucune photo</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 {isEditing ? "Ajoutez des photos pour mettre en valeur votre bien" : "Cliquez sur 'Modifier le bien' pour ajouter des photos"}
               </p>
@@ -766,7 +775,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 h-[300px] md:h-[450px]">
             {/* Photo principale */}
             <div 
-              className="col-span-1 md:col-span-3 relative rounded-2xl overflow-hidden bg-slate-100 group cursor-pointer"
+              className="col-span-1 md:col-span-3 relative rounded-2xl overflow-hidden bg-muted group cursor-pointer"
               onClick={() => !isEditing && openGallery(0)}
             >
               {mainPhoto && (
@@ -809,7 +818,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                         <Button 
                           size="sm" 
                           variant="outline"
-                          className="bg-white"
+                          className="bg-card"
                           onClick={() => handleUnmarkPhotoForDeletion(mainPhoto.id)}
                         >
                           Annuler
@@ -900,7 +909,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                         <Button 
                           size="icon" 
                           variant="outline"
-                          className="h-7 w-7 bg-white"
+                          className="h-7 w-7 bg-card"
                           onClick={() => handleUnmarkPhotoForDeletion(photo.id)}
                         >
                           <Check className="w-4 h-4" />
@@ -934,17 +943,17 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="flex-1 bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 hover:border-blue-400 transition-all min-h-[100px]"
+                  className="flex-1 bg-muted border-2 border-dashed border-border rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-muted/80 hover:border-blue-400 transition-all min-h-[100px]"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  <Camera className="w-8 h-8 text-slate-400 mb-2" />
-                  <span className="text-sm text-slate-500 font-medium">Ajouter</span>
+                  <Camera className="w-8 h-8 text-muted-foreground mb-2" />
+                  <span className="text-sm text-muted-foreground font-medium">Ajouter</span>
                 </motion.div>
               )}
 
               {/* Info loyer si pas en mode édition */}
               {!isEditing && allDisplayPhotos.length <= 2 && (
-                <div className="flex-1 bg-white border rounded-xl p-4 flex flex-col justify-center items-center">
+                <div className="flex-1 bg-card border rounded-xl p-4 flex flex-col justify-center items-center">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Loyer</p>
                   <p className="text-2xl font-bold">{formatCurrency(property.loyer_hc || 0)}</p>
                   <span className="text-xs text-muted-foreground">/mois HC</span>
@@ -984,7 +993,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
             <CardContent>
               {/* Mode édition : afficher les champs d'adresse */}
               {isEditing && (
-                <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                <div className="mb-6 p-4 bg-muted rounded-lg border border-dashed border-border">
                   <p className="text-xs text-muted-foreground mb-3 font-medium flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
                     Modifier l'adresse
@@ -1124,7 +1133,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                     {property.digicode && (
                       <div className="flex items-center justify-between p-3 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/50">
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-white dark:bg-card flex items-center justify-center shadow-sm">
+                          <div className="h-8 w-8 rounded-lg bg-card flex items-center justify-center shadow-sm">
                             <Key className="h-4 w-4 text-indigo-600" />
                           </div>
                           <span className="text-sm font-medium text-muted-foreground">Digicode</span>
@@ -1137,7 +1146,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
                     {property.interphone && (
                       <div className="flex items-center justify-between p-3 rounded-xl bg-muted border border-border">
                         <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-lg bg-white dark:bg-card flex items-center justify-center shadow-sm">
+                          <div className="h-8 w-8 rounded-lg bg-card flex items-center justify-center shadow-sm">
                             <Phone className="h-4 w-4 text-muted-foreground" />
                           </div>
                           <span className="text-sm font-medium text-muted-foreground">Interphone</span>
@@ -1412,7 +1421,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
 
           {/* ========== VISITE VIRTUELLE (si renseignée) ========== */}
           {property.visite_virtuelle_url && !isEditing && (
-            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Video className="h-5 w-5 text-blue-600" />
@@ -1465,7 +1474,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
               <CardTitle className="text-base">Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              <Link href={`/owner/properties/${propertyId}/diagnostics`} className={cn(buttonVariants({ variant: "outline" }), "w-full justify-start border-blue-200 text-blue-700 hover:bg-blue-50")}>
+              <Link href={`/owner/properties/${propertyId}/diagnostics`} className={cn(buttonVariants({ variant: "outline" }), "w-full justify-start border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30")}>
                 <Shield className="mr-2 h-4 w-4" />
                 Diagnostics (DDT)
               </Link>
@@ -1493,7 +1502,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t shadow-lg md:hidden z-50"
+            className="fixed bottom-0 left-0 right-0 p-4 bg-card border-t shadow-lg md:hidden z-50"
           >
             <div className="flex gap-3">
               <Button variant="outline" onClick={handleCancelEditing} disabled={isSaving} className="flex-1">
@@ -1512,7 +1521,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         title="Supprimer ce bien ?"
-        description={`Cette action est irréversible. Le bien "${property?.adresse_complete}" sera supprimé.`}
+        description={`Le bien "${property?.adresse_complete}" sera archivé et retiré de la liste de vos biens. Ses documents et historique resteront consultables.`}
         onConfirm={handleDelete}
         variant="destructive"
         loading={deleteProperty.isPending}

@@ -52,7 +52,7 @@ interface LeaseEdlTabProps {
 }
 
 const EDL_STATUS_CONFIG: Record<string, { label: string; color: string; icon: typeof Clock }> = {
-  draft: { label: "Brouillon", color: "bg-slate-100 text-slate-700", icon: FileText },
+  draft: { label: "Brouillon", color: "bg-muted text-foreground", icon: FileText },
   scheduled: { label: "Planifié", color: "bg-blue-100 text-blue-700", icon: Calendar },
   in_progress: { label: "En cours", color: "bg-amber-100 text-amber-700", icon: Loader2 },
   completed: { label: "Complété", color: "bg-indigo-100 text-indigo-700", icon: CheckCircle },
@@ -77,16 +77,16 @@ export function LeaseEdlTab({
   if (bailNotReady) {
     return (
       <div className="flex flex-col items-center justify-center py-12 sm:py-16 px-4">
-        <div className="p-4 bg-slate-100 rounded-full mb-4">
-          <ClipboardCheck className="h-8 w-8 text-slate-400" />
+        <div className="p-4 bg-muted rounded-full mb-4">
+          <ClipboardCheck className="h-8 w-8 text-muted-foreground" />
         </div>
-        <h3 className="text-lg font-semibold text-slate-700 mb-2">
+        <h3 className="text-lg font-semibold text-foreground mb-2">
           État des lieux non disponible
         </h3>
-        <p className="text-sm text-slate-500 text-center max-w-md">
+        <p className="text-sm text-muted-foreground text-center max-w-md">
           L&apos;état des lieux d&apos;entrée sera disponible une fois que le bail aura été signé par toutes les parties.
         </p>
-        <div className="mt-6 flex items-center gap-2 text-xs text-slate-400">
+        <div className="mt-6 flex items-center gap-2 text-xs text-muted-foreground">
           <Clock className="h-3.5 w-3.5" />
           En attente de la signature du bail
         </div>
@@ -107,12 +107,12 @@ export function LeaseEdlTab({
         <div className={`p-4 rounded-full mb-4 ${isAlreadyActive ? "bg-amber-100" : "bg-indigo-100"}`}>
           <ClipboardCheck className={`h-8 w-8 ${isAlreadyActive ? "text-amber-600" : "text-indigo-600"}`} />
         </div>
-        <h3 className="text-lg font-semibold text-slate-900 mb-2">
+        <h3 className="text-lg font-semibold text-foreground mb-2">
           {isAlreadyActive
             ? "État des lieux d\u2019entrée non réalisé"
             : "Créer l\u2019état des lieux d\u2019entrée"}
         </h3>
-        <p className="text-sm text-slate-600 text-center max-w-md mb-4">
+        <p className="text-sm text-muted-foreground text-center max-w-md mb-4">
           {isAlreadyActive
             ? "Le bail est actif mais aucun état des lieux d\u2019entrée n\u2019a été réalisé. Il est recommandé d\u2019en créer un pour la conformité du dossier."
             : "Le bail est signé. L\u2019état des lieux d\u2019entrée est requis pour activer le bail et remettre les clés au locataire."}
@@ -133,7 +133,7 @@ export function LeaseEdlTab({
 
         <Card className="w-full max-w-lg border-2 border-dashed border-indigo-200 bg-indigo-50/50 mt-6">
           <CardContent className="p-4 sm:p-6">
-            <div className="space-y-3 text-sm text-slate-600">
+            <div className="space-y-3 text-sm text-muted-foreground">
               <div className="flex items-start gap-3">
                 <Camera className="h-4 w-4 mt-0.5 text-indigo-500 flex-shrink-0" />
                 <span>Inspection pièce par pièce avec photos</span>
@@ -190,7 +190,7 @@ export function LeaseEdlTab({
             <div className="space-y-2">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-muted-foreground font-medium">Éléments inspectés</span>
-                <span className="font-semibold text-slate-700">
+                <span className="font-semibold text-foreground">
                   {edl.completed_items || 0} / {edl.total_items} ({completionPercent}%)
                 </span>
               </div>

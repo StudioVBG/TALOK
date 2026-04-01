@@ -37,7 +37,9 @@ interface Ticket {
   statut: string;
   priorite: string;
   created_at: string;
+  lease_id?: string | null;
   property?: { adresse_complete: string };
+  lease?: { id: string; date_debut: string; date_fin?: string; statut: string } | null;
   creator?: { nom: string; prenom: string };
   messages?: { count: number }[];
   work_orders?: WorkOrder[];
@@ -99,7 +101,7 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
                     {ticket.priorite}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    {format(new Date(ticket.created_at), "d MMM yyyy", { locale: fr })}
+                    {(() => { const d = new Date(ticket.created_at); return isNaN(d.getTime()) ? "—" : format(d, "d MMM yyyy", { locale: fr }); })()}
                   </span>
                 </div>
                 
@@ -111,11 +113,16 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
                   {ticket.description}
                 </p>
 
-                <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground flex-wrap">
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     {ticket.property?.adresse_complete}
                   </span>
+                  {ticket.lease && (
+                    <Badge variant="outline" className="text-[10px] h-5 border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400">
+                      Bail {ticket.lease.statut === "active" ? "actif" : ticket.lease.statut}
+                    </Badge>
+                  )}
                   {ticket.messages?.[0]?.count ? (
                     <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium">
                       <MessageSquare className="h-3 w-3" />

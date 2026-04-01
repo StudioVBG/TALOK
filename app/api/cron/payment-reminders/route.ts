@@ -254,7 +254,6 @@ export async function GET(request: Request) {
     }
 
     // Log résumé
-    console.log(`[CRON] Rappels envoyés: J-3=${stats.j_minus_3}, J-1=${stats.j_minus_1}, J+1=${stats.j_plus_1}, J+7=${stats.j_plus_7}, J+15=${stats.j_plus_15}, J+30=${stats.j_plus_30}, Erreurs=${stats.errors}`);
 
     return NextResponse.json({
       success: true,

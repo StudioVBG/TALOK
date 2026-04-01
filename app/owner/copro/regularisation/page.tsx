@@ -400,7 +400,7 @@ export default function RegularisationPage() {
                     }`}>
                       {regularisationData.balance > 0 ? '+' : ''}{regularisationData.balance.toLocaleString('fr-FR')} €
                     </p>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       {regularisationData.balance > 0 ? 'à payer par le locataire' : 'à rembourser au locataire'}
                     </p>
                   </CardContent>
@@ -418,7 +418,7 @@ export default function RegularisationPage() {
                       <div key={charge.service_type} className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
                         <div>
                           <p className="text-foreground font-medium">{charge.label}</p>
-                          <p className="text-xs text-slate-400">{SERVICE_TYPE_LABELS[charge.service_type]}</p>
+                          <p className="text-xs text-muted-foreground">{SERVICE_TYPE_LABELS[charge.service_type]}</p>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div><p className="text-muted-foreground">Copro</p><p className="text-foreground">{charge.copro_amount.toLocaleString('fr-FR')} €</p></div>
@@ -509,26 +509,26 @@ export default function RegularisationPage() {
               exit={{ opacity: 0, x: -20 }}
               className="space-y-6"
             >
-              <Card className="border-border bg-white">
-                <CardContent className="p-4 sm:p-6 md:p-8 text-gray-800">
+              <Card className="border-border bg-card">
+                <CardContent className="p-4 sm:p-6 md:p-8 text-foreground">
                   {/* Document preview */}
                   <div className="space-y-4 md:space-y-6">
                     <div className="text-center border-b pb-4">
                       <h2 className="text-lg md:text-xl font-bold">DÉCOMPTE DE RÉGULARISATION</h2>
                       <h3 className="text-base md:text-lg">DES CHARGES LOCATIVES</h3>
-                      <p className="text-sm text-gray-500">Année {regularisationData.fiscal_year}</p>
+                      <p className="text-sm text-muted-foreground">Année {regularisationData.fiscal_year}</p>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-8">
                       <div>
                         <p className="font-semibold">Bailleur</p>
                         <p>Nom du propriétaire</p>
-                        <p className="text-sm text-gray-500">Adresse du propriétaire</p>
+                        <p className="text-sm text-muted-foreground">Adresse du propriétaire</p>
                       </div>
                       <div>
                         <p className="font-semibold">Locataire</p>
                         <p>{selectedLeaseData.tenant_name}</p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           {selectedLeaseData.property_name} - Lot {selectedLeaseData.unit_lot_number}
                         </p>
                       </div>
@@ -580,7 +580,7 @@ export default function RegularisationPage() {
                       </tfoot>
                     </table>
 
-                    <div className="text-sm text-gray-500 border-t pt-4">
+                    <div className="text-sm text-muted-foreground border-t pt-4">
                       <p>
                         {regularisationData.balance > 0 
                           ? `Le locataire devra s'acquitter de la somme de ${regularisationData.balance.toFixed(2)} € correspondant au complément de charges.`
