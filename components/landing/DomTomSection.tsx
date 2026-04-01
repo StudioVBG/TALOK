@@ -6,7 +6,7 @@ const CARDS = [
   {
     emoji: "💰",
     title: "La bonne TVA, au bon endroit",
-    text: "Talok applique automatiquement la TVA de votre territoire : 8,5% en Martinique et Guadeloupe, 2,1% en Guyane. Pas besoin de calculer vous-même.",
+    text: "Talok applique automatiquement la TVA de votre territoire : 8,5 % en Martinique, Guadeloupe et Réunion — 2,1 % en Guyane — 0 % à Mayotte. Pas besoin de calculer vous-même.",
   },
   {
     emoji: "🕐",
@@ -16,17 +16,17 @@ const CARDS = [
   {
     emoji: "📮",
     title: "Adresses reconnues",
-    text: "Les codes postaux 972, 973, 974, 976 sont gérés nativement. Pas de formulaire qui bloque parce que votre adresse 'n'existe pas'.",
+    text: "Les codes postaux 972, 973, 974, 976 sont gérés nativement. Pas de formulaire qui bloque parce que votre adresse « n'existe pas ».",
   },
 ];
 
 const TERRITORIES = [
-  "Martinique",
-  "Guadeloupe",
-  "La Réunion",
-  "Guyane",
-  "Mayotte",
-  "Métropole",
+  { name: "Martinique", tva: "8,5 %" },
+  { name: "Guadeloupe", tva: "8,5 %" },
+  { name: "La Réunion", tva: "8,5 %" },
+  { name: "Guyane", tva: "2,1 %" },
+  { name: "Mayotte", tva: "0 %" },
+  { name: "Métropole", tva: null },
 ];
 
 export function DomTomSection() {
@@ -38,8 +38,8 @@ export function DomTomSection() {
             Pensé pour la Martinique, la Guadeloupe, la Réunion — et toute la France
           </h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Les autres plateformes sont faites pour Paris. Talok est la première
-            conçue pour les réalités de l&apos;Outre-mer.
+            Les autres plateformes sont faites pour Paris. Talok est née en
+            Martinique — pas adaptée, née ici.
           </p>
         </div>
 
@@ -63,11 +63,11 @@ export function DomTomSection() {
         <div className="reveal mt-10 flex flex-wrap items-center justify-center gap-3">
           {TERRITORIES.map((t) => (
             <Badge
-              key={t}
+              key={t.name}
               variant="secondary"
               className="px-4 py-1.5 text-sm"
             >
-              {t}
+              {t.name}{t.tva ? ` · TVA ${t.tva}` : ""}
             </Badge>
           ))}
         </div>

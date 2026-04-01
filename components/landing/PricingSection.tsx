@@ -81,10 +81,10 @@ export function PricingSection() {
             <div
               key={plan.name}
               className={cn(
-                "reveal relative flex flex-col rounded-2xl border p-6 shadow-sm",
+                "reveal relative flex flex-col rounded-2xl border p-6",
                 plan.featured
-                  ? "border-talok-bleu-marque bg-white ring-2 ring-talok-bleu-marque/20"
-                  : "bg-white"
+                  ? "border-2 border-[#2563EB] bg-white shadow-xl shadow-blue-500/10 ring-4 ring-[#2563EB]/10 scale-[1.02]"
+                  : "bg-white shadow-sm"
               )}
             >
               {plan.badge && (

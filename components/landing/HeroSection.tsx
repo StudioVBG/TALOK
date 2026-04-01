@@ -27,10 +27,10 @@ export function HeroSection() {
           <div>
             <Badge variant="secondary" className="gap-1.5 px-3 py-1.5">
               <MapPin className="h-3.5 w-3.5" />
-              Disponible en France &amp; DOM-TOM
+              Disponible en France &amp; Outre-mer
             </Badge>
 
-            <h1 className="mt-6 font-display text-4xl font-bold tracking-tight text-foreground md:text-5xl lg:text-6xl">
+            <h1 className="mt-6 font-display text-[clamp(2.5rem,5vw,4.5rem)] font-extrabold leading-[1.1] tracking-tight text-foreground">
               Gérez vos locations sans prise de tête
             </h1>
 
@@ -41,10 +41,10 @@ export function HeroSection() {
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" className="bg-talok-bleu-marque text-white hover:bg-talok-bleu-marque/90" asChild>
+              <Button size="lg" className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white px-8 py-4 text-lg font-bold shadow-lg shadow-blue-500/30 transition-all hover:shadow-xl hover:shadow-blue-500/40 hover:scale-[1.02]" asChild>
                 <Link href="/inscription">
                   Essayer gratuitement
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                  <ArrowRight className="ml-2 h-5 w-5" />
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild>
