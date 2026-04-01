@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { checkStoragePathAccess } from "@/lib/helpers/document-access";
 
 const MIME_TYPES: Record<string, string> = {
   html: "text/html; charset=utf-8",
@@ -35,23 +36,9 @@ export async function GET(request: Request) {
     const { data: profile } = await serviceClient.from("profiles").select("id, role").eq("user_id", user.id).single();
     if (!profile) return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
 
-    // Access check for lease-related paths
-    const pathParts = storagePath.split("/");
-    if (pathParts[0] === "leases" && pathParts[1]) {
-      const leaseId = pathParts[1];
-      const { data: lease } = await serviceClient
-        .from("leases")
-        .select("id, property:properties!leases_property_id_fkey(owner_id), signers:lease_signers(profile_id)")
-        .eq("id", leaseId)
-        .single();
-
-      if (!lease) return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
-
-      const isOwner = (lease as any).property?.owner_id === profile.id;
-      const isSigner = (lease as any).signers?.some((s: any) => s.profile_id === profile.id);
-      const isAdmin = profile.role === "admin";
-      if (!isOwner && !isSigner && !isAdmin) return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
+    // Vérifier les droits d'accès via le helper unifié
+    const hasAccess = await checkStoragePathAccess(serviceClient, storagePath, profile as any);
+    if (!hasAccess) return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
 
     const { data: fileData, error: downloadError } = await serviceClient.storage.from("documents").download(storagePath);
     if (downloadError || !fileData) return NextResponse.json({ error: "Document non trouvé" }, { status: 404 });

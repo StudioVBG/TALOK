@@ -143,10 +143,10 @@ function AlertItem({
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <p className="font-semibold text-sm text-slate-900">
+              <p className="font-semibold text-sm text-foreground">
                 {alert.title}
               </p>
-              <p className="text-sm text-slate-600 mt-0.5">
+              <p className="text-sm text-muted-foreground mt-0.5">
                 {alert.message}
               </p>
             </div>
@@ -220,7 +220,7 @@ export function SmartAlertsWidget({ alerts, onDismiss, className }: SmartAlertsW
             <div className="p-4 rounded-full bg-emerald-100 mb-3">
               <CheckCircle2 className="h-10 w-10 text-emerald-600" />
             </div>
-            <p className="text-slate-600 font-medium">Aucune alerte</p>
+            <p className="text-muted-foreground font-medium">Aucune alerte</p>
             <p className="text-sm text-muted-foreground mt-1">
               Votre gestion locative est à jour
             </p>

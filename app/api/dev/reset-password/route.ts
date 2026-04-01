@@ -23,8 +23,6 @@ export async function POST(request: Request) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    console.log("[Reset Password] URL:", supabaseUrl);
-    console.log("[Reset Password] Key prefix:", serviceRoleKey?.substring(0, 20));
 
     if (!supabaseUrl || !serviceRoleKey) {
       return NextResponse.json({ 

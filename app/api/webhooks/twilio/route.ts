@@ -41,7 +41,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[Twilio Webhook] SID: ${messageSid}, Status: ${messageStatus}`);
 
     const supabase = createServiceRoleClient();
 
@@ -108,9 +107,6 @@ export async function POST(request: NextRequest) {
             .update({ sms_enabled: false })
             .eq("profile_id", smsRecord.profile_id);
 
-          console.log(
-            `[Twilio] SMS désactivé pour le profil ${smsRecord.profile_id} (erreur ${errorCode})`
-          );
         }
       }
     }

@@ -57,12 +57,13 @@ export async function GET(
       return NextResponse.json({ error: "Accès non autorisé à ce bail" }, { status: 403 });
     }
 
-    // 2. Récupérer tous les documents liés au bail OU à la propriété
+    // 2. Récupérer les documents visibles par le locataire
     const { data: docs, error: docsError } = await serviceClient
       .from("documents")
       .select("*")
       .or(`lease_id.eq.${leaseId},property_id.eq.${lease.property_id}`)
       .eq("is_archived", false)
+      .eq("visible_tenant", true)
       .order("created_at", { ascending: false });
 
     if (docsError) {

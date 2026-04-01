@@ -4,7 +4,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { getServiceClient } from "@/lib/supabase/service-client";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { redirect } from "next/navigation";
 
 export interface OwnerDashboardData {
@@ -96,9 +96,13 @@ interface OwnerDashboardRPCResponse {
  * Fallback: requêtes directes quand la RPC n'est pas disponible
  */
 async function fetchDashboardDirect(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  _supabase: Awaited<ReturnType<typeof createClient>>,
   ownerId: string
 ): Promise<OwnerDashboardData> {
+  // Utiliser le service role client pour bypasser RLS
+  // La sécurité est assurée par le filtre owner_id vérifié en amont
+  const supabase = createServiceRoleClient();
+
   // Récupérer les propriétés du propriétaire
   const { data: properties } = await supabase
     .from("properties")
@@ -200,7 +204,7 @@ async function fetchDashboardDirect(
     invoices: {
       total: invoices.length,
       paid: invoices.filter((i: { statut: string }) => i.statut === "paid").length,
-      pending: invoices.filter((i: { statut: string }) => i.statut === "sent").length,
+      pending: invoices.filter((i: { statut: string }) => ["sent", "draft"].includes(i.statut)).length,
       late: invoices.filter((i: { statut: string }) => i.statut === "late").length,
     },
     tickets: {
@@ -254,12 +258,10 @@ export async function fetchDashboard(ownerId: string): Promise<OwnerDashboardDat
     p_owner_id: ownerId,
   });
 
-  if (error) {
-    console.warn("[fetchDashboard] RPC owner_dashboard failed, using direct queries fallback:", error.message);
-    // Fallback sur des requêtes directes aux tables
-    // Utiliser le service client pour bypass RLS qui pourrait bloquer les compteurs
-    const serviceClient = getServiceClient();
-    return fetchDashboardDirect(serviceClient, ownerId);
+  if (error || !data) {
+    console.warn("[fetchDashboard] RPC owner_dashboard failed, using direct queries fallback:", error?.message || "no data");
+    // Fallback sur des requêtes directes aux tables (via service role pour bypasser RLS)
+    return fetchDashboardDirect(supabase, ownerId);
   }
 
   const dashboardData = data as OwnerDashboardRPCResponse;

@@ -32,7 +32,6 @@ interface OverdueResult {
 }
 
 export async function GET(request: NextRequest) {
-  console.log("[CRON] Starting overdue check...");
 
   if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -79,7 +78,6 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
     if (!overdueInvoices || overdueInvoices.length === 0) {
-      console.log("[CRON] No overdue invoices found");
       return NextResponse.json({ success: true, result });
     }
 
@@ -211,7 +209,6 @@ export async function GET(request: NextRequest) {
       },
     } as any);
 
-    console.log("[CRON] Overdue check completed:", result);
 
     return NextResponse.json({
       success: true,

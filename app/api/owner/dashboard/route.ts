@@ -36,13 +36,28 @@ export async function GET(request: Request) {
 
     const ownerId = profile.id;
 
+    // Récupérer l'entityId depuis les query params pour filtrer par entité
+    const url = new URL(request.url);
+    const entityId = url.searchParams.get("entityId");
+
     // 1. Récupérer les propriétés (inclure type_bien pour support V3)
-    // Utiliser serviceClient pour bypass RLS qui peut bloquer les compteurs (B2 fix)
-    const { data: properties } = await serviceClient
+    // Utiliser serviceClient pour bypasser RLS — la sécurité est assurée par le filtre owner_id vérifié en amont
+    let propertiesQuery = serviceClient
       .from("properties")
-      .select("id, type, type_bien, adresse_complete, surface, nb_pieces")
+      .select("id, type, type_bien, adresse_complete, surface, nb_pieces, legal_entity_id")
       .eq("owner_id", ownerId)
       .is("deleted_at", null);
+
+    // Filtrer par entité si spécifié
+    if (entityId && entityId !== "all") {
+      if (entityId === "personal") {
+        propertiesQuery = propertiesQuery.is("legal_entity_id", null);
+      } else {
+        propertiesQuery = propertiesQuery.eq("legal_entity_id", entityId);
+      }
+    }
+
+    const { data: properties } = await propertiesQuery;
 
     const propertyIds = (properties || []).map((p) => p.id);
 
@@ -83,12 +98,11 @@ export async function GET(request: Request) {
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
 
     // 2-3. Paralléliser les requêtes pour améliorer les performances (gain ~30-40%)
-    // Utiliser serviceClient pour bypass RLS (B2 fix — compteurs à 0)
     const [
       { data: leases },
       { data: invoices },
     ] = await Promise.all([
-      // Récupérer les baux actifs
+      // Récupérer les baux actifs (serviceClient pour bypasser RLS)
       serviceClient
         .from("leases")
         .select(`
@@ -104,7 +118,7 @@ export async function GET(request: Request) {
         `)
         .in("property_id", propertyIds)
         .not("statut", "in", '("draft","cancelled","archived")'),
-      // Récupérer les factures des 6 derniers mois
+      // Récupérer les factures des 6 derniers mois (serviceClient pour bypasser RLS)
       serviceClient
         .from("invoices")
         .select("id, lease_id, periode, montant_total, statut, montant_loyer, montant_charges")

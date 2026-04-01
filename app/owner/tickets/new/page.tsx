@@ -48,12 +48,12 @@ const categories = [
   { value: "plomberie", label: "Plomberie", icon: Droplet, color: "text-blue-500" },
   { value: "electricite", label: "Électricité", icon: Zap, color: "text-yellow-500" },
   { value: "chauffage", label: "Chauffage/Climatisation", icon: Thermometer, color: "text-orange-500" },
-  { value: "serrurerie", label: "Serrurerie", icon: Lock, color: "text-slate-500" },
+  { value: "serrurerie", label: "Serrurerie", icon: Lock, color: "text-muted-foreground" },
   { value: "autre", label: "Autre", icon: HelpCircle, color: "text-purple-500" },
 ];
 
 const priorities = [
-  { value: "basse", label: "Basse", description: "Peut attendre quelques semaines", color: "bg-slate-100 text-slate-700", hasFees: false },
+  { value: "basse", label: "Basse", description: "Peut attendre quelques semaines", color: "bg-muted text-foreground", hasFees: false },
   { value: "normale", label: "Normale", description: "À traiter dans la semaine", color: "bg-blue-100 text-blue-700", hasFees: false },
   { value: "haute", label: "Haute", description: "Urgent - sous 48h", color: "bg-orange-100 text-orange-700", hasFees: false },
   { 
@@ -90,6 +90,7 @@ export default function NewOwnerTicketPage() {
   const [loadingProperties, setLoadingProperties] = useState(true);
 
   const preselectedPropertyId = searchParams.get("propertyId");
+  const preselectedLeaseId = searchParams.get("leaseId");
 
   const [form, setForm] = useState({
     titre: "",
@@ -97,7 +98,32 @@ export default function NewOwnerTicketPage() {
     categorie: "",
     priorite: "normale",
     property_id: preselectedPropertyId || "",
+    lease_id: preselectedLeaseId || "",
   });
+
+  // Charger les baux pour le bien sélectionné
+  const [leases, setLeases] = useState<Array<{ id: string; date_debut: string; statut: string }>>([]);
+  const [loadingLeases, setLoadingLeases] = useState(false);
+
+  useEffect(() => {
+    if (!form.property_id) {
+      setLeases([]);
+      return;
+    }
+    setLoadingLeases(true);
+    fetch(`/api/properties/${form.property_id}/leases`)
+      .then((res) => (res.ok ? res.json() : { leases: [] }))
+      .then((data) => {
+        const list = data.leases || data || [];
+        setLeases(list);
+        // Auto-sélectionner le bail actif s'il n'y en a qu'un
+        if (!form.lease_id && list.length === 1) {
+          setForm((prev) => ({ ...prev, lease_id: list[0].id }));
+        }
+      })
+      .catch(() => setLeases([]))
+      .finally(() => setLoadingLeases(false));
+  }, [form.property_id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Charger les propriétés
   useEffect(() => {
@@ -167,6 +193,7 @@ export default function NewOwnerTicketPage() {
           priorite: form.priorite,
           categorie: form.categorie || "autre",
           property_id: form.property_id,
+          ...(form.lease_id ? { lease_id: form.lease_id } : {}),
         }),
       });
 
@@ -216,7 +243,7 @@ export default function NewOwnerTicketPage() {
           </p>
         </div>
 
-        <Card className="bg-white/80 backdrop-blur-sm shadow-lg">
+        <Card className="bg-card/80 backdrop-blur-sm shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wrench className="h-5 w-5 text-blue-600" />
@@ -239,7 +266,7 @@ export default function NewOwnerTicketPage() {
                   onValueChange={(value) => setForm({ ...form, property_id: value })}
                   disabled={loadingProperties}
                 >
-                  <SelectTrigger className="bg-white">
+                  <SelectTrigger className="bg-card">
                     <SelectValue placeholder={loadingProperties ? "Chargement..." : "Sélectionner un bien"} />
                   </SelectTrigger>
                   <SelectContent>
@@ -252,6 +279,34 @@ export default function NewOwnerTicketPage() {
                 </Select>
               </div>
 
+              {/* Bail associé */}
+              {leases.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Info className="h-4 w-4 text-muted-foreground" />
+                    Bail associé (optionnel)
+                  </Label>
+                  <Select
+                    value={form.lease_id}
+                    onValueChange={(value) => setForm({ ...form, lease_id: value === "__none__" ? "" : value })}
+                    disabled={loadingLeases}
+                  >
+                    <SelectTrigger className="bg-card">
+                      <SelectValue placeholder="Aucun bail sélectionné" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Aucun</SelectItem>
+                      {leases.map((lease) => (
+                        <SelectItem key={lease.id} value={lease.id}>
+                          Bail du {new Date(lease.date_debut).toLocaleDateString("fr-FR")}
+                          {lease.statut === "active" ? " (actif)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               {/* Titre */}
               <div className="space-y-2">
                 <Label htmlFor="titre">Titre *</Label>
@@ -260,7 +315,7 @@ export default function NewOwnerTicketPage() {
                   placeholder="Ex: Fuite d'eau dans la salle de bain"
                   value={form.titre}
                   onChange={(e) => setForm({ ...form, titre: e.target.value })}
-                  className="bg-white"
+                  className="bg-card"
                   required
                 />
               </div>
@@ -284,7 +339,7 @@ export default function NewOwnerTicketPage() {
                             "flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all",
                             isSelected
                               ? "border-blue-500 bg-blue-50"
-                              : "border-slate-200 hover:border-slate-300 bg-white"
+                              : "border-border hover:border-border bg-card"
                           )}
                         >
                           <Icon className={cn("h-5 w-5", isSelected ? "text-blue-600" : cat.color)} />
@@ -302,7 +357,7 @@ export default function NewOwnerTicketPage() {
                       value={form.priorite}
                       onValueChange={(value) => setForm({ ...form, priorite: value })}
                     >
-                      <SelectTrigger className="bg-white">
+                      <SelectTrigger className="bg-card">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -356,7 +411,7 @@ export default function NewOwnerTicketPage() {
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={5}
-                  className="bg-white resize-none"
+                  className="bg-card resize-none"
                   required
                 />
                 <p className="text-xs text-muted-foreground">

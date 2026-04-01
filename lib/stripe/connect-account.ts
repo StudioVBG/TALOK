@@ -56,10 +56,10 @@ export function getConnectMissingRequirements(
   requirements?: StripeConnectAccount["requirements"] | null
 ): string[] {
   const normalized = normalizeRequirements(requirements);
-  return [
+  return Array.from(new Set([
     ...normalized.currently_due,
     ...normalized.past_due,
-  ];
+  ]));
 }
 
 export function buildConnectAccountResponse(

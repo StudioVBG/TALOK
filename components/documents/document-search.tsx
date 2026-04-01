@@ -71,7 +71,7 @@ export function DocumentSearch({
           placeholder={placeholder}
           value={query}
           onChange={(e) => handleSearch(e.target.value)}
-          className="pl-10 pr-10 bg-white/80 backdrop-blur-sm"
+          className="pl-10 pr-10 bg-card/80 backdrop-blur-sm"
         />
         {query && (
           <Button

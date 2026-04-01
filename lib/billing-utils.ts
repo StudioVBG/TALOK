@@ -9,23 +9,31 @@ import type { AlertLevel, Territoire } from "@/types/billing";
 // TVA
 // ============================================
 
-const TVA_RATES: Record<Territoire, number> = {
+export const TVA_RATES: Record<Territoire, number> = {
   metropole: 20.0,
   martinique: 8.5,
   guadeloupe: 8.5,
   reunion: 8.5,
-  guyane: 0.0,
-  mayotte: 8.5,
+  guyane: 2.1,
+  mayotte: 0.0,
 };
 
-const TVA_LABELS: Record<Territoire, string> = {
-  metropole: "France metropolitaine",
+export const TVA_LABELS: Record<Territoire, string> = {
+  metropole: "France m\u00e9tropolitaine",
   martinique: "Martinique",
   guadeloupe: "Guadeloupe",
-  reunion: "La Reunion",
+  reunion: "La R\u00e9union",
   guyane: "Guyane",
   mayotte: "Mayotte",
 };
+
+/** Territoires group\u00e9s par taux TVA pour affichage simplifié */
+export const TVA_TERRITORY_GROUPS = [
+  { label: "M\u00e9tropole (20\u00a0%)", value: "metropole" as Territoire, rate: 20.0 },
+  { label: "Martinique / Guadeloupe / R\u00e9union (8,5\u00a0%)", value: "martinique" as Territoire, rate: 8.5 },
+  { label: "Guyane (2,1\u00a0%)", value: "guyane" as Territoire, rate: 2.1 },
+  { label: "Mayotte (0\u00a0%)", value: "mayotte" as Territoire, rate: 0.0 },
+] as const;
 
 export function getTvaRate(territoire: Territoire): number {
   return TVA_RATES[territoire];
@@ -115,7 +123,35 @@ export function formatDateShort(date: string | Date): string {
 export function daysUntil(date: string | Date): number {
   const target = new Date(date);
   const now = new Date();
-  return Math.max(0, Math.ceil((target.getTime() - now.getTime()) / 86400000));
+  target.setHours(0, 0, 0, 0);
+  now.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((target.getTime() - now.getTime()) / 86400000));
+}
+
+/**
+ * Formats a countdown to a billing date as a human-readable French string.
+ * Handles edge cases: expired, today, tomorrow, near future, and far future.
+ */
+export function formatBillingCountdown(date: string | Date | null | undefined): string {
+  if (!date) return "Date non disponible";
+
+  const target = new Date(date);
+  const now = new Date();
+  target.setHours(0, 0, 0, 0);
+  now.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.round((target.getTime() - now.getTime()) / 86400000);
+
+  if (diffDays < 0) return "Renouvellement en cours";
+  if (diffDays === 0) return "Aujourd\u2019hui";
+  if (diffDays === 1) return "Demain";
+  if (diffDays <= 30) return `Dans ${diffDays} jour${diffDays > 1 ? "s" : ""}`;
+
+  return target.toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 export function isExpiringSoon(expMonth: number, expYear: number, thresholdDays: number): boolean {
