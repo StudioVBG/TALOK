@@ -11,6 +11,51 @@ import type { Document } from "@/lib/types";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { groupDocuments, type GroupedDocumentItem } from "@/lib/documents/group-documents";
 
+/**
+ * B6 fix: Groupe les documents CNI recto+verso en un seul élément
+ * pour éviter l'affichage en double dans la liste.
+ */
+function groupCniDocuments(docs: Document[]): Document[] {
+  const rectos = docs.filter((d) => d.type === "cni_recto");
+  const versos = docs.filter((d) => d.type === "cni_verso");
+  const others = docs.filter((d) => d.type !== "cni_recto" && d.type !== "cni_verso");
+
+  const matchedVersoIds = new Set<string>();
+  const grouped: Document[] = [];
+
+  for (const recto of rectos) {
+    // Trouver le verso correspondant (même bail ou même locataire)
+    const verso = versos.find(
+      (v) =>
+        !matchedVersoIds.has(v.id) &&
+        ((recto.lease_id && v.lease_id === recto.lease_id) ||
+          (recto.tenant_id && v.tenant_id === recto.tenant_id))
+    );
+
+    if (verso) {
+      matchedVersoIds.add(verso.id);
+    }
+
+    // Afficher le recto avec un titre groupé
+    grouped.push({
+      ...recto,
+      title: recto.title || "Carte d'Identité (Recto" + (verso ? " + Verso" : "") + ")",
+    });
+  }
+
+  // Versos orphelins (sans recto correspondant)
+  for (const verso of versos) {
+    if (!matchedVersoIds.has(verso.id)) {
+      grouped.push({
+        ...verso,
+        title: verso.title || "Carte d'Identité (Verso)",
+      });
+    }
+  }
+
+  return [...others, ...grouped];
+}
+
 interface DocumentsListProps {
   propertyId?: string;
   leaseId?: string;
@@ -47,7 +92,8 @@ export function DocumentsList({ propertyId, leaseId, showUpload = true }: Docume
         data = [];
       }
 
-      setDocuments(data);
+      // B6 fix: Grouper les CNI recto/verso pour éviter les doublons visuels
+      setDocuments(groupCniDocuments(data));
     } catch (error: unknown) {
       toast({
         title: "Erreur",
