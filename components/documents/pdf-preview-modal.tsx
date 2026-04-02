@@ -92,7 +92,7 @@ export function PDFPreviewModal({
         const content = htmlContent || await fetch(documentUrl).then((r) => r.text());
         const html2pdf = (await import("html2pdf.js")).default;
         const element = document.createElement("div");
-        element.innerHTML = content;
+        element.innerHTML = content as string;
         document.body.appendChild(element);
         await html2pdf().set({
           margin: 10,
