@@ -52,9 +52,14 @@ export async function getInvoiceSettlement(
     )
   );
 
-  const remaining = roundCurrency(Math.max(0, Number(invoiceData.montant_total || 0) - totalPaid));
+  const rawRemaining = roundCurrency(Math.max(0, Number(invoiceData.montant_total || 0) - totalPaid));
   const hasAnyPayment = totalPaid > 0;
-  const isSettled = remaining <= 0;
+
+  // Fallback: si la facture est déjà marquée "paid" en base (ex: via webhook Stripe)
+  // mais qu'aucune ligne payments n'existe, on considère la facture réglée.
+  const invoiceMarkedPaid = invoiceData.statut === "paid";
+  const isSettled = rawRemaining <= 0 || (!hasAnyPayment && invoiceMarkedPaid);
+  const remaining = isSettled ? 0 : rawRemaining;
 
   let status = (invoiceData.statut || "sent") as InvoiceSettlement["status"];
   if (isSettled) {

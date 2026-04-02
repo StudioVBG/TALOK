@@ -140,6 +140,21 @@ describe("invoice-status.service", () => {
     expect(settlement?.status).toBe("paid");
   });
 
+  it("considère une facture paid sans payments comme réglée", async () => {
+    const mock = createMockSupabase({
+      invoice: { id: "inv_paid_no_payments", montant_total: 1500, statut: "paid", date_paiement: "2026-03-20" },
+      payments: [],
+    });
+
+    const settlement = await getInvoiceSettlement(mock.client as any, "inv_paid_no_payments");
+
+    expect(settlement).not.toBeNull();
+    expect(settlement?.isSettled).toBe(true);
+    expect(settlement?.status).toBe("paid");
+    expect(settlement?.remaining).toBe(0);
+    expect(settlement?.totalPaid).toBe(0);
+  });
+
   it("retombe sur le champ type quand metadata.type est absent", async () => {
     const mock = createMockSupabase({
       initialInvoice: null,
