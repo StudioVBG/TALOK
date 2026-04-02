@@ -4,6 +4,8 @@
 // =====================================================
 
 import { createClient } from '@/lib/supabase/client';
+import { sendEmail as sendEmailService } from '@/lib/services/email-service';
+import { emailTemplates } from '@/lib/emails/templates';
 import type {
   TenantChargeBase,
   TenantChargeRegularisation,
@@ -218,9 +220,36 @@ export async function sendRegularisation(
   
   if (error) throw error;
   
-  // TODO: Envoyer email/postal
-  if (options.sendEmail) {
-    // await sendRegularisationEmail(data);
+  // Send regularisation email to tenant
+  if (options.sendEmail && data) {
+    try {
+      const regul = data as any;
+      const { data: tenantProfile } = await supabase
+        .from('profiles')
+        .select('prenom, nom, user_id')
+        .eq('id', regul.tenant_profile_id)
+        .single();
+      if (tenantProfile?.user_id) {
+        const { data: { user: tenantUser } } = await supabase.auth.admin.getUserById(tenantProfile.user_id);
+        if (tenantUser?.email) {
+          const tenantName = `${tenantProfile.prenom || ''} ${tenantProfile.nom || ''}`.trim() || 'Copropriétaire';
+          const amount = regul.amount || regul.total_amount || 0;
+          const template = emailTemplates.genericReminder({
+            subject: `Régularisation des charges — ${amount.toLocaleString('fr-FR')} €`,
+            content: `Bonjour ${tenantName},\n\nVotre régularisation des charges locatives est disponible.\n\nMontant : ${amount.toLocaleString('fr-FR')} €\nExercice : ${regul.fiscal_year || ''}\n\nConnectez-vous à votre espace Talok pour consulter le détail.`,
+          });
+          await sendEmailService({
+            to: tenantUser.email,
+            subject: template.subject,
+            html: template.html,
+            tags: [{ name: 'type', value: 'charge_regularisation' }],
+            idempotencyKey: `regularisation/${id}`,
+          });
+        }
+      }
+    } catch (e) {
+      console.error('[Regularisation] Email send error:', e);
+    }
   }
 
   return data as unknown as TenantChargeRegularisation;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import {
   AlertTriangle,
   TrendingUp,
@@ -47,13 +47,15 @@ export function LMNPStatusAlert({
   onStatusChange,
 }: LMNPStatusAlertProps) {
   const statusResult = useMemo(() => {
-    const result = determineLMNPStatus({
+    return determineLMNPStatus({
       furnishedRentalIncome,
       otherProfessionalIncome,
     });
-    onStatusChange?.(result.status);
-    return result;
-  }, [furnishedRentalIncome, otherProfessionalIncome, onStatusChange]);
+  }, [furnishedRentalIncome, otherProfessionalIncome]);
+
+  useEffect(() => {
+    onStatusChange?.(statusResult.status);
+  }, [statusResult.status, onStatusChange]);
 
   // Calcul des seuils pour les barres de progression
   const incomeProgress = Math.min(100, (furnishedRentalIncome / LMP_THRESHOLD) * 100);

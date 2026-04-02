@@ -169,7 +169,6 @@ export async function POST(request: Request) {
     results.invitation_links = invitationLinks;
 
     // 6. Log l'action
-    console.log(`[Reset Lease] Bail ${lease_id} réinitialisé par ${user.email}`);
 
     return NextResponse.json({
       success: true,

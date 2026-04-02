@@ -28,12 +28,25 @@ const publicRoutes = [
   "/auth/reset-password",
   "/recovery/password",
   "/signup",
+  "/login",
+  "/signout",
   "/pricing",
   "/blog",
   "/legal",
   "/demo",
   "/signature",
   "/onboarding",
+  "/faq",
+  "/fonctionnalites",
+  "/solutions",
+  "/temoignages",
+  "/guides",
+  "/outils",
+  "/a-propos",
+  "/contact",
+  "/features",
+  "/modeles",
+  "/invite",
 ];
 
 export function middleware(request: NextRequest) {
@@ -106,6 +119,13 @@ export function middleware(request: NextRequest) {
       : "/dashboard";
     url.pathname = safeRedirect;
     url.search = "";
+    return NextResponse.redirect(url);
+  }
+
+  // B5: Redirect authenticated users from /pricing to their dashboard
+  if (hasAuthCookie && pathname === "/pricing") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/owner/dashboard";
     return NextResponse.redirect(url);
   }
 

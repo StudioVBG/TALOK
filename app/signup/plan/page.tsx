@@ -5,7 +5,7 @@
  * Le propriétaire choisit son forfait, le 1er mois est offert
  */
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -46,16 +46,25 @@ const PLAN_ICONS: Record<PlanSlug, React.ReactNode> = {
 const SIGNUP_PLANS: PlanSlug[] = ["gratuit", "starter", "confort", "pro"];
 
 export default function SignupPlanPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-950"><Loader2 className="h-8 w-8 animate-spin text-indigo-400" /></div>}>
+      <SignupPlanContent />
+    </Suspense>
+  );
+}
+
+function SignupPlanContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  
+
   const [billing, setBilling] = useState<BillingCycle>("monthly");
   const [selectedPlan, setSelectedPlan] = useState<PlanSlug>("confort");
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
-  
-  const role = searchParams.get("role") || "owner";
+
+  // Guard: useSearchParams() peut retourner null pendant le SSR sans Suspense boundary
+  const role = searchParams?.get("role") || "owner";
 
   // Vérifier que l'utilisateur est connecté et a un email vérifié
   useEffect(() => {
@@ -141,7 +150,7 @@ export default function SignupPlanPage() {
 
   // Vérifier si on revient de Stripe avec un canceled
   useEffect(() => {
-    const canceled = searchParams.get("canceled");
+    const canceled = searchParams?.get("canceled");
     if (canceled === "true") {
       toast({
         title: "Paiement annulé",

@@ -111,6 +111,23 @@ export async function POST(
       }, { status: 400 });
     }
     
+    // 4b. Vérifier que tous les signataires ont effectivement signé
+    const { data: signers } = await serviceClient
+      .from("lease_signers")
+      .select("id, role, signature_status")
+      .eq("lease_id", leaseId);
+
+    const unsignedSigners = (signers || []).filter(
+      (s: any) => s.signature_status !== "signed"
+    );
+    if (!signers || signers.length < 2 || unsignedSigners.length > 0) {
+      return NextResponse.json({
+        error: "Tous les signataires doivent avoir signé le bail avant activation",
+        unsigned_count: unsignedSigners.length,
+        total_signers: signers?.length || 0,
+      }, { status: 400 });
+    }
+
     // 5. Vérifier l'EDL d'entrée
     const { data: edl, error: edlError } = await serviceClient
       .from("edl")

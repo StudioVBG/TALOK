@@ -181,7 +181,7 @@ export default function ProvidersMarketplacePage() {
             </div>
             <div>
               <CardTitle>Catalogue prestataires réservé au forfait {PLANS[requiredPlan].name}</CardTitle>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-muted-foreground">
                 Depuis ce forfait, vous pouvez rechercher des artisans, comparer les profils et lancer une demande de devis sans quitter Talok.
               </p>
             </div>
@@ -189,7 +189,7 @@ export default function ProvidersMarketplacePage() {
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-3">
               {["Recherche par métier", "Profils vérifiés", "Demande de devis contextualisée"].map((item) => (
-                <div key={item} className="rounded-xl border bg-white p-4 text-sm text-slate-700">
+                <div key={item} className="rounded-xl border bg-card p-4 text-sm text-foreground">
                   {item}
                 </div>
               ))}

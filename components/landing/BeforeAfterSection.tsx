@@ -1,16 +1,38 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { fadeUp, springItem, springIcon, defaultViewport } from "@/lib/marketing/animations";
+
+const SANS_ITEMS = [
+  "Fichiers Excel éparpillés",
+  "Relances à la main",
+  "Quittances Word",
+  "Documents perdus dans les mails",
+];
+
+const AVEC_ITEMS = [
+  "Tout au même endroit",
+  "Baux en 5 minutes",
+  "Quittances automatiques",
+  "Vue claire de chaque bien",
+];
 
 export function BeforeAfterSection() {
   return (
-    <section className="py-20 md:py-28">
+    <motion.section
+      className="py-20 md:py-28"
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="visible"
+      viewport={defaultViewport}
+    >
       <div className="container mx-auto max-w-5xl px-4">
-        <div className="reveal mx-auto max-w-3xl text-center">
+        <div className="mx-auto max-w-3xl text-center">
           <h2 className="font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
             Vous en avez marre de jongler entre les outils ?
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
+          <p className="mt-4 text-base font-normal leading-relaxed text-muted-foreground">
             Fichiers Excel, relances à la main, documents éparpillés, locataires
             qu&apos;on oublie de rappeler… On connaît. C&apos;est exactement pour ça
             qu&apos;on a créé Talok.
@@ -25,10 +47,29 @@ export function BeforeAfterSection() {
             className="border-talok-rouge/20 bg-talok-rouge/5"
             labelClassName="bg-talok-rouge/10 text-talok-rouge"
           >
-            Vous gérez vos biens avec des fichiers Excel, des relances par SMS au
-            feeling, des quittances faites à la main, et des documents éparpillés
-            entre emails, WhatsApp et dossiers papier. Résultat : du stress, des
-            oublis, et des loyers en retard.
+            <ul className="mt-4 space-y-3">
+              {SANS_ITEMS.map((item, index) => (
+                <motion.li
+                  key={item}
+                  className="flex items-center gap-2 text-sm text-muted-foreground"
+                  variants={springItem(index)}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={defaultViewport}
+                >
+                  <motion.span
+                    className="text-talok-rouge font-bold"
+                    variants={springIcon(index)}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={defaultViewport}
+                  >
+                    ✕
+                  </motion.span>
+                  {item}
+                </motion.li>
+              ))}
+            </ul>
           </Card>
 
           {/* Avec Talok */}
@@ -38,14 +79,33 @@ export function BeforeAfterSection() {
             className="border-talok-vert/20 bg-talok-vert/5"
             labelClassName="bg-talok-vert/10 text-talok-vert"
           >
-            Tout est au même endroit. Vos baux se créent en 5 minutes. Les
-            quittances partent toutes seules. Les relances aussi. Vous voyez en un
-            coup d&apos;œil qui a payé, qui est en retard, et combien vous rapporte
-            chaque bien. Simple.
+            <ul className="mt-4 space-y-3">
+              {AVEC_ITEMS.map((item, index) => (
+                <motion.li
+                  key={item}
+                  className="flex items-center gap-2 text-sm text-muted-foreground"
+                  variants={springItem(index)}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={defaultViewport}
+                >
+                  <motion.span
+                    className="text-talok-vert font-bold"
+                    variants={springIcon(index)}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={defaultViewport}
+                  >
+                    ✓
+                  </motion.span>
+                  {item}
+                </motion.li>
+              ))}
+            </ul>
           </Card>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }
 
@@ -63,11 +123,9 @@ function Card({
   labelClassName?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "reveal rounded-2xl border p-8",
-        className
-      )}
+    <motion.div
+      className={cn("rounded-2xl border p-8", className)}
+      whileHover={{ y: -4, transition: { duration: 0.2 } }}
     >
       <div className="flex items-center gap-3">
         <span className="text-2xl">{emoji}</span>
@@ -75,9 +133,7 @@ function Card({
           {label}
         </span>
       </div>
-      <p className="mt-5 text-base leading-relaxed text-muted-foreground">
-        {children}
-      </p>
-    </div>
+      {children}
+    </motion.div>
   );
 }
