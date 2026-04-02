@@ -14,6 +14,8 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createHmac } from "crypto";
 import { getInitialInvoiceSettlement } from "@/lib/services/invoice-status.service";
+import { sendKeyHandoverScanRequest } from "@/lib/emails/resend.service";
+import { sendSMS } from "@/lib/services/sms.service";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -251,11 +253,155 @@ export async function POST(request: Request, { params }: RouteParams) {
       throw insertError;
     }
 
+    // === Notifications multi-canal au locataire ===
+    // Ne jamais faire échouer la génération du QR code si une notification plante
+    const propertyAddress = property?.adresse_complete || "";
+
+    try {
+      // Récupérer le(s) locataire(s) lié(s) au bail via lease_signers
+      const { data: tenantSigners } = await serviceClient
+        .from("lease_signers")
+        .select("profile_id, profiles!lease_signers_profile_id_fkey(id, email, prenom, nom, telephone, user_id)")
+        .eq("lease_id", leaseId)
+        .in("role", ["locataire_principal", "colocataire"]);
+
+      const tenants = (tenantSigners || [])
+        .map((s: any) => s.profiles)
+        .filter(Boolean);
+
+      for (const tenant of tenants) {
+        // 1. Email
+        try {
+          await sendKeyHandoverScanRequest({
+            tenantEmail: tenant.email,
+            tenantFirstName: tenant.prenom || tenant.nom || "Locataire",
+            propertyAddress,
+            leaseId,
+            handoverId: handover.id,
+            expiresAt: new Date(expiresAt),
+          });
+        } catch (emailError) {
+          console.error("[key-handover] email notification failed:", emailError);
+        }
+
+        // 2. Push notification (Web Push + FCM via push_subscriptions)
+        try {
+          const { data: pushSubs } = await serviceClient
+            .from("push_subscriptions")
+            .select("id")
+            .eq("user_id", tenant.user_id)
+            .eq("is_active", true)
+            .limit(1);
+
+          if (pushSubs && pushSubs.length > 0) {
+            // Send via internal push API (handles both Web Push and FCM)
+            const pushPayload = {
+              user_ids: [tenant.user_id],
+              title: "🔑 Remise des clefs",
+              body: "Votre propriétaire vous attend. Ouvrez Talok pour scanner le QR code.",
+              data: {
+                action: "key_handover_scan",
+                leaseId,
+                redirectUrl: `/tenant/lease/${leaseId}/handover`,
+              },
+              action_url: `/tenant/lease/${leaseId}/handover`,
+              tag: `key-handover-${handover.id}`,
+            };
+
+            // Use VAPID + FCM logic from push service inline
+            const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+            const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+            const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:support@talok.fr";
+
+            const { data: subscriptions } = await serviceClient
+              .from("push_subscriptions")
+              .select("*")
+              .eq("user_id", tenant.user_id)
+              .eq("is_active", true);
+
+            if (subscriptions && subscriptions.length > 0) {
+              const webSubs = subscriptions.filter((s: any) => s.device_type === "web" || !s.device_type);
+              const nativeSubs = subscriptions.filter((s: any) => s.device_type === "android" || s.device_type === "ios");
+
+              const payload = JSON.stringify({
+                title: pushPayload.title,
+                body: pushPayload.body,
+                icon: "/icons/icon-192x192.png",
+                badge: "/icons/badge-72x72.png",
+                data: pushPayload.data,
+                tag: pushPayload.tag,
+              });
+
+              // Web Push
+              if (webSubs.length > 0 && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+                try {
+                  // @ts-ignore
+                  const webPush = await import("web-push");
+                  webPush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+                  await Promise.allSettled(
+                    webSubs.map((sub: any) =>
+                      webPush.sendNotification(
+                        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } },
+                        payload
+                      ).catch(() => {})
+                    )
+                  );
+                } catch (webPushErr) {
+                  console.error("[key-handover] web push failed:", webPushErr);
+                }
+              }
+
+              // FCM native
+              if (nativeSubs.length > 0 && process.env.FIREBASE_SERVICE_ACCOUNT) {
+                try {
+                  const admin = await import("firebase-admin");
+                  if (!admin.default.apps?.length) {
+                    admin.default.initializeApp({
+                      credential: admin.default.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
+                    });
+                  }
+                  await Promise.allSettled(
+                    nativeSubs.map((sub: any) => {
+                      const fcmToken = sub.endpoint.startsWith("fcm://") ? sub.endpoint.slice(6) : sub.endpoint;
+                      return admin.default.messaging().send({
+                        token: fcmToken,
+                        notification: { title: pushPayload.title, body: pushPayload.body },
+                        data: { action: "key_handover_scan", leaseId, redirectUrl: `/tenant/lease/${leaseId}/handover` },
+                      }).catch(() => {});
+                    })
+                  );
+                } catch (fcmErr) {
+                  console.error("[key-handover] FCM push failed:", fcmErr);
+                }
+              }
+            }
+          }
+        } catch (pushError) {
+          console.error("[key-handover] push notification failed:", pushError);
+        }
+
+        // 3. SMS si téléphone renseigné
+        try {
+          if (tenant.telephone) {
+            await sendSMS({
+              to: tenant.telephone,
+              message: `[Talok] Votre propriétaire attend que vous confirmiez la remise des clefs. Ouvrez l'app Talok pour scanner le QR code. Support : support@talok.fr`,
+            });
+          }
+        } catch (smsError) {
+          console.error("[key-handover] SMS notification failed:", smsError);
+        }
+      }
+    } catch (notifError) {
+      // Ne jamais faire échouer la génération du QR code si les notifications plantent
+      console.error("[key-handover] notification orchestration failed:", notifError);
+    }
+
     return NextResponse.json({
       token,
       expires_at: expiresAt,
       keys,
-      property_address: property?.adresse_complete || "",
+      property_address: propertyAddress,
       handover_id: handover.id,
     });
   } catch (error: unknown) {
