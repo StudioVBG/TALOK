@@ -949,6 +949,7 @@ export async function POST(request: NextRequest) {
         const customerId = invoice.customer as string;
         const stripeInvoice = invoice as Stripe.Invoice & {
           subscription?: string | Stripe.Subscription | null;
+          payment_intent?: string | Stripe.PaymentIntent | null;
         };
         const stripeSubscriptionId = getStripeInvoiceSubscriptionId(stripeInvoice);
 
@@ -958,7 +959,9 @@ export async function POST(request: NextRequest) {
 
         if (rentInvoiceId && rentLeaseId) {
           console.log(`[Stripe Webhook] invoice.paid for rent: invoice_id=${rentInvoiceId}, lease_id=${rentLeaseId}`);
-          const piId = invoice.payment_intent as string | null;
+          const piId = typeof stripeInvoice.payment_intent === "string"
+            ? stripeInvoice.payment_intent
+            : stripeInvoice.payment_intent?.id ?? null;
           const paidAt = new Date().toISOString();
 
           if (piId) {
