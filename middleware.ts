@@ -33,6 +33,7 @@ const publicRoutes = [
   "/legal",
   "/demo",
   "/signature",
+  "/onboarding",
 ];
 
 export function middleware(request: NextRequest) {
@@ -137,7 +138,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  return NextResponse.next();
+  // 7. Propager le pathname pour les layouts serveur (identity gate)
+  const response = NextResponse.next();
+  response.headers.set("x-pathname", pathname);
+  return response;
 }
 
 export const config = {
