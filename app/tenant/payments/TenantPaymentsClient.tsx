@@ -160,20 +160,23 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
   };
 
   // Statistiques financières SOTA - score de ponctualité calculé réellement
+  // Exclure les factures initiales (type='initial_invoice') du score de ponctualité
   const stats = useMemo(() => {
     const now = new Date();
     const unpaid = invoices.filter(i =>
-      i.statut !== 'paid' && i.statut !== 'draft' &&
+      i.statut !== 'paid' && i.statut !== 'draft' && i.statut !== 'cancelled' &&
       (!i.due_date || new Date(i.due_date) <= now)
     );
     const totalUnpaid = unpaid.reduce((acc, curr) => acc + (curr.montant_total || 0), 0);
-    const paidInvoices = invoices.filter(i => i.statut === 'paid');
-    const paidCount = paidInvoices.length;
-    const totalCount = invoices.length;
-    
-    // Calcul du score de ponctualité réel
-    // null = pas de données (0 transactions), sinon pourcentage payés à temps
-    const lateCount = invoices.filter(i => i.statut === 'late' || i.statut === 'overdue' || i.statut === 'unpaid').length;
+
+    // Seules les factures de loyer comptent pour le score de ponctualité
+    const rentInvoices = invoices.filter(i => i.type !== 'initial_invoice' && i.statut !== 'cancelled');
+    const paidRentInvoices = rentInvoices.filter(i => i.statut === 'paid');
+    const paidCount = paidRentInvoices.length;
+    const totalCount = rentInvoices.length;
+
+    // Calcul du score de ponctualité réel (loyers uniquement)
+    const lateCount = rentInvoices.filter(i => i.statut === 'late' || i.statut === 'overdue' || i.statut === 'unpaid').length;
     const punctualityScore = totalCount > 0
       ? Math.round(((totalCount - lateCount) / totalCount) * 100)
       : null;
@@ -187,9 +190,11 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
   }, [invoices]);
 
   const filteredInvoices = useMemo(() => {
-    return invoices.filter(inv => 
-      inv.periode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      formatCurrency(inv.montant_total).includes(searchQuery)
+    return invoices.filter(inv =>
+      inv.statut !== 'cancelled' && (
+        inv.periode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        formatCurrency(inv.montant_total).includes(searchQuery)
+      )
     );
   }, [invoices, searchQuery]);
 
@@ -454,7 +459,7 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                           </div>
                           <div>
                             <p className="font-black text-foreground text-lg">
-                              Loyer {invoice.periode}
+                              {invoice.type === 'initial_invoice' ? 'Facture initiale' : `Loyer ${invoice.periode}`}
                               {(invoice as any).metadata?.is_prorated && (
                                 <span className="ml-2 text-xs font-medium text-amber-600">(prorata)</span>
                               )}
@@ -568,10 +573,10 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
         <Dialog open={isPaymentOpen} onOpenChange={setIsPaymentOpen}>
           <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl" aria-describedby={undefined}>
             {selectedInvoice && (
-              <PaymentCheckout 
+              <PaymentCheckout
                 invoiceId={selectedInvoice.id}
                 amount={selectedInvoice.montant_total}
-                description={`Loyer ${selectedInvoice.periode}`}
+                description={selectedInvoice.type === 'initial_invoice' ? 'Facture initiale' : `Loyer ${selectedInvoice.periode}`}
                 onSuccess={handlePaymentSuccess}
                 onCancel={() => setIsPaymentOpen(false)}
               />

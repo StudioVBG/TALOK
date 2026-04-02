@@ -131,6 +131,7 @@ export async function getTenantInvoices() {
     due_date: inv.due_date || inv.date_echeance,
     metadata: inv.metadata,
     notes: inv.notes,
+    type: inv.type || null,
     statut: inv.statut as "draft" | "sent" | "paid" | "late" | "cancelled",
     created_at: inv.created_at,
     lease: {

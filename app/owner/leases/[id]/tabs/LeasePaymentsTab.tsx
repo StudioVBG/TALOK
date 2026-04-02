@@ -37,6 +37,7 @@ interface Invoice {
   statut: string;
   created_at: string;
   metadata?: Record<string, any> | null;
+  type?: string | null;
 }
 
 interface LeasePaymentsTabProps {
@@ -63,6 +64,7 @@ const INVOICE_STATUS: Record<string, { label: string; color: string }> = {
   sent: { label: "Envoyée", color: "bg-blue-100 text-blue-700" },
   paid: { label: "Payée", color: "bg-emerald-100 text-emerald-700" },
   late: { label: "En retard", color: "bg-red-100 text-red-700" },
+  cancelled: { label: "Annulée", color: "bg-slate-100 text-slate-500" },
 };
 
 function formatPeriode(periode: string): string {
@@ -130,13 +132,14 @@ export function LeasePaymentsTab({
     );
   }
 
-  // Stats
-  const totalReceived = payments
-    .filter((p) => p.statut === "succeeded" || p.statut === "paid")
-    .reduce((sum, p) => sum + p.montant, 0);
-  const totalPending = payments
-    .filter((p) => p.statut === "pending")
-    .reduce((sum, p) => sum + p.montant, 0);
+  // Stats basées sur le statut des factures (source de vérité)
+  // Une facture paid compte dans "Reçus" même sans payment associé (marquage manuel)
+  const totalReceived = invoices
+    .filter((inv) => inv.statut === "paid")
+    .reduce((sum, inv) => sum + inv.montant_total, 0);
+  const totalPending = invoices
+    .filter((inv) => inv.statut !== "paid" && inv.statut !== "cancelled" && inv.statut !== "draft")
+    .reduce((sum, inv) => sum + inv.montant_total, 0);
   const lateInvoices = invoices.filter((inv) => inv.statut === "late");
 
   const handleOpenPaymentDialog = (invoice: Invoice) => {
@@ -181,7 +184,7 @@ export function LeasePaymentsTab({
           </div>
           <div className="p-4 bg-slate-50 rounded-lg border border-slate-100 text-center">
             <p className="text-xs text-slate-600 font-medium mb-1">Factures</p>
-            <p className="text-lg font-bold text-slate-700">{invoices.length}</p>
+            <p className="text-lg font-bold text-slate-700">{invoices.filter((inv) => inv.statut !== "cancelled").length}</p>
           </div>
         </div>
 
@@ -208,9 +211,9 @@ export function LeasePaymentsTab({
               Factures
             </h4>
             <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
-              {invoices.slice(0, 12).map((invoice) => {
+              {invoices.filter((inv) => inv.statut !== "cancelled").slice(0, 12).map((invoice) => {
                 const invStatus = INVOICE_STATUS[invoice.statut] || INVOICE_STATUS.draft;
-                const isInitial = invoice.metadata?.type === "initial_invoice";
+                const isInitial = invoice.type === "initial_invoice" || invoice.metadata?.type === "initial_invoice";
 
                 return (
                   <div key={invoice.id} className="flex items-center justify-between p-4">
@@ -260,7 +263,10 @@ export function LeasePaymentsTab({
             </h4>
             <div className="bg-white rounded-lg border border-slate-200 divide-y divide-slate-100">
               {payments.map((payment) => {
-                const statusConf = PAYMENT_STATUS[payment.statut] || PAYMENT_STATUS.pending;
+                // Si la facture liée est payée, afficher "Payé" même si le payment est pending
+                const linkedInvoice = invoices.find((inv) => inv.id === (payment as any).invoice_id);
+                const effectiveStatus = linkedInvoice?.statut === "paid" ? "paid" : payment.statut;
+                const statusConf = PAYMENT_STATUS[effectiveStatus] || PAYMENT_STATUS.pending;
                 const StatusIcon = statusConf.icon;
 
                 return (
