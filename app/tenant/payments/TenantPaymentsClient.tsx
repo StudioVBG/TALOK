@@ -112,14 +112,14 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
   // Moyen de paiement configuré
   const { defaultMethod, isLoading: isLoadingMethods } = useTenantPaymentMethodsDisplay();
 
-  // Fusionner les factures initiales avec les données temps réel
-  const invoices = useMemo(() => {
-    // Si le realtime signale un changement de facture, on force le refetch
+  // Refetch quand le realtime signale un changement de facture
+  useEffect(() => {
     if (realtime.hasRecentInvoice) {
       refetch();
     }
-    return initialInvoices;
-  }, [initialInvoices, realtime.hasRecentInvoice, refetch]);
+  }, [realtime.hasRecentInvoice, refetch]);
+
+  const invoices = initialInvoices;
 
   useEffect(() => {
     const isSuccess = searchParams.get("success") === "true";

@@ -191,7 +191,7 @@ export async function createLease(input: LeaseCreationInput): Promise<LeaseCreat
     await serviceClient.from("lease_signers").insert({
       lease_id: leaseId,
       profile_id: existing?.id ?? null,
-      invited_email: invitee.email,
+      invited_email: invitee.email.toLowerCase().trim(),
       invited_name: invitee.name || null,
       role: signerRole,
       signature_status: "pending",
@@ -321,7 +321,7 @@ async function createRoommate(
     weight: invitee.weight,
     joined_on: input.dateDebut,
     invitation_status: existing ? "accepted" : "pending",
-    invited_email: invitee.email,
+    invited_email: invitee.email.toLowerCase().trim(),
     room_label: invitee.room_label || null,
     has_guarantor: invitee.has_guarantor || false,
     guarantor_email: invitee.guarantor_email || null,

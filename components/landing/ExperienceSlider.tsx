@@ -1,5 +1,8 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { fadeUp, defaultViewport } from "@/lib/marketing/animations";
+
 const SLIDES = [
   {
     tag: "En 5 min",
@@ -44,9 +47,15 @@ const ALL_SLIDES = [...SLIDES, ...SLIDES];
 
 export function ExperienceSlider() {
   return (
-    <section className="overflow-hidden py-20 md:py-28">
+    <motion.section
+      className="overflow-hidden py-20 md:py-28"
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="visible"
+      viewport={defaultViewport}
+    >
       <div className="container mx-auto max-w-6xl px-4">
-        <h2 className="reveal text-center font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+        <h2 className="text-center font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
           L&apos;expérience Talok
         </h2>
       </div>
@@ -67,9 +76,10 @@ export function ExperienceSlider() {
           }}
         >
           {ALL_SLIDES.map((slide, i) => (
-            <div
+            <motion.div
               key={i}
-              className="w-[300px] shrink-0 rounded-2xl border bg-white p-5 shadow-sm md:w-[340px]"
+              className="w-[300px] shrink-0 rounded-2xl border border-border bg-card p-5 shadow-sm md:w-[340px] cursor-pointer"
+              whileHover={{ y: -4, transition: { duration: 0.2 } }}
             >
               <span className="inline-block rounded-full bg-talok-bleu-marque/10 px-3 py-1 text-xs font-semibold text-talok-bleu-marque">
                 {slide.tag}
@@ -78,15 +88,13 @@ export function ExperienceSlider() {
                 {slide.title}
               </h3>
               <p className="mt-1 text-sm text-muted-foreground">{slide.text}</p>
-              {/* Image placeholder */}
               <div
                 className={`mt-4 h-36 rounded-xl bg-gradient-to-br ${slide.gradient}`}
               />
-              {/* TODO: remplacer par <Image src="/images/slide-${i % 6 + 1}.jpg" alt={slide.title} width={300} height={144} className="rounded-xl object-cover" /> */}
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 }

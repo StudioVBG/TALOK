@@ -326,36 +326,38 @@ export function ProfileIdentityTab({
             <EntityMigrationCTA onSwitchToEntities={onSwitchToEntities} />
           )}
 
-          {/* Always-visible optional fields */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="iban">IBAN (optionnel)</Label>
-              <Input
-                id="iban"
-                value={formData.iban}
-                onChange={(e) => updateField("iban", e.target.value)}
-                placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
-                error={errors.iban}
-                disabled={isSaving}
-              />
-            </div>
+          {/* IBAN & billing address — hidden when societe with entities (managed per-entity) */}
+          {formData.owner_type !== "societe" && (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="iban">IBAN (optionnel)</Label>
+                <Input
+                  id="iban"
+                  value={formData.iban}
+                  onChange={(e) => updateField("iban", e.target.value)}
+                  placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
+                  error={errors.iban}
+                  disabled={isSaving}
+                />
+              </div>
 
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="adresse_facturation">
-                Adresse de facturation (optionnel)
-              </Label>
-              <textarea
-                id="adresse_facturation"
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                value={formData.adresse_facturation}
-                onChange={(e) =>
-                  updateField("adresse_facturation", e.target.value)
-                }
-                disabled={isSaving}
-                placeholder="Si différente de l'adresse du siège"
-              />
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="adresse_facturation">
+                  Adresse de facturation (optionnel)
+                </Label>
+                <textarea
+                  id="adresse_facturation"
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  value={formData.adresse_facturation}
+                  onChange={(e) =>
+                    updateField("adresse_facturation", e.target.value)
+                  }
+                  disabled={isSaving}
+                  placeholder="Si différente de l'adresse du siège"
+                />
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

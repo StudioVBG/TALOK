@@ -52,9 +52,14 @@ export async function getInvoiceSettlement(
     )
   );
 
-  const remaining = roundCurrency(Math.max(0, Number(invoiceData.montant_total || 0) - totalPaid));
+  const rawRemaining = roundCurrency(Math.max(0, Number(invoiceData.montant_total || 0) - totalPaid));
   const hasAnyPayment = totalPaid > 0;
-  const isSettled = remaining <= 0;
+
+  // Fallback: si la facture est déjà marquée "paid" en base (ex: via webhook Stripe)
+  // mais qu'aucune ligne payments n'existe, on considère la facture réglée.
+  const invoiceMarkedPaid = invoiceData.statut === "paid";
+  const isSettled = rawRemaining <= 0 || (!hasAnyPayment && invoiceMarkedPaid);
+  const remaining = isSettled ? 0 : rawRemaining;
 
   let status = (invoiceData.statut || "sent") as InvoiceSettlement["status"];
   if (isSettled) {
@@ -112,6 +117,7 @@ export async function getInitialInvoiceSettlement(
   supabase: SupabaseLike,
   leaseId: string
 ): Promise<InvoiceSettlement | null> {
+  // 1. Chercher par metadata.type = "initial_invoice"
   const { data: invoice } = await supabase
     .from("invoices")
     .select("id")
@@ -125,6 +131,7 @@ export async function getInitialInvoiceSettlement(
     return getInvoiceSettlement(supabase, metadataInvoiceId);
   }
 
+  // 2. Chercher par colonne type = "initial_invoice"
   const { data: typedInvoice } = await supabase
     .from("invoices")
     .select("id")
@@ -133,10 +140,33 @@ export async function getInitialInvoiceSettlement(
     .order("created_at", { ascending: true })
     .maybeSingle();
 
-  const invoiceId = (typedInvoice as { id?: string } | null)?.id;
-  if (!invoiceId) {
-    return null;
+  const typedInvoiceId = (typedInvoice as { id?: string } | null)?.id;
+  if (typedInvoiceId) {
+    return getInvoiceSettlement(supabase, typedInvoiceId);
   }
 
-  return getInvoiceSettlement(supabase, invoiceId);
+  // 3. Fallback: première facture du bail par date de création
+  //    Aligne le comportement avec resolveFirstInvoice (lease-readiness.ts)
+  const { data: firstInvoice } = await supabase
+    .from("invoices")
+    .select("id")
+    .eq("lease_id", leaseId)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  const firstInvoiceId = (firstInvoice as { id?: string } | null)?.id;
+  if (!firstInvoiceId) {
+    // No invoice exists for this lease — nothing to pay,
+    // so the settlement condition is considered met.
+    return {
+      invoice: null,
+      totalPaid: 0,
+      remaining: 0,
+      status: "paid",
+      isSettled: true,
+    };
+  }
+
+  return getInvoiceSettlement(supabase, firstInvoiceId);
 }

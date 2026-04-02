@@ -57,11 +57,13 @@ export function LeaseCard({ lease, onDelete }: LeaseCardProps) {
       pending_signature: "En attente de signature",
       partially_signed: "Partiellement signé",
       pending_owner_signature: "Attente signature propriétaire",
-      fully_signed: "✅ Signé - En attente EDL",
+      fully_signed: "Signé - En attente EDL",
       active: "Actif",
+      notice_given: "Préavis",
       amended: "Avenant",
       terminated: "Terminé",
       archived: "Archivé",
+      cancelled: "Annulé",
     };
     return labels[status] || status;
   };
@@ -75,9 +77,11 @@ export function LeaseCard({ lease, onDelete }: LeaseCardProps) {
       pending_owner_signature: "bg-orange-100 text-orange-800",
       fully_signed: "bg-indigo-100 text-indigo-800",
       active: "bg-green-100 text-green-800",
+      notice_given: "bg-orange-100 text-orange-800",
       amended: "bg-purple-100 text-purple-800",
       terminated: "bg-red-100 text-red-800",
       archived: "bg-gray-200 text-gray-600",
+      cancelled: "bg-gray-100 text-gray-700",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
   };

@@ -25,7 +25,7 @@ export async function POST(request: Request, { params }: PageProps) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const { token } = await params;
-    const tokenData = verifyTokenCompat(token, 7);
+    const tokenData = verifyTokenCompat(token, 30);
     if (!tokenData) return NextResponse.json({ error: "Lien d'invitation invalide ou expiré" }, { status: 410 });
 
     const body = await request.json();

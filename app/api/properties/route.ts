@@ -140,12 +140,14 @@ export async function GET(request: Request) {
         baseQuery = dbClient
           .from("properties")
           .select(essentialColumns, { count: "exact" })
+          .is("deleted_at", null)
           .order("created_at", { ascending: false });
       } else {
         baseQuery = dbClient
           .from("properties")
           .select(essentialColumns, { count: "exact" })
           .eq("owner_id", profile.id)
+          .is("deleted_at", null)
           .order("created_at", { ascending: false });
       }
 

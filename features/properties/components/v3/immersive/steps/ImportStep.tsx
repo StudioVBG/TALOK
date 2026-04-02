@@ -34,8 +34,8 @@ export function ImportStep({ onImport, onSkip, isAnalyzing }: ImportStepProps) {
         >
           <Sparkles className="w-8 h-8 text-white" />
         </motion.div>
-        <h2 className="text-3xl font-bold text-slate-900">Commençons par votre bien</h2>
-        <p className="text-slate-500 text-lg">
+        <h2 className="text-3xl font-bold text-foreground">Commençons par votre bien</h2>
+        <p className="text-muted-foreground text-lg">
           Avez-vous déjà une annonce en ligne (Leboncoin, SeLoger...) ?
         </p>
       </div>
@@ -48,18 +48,18 @@ export function ImportStep({ onImport, onSkip, isAnalyzing }: ImportStepProps) {
           transition={{ delay: 0.1 }}
           className="h-full"
         >
-          <Card className="h-full p-6 border-2 border-indigo-100 bg-indigo-50/30 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all relative overflow-hidden group">
+          <Card className="h-full p-6 border-2 border-indigo-100 dark:border-indigo-800 bg-indigo-50/30 dark:bg-indigo-950/20 hover:border-indigo-300 dark:hover:border-indigo-700 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition-all relative overflow-hidden group">
              <div className="absolute top-0 right-0 p-3">
                 <Badge className="bg-indigo-600 hover:bg-indigo-700 text-white border-0">Recommandé</Badge>
              </div>
              
              <div className="flex flex-col h-full">
                 <div className="mb-4">
-                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center mb-3">
-                        <LinkIcon className="w-5 h-5 text-indigo-600" />
+                    <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center mb-3">
+                        <LinkIcon className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                     </div>
-                    <h3 className="font-bold text-lg text-slate-900 mb-1">Importer une annonce</h3>
-                    <p className="text-sm text-slate-500">
+                    <h3 className="font-bold text-lg text-foreground mb-1">Importer une annonce</h3>
+                    <p className="text-sm text-muted-foreground">
                         Collez le lien de votre annonce et nous remplirons la fiche automatiquement.
                     </p>
                 </div>
@@ -67,7 +67,7 @@ export function ImportStep({ onImport, onSkip, isAnalyzing }: ImportStepProps) {
                 <form onSubmit={handleSubmit} className="mt-auto space-y-3">
                     <Input 
                         placeholder="https://www.leboncoin.fr/..." 
-                        className="bg-white border-indigo-200 focus-visible:ring-indigo-500"
+                        className="bg-background border-indigo-200 dark:border-indigo-700 focus-visible:ring-indigo-500"
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
                         disabled={isAnalyzing}
@@ -102,15 +102,15 @@ export function ImportStep({ onImport, onSkip, isAnalyzing }: ImportStepProps) {
           className="h-full"
         >
            <Card 
-                className="h-full p-6 border hover:border-slate-300 hover:bg-slate-50 transition-all cursor-pointer flex flex-col justify-between group"
+                className="h-full p-6 border hover:border-slate-300 dark:hover:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all cursor-pointer flex flex-col justify-between group"
                 onClick={onSkip}
             >
                 <div>
-                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mb-3 group-hover:bg-slate-200 transition-colors">
-                        <Building className="w-5 h-5 text-slate-600" />
+                    <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-3 group-hover:bg-slate-200 dark:group-hover:bg-slate-700 transition-colors">
+                        <Building className="w-5 h-5 text-slate-600 dark:text-slate-400" />
                     </div>
-                    <h3 className="font-bold text-lg text-slate-900 mb-1">Créer manuellement</h3>
-                    <p className="text-sm text-slate-500">
+                    <h3 className="font-bold text-lg text-foreground mb-1">Créer manuellement</h3>
+                    <p className="text-sm text-muted-foreground">
                         Remplissez les informations de votre bien étape par étape.
                     </p>
                 </div>
@@ -122,7 +122,7 @@ export function ImportStep({ onImport, onSkip, isAnalyzing }: ImportStepProps) {
         </motion.div>
       </div>
       
-      <div className="text-center text-xs text-slate-400">
+      <div className="text-center text-xs text-muted-foreground">
          Compatible avec la plupart des sites immobiliers majeurs.
       </div>
     </div>

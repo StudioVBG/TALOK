@@ -17,7 +17,7 @@ export const passwordSchema = z
 
 // Étape 1 : Choix du rôle
 export const roleChoiceSchema = z.object({
-  role: z.enum(["owner", "tenant", "provider", "guarantor"]),
+  role: z.enum(["owner", "tenant", "provider", "guarantor", "syndic", "agency"]),
   property_code: z.string().optional(),
 });
 
@@ -309,6 +309,6 @@ export const providerOpsSchema = z.object({
 export const onboardingDraftSchema = z.object({
   step: z.string(),
   data: z.record(z.unknown()),
-  role: z.enum(["owner", "tenant", "provider", "guarantor"]).optional(),
+  role: z.enum(["owner", "tenant", "provider", "guarantor", "syndic", "agency"]).optional(),
 });
 

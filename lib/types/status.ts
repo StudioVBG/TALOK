@@ -278,7 +278,7 @@ export const LEASE_STATUS_VARIANTS: Record<LeaseStatus, StatusVariant> = {
   amended: "info",
   terminated: "muted",
   archived: "muted",
-  cancelled: "danger",
+  cancelled: "muted",
 };
 
 export const INVOICE_STATUS_VARIANTS: Record<InvoiceStatus, StatusVariant> = {

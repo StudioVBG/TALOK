@@ -24,6 +24,7 @@ interface PDFPreviewModalProps {
   documentUrl: string | null;
   documentTitle?: string;
   documentType?: string;
+  mimeType?: string | null;
 }
 
 export function PDFPreviewModal({
@@ -32,20 +33,97 @@ export function PDFPreviewModal({
   documentUrl,
   documentTitle = "Document",
   documentType,
+  mimeType,
 }: PDFPreviewModalProps) {
   const [zoom, setZoom] = useState(100);
   const [rotation, setRotation] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [resolvedPdf, setResolvedPdf] = useState(false);
 
+  // Fetch le document en blob pour bypass les restrictions CSP frame-src
+  // Si le document source est HTML, on le convertit en PDF via html2pdf.js
   useEffect(() => {
-    if (isOpen) {
-      setIsLoading(true);
-      setError(null);
-      setZoom(100);
-      setRotation(0);
+    if (!isOpen || !documentUrl) {
+      setBlobUrl(null);
+      setResolvedPdf(false);
+      return;
     }
+
+    let revoked = false;
+    let currentBlobUrl: string | null = null;
+
+    setIsLoading(true);
+    setError(null);
+    setZoom(100);
+    setRotation(0);
+    setResolvedPdf(false);
+
+    fetch(documentUrl)
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+
+        // Détecter si le contenu est HTML (bail signé, EDL signé stockés en .html)
+        const contentType = r.headers.get("content-type") || "";
+        const urlPath = documentUrl.split("?")[0].toLowerCase();
+        const isHtmlContent =
+          contentType.includes("text/html") || urlPath.endsWith(".html");
+
+        if (isHtmlContent) {
+          // Convertir HTML → PDF côté client via html2pdf.js
+          const htmlText = await r.text();
+          if (revoked) return;
+
+          const html2pdf = (await import("html2pdf.js")).default;
+          const container = document.createElement("div");
+          container.innerHTML = htmlText;
+          // Rendre invisible mais dans le DOM pour html2canvas
+          container.style.position = "absolute";
+          container.style.left = "-9999px";
+          container.style.top = "0";
+          document.body.appendChild(container);
+
+          try {
+            const pdfBlob: Blob = await html2pdf()
+              .set({
+                margin: 10,
+                image: { type: "jpeg", quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+                pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+              })
+              .from(container)
+              .outputPdf("blob");
+
+            if (revoked) return;
+            currentBlobUrl = URL.createObjectURL(
+              new Blob([pdfBlob], { type: "application/pdf" })
+            );
+            setBlobUrl(currentBlobUrl);
+            setResolvedPdf(true);
+          } finally {
+            document.body.removeChild(container);
+          }
+        } else {
+          const blob = await r.blob();
+          if (revoked) return;
+          currentBlobUrl = URL.createObjectURL(blob);
+          setBlobUrl(currentBlobUrl);
+        }
+      })
+      .catch(() => {
+        if (!revoked) {
+          setError("Impossible de charger le document");
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      revoked = true;
+      if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+    };
   }, [isOpen, documentUrl]);
 
   const handleZoomIn = () => setZoom((prev) => Math.min(prev + 25, 200));
@@ -54,23 +132,41 @@ export function PDFPreviewModal({
   const handleFullscreen = () => setIsFullscreen(!isFullscreen);
 
   const handleDownload = () => {
-    if (documentUrl) {
-      const link = document.createElement("a");
-      link.href = documentUrl;
-      link.download = documentTitle;
-      link.target = "_blank";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    // Si on a un blob PDF (converti depuis HTML ou PDF natif), l'utiliser pour le download
+    const downloadUrl = blobUrl || documentUrl;
+    if (!downloadUrl) return;
+
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    // S'assurer que le nom de fichier a l'extension .pdf si converti
+    let filename = documentTitle;
+    if (resolvedPdf && !filename.toLowerCase().endsWith(".pdf")) {
+      filename = filename.replace(/\.html?$/i, "") + ".pdf";
     }
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
-  // Extraire l'URL sans les paramètres de requête pour détecter le type
+  // Détection du type de fichier — priorité au mimeType explicite, puis URL, puis documentType
+  // Si le HTML a été converti en PDF (resolvedPdf), on traite comme PDF
   const urlWithoutParams = documentUrl?.split("?")[0] || "";
-  const isPDF = urlWithoutParams.toLowerCase().includes(".pdf") || documentType === "application/pdf";
-  const isImage = urlWithoutParams.match(/\.(jpg|jpeg|png|gif|webp)$/i) || 
-                  documentType?.startsWith("cni") || 
-                  documentType?.includes("identite");
+  const isPDF =
+    resolvedPdf ||
+    mimeType === "application/pdf" ||
+    urlWithoutParams.toLowerCase().endsWith(".pdf") ||
+    documentType === "application/pdf";
+  const isImage =
+    !resolvedPdf &&
+    (mimeType?.startsWith("image/") ||
+    !!urlWithoutParams.match(/\.(jpg|jpeg|png|gif|webp|heic)$/i) ||
+    documentType?.startsWith("cni") ||
+    documentType?.includes("identite"));
+  const isHTML =
+    !resolvedPdf &&
+    (mimeType === "text/html" ||
+    urlWithoutParams.toLowerCase().endsWith(".html"));
 
   return (
     <Dialog open={isOpen} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
@@ -86,7 +182,7 @@ export function PDFPreviewModal({
         )}
       >
         {/* Header - Responsive avec toolbar adaptative */}
-        <DialogHeader className="px-3 sm:px-4 py-2 sm:py-3 border-b bg-slate-50 flex-shrink-0">
+        <DialogHeader className="px-3 sm:px-4 py-2 sm:py-3 border-b bg-muted flex-shrink-0">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
             {/* Titre du document */}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -96,7 +192,9 @@ export function PDFPreviewModal({
               <div className="min-w-0">
                 <DialogTitle className="text-sm sm:text-lg font-semibold truncate">{documentTitle}</DialogTitle>
                 {documentType && (
-                  <span className="text-[10px] sm:text-xs text-muted-foreground uppercase">{documentType}</span>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground uppercase">
+                    {documentType.replace(/_/g, " ")}
+                  </span>
                 )}
               </div>
             </div>
@@ -126,7 +224,7 @@ export function PDFPreviewModal({
                 >
                   <ZoomIn className="h-4 w-4" />
                 </Button>
-                <div className="w-px h-5 sm:h-6 bg-slate-200 mx-1 sm:mx-2 hidden sm:block" aria-hidden="true" />
+                <div className="w-px h-5 sm:h-6 bg-border mx-1 sm:mx-2 hidden sm:block" aria-hidden="true" />
               </div>
 
               {/* Rotation */}
@@ -155,7 +253,7 @@ export function PDFPreviewModal({
                 )}
               </Button>
 
-              <div className="w-px h-5 sm:h-6 bg-slate-200 mx-1 sm:mx-2" aria-hidden="true" />
+              <div className="w-px h-5 sm:h-6 bg-border mx-1 sm:mx-2" aria-hidden="true" />
 
               {/* Télécharger - texte caché sur mobile */}
               <Button
@@ -173,9 +271,9 @@ export function PDFPreviewModal({
         </DialogHeader>
 
         {/* Content - Zone de prévisualisation responsive */}
-        <div className="flex-1 overflow-auto bg-slate-100 relative min-h-0">
+        <div className="flex-1 overflow-auto bg-muted/50 relative min-h-0">
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-100 z-10">
+            <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
               <div className="flex flex-col items-center gap-3 px-4 text-center">
                 <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-indigo-600" />
                 <span className="text-xs sm:text-sm text-muted-foreground">Chargement du document...</span>
@@ -184,7 +282,7 @@ export function PDFPreviewModal({
           )}
 
           {error && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-100 z-10">
+            <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
               <div className="flex flex-col items-center gap-3 text-center p-4 sm:p-6 max-w-sm">
                 <div className="p-2 sm:p-3 bg-red-100 rounded-full">
                   <X className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
@@ -208,19 +306,21 @@ export function PDFPreviewModal({
               }}
             >
               {isPDF ? (
-                <iframe
-                  src={`${documentUrl}#toolbar=0&navpanes=0`}
-                  className="w-full h-full min-h-[50vh] sm:min-h-[60vh] bg-white shadow-lg rounded-lg"
-                  onLoad={() => setIsLoading(false)}
-                  onError={() => {
-                    setIsLoading(false);
-                    setError("Le PDF n'a pas pu être chargé");
-                  }}
-                  title={documentTitle}
-                />
+                blobUrl ? (
+                  <iframe
+                    src={`${blobUrl}#toolbar=0&navpanes=0`}
+                    className="w-full h-full min-h-[50vh] sm:min-h-[60vh] bg-white shadow-lg rounded-lg"
+                    onLoad={() => setIsLoading(false)}
+                    onError={() => {
+                      setIsLoading(false);
+                      setError("Le PDF n'a pas pu être chargé");
+                    }}
+                    title={documentTitle}
+                  />
+                ) : null
               ) : isImage ? (
                 <img
-                  src={documentUrl}
+                  src={blobUrl ?? documentUrl}
                   alt={documentTitle}
                   className="max-w-full max-h-full object-contain shadow-lg rounded-lg"
                   onLoad={() => setIsLoading(false)}
@@ -229,11 +329,22 @@ export function PDFPreviewModal({
                     setError("L'image n'a pas pu être chargée");
                   }}
                 />
+              ) : isHTML ? (
+                <iframe
+                  src={documentUrl}
+                  className="w-full h-full min-h-[50vh] sm:min-h-[60vh] bg-white shadow-lg rounded-lg"
+                  onLoad={() => setIsLoading(false)}
+                  onError={() => {
+                    setIsLoading(false);
+                    setError("Le document n'a pas pu être chargé");
+                  }}
+                  title={documentTitle}
+                />
               ) : (
                 <div className="flex flex-col items-center gap-3 sm:gap-4 text-center p-4 sm:p-8">
                   <FileText className="h-12 w-12 sm:h-16 sm:w-16 text-slate-400" />
                   <p className="text-sm sm:text-base text-muted-foreground">
-                    Prévisualisation non disponible pour ce type de fichier
+                    Télécharger pour consulter ce document
                   </p>
                   <Button onClick={handleDownload} size="sm" className="sm:text-base">
                     <Download className="mr-2 h-4 w-4" />

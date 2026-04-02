@@ -1,6 +1,8 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { Check, Bell, FileText, AlertTriangle } from "lucide-react";
+import { fadeUp, staggerWide, defaultViewport } from "@/lib/marketing/animations";
 
 const CHECKS = [
   "Relances loyer par email et SMS",
@@ -35,16 +37,22 @@ const AUTOMATIONS = [
 
 export function FeatureAutomation() {
   return (
-    <div className="reveal grid items-center gap-10 lg:grid-cols-2 lg:gap-16">
+    <motion.div
+      className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16"
+      variants={staggerWide}
+      initial="hidden"
+      whileInView="visible"
+      viewport={defaultViewport}
+    >
       {/* Text */}
-      <div>
-        <span className="inline-block rounded-full bg-talok-cyan/10 px-3 py-1 text-xs font-semibold text-talok-cyan">
+      <motion.div variants={fadeUp}>
+        <span className="inline-block rounded-full bg-talok-cyan/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-talok-cyan">
           Automatisation
         </span>
         <h3 className="mt-4 font-display text-2xl font-bold text-foreground md:text-3xl">
           Tout ce qui peut tourner seul, tourne seul
         </h3>
-        <p className="mt-4 text-base leading-relaxed text-muted-foreground">
+        <p className="mt-4 text-base font-normal leading-relaxed text-muted-foreground">
           Talok envoie les relances, génère les quittances, vous prévient quand
           un DPE expire ou quand un bail arrive à terme. Vous n&apos;avez plus à y
           penser.
@@ -57,14 +65,15 @@ export function FeatureAutomation() {
             </li>
           ))}
         </ul>
-      </div>
+      </motion.div>
 
       {/* Mockup: 3 automation cards */}
-      <div className="space-y-4">
+      <motion.div variants={fadeUp} className="space-y-4">
         {AUTOMATIONS.map((auto) => (
-          <div
+          <motion.div
             key={auto.title}
-            className="flex items-center gap-4 rounded-2xl border bg-white p-5 shadow-sm"
+            className="flex items-center gap-4 rounded-2xl border border-border bg-card p-5 shadow-sm cursor-pointer"
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
           >
             <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${auto.color}`}>
               <auto.icon className="h-5 w-5" />
@@ -79,9 +88,9 @@ export function FeatureAutomation() {
                 {auto.stat}
               </span>
             </div>
-          </div>
+          </motion.div>
         ))}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

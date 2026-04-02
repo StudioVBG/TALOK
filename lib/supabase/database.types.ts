@@ -189,6 +189,11 @@ export type ProfileRow = {
   login_count?: number
   onboarding_completed_at?: string | null
   onboarding_skipped_at?: string | null
+  identity_status?: 'unverified' | 'phone_verified' | 'document_uploaded' | 'identity_review' | 'identity_verified' | 'identity_rejected'
+  onboarding_step?: 'account_created' | 'phone_pending' | 'phone_done' | 'profile_pending' | 'profile_done' | 'document_pending' | 'document_done' | 'complete'
+  identity_verified_at?: string | null
+  phone_verified?: boolean
+  phone_verified_at?: string | null
   created_at: string
   updated_at: string
 
@@ -2621,6 +2626,30 @@ export type Database = {
         Relationships: [
           { foreignKeyName: "user_context_embeddings_profile_id_fkey"; columns: ["profile_id"]; isOneToOne: false; referencedRelation: "profiles"; referencedColumns: ["id"] }
         ]
+      }
+      site_config: {
+        Row: {
+          key: string
+          value: string | null
+          label: string | null
+          section: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          key: string
+          value?: string | null
+          label?: string | null
+          section?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          key?: string
+          value?: string | null
+          label?: string | null
+          section?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
     }
     Views: Record<string, { Row: Record<string, unknown>; Relationships: Array<{ foreignKeyName: string; columns: string[]; isOneToOne: boolean; referencedRelation: string; referencedColumns: string[] }> }>

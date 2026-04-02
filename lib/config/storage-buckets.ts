@@ -16,6 +16,8 @@ export const STORAGE_BUCKETS = {
   IDENTITY: "identity",
   /** Documents d'assemblée de copropriété */
   ASSEMBLY_DOCUMENTS: "assembly-documents",
+  /** Images éditables de la landing page (public) */
+  LANDING_IMAGES: "landing-images",
 } as const;
 
 export type StorageBucket = (typeof STORAGE_BUCKETS)[keyof typeof STORAGE_BUCKETS];
