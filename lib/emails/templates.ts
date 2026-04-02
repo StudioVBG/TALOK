@@ -1847,5 +1847,77 @@ export const emailTemplates = {
       `, `Rappel : loyer ${data.period} en attente (${data.amount.toLocaleString('fr-FR')} €)`),
     };
   },
+
+  /**
+   * Demande de scan QR code pour remise des clefs
+   */
+  keyHandoverScanRequest: (data: {
+    tenantFirstName: string;
+    propertyAddress: string;
+    handoverUrl: string;
+    expiresAt?: string;
+  }) => ({
+    subject: `🔑 Action requise — Confirmez la remise de vos clefs`,
+    html: baseLayout(`
+      <div class="content">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span style="font-size: 48px;">🔑</span>
+        </div>
+
+        <h1>Remise des clefs</h1>
+        <p>Bonjour ${escapeHtml(data.tenantFirstName)},</p>
+        <p>Votre propriétaire vous attend pour confirmer la remise des clefs de votre logement situé au <strong>${escapeHtml(data.propertyAddress)}</strong>.</p>
+        <p>Ouvrez l'application Talok et rendez-vous dans la section <strong>Mon bail &gt; Remise des clefs</strong> pour scanner le QR code présenté par votre propriétaire.</p>
+
+        ${data.expiresAt ? `
+        <div class="highlight-box">
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Valable jusqu'au</p>
+          <p style="font-weight: 600; color: ${COLORS.gray[900]}; font-size: 16px;">${data.expiresAt}</p>
+        </div>
+        ` : ''}
+
+        <div style="text-align: center;">
+          <a href="${data.handoverUrl}" class="button">Ouvrir Talok</a>
+        </div>
+
+        <p style="font-size: 13px; color: ${COLORS.gray[500]}; margin-top: 24px;">
+          Si vous n'êtes pas concerné par cette demande, veuillez ignorer ce message.
+        </p>
+      </div>
+    `, `Votre propriétaire attend votre confirmation pour la remise des clefs au ${escapeHtml(data.propertyAddress)}`),
+  }),
+
+  /**
+   * Notification au propriétaire : le locataire a confirmé la remise des clefs
+   */
+  keyHandoverConfirmed: (data: {
+    ownerName: string;
+    tenantName: string;
+    propertyAddress: string;
+    confirmedAt: string;
+    leaseUrl: string;
+  }) => ({
+    subject: `✅ ${escapeHtml(data.tenantName)} a confirmé la réception des clefs`,
+    html: baseLayout(`
+      <div class="content">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span style="font-size: 48px;">✅</span>
+        </div>
+
+        <h1>Remise des clefs confirmée</h1>
+        <p>Bonjour ${escapeHtml(data.ownerName)},</p>
+        <p><strong>${escapeHtml(data.tenantName)}</strong> a confirmé la réception des clefs pour le logement situé au <strong>${escapeHtml(data.propertyAddress)}</strong>.</p>
+
+        <div class="highlight-box">
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Confirmé le</p>
+          <p style="font-weight: 600; color: ${COLORS.success}; font-size: 16px;">${data.confirmedAt}</p>
+        </div>
+
+        <div style="text-align: center;">
+          <a href="${data.leaseUrl}" class="button button-success">Voir le bail</a>
+        </div>
+      </div>
+    `, `${escapeHtml(data.tenantName)} a confirmé la réception des clefs au ${escapeHtml(data.propertyAddress)}`),
+  }),
 };
 

@@ -17,6 +17,8 @@ import { revalidatePath } from "next/cache";
 import { verifyHandoverToken } from "../utils";
 import { getInitialInvoiceSettlement } from "@/lib/services/invoice-status.service";
 import { ensureKeyHandoverAttestation } from "@/lib/services/final-documents.service";
+import { sendKeyHandoverConfirmedNotification } from "@/lib/emails/resend.service";
+import { sendSMS } from "@/lib/services/sms.service";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -228,6 +230,118 @@ export async function POST(request: Request, { params }: RouteParams) {
     revalidatePath("/tenant/dashboard");
     revalidatePath("/tenant/documents");
     revalidatePath("/owner/documents");
+
+    // === Notification au propriétaire : le locataire a confirmé ===
+    try {
+      const { data: ownerProfile } = await serviceClient
+        .from("profiles")
+        .select("id, email, prenom, nom, telephone, user_id")
+        .eq("id", handover.owner_profile_id)
+        .single();
+
+      const { data: propertyData } = await serviceClient
+        .from("properties")
+        .select("adresse_complete")
+        .eq("id", handover.property_id)
+        .single();
+
+      const tenantFullName = [profile.prenom, profile.nom].filter(Boolean).join(" ") || "Le locataire";
+      const propertyAddr = propertyData?.adresse_complete || "";
+
+      if (ownerProfile?.email) {
+        try {
+          await sendKeyHandoverConfirmedNotification({
+            ownerEmail: ownerProfile.email,
+            ownerName: ownerProfile.prenom || ownerProfile.nom || "Propriétaire",
+            tenantName: tenantFullName,
+            propertyAddress: propertyAddr,
+            confirmedAt: new Date(),
+            leaseId,
+            handoverId: handover.id,
+          });
+        } catch (emailErr) {
+          console.error("[key-handover confirm] owner email notification failed:", emailErr);
+        }
+      }
+
+      // Push au propriétaire
+      try {
+        if (ownerProfile?.user_id) {
+          const { data: ownerSubs } = await serviceClient
+            .from("push_subscriptions")
+            .select("*")
+            .eq("user_id", ownerProfile.user_id)
+            .eq("is_active", true);
+
+          if (ownerSubs && ownerSubs.length > 0) {
+            const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+            const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+            const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:support@talok.fr";
+
+            const pushPayload = JSON.stringify({
+              title: "✅ Remise des clefs confirmée",
+              body: `${tenantFullName} a confirmé la réception des clefs.`,
+              icon: "/icons/icon-192x192.png",
+              badge: "/icons/badge-72x72.png",
+              data: { action: "key_handover_confirmed", leaseId, redirectUrl: `/owner/leases/${leaseId}` },
+              tag: `key-handover-confirmed-${handover.id}`,
+            });
+
+            const webSubs = ownerSubs.filter((s: any) => s.device_type === "web" || !s.device_type);
+            const nativeSubs = ownerSubs.filter((s: any) => s.device_type === "android" || s.device_type === "ios");
+
+            if (webSubs.length > 0 && VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+              // @ts-ignore
+              const webPush = await import("web-push");
+              webPush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+              await Promise.allSettled(
+                webSubs.map((sub: any) =>
+                  webPush.sendNotification(
+                    { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } },
+                    pushPayload
+                  ).catch(() => {})
+                )
+              );
+            }
+
+            if (nativeSubs.length > 0 && process.env.FIREBASE_SERVICE_ACCOUNT) {
+              const admin = await import("firebase-admin");
+              if (!admin.default.apps?.length) {
+                admin.default.initializeApp({
+                  credential: admin.default.credential.cert(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)),
+                });
+              }
+              await Promise.allSettled(
+                nativeSubs.map((sub: any) => {
+                  const fcmToken = sub.endpoint.startsWith("fcm://") ? sub.endpoint.slice(6) : sub.endpoint;
+                  return admin.default.messaging().send({
+                    token: fcmToken,
+                    notification: { title: "✅ Remise des clefs confirmée", body: `${tenantFullName} a confirmé la réception des clefs.` },
+                    data: { action: "key_handover_confirmed", leaseId, redirectUrl: `/owner/leases/${leaseId}` },
+                  }).catch(() => {});
+                })
+              );
+            }
+          }
+        }
+      } catch (pushErr) {
+        console.error("[key-handover confirm] owner push notification failed:", pushErr);
+      }
+
+      // SMS au propriétaire si téléphone renseigné
+      try {
+        if (ownerProfile?.telephone) {
+          await sendSMS({
+            to: ownerProfile.telephone,
+            message: `[Talok] ${tenantFullName} a confirmé la réception des clefs. Consultez votre espace propriétaire.`,
+          });
+        }
+      } catch (smsErr) {
+        console.error("[key-handover confirm] owner SMS notification failed:", smsErr);
+      }
+    } catch (ownerNotifError) {
+      console.error("[key-handover confirm] owner notification orchestration failed:", ownerNotifError);
+    }
 
     return NextResponse.json({
       success: true,
