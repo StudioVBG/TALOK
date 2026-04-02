@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DocumentCard } from "./document-card";
+import { GroupedDocumentCard } from "./grouped-document-card";
 import { DocumentUploadForm } from "./document-upload-form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { documentsService } from "../services/documents.service";
+import { groupDocuments } from "@/lib/documents/group-documents";
 import type { Document } from "@/lib/types";
 import { useAuth } from "@/lib/hooks/use-auth";
 
@@ -21,6 +23,8 @@ export function DocumentsList({ propertyId, leaseId, showUpload = true }: Docume
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUploadForm, setShowUploadForm] = useState(false);
+
+  const displayDocs = useMemo(() => groupDocuments(documents), [documents]);
 
   useEffect(() => {
     fetchDocuments();
@@ -93,9 +97,13 @@ export function DocumentsList({ propertyId, leaseId, showUpload = true }: Docume
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {documents.map((document) => (
-            <DocumentCard key={document.id} document={document} onDelete={fetchDocuments} />
-          ))}
+          {displayDocs.map((doc) =>
+            "group_type" in doc ? (
+              <GroupedDocumentCard key={doc.id} document={doc} onDelete={fetchDocuments} />
+            ) : (
+              <DocumentCard key={doc.id} document={doc} onDelete={fetchDocuments} />
+            )
+          )}
         </div>
       )}
     </div>

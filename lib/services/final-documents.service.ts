@@ -169,6 +169,7 @@ export async function ensureReceiptDocument(
       owner_id: paymentData.invoice.owner_id,
       property_id: paymentData.invoice.lease.property.id,
       visible_tenant: true,
+      is_generated: true,
       is_archived: false,
       status: "valid",
       metadata: {

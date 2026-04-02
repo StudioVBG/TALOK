@@ -785,7 +785,37 @@ export async function POST(request: NextRequest) {
         };
         const stripeSubscriptionId = getStripeInvoiceSubscriptionId(stripeInvoice);
 
-        // Trouver l'abonnement lié
+        // ── Rent invoice with lease_id metadata → generate receipt ──
+        const rentInvoiceId = invoice.metadata?.invoice_id;
+        const rentLeaseId = invoice.metadata?.lease_id;
+
+        if (rentInvoiceId && rentLeaseId) {
+          console.log(`[Stripe Webhook] invoice.paid for rent: invoice_id=${rentInvoiceId}, lease_id=${rentLeaseId}`);
+          const piId = invoice.payment_intent as string | null;
+          const paidAt = new Date().toISOString();
+
+          if (piId) {
+            const paymentResult = await upsertPaymentAttempt(supabase, {
+              invoiceId: rentInvoiceId,
+              amount: (invoice.amount_paid || 0) / 100,
+              method: "cb",
+              providerRef: piId,
+              status: "succeeded",
+              paidAt,
+            });
+            const paymentId = paymentResult.paymentId;
+
+            const settlement = await syncInvoiceStatusFromPayments(supabase as any, rentInvoiceId, paidAt);
+
+            if (paymentId && paymentResult.newlySucceeded && settlement?.isSettled) {
+              await processReceiptGeneration(supabase, rentInvoiceId, paymentId, (invoice.amount_paid || 0) / 100);
+              console.log(`[Stripe Webhook] Receipt generated for rent invoice ${rentInvoiceId}`);
+            }
+          }
+          break;
+        }
+
+        // ── Subscription invoice ──
         const { data: subscription } = await supabase
           .from("subscriptions")
           .select("id, owner_id")
