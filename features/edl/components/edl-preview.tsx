@@ -295,17 +295,7 @@ export function EDLPreview({
     };
   }, [dataHash, edlData, edlId, isVierge, rooms, validateEDLData, toast, html, previewHtml]);
 
-  // Mettre à jour l'iframe quand le HTML change
-  useEffect(() => {
-    if (iframeRef.current && html) {
-      const doc = iframeRef.current.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(html);
-        doc.close();
-      }
-    }
-  }, [html]);
+  // No longer needed — using srcDoc on the iframe directly
 
   // Télécharger le PDF
   const handleDownload = useCallback(async () => {
@@ -573,6 +563,7 @@ export function EDLPreview({
           ) : (
             <iframe
               ref={iframeRef}
+              srcDoc={html}
               className="w-full h-[45vh] sm:h-[55vh] md:h-[500px] lg:h-[600px] border-0"
               title="Aperçu de l'état des lieux"
             />
