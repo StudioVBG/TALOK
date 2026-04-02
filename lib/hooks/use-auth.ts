@@ -52,6 +52,10 @@ let _globalProfilePromise: Promise<Profile | null> | null = null;
 let _globalFetchedUserId: string | null = null;
 // Anti-retry guard: prevents infinite profile creation attempts
 let _globalCreateAttempted = false;
+// FIX 2: Cache resolved profile to avoid refetching on every component mount
+let _globalCachedProfile: Profile | null = null;
+let _globalCachedAt = 0;
+const PROFILE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
  * Reset all global guards. Called on sign-out and user change.
@@ -60,6 +64,8 @@ function resetGlobalGuards() {
   _globalFetchedUserId = null;
   _globalProfilePromise = null;
   _globalCreateAttempted = false;
+  _globalCachedProfile = null;
+  _globalCachedAt = 0;
 }
 
 // ======================================================================
@@ -149,6 +155,16 @@ export function useAuth() {
 
   const fetchProfile = useCallback(
     async (userId: string, force = false) => {
+      // FIX 2: Return cached profile if still fresh (avoids 6 fetches per page)
+      if (!force && _globalCachedProfile && _globalFetchedUserId === userId &&
+          Date.now() - _globalCachedAt < PROFILE_CACHE_TTL) {
+        safeSetProfile(_globalCachedProfile);
+        safeSetStatus("authenticated");
+        safeSetProfileError(null);
+        safeSetLoading(false);
+        return;
+      }
+
       // If another instance already fetched this user, reuse the cached promise
       if (!force && _globalFetchedUserId === userId && _globalProfilePromise) {
         try {
@@ -266,6 +282,9 @@ export function useAuth() {
           });
           safeSetStatus("profile_error");
         } else {
+          // FIX 2: Cache the resolved profile
+          _globalCachedProfile = result as Profile;
+          _globalCachedAt = Date.now();
           safeSetProfileError(null);
           safeSetStatus("authenticated");
         }

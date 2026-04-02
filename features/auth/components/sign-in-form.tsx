@@ -12,6 +12,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { authService } from "../services/auth.service";
 import type { SignInData } from "../services/auth.service";
+import { TurnstileWidget } from "@/components/auth/TurnstileWidget";
+import { TalokLogo } from "@/components/marketing/TalokLogo";
 
 // Icône SVG pour Google OAuth
 const GoogleIcon = () => (
@@ -64,6 +66,7 @@ export function SignInForm() {
     email: "",
     password: "",
   });
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const redirectTo = getSafeRedirectUrl(searchParams.get("redirect"));
 
@@ -222,6 +225,9 @@ export function SignInForm() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
+        <div className="flex justify-center mb-4">
+          <TalokLogo variant="light" size="md" />
+        </div>
         <CardTitle>Connexion</CardTitle>
         <CardDescription>Connectez-vous à votre compte</CardDescription>
       </CardHeader>
@@ -292,6 +298,7 @@ export function SignInForm() {
               disabled={loading || googleLoading}
             />
           </div>
+          <TurnstileWidget onSuccess={setTurnstileToken} />
           <Button type="submit" className="w-full" disabled={loading || googleLoading}>
             {loading ? "Connexion..." : "Se connecter"}
           </Button>

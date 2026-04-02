@@ -4,6 +4,8 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { sendEmail } from "@/lib/services/email-service";
+import { emailTemplates } from "@/lib/emails/templates";
 
 /**
  * POST /api/admin/providers/invite - Inviter un prestataire par email
@@ -105,8 +107,26 @@ export async function POST(request: Request) {
       if (profileError) throw profileError;
       profileId = newProfile.id;
 
-      // TODO: Envoyer un email avec le mot de passe temporaire
-      // await sendInvitationEmail(email, tempPassword);
+      // Send invitation email with temporary credentials
+      try {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+        const providerName = `${prenom || ""} ${nom || ""}`.trim() || "Prestataire";
+        const template = emailTemplates.providerInvite({
+          providerName,
+          email,
+          tempPassword,
+          loginUrl: `${appUrl}/auth/signin`,
+        });
+        await sendEmail({
+          to: email,
+          subject: template.subject,
+          html: template.html,
+          tags: [{ name: "type", value: "provider_invite" }],
+          idempotencyKey: `provider-invite/${email}`,
+        });
+      } catch (e) {
+        console.error("[POST /providers/invite] Email send error:", e);
+      }
     }
 
     // Créer ou mettre à jour le provider_profile

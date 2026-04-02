@@ -247,7 +247,6 @@ export async function GET(request: Request) {
       }
     }
 
-    console.log("[Visit Reminders] Completed:", results);
 
     return NextResponse.json({
       success: true,

@@ -80,7 +80,6 @@ export async function POST(request: Request) {
           if (mediaError) console.error("[EDL Preview] Error fetching media:", mediaError);
           
           let media = mediaRaw || [];
-          console.log(`[EDL Preview] Found ${media.length} media records for EDL ${edlId}`);
 
           // 🔧 Générer des URLs signées pour les photos des pièces (bucket privé)
           if (media.length > 0) {
@@ -94,7 +93,6 @@ export async function POST(request: Request) {
                 
                 if (signedUrlData?.signedUrl) {
                   (m as any).signed_url = signedUrlData.signedUrl;
-                  console.log(`[EDL Preview] ✅ Signed media URL: ${m.storage_path}`);
                 }
               }
             }
@@ -137,12 +135,10 @@ export async function POST(request: Request) {
                 
                 if (signedUrlData?.signedUrl) {
                   (sig as any).signature_image_url = signedUrlData.signedUrl;
-                  console.log("[EDL Preview] ✅ Generated signed URL for signature (ADMIN):", sig.signer_role);
                 }
               } else if (sig.signer_role === 'tenant' && sig.signed_at) {
                 // 🔧 FALLBACK: Si la signature EDL est manquante mais que le locataire a signé le bail,
                 // on cherche son image de signature dans le dossier du bail.
-                console.log("[EDL Preview] 🔧 No EDL signature image path, searching lease signatures for tenant...");
                 const leaseId = (edl as any).lease_id;
                 const userId = sig.signer_user;
                 
@@ -154,14 +150,12 @@ export async function POST(request: Request) {
                   const tenantLeaseFile = leaseFiles?.find(f => f.name.startsWith(userId));
                   if (tenantLeaseFile) {
                     const fallbackPath = `signatures/${leaseId}/${tenantLeaseFile.name}`;
-                    console.log("[EDL Preview] 🔧 Found fallback signature image from lease:", fallbackPath);
                     const { data: signedUrlData } = await adminClient.storage
                       .from("documents")
                       .createSignedUrl(fallbackPath, 3600);
                     
                     if (signedUrlData?.signedUrl) {
                       (sig as any).signature_image_url = signedUrlData.signedUrl;
-                      console.log("[EDL Preview] ✅ Generated FALLBACK signed URL for tenant signature");
                     }
                   }
                 }
@@ -219,11 +213,9 @@ export async function POST(request: Request) {
             .select("*, meter:meters(*)")
             .eq("edl_id", edlId);
 
-          console.log(`[EDL Preview] Found ${meterReadings?.length || 0} meter readings for EDL ${edlId}`);
 
           // 🔧 FIX: Récupérer tous les compteurs du bien pour les inclure dans l'aperçu même sans relevé
           const propertyId = (edl as any).property_id || (edl as any).lease?.property_id || (edl as any).lease?.property?.id;
-          console.log(`[EDL Preview] Property ID for meters: ${propertyId}`);
 
           let allMeters: any[] = [];
           if (propertyId) {
@@ -234,14 +226,12 @@ export async function POST(request: Request) {
 
             // Filtrer en JS pour éviter l'erreur si la colonne is_active n'existe pas
             allMeters = meters?.filter(m => m.is_active !== false) || [];
-            console.log(`[EDL Preview] Found ${allMeters.length} active meters for property ${propertyId}`);
           }
 
           // 🔧 FIX AMÉLIORÉ: Mapper les relevés existants avec URLs signées
           // Les compteurs des relevés sont la source de vérité pour les valeurs
           const recordedMeterIds = new Set((meterReadings || []).map((r: any) => r.meter_id));
 
-          console.log(`[EDL Preview] Recorded meter IDs: ${Array.from(recordedMeterIds).join(', ')}`);
 
           // 🔧 FIX: Générer des URLs signées pour les photos des compteurs
           const finalMeterReadings = [];
@@ -257,7 +247,6 @@ export async function POST(request: Request) {
                 .createSignedUrl(r.photo_path, 3600);
               photoUrl = signedUrlData?.signedUrl || null;
               if (photoUrl) {
-                console.log(`[EDL Preview] ✅ Signed meter photo URL: ${r.photo_path}`);
               }
             }
 
@@ -276,7 +265,6 @@ export async function POST(request: Request) {
           allMeters.forEach((m: any) => {
             const alreadyRecordedById = recordedMeterIds.has(m.id);
 
-            console.log(`[EDL Preview] Checking meter ${m.id} (${m.type}): recorded=${alreadyRecordedById}`);
 
             if (!alreadyRecordedById) {
               finalMeterReadings.push({
@@ -290,7 +278,6 @@ export async function POST(request: Request) {
             }
           });
 
-          console.log(`[EDL Preview] Final meter readings count: ${finalMeterReadings.length}`);
 
           // Construire l'objet EDLComplet
           fullEdlData = mapDatabaseToEDLComplet(

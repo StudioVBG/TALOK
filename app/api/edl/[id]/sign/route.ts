@@ -100,7 +100,6 @@ export async function POST(
     // 4. Créer un profil minimal en dernier recours (avec gestion conflit)
     // ===============================
 
-    console.log("[sign-edl] 🔍 Résolution du profil pour user:", user.id, "email:", user.email);
 
     let profile: {
       id: string;
@@ -127,14 +126,11 @@ export async function POST(
         nom: profileByUserId.nom ?? "",
         role: profileByUserId.role,
       };
-      console.log("[sign-edl] ✅ Étape 1: Profil trouvé par user_id:", profile.id, "role:", profile.role);
     } else {
-      console.log("[sign-edl] ℹ️ Étape 1: Pas de profil avec user_id", step1Error?.message || "");
     }
 
     // Étape 2: Si non trouvé, chercher par email (avec ou sans user_id existant)
     if (!profile && user.email) {
-      console.log("[sign-edl] 🔍 Étape 2: Recherche par email:", user.email);
 
       const { data: profileByEmail, error: step2Error } = await serviceClient
         .from("profiles")
@@ -149,7 +145,6 @@ export async function POST(
       if (profileByEmail) {
         // Cas A: Le profil n'a pas encore de user_id → on le lie
         if (!profileByEmail.user_id) {
-          console.log("[sign-edl] 🔗 Étape 2: Liaison du profil au compte auth");
           const { error: linkError } = await serviceClient
             .from("profiles")
             .update({ user_id: user.id })
@@ -182,7 +177,6 @@ export async function POST(
             nom: profileByEmail.nom ?? "",
             role: profileByEmail.role,
           };
-          console.log("[sign-edl] ✅ Étape 2: Profil trouvé par email:", profile.id, "role:", profile.role);
         }
 
         // Cas A: user_id était null, on l'a lié → on peut utiliser le profil
@@ -193,16 +187,13 @@ export async function POST(
             nom: profileByEmail.nom ?? "",
             role: profileByEmail.role,
           };
-          console.log("[sign-edl] ✅ Étape 2 (après liaison): Profil assigné:", profile.id);
         }
       } else {
-        console.log("[sign-edl] ℹ️ Étape 2: Pas de profil avec email", step2Error?.message || "");
       }
     }
 
     // Étape 3: Chercher dans edl_signatures pour cet EDL spécifique
     if (!profile) {
-      console.log("[sign-edl] 🔍 Étape 3: Recherche dans edl_signatures pour EDL:", edlId);
 
       const { data: edlSignatureData, error: step3Error } = await serviceClient
         .from("edl_signatures")
@@ -217,7 +208,6 @@ export async function POST(
 
       const edlSignature = edlSignatureData as { id: string; signer_profile_id?: string | null; signer_email?: string | null; signer_user?: string } | null;
       if (edlSignature) {
-        console.log("[sign-edl] ℹ️ Étape 3: Entrée edl_signatures trouvée:", edlSignature.id);
 
         // Si on a un signer_profile_id, récupérer le profil
         if (edlSignature.signer_profile_id) {
@@ -243,7 +233,6 @@ export async function POST(
               if (linkErr) {
                 console.warn("[sign-edl] ⚠️ Étape 3: Erreur liaison:", linkErr.message);
               } else {
-                console.log("[sign-edl] 🔗 Étape 3: Profil lié au compte via edl_signatures");
               }
               profile = {
                 id: sigProfile.id,
@@ -251,7 +240,6 @@ export async function POST(
                 nom: sigProfile.nom ?? "",
                 role: sigProfile.role,
               };
-              console.log("[sign-edl] ✅ Étape 3: Profil trouvé via signer_profile_id:", profile.id);
             } else if (sigProfile.user_id === user.id) {
               profile = {
                 id: sigProfile.id,
@@ -259,7 +247,6 @@ export async function POST(
                 nom: sigProfile.nom ?? "",
                 role: sigProfile.role,
               };
-              console.log("[sign-edl] ✅ Étape 3: Profil déjà lié au bon compte:", profile.id);
             } else {
               console.warn(
                 "[sign-edl] ⚠️ Étape 3: Profil signer_profile_id",
@@ -270,22 +257,18 @@ export async function POST(
               );
             }
           } else {
-            console.log("[sign-edl] ℹ️ Étape 3: signer_profile_id existe mais profil introuvable");
           }
         }
 
         // Si pas de signer_profile_id mais on a l'entrée, on va créer/lier un profil à l'étape 4
         if (!profile) {
-          console.log("[sign-edl] ℹ️ Étape 3: edl_signatures trouvé sans profil valide, passage à l'étape 4");
         }
       } else {
-        console.log("[sign-edl] ℹ️ Étape 3: Pas d'entrée edl_signatures correspondante", step3Error?.message || "");
       }
     }
 
     // Étape 4: Dernier recours - créer un profil minimal (avec gestion conflit email)
     if (!profile && user.email) {
-      console.log("[sign-edl] ⚠️ Étape 4: Création d'un profil minimal pour:", user.email);
 
       const { data: newProfile, error: createError } = await serviceClient
         .from("profiles")
@@ -313,7 +296,6 @@ export async function POST(
           nom: newProfile.nom ?? "",
           role: newProfile.role,
         };
-        console.log("[sign-edl] ✅ Étape 4: Profil créé/mis à jour:", profile.id);
       } else {
         // Dernier essai: peut-être que le profil existe maintenant (race condition)
         const { data: retryProfile, error: retryError } = await serviceClient
@@ -333,7 +315,6 @@ export async function POST(
             nom: retryProfile.nom ?? "",
             role: retryProfile.role,
           };
-          console.log("[sign-edl] ✅ Étape 4 (retry): Profil trouvé après erreur:", profile.id);
         }
       }
     }
@@ -366,7 +347,6 @@ export async function POST(
           nom: fallbackProfile.nom ?? "",
           role: fallbackProfile.role,
         };
-        console.log("[sign-edl] ✅ Étape 4b: Profil créé sans email:", profile.id);
       }
     }
 
@@ -381,7 +361,6 @@ export async function POST(
       }, { status: 404 });
     }
 
-    console.log("[sign-edl] ✅ Profil résolu:", profile.id, profile.prenom, profile.nom, "role:", profile.role);
 
     // Vérifier les permissions avec le helper SOTA
     const accessResult = await verifyEDLAccess({
@@ -525,7 +504,6 @@ export async function POST(
     let sigError;
 
     if (existingRow) {
-      console.log("[sign-edl] Mise à jour de la signature existante:", existingRow.id);
       const result = await serviceClient
         .from("edl_signatures")
         .update(signatureData as any)
@@ -535,7 +513,6 @@ export async function POST(
       signature = result.data;
       sigError = result.error;
     } else {
-      console.log("[sign-edl] Insertion d'une nouvelle signature");
       const result = await serviceClient
         .from("edl_signatures")
         .insert(signatureData as any)
@@ -628,6 +605,7 @@ export async function POST(
             title: `État des lieux ${edlLabel} — Signé`,
             storage_path: `edl/${edlId}/signed_document.html`,
             is_archived: false,
+            visible_tenant: true,
             metadata: {
               edl_id: edlId,
               signed_at: new Date().toISOString(),
@@ -645,9 +623,37 @@ export async function POST(
       try {
         const { handleEDLFullySigned } = await import("@/lib/services/edl-post-signature.service");
         const edlResult = await handleEDLFullySigned(edlId);
-        console.log("[sign-edl] Post-signature EDL:", { htmlStored: edlResult.htmlStored, path: edlResult.storagePath });
       } catch (postSignErr) {
         console.warn("[sign-edl] Exception post-signature EDL (non bloquant):", String(postSignErr));
+      }
+
+      // Générer la facture initiale pour le bail (si pas encore créée)
+      if (edl.lease_id) {
+        try {
+          const { ensureInitialInvoiceForLease } = await import("@/lib/services/lease-initial-invoice.service");
+          const invoiceResult = await ensureInitialInvoiceForLease(serviceClient as any, edl.lease_id);
+          console.log("[sign-edl] Facture initiale:", {
+            invoiceId: invoiceResult.invoiceId,
+            created: invoiceResult.created,
+            amount: invoiceResult.amount,
+          });
+
+          if (invoiceResult.created) {
+            await serviceClient.from("outbox").insert({
+              event_type: "Invoice.InitialCreated",
+              payload: {
+                invoice_id: invoiceResult.invoiceId,
+                lease_id: edl.lease_id,
+                tenant_profile_id: invoiceResult.tenantProfileId,
+                owner_profile_id: invoiceResult.ownerProfileId,
+                amount: invoiceResult.amount,
+                deposit_amount: invoiceResult.depositAmount,
+              },
+            } as any);
+          }
+        } catch (invoiceErr) {
+          console.error("[sign-edl] Erreur génération facture initiale:", String(invoiceErr));
+        }
       }
     }
 

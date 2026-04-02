@@ -169,10 +169,18 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const initialInvoiceSettlement = await getInitialInvoiceSettlement(serviceClient as any, leaseId);
     if (!initialInvoiceSettlement?.isSettled) {
-      return NextResponse.json(
-        { error: "Le paiement initial doit être confirmé avant la remise des clés" },
-        { status: 400 }
-      );
+      // Fallback: vérifier le flag initial_payment_confirmed sur le bail
+      const { data: leasePaymentFlag } = await serviceClient
+        .from("leases")
+        .select("initial_payment_confirmed")
+        .eq("id", leaseId)
+        .single();
+      if (!(leasePaymentFlag as any)?.initial_payment_confirmed) {
+        return NextResponse.json(
+          { error: "Le paiement initial doit être confirmé avant la remise des clés" },
+          { status: 400 }
+        );
+      }
     }
 
     // Récupérer les clés depuis le dernier EDL d'entrée

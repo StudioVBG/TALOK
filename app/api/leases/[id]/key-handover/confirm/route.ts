@@ -19,6 +19,7 @@ import { getInitialInvoiceSettlement } from "@/lib/services/invoice-status.servi
 import { ensureKeyHandoverAttestation } from "@/lib/services/final-documents.service";
 import { sendKeyHandoverConfirmedNotification } from "@/lib/emails/resend.service";
 import { sendSMS } from "@/lib/services/sms.service";
+import { generateKeyHandoverPDF } from "@/lib/documents/key-handover-pdf-generator";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -190,6 +191,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     } catch (docErr) {
       console.warn("[key-handover confirm] Document generation error (non-blocking):", docErr);
     }
+
+    // Générer le PV de remise des clés (non-bloquant)
+    generateKeyHandoverPDF(leaseId).catch((err) => {
+      console.error("Erreur génération PV remise des clés:", err);
+    });
 
     // Audit log
     try {

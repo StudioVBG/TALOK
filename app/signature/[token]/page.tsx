@@ -139,7 +139,7 @@ export default async function SignaturePage({ params }: PageProps) {
             Lien expiré
           </h1>
           <p className="text-muted-foreground">
-            Ce lien d'invitation a expiré (validité 7 jours).
+            Ce lien d'invitation a expiré (validité 30 jours).
             Veuillez contacter votre propriétaire pour recevoir une nouvelle invitation.
           </p>
         </div>

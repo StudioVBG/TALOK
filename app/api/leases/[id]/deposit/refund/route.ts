@@ -125,7 +125,6 @@ export async function POST(
       // Si la table n'existe pas, créer une migration simple
       if (refundError.code === "42P01") {
         // Table doesn't exist - return sans erreur, la migration sera créée
-        console.log("[deposit/refund] Table deposit_refunds manquante");
       }
       
       throw refundError;

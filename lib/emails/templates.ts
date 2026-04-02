@@ -45,12 +45,12 @@ function baseLayout(content: string, preheader?: string): string {
   </noscript>
   <![endif]-->
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    
+    @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap');
+
     body {
       margin: 0;
       padding: 0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
       background-color: ${COLORS.gray[100]};
       -webkit-font-smoothing: antialiased;
     }
@@ -257,7 +257,7 @@ function baseLayout(content: string, preheader?: string): string {
         <p>
           © ${new Date().getFullYear()} Talok. Tous droits réservés.<br>
           <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr'}/legal/privacy">Politique de confidentialité</a> · 
-          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr'}/legal/terms">Conditions d'utilisation</a>
+          <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr'}/legal/cgu">Conditions d'utilisation</a>
         </p>
       </div>
     </div>
@@ -1918,6 +1918,151 @@ export const emailTemplates = {
         </div>
       </div>
     `, `${escapeHtml(data.tenantName)} a confirmé la réception des clefs au ${escapeHtml(data.propertyAddress)}`),
+  }),
+
+  /**
+   * Confirmation d'email (brandé Talok)
+   *
+   * IMPORTANT — ACTION MANUELLE REQUISE :
+   * Supabase Auth envoie la confirmation email via son SMTP natif.
+   * Pour utiliser ce template à la place :
+   * 1. Dans le dashboard Supabase → Auth → Email Templates → "Confirm signup"
+   * 2. Copier le HTML généré par cette fonction (appeler emailTemplates.emailConfirmation({ ... }))
+   * 3. Remplacer le template par défaut dans Supabase
+   * 4. Utiliser {{ .ConfirmationURL }} comme variable Supabase pour le lien
+   *
+   * Alternative : configurer un Auth Hook (Send Email) pour intercepter et envoyer via Resend.
+   */
+  emailConfirmation: (data: {
+    userName: string;
+    confirmationUrl: string;
+  }) => {
+    const safeUserName = escapeHtml(data.userName);
+    return {
+      subject: "Confirmez votre email — Talok",
+      html: baseLayout(`
+        <div style="padding: 32px 24px;">
+          <h1 style="color: ${COLORS.gray[900]}; margin: 0 0 16px; font-size: 24px;">
+            Bienvenue sur Talok !
+          </h1>
+          <p style="color: ${COLORS.gray[700]}; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+            Bonjour ${safeUserName}, confirmez votre adresse email pour activer votre compte et commencer à gérer vos locations.
+          </p>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${data.confirmationUrl}" class="button">Confirmer mon email</a>
+          </div>
+
+          <p style="font-size: 13px; color: ${COLORS.gray[500]}; margin-top: 24px; line-height: 1.5;">
+            Ce lien expire dans 24 heures. Si vous n'avez pas créé de compte sur Talok, ignorez cet email.
+          </p>
+
+          <p style="font-size: 13px; color: ${COLORS.gray[500]}; margin-top: 16px;">
+            Besoin d'aide ? Contactez <a href="mailto:support@talok.fr" style="color: ${COLORS.primary};">support@talok.fr</a>
+          </p>
+        </div>
+      `, `Confirmez votre email pour activer votre compte Talok`),
+    };
+  },
+
+  guarantorEngagement: (data: {
+    guarantorName: string;
+    tenantName: string;
+    propertyAddress: string;
+    rentAmount: number;
+    chargesAmount: number;
+    dashboardUrl: string;
+  }) => ({
+    subject: `Vous êtes désigné garant pour ${data.tenantName}`,
+    html: baseLayout(`
+      <div class="content">
+        <h1>Engagement de cautionnement</h1>
+        <p>Bonjour ${escapeHtml(data.guarantorName)},</p>
+        <p>Vous avez été désigné comme garant pour <strong>${escapeHtml(data.tenantName)}</strong> dans le cadre d'un bail locatif.</p>
+
+        <div class="highlight-box">
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Bien concerné</p>
+          <p style="font-weight: 600; color: ${COLORS.gray[900]};">${escapeHtml(data.propertyAddress)}</p>
+          <div style="display: flex; gap: 24px; margin-top: 12px;">
+            <div>
+              <p style="color: ${COLORS.gray[500]}; font-size: 13px; margin-bottom: 2px;">Loyer</p>
+              <p style="font-weight: 600; color: ${COLORS.gray[900]};">${data.rentAmount.toLocaleString('fr-FR')} €</p>
+            </div>
+            <div>
+              <p style="color: ${COLORS.gray[500]}; font-size: 13px; margin-bottom: 2px;">Charges</p>
+              <p style="font-weight: 600; color: ${COLORS.gray[900]};">${data.chargesAmount.toLocaleString('fr-FR')} €</p>
+            </div>
+          </div>
+        </div>
+
+        <div style="text-align: center;">
+          <a href="${data.dashboardUrl}" class="button">Accéder à mon espace garant</a>
+        </div>
+
+        <p style="font-size: 13px; color: ${COLORS.gray[500]}; margin-top: 24px;">
+          En tant que garant, vous vous engagez à couvrir les obligations locatives du locataire en cas de défaillance.
+        </p>
+      </div>
+    `, `Vous êtes garant pour ${escapeHtml(data.tenantName)}`),
+  }),
+
+  providerInvite: (data: {
+    providerName: string;
+    email: string;
+    tempPassword: string;
+    loginUrl: string;
+  }) => ({
+    subject: 'Votre accès Talok Prestataire',
+    html: baseLayout(`
+      <div class="content">
+        <h1>Bienvenue sur Talok !</h1>
+        <p>Bonjour ${escapeHtml(data.providerName)},</p>
+        <p>Un compte prestataire a été créé pour vous sur la plateforme Talok.</p>
+
+        <div class="highlight-box">
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 8px;">Vos identifiants de connexion</p>
+          <p style="margin: 4px 0;"><strong>Email :</strong> ${escapeHtml(data.email)}</p>
+          <p style="margin: 4px 0;"><strong>Mot de passe temporaire :</strong> <code style="background: ${COLORS.gray[100]}; padding: 2px 6px; border-radius: 4px;">${escapeHtml(data.tempPassword)}</code></p>
+        </div>
+
+        <div style="background: #fef3c7; border-radius: 8px; padding: 12px 16px; margin: 16px 0;">
+          <p style="margin: 0; color: #92400e; font-size: 14px;">
+            <strong>Important :</strong> Changez votre mot de passe dès votre première connexion.
+          </p>
+        </div>
+
+        <div style="text-align: center;">
+          <a href="${data.loginUrl}" class="button">Se connecter</a>
+        </div>
+      </div>
+    `, 'Votre accès prestataire Talok'),
+  }),
+
+  renovationQuoteRequest: (data: {
+    providerName: string;
+    propertyAddress: string;
+    description: string;
+    dashboardUrl: string;
+  }) => ({
+    subject: `Demande de devis — ${data.propertyAddress}`,
+    html: baseLayout(`
+      <div class="content">
+        <h1>Demande de devis</h1>
+        <p>Bonjour ${escapeHtml(data.providerName)},</p>
+        <p>Un propriétaire vous a sélectionné pour un devis de travaux de rénovation.</p>
+
+        <div class="highlight-box">
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Bien concerné</p>
+          <p style="font-weight: 600; color: ${COLORS.gray[900]};">${escapeHtml(data.propertyAddress)}</p>
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-top: 12px; margin-bottom: 4px;">Description des travaux</p>
+          <p style="color: ${COLORS.gray[700]}; white-space: pre-line;">${escapeHtml(data.description)}</p>
+        </div>
+
+        <div style="text-align: center;">
+          <a href="${data.dashboardUrl}" class="button">Voir la demande et répondre</a>
+        </div>
+      </div>
+    `, `Demande de devis pour ${escapeHtml(data.propertyAddress)}`),
   }),
 };
 

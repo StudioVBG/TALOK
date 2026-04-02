@@ -21,29 +21,32 @@ export function useTickets(propertyId?: string | null) {
     queryKey: ["tickets", profile?.id, propertyId],
     queryFn: async () => {
       if (!profile) throw new Error("Non authentifié");
-      
+
       try {
         if (propertyId) {
           return await ticketsService.getTicketsByProperty(propertyId);
         }
-        
+
         // Filtrer selon le rôle
         if (profile.role === "owner") {
           return await ticketsService.getTicketsByOwner(profile.id);
         } else if (profile.role === "tenant") {
           return await ticketsService.getTicketsByTenant(profile.id);
         }
-        
+
         // Par défaut, récupérer tous les tickets (admin)
         return await ticketsService.getTickets();
       } catch (error: unknown) {
-        // Gérer les erreurs silencieusement pour éviter les erreurs 500 dans la console
+        // B3 fix: Retourner un tableau vide au lieu de laisser le spinner infini
         console.error("[useTickets] Error fetching tickets:", error);
         return [];
       }
     },
     enabled: !!profile,
-    retry: 1, // Ne réessayer qu'une fois en cas d'erreur
+    retry: 2,
+    staleTime: 30_000,
+    // B3 fix: Si l'erreur persiste, afficher les données vides plutôt qu'un spinner infini
+    placeholderData: [],
   });
 }
 
