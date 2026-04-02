@@ -374,7 +374,7 @@ export default function TenantDocumentsPage() {
             html2canvas: { scale: 2, useCORS: true },
             jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
             pagebreak: { mode: ["avoid-all", "css", "legacy"] },
-          })
+          } as any)
           .from(container)
           .save();
 
@@ -759,19 +759,47 @@ export default function TenantDocumentsPage() {
                   setPreviewTitle(doc.title || "Document");
                   setPreviewUrl(null);
                   setPreviewOpen(true);
-                  const url = await fetchSignedUrl(doc.id);
-                  if (url) setPreviewUrl(url);
+                  const data = await fetchSignedUrlData(doc.id);
+                  if (data) {
+                    setPreviewType(data.mimeType);
+                    setPreviewUrl(data.signedUrl);
+                  }
                 }}
                 onDownload={async (doc) => {
-                  const url = await fetchSignedUrl(doc.id);
-                  if (!url) return;
-                  const link = document.createElement("a");
-                  link.href = url;
-                  link.download = doc.title || "document";
-                  link.target = "_blank";
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
+                  const data = await fetchSignedUrlData(doc.id);
+                  if (!data) return;
+                  const isHtml = data.mimeType === "text/html" || data.storagePath?.endsWith(".html");
+                  if (isHtml) {
+                    try {
+                      const res = await fetch(data.signedUrl);
+                      if (!res.ok) throw new Error("Erreur");
+                      const htmlText = await res.text();
+                      const html2pdf = (await import("html2pdf.js")).default;
+                      const container = document.createElement("div");
+                      container.innerHTML = htmlText;
+                      container.style.position = "absolute";
+                      container.style.left = "-9999px";
+                      container.style.top = "0";
+                      document.body.appendChild(container);
+                      const filename = (doc.title || "document").replace(/\.html?$/i, "") + ".pdf";
+                      await html2pdf().set({
+                        margin: 10, filename,
+                        image: { type: "jpeg", quality: 0.98 },
+                        html2canvas: { scale: 2, useCORS: true },
+                        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+                        pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+                      } as any).from(container).save();
+                      document.body.removeChild(container);
+                    } catch { window.open(data.signedUrl, "_blank"); }
+                  } else {
+                    const link = document.createElement("a");
+                    link.href = data.signedUrl;
+                    link.download = doc.title || "document";
+                    link.target = "_blank";
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }
                 }}
               />
             ) : (
