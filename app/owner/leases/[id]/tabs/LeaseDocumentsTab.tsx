@@ -653,14 +653,49 @@ function DocumentRow({
                 Ouvrir
               </a>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <a
-                href={`/api/documents/download?path=${encodeURIComponent(doc.storage_path)}&filename=${encodeURIComponent(getDocLabel(doc))}`}
-                download
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Télécharger
-              </a>
+            <DropdownMenuItem
+              onClick={async () => {
+                const isHtml = doc.storage_path?.endsWith(".html");
+                if (isHtml) {
+                  // Convertir HTML → PDF côté client
+                  try {
+                    const res = await fetch(`/api/documents/view?path=${encodeURIComponent(doc.storage_path)}`);
+                    if (!res.ok) throw new Error("Erreur chargement");
+                    const htmlText = await res.text();
+                    const html2pdf = (await import("html2pdf.js")).default;
+                    const container = document.createElement("div");
+                    container.innerHTML = htmlText;
+                    container.style.position = "absolute";
+                    container.style.left = "-9999px";
+                    container.style.top = "0";
+                    document.body.appendChild(container);
+                    const filename = getDocLabel(doc).replace(/\.html?$/i, "") + ".pdf";
+                    await html2pdf().set({
+                      margin: 10,
+                      filename,
+                      image: { type: "jpeg", quality: 0.98 },
+                      html2canvas: { scale: 2, useCORS: true },
+                      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+                      pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+                    } as any).from(container).save();
+                    document.body.removeChild(container);
+                  } catch (err) {
+                    console.error("Erreur conversion HTML→PDF:", err);
+                    window.open(`/api/documents/download?path=${encodeURIComponent(doc.storage_path)}&filename=${encodeURIComponent(getDocLabel(doc))}`, "_blank");
+                  }
+                } else {
+                  // Téléchargement direct pour les non-HTML
+                  const link = document.createElement("a");
+                  link.href = `/api/documents/download?path=${encodeURIComponent(doc.storage_path)}&filename=${encodeURIComponent(getDocLabel(doc))}`;
+                  link.download = getDocLabel(doc);
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }
+              }}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Télécharger
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onToggleVisibility}>

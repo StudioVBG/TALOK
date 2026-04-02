@@ -134,10 +134,26 @@ export async function GET(request: Request, { params }: RouteParams) {
       );
     }
 
+    // Détecter le mime type depuis le storage_path
+    const ext = document.storage_path.split(".").pop()?.toLowerCase();
+    const mimeMap: Record<string, string> = {
+      pdf: "application/pdf",
+      html: "text/html",
+      png: "image/png",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      webp: "image/webp",
+      doc: "application/msword",
+      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    };
+    const mimeType = mimeMap[ext || ""] || "application/octet-stream";
+
     return NextResponse.json({
       signedUrl: signedUrlData.signedUrl,
       expiresIn: 3600,
       documentType: document.type,
+      mimeType,
+      storagePath: document.storage_path,
     });
 
   } catch (error: unknown) {
