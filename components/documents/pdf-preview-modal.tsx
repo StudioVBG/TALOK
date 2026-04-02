@@ -41,11 +41,14 @@ export function PDFPreviewModal({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [resolvedPdf, setResolvedPdf] = useState(false);
 
   // Fetch le document en blob pour bypass les restrictions CSP frame-src
+  // Si le document source est HTML, on le convertit en PDF via html2pdf.js
   useEffect(() => {
     if (!isOpen || !documentUrl) {
       setBlobUrl(null);
+      setResolvedPdf(false);
       return;
     }
 
@@ -56,16 +59,59 @@ export function PDFPreviewModal({
     setError(null);
     setZoom(100);
     setRotation(0);
+    setResolvedPdf(false);
 
     fetch(documentUrl)
-      .then((r) => {
+      .then(async (r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.blob();
-      })
-      .then((blob) => {
-        if (revoked) return;
-        currentBlobUrl = URL.createObjectURL(blob);
-        setBlobUrl(currentBlobUrl);
+
+        // Détecter si le contenu est HTML (bail signé, EDL signé stockés en .html)
+        const contentType = r.headers.get("content-type") || "";
+        const urlPath = documentUrl.split("?")[0].toLowerCase();
+        const isHtmlContent =
+          contentType.includes("text/html") || urlPath.endsWith(".html");
+
+        if (isHtmlContent) {
+          // Convertir HTML → PDF côté client via html2pdf.js
+          const htmlText = await r.text();
+          if (revoked) return;
+
+          const html2pdf = (await import("html2pdf.js")).default;
+          const container = document.createElement("div");
+          container.innerHTML = htmlText;
+          // Rendre invisible mais dans le DOM pour html2canvas
+          container.style.position = "absolute";
+          container.style.left = "-9999px";
+          container.style.top = "0";
+          document.body.appendChild(container);
+
+          try {
+            const pdfBlob: Blob = await html2pdf()
+              .set({
+                margin: 10,
+                image: { type: "jpeg", quality: 0.98 },
+                html2canvas: { scale: 2, useCORS: true },
+                jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+                pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+              })
+              .from(container)
+              .outputPdf("blob");
+
+            if (revoked) return;
+            currentBlobUrl = URL.createObjectURL(
+              new Blob([pdfBlob], { type: "application/pdf" })
+            );
+            setBlobUrl(currentBlobUrl);
+            setResolvedPdf(true);
+          } finally {
+            document.body.removeChild(container);
+          }
+        } else {
+          const blob = await r.blob();
+          if (revoked) return;
+          currentBlobUrl = URL.createObjectURL(blob);
+          setBlobUrl(currentBlobUrl);
+        }
       })
       .catch(() => {
         if (!revoked) {
@@ -86,31 +132,41 @@ export function PDFPreviewModal({
   const handleFullscreen = () => setIsFullscreen(!isFullscreen);
 
   const handleDownload = () => {
-    if (documentUrl) {
-      const link = document.createElement("a");
-      link.href = documentUrl;
-      link.download = documentTitle;
-      link.target = "_blank";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    // Si on a un blob PDF (converti depuis HTML ou PDF natif), l'utiliser pour le download
+    const downloadUrl = blobUrl || documentUrl;
+    if (!downloadUrl) return;
+
+    const link = document.createElement("a");
+    link.href = downloadUrl;
+    // S'assurer que le nom de fichier a l'extension .pdf si converti
+    let filename = documentTitle;
+    if (resolvedPdf && !filename.toLowerCase().endsWith(".pdf")) {
+      filename = filename.replace(/\.html?$/i, "") + ".pdf";
     }
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Détection du type de fichier — priorité au mimeType explicite, puis URL, puis documentType
+  // Si le HTML a été converti en PDF (resolvedPdf), on traite comme PDF
   const urlWithoutParams = documentUrl?.split("?")[0] || "";
   const isPDF =
+    resolvedPdf ||
     mimeType === "application/pdf" ||
     urlWithoutParams.toLowerCase().endsWith(".pdf") ||
     documentType === "application/pdf";
   const isImage =
-    mimeType?.startsWith("image/") ||
+    !resolvedPdf &&
+    (mimeType?.startsWith("image/") ||
     !!urlWithoutParams.match(/\.(jpg|jpeg|png|gif|webp|heic)$/i) ||
     documentType?.startsWith("cni") ||
-    documentType?.includes("identite");
+    documentType?.includes("identite"));
   const isHTML =
-    mimeType === "text/html" ||
-    urlWithoutParams.toLowerCase().endsWith(".html");
+    !resolvedPdf &&
+    (mimeType === "text/html" ||
+    urlWithoutParams.toLowerCase().endsWith(".html"));
 
   return (
     <Dialog open={isOpen} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
