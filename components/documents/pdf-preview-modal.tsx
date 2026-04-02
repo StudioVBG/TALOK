@@ -38,6 +38,7 @@ export function PDFPreviewModal({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [htmlContent, setHtmlContent] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -45,32 +46,78 @@ export function PDFPreviewModal({
       setError(null);
       setZoom(100);
       setRotation(0);
+      setHtmlContent(null);
     }
   }, [isOpen, documentUrl]);
+
+  // Fetch HTML content when the document is an HTML file
+  useEffect(() => {
+    if (!isOpen || !documentUrl) return;
+    const urlPath = documentUrl.split("?")[0].toLowerCase();
+    if (!urlPath.endsWith(".html") && !urlPath.endsWith(".htm")) return;
+
+    (async () => {
+      try {
+        const res = await fetch(documentUrl);
+        if (!res.ok) throw new Error("Erreur chargement HTML");
+        const text = await res.text();
+        setHtmlContent(text);
+        setIsLoading(false);
+      } catch {
+        setError("Impossible de charger le document HTML");
+        setIsLoading(false);
+      }
+    })();
+  }, [isOpen, documentUrl]);
+
+  // Extraire l'URL sans les paramètres de requête pour détecter le type
+  const urlWithoutParams = documentUrl?.split("?")[0] || "";
+  const isHTML = urlWithoutParams.toLowerCase().match(/\.html?$/i) || documentType === "text/html";
+  const isPDF = !isHTML && (urlWithoutParams.toLowerCase().includes(".pdf") || documentType === "application/pdf");
+  const isImage = urlWithoutParams.match(/\.(jpg|jpeg|png|gif|webp)$/i) ||
+                  documentType?.startsWith("cni") ||
+                  documentType?.includes("identite");
 
   const handleZoomIn = () => setZoom((prev) => Math.min(prev + 25, 200));
   const handleZoomOut = () => setZoom((prev) => Math.max(prev - 25, 50));
   const handleRotate = () => setRotation((prev) => (prev + 90) % 360);
   const handleFullscreen = () => setIsFullscreen(!isFullscreen);
 
-  const handleDownload = () => {
-    if (documentUrl) {
-      const link = document.createElement("a");
-      link.href = documentUrl;
-      link.download = documentTitle;
-      link.target = "_blank";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
+  const handleDownload = async () => {
+    if (!documentUrl) return;
 
-  // Extraire l'URL sans les paramètres de requête pour détecter le type
-  const urlWithoutParams = documentUrl?.split("?")[0] || "";
-  const isPDF = urlWithoutParams.toLowerCase().includes(".pdf") || documentType === "application/pdf";
-  const isImage = urlWithoutParams.match(/\.(jpg|jpeg|png|gif|webp)$/i) || 
-                  documentType?.startsWith("cni") || 
-                  documentType?.includes("identite");
+    // HTML documents: convert to PDF via html2pdf.js
+    if (htmlContent || isHTML) {
+      try {
+        const content = htmlContent || await fetch(documentUrl).then((r) => r.text());
+        const html2pdf = (await import("html2pdf.js")).default;
+        const element = document.createElement("div");
+        element.innerHTML = content;
+        document.body.appendChild(element);
+        await html2pdf().set({
+          margin: 10,
+          filename: documentTitle.replace(/\.html?$/i, "") + ".pdf",
+          image: { type: "jpeg", quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
+          pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+        } as any).from(element).save();
+        document.body.removeChild(element);
+      } catch {
+        // Fallback: download raw file
+        window.open(documentUrl, "_blank");
+      }
+      return;
+    }
+
+    const link = document.createElement("a");
+    link.href = documentUrl;
+    link.download = documentTitle;
+    link.target = "_blank";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
@@ -207,7 +254,13 @@ export function PDFPreviewModal({
                 transition: "transform 0.2s ease",
               }}
             >
-              {isPDF ? (
+              {isHTML && htmlContent ? (
+                <iframe
+                  srcDoc={htmlContent}
+                  className="w-full h-full min-h-[50vh] sm:min-h-[60vh] bg-white shadow-lg rounded-lg"
+                  title={documentTitle}
+                />
+              ) : isPDF ? (
                 <iframe
                   src={`${documentUrl}#toolbar=0&navpanes=0`}
                   className="w-full h-full min-h-[50vh] sm:min-h-[60vh] bg-white shadow-lg rounded-lg"
