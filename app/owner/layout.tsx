@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
@@ -12,6 +13,7 @@ import { OwnerAppLayout } from "@/components/layout/owner-app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { EntityProvider } from "@/providers/EntityProvider";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
+import { checkIdentityGate } from "@/lib/helpers/identity-gate";
 
 /**
  * Layout Owner - Server Component
@@ -35,9 +37,9 @@ export default async function OwnerLayout({
   }
 
   // Récupérer le profil (avec fallback service role en cas de récursion RLS)
-  const { profile } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null }>(
+  const { profile } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null; identity_status: string | null }>(
     user.id,
-    "id, role, prenom, nom"
+    "id, role, prenom, nom, identity_status"
   );
 
   if (!profile) {
@@ -48,6 +50,11 @@ export default async function OwnerLayout({
   if (profile.role !== "owner") {
     redirect(getRoleDashboardUrl(profile.role));
   }
+
+  // Identity gate — vérifie le niveau d'identité requis pour la route
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") || "/owner";
+  checkIdentityGate(pathname, profile.role, profile.identity_status);
 
   // Filet de sécurité : s'assurer que owner_profiles existe (évite "aucune entité")
   const serviceClient = getServiceClient();

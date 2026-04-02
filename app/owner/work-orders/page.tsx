@@ -76,13 +76,13 @@ const statusConfig = {
   },
   cancelled: {
     label: "Annulé",
-    color: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300",
+    color: "bg-muted text-foreground",
     icon: XCircle,
   },
 };
 
 const priorityConfig = {
-  basse: "bg-slate-100 text-slate-700",
+  basse: "bg-muted text-foreground",
   normale: "bg-blue-100 text-blue-700",
   haute: "bg-orange-100 text-orange-700",
   urgente: "bg-red-100 text-red-700",
@@ -207,8 +207,8 @@ export default function WorkOrdersPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800">
-                <XCircle className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+              <div className="p-2 rounded-lg bg-muted">
+                <XCircle className="h-5 w-5 text-muted-foreground dark:text-muted-foreground" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.cancelled}</p>

@@ -25,7 +25,6 @@ export async function GET(request: Request) {
       .order("created_at", { ascending: false });
 
     if (error) {
-      console.log("[GET /api/admin/moderation/rules] Table non trouvée:", error.message);
       return NextResponse.json({ rules: [] });
     }
 

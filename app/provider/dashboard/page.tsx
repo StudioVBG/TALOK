@@ -27,6 +27,10 @@ import {
   FileText,
   Wifi,
   WifiOff,
+  Shield,
+  Building2,
+  Settings,
+  Briefcase,
 } from "lucide-react";
 import Link from "next/link";
 import { useRealtimeProvider } from "@/lib/hooks/use-realtime-provider";
@@ -273,6 +277,43 @@ export default function ProviderDashboardPage() {
             </div>
           </div>
         </motion.header>
+
+        {/* U11: Checklist onboarding prestataire */}
+        {stats.total_interventions === 0 && (
+          <motion.section variants={itemVariants}>
+            <GlassCard className="p-6 border-dashed border-2 border-orange-200 dark:border-orange-900/40 bg-orange-50/30 dark:bg-orange-950/10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2.5 bg-orange-100 dark:bg-orange-900/30 rounded-xl">
+                  <Sparkles className="h-5 w-5 text-orange-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-foreground">Bienvenue ! Finalisez votre profil</h3>
+                  <p className="text-sm text-muted-foreground">4 étapes pour recevoir vos premières missions</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { label: "Documents de conformité", desc: "KBIS, assurance RC Pro", icon: Shield, href: "/provider/compliance", done: false },
+                  { label: "Zones d'intervention", desc: "Définir votre périmètre", icon: MapPin, href: "/provider/onboarding/services", done: false },
+                  { label: "Tarifs et services", desc: "Vos prestations et prix", icon: Briefcase, href: "/provider/onboarding/ops", done: false },
+                  { label: "Compte bancaire", desc: "IBAN pour les paiements", icon: Building2, href: "/provider/settings", done: false },
+                ].map((step) => (
+                  <Link key={step.label} href={step.href}>
+                    <div className="flex items-start gap-3 p-3 rounded-xl border border-border/50 bg-background/80 hover:bg-muted/50 transition-colors cursor-pointer">
+                      <div className="p-2 bg-orange-50 dark:bg-orange-900/20 rounded-lg shrink-0">
+                        <step.icon className="h-4 w-4 text-orange-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{step.label}</p>
+                        <p className="text-xs text-muted-foreground">{step.desc}</p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </GlassCard>
+          </motion.section>
+        )}
 
         {/* Statistiques detaillees */}
         <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-4 gap-4">

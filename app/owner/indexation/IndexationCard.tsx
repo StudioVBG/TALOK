@@ -108,7 +108,7 @@ export function IndexationCard({ indexation, showActions = false }: IndexationCa
       case "applied":
         return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Appliquée</Badge>;
       case "declined":
-        return <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200">Refusée</Badge>;
+        return <Badge variant="outline" className="bg-muted text-muted-foreground border-border">Refusée</Badge>;
       default:
         return null;
     }
@@ -138,7 +138,7 @@ export function IndexationCard({ indexation, showActions = false }: IndexationCa
 
       <CardContent className="space-y-4">
         {/* Détail de la révision */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-slate-50 rounded-lg">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-4 bg-muted rounded-lg">
           <div>
             <p className="text-xs text-muted-foreground">Ancien loyer</p>
             <p className="font-semibold">{formatCurrency(indexation.old_rent)}</p>
@@ -168,11 +168,11 @@ export function IndexationCard({ indexation, showActions = false }: IndexationCa
         {/* Détail IRL */}
         <div className="flex items-center gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <Info className="h-4 w-4 text-slate-400" />
+            <Info className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">IRL :</span>
             <span className="font-medium">{indexation.old_irl_quarter}</span>
             <span className="text-muted-foreground">({indexation.old_irl_value})</span>
-            <ArrowRight className="h-4 w-4 text-slate-400" />
+            <ArrowRight className="h-4 w-4 text-muted-foreground" />
             <span className="font-medium">{indexation.new_irl_quarter}</span>
             <span className="text-muted-foreground">({indexation.new_irl_value})</span>
           </div>

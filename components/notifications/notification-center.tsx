@@ -38,7 +38,8 @@ export function NotificationCenter({ className }: NotificationCenterProps) {
   const fetchNotifications = useCallback(async () => {
     try {
       const unreadOnly = activeTab === 'unread';
-      const response = await fetch(`/api/notifications?unread=${unreadOnly}&limit=50`);
+      const urgentOnly = activeTab === 'urgent';
+      const response = await fetch(`/api/notifications?unread=${unreadOnly || urgentOnly}&limit=50`);
       const data = await response.json();
       
       if (response.ok) {
@@ -115,7 +116,11 @@ export function NotificationCenter({ className }: NotificationCenterProps) {
     }
   };
 
-  const groupedNotifications = groupNotificationsByDate(notifications);
+  // A1: Filtrer par priorité urgente si onglet actif
+  const filteredNotifications = activeTab === 'urgent'
+    ? notifications.filter(n => n.priority === 'urgent' || n.priority === 'high')
+    : notifications;
+  const groupedNotifications = groupNotificationsByDate(filteredNotifications);
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -172,20 +177,26 @@ export function NotificationCenter({ className }: NotificationCenterProps) {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs — A1: catégories visuelles */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full rounded-none border-b bg-transparent">
+          <TabsList className="w-full rounded-none border-b bg-transparent h-auto flex-wrap">
             <TabsTrigger
               value="all"
-              className="flex-1 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+              className="flex-1 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-xs sm:text-sm"
             >
               Toutes
             </TabsTrigger>
             <TabsTrigger
               value="unread"
-              className="flex-1 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none"
+              className="flex-1 data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none text-xs sm:text-sm"
             >
               Non lues {unreadCount > 0 && `(${unreadCount})`}
+            </TabsTrigger>
+            <TabsTrigger
+              value="urgent"
+              className="flex-1 data-[state=active]:border-b-2 data-[state=active]:border-red-500 rounded-none text-xs sm:text-sm data-[state=active]:text-red-600"
+            >
+              Urgent
             </TabsTrigger>
           </TabsList>
 

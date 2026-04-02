@@ -156,11 +156,11 @@ export function DocumentUploadModal({ leaseId, propertyId }: DocumentUploadModal
 
           <div className="space-y-2">
             <Label htmlFor="doc-file">Fichier (PDF, JPG, PNG - max 10 Mo)</Label>
-            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-slate-300 rounded-xl hover:border-blue-400 transition-colors bg-slate-50/50">
+            <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-border rounded-xl hover:border-blue-400 transition-colors bg-muted/50">
               {file ? (
                 <div className="text-center">
                   <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-500 mb-2" />
-                  <p className="text-sm font-medium text-slate-900">{file.name}</p>
+                  <p className="text-sm font-medium text-foreground">{file.name}</p>
                   <Button 
                     variant="ghost" 
                     size="sm" 
@@ -172,11 +172,11 @@ export function DocumentUploadModal({ leaseId, propertyId }: DocumentUploadModal
                 </div>
               ) : (
                 <div className="space-y-1 text-center">
-                  <FileText className="mx-auto h-10 w-10 text-slate-400" />
-                  <div className="flex text-sm text-slate-600">
+                  <FileText className="mx-auto h-10 w-10 text-muted-foreground" />
+                  <div className="flex text-sm text-muted-foreground">
                     <label
                       htmlFor="doc-file"
-                      className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"
+                      className="relative cursor-pointer bg-card rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none"
                     >
                       <span>Sélectionner un fichier</span>
                       <input 
@@ -189,7 +189,7 @@ export function DocumentUploadModal({ leaseId, propertyId }: DocumentUploadModal
                       />
                     </label>
                   </div>
-                  <p className="text-xs text-slate-500">ou glissez-déposez ici</p>
+                  <p className="text-xs text-muted-foreground">ou glissez-déposez ici</p>
                 </div>
               )}
             </div>

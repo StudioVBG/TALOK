@@ -1,7 +1,10 @@
 "use client";
 
-import { Star } from "lucide-react";
+import { useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { fadeUp, defaultViewport } from "@/lib/marketing/animations";
 
 const TESTIMONIALS = [
   {
@@ -31,51 +34,129 @@ const TESTIMONIALS = [
 ];
 
 export function TestimonialsSection() {
+  const [current, setCurrent] = useState(0);
+
+  const next = useCallback(() => {
+    setCurrent((prev) => (prev + 1) % TESTIMONIALS.length);
+  }, []);
+
+  const prev = useCallback(() => {
+    setCurrent((prev) => (prev - 1 + TESTIMONIALS.length) % TESTIMONIALS.length);
+  }, []);
+
   return (
-    <section className="bg-[hsl(var(--talok-gris-fond))] py-20 md:py-28">
+    <motion.section
+      className="bg-secondary py-20 md:py-28"
+      variants={fadeUp}
+      initial="hidden"
+      whileInView="visible"
+      viewport={defaultViewport}
+    >
       <div className="container mx-auto max-w-6xl px-4">
-        <h2 className="reveal text-center font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+        <h2 className="text-center font-display text-3xl font-bold tracking-tight text-foreground md:text-4xl">
           Ce qu&apos;en disent ceux qui ont franchi le pas
         </h2>
 
-        <div className="mt-14 grid gap-8 md:grid-cols-3">
+        {/* Desktop: grid of 3 cards */}
+        <div className="mt-14 hidden gap-8 md:grid md:grid-cols-3">
           {TESTIMONIALS.map((t) => (
-            <div
+            <motion.div
               key={t.name}
-              className="reveal flex flex-col rounded-2xl border bg-white p-6 shadow-sm"
+              className="flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm cursor-pointer"
+              whileHover={{ y: -4, transition: { duration: 0.2 } }}
             >
-              <div className="flex items-center gap-3">
-                {/* Avatar placeholder */}
-                <div
-                  className={`h-12 w-12 rounded-full bg-gradient-to-br ${t.gradient}`}
-                />
-                {/* TODO: <Image src="/images/testimonial-xxx.jpg" alt={t.name} width={48} height={48} className="rounded-full object-cover" /> */}
-                <div>
-                  <p className="font-semibold text-foreground">{t.name}</p>
-                  <p className="text-xs text-muted-foreground">{t.role}</p>
-                </div>
-              </div>
-
-              <Badge variant="secondary" className="mt-4 w-fit">
-                {t.badge}
-              </Badge>
-
-              <div className="mt-3 flex gap-0.5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
-                    key={i}
-                    className="h-4 w-4 fill-yellow-400 text-yellow-400"
-                  />
-                ))}
-              </div>
-
-              <blockquote className="mt-4 flex-1 text-sm leading-relaxed text-muted-foreground">
-                &ldquo;{t.quote}&rdquo;
-              </blockquote>
-            </div>
+              <TestimonialContent testimonial={t} />
+            </motion.div>
           ))}
         </div>
+
+        {/* Mobile: swipeable carousel */}
+        <div className="mt-14 md:hidden">
+          <motion.div
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            onDragEnd={(_e, { offset, velocity }) => {
+              if (Math.abs(velocity.x) > 500 || Math.abs(offset.x) > 100) {
+                offset.x < 0 ? next() : prev();
+              }
+            }}
+          >
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={current}
+                initial={{ opacity: 0, x: 60 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -60 }}
+                transition={{ duration: 0.35 }}
+                className="flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm"
+              >
+                <TestimonialContent testimonial={TESTIMONIALS[current]} />
+              </motion.div>
+            </AnimatePresence>
+          </motion.div>
+
+          {/* Dots + arrows */}
+          <div className="mt-6 flex items-center justify-center gap-4">
+            <button
+              onClick={prev}
+              className="rounded-full border border-border bg-card p-2 text-muted-foreground hover:text-foreground"
+              aria-label="Témoignage précédent"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="flex gap-2">
+              {TESTIMONIALS.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrent(i)}
+                  className={`h-2 w-2 rounded-full transition-colors ${
+                    i === current ? "bg-[#2563EB]" : "bg-border"
+                  }`}
+                  aria-label={`Témoignage ${i + 1}`}
+                />
+              ))}
+            </div>
+            <button
+              onClick={next}
+              className="rounded-full border border-border bg-card p-2 text-muted-foreground hover:text-foreground"
+              aria-label="Témoignage suivant"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
-    </section>
+    </motion.section>
+  );
+}
+
+function TestimonialContent({ testimonial: t }: { testimonial: typeof TESTIMONIALS[number] }) {
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <div className={`h-12 w-12 rounded-full bg-gradient-to-br ${t.gradient}`} />
+        <div>
+          <p className="font-semibold text-foreground">{t.name}</p>
+          <p className="text-xs text-muted-foreground">{t.role}</p>
+        </div>
+      </div>
+
+      <Badge variant="secondary" className="mt-4 w-fit">
+        {t.badge}
+      </Badge>
+
+      <div className="mt-3 flex gap-0.5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Star
+            key={i}
+            className="h-4 w-4 fill-yellow-400 text-yellow-400"
+          />
+        ))}
+      </div>
+
+      <blockquote className="mt-4 flex-1 text-sm leading-relaxed text-muted-foreground">
+        &ldquo;{t.quote}&rdquo;
+      </blockquote>
+    </>
   );
 }

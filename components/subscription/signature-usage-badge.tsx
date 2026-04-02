@@ -67,6 +67,11 @@ export function SignatureUsageBadge({
     );
   }
 
+  // Ne pas afficher si le plan n'inclut aucune signature (ex: Gratuit, Starter)
+  if (!isUnlimited && limit === 0) {
+    return null;
+  }
+
   // Déterminer la couleur selon le pourcentage d'usage
   const getStatusColor = () => {
     if (isUnlimited) return "emerald";

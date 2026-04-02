@@ -97,7 +97,6 @@ export async function POST(
         targetUserId = profile.user_id ?? null;
         targetEmail = profile.email ?? null;
         targetName = `${profile.prenom || ''} ${profile.nom || ''}`.trim();
-        console.log("[EDL Invite] Utilisation du profile_id fourni:", targetProfileId);
         }
     }
 
@@ -115,13 +114,11 @@ export async function POST(
           targetUserId = profile.user_id;
           targetEmail = profile.email;
           targetName = `${profile.prenom || ''} ${profile.nom || ''}`.trim();
-          console.log("[EDL Invite] Locataire trouvé via bail avec profil:", targetEmail);
         } 
         // Ou un email valide (non placeholder)?
         else if (tenantSigner.invited_email && !isPlaceholderEmail(tenantSigner.invited_email)) {
           targetEmail = tenantSigner.invited_email;
           targetName = tenantSigner.invited_name || tenantSigner.invited_email.split('@')[0];
-          console.log("[EDL Invite] Locataire trouvé via bail avec email invité:", targetEmail);
         }
       }
     }
@@ -130,7 +127,6 @@ export async function POST(
     if (!targetEmail && invited_email && !isPlaceholderEmail(invited_email)) {
       targetEmail = invited_email;
       targetName = invited_email.split('@')[0];
-      console.log("[EDL Invite] Utilisation de l'email fourni:", targetEmail);
     }
 
     // Étape 4: Si on a un email mais pas de profile_id, chercher le profil par email
@@ -147,7 +143,6 @@ export async function POST(
         if (!targetName) {
           targetName = `${profileByEmail.prenom || ''} ${profileByEmail.nom || ''}`.trim();
         }
-        console.log("[EDL Invite] Profil résolu par email:", targetProfileId);
       }
     }
 
@@ -202,7 +197,6 @@ export async function POST(
         return NextResponse.json({ error: "Impossible de créer la signature EDL" }, { status: 500 });
         }
         existingSig = newSig;
-      console.log("[EDL Invite] Signature EDL créée:", existingSig?.id);
     } else {
       // Mettre à jour la signature existante
       const updates: any = {
@@ -214,7 +208,6 @@ export async function POST(
       if (targetProfileId && !(existingSig as { signer_profile_id?: string }).signer_profile_id) {
         updates.signer_profile_id = targetProfileId;
         updates.signer_user = targetUserId;
-        console.log("[EDL Invite] Mise à jour du profile_id manquant:", targetProfileId);
       }
     
     await serviceClient
@@ -222,7 +215,6 @@ export async function POST(
         .update(updates)
         .eq("id", existingSig.id);
       
-      console.log("[EDL Invite] Signature EDL mise à jour:", existingSig.id);
     }
 
     // ===============================
@@ -256,7 +248,6 @@ export async function POST(
         if (signerInsertError) {
           console.warn("[EDL Invite] Failed to create lease_signer:", signerInsertError.message);
         } else {
-          console.log("[EDL Invite] Created missing lease_signer for tenant:", targetEmail);
         }
       }
     }
@@ -302,7 +293,6 @@ export async function POST(
         if (targetProfileId) notifPayload.profile_id = targetProfileId;
 
         await serviceClient.from("notifications").insert(notifPayload as any);
-        console.log(`[EDL Invite ${edlId}] Notification créée pour profile=${targetProfileId} user=${targetUserId}`);
       } catch (e) {
         console.warn(`[EDL Invite ${edlId}] Notification directe échouée:`, e);
       }

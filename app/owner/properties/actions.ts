@@ -311,25 +311,29 @@ export async function deleteProperty(
     return { success: false, error: "Propriété non trouvée ou accès refusé" };
   }
 
-  // Vérifier les baux actifs
-  const { data: activeLeases } = await supabase
+  // Vérifier les baux non terminés (actifs, en attente de signature, etc.)
+  const { data: nonTerminatedLeases } = await supabase
     .from("leases")
-    .select("id")
+    .select("id, statut")
     .eq("property_id", id)
-    .eq("statut", "active")
+    .in("statut", ["active", "pending_signature", "partially_signed", "fully_signed", "pending_owner_signature"])
     .limit(1);
 
-  if (activeLeases && activeLeases.length > 0) {
-    return { success: false, error: "Impossible de supprimer : des baux actifs existent" };
+  if (nonTerminatedLeases && nonTerminatedLeases.length > 0) {
+    const lease = nonTerminatedLeases[0];
+    if (lease.statut === "active") {
+      return { success: false, error: "Impossible de supprimer : ce bien a un bail actif. Résiliez-le d'abord." };
+    }
+    return { success: false, error: "Impossible de supprimer : ce bien a un bail en attente de signature. Annulez-le d'abord." };
   }
 
-  // 5. Soft-delete : marquer comme supprimé au lieu de supprimer définitivement
+  // 5. Soft-delete : marquer comme archivé au lieu de supprimer définitivement
   const { error: deleteError } = await supabase
     .from("properties")
     .update({
       deleted_at: new Date().toISOString(),
       deleted_by: profile.id,
-      etat: "deleted" as any,
+      etat: "archived",
     })
     .eq("id", id);
 

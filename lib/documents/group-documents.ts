@@ -1,70 +1,77 @@
-import type { Document, DocumentType } from "@/lib/types";
+import { GROUPED_DOCUMENT_TYPES, type DocumentGroup } from "@/lib/documents/constants";
 
-/**
- * A grouped document (e.g. CNI recto + verso merged into one card).
- * Extends the base Document with group metadata.
- */
-export interface GroupedDocument extends Document {
-  group_type: "cni";
-  grouped_docs: Document[];
+export interface DocumentLike {
+  id: string;
+  type: string;
+  title?: string | null;
+  storage_path?: string | null;
+  created_at?: string | null;
 }
 
-export type DisplayDocument = Document | GroupedDocument;
-
-/** Document types that should be paired together. */
-const GROUP_PAIRS: Record<string, { pair: DocumentType; groupType: "cni" }> = {
-  cni_recto: { pair: "cni_verso" as DocumentType, groupType: "cni" },
-  cni_verso: { pair: "cni_recto" as DocumentType, groupType: "cni" },
-};
+export interface GroupedDocumentItem {
+  kind: "single" | "group";
+  /** Pour single: le document. Pour group: undefined */
+  document?: DocumentLike;
+  /** Pour group: la config du groupe */
+  group?: DocumentGroup;
+  /** Pour group: les documents qui composent le groupe */
+  parts?: DocumentLike[];
+  /** Cle unique pour React key */
+  key: string;
+  /** Label affiche */
+  label: string;
+  /** Date la plus recente du groupe */
+  latestDate?: string | null;
+}
 
 /**
- * Groups related documents (e.g. CNI recto + verso) into single display items.
- * Non-groupable documents pass through unchanged.
+ * Groupe les documents selon GROUPED_DOCUMENT_TYPES.
+ * Les paires CNI recto/verso deviennent une seule entree dans la liste.
+ * Les documents non-groupes restent tels quels.
  */
-export function groupDocuments(documents: Document[]): DisplayDocument[] {
-  const grouped = new Set<string>();
-  const result: DisplayDocument[] = [];
+export function groupDocuments<T extends DocumentLike>(documents: T[]): GroupedDocumentItem[] {
+  const result: GroupedDocumentItem[] = [];
+  const consumed = new Set<string>();
 
-  for (const doc of documents) {
-    if (grouped.has(doc.id)) continue;
+  for (const groupDef of GROUPED_DOCUMENT_TYPES) {
+    const parts = groupDef.parts
+      .map((partType) => documents.find((d) => d.type === partType && !consumed.has(d.id)))
+      .filter(Boolean) as DocumentLike[];
 
-    const pairConfig = GROUP_PAIRS[doc.type];
-    if (!pairConfig) {
-      result.push(doc);
-      continue;
-    }
+    if (parts.length > 0) {
+      parts.forEach((p) => consumed.add(p.id));
 
-    // Find the matching pair (same owner/tenant/property/lease scope)
-    const pair = documents.find(
-      (d) =>
-        d.id !== doc.id &&
-        !grouped.has(d.id) &&
-        d.type === pairConfig.pair &&
-        d.owner_id === doc.owner_id &&
-        d.tenant_id === doc.tenant_id &&
-        d.property_id === doc.property_id &&
-        d.lease_id === doc.lease_id
-    );
-
-    if (pair) {
-      grouped.add(doc.id);
-      grouped.add(pair.id);
-
-      // Use the recto as the "primary" document
-      const recto = doc.type === "cni_recto" ? doc : pair;
-      const verso = doc.type === "cni_verso" ? doc : pair;
+      const dates = parts.map((p) => p.created_at).filter(Boolean) as string[];
+      const latestDate = dates.length > 0 ? dates.sort().reverse()[0] : null;
 
       result.push({
-        ...recto,
-        group_type: pairConfig.groupType,
-        title: "Carte d'identit\u00e9",
-        grouped_docs: [recto, verso],
+        kind: "group",
+        group: groupDef,
+        parts,
+        key: `group-${groupDef.group}`,
+        label: groupDef.label,
+        latestDate,
       });
-    } else {
-      // No pair found — render as standalone
-      result.push(doc);
     }
   }
+
+  for (const doc of documents) {
+    if (!consumed.has(doc.id)) {
+      result.push({
+        kind: "single",
+        document: doc,
+        key: `doc-${doc.id}`,
+        label: doc.title || doc.type,
+        latestDate: doc.created_at,
+      });
+    }
+  }
+
+  result.sort((a, b) => {
+    const dateA = a.latestDate ? new Date(a.latestDate).getTime() : 0;
+    const dateB = b.latestDate ? new Date(b.latestDate).getTime() : 0;
+    return dateB - dateA;
+  });
 
   return result;
 }

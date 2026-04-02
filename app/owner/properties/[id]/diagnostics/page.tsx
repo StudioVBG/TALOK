@@ -35,7 +35,7 @@ export default async function PropertyDiagnosticsPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-slate-50/50">
-      <div className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200">
+      <div className="sticky top-0 z-30 bg-card/80 backdrop-blur-md border-b border-slate-200">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button asChild variant="ghost" size="sm" className="-ml-2 text-muted-foreground">
@@ -79,7 +79,7 @@ export default async function PropertyDiagnosticsPage({ params }: PageProps) {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-white rounded-xl border border-blue-100 p-6 shadow-sm">
+            <div className="bg-card rounded-xl border border-blue-100 p-6 shadow-sm">
               <h3 className="font-bold text-blue-900 mb-2 flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4" />
                 Conformité Légale
@@ -107,7 +107,7 @@ export default async function PropertyDiagnosticsPage({ params }: PageProps) {
 
 function CardPlaceholder({ title, icon, description }: { title: string, icon: React.ReactNode, description: string }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-6 opacity-60 grayscale">
+    <div className="bg-card rounded-xl border border-slate-200 p-6 opacity-60 grayscale">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-slate-100 text-slate-500">

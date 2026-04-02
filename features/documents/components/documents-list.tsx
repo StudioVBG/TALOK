@@ -1,15 +1,60 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { DocumentCard } from "./document-card";
 import { GroupedDocumentCard } from "./grouped-document-card";
 import { DocumentUploadForm } from "./document-upload-form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { documentsService } from "../services/documents.service";
-import { groupDocuments } from "@/lib/documents/group-documents";
 import type { Document } from "@/lib/types";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { groupDocuments, type GroupedDocumentItem } from "@/lib/documents/group-documents";
+
+/**
+ * B6 fix: Groupe les documents CNI recto+verso en un seul élément
+ * pour éviter l'affichage en double dans la liste.
+ */
+function groupCniDocuments(docs: Document[]): Document[] {
+  const rectos = docs.filter((d) => d.type === "cni_recto");
+  const versos = docs.filter((d) => d.type === "cni_verso");
+  const others = docs.filter((d) => d.type !== "cni_recto" && d.type !== "cni_verso");
+
+  const matchedVersoIds = new Set<string>();
+  const grouped: Document[] = [];
+
+  for (const recto of rectos) {
+    // Trouver le verso correspondant (même bail ou même locataire)
+    const verso = versos.find(
+      (v) =>
+        !matchedVersoIds.has(v.id) &&
+        ((recto.lease_id && v.lease_id === recto.lease_id) ||
+          (recto.tenant_id && v.tenant_id === recto.tenant_id))
+    );
+
+    if (verso) {
+      matchedVersoIds.add(verso.id);
+    }
+
+    // Afficher le recto avec un titre groupé
+    grouped.push({
+      ...recto,
+      title: recto.title || "Carte d'Identité (Recto" + (verso ? " + Verso" : "") + ")",
+    });
+  }
+
+  // Versos orphelins (sans recto correspondant)
+  for (const verso of versos) {
+    if (!matchedVersoIds.has(verso.id)) {
+      grouped.push({
+        ...verso,
+        title: verso.title || "Carte d'Identité (Verso)",
+      });
+    }
+  }
+
+  return [...others, ...grouped];
+}
 
 interface DocumentsListProps {
   propertyId?: string;
@@ -47,7 +92,8 @@ export function DocumentsList({ propertyId, leaseId, showUpload = true }: Docume
         data = [];
       }
 
-      setDocuments(data);
+      // B6 fix: Grouper les CNI recto/verso pour éviter les doublons visuels
+      setDocuments(groupCniDocuments(data));
     } catch (error: unknown) {
       toast({
         title: "Erreur",
@@ -73,7 +119,7 @@ export function DocumentsList({ propertyId, leaseId, showUpload = true }: Docume
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Documents ({documents.length})</h2>
+        <h2 className="text-2xl font-bold">Documents ({displayDocs.length})</h2>
         {showUpload && !showUploadForm && (
           <Button onClick={() => setShowUploadForm(true)}>Ajouter un document</Button>
         )}
@@ -93,15 +139,15 @@ export function DocumentsList({ propertyId, leaseId, showUpload = true }: Docume
 
       {documents.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">Aucun document enregistré.</p>
+          <p className="text-muted-foreground">Aucun document enregistre.</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {displayDocs.map((doc) =>
-            "group_type" in doc ? (
-              <GroupedDocumentCard key={doc.id} document={doc} onDelete={fetchDocuments} />
+          {displayDocs.map((item) =>
+            item.kind === "group" ? (
+              <GroupedDocumentCard key={item.key} item={item} onDelete={fetchDocuments} />
             ) : (
-              <DocumentCard key={doc.id} document={doc} onDelete={fetchDocuments} />
+              <DocumentCard key={item.key} document={item.document as any} onDelete={fetchDocuments} />
             )
           )}
         </div>
@@ -109,4 +155,3 @@ export function DocumentsList({ propertyId, leaseId, showUpload = true }: Docume
     </div>
   );
 }
-

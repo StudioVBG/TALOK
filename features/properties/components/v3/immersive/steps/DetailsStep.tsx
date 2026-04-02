@@ -19,10 +19,18 @@ import { DetailsStepPro } from "./DetailsStepPro";
 const HABITATION_TYPES = ["appartement", "maison", "studio", "colocation", "saisonnier"];
 const PARKING_TYPES = ["parking", "box"];
 const PRO_TYPES = ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"];
+// Les immeubles ont leur propre step (BuildingConfigStep), terrain agricole → formulaire pro simplifié
+const SKIP_DETAILS_TYPES = ["immeuble"];
+const AGRICOLE_TYPES = ["terrain_agricole", "exploitation_agricole"];
 
 export function DetailsStep() {
   const { formData } = usePropertyWizardStore();
   const propertyType = (formData.type as string) || "";
+
+  // Les immeubles ne devraient pas atteindre cette étape (step building_config)
+  if (SKIP_DETAILS_TYPES.includes(propertyType)) {
+    return <DetailsStepHabitation />;
+  }
 
   // Router vers le bon composant selon le type
   if (HABITATION_TYPES.includes(propertyType)) {
@@ -33,7 +41,7 @@ export function DetailsStep() {
     return <DetailsStepParking />;
   }
 
-  if (PRO_TYPES.includes(propertyType)) {
+  if (PRO_TYPES.includes(propertyType) || AGRICOLE_TYPES.includes(propertyType)) {
     return <DetailsStepPro />;
   }
 

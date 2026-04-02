@@ -90,8 +90,15 @@ async function processEvent(event: any): Promise<void> {
     }
 
     case "Lease.FullySigned": {
-      // Notifications already handled inline in signing routes
-      console.log(`[Outbox] Lease.FullySigned for ${payload.lease_id} (user: ${payload.user_id})`);
+      // Générer le PDF signé du bail (non-bloquant — fire-and-forget)
+      const fullySignedLeaseId = payload.lease_id;
+      if (fullySignedLeaseId) {
+        const { generateSignedLeasePDF } = await import("@/lib/documents/lease-pdf-generator");
+        generateSignedLeasePDF(fullySignedLeaseId).catch((err) =>
+          console.error("[cron/process-outbox] generateSignedLeasePDF failed:", err)
+        );
+      }
+      console.log(`[Outbox] Lease.FullySigned for ${payload.lease_id} — PDF generation triggered`);
       break;
     }
 

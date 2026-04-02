@@ -132,11 +132,21 @@ export async function POST(request: Request) {
       .limit(1)
       .maybeSingle();
 
+    // Déduire usage_principal depuis le type de bien
+    const HABITATION = ["appartement", "maison", "studio", "colocation", "saisonnier"];
+    const PARKING = ["parking", "box"];
+    const PRO = ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"];
+    const usagePrincipal = HABITATION.includes(type) ? "habitation"
+      : PARKING.includes(type) ? "parking"
+      : PRO.includes(type) ? "professionnel"
+      : "habitation";
+
     const insertData: Record<string, any> = {
       owner_id: profile.id,
       legal_entity_id: defaultEntity?.id ?? null,
       type: type, // Correspond au champ 'type' de la table properties
       type_bien: type, // Support V3 : type_bien (nouveau champ) aligné avec /api/properties
+      usage_principal: usagePrincipal, // Requis pour la soumission
       etat: "draft", // Toujours 'draft' au début
       unique_code: uniqueCode, // Code unique obligatoire
       // Champs obligatoires mais qu'on peut mettre par défaut pour un draft

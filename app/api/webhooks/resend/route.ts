@@ -71,10 +71,6 @@ export async function POST(request: Request) {
 
     const event: ResendWebhookPayload = JSON.parse(rawBody);
 
-    console.log(
-      `[Resend Webhook] ${event.type} | email_id: ${event.data.email_id} | to: ${event.data.to?.join(", ")}`
-    );
-
     switch (event.type) {
       case "email.delivered":
         break;
@@ -98,7 +94,6 @@ export async function POST(request: Request) {
         break;
 
       default:
-        console.log(`[Resend Webhook] Unhandled event: ${event.type}`);
     }
 
     return NextResponse.json({ received: true, type: event.type });

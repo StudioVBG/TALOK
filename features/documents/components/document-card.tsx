@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useToast } from "@/components/ui/use-toast";
 import { documentsService } from "../services/documents.service";
 import type { Document } from "@/lib/types";
+import { TYPE_TO_LABEL } from "@/lib/documents/constants";
 import { formatDateShort } from "@/lib/helpers/format";
 import { CheckCircle, AlertCircle, XCircle, Clock } from "lucide-react";
 
@@ -60,18 +61,7 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
   };
 
   const getTypeLabel = (type: string) => {
-    const labels: Record<string, string> = {
-      bail: "Bail",
-      EDL_entree: "État des lieux d'entrée",
-      EDL_sortie: "État des lieux de sortie",
-      quittance: "Quittance de loyer",
-      attestation_assurance: "Attestation d'assurance",
-      attestation_loyer: "Attestation de loyer",
-      justificatif_revenus: "Justificatif de revenus",
-      piece_identite: "Pièce d'identité",
-      autre: "Autre",
-    };
-    return labels[type] || type;
+    return (TYPE_TO_LABEL as Record<string, string>)[type] || type;
   };
 
   const getFileExtension = (path: string) => {
