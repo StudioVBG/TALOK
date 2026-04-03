@@ -505,35 +505,30 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
 
                             <div className="flex gap-2">
                               {isInvoicePayableStatus(invoice.statut) ? (
-                                <Button 
-                                  size="sm" 
-                                  className="bg-red-600 hover:bg-red-700 text-white font-bold h-10 px-6 rounded-xl shadow-lg shadow-red-100 dark:shadow-red-900/30"
+                                <Button
+                                  size="sm"
+                                  className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold h-10 px-6 rounded-xl shadow-lg shadow-blue-100 dark:shadow-blue-900/30"
                                   onClick={() => {
                                     setSelectedInvoice(invoice);
                                     setIsPaymentOpen(true);
                                   }}
                                 >
-                                  <CreditCard className="mr-2 h-4 w-4" /> Payer
+                                  <CreditCard className="mr-2 h-4 w-4" /> Payer {formatCurrency(invoice.montant_total)}
                                 </Button>
                               ) : invoice.statut === 'paid' ? (
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  className="h-10 w-10 rounded-xl hover:bg-emerald-50 hover:text-emerald-600"
-                                  onClick={() => handleDownload(invoice.id)}
-                                >
-                                  <Download className="h-5 w-5" />
-                                </Button>
-                              ) : (
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  disabled
-                                  className="h-10 rounded-xl font-bold"
+                                  className="h-10 px-4 rounded-xl font-bold hover:bg-emerald-50 hover:text-emerald-600 border-emerald-200 text-emerald-700"
+                                  onClick={() => handleDownload(invoice.id)}
                                 >
-                                  Indisponible
+                                  <Download className="h-4 w-4 mr-2" /> Quittance
                                 </Button>
-                              )}
+                              ) : invoice.statut === 'draft' || invoice.statut === 'cancelled' ? (
+                                <Badge variant="outline" className="h-10 px-4 font-bold text-muted-foreground">
+                                  {invoice.statut === 'draft' ? 'Brouillon' : 'Annulée'}
+                                </Badge>
+                              ) : null}
                             </div>
                           </div>
                         </div>

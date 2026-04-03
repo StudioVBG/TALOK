@@ -31,7 +31,14 @@ import {
   Wrench,
   Zap,
   Bell,
+  Gauge,
+  Droplet,
+  Flame,
+  FolderOpen,
+  Download,
+  CalendarDays,
 } from "lucide-react";
+import { differenceInMonths, differenceInDays } from "date-fns";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { Badge } from "@/components/ui/badge";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -246,7 +253,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
       return true;
     });
 
-    return unique.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 10);
+    return unique.sort((a, b) => b.date.getTime() - a.date.getTime()).slice(0, 5);
   }, [dashboard, realtime.recentEvents, currentLease]);
 
   // ✅ FIX: Vérifier si le locataire a déjà signé ce bail
@@ -582,20 +589,15 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
           </motion.div>
         )}
         
-        {/* --- SECTION 1 : HEADER & COMMAND CENTER --- */}
-        <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-          <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }}>
+        {/* --- SECTION 1 : HERO HEADER DYNAMIQUE --- */}
+        <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex flex-col md:flex-row justify-between items-start gap-4">
+          <div>
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-black tracking-tight text-foreground">
-                {isOnboardingIncomplete ? "Votre tableau de bord" : `Bonjour${profile?.prenom ? `, ${profile.prenom}` : ""} 👋`}
+                {isOnboardingIncomplete ? "Votre tableau de bord" : `Bonjour${profile?.prenom ? `, ${profile.prenom}` : ""}`}
               </h1>
-              {/* 🔴 SOTA 2026: Indicateur de connexion temps réel */}
-                {realtime.isConnected && (
-                <motion.div 
-                  initial={{ scale: 0 }} 
-                  animate={{ scale: 1 }}
-                  className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold"
-                >
+              {realtime.isConnected && (
+                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold">
                   <span className="relative flex h-2 w-2">
                     <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -605,58 +607,86 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
               )}
             </div>
             <p className="text-muted-foreground mt-1 font-medium">
-              {!hasLeaseData 
+              {!hasLeaseData
                 ? "Liez votre logement pour accéder à toutes les fonctionnalités."
-                : primaryPendingAction
-                  ? `Action prioritaire : ${primaryPendingAction.label}.`
-                  : "Tout est en ordre dans votre logement."}
+                : nextDue && nextDue.daysLeft <= 7 && nextDue.daysLeft > 0
+                  ? `Votre prochain loyer est dû dans ${nextDue.daysLeft} jour${nextDue.daysLeft > 1 ? "s" : ""}.`
+                  : nextDue && nextDue.daysLeft <= 0
+                    ? "Vous avez un loyer en attente de paiement."
+                    : primaryPendingAction
+                      ? `Action prioritaire : ${primaryPendingAction.label}.`
+                      : "Tout est en ordre dans votre logement."}
             </p>
-          </motion.div>
+          </div>
+        </motion.div>
 
-          <AnimatePresence mode="wait">
-            {primaryPendingAction && hasLeaseData && (
-              <motion.div 
-                key="primary-pending-action"
-                initial={{ opacity: 0, scale: 0.9, y: -10 }} 
-                animate={{ opacity: 1, scale: 1, y: 0 }} 
-                exit={{ opacity: 0, scale: 0.9, y: 10 }}
-                className="w-full md:w-auto"
-              >
-                <div className="rounded-2xl border border-current/10 bg-card/80 p-3 shadow-sm md:min-w-[320px]">
-                  <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    À faire maintenant
-                  </p>
-                  <Button
-                    variant="ghost"
-                    asChild
-                    className={cn(
-                      "h-auto w-full justify-between rounded-xl border border-current/10 px-4 py-3 shadow-sm transition-all hover:scale-[1.01]",
-                      primaryPendingAction.bg,
-                      primaryPendingAction.color,
-                    )}
-                  >
-                    <Link href={primaryPendingAction.href} className="flex items-center gap-3">
-                      <span className="flex items-center gap-2">
-                        <primaryPendingAction.icon className="h-4 w-4" />
-                        <span className="text-sm font-bold">{primaryPendingAction.label}</span>
-                      </span>
-                      <ChevronRight className="h-3.5 w-3.5 opacity-50" />
-                    </Link>
-                  </Button>
-                  {secondaryPendingActions.length > 0 ? (
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {secondaryPendingActions.map((action) => (
-                        <Button key={action.id} variant="outline" size="sm" asChild className="rounded-xl">
-                          <Link href={action.href}>{action.label}</Link>
-                        </Button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </motion.div>
+        {/* --- SECTION 1b : ALERTES PRIORITAIRES --- */}
+        {hasLeaseData && !isPropertyDeleted && (pendingActions.length > 0 || (nextDue && nextDue.daysLeft <= 0)) && (
+          <div className="flex flex-wrap gap-3">
+            {nextDue && nextDue.daysLeft <= 0 && (
+              <Link href="/tenant/payments">
+                <Badge className="bg-red-100 text-red-700 border-red-200 hover:bg-red-200 cursor-pointer px-4 py-2 text-sm font-bold gap-2">
+                  <AlertCircle className="h-4 w-4" /> Loyer en retard : {formatCurrency(nextDue.amount)}
+                </Badge>
+              </Link>
             )}
-          </AnimatePresence>
-        </div>
+            {nextDue && nextDue.daysLeft > 0 && nextDue.daysLeft <= 5 && (
+              <Link href="/tenant/payments">
+                <Badge className="bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200 cursor-pointer px-4 py-2 text-sm font-bold gap-2">
+                  <Clock className="h-4 w-4" /> Loyer dû dans {nextDue.daysLeft}j : {formatCurrency(nextDue.amount)}
+                </Badge>
+              </Link>
+            )}
+            {pendingActions.filter(a => a.id === 'sign-lease').map(a => (
+              <Link key={a.id} href={a.href}>
+                <Badge className="bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 cursor-pointer px-4 py-2 text-sm font-bold gap-2">
+                  <PenTool className="h-4 w-4" /> Bail à signer
+                </Badge>
+              </Link>
+            ))}
+            {pendingActions.filter(a => a.id === 'edl').map(a => (
+              <Link key={a.id} href={a.href}>
+                <Badge className="bg-violet-100 text-violet-700 border-violet-200 hover:bg-violet-200 cursor-pointer px-4 py-2 text-sm font-bold gap-2">
+                  <FileText className="h-4 w-4" /> EDL à signer
+                </Badge>
+              </Link>
+            ))}
+          </div>
+        )}
+
+        {/* --- SECTION 1c : ACTIONS RAPIDES (toujours visibles) --- */}
+        {hasLeaseData && !isPropertyDeleted && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Button
+              asChild
+              className={cn(
+                "h-14 rounded-2xl font-bold text-sm shadow-md transition-all hover:scale-[1.02]",
+                (dashboard.stats?.unpaid_amount > 0 || (nextDue && nextDue.daysLeft <= 7))
+                  ? "bg-[#2563EB] hover:bg-[#1D4ED8] text-white"
+                  : "bg-card border border-border text-foreground hover:bg-muted"
+              )}
+            >
+              <Link href="/tenant/payments" className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5" /> Payer mon loyer
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="h-14 rounded-2xl font-bold text-sm border-border hover:bg-muted">
+              <Link href="/tenant/meters" className="flex items-center gap-2">
+                <Gauge className="h-5 w-5" /> Saisir un relevé
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="h-14 rounded-2xl font-bold text-sm border-border hover:bg-muted">
+              <Link href="/tenant/requests/new" className="flex items-center gap-2">
+                <Wrench className="h-5 w-5" /> Signaler un problème
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="h-14 rounded-2xl font-bold text-sm border-border hover:bg-muted">
+              <Link href="/tenant/documents" className="flex items-center gap-2">
+                <FileText className="h-5 w-5" /> Mes documents
+              </Link>
+            </Button>
+          </div>
+        )}
 
         {/* Prochaine échéance avec countdown */}
         {hasLeaseData && !isPropertyDeleted && nextDue && nextDue.amount > 0 && (
@@ -693,42 +723,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
           </motion.div>
         )}
 
-        {/* --- CTA SIGNALER UN PROBLÈME --- */}
-        {hasLeaseData && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-          >
-            <GlassCard className="p-6 border-none text-white shadow-xl bg-gradient-to-br from-orange-500 to-red-500 relative overflow-hidden">
-              <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0">
-                    <Wrench className="h-7 w-7 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-black">Un problème dans votre logement ?</h3>
-                    <p className="text-sm text-white/80 font-medium">
-                      Signalez-le en quelques clics, nous nous en occupons.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <Button
-                    className="bg-white text-orange-700 hover:bg-white/90 font-bold rounded-xl h-12 px-6 shadow-lg"
-                    asChild
-                  >
-                    <Link href="/tenant/requests/new" className="gap-2">
-                      <AlertCircle className="h-4 w-4" />
-                      Signaler un problème
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-              <Wrench className="absolute -right-4 -bottom-4 h-24 w-24 text-white/10 rotate-12" />
-            </GlassCard>
-          </motion.div>
-        )}
+        {/* CTA supprimé — remplacé par les actions rapides ci-dessus */}
 
         {/* --- SECTION 2 : BENTO GRID SOTA 2026 --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -759,7 +754,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                         )}
                       </h3>
                       <p className="text-sm text-muted-foreground mt-1 font-medium flex items-center gap-2">
-                        Loyer mensuel CC
+                        Loyer mensuel charges comprises
                         {realtime.hasRecentLeaseChange && (
                           <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 text-[10px] motion-safe:animate-pulse">
                             Mis à jour
@@ -875,6 +870,30 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                         ? `${currentProperty?.ville || ""}${currentProperty?.code_postal ? `, ${currentProperty.code_postal}` : ""}`
                         : "Adresse en cours de saisie"}
                     </p>
+                    {/* Durée restante du bail */}
+                    {currentLease?.date_fin && (() => {
+                      const endDate = new Date(currentLease.date_fin);
+                      if (!isNaN(endDate.getTime())) {
+                        const months = differenceInMonths(endDate, new Date());
+                        const days = differenceInDays(endDate, new Date());
+                        return (
+                          <div className="mt-3 flex items-center gap-2">
+                            <Badge className={cn(
+                              "font-bold text-xs px-3 py-1",
+                              months > 6 ? "bg-emerald-500/30 text-emerald-200 border-emerald-400/30" :
+                              months > 2 ? "bg-amber-500/30 text-amber-200 border-amber-400/30" :
+                              "bg-red-500/30 text-red-200 border-red-400/30"
+                            )}>
+                              <CalendarDays className="h-3.5 w-3.5 mr-1.5" />
+                              {days > 0
+                                ? `Bail jusqu'au ${endDate.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} (${months > 0 ? `${months} mois` : `${days}j`} restants)`
+                                : "Bail expiré"}
+                            </Badge>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
                   </div>
 
                   <div className="mt-6 flex flex-wrap items-center gap-3 pt-6 border-t border-white/10">
@@ -1187,15 +1206,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
             </SecondaryContentPanel>
           </motion.div>
 
-          {/* H. ACTIONS RAPIDES - 12/12 */}
-          <motion.div
-            className="lg:col-span-12"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-          >
-            <QuickActions role="tenant" />
-          </motion.div>
+          {/* Actions rapides déplacées en haut du dashboard */}
 
         </div>
 

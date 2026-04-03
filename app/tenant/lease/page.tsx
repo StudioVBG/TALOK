@@ -343,7 +343,7 @@ export default function TenantLeasePage() {
                           </div>
                         )}
                         <div className="flex justify-between items-center pt-4 border-t border-indigo-100 dark:border-indigo-900/50">
-                          <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">Loyer CC</span>
+                          <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">Loyer charges comprises</span>
                           <span className="text-3xl font-black text-indigo-600 dark:text-indigo-400">
                             {formatCurrency((lease.loyer || 0) + (lease.charges_forfaitaires || 0))}
                           </span>
@@ -595,6 +595,62 @@ export default function TenantLeasePage() {
                       </div>
                     </GlassCard>
                   </motion.div>
+
+                  {/* P2-2: Contact propriétaire */}
+                  {lease.owner && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                      <GlassCard className="p-5 border-border bg-card shadow-lg">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-lg shadow-lg">
+                              {(lease.owner as any).name?.[0] || "P"}
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-0.5">Votre propriétaire</p>
+                              <p className="font-bold text-foreground">{(lease.owner as any).name || "Propriétaire"}</p>
+                              {(lease.owner as any).email && (
+                                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Mail className="h-3 w-3" /> {(lease.owner as any).email}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          <Button variant="outline" size="sm" className="rounded-xl font-bold" asChild>
+                            <Link href="/tenant/messages">Contacter</Link>
+                          </Button>
+                        </div>
+                      </GlassCard>
+                    </motion.div>
+                  )}
+
+                  {/* P2-1: Raccourci saisie compteur */}
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+                    <GlassCard className="p-5 border-border bg-card shadow-lg flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
+                          <Gauge className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-foreground">Relevé de compteur</p>
+                          <p className="text-xs text-muted-foreground">Enregistrez vos index eau, élec, gaz</p>
+                        </div>
+                      </div>
+                      <Button className="bg-[#2563EB] hover:bg-[#1D4ED8] rounded-xl font-bold" asChild>
+                        <Link href="/tenant/meters">Saisir un relevé</Link>
+                      </Button>
+                    </GlassCard>
+                  </motion.div>
+
+                  {/* P2-1: Télécharger le bail PDF */}
+                  {(lease.statut === 'active' || lease.statut === 'fully_signed') && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                      <Button variant="outline" className="w-full h-12 rounded-xl font-bold border-border gap-2" asChild>
+                        <a href={`/api/leases/${lease.id}/pdf`} target="_blank" rel="noopener noreferrer">
+                          <Download className="h-4 w-4" /> Télécharger mon bail (PDF)
+                        </a>
+                      </Button>
+                    </motion.div>
+                  )}
       </div>
 
                 <div className="lg:col-span-7">

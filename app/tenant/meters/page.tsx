@@ -342,6 +342,44 @@ export default function TenantMetersPage() {
           </motion.div>
         </div>
 
+        {/* Alertes relevés en retard */}
+        {!isLoading && meters.filter(m => {
+          if (!m.last_reading?.date) return true;
+          const daysSince = Math.floor((Date.now() - new Date(m.last_reading.date).getTime()) / (1000 * 60 * 60 * 24));
+          return daysSince > 30;
+        }).length > 0 && (
+          <div className="space-y-2">
+            {meters.filter(m => {
+              if (!m.last_reading?.date) return true;
+              const daysSince = Math.floor((Date.now() - new Date(m.last_reading.date).getTime()) / (1000 * 60 * 60 * 24));
+              return daysSince > 30;
+            }).map(m => {
+              const config = meterConfig[m.type] || meterConfig.electricity;
+              const daysSince = m.last_reading?.date
+                ? Math.floor((Date.now() - new Date(m.last_reading.date).getTime()) / (1000 * 60 * 60 * 24))
+                : null;
+              return (
+                <div key={`alert-${m.id}`} className="flex items-center gap-3 p-4 rounded-2xl bg-amber-50 border border-amber-200 dark:bg-amber-950/20 dark:border-amber-800">
+                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200 flex-1">
+                    <strong>{config.label}</strong> — {daysSince ? `Dernier relevé il y a ${daysSince} jours.` : "Aucun relevé enregistré."} Pensez à enregistrer votre index.
+                  </p>
+                  <Button
+                    size="sm"
+                    className="bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold shrink-0"
+                    onClick={() => {
+                      setSelectedMeter(m);
+                      setIsDialogOpen(true);
+                    }}
+                  >
+                    Saisir
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex items-center justify-center py-24">
             <div role="status" aria-label="Chargement des compteurs">
@@ -434,8 +472,57 @@ export default function TenantMetersPage() {
               )}
             </div>
 
-            {/* Colonne Droite : Tips & Analytics - 4/12 */}
+            {/* Colonne Droite : Graphique & Tips - 4/12 */}
             <div className="lg:col-span-4 space-y-6">
+              {/* Graphique d'évolution */}
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
+                <GlassCard className="p-5 border-border bg-card shadow-lg">
+                  <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-[#2563EB]" /> Évolution 12 mois
+                  </h3>
+                  {meters.length > 0 ? (
+                    <div className="space-y-3">
+                      {meters.map(m => {
+                        const config = meterConfig[m.type] || meterConfig.electricity;
+                        const MeterIcon = config.icon;
+                        const lastVal = m.last_reading?.value;
+                        return (
+                          <div key={`chart-${m.id}`} className="flex items-center gap-3">
+                            <div className={cn("p-1.5 rounded-lg", config.bgColor)}>
+                              <MeterIcon className={cn("h-3.5 w-3.5", config.color)} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-foreground truncate">{config.label}</p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {lastVal != null ? `${lastVal.toLocaleString("fr-FR")} ${m.unit}` : "Pas de relevé"}
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs font-bold rounded-lg"
+                              onClick={() => {
+                                setSelectedMeter(m);
+                                setShowHistory(true);
+                              }}
+                            >
+                              Historique
+                            </Button>
+                          </div>
+                        );
+                      })}
+                      <p className="text-[10px] text-muted-foreground text-center pt-2 border-t border-border mt-3">
+                        Cliquez sur "Historique" pour voir l'évolution détaillée
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Aucun compteur configuré
+                    </p>
+                  )}
+                </GlassCard>
+              </motion.div>
+
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
                 <GlassCard className="p-6 border-none bg-gradient-to-br from-indigo-600 to-blue-700 text-white shadow-2xl relative overflow-hidden">
                   <div className="relative z-10 space-y-4">

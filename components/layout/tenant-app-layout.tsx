@@ -397,7 +397,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
         <main
           id="main-content"
           tabIndex={-1}
-          className="min-h-[calc(100vh-4rem)] outline-none"
+          className="min-h-0 outline-none"
         >
           {children}
         </main>
