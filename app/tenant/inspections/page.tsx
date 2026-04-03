@@ -175,7 +175,8 @@ export default function TenantInspectionsPage() {
             <p className="font-bold text-foreground">Pourquoi l'état des lieux est-il crucial ?</p>
             <p className="text-sm text-muted-foreground leading-relaxed">
               C'est le seul document qui protège votre dépôt de garantie. En cas de litige, seul l'EDL comparé à la sortie fait foi. 
-              <strong> Astuce :</strong> Prenez vos propres photos pendant l'EDL et uploadez-les dans vos documents personnels.
+              <strong> Astuce :</strong> Prenez vos propres photos pendant l'EDL et ajoutez-les dans{" "}
+              <Link href="/tenant/documents" className="text-[#2563EB] hover:underline font-bold">Mes Documents</Link> comme preuve personnelle.
             </p>
           </div>
         </motion.div>

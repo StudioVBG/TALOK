@@ -173,7 +173,7 @@ async function generatePdfBrowser(
     const pdfBlob = await html2pdf()
       .set(pdfOptions as any)
       .from(container)
-      .outputPdf('blob');
+      .outputPdf('blob') as unknown as Blob;
 
     // Nettoyer
     document.body.removeChild(container);

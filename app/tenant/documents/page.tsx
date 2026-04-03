@@ -101,23 +101,46 @@ function detectType(doc: any): string {
   return type || "autre";
 }
 
+/** Parse une date de manière sûre — retourne 0 si invalide */
+function safeTime(dateStr: string | null | undefined): number {
+  if (!dateStr) return 0;
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
+/** Formate une date de manière sûre — retourne "Date inconnue" si invalide */
+function formatSafeDate(dateStr: string | null | undefined, options?: Intl.DateTimeFormatOptions): string {
+  if (!dateStr) return "Date inconnue";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "Date inconnue";
+  return d.toLocaleDateString("fr-FR", options || { day: "numeric", month: "short", year: "numeric" });
+}
+
 /** Titre lisible du document */
 function getDocumentTitle(doc: any, config: { label: string }): string {
-  const candidates = [doc.title, doc.name, doc.metadata?.original_name, doc.metadata?.title].filter(Boolean);
+  // P0-3: Prioriser doc.title, original_filename, display_name avant fallback
+  const candidates = [
+    doc.title,
+    doc.display_name,
+    doc.original_filename?.replace(/\.[^/.]+$/, ""),
+    doc.name,
+    doc.metadata?.original_name,
+    doc.metadata?.title,
+  ].filter(Boolean);
   for (const candidate of candidates) {
     if (candidate && candidate.length > 0 && candidate !== "Document") {
       return candidate.replace(/\.(pdf|jpg|jpeg|png|doc|docx)$/i, "").replace(/_/g, " ").replace(/-/g, " ").replace(/\s+/g, " ").trim();
     }
   }
-  const date = doc.created_at ? new Date(doc.created_at).toLocaleDateString("fr-FR", { month: "short", year: "numeric" }) : "";
-  return date ? `${config.label} — ${date}` : config.label;
+  const date = formatSafeDate(doc.created_at, { month: "short", year: "numeric" });
+  return date !== "Date inconnue" ? `${config.label} — ${date}` : config.label;
 }
 
 /** Vérifie si un document date de moins de 7 jours */
 function isRecent(doc: any): boolean {
-  if (!doc.created_at) return false;
-  const diff = Date.now() - new Date(doc.created_at).getTime();
-  return diff < 7 * 24 * 60 * 60 * 1000;
+  const t = safeTime(doc.created_at);
+  if (t === 0) return false;
+  return Date.now() - t < 7 * 24 * 60 * 60 * 1000;
 }
 
 /** Détermine la source d'un document pour le locataire */
@@ -228,7 +251,7 @@ export default function TenantDocumentsPage() {
   const keyDocuments = useMemo(() => {
     if (!documents.length) return { bail: null, quittance: null, edl: null, assurance: null };
 
-    const sorted = [...documents].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
+    const sorted = [...documents].sort((a, b) => safeTime(b.created_at) - safeTime(a.created_at));
 
     let bail: any = null;
     let quittance: any = null;
@@ -251,7 +274,7 @@ export default function TenantDocumentsPage() {
   const filteredDocuments = useMemo(() => {
     // 1. Dédoublonnage
     const map = new Map();
-    const sortedDocs = [...documents].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
+    const sortedDocs = [...documents].sort((a, b) => safeTime(b.created_at) - safeTime(a.created_at));
 
     for (const doc of sortedDocs) {
       const type = detectType(doc);
@@ -292,7 +315,7 @@ export default function TenantDocumentsPage() {
       };
       const ms = msMap[periodFilter];
       if (ms) {
-        result = result.filter((doc: any) => now - new Date(doc.created_at).getTime() < ms);
+        result = result.filter((doc: any) => now - safeTime(doc.created_at) < ms);
       }
     }
 
@@ -306,9 +329,9 @@ export default function TenantDocumentsPage() {
 
     // 6. Tri (H-09)
     if (sortBy === "date_desc") {
-      result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      result.sort((a, b) => safeTime(b.created_at) - safeTime(a.created_at));
     } else if (sortBy === "date_asc") {
-      result.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      result.sort((a, b) => safeTime(a.created_at) - safeTime(b.created_at));
     } else if (sortBy === "type") {
       result.sort((a, b) => detectType(a).localeCompare(detectType(b)));
     }
@@ -759,14 +782,14 @@ export default function TenantDocumentsPage() {
                   setPreviewTitle(doc.title || "Document");
                   setPreviewUrl(null);
                   setPreviewOpen(true);
-                  const url = await fetchSignedUrl(doc.id);
-                  if (url) setPreviewUrl(url);
+                  const data = await fetchSignedUrlData(doc.id);
+                  if (data?.signedUrl) setPreviewUrl(data.signedUrl);
                 }}
                 onDownload={async (doc) => {
-                  const url = await fetchSignedUrl(doc.id);
-                  if (!url) return;
+                  const data = await fetchSignedUrlData(doc.id);
+                  if (!data?.signedUrl) return;
                   const link = document.createElement("a");
-                  link.href = url;
+                  link.href = data.signedUrl;
                   link.download = doc.title || "document";
                   link.target = "_blank";
                   document.body.appendChild(link);
