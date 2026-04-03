@@ -195,15 +195,6 @@ export async function POST(
         throw mediaError;
       }
 
-      console.log(JSON.stringify({
-        event: "edl_photo_upload_success",
-        edlId: iid,
-        mediaId: media.id,
-        fileSize: file.size,
-        mimeType: file.type,
-        duration: Date.now() - startTime,
-      }));
-
       return media;
     });
 

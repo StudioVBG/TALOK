@@ -46,7 +46,41 @@ export function DocumentDownloadButton({
       if (type === "other") {
         const res = await fetch(`/api/documents/${documentId}/signed-url`);
         if (!res.ok) throw new Error("Erreur récupération URL document");
-        const { signedUrl } = await res.json();
+        const data = await res.json();
+        const { signedUrl, mimeType: docMime, storagePath } = data;
+
+        // Si le document est HTML (bail/EDL stocké en .html), convertir en PDF
+        const isHtml = docMime === "text/html" || storagePath?.endsWith(".html");
+        if (isHtml) {
+          const htmlResponse = await fetch(signedUrl);
+          if (!htmlResponse.ok) throw new Error("Erreur chargement document");
+          const htmlText = await htmlResponse.text();
+
+          const html2pdf = (await import("html2pdf.js")).default;
+          const element = document.createElement("div");
+          element.innerHTML = htmlText;
+          element.style.position = "absolute";
+          element.style.left = "-9999px";
+          element.style.top = "0";
+          document.body.appendChild(element);
+
+          await html2pdf().set({
+            margin: 10,
+            filename: fileName || "document.pdf",
+            image: { type: "jpeg", quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
+            pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+          } as any).from(element).save();
+
+          document.body.removeChild(element);
+          toast({
+            title: "Téléchargement terminé",
+            description: "Votre document a été téléchargé au format PDF.",
+          });
+          return;
+        }
+
         window.open(signedUrl, "_blank");
         return;
       }

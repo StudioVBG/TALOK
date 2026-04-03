@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/protected-route";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { usePageTitleStore } from "@/stores/usePageTitleStore";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -148,7 +149,10 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
   const activeNavItem = allNavItems.find(
     (item) => pathname === item.href || pathname?.startsWith(item.href + "/")
   );
-  const pageTitle = isProfilePage ? "Mon profil" : (activeNavItem?.name || "Tableau de bord");
+  const overrideTitle = usePageTitleStore((s) => s.overrideTitle);
+  const navTitle = isProfilePage ? "Mon profil" : (activeNavItem?.name || "Tableau de bord");
+  // Les pages de détail peuvent définir un titre contextuel via usePageTitleStore
+  const pageTitle = overrideTitle || navTitle;
   const isDashboardPage = pathname === OWNER_ROUTES.dashboard.path;
   const shellMeta = getCoreShellMetadata({
     role: "owner",
@@ -166,7 +170,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
     <ProtectedRoute allowedRoles={["owner"]}>
       <OnboardingTourProvider role="owner" profileId={profile?.id}>
       <TooltipProvider delayDuration={0}>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+      <div className="min-h-screen bg-background">
         {/* Offline indicator - visible when device loses connectivity */}
         <OfflineIndicator />
 

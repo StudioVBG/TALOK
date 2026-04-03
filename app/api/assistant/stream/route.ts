@@ -160,7 +160,6 @@ export async function POST(request: NextRequest) {
       ragContext = ragResult.prompt;
       ragSources = ragResult.sources;
 
-      console.log(`[Stream] RAG enriched with ${ragSources.length} sources`);
     } catch (ragError) {
       console.error("[Stream] RAG error, continuing without:", ragError);
       ragContext = SYSTEM_PROMPTS[profile.role] || SYSTEM_PROMPTS.owner;

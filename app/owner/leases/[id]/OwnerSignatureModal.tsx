@@ -98,7 +98,7 @@ export function OwnerSignatureModal({
 
         <div className="space-y-6 py-4">
           {/* Récapitulatif du bail */}
-          <div className="rounded-xl bg-slate-50 dark:bg-slate-900 p-4 space-y-3">
+          <div className="rounded-xl bg-muted p-4 space-y-3">
             <div className="flex items-center justify-between">
               <Badge variant="secondary" className="text-xs">
                 {LEASE_TYPE_LABELS[leaseInfo.typeBail] || leaseInfo.typeBail}
@@ -138,7 +138,7 @@ export function OwnerSignatureModal({
 
           {/* Checkboxes de confirmation */}
           <div className="space-y-3">
-            <div className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+            <div className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted transition-colors">
               <Checkbox
                 id="read-lease"
                 checked={hasReadLease}
@@ -149,7 +149,7 @@ export function OwnerSignatureModal({
               </Label>
             </div>
 
-            <div className="flex items-start gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+            <div className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted transition-colors">
               <Checkbox
                 id="accept-terms"
                 checked={hasAcceptedTerms}

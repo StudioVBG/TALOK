@@ -37,6 +37,7 @@ import {
   FolderOpen,
   Download,
   CalendarDays,
+  Scale,
 } from "lucide-react";
 import { differenceInMonths, differenceInDays } from "date-fns";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
@@ -688,42 +689,121 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
           </div>
         )}
 
-        {/* Prochaine échéance avec countdown */}
-        {hasLeaseData && !isPropertyDeleted && nextDue && nextDue.amount > 0 && (
+        {/* U6 — Card loyer : toujours visible si bail actif */}
+        {hasLeaseData && !isPropertyDeleted && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-            <GlassCard className="p-6 border-border bg-card shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-gradient-to-r from-indigo-50 to-emerald-50 dark:from-indigo-950/30 dark:to-emerald-950/30 border-indigo-100 dark:border-indigo-900/50">
-              <div className="flex items-center gap-4">
-                <div className="h-14 w-14 rounded-2xl bg-indigo-600 flex items-center justify-center text-white shadow-lg">
-                  <CreditCard className="h-7 w-7" />
+            {nextDue && nextDue.amount > 0 ? (
+              /* Facture en attente → card d'action urgente */
+              <GlassCard className={cn(
+                "p-6 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-6",
+                nextDue.daysLeft < 0
+                  ? "bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/30 border-red-200 dark:border-red-900/50"
+                  : nextDue.daysLeft <= 5
+                    ? "bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 border-amber-200 dark:border-amber-900/50"
+                    : "bg-gradient-to-r from-indigo-50 to-emerald-50 dark:from-indigo-950/30 dark:to-emerald-950/30 border-indigo-100 dark:border-indigo-900/50"
+              )}>
+                <div className="flex items-center gap-4">
+                  <div className={cn(
+                    "h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-lg",
+                    nextDue.daysLeft < 0 ? "bg-red-600" : nextDue.daysLeft <= 5 ? "bg-amber-500" : "bg-indigo-600"
+                  )}>
+                    <CreditCard className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">
+                      {nextDue.daysLeft < 0 ? "Loyer en retard" : "Prochaine échéance"}
+                    </p>
+                    <p className="text-3xl font-black text-foreground">{formatCurrency(nextDue.amount)}</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      Le {nextDue.date.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Prochaine échéance</p>
-                  <p className="text-2xl font-black text-foreground">{formatCurrency(nextDue.amount)}</p>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Le {nextDue.date.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
-                  </p>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-background/80 border border-border">
+                    <Clock className={cn("h-5 w-5", nextDue.daysLeft < 0 ? "text-red-600" : nextDue.daysLeft <= 5 ? "text-amber-600" : "text-indigo-600")} />
+                    <span className="font-bold text-foreground">
+                      {nextDue.daysLeft > 0
+                        ? `Dans ${nextDue.daysLeft} jour${nextDue.daysLeft > 1 ? "s" : ""}`
+                        : nextDue.daysLeft === 0
+                          ? "Aujourd'hui"
+                          : `${Math.abs(nextDue.daysLeft)} jour${Math.abs(nextDue.daysLeft) > 1 ? "s" : ""} de retard`}
+                    </span>
+                  </div>
+                  <Button
+                    className={cn(
+                      "rounded-xl font-bold gap-2",
+                      nextDue.daysLeft < 0
+                        ? "bg-red-600 hover:bg-red-700"
+                        : "bg-indigo-600 hover:bg-indigo-700"
+                    )}
+                    asChild
+                  >
+                    <Link href="/tenant/payments">
+                      Payer maintenant
+                      <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
                 </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-background/80 border border-border">
-                  <Clock className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                  <span className="font-bold text-foreground">
-                    {nextDue.daysLeft > 0
-                      ? `Dans ${nextDue.daysLeft} jour${nextDue.daysLeft > 1 ? "s" : ""}`
-                      : nextDue.daysLeft === 0
-                        ? "Aujourd\u0027hui"
-                        : "Échéance passée"}
-                  </span>
+              </GlassCard>
+            ) : (
+              /* Aucune facture en attente → card informative loyer mensuel */
+              <GlassCard className="p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/20 border-emerald-100 dark:border-emerald-900/40">
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 rounded-2xl bg-emerald-600 flex items-center justify-center text-white shadow-md">
+                    <CheckCircle2 className="h-7 w-7" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Mon loyer mensuel</p>
+                    <p className="text-3xl font-black text-foreground">
+                      {formatCurrency(
+                        (Number((currentLease as any)?.loyer) || 0) +
+                        (Number((currentLease as any)?.charges_forfaitaires) || 0)
+                      )}
+                    </p>
+                    <p className="text-sm text-emerald-700 dark:text-emerald-400 font-medium mt-0.5 flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Aucun impayé — tout est à jour
+                    </p>
+                  </div>
                 </div>
-                <Button className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700" asChild>
-                  <Link href="/tenant/payments">Payer</Link>
+                <Button variant="outline" className="rounded-xl font-medium" asChild>
+                  <Link href="/tenant/payments">
+                    <History className="h-4 w-4 mr-2" />
+                    Historique des paiements
+                  </Link>
                 </Button>
-              </div>
-            </GlassCard>
+              </GlassCard>
+            )}
           </motion.div>
         )}
 
         {/* CTA supprimé — remplacé par les actions rapides ci-dessus */}
+
+        {/* U8: Accès rapide "Mes droits" */}
+        {hasLeaseData && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <Link href="/tenant/legal-rights">
+              <GlassCard hoverEffect className="p-5 flex items-center justify-between gap-4 cursor-pointer border-indigo-100 dark:border-indigo-900/40 bg-gradient-to-r from-indigo-50/50 to-purple-50/50 dark:from-indigo-950/20 dark:to-purple-950/20">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-2xl bg-indigo-100 dark:bg-indigo-900/40 flex items-center justify-center shrink-0">
+                    <Scale className="h-6 w-6 text-indigo-600" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-bold text-foreground">Mes droits de locataire</h3>
+                      <Badge className="bg-indigo-600 text-white text-[10px] px-1.5 py-0">Nouveau</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Contacts utiles, protocoles de protection et ressources juridiques
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight className="h-5 w-5 text-muted-foreground shrink-0" />
+              </GlassCard>
+            </Link>
+          </motion.div>
+        )}
 
         {/* --- SECTION 2 : BENTO GRID SOTA 2026 --- */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">

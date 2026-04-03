@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
@@ -11,6 +12,7 @@ import { TenantDataProvider } from "./_data/TenantDataProvider";
 import { TenantAppLayout } from "@/components/layout/tenant-app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
+import { checkIdentityGate } from "@/lib/helpers/identity-gate";
 
 /**
  * Auto-link les lease_signers orphelins pour un locataire existant.
@@ -77,9 +79,9 @@ export default async function TenantLayout({
   }
 
   // 2. Récupérer le profil (avec fallback service role en cas de récursion RLS)
-  const { profile } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null; avatar_url: string | null }>(
+  const { profile } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null; avatar_url: string | null; identity_status: string | null }>(
     user.id,
-    "id, role, prenom, nom, avatar_url"
+    "id, role, prenom, nom, avatar_url, identity_status"
   );
 
   if (!profile) {
@@ -90,6 +92,11 @@ export default async function TenantLayout({
   if (profile.role !== "tenant") {
     redirect(getRoleDashboardUrl(profile.role));
   }
+
+  // Identity gate — vérifie le niveau d'identité requis pour la route
+  const headersList = await headers();
+  const pathname = headersList.get("x-pathname") || "/tenant";
+  checkIdentityGate(pathname, profile.role, profile.identity_status);
 
   // 3b. Auto-link : rattacher les lease_signers orphelins (email match, profile_id NULL)
   if (user.email) {

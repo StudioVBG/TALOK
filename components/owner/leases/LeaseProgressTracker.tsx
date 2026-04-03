@@ -113,12 +113,12 @@ export function LeaseProgressTracker({
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-amber-500" />
-              <span className="text-sm font-semibold text-slate-700">
+              <span className="text-sm font-semibold text-foreground">
                 Progression du bail
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="h-2 w-24 bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-2 w-24 bg-muted rounded-full overflow-hidden">
                 <motion.div 
                   initial={{ width: 0 }}
                   animate={{ width: `${progressPercent}%` }}
@@ -142,7 +142,7 @@ export function LeaseProgressTracker({
         {/* Steps */}
         <div className="relative flex justify-between items-start">
           {/* Ligne de fond */}
-          <div className="absolute top-5 left-[10%] right-[10%] h-1 bg-slate-100 rounded-full -z-10" />
+          <div className="absolute top-5 left-[10%] right-[10%] h-1 bg-muted rounded-full -z-10" />
           
           {/* Ligne de progression active */}
           <motion.div 
@@ -203,7 +203,7 @@ export function LeaseProgressTracker({
                         }}
                         className={cn(
                           "w-10 h-10 rounded-full flex items-center justify-center transition-all relative z-10",
-                          step.isDone || step.isInProgress ? "text-white" : "text-slate-400"
+                          step.isDone || step.isInProgress ? "text-white" : "text-muted-foreground"
                         )}
                       >
                         <AnimatePresence mode="wait">
@@ -244,14 +244,14 @@ export function LeaseProgressTracker({
                     <div className="mt-3 text-center px-1">
                       <p className={cn(
                         "text-xs font-bold uppercase tracking-tight transition-colors",
-                        step.isDone ? "text-emerald-600" : step.isInProgress ? "text-blue-600" : "text-slate-400"
+                        step.isDone ? "text-emerald-600" : step.isInProgress ? "text-blue-600" : "text-muted-foreground"
                       )}>
                         {step.label}
                       </p>
                       {!compact && (
                         <p className={cn(
                           "text-[10px] font-medium mt-0.5 leading-tight hidden sm:block transition-colors",
-                          step.isDone ? "text-emerald-500" : step.isInProgress ? "text-blue-500" : "text-slate-400"
+                          step.isDone ? "text-emerald-500" : step.isInProgress ? "text-blue-500" : "text-muted-foreground"
                         )}>
                           {step.description}
                         </p>
@@ -289,7 +289,7 @@ export function LeaseProgressTracker({
                 </span>
               </div>
             ) : (
-              <div className="bg-slate-50 rounded-lg border border-slate-100 p-3">
+              <div className="bg-muted rounded-lg border border-border p-3">
                 <div className="flex items-start gap-3">
                   {/* Étape en cours */}
                   {(() => {
@@ -305,22 +305,22 @@ export function LeaseProgressTracker({
                           <CurrentIcon className="h-3.5 w-3.5 text-blue-600" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-bold text-slate-800">
+                          <p className="text-xs font-bold text-foreground">
                             En cours : {currentStep.label}
                           </p>
-                          <p className="text-[11px] text-slate-600 mt-0.5">
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
                             {currentStep.detailInProgress}
                           </p>
                           {nextPendingStep && (
-                            <p className="text-[10px] text-slate-400 mt-1.5 flex items-center gap-1">
+                            <p className="text-[10px] text-muted-foreground mt-1.5 flex items-center gap-1">
                               <span>Ensuite :</span>
-                              <span className="font-medium text-slate-500">{nextPendingStep.label}</span>
+                              <span className="font-medium text-muted-foreground">{nextPendingStep.label}</span>
                               <span>— {nextPendingStep.detailPending}</span>
                             </p>
                           )}
                         </div>
                         <div className="text-right flex-shrink-0">
-                          <span className="text-[10px] font-medium text-slate-400">
+                          <span className="text-[10px] font-medium text-muted-foreground">
                             {completedSteps}/{steps.length} terminées
                           </span>
                         </div>

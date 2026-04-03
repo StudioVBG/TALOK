@@ -4,10 +4,173 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { ensureDocumentGallerySupport } from "@/lib/server/document-gallery";
+import { getServiceClient } from "@/lib/supabase/service-client";
+import { DOCUMENT_TYPES } from "@/lib/documents/constants";
 
-/**
- * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
- */
+// ============================================
+// GET /api/documents/[id] — Recuperer un document par ID
+// ============================================
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const { user, error } = await getAuthenticatedUser(request);
+    if (error || !user) {
+      return NextResponse.json({ error: "Non authentifie" }, { status: 401 });
+    }
+
+    const serviceClient = getServiceClient();
+
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil introuvable" }, { status: 404 });
+    }
+
+    const { data: document, error: docError } = await serviceClient
+      .from("documents")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (docError || !document) {
+      return NextResponse.json({ error: "Document non trouve" }, { status: 404 });
+    }
+
+    const doc = document as any;
+    const profileData = profile as any;
+    const hasAccess =
+      profileData.role === "admin" ||
+      doc.owner_id === profileData.id ||
+      doc.tenant_id === profileData.id;
+
+    if (!hasAccess && doc.lease_id) {
+      const { data: signer } = await serviceClient
+        .from("lease_signers")
+        .select("id")
+        .eq("lease_id", doc.lease_id)
+        .eq("profile_id", profileData.id)
+        .maybeSingle();
+      if (!signer) {
+        return NextResponse.json({ error: "Acces non autorise" }, { status: 403 });
+      }
+    } else if (!hasAccess) {
+      return NextResponse.json({ error: "Acces non autorise" }, { status: 403 });
+    }
+
+    let signedUrl: string | null = null;
+    if (doc.storage_path) {
+      const { data: urlData } = await serviceClient.storage
+        .from("documents")
+        .createSignedUrl(doc.storage_path, 3600);
+      signedUrl = urlData?.signedUrl ?? null;
+    }
+
+    return NextResponse.json({ document: { ...doc, signed_url: signedUrl } });
+  } catch (error: unknown) {
+    console.error("Error in GET /api/documents/[id]:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { status: 500 }
+    );
+  }
+}
+
+// ============================================
+// PATCH /api/documents/[id] — Modifier title, type, metadata, visible_tenant
+// ============================================
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const { user, error } = await getAuthenticatedUser(request);
+    if (error || !user) {
+      return NextResponse.json({ error: "Non authentifie" }, { status: 401 });
+    }
+
+    const serviceClient = getServiceClient();
+
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil introuvable" }, { status: 404 });
+    }
+
+    const { data: document, error: docError } = await serviceClient
+      .from("documents")
+      .select("id, owner_id, tenant_id, uploaded_by")
+      .eq("id", id)
+      .single();
+
+    if (docError || !document) {
+      return NextResponse.json({ error: "Document non trouve" }, { status: 404 });
+    }
+
+    const doc = document as any;
+    const profileData = profile as any;
+    const isAdmin = profileData.role === "admin";
+    const isOwner = doc.owner_id === profileData.id;
+    const isUploader = doc.uploaded_by === profileData.id;
+
+    if (!isAdmin && !isOwner && !isUploader) {
+      return NextResponse.json({ error: "Modification non autorisee" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const updates: Record<string, unknown> = {};
+
+    if (body.title !== undefined) updates.title = body.title;
+    if (body.type !== undefined) {
+      if (!(DOCUMENT_TYPES as readonly string[]).includes(body.type)) {
+        return NextResponse.json({ error: `Type invalide: ${body.type}` }, { status: 400 });
+      }
+      updates.type = body.type;
+    }
+    if (body.metadata !== undefined) updates.metadata = body.metadata;
+    if (body.visible_tenant !== undefined) updates.visible_tenant = body.visible_tenant;
+
+    if (Object.keys(updates).length === 0) {
+      return NextResponse.json({ error: "Aucune modification" }, { status: 400 });
+    }
+
+    updates.updated_at = new Date().toISOString();
+
+    const { data: updated, error: updateError } = await serviceClient
+      .from("documents")
+      .update(updates)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ document: updated });
+  } catch (error: unknown) {
+    console.error("Error in PATCH /api/documents/[id]:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { status: 500 }
+    );
+  }
+}
+
+// ============================================
+// DELETE /api/documents/[id] — Supprimer un document
+// ============================================
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }

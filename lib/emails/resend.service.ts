@@ -737,6 +737,88 @@ export async function sendVisitFeedbackRequest(data: {
   });
 }
 
+// ============================================
+// KEY HANDOVER EMAIL FUNCTIONS
+// ============================================
+
+/**
+ * Envoie une demande de scan QR code au locataire pour la remise des clefs
+ */
+export async function sendKeyHandoverScanRequest(data: {
+  tenantEmail: string;
+  tenantFirstName: string;
+  propertyAddress: string;
+  leaseId: string;
+  handoverId: string;
+  expiresAt?: Date;
+}): Promise<EmailResult> {
+  const handoverUrl = `${process.env.NEXT_PUBLIC_APP_URL}/tenant/lease/${data.leaseId}/handover`;
+
+  const expiresAtFormatted = data.expiresAt
+    ? new Intl.DateTimeFormat('fr-FR', {
+        dateStyle: 'long',
+        timeStyle: 'short',
+        timeZone: 'Europe/Paris',
+      }).format(data.expiresAt)
+    : undefined;
+
+  const template = emailTemplates.keyHandoverScanRequest({
+    tenantFirstName: data.tenantFirstName,
+    propertyAddress: data.propertyAddress,
+    handoverUrl,
+    expiresAt: expiresAtFormatted,
+  });
+
+  return sendEmail({
+    to: data.tenantEmail,
+    subject: template.subject,
+    html: template.html,
+    idempotencyKey: `key-handover-scan/${data.handoverId}`,
+    tags: [
+      { name: 'type', value: 'key_handover_scan_request' },
+      { name: 'lease_id', value: data.leaseId },
+    ],
+  });
+}
+
+/**
+ * Envoie une notification au propriétaire quand le locataire confirme la remise des clefs
+ */
+export async function sendKeyHandoverConfirmedNotification(data: {
+  ownerEmail: string;
+  ownerName: string;
+  tenantName: string;
+  propertyAddress: string;
+  confirmedAt: Date;
+  leaseId: string;
+  handoverId: string;
+}): Promise<EmailResult> {
+  const confirmedAtFormatted = new Intl.DateTimeFormat('fr-FR', {
+    dateStyle: 'long',
+    timeStyle: 'short',
+    timeZone: 'Europe/Paris',
+  }).format(data.confirmedAt);
+
+  const template = emailTemplates.keyHandoverConfirmed({
+    ownerName: data.ownerName,
+    tenantName: data.tenantName,
+    propertyAddress: data.propertyAddress,
+    confirmedAt: confirmedAtFormatted,
+    leaseUrl: `${process.env.NEXT_PUBLIC_APP_URL}/owner/leases/${data.leaseId}`,
+  });
+
+  return sendEmail({
+    to: data.ownerEmail,
+    subject: template.subject,
+    html: template.html,
+    idempotencyKey: `key-handover-confirmed/${data.handoverId}`,
+    tags: [
+      { name: 'type', value: 'key_handover_confirmed' },
+      { name: 'lease_id', value: data.leaseId },
+    ],
+  });
+}
+
 // Export du service
 export const emailService = {
   send: sendEmail,
@@ -756,5 +838,8 @@ export const emailService = {
   sendVisitBookingCancelled,
   sendVisitReminder,
   sendVisitFeedbackRequest,
+  // Key Handover
+  sendKeyHandoverScanRequest,
+  sendKeyHandoverConfirmedNotification,
 };
 

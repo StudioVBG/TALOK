@@ -39,7 +39,12 @@ export const queryKeys = {
   // Tickets
   tickets: {
     all: ["tickets"] as const,
-    list: (filters?: Record<string, any>) => [...queryKeys.tickets.all, "list", filters] as const,
+    // Stabiliser la clé en sérialisant les filtres — évite les re-fetches sur nouvelle référence objet
+    list: (filters?: Record<string, any>) => [
+      ...queryKeys.tickets.all,
+      "list",
+      filters ? JSON.stringify(Object.fromEntries(Object.entries(filters).sort())) : undefined,
+    ] as const,
     detail: (id: string) => [...queryKeys.tickets.all, "detail", id] as const,
   },
   // Documents

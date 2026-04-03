@@ -89,6 +89,7 @@ export interface Invoice {
   statut: "draft" | "sent" | "paid" | "late";
   created_at: string;
   metadata?: Record<string, any> | null;
+  type?: string | null;
 }
 
 /** Structure du bail avec données SSOT */
@@ -677,6 +678,7 @@ async function fetchLeaseDetailsFallback(
     statut: inv.statut as Invoice["statut"],
     created_at: inv.created_at,
     metadata: inv.metadata ?? null,
+    type: (inv as any).type ?? null,
   }));
 
   const formattedDocuments: Document[] = (documents ?? []).map((doc: DocumentRow) => ({

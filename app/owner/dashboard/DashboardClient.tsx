@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Plus, Sparkles, AlertCircle, ArrowRight, BarChart3, Users } from "lucide-react";
+import { Plus, Sparkles, AlertCircle, ArrowRight, BarChart3, Users, Home, FileText } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOwnerData } from "../_data/OwnerDataProvider";
@@ -25,6 +25,7 @@ import { RealtimeRevenueWidget, RealtimeStatusIndicator } from "@/components/own
 import { useRealtimeDashboard } from "@/lib/hooks/use-realtime-dashboard";
 import { StartTourButton } from "@/components/onboarding";
 import { SecondaryContentPanel } from "@/components/layout/secondary-content-panel";
+import { StripeConnectBanner } from "@/components/owner/dashboard/stripe-connect-banner";
 
 // Lazy loading des composants lourds
 const OwnerFinanceSummary = dynamic(
@@ -117,7 +118,7 @@ interface DashboardClientProps {
 export function DashboardClient({ profileCompletion }: DashboardClientProps) {
   const { dashboard, apiData, isLoadingApi, error } = useOwnerData();
   // Single realtime hook instance shared between RealtimeRevenueWidget (via its own hook) and RealtimeStatusIndicator (via props)
-  const realtimeStatus = useRealtimeDashboard({ showToasts: false });
+  const realtimeStatus = useRealtimeDashboard({ showToasts: true });
   const completionPercentage = profileCompletion ? calculateCompletionPercentage(profileCompletion) : 0;
 
   if (error) {
@@ -149,20 +150,43 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
 
   // Vérifier s'il y a des biens
   const hasProperties = dashboard.properties?.total > 0;
+  const hasLeases = (dashboard.leases?.active || 0) + (dashboard.leases?.pending || 0) > 0;
 
-  if (!hasProperties && completionPercentage < 50) {
-     return (
-       <EmptyState 
-         title="Bienvenue sur Talok !"
-         description="Pour commencer, ajoutez votre premier bien immobilier."
-         icon={Plus}
-         action={{
-            label: "Ajouter un bien",
-            href: `${OWNER_ROUTES.properties.path}/new`,
-            variant: "default"
-         }}
-       />
-     );
+  // U3: Empty state si aucun bien — quelle que soit la complétion du profil
+  if (!hasProperties) {
+    return (
+      <PageTransition>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center gap-6">
+          <div className="p-6 bg-blue-50 dark:bg-blue-950/30 rounded-3xl">
+            <Home className="h-16 w-16 text-blue-600 mx-auto" />
+          </div>
+          <div className="max-w-md space-y-2">
+            <h2 className="text-2xl font-bold text-foreground">Ajoutez votre premier bien</h2>
+            <p className="text-muted-foreground">
+              Commencez par ajouter un bien immobilier. Talok s'occupe du reste : baux, loyers, documents.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button asChild size="lg" className="bg-[#2563EB] hover:bg-[#1D4ED8] font-bold">
+              <Link href={`${OWNER_ROUTES.properties.path}/new`}>
+                <Plus className="mr-2 h-5 w-5" />
+                Ajouter un bien
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="lg">
+              <Link href="/owner/settings">
+                Compléter mon profil
+              </Link>
+            </Button>
+          </div>
+          {completionPercentage > 0 && (
+            <p className="text-sm text-muted-foreground">
+              Profil complété à {completionPercentage}%
+            </p>
+          )}
+        </div>
+      </PageTransition>
+    );
   }
 
   // Construire les actions urgentes avec le nouveau format
@@ -296,6 +320,9 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
           <UrgentActionsSection actions={primaryUrgentActions} />
         </motion.section>
 
+        {/* Bandeau Stripe Connect si non configuré */}
+        <StripeConnectBanner />
+
         {/* SOTA Header - Responsive pour tous appareils 2025-2026 */}
         <motion.header
           variants={itemVariants}
@@ -338,35 +365,70 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
               </motion.p>
             </div>
             
-            {/* ✅ SOTA 2026: Bouton "Ajouter un bien" supprimé du header - déjà présent dans quick-links */}
+            {/* U2: CTA primaire contextuel */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.5 }}
+              className="shrink-0"
+            >
+              {!hasLeases ? (
+                <Button
+                  asChild
+                  className="bg-white text-slate-900 hover:bg-white/90 font-bold shadow-lg gap-2"
+                >
+                  <Link href={`${OWNER_ROUTES.contracts.path}/new`}>
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Créer un bail</span>
+                    <span className="sm:hidden">Bail</span>
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  asChild
+                  variant="outline"
+                  className="border-white/30 text-white hover:bg-white/10 font-medium gap-2"
+                >
+                  <Link href={`${OWNER_ROUTES.properties.path}/new`}>
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Ajouter un bien</span>
+                    <span className="sm:hidden">Bien</span>
+                  </Link>
+                </Button>
+              )}
+            </motion.div>
           </div>
 
           {/* Quick Stats in Header - Grid responsive */}
           <div className="mt-4 sm:mt-6 lg:mt-8 grid grid-cols-2 lg:grid-cols-4 gap-2.5 xs:gap-3 sm:gap-4 border-t border-white/10 pt-4 sm:pt-6">
              {/* KPI 1: Revenus */}
              <div className="min-w-0">
-                <p className="text-slate-400 text-[10px] xs:text-xs sm:text-sm font-medium truncate">Revenus du mois</p>
-                <p className="text-base xs:text-lg sm:text-xl lg:text-2xl font-bold mt-0.5 sm:mt-1 truncate">
-                   <AnimatedCounter value={transformedData.zone2_finances.kpis.revenue_current_month.collected} type="currency" />
-                </p>
+                <p className="text-muted-foreground text-[10px] xs:text-xs sm:text-sm font-medium truncate">Revenus du mois</p>
+                {isLoadingApi ? (
+                  <Skeleton className="h-7 w-24 mt-0.5 sm:mt-1 bg-white/20" />
+                ) : (
+                  <p className="text-base xs:text-lg sm:text-xl lg:text-2xl font-bold mt-0.5 sm:mt-1 truncate">
+                     <AnimatedCounter value={transformedData.zone2_finances.kpis.revenue_current_month.collected} type="currency" />
+                  </p>
+                )}
              </div>
              {/* KPI 2: Biens */}
              <div className="min-w-0">
-                <p className="text-slate-400 text-[10px] xs:text-xs sm:text-sm font-medium truncate">Biens gérés</p>
+                <p className="text-muted-foreground text-[10px] xs:text-xs sm:text-sm font-medium truncate">Biens gérés</p>
                 <p className="text-base xs:text-lg sm:text-xl lg:text-2xl font-bold mt-0.5 sm:mt-1">
                    <AnimatedCounter value={dashboard.properties?.total || 0} />
                 </p>
              </div>
              {/* KPI 3: Baux */}
              <div className="min-w-0">
-                <p className="text-slate-400 text-[10px] xs:text-xs sm:text-sm font-medium truncate">Baux actifs</p>
+                <p className="text-muted-foreground text-[10px] xs:text-xs sm:text-sm font-medium truncate">Baux actifs</p>
                 <p className="text-base xs:text-lg sm:text-xl lg:text-2xl font-bold mt-0.5 sm:mt-1">
                    <AnimatedCounter value={dashboard.leases?.active || 0} />
                 </p>
              </div>
              {/* KPI 4: Taux d'occupation */}
              <div className="min-w-0">
-                <p className="text-slate-400 text-[10px] xs:text-xs sm:text-sm font-medium truncate">Taux d'occupation</p>
+                <p className="text-muted-foreground text-[10px] xs:text-xs sm:text-sm font-medium truncate">Taux d'occupation</p>
                 {(() => {
                   const rate = dashboard.properties?.total > 0 
                     ? Math.round(((dashboard.leases?.active || 0) / dashboard.properties.total) * 100) 
@@ -413,6 +475,34 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
           <PushNotificationPrompt variant="banner" />
           <SignatureAlertBanner />
         </motion.section>
+
+        {/* U3: Empty state "biens sans bail" */}
+        {!hasLeases && hasProperties && (
+          <motion.section variants={itemVariants}>
+            <GlassCard className="p-8 text-center border-dashed border-2 border-blue-200 dark:border-blue-900/40 bg-blue-50/30 dark:bg-blue-950/10">
+              <FileText className="h-12 w-12 text-blue-400 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">Créez votre premier bail</h3>
+              <p className="text-muted-foreground text-sm mb-6 max-w-sm mx-auto">
+                Vous avez {dashboard.properties.total} bien{dashboard.properties.total > 1 ? "s" : ""}.
+                Ajoutez un locataire et créez un bail pour commencer à encaisser vos loyers.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button asChild className="bg-[#2563EB] hover:bg-[#1D4ED8] font-bold">
+                  <Link href={`${OWNER_ROUTES.contracts.path}/new`}>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Créer un bail
+                  </Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/owner/tenants/invite">
+                    <Users className="mr-2 h-4 w-4" />
+                    Inviter un locataire
+                  </Link>
+                </Button>
+              </div>
+            </GlassCard>
+          </motion.section>
+        )}
 
         {/* Niveau 3 - Activité visible */}
         <motion.section variants={itemVariants}>

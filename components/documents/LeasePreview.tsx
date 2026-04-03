@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Download, FileText, Loader2, Maximize2, RefreshCw } from "lucide-react";
@@ -17,7 +17,6 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
   const [isSealed, setIsSealed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const { toast } = useToast();
 
   const fetchLeaseHtml = async () => {
@@ -54,16 +53,7 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
     fetchLeaseHtml();
   }, [leaseId]);
 
-  useEffect(() => {
-    if (iframeRef.current && html && !isSealed) {
-      const doc = iframeRef.current.contentDocument;
-      if (doc) {
-        doc.open();
-        doc.write(html);
-        doc.close();
-      }
-    }
-  }, [html, isSealed]);
+  // No longer needed — using srcDoc on the iframe directly
 
   return (
     <Card className="h-full flex flex-col">
@@ -84,7 +74,7 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
           </Button>
           <Dialog open={fullscreen} onOpenChange={setFullscreen}>
             <DialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={!html}>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={!html && !pdfUrl}>
                 <Maximize2 className="h-4 w-4" />
               </Button>
             </DialogTrigger>
@@ -136,7 +126,7 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
             <div className="h-full overflow-y-auto flex justify-center py-4 px-2 sm:px-4">
               <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)] flex-shrink-0 h-fit">
                 <iframe
-                  ref={iframeRef}
+                  srcDoc={html}
                   className="w-full border-0 bg-white"
                   style={{ height: "calc(297mm * 1.5)" }}
                   title="Aperçu du bail"
