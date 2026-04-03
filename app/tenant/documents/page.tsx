@@ -782,14 +782,14 @@ export default function TenantDocumentsPage() {
                   setPreviewTitle(doc.title || "Document");
                   setPreviewUrl(null);
                   setPreviewOpen(true);
-                  const url = await fetchSignedUrl(doc.id);
-                  if (url) setPreviewUrl(url);
+                  const data = await fetchSignedUrlData(doc.id);
+                  if (data?.signedUrl) setPreviewUrl(data.signedUrl);
                 }}
                 onDownload={async (doc) => {
-                  const url = await fetchSignedUrl(doc.id);
-                  if (!url) return;
+                  const data = await fetchSignedUrlData(doc.id);
+                  if (!data?.signedUrl) return;
                   const link = document.createElement("a");
-                  link.href = url;
+                  link.href = data.signedUrl;
                   link.download = doc.title || "document";
                   link.target = "_blank";
                   document.body.appendChild(link);

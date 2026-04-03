@@ -86,7 +86,7 @@ export function PDFPreviewModal({
           document.body.appendChild(container);
 
           try {
-            const pdfBlob: Blob = await html2pdf()
+            const pdfBlob = await html2pdf()
               .set({
                 margin: 10,
                 image: { type: "jpeg", quality: 0.98 },
@@ -95,7 +95,7 @@ export function PDFPreviewModal({
                 pagebreak: { mode: ["avoid-all", "css", "legacy"] },
               })
               .from(container)
-              .outputPdf("blob");
+              .outputPdf("blob") as unknown as Blob;
 
             if (revoked) return;
             currentBlobUrl = URL.createObjectURL(
