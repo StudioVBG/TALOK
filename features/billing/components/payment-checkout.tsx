@@ -387,7 +387,7 @@ function SavedMethodQuickPay({
       const { clientSecret } = await res.json();
 
       const stripeInstance = await getStripe();
-      if (!stripeInstance) throw new Error("Stripe non initialisé");
+      if (!stripeInstance) throw new Error("Service de paiement temporairement indisponible. Veuillez réessayer.");
 
       const { error, paymentIntent } = await stripeInstance.confirmPayment({
         clientSecret,

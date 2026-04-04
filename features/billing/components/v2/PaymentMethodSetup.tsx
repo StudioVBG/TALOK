@@ -187,7 +187,7 @@ function SetupForm({ onSuccess, onCancel, returnUrl }: PaymentMethodSetupProps) 
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2 text-[10px] text-slate-400 uppercase font-bold tracking-wider mb-2">
           <ShieldCheck className="w-3 h-3" />
-          Paiement sécurisé via Stripe
+          Paiement sécurisé et chiffré
         </div>
         
         <div className="flex gap-3">
@@ -297,7 +297,7 @@ export function PaymentMethodSetup(props: PaymentMethodSetupProps) {
                 ? `Nouvelle tentative (${retryCount}/3)...`
                 : "Initialisation du tunnel sécurisé..."}
             </p>
-            <p className="text-xs text-slate-400 mt-1">Connexion chiffrée avec Stripe</p>
+            <p className="text-xs text-slate-400 mt-1">Connexion chiffrée SSL 256 bits</p>
           </div>
         </div>
         <PaymentFormSkeleton />

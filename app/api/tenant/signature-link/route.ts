@@ -4,13 +4,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServiceClient } from "@supabase/supabase-js";
-
-// Génère un token encodé pour la signature
-function generateSignatureToken(leaseId: string, tenantEmail: string): string {
-  const timestamp = Date.now();
-  const data = `${leaseId}:${tenantEmail}:${timestamp}`;
-  return Buffer.from(data, "utf-8").toString("base64url");
-}
+import { generateSecureToken } from "@/lib/utils/secure-token";
 
 export async function GET() {
   try {
@@ -83,7 +77,12 @@ export async function GET() {
 
     // Générer les liens de signature
     const signatureLinks = leases.map((lease: any) => {
-      const token = generateSignatureToken(lease.id, user.email || "");
+      const token = generateSecureToken({
+        entityId: lease.id,
+        entityType: "lease",
+        email: user.email || "",
+        expirationDays: 30,
+      });
       const property = lease.property;
       
       return {

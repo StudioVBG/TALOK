@@ -259,7 +259,7 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {paymentReturnState === "success"
-                    ? "Le webhook Stripe met a jour la facture et la quittance. Vous pourrez ensuite la retrouver dans vos documents."
+                    ? "Le système de paiement met à jour automatiquement votre facture et génère votre quittance. Vous pourrez ensuite la retrouver dans vos documents."
                     : "Vous pouvez relancer le paiement depuis cette page des que vous etes pret."}
                 </p>
               </div>
