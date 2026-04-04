@@ -39,7 +39,7 @@ export async function POST(request: Request, { params }: PageProps) {
       return NextResponse.json({ error: "Code de vérification requis." }, { status: 400 });
     }
 
-    const otpResult = verifyOTP(tokenData.entityId, otp_code);
+    const otpResult = await verifyOTP(tokenData.entityId, otp_code);
     if (!otpResult.valid) return NextResponse.json({ error: otpResult.error || "Code invalide" }, { status: 400 });
 
     const serviceClient = getServiceClient();

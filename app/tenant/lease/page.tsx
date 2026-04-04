@@ -639,6 +639,43 @@ export default function TenantLeasePage() {
                     </motion.div>
                   )}
 
+                  {/* Garant(s) */}
+                  {(() => {
+                    const garants = signers.filter((s: any) => s.role === "garant");
+                    if (garants.length === 0) return null;
+                    return (
+                      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.32 }}>
+                        <GlassCard className="p-5 border-border bg-card shadow-lg space-y-3">
+                          <h3 className="font-bold text-foreground flex items-center gap-2 text-sm">
+                            <ShieldCheck className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                            Garant{garants.length > 1 ? "s" : ""}
+                          </h3>
+                          {garants.map((g: any) => (
+                            <div key={g.id} className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                                  {(g.prenom?.[0] || "").toUpperCase()}{(g.nom?.[0] || "").toUpperCase()}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-bold text-foreground">{g.prenom} {g.nom}</p>
+                                  <p className="text-xs text-muted-foreground">Garant</p>
+                                </div>
+                              </div>
+                              <Badge variant="outline" className={cn(
+                                "text-[10px] font-bold uppercase",
+                                g.signature_status === "signed"
+                                  ? "text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20"
+                                  : "text-muted-foreground border-border"
+                              )}>
+                                {g.signature_status === "signed" ? "Signé" : "En attente"}
+                              </Badge>
+                            </div>
+                          ))}
+                        </GlassCard>
+                      </motion.div>
+                    );
+                  })()}
+
                   {/* P2-1: Raccourci saisie compteur */}
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
                     <GlassCard className="p-5 border-border bg-card shadow-lg flex items-center justify-between">

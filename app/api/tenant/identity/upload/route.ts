@@ -305,6 +305,15 @@ export async function POST(request: Request) {
             },
             { onConflict: "profile_id" }
           );
+
+        // Mettre à jour identity_status et onboarding_step sur profiles
+        await serviceClient
+          .from("profiles")
+          .update({
+            identity_status: "document_uploaded",
+            onboarding_step: "document_done",
+          } as Record<string, unknown>)
+          .eq("id", profile.id);
       } else if (side === "verso") {
         await serviceClient
           .from("tenant_profiles")
