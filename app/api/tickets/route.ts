@@ -283,13 +283,33 @@ export const POST = withSecurity(async function POST(request: Request) {
 
     if (insertError) throw insertError;
 
-    // Émettre un événement
+    // Émettre un événement — résoudre le owner_id pour la notification
+    let ownerUserId: string | null = null;
+    if (validated.property_id) {
+      const { data: propForOwner } = await serviceClient
+        .from("properties")
+        .select("owner_id")
+        .eq("id", validated.property_id)
+        .single();
+      if (propForOwner?.owner_id) {
+        const { data: ownerProfile } = await serviceClient
+          .from("profiles")
+          .select("user_id")
+          .eq("id", propForOwner.owner_id)
+          .single();
+        ownerUserId = ownerProfile?.user_id || null;
+      }
+    }
+
     await serviceClient.from("outbox").insert({
       event_type: "Ticket.Opened",
       payload: {
         ticket_id: ticket.id,
         property_id: validated.property_id,
         priority: validated.priorite,
+        title: validated.titre,
+        owner_id: ownerUserId,
+        created_by: profileData.id,
       },
     } as any);
 

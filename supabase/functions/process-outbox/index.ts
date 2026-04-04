@@ -246,14 +246,90 @@ async function processEvent(supabase: any, event: any) {
       break;
 
     case "Ticket.Opened":
-      await sendNotification(supabase, {
-        type: "ticket_opened",
-        user_id: payload.owner_id,
-        title: "Nouveau ticket",
-        message: `Un nouveau ticket a été ouvert: ${payload.title}`,
-        metadata: { ticket_id: payload.ticket_id },
-      });
+      if (payload.owner_id) {
+        await sendNotification(supabase, {
+          type: "ticket_opened",
+          user_id: payload.owner_id,
+          title: "Nouveau ticket",
+          message: `Un nouveau ticket a été ouvert : ${payload.title || "Demande de maintenance"}`,
+          metadata: { ticket_id: payload.ticket_id },
+        });
+      }
       break;
+
+    case "Ticket.InProgress": {
+      // Notifier le créateur du ticket (tenant)
+      const inProgressCreator = await resolveTicketCreatorUserId(supabase, payload.ticket_id);
+      if (inProgressCreator) {
+        await sendNotification(supabase, {
+          type: "ticket_in_progress",
+          user_id: inProgressCreator,
+          title: "Demande en cours de traitement",
+          message: "Votre demande de maintenance est prise en charge.",
+          metadata: { ticket_id: payload.ticket_id },
+        });
+      }
+      break;
+    }
+
+    case "Ticket.Paused": {
+      const pausedCreator = await resolveTicketCreatorUserId(supabase, payload.ticket_id);
+      if (pausedCreator) {
+        await sendNotification(supabase, {
+          type: "ticket_paused",
+          user_id: pausedCreator,
+          title: "Demande en pause",
+          message: payload.reason
+            ? `Votre demande a été mise en pause : ${payload.reason}`
+            : "Votre demande a été temporairement mise en pause.",
+          metadata: { ticket_id: payload.ticket_id },
+        });
+      }
+      break;
+    }
+
+    case "Ticket.Resolved": {
+      const resolvedCreator = await resolveTicketCreatorUserId(supabase, payload.ticket_id);
+      if (resolvedCreator) {
+        await sendNotification(supabase, {
+          type: "ticket_resolved",
+          user_id: resolvedCreator,
+          title: "Demande résolue",
+          message: "Votre demande de maintenance a été résolue. Si le problème persiste, n'hésitez pas à rouvrir un ticket.",
+          metadata: { ticket_id: payload.ticket_id },
+        });
+      }
+      break;
+    }
+
+    case "Ticket.Closed": {
+      const closedCreator = await resolveTicketCreatorUserId(supabase, payload.ticket_id);
+      if (closedCreator) {
+        await sendNotification(supabase, {
+          type: "ticket_closed",
+          user_id: closedCreator,
+          title: "Demande clôturée",
+          message: "Votre demande de maintenance a été clôturée.",
+          metadata: { ticket_id: payload.ticket_id },
+        });
+      }
+      break;
+    }
+
+    case "ticket.message.created": {
+      // Notifier le destinataire : si le sender est owner → notifier le tenant (créateur), et vice versa
+      const msgTicket = await resolveTicketForMessage(supabase, payload.ticket_id, payload.sender_user);
+      if (msgTicket?.notify_user_id) {
+        await sendNotification(supabase, {
+          type: "ticket_new_message",
+          user_id: msgTicket.notify_user_id,
+          title: "Nouvelle réponse sur votre demande",
+          message: "Vous avez reçu une réponse sur votre demande de maintenance.",
+          metadata: { ticket_id: payload.ticket_id, message_id: payload.message_id },
+        });
+      }
+      break;
+    }
 
     case "Lease.Activated":
       // Notifier le locataire que le bail est actif
@@ -842,6 +918,83 @@ async function generateInitialInvoice(supabase: any, leaseId: string) {
   }
 }
 
+/**
+ * Résout le user_id du créateur d'un ticket (pour les notifications tenant).
+ */
+async function resolveTicketCreatorUserId(supabase: any, ticketId: string): Promise<string | null> {
+  try {
+    const { data: ticket } = await supabase
+      .from("tickets")
+      .select("created_by_profile_id")
+      .eq("id", ticketId)
+      .single();
+    if (!ticket?.created_by_profile_id) return null;
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .eq("id", ticket.created_by_profile_id)
+      .single();
+    return profile?.user_id || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Résout qui notifier sur un nouveau message ticket.
+ * Si le sender est le créateur → notifier le propriétaire du bien.
+ * Si le sender est le propriétaire → notifier le créateur.
+ */
+async function resolveTicketForMessage(
+  supabase: any,
+  ticketId: string,
+  senderUserId: string
+): Promise<{ notify_user_id: string } | null> {
+  try {
+    const { data: ticket } = await supabase
+      .from("tickets")
+      .select("created_by_profile_id, property_id")
+      .eq("id", ticketId)
+      .single();
+    if (!ticket) return null;
+
+    // Résoudre le user_id du créateur
+    const { data: creatorProfile } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .eq("id", ticket.created_by_profile_id)
+      .single();
+
+    const creatorUserId = creatorProfile?.user_id;
+
+    // Si le sender est le créateur → notifier le owner
+    if (creatorUserId === senderUserId && ticket.property_id) {
+      const { data: property } = await supabase
+        .from("properties")
+        .select("owner_id")
+        .eq("id", ticket.property_id)
+        .single();
+      if (property?.owner_id) {
+        const { data: ownerProfile } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("id", property.owner_id)
+          .single();
+        if (ownerProfile?.user_id) return { notify_user_id: ownerProfile.user_id };
+      }
+    }
+
+    // Si le sender est le owner → notifier le créateur
+    if (creatorUserId && creatorUserId !== senderUserId) {
+      return { notify_user_id: creatorUserId };
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function sendNotification(supabase: any, notification: any) {
   // ✅ FIX: Résoudre profile_id depuis user_id pour cohérence avec GET /api/notifications
   let profileId: string | null = null;
@@ -854,17 +1007,22 @@ async function sendNotification(supabase: any, notification: any) {
     profileId = profile?.id || null;
   }
 
-  // Créer la notification dans la table
-  await supabase.from("notifications").insert({
-    user_id: notification.user_id,
-    profile_id: profileId,
-    type: notification.type,
-    title: notification.title,
-    body: notification.message,
-    metadata: notification.metadata,
-    read: false,
-    is_read: false,
-  } as any);
+  // Créer la notification dans la table (try/catch indépendant — ne pas bloquer le push/email)
+  try {
+    const { error: insertError } = await supabase.from("notifications").insert({
+      user_id: notification.user_id,
+      profile_id: profileId,
+      type: notification.type,
+      title: notification.title,
+      body: notification.message,
+      metadata: notification.metadata,
+      read: false,
+      is_read: false,
+    } as any);
+    if (insertError) console.error(`[Notification] Insert failed for ${notification.user_id}:`, insertError.message);
+  } catch (err) {
+    console.error(`[Notification] Insert exception for ${notification.user_id}:`, err);
+  }
 
   // Envoyer push notification si activée
   try {
