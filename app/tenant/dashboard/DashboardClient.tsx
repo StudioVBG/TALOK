@@ -515,7 +515,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
           >
             {/* Background Pattern */}
             <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+              <div className="absolute top-0 left-0 w-96 h-96 bg-white/80 dark:bg-white/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
               <div className="absolute bottom-0 right-0 w-64 h-64 bg-indigo-300 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
             </div>
 

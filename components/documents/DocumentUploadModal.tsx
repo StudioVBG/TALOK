@@ -8,8 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, Loader2, FileText, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { useCreateDocument } from "@/lib/hooks/use-documents";
-import { typedSupabaseClient } from "@/lib/supabase/typed-client";
+import { useGedUpload } from "@/lib/hooks/use-ged-documents";
 import { useAuth } from "@/lib/hooks/use-auth";
 
 interface DocumentUploadModalProps {
@@ -33,7 +32,7 @@ export function DocumentUploadModal({ leaseId, propertyId }: DocumentUploadModal
   const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
   const { profile } = useAuth();
-  const createDocument = useCreateDocument();
+  const gedUpload = useGedUpload();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -59,31 +58,13 @@ export function DocumentUploadModal({ leaseId, propertyId }: DocumentUploadModal
     try {
       setIsUploading(true);
 
-      // 1. Upload vers le bucket 'documents'
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `tenants/${profile.id}/${type}/${fileName}`;
-
-      const { data: uploadData, error: uploadError } = await typedSupabaseClient.storage
-        .from("documents")
-        .upload(filePath, file);
-
-      if (uploadError) throw uploadError;
-
-      // 2. Créer l'entrée en BDD
-      await createDocument.mutateAsync({
-        title: title || file.name,
+      // Upload via GED API (/api/documents/upload) — validation serveur, metadata enrichie
+      await gedUpload.mutateAsync({
+        file,
         type,
-        storage_path: filePath,
-        lease_id: leaseId || null,
-        property_id: propertyId || null,
-        tenant_id: profile.id,
-        metadata: {
-          file_name: file.name,
-          file_size: file.size,
-          file_type: file.type,
-          uploaded_at: new Date().toISOString(),
-        },
+        title: title || file.name,
+        lease_id: leaseId,
+        property_id: propertyId,
       });
 
       toast({
@@ -97,7 +78,7 @@ export function DocumentUploadModal({ leaseId, propertyId }: DocumentUploadModal
       console.error("Erreur upload:", error);
       toast({
         title: "Erreur",
-        description: "Impossible d'envoyer le document.",
+        description: error instanceof Error ? error.message : "Impossible d'envoyer le document.",
         variant: "destructive",
       });
     } finally {

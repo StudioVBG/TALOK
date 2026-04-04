@@ -81,7 +81,7 @@ export async function GET() {
         entityId: lease.id,
         entityType: "lease",
         email: user.email || "",
-        expirationDays: 30,
+        expirationDays: 14,
       });
       const property = lease.property;
       

@@ -117,7 +117,7 @@ export function decodeLegacyToken(token: string): { leaseId: string; tenantEmail
  */
 export function verifyTokenCompat(
   token: string,
-  expirationDays: number = 30
+  expirationDays: number = 14
 ): { entityId: string; email: string; entityType: "lease" | "edl"; createdAt: number } | null {
   // Vérifier uniquement le format HMAC-SHA256 sécurisé
   // Le fallback legacy (base64url non signé) a été supprimé car forgeable.

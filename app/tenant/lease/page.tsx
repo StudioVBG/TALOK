@@ -158,6 +158,10 @@ export default function TenantLeasePage() {
   const isFullySigned = lease.statut === 'active' || lease.statut === 'fully_signed';
   const isDraft = lease.statut === 'draft';
   const isTerminated = lease.statut === 'terminated';
+  const isCancelled = lease.statut === 'cancelled';
+  const isArchived = lease.statut === 'archived';
+  const isAmended = lease.statut === 'amended';
+  const isSent = lease.statut === 'sent';
   const isPropertyDeleted = !!(property as { deleted_at?: string; etat?: string } | null)?.deleted_at || (property as { deleted_at?: string; etat?: string } | null)?.etat === 'deleted';
 
   if (isPropertyDeleted) {
@@ -239,25 +243,37 @@ export default function TenantLeasePage() {
                     <GlassCard className={cn(
                       "p-6 border-none shadow-xl relative overflow-hidden",
                       isFullySigned && "bg-gradient-to-br from-emerald-500 to-teal-600 text-white",
-                      !isFullySigned && !isDraft && !isTerminated && "bg-gradient-to-br from-amber-400 to-orange-500 text-white",
+                      isCancelled && "bg-gradient-to-br from-red-500 to-red-700 text-white",
+                      isArchived && "bg-gradient-to-br from-slate-400 to-slate-600 text-white",
+                      isAmended && "bg-gradient-to-br from-blue-500 to-indigo-600 text-white",
+                      isSent && "bg-gradient-to-br from-blue-400 to-blue-600 text-white",
                       isDraft && "bg-gradient-to-br from-slate-400 to-slate-600 text-white",
-                      isTerminated && "bg-gradient-to-br from-slate-500 to-slate-700 text-white"
+                      isTerminated && "bg-gradient-to-br from-slate-500 to-slate-700 text-white",
+                      !isFullySigned && !isDraft && !isTerminated && !isCancelled && !isArchived && !isAmended && !isSent && "bg-gradient-to-br from-amber-400 to-orange-500 text-white",
                     )}>
                       <div className="relative z-10 flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
                             {isFullySigned && <ShieldCheck className="h-6 w-6" />}
-                            {!isFullySigned && !isDraft && !isTerminated && <Clock className="h-6 w-6" />}
+                            {isCancelled && <CalendarOff className="h-6 w-6" />}
+                            {isArchived && <FileText className="h-6 w-6" />}
+                            {isAmended && <FileSignature className="h-6 w-6" />}
+                            {isSent && <FileSignature className="h-6 w-6" />}
                             {isDraft && <FileText className="h-6 w-6" />}
                             {isTerminated && <CalendarOff className="h-6 w-6" />}
+                            {!isFullySigned && !isDraft && !isTerminated && !isCancelled && !isArchived && !isAmended && !isSent && <Clock className="h-6 w-6" />}
                           </div>
                           <div>
                             <p className="text-sm font-bold uppercase tracking-widest opacity-80">Statut Juridique</p>
                             <p className="text-2xl font-bold">
                               {isFullySigned && "Bail Certifié"}
-                              {!isFullySigned && !isDraft && !isTerminated && "Signature en cours"}
+                              {isCancelled && "Bail annulé"}
+                              {isArchived && "Bail archivé"}
+                              {isAmended && "Bail modifié (avenant)"}
+                              {isSent && "Bail envoyé — en attente de signature"}
                               {isDraft && "Bail en cours de préparation"}
                               {isTerminated && "Bail terminé"}
+                              {!isFullySigned && !isDraft && !isTerminated && !isCancelled && !isArchived && !isAmended && !isSent && "Signature en cours"}
                             </p>
                             {isTerminated && lease.date_fin && (
                               <p className="text-sm opacity-90 mt-1">Fin du bail : {formatDateShort(lease.date_fin)}</p>

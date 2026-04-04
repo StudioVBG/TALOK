@@ -17,6 +17,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { useDocumentCenter } from "@/lib/hooks/use-document-center";
 import { useDocuments } from "@/lib/hooks/use-documents";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -201,7 +202,17 @@ function DocumentsSkeleton() {
 // ──────────────────────────────────────────────
 
 export default function TenantDocumentsPage() {
-  const { data: documents = [], isLoading, error, refetch } = useDocuments();
+  // SOTA 2026: Utiliser useDocumentCenter (RPC optimisée) avec fallback useDocuments
+  const documentCenter = useDocumentCenter();
+  const legacyDocs = useDocuments();
+
+  // Si la RPC retourne des documents, on les utilise. Sinon fallback sur le hook legacy.
+  const hasCenterData = (documentCenter.data?.documents?.length ?? 0) > 0;
+  const documents = hasCenterData ? (documentCenter.data?.documents ?? []) : (legacyDocs.data ?? []);
+  const isLoading = documentCenter.isLoading || (!hasCenterData && legacyDocs.isLoading);
+  const error = hasCenterData ? documentCenter.error : legacyDocs.error;
+  const refetch = hasCenterData ? documentCenter.refetch : legacyDocs.refetch;
+
   const { dashboard } = useTenantData();
   const { profile } = useAuth();
   const searchParams = useSearchParams();

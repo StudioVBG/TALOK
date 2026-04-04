@@ -489,6 +489,7 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                                 : invoice.statut === 'overdue' ? 'Impayé'
                                 : invoice.statut === 'unpaid' ? 'Impayé critique'
                                 : invoice.statut === 'partial' ? 'Paiement partiel'
+                                : invoice.statut === 'viewed' ? 'Consultée'
                                 : invoice.statut === 'cancelled' ? 'Annulée'
                                 : invoice.statut === 'draft' ? 'Brouillon'
                                 : 'À régler'
@@ -497,6 +498,7 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                                 invoice.statut === 'paid' ? 'success'
                                 : invoice.statut === 'late' || invoice.statut === 'overdue' || invoice.statut === 'unpaid' ? 'error'
                                 : invoice.statut === 'partial' ? 'warning'
+                                : invoice.statut === 'viewed' ? 'info'
                                 : invoice.statut === 'draft' || invoice.statut === 'cancelled' ? 'neutral'
                                 : 'warning'
                               }
