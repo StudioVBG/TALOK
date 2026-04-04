@@ -298,6 +298,8 @@ async function processEvent(supabase: any, event: any) {
           message: "Votre demande de maintenance a été résolue. Si le problème persiste, n'hésitez pas à rouvrir un ticket.",
           metadata: { ticket_id: payload.ticket_id },
         });
+        // SMS pour les tickets résolus
+        try { await sendSmsNotification(supabase, resolvedCreator, "Talok : Votre demande de maintenance a été résolue. Connectez-vous pour voir les détails."); } catch { /* non-blocking */ }
       }
       break;
     }
@@ -399,14 +401,23 @@ async function processEvent(supabase: any, event: any) {
       await sendSignatureEmail(supabase, {
         user_id: payload.user_id,
         subject: "🎉 Bail signé - Prochaines étapes",
-        message: payload.is_owner 
+        message: payload.is_owner
           ? `Félicitations ! Le bail pour ${payload.property_address} est maintenant signé. Créez l'état des lieux d'entrée pour finaliser l'emménagement.`
           : `Félicitations ! Votre bail pour ${payload.property_address} est signé. Votre propriétaire va programmer l'état des lieux d'entrée.`,
         cta_label: payload.is_owner ? "Créer l'état des lieux" : "Voir mon bail",
-        cta_url: payload.is_owner 
+        cta_url: payload.is_owner
           ? `/owner/inspections/new?lease_id=${payload.lease_id}`
           : `/tenant/lease`,
       });
+
+      // SMS pour la signature complète
+      try {
+        await sendSmsNotification(
+          supabase,
+          payload.user_id,
+          `Talok : Votre bail pour ${payload.property_address || "le logement"} est signé par toutes les parties. Bienvenue chez vous !`
+        );
+      } catch { /* non-blocking */ }
       break;
 
     case "EDL.InvitationSent":
@@ -515,6 +526,42 @@ async function processEvent(supabase: any, event: any) {
         });
       }
       break;
+
+    case "Invoice.Overdue": {
+      // Notifier le locataire d'un impayé
+      if (payload.tenant_user_id) {
+        await sendNotification(supabase, {
+          type: "invoice_overdue",
+          user_id: payload.tenant_user_id,
+          title: "Loyer en retard",
+          message: `Votre loyer pour ${payload.property_address || "le logement"} est en retard. Régularisez rapidement pour éviter des frais.`,
+          metadata: { invoice_id: payload.invoice_id },
+        });
+        // SMS pour les impayés (critique)
+        try {
+          await sendSmsNotification(
+            supabase,
+            payload.tenant_user_id,
+            `Talok : Vous avez un loyer impayé pour ${payload.property_address || "votre logement"}. Connectez-vous pour régulariser.`
+          );
+        } catch { /* non-blocking */ }
+      }
+      break;
+    }
+
+    case "Invoice.Unpaid": {
+      // Impayé critique — notifier le locataire
+      if (payload.tenant_user_id) {
+        await sendNotification(supabase, {
+          type: "invoice_unpaid",
+          user_id: payload.tenant_user_id,
+          title: "Impayé critique",
+          message: `Votre loyer pour ${payload.property_address || "le logement"} reste impayé. Contactez votre propriétaire ou régularisez dès que possible.`,
+          metadata: { invoice_id: payload.invoice_id },
+        });
+      }
+      break;
+    }
 
     case "KeyHandover.Confirmed":
       if (payload.tenant_user_id) {
@@ -1089,6 +1136,74 @@ async function sendNotification(supabase: any, notification: any) {
 /**
  * ✅ SOTA 2026: Envoyer un email transactionnel lié aux signatures
  */
+/**
+ * Envoie un SMS via Twilio REST API (Deno-compatible).
+ * Non-bloquant : échoue silencieusement si Twilio non configuré.
+ */
+async function sendSmsNotification(supabase: any, userId: string, message: string): Promise<void> {
+  const accountSid = Deno.env.get("TWILIO_ACCOUNT_SID");
+  const authToken = Deno.env.get("TWILIO_AUTH_TOKEN");
+  const fromNumber = Deno.env.get("TWILIO_MESSAGING_SERVICE_SID") || Deno.env.get("TWILIO_PHONE_NUMBER");
+
+  if (!accountSid || !authToken || !fromNumber) return;
+
+  try {
+    // Résoudre le profil + téléphone
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, telephone, phone_verified")
+      .eq("user_id", userId)
+      .single();
+
+    if (!profile?.telephone || !profile?.phone_verified) return;
+
+    // Vérifier les préférences SMS
+    const { data: prefs } = await supabase
+      .from("notification_preferences")
+      .select("sms_enabled")
+      .eq("profile_id", profile.id)
+      .maybeSingle();
+
+    if (prefs && prefs.sms_enabled === false) return;
+
+    // Formater le numéro (ajouter +33 si FR)
+    let phone = profile.telephone.replace(/\s/g, "");
+    if (phone.startsWith("0")) phone = "+33" + phone.slice(1);
+    if (!phone.startsWith("+")) phone = "+" + phone;
+
+    // Envoyer via Twilio REST API
+    const formData = new URLSearchParams();
+    formData.append("To", phone);
+    formData.append("Body", message);
+    if (fromNumber.startsWith("MG")) {
+      formData.append("MessagingServiceSid", fromNumber);
+    } else {
+      formData.append("From", fromNumber);
+    }
+
+    const response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: "Basic " + btoa(`${accountSid}:${authToken}`),
+        },
+        body: formData.toString(),
+      }
+    );
+
+    if (response.ok) {
+      console.log(`[Outbox] SMS envoyé à ${phone.slice(0, 6)}***`);
+    } else {
+      const err = await response.text();
+      console.error(`[Outbox] SMS échoué (${response.status}):`, err);
+    }
+  } catch (err) {
+    console.error("[Outbox] SMS exception:", err);
+  }
+}
+
 async function sendSignatureEmail(supabase: any, params: {
   user_id: string;
   subject: string;

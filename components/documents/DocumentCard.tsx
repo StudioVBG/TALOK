@@ -8,55 +8,15 @@
  * Respecte : focus-visible, prefers-reduced-motion, touch targets 44px
  */
 
-import { Calendar, Eye, Download, FileText, FileSignature, Receipt, Shield, FileCheck, User, CheckCircle2, KeyRound } from "lucide-react";
+import { Calendar, Eye, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
+import { DOCUMENT_CONFIG } from "@/lib/documents/document-config";
 
-// Configuration des types de documents
-export const DOCUMENT_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
-  // Documents de bail
-  bail: { label: "Bail de location", icon: FileSignature, color: "text-blue-600", bgColor: "bg-blue-50" },
-  bail_signe: { label: "Bail signé", icon: FileSignature, color: "text-blue-600", bgColor: "bg-blue-50" },
-  lease: { label: "Bail de location", icon: FileSignature, color: "text-blue-600", bgColor: "bg-blue-50" },
-  contrat: { label: "Contrat de location", icon: FileSignature, color: "text-blue-600", bgColor: "bg-blue-50" },
-  avenant: { label: "Avenant au bail", icon: FileSignature, color: "text-blue-600", bgColor: "bg-blue-50" },
-  
-  // Quittances
-  quittance: { label: "Quittance de loyer", icon: Receipt, color: "text-emerald-600", bgColor: "bg-emerald-50" },
-  receipt: { label: "Quittance de loyer", icon: Receipt, color: "text-emerald-600", bgColor: "bg-emerald-50" },
-  
-  // Assurance
-  attestation_assurance: { label: "Assurance habitation", icon: Shield, color: "text-indigo-600", bgColor: "bg-indigo-50" },
-  assurance: { label: "Assurance habitation", icon: Shield, color: "text-indigo-600", bgColor: "bg-indigo-50" },
-  
-  // États des lieux
-  EDL_entree: { label: "EDL d'entrée", icon: FileCheck, color: "text-amber-600", bgColor: "bg-amber-50" },
-  edl_entree: { label: "EDL d'entrée", icon: FileCheck, color: "text-amber-600", bgColor: "bg-amber-50" },
-  EDL_sortie: { label: "EDL de sortie", icon: FileCheck, color: "text-orange-600", bgColor: "bg-orange-50" },
-  edl_sortie: { label: "EDL de sortie", icon: FileCheck, color: "text-orange-600", bgColor: "bg-orange-50" },
-  edl: { label: "État des lieux", icon: FileCheck, color: "text-amber-600", bgColor: "bg-amber-50" },
-  attestation_remise_cles: { label: "Attestation remise des clés", icon: KeyRound, color: "text-violet-600", bgColor: "bg-violet-50" },
-  
-  // Diagnostics
-  dpe: { label: "DPE", icon: FileText, color: "text-green-600", bgColor: "bg-green-50" },
-  erp: { label: "État des Risques", icon: FileText, color: "text-red-600", bgColor: "bg-red-50" },
-  crep: { label: "Diagnostic Plomb", icon: FileText, color: "text-yellow-600", bgColor: "bg-yellow-50" },
-  amiante: { label: "Diagnostic Amiante", icon: FileText, color: "text-gray-600", bgColor: "bg-gray-50" },
-  electricite: { label: "Diagnostic Électricité", icon: FileText, color: "text-cyan-600", bgColor: "bg-cyan-50" },
-  gaz: { label: "Diagnostic Gaz", icon: FileText, color: "text-orange-600", bgColor: "bg-orange-50" },
-  
-  // Autres
-  facture: { label: "Facture", icon: FileText, color: "text-muted-foreground", bgColor: "bg-muted" },
-  piece_identite: { label: "Pièce d'identité", icon: User, color: "text-purple-600", bgColor: "bg-purple-50" },
-  cni: { label: "Pièce d'identité", icon: User, color: "text-purple-600", bgColor: "bg-purple-50" },
-  justificatif_revenus: { label: "Justificatif de revenus", icon: FileText, color: "text-teal-600", bgColor: "bg-teal-50" },
-  attestation_loyer: { label: "Attestation de loyer", icon: FileText, color: "text-sky-600", bgColor: "bg-sky-50" },
-  
-  // Par défaut
-  autre: { label: "Document", icon: FileText, color: "text-muted-foreground", bgColor: "bg-muted" },
-};
+// Re-export pour rétrocompatibilité (les importeurs existants)
+export { DOCUMENT_CONFIG } from "@/lib/documents/document-config";
 
 export interface DocumentCardDoc {
   id: string;
