@@ -33,6 +33,7 @@ import {
 import { Search, FileText, Plus, MoreHorizontal, Eye, Download, Trash2, Loader2, PenLine, AlertTriangle, RefreshCw, User, Users, ClipboardCheck } from "lucide-react";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { exportLeases } from "@/lib/services/export-service";
+import { apiClient } from "@/lib/api-client";
 import { useToast } from "@/components/ui/use-toast";
 
 // React Query hooks pour la réactivité
@@ -85,28 +86,20 @@ export function ContractsClient() {
       setIsSyncing(true);
       
       // 1. Synchroniser les signatures de bail
-      const leaseResponse = await fetch("/api/admin/sync-lease-statuses", {
-        method: "POST",
-      });
-      const leaseResult = await leaseResponse.json();
-      
+      const leaseResult = await apiClient.post<{ fixed?: number; error?: string }>("/admin/sync-lease-statuses");
+
       // 2. Synchroniser les EDL et activer les baux
-      const edlResponse = await fetch("/api/admin/sync-edl-lease-status", {
-        method: "POST",
-      });
-      const edlResult = await edlResponse.json();
-      
+      const edlResult = await apiClient.post<{ edlsUpdated?: number; leasesActivated?: number; error?: string }>("/admin/sync-edl-lease-status");
+
       const totalFixed = (leaseResult.fixed || 0) + (edlResult.edlsUpdated || 0) + (edlResult.leasesActivated || 0);
-      
-      if (leaseResponse.ok || edlResponse.ok) {
+
+      if (leaseResult || edlResult) {
         toast({
           title: "✅ Synchronisation terminée",
           description: `${leaseResult.fixed || 0} bail(s) corrigé(s), ${edlResult.edlsUpdated || 0} EDL(s) mis à jour, ${edlResult.leasesActivated || 0} bail(s) activé(s)`,
         });
         // Rafraîchir la liste
         window.location.reload();
-      } else {
-        throw new Error(leaseResult.error || edlResult.error);
       }
     } catch (error: unknown) {
       toast({

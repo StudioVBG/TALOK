@@ -111,8 +111,20 @@ export async function validateCsrfFromRequest(request: Request): Promise<boolean
 
   // Récupérer le token du header
   const headerToken = request.headers.get(CSRF_HEADER_NAME);
-  
-  // Récupérer le token du cookie
+
+  // Le header token est obligatoire
+  if (!headerToken) {
+    return false;
+  }
+
+  // Valider la signature HMAC et l'expiration du token
+  if (!validateCsrfToken(headerToken)) {
+    return false;
+  }
+
+  // Si le cookie est présent, vérifier qu'il correspond (defense-in-depth)
+  // Le cookie peut être absent car cookies().set() dans un Server Component
+  // Next.js App Router est non fiable et peut échouer silencieusement.
   const cookieHeader = request.headers.get("cookie");
   const cookieToken = cookieHeader
     ?.split(";")
@@ -120,16 +132,11 @@ export async function validateCsrfFromRequest(request: Request): Promise<boolean
     ?.split("=")[1]
     ?.trim();
 
-  // Les deux tokens doivent être présents et correspondre
-  if (!headerToken || !cookieToken) {
+  if (cookieToken && cookieToken !== headerToken) {
     return false;
   }
 
-  if (headerToken !== cookieToken) {
-    return false;
-  }
-
-  return validateCsrfToken(headerToken);
+  return true;
 }
 
 /**

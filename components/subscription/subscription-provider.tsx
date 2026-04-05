@@ -206,7 +206,12 @@ export function SubscriptionProvider({
           }
         }
 
-        const resolvedSlug = sub.plan_slug || plan?.slug || "gratuit";
+        // Un client avec un abonnement actif ne doit jamais être traité comme gratuit
+        const isEntitled = ["active", "trialing", "past_due"].includes(sub.status);
+        const resolvedSlug = sub.plan_slug || plan?.slug || (isEntitled ? "starter" : "gratuit");
+        if (!plan && !sub.plan_slug) {
+          console.error(`[SubscriptionProvider] CRITICAL: subscription ${sub.id} has no resolvable plan (plan_slug=${sub.plan_slug}, plan_id=${sub.plan_id})`);
+        }
         subscriptionWithPlan = {
           ...sub,
           plan_slug: resolvedSlug,
@@ -311,6 +316,18 @@ export function SubscriptionProvider({
       // SOTA 2026: Pendant le chargement, être permissif (le backend vérifiera)
       // Évite les faux blocages pendant le fetch initial
       if (loading && !usage) return true;
+
+      // Safety net: si l'utilisateur a un abonnement actif mais que le plan
+      // s'est résolu en "gratuit" (plan_slug manquant en BDD), ne pas bloquer
+      // côté client — le backend vérifiera la vraie limite
+      if (
+        resource === "properties" &&
+        subscription &&
+        isSubscriptionStatusEntitled(subscription.status) &&
+        currentPlan === "gratuit"
+      ) {
+        return true;
+      }
 
       const limit = getLimitForResource(resource);
       if (limit === -1) return true; // Unlimited
