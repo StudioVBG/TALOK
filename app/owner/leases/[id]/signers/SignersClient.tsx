@@ -36,6 +36,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { TenantInviteModal } from "./TenantInviteModal";
+import { SignatureUsageBadge } from "@/components/subscription/signature-usage-badge";
 
 interface Signer {
   id: string;
@@ -437,6 +438,7 @@ export function SignersClient({
               <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
                 <Users className="h-6 w-6 text-blue-600" />
                 Signataires du bail
+                <SignatureUsageBadge />
               </h1>
               <div className="flex items-center gap-2 text-muted-foreground mt-1">
                 <Building2 className="h-4 w-4" />

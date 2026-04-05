@@ -13,6 +13,7 @@ import { useEntityStore } from "@/stores/useEntityStore";
 import { createEntity } from "@/app/owner/entities/actions";
 import { EntityFormWizard } from "@/components/entities/create/EntityFormWizard";
 import type { EntityFormData } from "@/lib/entities/entity-form-utils";
+import { PlanGate } from "@/components/subscription";
 
 export default function NewEntityPage() {
   const router = useRouter();
@@ -109,18 +110,20 @@ export default function NewEntityPage() {
   };
 
   return (
-    <EntityFormWizard
-      mode="create"
-      onSubmit={handleSubmit}
-      backHref="/owner/entities"
-      header={{
-        title: "Nouvelle entité",
-        subtitle:
-          "Configurez votre structure juridique en quelques étapes",
-        backLabel: "Mes entités",
-      }}
-      submitLabel="Créer l&apos;entité"
-      submitLoadingLabel="Création..."
-    />
+    <PlanGate feature="multi_mandants" mode="block">
+      <EntityFormWizard
+        mode="create"
+        onSubmit={handleSubmit}
+        backHref="/owner/entities"
+        header={{
+          title: "Nouvelle entité",
+          subtitle:
+            "Configurez votre structure juridique en quelques étapes",
+          backLabel: "Mes entités",
+        }}
+        submitLabel="Créer l&apos;entité"
+        submitLoadingLabel="Création..."
+      />
+    </PlanGate>
   );
 }

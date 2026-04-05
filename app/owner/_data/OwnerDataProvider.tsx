@@ -9,6 +9,7 @@
 "use client";
 
 import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from "react";
+import { useEntityStore } from "@/stores/useEntityStore";
 import type { PropertiesWithStats } from "./fetchProperties";
 import type { OwnerDashboardData } from "./fetchDashboard";
 import type { LeaseRow } from "@/lib/supabase/typed-client";
@@ -125,11 +126,15 @@ export function OwnerDataProvider({
   const [isLoadingApi, setIsLoadingApi] = useState(true);
   const [isRefetching, setIsRefetching] = useState(false);
   const [error, setError] = useState<string | null>(initialError);
+  const activeEntityId = useEntityStore((s) => s.activeEntityId);
 
   // Charger les données détaillées de l'API au montage
   const fetchApiData = useCallback(async () => {
     try {
-      const res = await fetch("/api/owner/dashboard", {
+      const params = new URLSearchParams();
+      if (activeEntityId) params.set("entityId", activeEntityId);
+      const url = `/api/owner/dashboard${params.toString() ? `?${params}` : ""}`;
+      const res = await fetch(url, {
         method: "GET",
         credentials: "include",
       });
@@ -145,7 +150,7 @@ export function OwnerDataProvider({
     } catch (err) {
       console.error("[OwnerDataProvider] Erreur chargement API dashboard:", err);
     }
-  }, []);
+  }, [activeEntityId]);
 
   // Chargement initial des données API
   useEffect(() => {

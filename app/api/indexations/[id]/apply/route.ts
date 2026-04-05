@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
+import { withFeatureAccess, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 
 /**
  * POST /api/indexations/[id]/apply - Appliquer une révision IRL
@@ -73,6 +74,14 @@ export async function POST(
         { error: "Seul le propriétaire peut appliquer une révision" },
         { status: 403 }
       );
+    }
+
+    // Gate: hasIRLRevision
+    if (isOwner && profileData?.id) {
+      const featureCheck = await withFeatureAccess(profileData.id, "irl_revision");
+      if (!featureCheck.allowed) {
+        return createSubscriptionErrorResponse(featureCheck);
+      }
     }
 
     // Vérifier le statut

@@ -27,6 +27,8 @@ import {
   CreditCard,
   Banknote,
   Plus,
+  Eye,
+  XCircle,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
@@ -36,9 +38,11 @@ import { ManualPaymentDialog } from "@/components/payments";
 const statusConfig = {
   draft: { label: "Brouillon", color: "bg-muted text-foreground", icon: FileText },
   sent: { label: "Envoyée", color: "bg-blue-100 text-blue-700", icon: Send },
+  viewed: { label: "Vue", color: "bg-purple-100 text-purple-700", icon: Eye },
   paid: { label: "Payée", color: "bg-green-100 text-green-700", icon: CheckCircle2 },
   late: { label: "En retard", color: "bg-red-100 text-red-700", icon: AlertCircle },
   partial: { label: "Partielle", color: "bg-amber-100 text-amber-700", icon: Clock },
+  cancelled: { label: "Annulée", color: "bg-gray-100 text-gray-500", icon: XCircle },
 };
 
 interface Invoice {

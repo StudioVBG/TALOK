@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { withFeatureAccess, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 
 export async function POST(request: Request) {
   try {
@@ -30,6 +31,12 @@ export async function POST(request: Request) {
 
     if (!profile || profile.role !== "owner") {
       return NextResponse.json({ error: "Accès réservé aux propriétaires" }, { status: 403 });
+    }
+
+    // Gate: hasFiscalAI (scoring_advanced)
+    const featureCheck = await withFeatureAccess(profile.id, "scoring_advanced");
+    if (!featureCheck.allowed) {
+      return createSubscriptionErrorResponse(featureCheck);
     }
 
     const startDate = `${year}-01-01`;

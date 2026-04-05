@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
+import { PlanGate } from "@/components/subscription";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -378,6 +379,7 @@ export default function OwnerTaxesPage() {
   }
 
   return (
+    <PlanGate feature="scoring_advanced" mode="blur">
     <PageTransition>
       <motion.div
         initial={{ opacity: 0 }}
@@ -1042,6 +1044,7 @@ export default function OwnerTaxesPage() {
         </Dialog>
       </motion.div>
     </PageTransition>
+    </PlanGate>
   );
 }
 

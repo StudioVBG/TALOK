@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSubscription } from "@/components/subscription";
 import { motion, type Variants } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -170,7 +171,11 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
               </Avatar>
             </div>
             <div className="absolute top-3 right-3">
-              <TenantScoreStars score={tenant.tenant_score} />
+              {hasFeature("scoring_tenant") ? (
+                <TenantScoreStars score={tenant.tenant_score} />
+              ) : (
+                <Badge variant="outline" className="text-xs bg-card">Pro</Badge>
+              )}
             </div>
           </div>
 
@@ -340,6 +345,7 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("name");
+  const { hasFeature } = useSubscription();
 
   // Filtrage
   const filteredTenants = tenants

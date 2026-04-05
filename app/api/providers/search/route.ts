@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@/lib/supabase/server';
+import { withFeatureAccess, createSubscriptionErrorResponse } from '@/lib/middleware/subscription-check';
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,7 +19,16 @@ export async function GET(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
-    
+
+    // Gate: hasProvidersManagement
+    const { data: profile } = await supabase.from('profiles').select('id').eq('user_id', user.id).single();
+    if (profile) {
+      const featureCheck = await withFeatureAccess(profile.id, "providers_management");
+      if (!featureCheck.allowed) {
+        return createSubscriptionErrorResponse(featureCheck);
+      }
+    }
+
     const { searchParams } = new URL(request.url);
     
     // Paramètres de recherche

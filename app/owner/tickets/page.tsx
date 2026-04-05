@@ -12,6 +12,22 @@ import { TicketsTabNav } from "./TicketsTabNav";
 export default async function OwnerTicketsPage() {
   const tickets = await getTickets("owner");
 
+  if (!tickets || tickets.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
+        <TicketsTabNav activeTab="tickets" />
+        <div className="text-center py-16 bg-card rounded-2xl border">
+          <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Aucun ticket</h2>
+          <p className="text-muted-foreground mb-4">Ajoutez un bien et un bail pour commencer a gerer vos tickets de maintenance.</p>
+          <Button asChild>
+            <Link href="/owner/properties">Mes biens</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <PullToRefreshContainer>
     <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">

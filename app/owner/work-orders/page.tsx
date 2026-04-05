@@ -137,6 +137,18 @@ export default function WorkOrdersPage() {
     );
   }
 
+  if (!loading && workOrders.length === 0 && !error) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
+        <div className="text-center py-16 bg-card rounded-2xl border">
+          <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Aucune intervention</h2>
+          <p className="text-muted-foreground">Créez un ticket pour déclencher une intervention.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">

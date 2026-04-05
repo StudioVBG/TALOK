@@ -38,6 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import { useSubscription, UpgradeModal } from '@/components/subscription';
 import { 
   ProviderBadgeList, 
   RatingBadge, 
@@ -105,13 +106,30 @@ export default function ProviderDetailPage() {
   const params = useParams();
   const router = useRouter();
   const providerId = params.id as string;
-  
+  const { hasFeature, loading: subLoading } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   const [provider, setProvider] = useState<ProviderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFavorite, setIsFavorite] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [portfolioIndex, setPortfolioIndex] = useState(0);
   const [vigilanceResult, setVigilanceResult] = useState<VigilanceCheckResult | null>(null);
+
+  // Gate: hasProvidersManagement
+  if (!subLoading && !hasFeature("providers_management")) {
+    return (
+      <>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] p-6 text-center">
+          <Shield className="h-16 w-16 text-muted-foreground mb-4" />
+          <h2 className="text-xl font-semibold mb-2">Fonctionnalité Pro</h2>
+          <p className="text-muted-foreground mb-4">La gestion des prestataires nécessite un forfait Pro ou supérieur.</p>
+          <Button onClick={() => setShowUpgradeModal(true)}>Voir les forfaits</Button>
+        </div>
+        <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} feature="providers_management" />
+      </>
+    );
+  }
   
   useEffect(() => {
     fetchProvider();
