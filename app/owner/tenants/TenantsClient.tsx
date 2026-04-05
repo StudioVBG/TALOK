@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSubscription } from "@/components/subscription";
 import { motion, type Variants } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,6 +138,7 @@ function LeaseStatusBadge({ status }: { status: string }) {
 
 // Composant Carte Locataire
 function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
+  const { hasFeature } = useSubscription();
   const initials = `${tenant.prenom?.[0] || ""}${tenant.nom?.[0] || ""}`.toUpperCase();
   const fullName = `${tenant.prenom} ${tenant.nom}`.trim() || "Locataire";
   
@@ -170,7 +172,11 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
               </Avatar>
             </div>
             <div className="absolute top-3 right-3">
-              <TenantScoreStars score={tenant.tenant_score} />
+              {hasFeature("scoring_tenant") ? (
+                <TenantScoreStars score={tenant.tenant_score} />
+              ) : (
+                <Badge variant="outline" className="text-xs bg-card">Pro</Badge>
+              )}
             </div>
           </div>
 

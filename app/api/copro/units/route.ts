@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { withFeatureAccess, createSubscriptionErrorResponse } from '@/lib/middleware/subscription-check';
 
 // Schéma pour un lot
 const UnitSchema = z.object({
@@ -81,6 +82,12 @@ export async function GET(request: NextRequest) {
       
       if (!profile) {
         return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
+      }
+
+      // Gate: hasCoproModule
+      const featureCheck = await withFeatureAccess(profile.id, "copro_module");
+      if (!featureCheck.allowed) {
+        return createSubscriptionErrorResponse(featureCheck);
       }
       
       // Récupérer les lots via la table ownerships

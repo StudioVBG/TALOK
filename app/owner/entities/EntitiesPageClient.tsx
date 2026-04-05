@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { bulkDeleteEntities, findDuplicateEntities, deduplicateEntities } from "./actions";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { useSubscription, UpgradeModal } from "@/components/subscription";
 import type { LegalEntity } from "@/lib/types/legal-entity";
 
 interface EntitiesPageClientProps {
@@ -46,6 +47,9 @@ export function EntitiesPageClient({ entities: serverEntities }: EntitiesPageCli
   const { entities: storeEntities, activeEntityId, lastFetchedAt, fetchEntities, removeEntity } = useEntityStore();
   const { profile } = useAuth();
   const { toast } = useToast();
+  const { hasFeature } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const canCreateNonParticulier = hasFeature("multi_mandants");
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
 
@@ -370,8 +374,20 @@ export function EntitiesPageClient({ entities: serverEntities }: EntitiesPageCli
             onToggle={toggleSelection}
           />
         ))}
-        {!selectionMode && <AddEntityCard />}
+        {!selectionMode && (
+          canCreateNonParticulier ? (
+            <AddEntityCard />
+          ) : (
+            <div
+              onClick={() => setShowUpgradeModal(true)}
+              className="cursor-pointer"
+            >
+              <AddEntityCard />
+            </div>
+          )
+        )}
       </div>
+      <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} feature="multi_mandants" />
 
       {/* No results */}
       {filteredEntities.length === 0 && allEntities.length > 0 && (

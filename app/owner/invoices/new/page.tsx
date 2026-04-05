@@ -19,6 +19,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { useOwnerData } from "../../_data/OwnerDataProvider";
 import { ArrowLeft, Euro, FileText, Building2, User, Calendar, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/helpers/format";
+import { PlanGate } from "@/components/subscription";
+import { safeDate } from "@/lib/helpers/safe-date";
 
 interface LeaseOption {
   id: string;
@@ -37,7 +39,7 @@ export default function NewInvoicePage() {
   // État du formulaire
   const [selectedLeaseId, setSelectedLeaseId] = useState<string>("");
   const [periode, setPeriode] = useState<string>(() => {
-    const now = new Date();
+    const now = safeDate(new Date()) ?? new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
   const [montantLoyer, setMontantLoyer] = useState<string>("");
@@ -119,6 +121,7 @@ export default function NewInvoicePage() {
     (parseFloat(montantLoyer) || 0) + (parseFloat(montantCharges) || 0);
 
   return (
+    <PlanGate feature="tenant_payment_online" mode="block">
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -297,5 +300,6 @@ export default function NewInvoicePage() {
         </CardContent>
       </Card>
     </motion.div>
+    </PlanGate>
   );
 }

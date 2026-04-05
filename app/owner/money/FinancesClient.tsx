@@ -14,6 +14,7 @@ import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
+import { PlanGate } from "@/components/subscription";
 import {
   Euro,
   Building2,
@@ -454,11 +455,15 @@ export function FinancesClient({ invoices }: FinancesClientProps) {
           </TabsList>
 
           <TabsContent value="encaissements" className="mt-6">
-            <EncaissementsTab invoices={invoices} />
+            <PlanGate feature="tenant_payment_online" mode="blur">
+              <EncaissementsTab invoices={invoices} />
+            </PlanGate>
           </TabsContent>
 
           <TabsContent value="banque" className="mt-6">
-            <CompteBancaireTab />
+            <PlanGate feature="tenant_payment_online" mode="blur">
+              <CompteBancaireTab />
+            </PlanGate>
           </TabsContent>
 
           <TabsContent value="forfait" className="mt-6">

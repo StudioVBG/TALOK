@@ -12,6 +12,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { z } from "zod";
 import { canDeleteEntity } from "@/features/legal-entities/services/legal-entities.service";
 import { isValidSiret, siretToSiren, isValidIban } from "@/lib/entities/siret-validation";
+import { withFeatureAccess } from "@/lib/middleware/subscription-check";
 
 // ============================================
 // SCHEMAS
@@ -159,6 +160,14 @@ export async function createEntity(
       return { success: false, error: "Non autorisé" };
     }
 
+    // Gate: hasMultiEntity — bypass pour "particulier" (entite par defaut)
+    if (parsed.data.entity_type !== "particulier") {
+      const featureCheck = await withFeatureAccess(auth.profileId, "multi_mandants");
+      if (!featureCheck.allowed) {
+        return { success: false, error: "La gestion multi-entites necessite un forfait Enterprise S ou superieur." };
+      }
+    }
+
     const supabase = await createClient();
     const data = parsed.data;
 
@@ -298,6 +307,19 @@ export async function updateEntity(
     const supabase = await createClient();
     const { id, ...data } = parsed.data;
 
+    // Gate: hasMultiEntity — bypass pour "particulier"
+    const { data: entityForGate } = await supabase
+      .from("legal_entities")
+      .select("entity_type")
+      .eq("id", id)
+      .single();
+    if (entityForGate && entityForGate.entity_type !== "particulier") {
+      const featureCheck = await withFeatureAccess(auth.profileId, "multi_mandants");
+      if (!featureCheck.allowed) {
+        return { success: false, error: "La gestion multi-entites necessite un forfait Enterprise S ou superieur." };
+      }
+    }
+
     // Guard: prevent entity_type change if active leases exist
     if (data.entity_type !== undefined) {
       const { data: current } = await supabase
@@ -422,6 +444,19 @@ export async function deleteEntity(
 
     const supabase = await createClient();
     const { id } = parsed.data;
+
+    // Gate: hasMultiEntity — bypass pour "particulier"
+    const { data: entityForGate } = await supabase
+      .from("legal_entities")
+      .select("entity_type")
+      .eq("id", id)
+      .single();
+    if (entityForGate && entityForGate.entity_type !== "particulier") {
+      const featureCheck = await withFeatureAccess(auth.profileId, "multi_mandants");
+      if (!featureCheck.allowed) {
+        return { success: false, error: "La gestion multi-entites necessite un forfait Enterprise S ou superieur." };
+      }
+    }
 
     const { canDelete, reason } = await canDeleteEntity(id);
     if (!canDelete) {

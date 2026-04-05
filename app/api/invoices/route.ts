@@ -7,6 +7,7 @@ import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { invoicesQuerySchema, validateQueryParams } from "@/lib/validations/params";
 import { withSecurity } from "@/lib/api/with-security";
+import { withFeatureAccess, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 
 /**
  * GET /api/invoices - Récupérer les factures de l'utilisateur
@@ -178,6 +179,12 @@ export const POST = withSecurity(async function POST(request: Request) {
         { error: "Seuls les propriétaires peuvent créer des factures" },
         { status: 403 }
       );
+    }
+
+    // Gate: hasRentCollection (tenant_payment_online)
+    const featureCheck = await withFeatureAccess(profile.id, "tenant_payment_online");
+    if (!featureCheck.allowed) {
+      return createSubscriptionErrorResponse(featureCheck);
     }
 
     // Récupérer le bail
