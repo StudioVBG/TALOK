@@ -26,7 +26,9 @@ import {
   Brain,
   UserCheck,
   FolderOpen,
+  LogOut,
 } from "lucide-react";
+import { useSignOut } from "@/lib/hooks/use-sign-out";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -113,6 +115,7 @@ export function AdminSidebar({ className }: { className?: string }) {
   const searchParams = useSearchParams();
   const [open, setOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
+  const { signOut: handleSignOut, isLoading: signingOut } = useSignOut({ redirectTo: "/login" });
   
   // Subscription Manager Dialog
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = React.useState(false);
@@ -156,26 +159,26 @@ export function AdminSidebar({ className }: { className?: string }) {
       <aside
         className={cn(
           "hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:z-40 lg:pt-16",
-          "bg-background border-r border-border",
+          "bg-background border-r border-border h-screen",
           className
         )}
       >
-        <div className="flex flex-col flex-1 overflow-y-auto">
-          {/* Search Button */}
-          <div className="p-4 border-b border-border">
-            <Button
-              variant="outline"
-              className="w-full justify-start text-muted-foreground"
-              onClick={() => setSearchOpen(true)}
-            >
-              <Search className="mr-2 h-4 w-4" />
-              Recherche rapide...
-              <CommandShortcut>⌘K</CommandShortcut>
-            </Button>
-          </div>
+        {/* Search Button */}
+        <div className="p-4 border-b border-border">
+          <Button
+            variant="outline"
+            className="w-full justify-start text-muted-foreground"
+            onClick={() => setSearchOpen(true)}
+          >
+            <Search className="mr-2 h-4 w-4" />
+            Recherche rapide...
+            <CommandShortcut>⌘K</CommandShortcut>
+          </Button>
+        </div>
 
-          {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-6">
+        {/* Navigation — scrollable */}
+        <div className="flex-1 overflow-y-auto">
+          <nav className="p-4 space-y-6">
             {adminNavItems.map((category) => (
               <div key={category.category} className="space-y-2">
                 <h3 className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -185,7 +188,7 @@ export function AdminSidebar({ className }: { className?: string }) {
                   {category.items.map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.href || (item.isDialog && subscriptionDialogOpen);
-                    
+
                     // Dialog items
                     if (item.isDialog) {
                       return (
@@ -217,7 +220,7 @@ export function AdminSidebar({ className }: { className?: string }) {
                         </button>
                       );
                     }
-                    
+
                     return (
                       <Link
                         key={item.href}
@@ -251,9 +254,11 @@ export function AdminSidebar({ className }: { className?: string }) {
               </div>
             ))}
           </nav>
+        </div>
 
-          {/* Footer */}
-          <div className="p-4 border-t border-border">
+        {/* Footer — always visible at bottom */}
+        <div className="mt-auto border-t border-border">
+          <div className="p-4 space-y-2">
             <Link
               href="/"
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -261,6 +266,14 @@ export function AdminSidebar({ className }: { className?: string }) {
               <Building2 className="h-4 w-4" />
               <span>Retour au site</span>
             </Link>
+            <button
+              onClick={handleSignOut}
+              disabled={signingOut}
+              className="flex w-full items-center gap-2 rounded-lg px-0 py-2 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 transition-colors disabled:opacity-50"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>{signingOut ? "Deconnexion..." : "Deconnexion"}</span>
+            </button>
           </div>
         </div>
       </aside>
@@ -316,7 +329,7 @@ export function AdminSidebar({ className }: { className?: string }) {
                     {category.items.map((item) => {
                       const Icon = item.icon;
                       const isActive = pathname === item.href || (item.isDialog && subscriptionDialogOpen);
-                      
+
                       // Dialog items (mobile)
                       if (item.isDialog) {
                         return (
@@ -350,7 +363,7 @@ export function AdminSidebar({ className }: { className?: string }) {
                           </button>
                         );
                       }
-                      
+
                       return (
                         <Link
                           key={item.href}
@@ -384,6 +397,21 @@ export function AdminSidebar({ className }: { className?: string }) {
                 </div>
               ))}
             </nav>
+
+            {/* Mobile Footer — always visible at bottom */}
+            <div className="mt-auto p-4 border-t border-border">
+              <button
+                onClick={() => {
+                  setOpen(false);
+                  handleSignOut();
+                }}
+                disabled={signingOut}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 transition-colors disabled:opacity-50"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>{signingOut ? "Deconnexion..." : "Deconnexion"}</span>
+              </button>
+            </div>
           </div>
         </SheetContent>
       </Sheet>
