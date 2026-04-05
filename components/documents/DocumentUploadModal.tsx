@@ -10,6 +10,7 @@ import { Upload, Loader2, FileText, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { useGedUpload } from "@/lib/hooks/use-ged-documents";
 import { useAuth } from "@/lib/hooks/use-auth";
+import type { DocumentType } from "@/lib/types";
 
 interface DocumentUploadModalProps {
   leaseId?: string;
@@ -61,7 +62,7 @@ export function DocumentUploadModal({ leaseId, propertyId }: DocumentUploadModal
       // Upload via GED API (/api/documents/upload) — validation serveur, metadata enrichie
       await gedUpload.mutateAsync({
         file,
-        type,
+        type: type as DocumentType,
         title: title || file.name,
         lease_id: leaseId,
         property_id: propertyId,
