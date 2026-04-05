@@ -117,9 +117,11 @@ export function decodeLegacyToken(token: string): { leaseId: string; tenantEmail
  */
 export function verifyTokenCompat(
   token: string,
-  expirationDays: number = 30
+  expirationDays: number = 14
 ): { entityId: string; email: string; entityType: "lease" | "edl"; createdAt: number } | null {
-  // Essayer d'abord le nouveau format
+  // Vérifier uniquement le format HMAC-SHA256 sécurisé
+  // Le fallback legacy (base64url non signé) a été supprimé car forgeable.
+  // Les anciens tokens en circulation doivent être regénérés.
   const newPayload = verifySecureToken(token);
   if (newPayload) {
     return {
@@ -127,21 +129,6 @@ export function verifyTokenCompat(
       email: newPayload.email,
       entityType: newPayload.entityType,
       createdAt: newPayload.createdAt,
-    };
-  }
-
-  // Fallback sur l'ancien format
-  const legacy = decodeLegacyToken(token);
-  if (legacy) {
-    // Vérifier expiration
-    if (Date.now() - legacy.timestamp > expirationDays * 24 * 60 * 60 * 1000) {
-      return null;
-    }
-    return {
-      entityId: legacy.leaseId,
-      email: legacy.tenantEmail,
-      entityType: "lease",
-      createdAt: legacy.timestamp,
     };
   }
 

@@ -17,6 +17,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { useDocumentCenter } from "@/lib/hooks/use-document-center";
 import { useDocuments } from "@/lib/hooks/use-documents";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -61,6 +62,8 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { cn } from "@/lib/utils";
 import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
 import { DocumentCard, DOCUMENT_CONFIG, type DocumentCardDoc } from "@/components/documents/DocumentCard";
+import { TENANT_FILTER_TYPES } from "@/lib/documents/document-config";
+import { getDocumentDisplayName } from "@/lib/documents/format-name";
 import { groupDocuments } from "@/lib/documents/group-documents";
 import { GroupedDocumentCard } from "@/features/documents/components/grouped-document-card";
 import Link from "next/link";
@@ -116,25 +119,6 @@ function formatSafeDate(dateStr: string | null | undefined, options?: Intl.DateT
   return d.toLocaleDateString("fr-FR", options || { day: "numeric", month: "short", year: "numeric" });
 }
 
-/** Titre lisible du document */
-function getDocumentTitle(doc: any, config: { label: string }): string {
-  // P0-3: Prioriser doc.title, original_filename, display_name avant fallback
-  const candidates = [
-    doc.title,
-    doc.display_name,
-    doc.original_filename?.replace(/\.[^/.]+$/, ""),
-    doc.name,
-    doc.metadata?.original_name,
-    doc.metadata?.title,
-  ].filter(Boolean);
-  for (const candidate of candidates) {
-    if (candidate && candidate.length > 0 && candidate !== "Document") {
-      return candidate.replace(/\.(pdf|jpg|jpeg|png|doc|docx)$/i, "").replace(/_/g, " ").replace(/-/g, " ").replace(/\s+/g, " ").trim();
-    }
-  }
-  const date = formatSafeDate(doc.created_at, { month: "short", year: "numeric" });
-  return date !== "Date inconnue" ? `${config.label} — ${date}` : config.label;
-}
 
 /** Vérifie si un document date de moins de 7 jours */
 function isRecent(doc: any): boolean {
@@ -201,7 +185,17 @@ function DocumentsSkeleton() {
 // ──────────────────────────────────────────────
 
 export default function TenantDocumentsPage() {
-  const { data: documents = [], isLoading, error, refetch } = useDocuments();
+  // SOTA 2026: Utiliser useDocumentCenter (RPC optimisée) avec fallback useDocuments
+  const documentCenter = useDocumentCenter();
+  const legacyDocs = useDocuments();
+
+  // Si la RPC retourne des documents, on les utilise. Sinon fallback sur le hook legacy.
+  const hasCenterData = (documentCenter.data?.documents?.length ?? 0) > 0;
+  const documents = hasCenterData ? (documentCenter.data?.documents ?? []) : (legacyDocs.data ?? []);
+  const isLoading = documentCenter.isLoading || (!hasCenterData && legacyDocs.isLoading);
+  const error = hasCenterData ? documentCenter.error : legacyDocs.error;
+  const refetch = hasCenterData ? documentCenter.refetch : legacyDocs.refetch;
+
   const { dashboard } = useTenantData();
   const { profile } = useAuth();
   const searchParams = useSearchParams();
@@ -295,7 +289,7 @@ export default function TenantDocumentsPage() {
         const config = DOCUMENT_CONFIG[type] ?? DOCUMENT_CONFIG.autre;
         return (doc.title || "").toLowerCase().includes(q) ||
           config.label.toLowerCase().includes(q) ||
-          getDocumentTitle(doc, config).toLowerCase().includes(q);
+          getDocumentDisplayName(doc).toLowerCase().includes(q);
       });
     }
 
@@ -355,7 +349,7 @@ export default function TenantDocumentsPage() {
 
   // ── Preview inline (H-04) ──
   const handlePreview = useCallback(async (doc: DocumentCardDoc) => {
-    setPreviewTitle(getDocumentTitle(doc, DOCUMENT_CONFIG[detectType(doc)] ?? DOCUMENT_CONFIG.autre));
+    setPreviewTitle(getDocumentDisplayName(doc));
     setPreviewUrl(null);
     setPreviewOpen(true);
 
@@ -370,7 +364,7 @@ export default function TenantDocumentsPage() {
     const data = await fetchSignedUrlData(doc.id);
     if (!data) return;
 
-    const title = getDocumentTitle(doc, DOCUMENT_CONFIG[detectType(doc)] ?? DOCUMENT_CONFIG.autre);
+    const title = getDocumentDisplayName(doc);
     const isHtml = data.mimeType === "text/html" || data.storagePath?.endsWith(".html");
 
     if (isHtml) {
@@ -538,7 +532,7 @@ export default function TenantDocumentsPage() {
                   <DocumentCard
                     doc={keyDocuments.bail}
                     resolvedType={detectType(keyDocuments.bail)}
-                    displayTitle={getDocumentTitle(keyDocuments.bail, DOCUMENT_CONFIG[detectType(keyDocuments.bail)] || DOCUMENT_CONFIG.autre)}
+                    displayTitle={getDocumentDisplayName(keyDocuments.bail)}
                     onPreview={handlePreview}
                     onDownload={handleDownload}
                     compact
@@ -561,7 +555,7 @@ export default function TenantDocumentsPage() {
                   <DocumentCard
                     doc={keyDocuments.quittance}
                     resolvedType={detectType(keyDocuments.quittance)}
-                    displayTitle={getDocumentTitle(keyDocuments.quittance, DOCUMENT_CONFIG[detectType(keyDocuments.quittance)] || DOCUMENT_CONFIG.autre)}
+                    displayTitle={getDocumentDisplayName(keyDocuments.quittance)}
                     onPreview={handlePreview}
                     onDownload={handleDownload}
                     compact
@@ -584,7 +578,7 @@ export default function TenantDocumentsPage() {
                   <DocumentCard
                     doc={keyDocuments.edl}
                     resolvedType={detectType(keyDocuments.edl)}
-                    displayTitle={getDocumentTitle(keyDocuments.edl, DOCUMENT_CONFIG[detectType(keyDocuments.edl)] || DOCUMENT_CONFIG.autre)}
+                    displayTitle={getDocumentDisplayName(keyDocuments.edl)}
                     onPreview={handlePreview}
                     onDownload={handleDownload}
                     compact
@@ -607,7 +601,7 @@ export default function TenantDocumentsPage() {
                   <DocumentCard
                     doc={keyDocuments.assurance}
                     resolvedType={detectType(keyDocuments.assurance)}
-                    displayTitle={getDocumentTitle(keyDocuments.assurance, DOCUMENT_CONFIG[detectType(keyDocuments.assurance)] || DOCUMENT_CONFIG.autre)}
+                    displayTitle={getDocumentDisplayName(keyDocuments.assurance)}
                     onPreview={handlePreview}
                     onDownload={handleDownload}
                     compact
@@ -657,15 +651,9 @@ export default function TenantDocumentsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tous les types</SelectItem>
-                      <SelectItem value="bail">Baux</SelectItem>
-                      <SelectItem value="quittance">Quittances</SelectItem>
-                      <SelectItem value="attestation_assurance">Assurance</SelectItem>
-                      <SelectItem value="EDL_entree">EDL d'entrée</SelectItem>
-                      <SelectItem value="EDL_sortie">EDL de sortie</SelectItem>
-                      <SelectItem value="dpe">DPE</SelectItem>
-                      <SelectItem value="erp">État des risques</SelectItem>
-                      <SelectItem value="cni">Pièce d'identité</SelectItem>
-                      <SelectItem value="justificatif_revenus">Justificatifs</SelectItem>
+                      {TENANT_FILTER_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
 
@@ -768,7 +756,7 @@ export default function TenantDocumentsPage() {
                 documents={filteredDocuments.map((doc: any) => ({
                   id: doc.id,
                   type: detectType(doc),
-                  title: getDocumentTitle(doc, DOCUMENT_CONFIG[detectType(doc)] || DOCUMENT_CONFIG.autre),
+                  title: getDocumentDisplayName(doc),
                   storage_path: doc.storage_path,
                   created_at: doc.created_at,
                   tenant_id: doc.tenant_id,
@@ -818,7 +806,7 @@ export default function TenantDocumentsPage() {
                       key={doc.id}
                       doc={doc}
                       resolvedType={type}
-                      displayTitle={getDocumentTitle(doc, config)}
+                      displayTitle={getDocumentDisplayName(doc)}
                       onPreview={handlePreview}
                       onDownload={handleDownload}
                       isNew={isCrossAccountNew || isRecent(doc)}

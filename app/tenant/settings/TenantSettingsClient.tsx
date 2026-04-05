@@ -21,6 +21,9 @@ import {
   AlertTriangle,
   CreditCard,
   ChevronRight,
+  Lock,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import Link from "next/link";
 import { isIdentityVerified } from "@/lib/helpers/identity-check";
@@ -49,6 +52,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { buildAvatarUrl, formatDate } from "@/lib/helpers/format";
 import { RestartTourCard } from "@/components/onboarding/RestartTourCard";
+import { createClient } from "@/lib/supabase/client";
 
 interface Profile {
   id: string;
@@ -575,6 +579,9 @@ export function TenantSettingsClient({
             </CardContent>
           </Card>
 
+          {/* Sécurité — Changement de mot de passe */}
+          <PasswordChangeSection />
+
           {/* Tour guidé */}
           <RestartTourCard />
 
@@ -609,8 +616,101 @@ export function TenantSettingsClient({
   );
 }
 
+function PasswordChangeSection() {
+  const { toast } = useToast();
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isChanging, setIsChanging] = useState(false);
 
+  const isValid = newPassword.length >= 8 && newPassword === confirmPassword;
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isValid) return;
 
+    setIsChanging(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+
+      toast({ title: "Mot de passe modifié", description: "Votre mot de passe a été mis à jour avec succès." });
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Impossible de modifier le mot de passe.",
+      });
+    } finally {
+      setIsChanging(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Lock className="h-5 w-5 text-amber-600" />
+          Sécurité
+        </CardTitle>
+        <CardDescription>Modifiez votre mot de passe</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleChangePassword} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="new-password">Nouveau mot de passe</Label>
+            <div className="relative">
+              <Input
+                id="new-password"
+                type={showPassword ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Minimum 8 caractères"
+                minLength={8}
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            {newPassword.length > 0 && newPassword.length < 8 && (
+              <p className="text-xs text-red-600">Minimum 8 caractères</p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="confirm-password">Confirmer le mot de passe</Label>
+            <Input
+              id="confirm-password"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Saisissez à nouveau"
+            />
+            {confirmPassword.length > 0 && confirmPassword !== newPassword && (
+              <p className="text-xs text-red-600">Les mots de passe ne correspondent pas</p>
+            )}
+          </div>
+
+          <Button
+            type="submit"
+            disabled={!isValid || isChanging}
+            variant="outline"
+            className="gap-2"
+          >
+            {isChanging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+            Modifier mon mot de passe
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
 
 

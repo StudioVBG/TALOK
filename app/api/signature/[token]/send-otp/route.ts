@@ -62,7 +62,7 @@ export async function POST(request: Request, { params }: PageProps) {
     const otpExpiry = new Date();
     otpExpiry.setMinutes(otpExpiry.getMinutes() + 10);
 
-    setOTP(tokenData.entityId, {
+    await setOTP(tokenData.entityId, {
       code: otpCode,
       phone: email,
       expiresAt: otpExpiry,

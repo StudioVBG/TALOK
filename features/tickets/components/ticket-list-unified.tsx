@@ -21,6 +21,14 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 
+const TICKET_STATUS_FR: Record<string, { label: string; type: "success" | "warning" | "error" | "info" | "neutral" }> = {
+  open: { label: "Ouvert", type: "info" },
+  in_progress: { label: "En cours", type: "warning" },
+  paused: { label: "En pause", type: "neutral" },
+  resolved: { label: "Résolu", type: "success" },
+  closed: { label: "Clôturé", type: "neutral" },
+};
+
 interface WorkOrder {
   id: string;
   statut: string;
@@ -159,7 +167,10 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
               </div>
 
               <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 pl-4 border-l-0 sm:border-l border-border">
-                <StatusBadge status={ticket.statut} type="info" />
+                <StatusBadge
+                  status={TICKET_STATUS_FR[ticket.statut]?.label ?? ticket.statut}
+                  type={TICKET_STATUS_FR[ticket.statut]?.type ?? "info"}
+                />
                 
                 <Button variant="ghost" size="sm" asChild className="gap-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400">
                   <Link href={`${basePath}/${ticket.id}`}>

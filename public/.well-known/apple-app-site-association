@@ -1,0 +1,23 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAM_ID.com.gestionlocative.app",
+        "paths": [
+          "/tenant/*",
+          "/owner/*",
+          "/signature/*",
+          "/signature-edl/*",
+          "/key-handover/*",
+          "/invite/*"
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "TEAM_ID.com.gestionlocative.app"
+    ]
+  }
+}

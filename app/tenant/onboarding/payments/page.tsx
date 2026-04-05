@@ -184,7 +184,7 @@ export default function TenantPaymentsPage() {
                     <div className="space-y-4">
                       <div className="flex items-center gap-2 mb-4">
                         <ShieldCheck className="w-5 h-5 text-blue-600" />
-                        <span className="text-sm font-semibold text-blue-900">Configuration sécurisée Stripe</span>
+                        <span className="text-sm font-semibold text-blue-900">Configuration sécurisée du paiement</span>
                       </div>
                       <PaymentMethodSetup
                         allowedTypes={["card"]}

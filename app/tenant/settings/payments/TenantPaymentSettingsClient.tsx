@@ -116,7 +116,7 @@ export function TenantPaymentSettingsClient({ profileId }: Props) {
                 <CardTitle className="text-lg">Cartes & comptes enregistrés</CardTitle>
                 <CardDescription>
                   Sélectionnez votre moyen de paiement par défaut. Vos données sont
-                  sécurisées par Stripe et ne transitent jamais par nos serveurs.
+                  chiffrées et ne transitent jamais par nos serveurs.
                 </CardDescription>
               </CardHeader>
               <CardContent>

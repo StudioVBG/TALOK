@@ -34,7 +34,8 @@ export default async function TenantSettingsPage() {
       date_naissance,
       lieu_naissance,
       nationalite,
-      adresse
+      adresse,
+      identity_status
     `)
     .eq("user_id", user.id)
     .single();

@@ -408,6 +408,21 @@ export async function executeSignature(ctx: SigningContext): Promise<SigningResu
     }
   }
 
+  // 10b. Mark tenant onboarding as complete if tenant signed and all signed
+  if (allSigned && isTenantRole(signer.role)) {
+    try {
+      const profileId = ctx.signerProfileId ?? signer.profile_id;
+      if (profileId) {
+        await supabase
+          .from("profiles")
+          .update({ onboarding_step: "complete" } as Record<string, unknown>)
+          .eq("id", profileId);
+      }
+    } catch {
+      // non-blocking
+    }
+  }
+
   // 11. Audit log
   try {
     await supabase.from("audit_log").insert({

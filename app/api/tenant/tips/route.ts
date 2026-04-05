@@ -36,7 +36,7 @@ export async function GET() {
     if (!profile) {
       return NextResponse.json({
         message: "Complétez votre profil pour accéder à toutes les fonctionnalités.",
-        action: { label: "Mon profil", href: "/tenant/profile" },
+        action: { label: "Mon profil", href: "/tenant/settings" },
         priority: "medium",
       } satisfies TipResponse);
     }
@@ -184,7 +184,7 @@ export async function GET() {
     if (kycStatus && kycStatus !== "verified") {
       return NextResponse.json({
         message: "Complétez votre vérification d'identité pour débloquer toutes les fonctionnalités de votre espace.",
-        action: { label: "Vérifier", href: "/tenant/profile" },
+        action: { label: "Vérifier", href: "/tenant/identity" },
         priority: "medium",
       } satisfies TipResponse);
     }
