@@ -6,24 +6,22 @@ import { usePathname } from "next/navigation";
 /**
  * PageTransition - Animation légère pour les transitions de page
  *
- * Optimisations appliquées pour éviter le scintillement :
- * - Suppression de l'effet blur (coûteux en GPU et cause des repaints)
- * - Utilisation de opacity uniquement (composable par le GPU)
- * - Durée réduite pour une sensation plus fluide
- * - Mode wait pour éviter les superpositions d'animations
+ * Fix du bug "page blanche" au retour sur l'accueil :
+ * - Suppression du mode="wait" qui causait un écran blanc entre les pages
+ * - Suppression de l'animation exit (plus de fade-out → fade-in)
+ * - Seul le fade-in au chargement est conservé (entrée douce)
  */
 export function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <AnimatePresence initial={false}>
       <motion.div
         key={pathname}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
         transition={{
-          duration: 0.15,
+          duration: 0.2,
           ease: "easeOut",
         }}
         className="w-full h-full"
