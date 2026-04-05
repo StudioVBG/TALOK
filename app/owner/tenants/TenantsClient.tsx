@@ -138,6 +138,7 @@ function LeaseStatusBadge({ status }: { status: string }) {
 
 // Composant Carte Locataire
 function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
+  const { hasFeature } = useSubscription();
   const initials = `${tenant.prenom?.[0] || ""}${tenant.nom?.[0] || ""}`.toUpperCase();
   const fullName = `${tenant.prenom} ${tenant.nom}`.trim() || "Locataire";
   
@@ -345,7 +346,6 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("name");
-  const { hasFeature } = useSubscription();
 
   // Filtrage
   const filteredTenants = tenants
