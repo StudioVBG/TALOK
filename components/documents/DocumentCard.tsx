@@ -8,7 +8,7 @@
  * Respecte : focus-visible, prefers-reduced-motion, touch targets 44px
  */
 
-import { Calendar, Eye, Download } from "lucide-react";
+import { Calendar, Eye, Download, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { GlassCard } from "@/components/ui/glass-card";
