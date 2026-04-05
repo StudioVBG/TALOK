@@ -79,7 +79,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { Navbar } from "@/components/layout/navbar";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { PageTransition } from "@/components/ui/page-transition";
 import { SubscriptionProvider } from "@/components/subscription/subscription-provider";
 import { PostHogProvider } from "@/components/analytics/posthog-provider";
 import { AIProvider } from "@/components/providers/ai-provider";
@@ -265,9 +264,7 @@ export default function RootLayout({
                         Aller au contenu principal
                       </a>
                       <Navbar />
-                      <PageTransition>
-                        <main id="main-content" className="flex-1" tabIndex={-1}>{children}</main>
-                      </PageTransition>
+                      <main id="main-content" className="flex-1" tabIndex={-1}>{children}</main>
                       <Toaster />
                       <LocalStorageMigration />
                     </div>
