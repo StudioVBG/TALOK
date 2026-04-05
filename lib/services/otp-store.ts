@@ -15,6 +15,13 @@ interface OTPData {
   attempts: number;
 }
 
+interface OTPRecord {
+  code: string;
+  phone: string;
+  expiresAt: Date;
+  attempts: number;
+}
+
 const OTP_TTL_SECONDS = 300; // 5 minutes
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_TTL_SECONDS = 900; // 15 minutes de blocage après trop de tentatives
@@ -79,7 +86,7 @@ export async function setOTP(key: string, data: { code: string; phone: string; e
 /**
  * Récupérer un code OTP
  */
-export async function getOTP(key: string): Promise<(OTPData & { expiresAt: Date }) | undefined> {
+export async function getOTP(key: string): Promise<OTPRecord | undefined> {
   const redis = await getRedis();
   let raw: OTPData | null | undefined;
 
@@ -93,8 +100,10 @@ export async function getOTP(key: string): Promise<(OTPData & { expiresAt: Date 
   if (!raw) return undefined;
 
   return {
-    ...raw,
+    code: raw.code,
+    phone: raw.phone,
     expiresAt: new Date(raw.expiresAt),
+    attempts: raw.attempts,
   };
 }
 
