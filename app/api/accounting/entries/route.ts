@@ -1,7 +1,7 @@
 /**
  * API Route: Accounting Entries Collection
  * GET /api/accounting/entries - Liste les écritures comptables
- * POST /api/accounting/entries - Crée une écriture comptable
+ * POST /api/accounting/entries - Crée une écriture comptable (flat or double-entry)
  */
 
 import { NextResponse } from "next/server";
@@ -9,10 +9,11 @@ import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { z } from "zod";
 import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
+import { createEntry } from '@/lib/accounting/engine';
 
 export const dynamic = "force-dynamic";
 
-// Schema de validation pour création d'écriture
+// Schema for legacy flat-entry mode (debit/credit fields)
 const CreateEntrySchema = z.object({
   journal_code: z.enum(["VE", "AC", "BQ", "BM", "OD", "AN"]),
   compte_num: z.string().min(4).max(10),
@@ -32,6 +33,26 @@ const CreateEntrySchema = z.object({
   message: "Une écriture doit avoir un débit ou un crédit non nul",
 }).refine(data => !(data.debit > 0 && data.credit > 0), {
   message: "Une écriture ne peut pas avoir à la fois un débit et un crédit",
+});
+
+// Schema for new double-entry mode (lines array)
+const DoubleEntryLineSchema = z.object({
+  accountNumber: z.string().min(3),
+  label: z.string().optional(),
+  debitCents: z.number().int().min(0),
+  creditCents: z.number().int().min(0),
+  pieceRef: z.string().optional(),
+});
+
+const DoubleEntrySchema = z.object({
+  entity_id: z.string().uuid(),
+  exercise_id: z.string().uuid(),
+  journal_code: z.enum(["ACH", "VE", "BQ", "OD", "AN", "CL"]),
+  entry_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  label: z.string().min(1).max(255),
+  source: z.string().optional(),
+  reference: z.string().optional(),
+  lines: z.array(DoubleEntryLineSchema).min(2),
 });
 
 /**
@@ -135,7 +156,11 @@ export async function GET(request: Request) {
 
 /**
  * POST /api/accounting/entries
- * Crée une nouvelle écriture comptable
+ * Crée une nouvelle écriture comptable.
+ *
+ * Two modes:
+ * - Double-entry mode (new): body contains `lines` array → uses engine createEntry
+ * - Flat-entry mode (legacy): body contains `debit`/`credit` fields → old insert logic
  */
 export async function POST(request: Request) {
   try {
@@ -161,6 +186,33 @@ export async function POST(request: Request) {
     if (featureGatePost) return featureGatePost;
 
     const body = await request.json();
+
+    // ---------- New double-entry mode (has `lines` array) ----------
+    if (Array.isArray(body.lines)) {
+      const validation = DoubleEntrySchema.safeParse(body);
+
+      if (!validation.success) {
+        throw new ApiError(400, validation.error.errors[0].message);
+      }
+
+      const data = validation.data;
+
+      const entry = await createEntry(supabase, {
+        entityId: data.entity_id,
+        exerciseId: data.exercise_id,
+        journalCode: data.journal_code,
+        entryDate: data.entry_date,
+        label: data.label,
+        source: data.source,
+        reference: data.reference,
+        lines: data.lines,
+        userId: user.id,
+      });
+
+      return NextResponse.json({ success: true, data: entry }, { status: 201 });
+    }
+
+    // ---------- Legacy flat-entry mode (debit/credit fields) ----------
     const validation = CreateEntrySchema.safeParse(body);
 
     if (!validation.success) {
