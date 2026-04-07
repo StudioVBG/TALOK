@@ -596,6 +596,7 @@ export async function POST(
         if (!existingDoc) {
           const propertyOwnerId = (edlRow as any)?.property?.owner_id || null;
           const tenantProfileId = !isOwner ? profile.id : null;
+          // SYSTEM DOCUMENT: Direct insert acceptable for auto-generated PDFs (no user upload flow)
           await serviceClient.from("documents").insert({
             type: edlType,
             property_id: propertyId || null,

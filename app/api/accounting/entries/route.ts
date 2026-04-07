@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { z } from "zod";
+import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,10 @@ export async function GET(request: Request) {
     if (!profile) {
       throw new ApiError(403, "Profil non trouvé");
     }
+
+    // Feature gate: check subscription plan
+    const featureGate = await requireAccountingAccess(profile.id, 'entries');
+    if (featureGate) return featureGate;
 
     const { searchParams } = new URL(request.url);
     const journalCode = searchParams.get("journal_code");
@@ -150,6 +155,10 @@ export async function POST(request: Request) {
     if (!profile || profile.role !== "admin") {
       throw new ApiError(403, "Seuls les administrateurs peuvent créer des écritures");
     }
+
+    // Feature gate: check subscription plan
+    const featureGatePost = await requireAccountingAccess(profile.id, 'entries');
+    if (featureGatePost) return featureGatePost;
 
     const body = await request.json();
     const validation = CreateEntrySchema.safeParse(body);

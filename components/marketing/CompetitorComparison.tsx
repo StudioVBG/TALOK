@@ -368,7 +368,7 @@ export function CompetitorComparison({
             score={SCORES.talok} 
             maxScore={maxScore}
             isHighlighted 
-            price="À partir de 19€"
+            price="À partir de 9€"
           />
           {COMPETITORS.map(comp => (
             <ScoreCard

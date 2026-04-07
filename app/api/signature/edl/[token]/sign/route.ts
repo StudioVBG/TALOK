@@ -261,6 +261,7 @@ export async function POST(
           .maybeSingle();
 
         if (!existingDoc) {
+          // SYSTEM DOCUMENT: Direct insert acceptable for auto-generated PDFs (no user upload flow)
           await serviceClient.from("documents").insert({
             type: edlType,
             property_id: propertyId || null,

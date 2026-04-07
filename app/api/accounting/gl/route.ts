@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
 
 /**
  * GET /api/accounting/gl - Récupérer le grand-livre agrégé
@@ -31,6 +32,10 @@ export async function GET(request: Request) {
 
     const profileData = profile as any;
     const isAdmin = profileData?.role === "admin";
+
+    // Feature gate: check subscription plan
+    const featureGate = await requireAccountingAccess(profileData?.id, 'gl');
+    if (featureGate) return featureGate;
 
     if (scope === "global" && !isAdmin) {
       return NextResponse.json(

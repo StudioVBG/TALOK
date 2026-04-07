@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { z } from "zod";
+import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,10 @@ export async function POST(request: Request) {
     if (!profile || profile.role !== "admin") {
       throw new ApiError(403, "Seuls les administrateurs peuvent valider les écritures");
     }
+
+    // Feature gate: check subscription plan
+    const featureGate = await requireAccountingAccess(profile.id, 'entries');
+    if (featureGate) return featureGate;
 
     const body = await request.json();
     const validation = ValidateSchema.safeParse(body);

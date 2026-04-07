@@ -71,14 +71,14 @@ const PRICING_TIERS = [
   {
     name: "Enterprise M",
     properties: "100-200 biens",
-    price: "449€/mois",
+    price: "349€/mois",
     popular: true,
     features: ["100 signatures/mois incluses", "Frais CB: 1,9%", "API complète", "SLA 99,9%"],
   },
   {
     name: "Enterprise L",
     properties: "200-500 biens",
-    price: "Sur devis",
+    price: "499€/mois",
     features: ["Signatures illimitées", "Frais négociés", "Formation sur site", "Marque blanche"],
   },
 ];

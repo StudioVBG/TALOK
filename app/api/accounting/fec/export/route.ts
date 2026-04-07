@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { accountingService } from "@/features/accounting/services/accounting.service";
+import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,6 +45,10 @@ export async function GET(request: Request) {
         "Accès réservé aux administrateurs. L'export FEC est un document officiel."
       );
     }
+
+    // Feature gate: check subscription plan
+    const featureGate = await requireAccountingAccess(profile.id, 'fec');
+    if (featureGate) return featureGate;
 
     // Parser les paramètres
     const { searchParams } = new URL(request.url);

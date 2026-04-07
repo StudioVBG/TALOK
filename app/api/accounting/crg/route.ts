@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { accountingService } from "@/features/accounting/services/accounting.service";
 import { generateCRGPDF } from "@/features/accounting/services/pdf-export.service";
+import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -46,6 +47,10 @@ export async function GET(request: Request) {
     if (!profile) {
       throw new ApiError(404, "Profil non trouvé");
     }
+
+    // Feature gate: check subscription plan
+    const featureGate = await requireAccountingAccess(profile.id, 'crg');
+    if (featureGate) return featureGate;
 
     // Parser les paramètres
     const { searchParams } = new URL(request.url);

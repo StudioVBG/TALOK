@@ -380,6 +380,8 @@ export const searchDocumentsTool = tool(
     name: "search_documents",
     description: "Recherche des documents (baux, quittances, EDL, etc.). Utilisez cet outil pour trouver des documents par type ou par bien.",
     schema: z.object({
+      // TODO: Should use DOCUMENT_TYPES from constants instead of hardcoded strings.
+      // Cannot use runtime import here because Zod schemas must be statically defined.
       type: z.enum(["bail", "quittance", "edl_entree", "edl_sortie", "attestation_assurance", "piece_identite", "avis_imposition"]).optional().describe("Type de document"),
       propertyId: z.string().optional().describe("ID du bien"),
       leaseId: z.string().optional().describe("ID du bail"),
