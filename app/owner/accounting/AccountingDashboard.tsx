@@ -99,13 +99,16 @@ function AccountingDashboardContent() {
               icon={<Wallet className="w-5 h-5" />}
             />
             <AccountingKPICard
-              title="Solde total"
+              title="Prelevements sociaux"
               value={
-                (balance?.totalDebitCents ?? 0) -
-                (balance?.totalCreditCents ?? 0)
+                (balance?.resultCents ?? 0) > 0
+                  ? Math.round((balance?.resultCents ?? 0) * 0.172)
+                  : 0
               }
               color="orange"
               icon={<Calculator className="w-5 h-5" />}
+              subtitle="17,2% (CSG + CRDS + solidarite)"
+              hidden={(balance?.resultCents ?? 0) <= 0}
             />
           </div>
 

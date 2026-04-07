@@ -10,6 +10,8 @@ interface AccountingKPICardProps {
   trend?: number;
   color: "green" | "blue" | "red" | "orange";
   icon: ReactNode;
+  subtitle?: string;
+  hidden?: boolean;
 }
 
 const colorMap: Record<AccountingKPICardProps["color"], string> = {
@@ -30,8 +32,12 @@ export function AccountingKPICard({
   trend,
   color,
   icon,
+  subtitle,
+  hidden,
 }: AccountingKPICardProps) {
   const direction = trend !== undefined && trend >= 0 ? "up" : "down";
+
+  if (hidden) return null;
 
   return (
     <div className="bg-card rounded-xl border border-border p-4 flex flex-col gap-2">
@@ -45,6 +51,10 @@ export function AccountingKPICard({
       <p className="text-xl sm:text-2xl font-bold text-foreground">
         {formatCents(value)}
       </p>
+
+      {subtitle && (
+        <span className="text-xs text-muted-foreground">{subtitle}</span>
+      )}
 
       {trend !== undefined && (
         <span
