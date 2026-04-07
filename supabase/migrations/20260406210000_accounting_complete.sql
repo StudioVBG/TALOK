@@ -12,7 +12,7 @@
 -- =====================================================
 CREATE TABLE IF NOT EXISTS accounting_exercises (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
   status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closing', 'closed')),
@@ -47,7 +47,7 @@ CREATE POLICY "exercises_entity_access" ON accounting_exercises
 -- =====================================================
 CREATE TABLE IF NOT EXISTS chart_of_accounts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   account_number TEXT NOT NULL,
   label TEXT NOT NULL,
   account_type TEXT NOT NULL CHECK (account_type IN (
@@ -87,7 +87,7 @@ CREATE POLICY "coa_entity_access" ON chart_of_accounts
 -- =====================================================
 CREATE TABLE IF NOT EXISTS accounting_journals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   code TEXT NOT NULL CHECK (code IN ('ACH', 'VE', 'BQ', 'OD', 'AN', 'CL')),
   label TEXT NOT NULL,
   journal_type TEXT NOT NULL CHECK (journal_type IN (
@@ -117,7 +117,7 @@ CREATE POLICY "journals_entity_access" ON accounting_journals
 -- =====================================================
 CREATE TABLE IF NOT EXISTS accounting_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   exercise_id UUID NOT NULL REFERENCES accounting_exercises(id),
   journal_code TEXT NOT NULL,
   entry_number TEXT NOT NULL,
@@ -204,7 +204,7 @@ CREATE POLICY "entry_lines_via_entry" ON accounting_entry_lines
 -- =====================================================
 CREATE TABLE IF NOT EXISTS bank_connections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   provider TEXT NOT NULL CHECK (provider IN ('nordigen', 'bridge', 'manual')),
   provider_connection_id TEXT,
   bank_name TEXT,
@@ -298,7 +298,7 @@ CREATE POLICY "bank_tx_via_connection" ON bank_transactions
 CREATE TABLE IF NOT EXISTS document_analyses (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   document_id UUID NOT NULL,
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   extracted_data JSONB NOT NULL DEFAULT '{}',
   confidence_score NUMERIC(5,4),
   suggested_account TEXT,
@@ -338,7 +338,7 @@ CREATE POLICY "doc_analyses_entity_access" ON document_analyses
 -- =====================================================
 CREATE TABLE IF NOT EXISTS amortization_schedules (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   property_id UUID,
   component TEXT NOT NULL,
   acquisition_date DATE NOT NULL,
@@ -412,7 +412,7 @@ CREATE POLICY "amort_lines_via_schedule" ON amortization_lines
 -- =====================================================
 CREATE TABLE IF NOT EXISTS deficit_tracking (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   exercise_id UUID NOT NULL REFERENCES accounting_exercises(id),
   deficit_type TEXT NOT NULL CHECK (deficit_type IN ('foncier', 'bic_meuble')),
   origin_year INTEGER NOT NULL,
@@ -448,7 +448,7 @@ CREATE POLICY "deficit_entity_access" ON deficit_tracking
 -- =====================================================
 CREATE TABLE IF NOT EXISTS charge_regularizations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   lease_id UUID,
   exercise_id UUID NOT NULL REFERENCES accounting_exercises(id),
   period_start DATE NOT NULL,
@@ -484,7 +484,7 @@ CREATE POLICY "charge_reg_entity_access" ON charge_regularizations
 -- =====================================================
 CREATE TABLE IF NOT EXISTS ec_access (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   ec_user_id UUID NOT NULL REFERENCES auth.users(id),
   ec_name TEXT NOT NULL,
   ec_email TEXT NOT NULL,
@@ -516,7 +516,7 @@ CREATE POLICY "ec_access_owner" ON ec_access
 
 CREATE TABLE IF NOT EXISTS ec_annotations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   entry_id UUID REFERENCES accounting_entries(id),
   ec_user_id UUID NOT NULL REFERENCES auth.users(id),
   annotation_type TEXT NOT NULL CHECK (annotation_type IN (
@@ -548,7 +548,7 @@ CREATE POLICY "ec_annotations_access" ON ec_annotations
 -- =====================================================
 CREATE TABLE IF NOT EXISTS copro_budgets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   exercise_id UUID NOT NULL REFERENCES accounting_exercises(id),
   budget_name TEXT NOT NULL,
   budget_lines JSONB NOT NULL DEFAULT '[]',
@@ -576,7 +576,7 @@ CREATE POLICY "copro_budgets_entity_access" ON copro_budgets
 
 CREATE TABLE IF NOT EXISTS copro_fund_calls (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   budget_id UUID NOT NULL REFERENCES copro_budgets(id) ON DELETE CASCADE,
   copro_lot_id UUID,
   owner_name TEXT NOT NULL,
@@ -614,7 +614,7 @@ CREATE POLICY "copro_fund_calls_entity_access" ON copro_fund_calls
 -- =====================================================
 CREATE TABLE IF NOT EXISTS mandant_accounts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   mandant_name TEXT NOT NULL,
   mandant_user_id UUID REFERENCES auth.users(id),
   commission_rate NUMERIC(5,2) NOT NULL DEFAULT 0 CHECK (commission_rate >= 0 AND commission_rate <= 100),
@@ -640,7 +640,7 @@ CREATE POLICY "mandant_accounts_entity_access" ON mandant_accounts
 
 CREATE TABLE IF NOT EXISTS crg_reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   mandant_id UUID NOT NULL REFERENCES mandant_accounts(id) ON DELETE CASCADE,
   exercise_id UUID NOT NULL REFERENCES accounting_exercises(id),
   period_start DATE NOT NULL,
@@ -677,7 +677,7 @@ CREATE POLICY "crg_reports_entity_access" ON crg_reports
 -- =====================================================
 CREATE TABLE IF NOT EXISTS accounting_audit_log (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  entity_id UUID NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
   actor_id UUID REFERENCES auth.users(id),
   actor_type TEXT NOT NULL DEFAULT 'user' CHECK (actor_type IN ('user', 'system', 'api', 'ec')),
   action TEXT NOT NULL,
