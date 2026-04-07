@@ -8,7 +8,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { useChartOfAccounts } from "@/lib/hooks/use-accounting-entries";
+import { useChartOfAccounts, type ChartAccount } from "@/lib/hooks/use-accounting-entries";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { formatCents } from "@/lib/utils/format-cents";
@@ -78,11 +78,11 @@ export function QuickEntryForm({
   // -- Balance computation ---------------------------------------------------
 
   const totalDebit = useMemo(
-    () => lines.reduce((sum, l) => sum + l.debitCents, 0),
+    () => lines.reduce((sum: number, l: EntryLine) => sum + l.debitCents, 0),
     [lines]
   );
   const totalCredit = useMemo(
-    () => lines.reduce((sum, l) => sum + l.creditCents, 0),
+    () => lines.reduce((sum: number, l: EntryLine) => sum + l.creditCents, 0),
     [lines]
   );
   const balance = totalDebit - totalCredit;
@@ -92,26 +92,26 @@ export function QuickEntryForm({
 
   const updateLine = useCallback(
     (id: string, patch: Partial<EntryLine>) => {
-      setLines((prev) =>
-        prev.map((l) => (l.id === id ? { ...l, ...patch } : l))
+      setLines((prev: EntryLine[]) =>
+        prev.map((l: EntryLine) => (l.id === id ? { ...l, ...patch } : l))
       );
     },
     []
   );
 
   const removeLine = useCallback((id: string) => {
-    setLines((prev) => (prev.length <= 2 ? prev : prev.filter((l) => l.id !== id)));
+    setLines((prev: EntryLine[]) => (prev.length <= 2 ? prev : prev.filter((l: EntryLine) => l.id !== id)));
   }, []);
 
   const addLine = useCallback(() => {
-    setLines((prev) => [...prev, createEmptyLine()]);
+    setLines((prev: EntryLine[]) => [...prev, createEmptyLine()]);
   }, []);
 
   const autoBalanceLastLine = useCallback(() => {
     if (lines.length < 2) return;
     const allButLast = lines.slice(0, -1);
-    const sumDebit = allButLast.reduce((s, l) => s + l.debitCents, 0);
-    const sumCredit = allButLast.reduce((s, l) => s + l.creditCents, 0);
+    const sumDebit = allButLast.reduce((s: number, l: EntryLine) => s + l.debitCents, 0);
+    const sumCredit = allButLast.reduce((s: number, l: EntryLine) => s + l.creditCents, 0);
     const diff = sumDebit - sumCredit;
     const lastLine = lines[lines.length - 1];
     if (diff > 0) {
@@ -129,7 +129,7 @@ export function QuickEntryForm({
       const q = query.toLowerCase();
       return accounts
         .filter(
-          (a) =>
+          (a: ChartAccount) =>
             a.account_number.startsWith(query) ||
             a.label.toLowerCase().includes(q)
         )
@@ -153,7 +153,7 @@ export function QuickEntryForm({
       return;
     }
 
-    const hasEmptyAccounts = lines.some((l) => !l.accountNumber.trim());
+    const hasEmptyAccounts = lines.some((l: EntryLine) => !l.accountNumber.trim());
     if (hasEmptyAccounts) {
       setError("Toutes les lignes doivent avoir un numero de compte.");
       return;
@@ -168,7 +168,7 @@ export function QuickEntryForm({
         entry_date: entryDate,
         label: label.trim(),
         source: "manual",
-        lines: lines.map((l) => ({
+        lines: lines.map((l: EntryLine) => ({
           accountNumber: l.accountNumber,
           label: l.label || undefined,
           debitCents: l.debitCents,

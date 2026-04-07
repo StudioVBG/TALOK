@@ -176,24 +176,24 @@ function EntriesPageContent() {
   const filteredEntries = useMemo(() => {
     let result = entries;
     if (status === "draft") {
-      result = result.filter((e) => isDraft(e));
+      result = result.filter((e: AccountingEntryRow) => isDraft(e));
     } else if (status === "validated") {
-      result = result.filter((e) => !isDraft(e));
+      result = result.filter((e: AccountingEntryRow) => !isDraft(e));
     }
     if (source) {
-      result = result.filter((e) => (e.source ?? "manual") === source);
+      result = result.filter((e: AccountingEntryRow) => (e.source ?? "manual") === source);
     }
     return result;
   }, [entries, status, source]);
 
   // Draft entries for bulk selection
   const draftEntries = useMemo(
-    () => filteredEntries.filter(isDraft),
+    () => filteredEntries.filter((e: AccountingEntryRow) => isDraft(e)),
     [filteredEntries]
   );
 
   const toggleSelect = useCallback((id: string) => {
-    setSelected((prev) => {
+    setSelected((prev: Set<string>) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -203,9 +203,9 @@ function EntriesPageContent() {
 
   const toggleSelectAll = useCallback(() => {
     if (selected.size === draftEntries.length && draftEntries.length > 0) {
-      setSelected(new Set());
+      setSelected(new Set<string>());
     } else {
-      setSelected(new Set(draftEntries.map((e) => e.id)));
+      setSelected(new Set(draftEntries.map((e: AccountingEntryRow) => e.id)));
     }
   }, [draftEntries, selected.size]);
 
@@ -221,11 +221,11 @@ function EntriesPageContent() {
 
   // Totals for page
   const pageDebitCents = useMemo(
-    () => filteredEntries.reduce((s, e) => s + getEntryDebitCents(e), 0),
+    () => filteredEntries.reduce((s: number, e: AccountingEntryRow) => s + getEntryDebitCents(e), 0),
     [filteredEntries]
   );
   const pageCreditCents = useMemo(
-    () => filteredEntries.reduce((s, e) => s + getEntryCreditCents(e), 0),
+    () => filteredEntries.reduce((s: number, e: AccountingEntryRow) => s + getEntryCreditCents(e), 0),
     [filteredEntries]
   );
 
@@ -417,7 +417,7 @@ function EntriesPageContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredEntries.map((entry) => {
+                  {filteredEntries.map((entry: AccountingEntryRow) => {
                     const entryIsDraft = isDraft(entry);
                     const entryDate =
                       entry.entry_date ?? entry.ecriture_date ?? "";
@@ -485,7 +485,7 @@ function EntriesPageContent() {
 
           {/* Mobile cards */}
           <div className="md:hidden space-y-2">
-            {filteredEntries.map((entry) => {
+            {filteredEntries.map((entry: AccountingEntryRow) => {
               const entryIsDraft = isDraft(entry);
               const entryDate = entry.entry_date ?? entry.ecriture_date ?? "";
               const entryLabel = entry.label ?? entry.ecriture_lib ?? "";
@@ -570,7 +570,7 @@ function EntriesPageContent() {
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  onClick={() => setPage((p: number) => Math.max(1, p - 1))}
                   disabled={page <= 1}
                   className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
                   aria-label="Page precedente"
@@ -579,7 +579,7 @@ function EntriesPageContent() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() => setPage((p: number) => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages}
                   className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border bg-card text-foreground hover:bg-muted/50 transition-colors disabled:opacity-40"
                   aria-label="Page suivante"
