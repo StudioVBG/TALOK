@@ -77,6 +77,7 @@ export default function OnboardingUnitsPage() {
 
   // Charger les données depuis localStorage
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const storedBuildings = localStorage.getItem('syndic_onboarding_buildings');
     const storedUnits = localStorage.getItem('syndic_onboarding_units');
 

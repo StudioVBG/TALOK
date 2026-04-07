@@ -62,6 +62,7 @@ export default function OnboardingCompletePage() {
 
   useEffect(() => {
     // Charger toutes les données
+    if (typeof window === 'undefined') return;
     const site = localStorage.getItem('syndic_onboarding_site');
     const buildings = localStorage.getItem('syndic_onboarding_buildings');
     const units = localStorage.getItem('syndic_onboarding_units');
@@ -149,12 +150,14 @@ export default function OnboardingCompletePage() {
       await fetch("/api/me/onboarding-complete", { method: "POST" }).catch(() => {});
 
       // Nettoyer le localStorage
-      localStorage.removeItem('syndic_profile');
-      localStorage.removeItem('syndic_onboarding_site');
-      localStorage.removeItem('syndic_onboarding_buildings');
-      localStorage.removeItem('syndic_onboarding_units');
-      localStorage.removeItem('syndic_onboarding_tantiemes');
-      localStorage.removeItem('syndic_onboarding_owners');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('syndic_profile');
+        localStorage.removeItem('syndic_onboarding_site');
+        localStorage.removeItem('syndic_onboarding_buildings');
+        localStorage.removeItem('syndic_onboarding_units');
+        localStorage.removeItem('syndic_onboarding_tantiemes');
+        localStorage.removeItem('syndic_onboarding_owners');
+      }
 
       // Confetti !
       confetti({

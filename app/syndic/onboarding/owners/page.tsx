@@ -82,6 +82,7 @@ export default function OnboardingOwnersPage() {
 
   // Charger les données
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const storedUnits = localStorage.getItem('syndic_onboarding_units');
     const storedOwners = localStorage.getItem('syndic_onboarding_owners');
 

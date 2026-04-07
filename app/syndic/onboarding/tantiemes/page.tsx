@@ -71,6 +71,7 @@ export default function OnboardingTantiemesPage() {
 
   // Charger les données
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const storedUnits = localStorage.getItem('syndic_onboarding_units');
     const storedTantiemes = localStorage.getItem('syndic_onboarding_tantiemes');
 

@@ -87,7 +87,7 @@ const INTEGRATIONS = [
   "Comptabilité (Sage, QuickBooks)",
   "CRM (Salesforce, HubSpot)",
   "Banques (toutes banques FR)",
-  "Signatures (DocuSign, Yousign)",
+  "Signatures électroniques",
   "Portails (SeLoger, LeBonCoin)",
   "Assurances (partenaires GLI)",
 ];

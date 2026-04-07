@@ -395,7 +395,7 @@ export function LeaseDetailsSidebar({
                     id="cancel-type"
                     value={cancelType}
                     onChange={(e) => onCancelTypeChange(e.target.value)}
-                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
+                    className="w-full rounded-md border border-gray-200 bg-card px-3 py-2 text-sm"
                   >
                     <option value="tenant_withdrawal">Rétractation du locataire</option>
                     <option value="owner_withdrawal">Retrait du propriétaire</option>
@@ -415,7 +415,7 @@ export function LeaseDetailsSidebar({
                     onChange={(e) => onCancelReasonChange(e.target.value)}
                     placeholder="Précisez le motif si nécessaire..."
                     rows={2}
-                    className="w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm resize-none"
+                    className="w-full rounded-md border border-gray-200 bg-card px-3 py-2 text-sm resize-none"
                   />
                 </div>
               </div>
