@@ -163,7 +163,6 @@ async function getRedisClient(): Promise<RedisClient | null> {
       token: redisToken,
     }) as unknown as RedisClient;
 
-    console.log("[RateLimit] Client Redis Upstash initialisé");
     return redisClient;
   } catch (error) {
     console.error("[RateLimit] Erreur initialisation Redis:", error);

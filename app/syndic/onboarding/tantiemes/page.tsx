@@ -191,7 +191,9 @@ export default function OnboardingTantiemesPage() {
     setSaving(true);
 
     try {
-      localStorage.setItem('syndic_onboarding_tantiemes', JSON.stringify(tantiemes));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('syndic_onboarding_tantiemes', JSON.stringify(tantiemes));
+      }
       router.push('/syndic/onboarding/owners');
     } catch (error) {
       console.error('Erreur sauvegarde:', error);

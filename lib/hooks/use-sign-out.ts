@@ -29,7 +29,6 @@ export function useSignOut(options: UseSignOutOptions = {}) {
   const signOut = useCallback(async () => {
     // Protection contre double-clic avec ref (pas de problème de closure)
     if (isSigningOutRef.current) {
-      console.log("[useSignOut] Déjà en cours de déconnexion, ignoré");
       return;
     }
 
@@ -38,8 +37,6 @@ export function useSignOut(options: UseSignOutOptions = {}) {
     setError(null);
 
     try {
-      console.log("[useSignOut] Déconnexion en cours...");
-
       const supabase = createClient();
 
       // 1. Déconnecter de Supabase
@@ -82,13 +79,11 @@ export function useSignOut(options: UseSignOutOptions = {}) {
             }
           });
 
-          console.log("[useSignOut] Cache local nettoyé");
         } catch (storageError) {
           console.warn("[useSignOut] Erreur nettoyage storage:", storageError);
         }
       }
 
-      console.log("[useSignOut] Déconnexion réussie");
       onSuccess?.();
     } catch (err) {
       const error = err as Error;
@@ -100,7 +95,6 @@ export function useSignOut(options: UseSignOutOptions = {}) {
       // Utiliser window.location.href pour forcer un refresh complet
       // Cela garantit que tous les états React sont réinitialisés
       if (typeof window !== "undefined") {
-        console.log("[useSignOut] Redirection forcée vers:", redirectTo);
         window.location.href = redirectTo;
       } else {
         router.push(redirectTo);

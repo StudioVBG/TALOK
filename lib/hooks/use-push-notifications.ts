@@ -93,7 +93,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     // Token reçu après register()
     PushNotifications.addListener("registration", (token: { value: string }) => {
-      console.log("[Push] FCM token:", token.value);
       registerTokenOnServer(token.value, platform);
     });
 
@@ -104,7 +103,6 @@ export function usePushNotifications(): UsePushNotificationsReturn {
 
     // Notification reçue en foreground
     PushNotifications.addListener("pushNotificationReceived", (notification: any) => {
-      console.log("[Push] Received in foreground:", notification);
     });
 
     // Utilisateur tape sur la notification

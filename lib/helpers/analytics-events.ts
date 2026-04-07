@@ -39,7 +39,6 @@ export async function emitAnalyticsEvent(
       created_at: new Date().toISOString(),
     } as any);
 
-    console.log(`[analytics-events] Événement émis: ${eventType}`, payload);
   } catch (error) {
     console.error(`[analytics-events] Erreur lors de l'émission de ${eventType}:`, error);
     // Ne pas bloquer le flux si l'analytics échoue

@@ -107,7 +107,6 @@ export async function generateKeyHandoverAttestation(
     .maybeSingle();
 
   if (existing) {
-    console.log("[keys-handover-generator] Attestation déjà générée pour:", handoverId);
     return {
       id: (existing as any).id,
       storage_path: (existing as any).storage_path,
@@ -225,8 +224,6 @@ export async function generateKeyHandoverAttestation(
   if (docError) {
     throw new Error(`Erreur création document attestation : ${docError.message}`);
   }
-
-  console.log("[keys-handover-generator] Attestation générée:", { handoverId, docId: (doc as any).id, storagePath });
 
   return {
     id: (doc as any).id,

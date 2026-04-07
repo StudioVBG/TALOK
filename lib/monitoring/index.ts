@@ -92,7 +92,7 @@ export function captureMessage(message: string, level: "info" | "warning" | "err
     import("@sentry/nextjs").then((Sentry) => {
       Sentry.captureMessage(message, level);
     }).catch(() => {
-      console.log(`[Sentry] Failed to load, logging message (${level}):`, message);
+      console.error(`[Sentry] Failed to load, logging message (${level}):`, message);
     });
   }
 }

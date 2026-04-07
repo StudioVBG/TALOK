@@ -128,7 +128,6 @@ class CacheInvalidationService {
       });
     });
 
-    console.log(`[CacheInvalidation] React Query invalidated for: ${entities.join(", ")}`);
   }
 
   /**
@@ -177,7 +176,6 @@ class CacheInvalidationService {
     });
 
     await Promise.all(promises);
-    console.log(`[CacheInvalidation] Server cache revalidated for tags: ${Array.from(tagsToRevalidate).join(", ")}`);
   }
 
   /**
@@ -257,7 +255,6 @@ class CacheInvalidationService {
       entities: Object.keys(ENTITY_QUERY_KEYS) as EntityType[],
     });
 
-    console.log("[CacheInvalidation] All caches invalidated");
   }
 
   /**
@@ -276,7 +273,7 @@ class CacheInvalidationService {
       },
     });
 
-    console.log(`[CacheInvalidation] Scope ${scope} invalidated`);
+
   }
 }
 

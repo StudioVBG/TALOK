@@ -53,7 +53,7 @@ class OpenBankingService {
    */
   async initiateInstantPayment(amount: number, recipientIban: string, reference: string): Promise<boolean> {
     // In SOTA 2026, calls the DSP2 API
-    console.log(`Initiating instant payment of ${amount}€ to ${recipientIban} (${reference})`);
+    // TODO: implement PIS API call
     return true;
   }
 

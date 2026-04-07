@@ -184,7 +184,9 @@ export default function OnboardingUnitsPage() {
       }
 
       // Sauvegarder dans localStorage
-      localStorage.setItem('syndic_onboarding_units', JSON.stringify(units));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('syndic_onboarding_units', JSON.stringify(units));
+      }
 
       // Passer à l'étape suivante
       router.push('/syndic/onboarding/tantiemes');

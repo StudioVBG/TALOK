@@ -55,7 +55,6 @@ export async function geocodeAddress(
       };
     }
 
-    console.log("[geocodeAddress] No results found for:", address);
     return null;
   } catch (error) {
     console.error("[geocodeAddress] Error:", error);

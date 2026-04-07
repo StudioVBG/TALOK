@@ -68,7 +68,6 @@ class MeterOCRService {
    */
   private async getWorker(): Promise<Tesseract.Worker> {
     if (!this.workerPromise) {
-      console.log('[MeterOCR] Initialisation du worker OCR...');
       this.workerPromise = Tesseract.createWorker('eng', 1, {
         // Logger pour debug (décommenter si besoin)
         // logger: (m) => console.log('[MeterOCR]', m.status, m.progress),
@@ -82,8 +81,6 @@ class MeterOCRService {
    */
   private async preprocessMeterImage(imageBuffer: Buffer): Promise<Buffer> {
     try {
-      console.log('[MeterOCR] Prétraitement de l\'image...');
-      
       return await sharp(imageBuffer)
         // Redimensionner pour une résolution optimale OCR
         .resize(1200, null, { 
@@ -117,8 +114,6 @@ class MeterOCRService {
     meterType: 'electricity' | 'gas' | 'water' = 'electricity'
   ): Promise<MeterOCRResult> {
     const startTime = Date.now();
-    console.log(`[MeterOCR] Analyse compteur ${meterType}...`);
-
     try {
       // Prétraitement de l'image
       const processedImage = await this.preprocessMeterImage(imageBuffer);
@@ -136,8 +131,6 @@ class MeterOCRService {
       const { data } = await worker.recognize(processedImage);
       
       const processingTimeMs = Date.now() - startTime;
-      console.log(`[MeterOCR] OCR terminé en ${processingTimeMs}ms, confiance: ${data.confidence.toFixed(1)}%`);
-
       // Extraire la valeur numérique
       const config = METER_CONFIGS[meterType];
       const extractedValue = this.extractMeterValue(data.text, config);
@@ -187,8 +180,6 @@ class MeterOCRService {
       .replace(/[sS]/g, '5')   // Corriger S → 5 (erreur courante)
       .replace(/[bB]/g, '8');  // Corriger B → 8 (erreur courante)
 
-    console.log(`[MeterOCR] Texte nettoyé: "${cleaned}"`);
-
     // Patterns selon le nombre de chiffres attendus
     const patterns = [
       // Pattern avec décimales
@@ -205,13 +196,11 @@ class MeterOCRService {
         const value = parseFloat(match[1]);
         // Vérifier que la valeur est dans les limites raisonnables
         if (value >= 0 && value <= config.maxValue) {
-          console.log(`[MeterOCR] Valeur extraite: ${value} ${config.unit}`);
           return { value, rawMatch: match[1] };
         }
       }
     }
 
-    console.log('[MeterOCR] Aucune valeur valide trouvée');
     return { value: null, rawMatch: null };
   }
 
@@ -233,7 +222,7 @@ class MeterOCRService {
 
     // Si différence > 10%, loguer pour amélioration future
     if (percentDiff > 10) {
-      console.log(`[MeterOCR] Correction importante: OCR=${ocrValue}, Corrigé=${correctedValue}, Diff=${percentDiff.toFixed(1)}%`);
+      console.warn(`[MeterOCR] Correction importante: OCR=${ocrValue}, Corrigé=${correctedValue}, Diff=${percentDiff.toFixed(1)}%`);
     }
 
     return {
@@ -247,7 +236,6 @@ class MeterOCRService {
    */
   async terminate(): Promise<void> {
     if (this.workerPromise) {
-      console.log('[MeterOCR] Arrêt du worker OCR...');
       const worker = await this.workerPromise;
       await worker.terminate();
       this.workerPromise = null;
