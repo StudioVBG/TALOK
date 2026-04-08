@@ -7,6 +7,7 @@
 
 import { useCallback } from "react";
 import { create } from "zustand";
+import { devtools } from "zustand/middleware";
 
 // ============================================
 // STORE
@@ -16,7 +17,7 @@ interface AICommandStore {
   isOpen: boolean;
   setOpen: (open: boolean) => void;
   toggle: () => void;
-  
+
   // Context pour pré-remplir
   initialPrompt: string | null;
   setInitialPrompt: (prompt: string | null) => void;
@@ -26,17 +27,22 @@ interface AICommandStore {
   setMode: (mode: "search" | "chat") => void;
 }
 
-export const useAICommandStore = create<AICommandStore>((set) => ({
-  isOpen: false,
-  setOpen: (open) => set({ isOpen: open }),
-  toggle: () => set((state) => ({ isOpen: !state.isOpen })),
-  
-  initialPrompt: null,
-  setInitialPrompt: (prompt) => set({ initialPrompt: prompt }),
-  
-  mode: "search",
-  setMode: (mode) => set({ mode }),
-}));
+export const useAICommandStore = create<AICommandStore>()(
+  devtools(
+    (set) => ({
+      isOpen: false,
+      setOpen: (open) => set({ isOpen: open }),
+      toggle: () => set((state) => ({ isOpen: !state.isOpen })),
+
+      initialPrompt: null,
+      setInitialPrompt: (prompt) => set({ initialPrompt: prompt }),
+
+      mode: "search",
+      setMode: (mode) => set({ mode }),
+    }),
+    { name: "AICommandStore", enabled: process.env.NODE_ENV === "development" }
+  )
+);
 
 // ============================================
 // HOOK SIMPLIFIÉ

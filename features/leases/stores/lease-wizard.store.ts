@@ -6,7 +6,7 @@
  */
 
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { devtools, persist, createJSONStorage } from "zustand/middleware";
 import type { ColocationConfigData } from "@/app/owner/leases/new/ColocationConfig";
 import type { Invitee } from "@/app/owner/leases/new/MultiTenantInvite";
 import type { Garant } from "@/app/owner/leases/new/GarantForm";
@@ -173,6 +173,7 @@ const initialState: LeaseWizardState = {
 // ---------------------------------------------------------------------------
 
 export const useLeaseWizardStore = create<LeaseWizardState & LeaseWizardActions>()(
+  devtools(
   persist(
     (set) => ({
       ...initialState,
@@ -205,6 +206,8 @@ export const useLeaseWizardStore = create<LeaseWizardState & LeaseWizardActions>
         return rest;
       },
     }
+  ),
+  { name: "LeaseWizardStore", enabled: process.env.NODE_ENV === "development" }
   )
 );
 

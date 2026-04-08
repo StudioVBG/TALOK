@@ -9,6 +9,7 @@
  */
 
 import { create } from "zustand";
+import { devtools } from "zustand/middleware";
 
 interface PageTitleState {
   /** Titre contextuel défini par la page enfant, ou null pour utiliser le titre de navigation par défaut */
@@ -16,7 +17,12 @@ interface PageTitleState {
   setPageTitle: (title: string | null) => void;
 }
 
-export const usePageTitleStore = create<PageTitleState>((set) => ({
-  overrideTitle: null,
-  setPageTitle: (title) => set({ overrideTitle: title }),
-}));
+export const usePageTitleStore = create<PageTitleState>()(
+  devtools(
+    (set) => ({
+      overrideTitle: null,
+      setPageTitle: (title) => set({ overrideTitle: title }),
+    }),
+    { name: "PageTitleStore", enabled: process.env.NODE_ENV === "development" }
+  )
+);
