@@ -50,7 +50,7 @@ export async function POST(
     const overrides = ValidateBodySchema.parse(body);
 
     // Load analysis
-    const { data: analysis, error: anaErr } = await supabase
+    const { data: analysis, error: anaErr } = await (supabase as any)
       .from("document_analyses")
       .select("*")
       .eq("document_id", documentId)
@@ -122,7 +122,7 @@ export async function POST(
     }
 
     // Update analysis with entry link
-    await supabase
+    await (supabase as any)
       .from("document_analyses")
       .update({
         entry_id: entry.id,
@@ -138,7 +138,7 @@ export async function POST(
 
     if (suggestedAccount && accountNumber !== suggestedAccount && supplierName) {
       try {
-        await supabase
+        await (supabase as any)
           .from("ocr_category_rules")
           .upsert(
             {

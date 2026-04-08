@@ -10,7 +10,7 @@ export async function GET() {
     if (!user) throw new ApiError(401, "Non authentifie");
 
     // Find all entities this EC has access to
-    const { data: accesses } = await supabase
+    const { data: accesses } = await (supabase as any)
       .from("ec_access")
       .select("entity_id, access_level")
       .eq("ec_user_id", user.id)
@@ -22,7 +22,7 @@ export async function GET() {
       const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
       if (!profile) return NextResponse.json({ success: true, data: { clients: [] } });
 
-      const { data: emailAccesses } = await supabase
+      const { data: emailAccesses } = await (supabase as any)
         .from("ec_access")
         .select("entity_id, access_level, ec_email")
         .eq("is_active", true)
@@ -41,8 +41,8 @@ export async function GET() {
     for (const entityId of entityIds) {
       const { data: entity } = await supabase.from("legal_entities").select("nom").eq("id", entityId).single();
       const { count: entryCount } = await supabase.from("accounting_entries").select("id", { count: "exact", head: true }).eq("entity_id", entityId);
-      const { data: exercises } = await supabase.from("accounting_exercises").select("status").eq("entity_id", entityId).order("start_date", { ascending: false }).limit(1);
-      const { count: annotationCount } = await supabase.from("ec_annotations").select("id", { count: "exact", head: true }).eq("entity_id", entityId).eq("is_resolved", false);
+      const { data: exercises } = await (supabase as any).from("accounting_exercises").select("status").eq("entity_id", entityId).order("start_date", { ascending: false }).limit(1);
+      const { count: annotationCount } = await (supabase as any).from("ec_annotations").select("id", { count: "exact", head: true }).eq("entity_id", entityId).eq("is_resolved", false);
 
       clients.push({
         entityId,

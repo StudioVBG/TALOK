@@ -111,7 +111,7 @@ export async function PUT(
     if (body.notes !== undefined) update.notes = body.notes;
     if (body.statut !== undefined) update.statut = body.statut;
 
-    const { data, error } = await serviceClient
+    const { data, error } = await (serviceClient as any)
       .from("expenses")
       .update(update)
       .eq("id", id)
@@ -147,7 +147,7 @@ export async function DELETE(
     const serviceClient = createServiceRoleClient();
     const profile = await getOwnerProfile(serviceClient, user.id);
 
-    const { error } = await serviceClient
+    const { error } = await (serviceClient as any)
       .from("expenses")
       .update({ statut: "cancelled" })
       .eq("id", id)

@@ -164,7 +164,7 @@ export async function GET(request: Request) {
     // Check 3: Separate mandant bank account
     // -----------------------------------------------------------------------
 
-    const { data: bankConnectionsRaw } = await supabase
+    const { data: bankConnectionsRaw } = await (supabase as any)
       .from("bank_connections")
       .select("*")
       .eq("entity_id", agencyEntityId)
@@ -223,7 +223,7 @@ export async function GET(request: Request) {
       const accountNumber = (mandant.account_number as string) ?? `467${(mandant.id as string).slice(0, 3)}`;
 
       // Get balance on the mandant sub-account (467XXX)
-      const { data: subAccountLines } = await supabase
+      const { data: subAccountLines } = await (supabase as any)
         .from("accounting_entry_lines")
         .select(
           "debit_cents, credit_cents, accounting_entries!inner(entity_id, entry_date)",
@@ -245,7 +245,7 @@ export async function GET(request: Request) {
 
       if (pendingCents > 0) {
         // Check when the oldest unreversed entry was created
-        const { data: oldestEntry } = await supabase
+        const { data: oldestEntry } = await (supabase as any)
           .from("accounting_entry_lines")
           .select(
             "accounting_entries!inner(entry_date, entity_id, source)",
@@ -305,7 +305,7 @@ export async function GET(request: Request) {
     const missingCRGDetails: string[] = [];
 
     for (const mandant of mandants ?? []) {
-      const { data: recentCRGs } = await supabase
+      const { data: recentCRGs } = await (supabase as any)
         .from("crg_reports")
         .select("id")
         .eq("mandant_id", mandant.id as string)
@@ -343,7 +343,7 @@ export async function GET(request: Request) {
     // -----------------------------------------------------------------------
 
     // Look for single entries > TRACFIN_THRESHOLD_CENTS on mandant sub-accounts (467xxx)
-    const { data: largeMovements } = await supabase
+    const { data: largeMovements } = await (supabase as any)
       .from("accounting_entry_lines")
       .select(
         `

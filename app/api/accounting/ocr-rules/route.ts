@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     const entityId = searchParams.get("entityId");
     if (!entityId) throw new ApiError(400, "entityId requis");
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("ocr_category_rules")
       .select("*")
       .eq("entity_id", entityId)
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { entityId, matchType, matchValue, targetAccount, targetJournal } = body;
 
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from("ocr_category_rules")
       .upsert({
         entity_id: entityId,
@@ -88,7 +88,7 @@ export async function DELETE(request: Request) {
     const ruleId = searchParams.get("id");
     if (!ruleId) throw new ApiError(400, "id requis");
 
-    const { error } = await supabase.from("ocr_category_rules").delete().eq("id", ruleId);
+    const { error } = await (supabase as any).from("ocr_category_rules").delete().eq("id", ruleId);
     if (error) throw new ApiError(500, error.message);
 
     return NextResponse.json({ success: true });

@@ -54,7 +54,7 @@ export async function GET(_request: Request, context: Context) {
     const featureGate = await requireAccountingAccess(profile.id, "entries");
     if (featureGate) return featureGate;
 
-    const { data: lot, error } = await supabase
+    const { data: lot, error } = await (supabase as any)
       .from("copro_lots")
       .select("*")
       .eq("id", id)
@@ -114,7 +114,7 @@ export async function PATCH(request: Request, context: Context) {
     if (data.tantièmesSpeciaux !== undefined) update.tantiemes_speciaux = data.tantièmesSpeciaux;
     if (data.surfaceM2 !== undefined) update.surface_m2 = data.surfaceM2;
 
-    const { data: lot, error } = await supabase
+    const { data: lot, error } = await (supabase as any)
       .from("copro_lots")
       .update(update)
       .eq("id", id)
@@ -156,7 +156,7 @@ export async function DELETE(_request: Request, context: Context) {
     const featureGate = await requireAccountingAccess(profile.id, "entries");
     if (featureGate) return featureGate;
 
-    const { data: lot, error } = await supabase
+    const { data: lot, error } = await (supabase as any)
       .from("copro_lots")
       .update({ is_active: false, updated_at: new Date().toISOString() })
       .eq("id", id)

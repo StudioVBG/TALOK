@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 
 interface ConfidenceFieldProps {
   label: string;
-  value: string | number;
-  onChange: (value: string) => void;
+  value?: string | number;
+  onChange?: (value: string) => void;
   confidence: number;
   children?: React.ReactNode;
 }

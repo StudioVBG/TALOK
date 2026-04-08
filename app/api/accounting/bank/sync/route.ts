@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     // Fetch connections to sync
     // -----------------------------------------------------------------------
 
-    let query = supabase
+    let query = (supabase as any)
       .from("bank_connections")
       .select("*")
       .eq("is_active", true)
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
           );
 
           if (closingBalance) {
-            await supabase
+            await (supabase as any)
               .from("bank_connections")
               .update({
                 balance_cents: amountToCents(closingBalance.balanceAmount.amount),
@@ -171,7 +171,7 @@ export async function POST(request: Request) {
           }));
 
           // Insert with ON CONFLICT DO NOTHING
-          const { error: txInsertError, count } = await supabase
+          const { error: txInsertError, count } = await (supabase as any)
             .from("bank_transactions")
             .upsert(rows, {
               onConflict: "provider_transaction_id",
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
         }
 
         // Update last_sync_at
-        await supabase
+        await (supabase as any)
           .from("bank_connections")
           .update({
             last_sync_at: new Date().toISOString(),
@@ -208,7 +208,7 @@ export async function POST(request: Request) {
           errorMessage.includes("EX");
 
         if (isExpired) {
-          await supabase
+          await (supabase as any)
             .from("bank_connections")
             .update({
               sync_status: "expired",
@@ -217,7 +217,7 @@ export async function POST(request: Request) {
             })
             .eq("id", connection.id);
         } else {
-          await supabase
+          await (supabase as any)
             .from("bank_connections")
             .update({
               error_message: errorMessage,

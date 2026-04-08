@@ -182,7 +182,7 @@ export async function GET(request: Request) {
 
     const pdfBytes = await generateFiscalSummaryPDF(fiscalData);
 
-    return new NextResponse(pdfBytes, {
+    return new NextResponse(pdfBytes as unknown as BodyInit, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="Recap_fiscal_${year}_Talok.pdf"`,

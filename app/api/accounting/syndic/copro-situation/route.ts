@@ -69,7 +69,7 @@ export async function GET(request: Request) {
     }
 
     // Find lots where owner_profile_id matches
-    const { data: lots, error: lotsError } = await supabase
+    const { data: lots, error: lotsError } = await (supabase as any)
       .from("copro_lots")
       .select("*")
       .eq("owner_profile_id", profileId)

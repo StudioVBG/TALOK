@@ -26,7 +26,7 @@ export async function PATCH(
       throw new ApiError(401, "Non authentifie");
     }
 
-    const { data: annotation, error } = await supabase
+    const { data: annotation, error } = await (supabase as any)
       .from("ec_annotations")
       .update({
         resolved_at: new Date().toISOString(),

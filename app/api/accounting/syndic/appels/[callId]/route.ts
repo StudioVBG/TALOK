@@ -57,7 +57,7 @@ export async function GET(_request: Request, context: Context) {
     if (featureGate) return featureGate;
 
     // Load fund call
-    const { data: call, error: callError } = await supabase
+    const { data: call, error: callError } = await (supabase as any)
       .from("copro_fund_calls")
       .select("*")
       .eq("id", callId)
@@ -68,7 +68,7 @@ export async function GET(_request: Request, context: Context) {
     }
 
     // Load call lines
-    const { data: lines, error: linesError } = await supabase
+    const { data: lines, error: linesError } = await (supabase as any)
       .from("copro_fund_call_lines")
       .select("*, copro_lots(lot_number, lot_type, surface_m2)")
       .eq("call_id", callId)
@@ -83,11 +83,11 @@ export async function GET(_request: Request, context: Context) {
 
     // Calculate totals
     const totalCalled = (lines ?? []).reduce(
-      (sum, l) => sum + (l.amount_cents as number),
+      (sum: number, l: any) => sum + (l.amount_cents as number),
       0,
     );
     const totalPaid = (lines ?? []).reduce(
-      (sum, l) => sum + (l.paid_cents as number),
+      (sum: number, l: any) => sum + (l.paid_cents as number),
       0,
     );
 
@@ -139,7 +139,7 @@ export async function POST(request: Request, context: Context) {
     const action = body.action;
 
     // Load fund call
-    const { data: call, error: callError } = await supabase
+    const { data: call, error: callError } = await (supabase as any)
       .from("copro_fund_calls")
       .select("*")
       .eq("id", callId)
@@ -153,7 +153,7 @@ export async function POST(request: Request, context: Context) {
     if (action === "send") {
       SendSchema.parse(body);
 
-      const { data: updated, error } = await supabase
+      const { data: updated, error } = await (supabase as any)
         .from("copro_fund_calls")
         .update({
           status: "sent",
@@ -185,7 +185,7 @@ export async function POST(request: Request, context: Context) {
       const payDate = paymentDate ?? new Date().toISOString().split("T")[0];
 
       // Load the call line
-      const { data: line, error: lineError } = await supabase
+      const { data: line, error: lineError } = await (supabase as any)
         .from("copro_fund_call_lines")
         .select("*, copro_lots(lot_number, owner_name)")
         .eq("id", lineId)
@@ -218,7 +218,7 @@ export async function POST(request: Request, context: Context) {
       }
 
       // Update call line
-      const { error: updateErr } = await supabase
+      const { error: updateErr } = await (supabase as any)
         .from("copro_fund_call_lines")
         .update({
           paid_cents: newPaid,
@@ -235,7 +235,7 @@ export async function POST(request: Request, context: Context) {
       }
 
       // Create accounting entry: D:512000 Banque / C:4500XX Coproprietaire
-      const lotNumber = (line.copro_lots as { lot_number: string })
+      const lotNumber = (line.copro_lots as unknown as { lot_number: string })
         ?.lot_number ?? "000";
       const ownerName = line.owner_name as string;
       const coproAccount = getCoproAccount(lotNumber);
@@ -270,18 +270,18 @@ export async function POST(request: Request, context: Context) {
       });
 
       // Update parent call status based on all lines
-      const { data: allLines } = await supabase
+      const { data: allLines } = await (supabase as any)
         .from("copro_fund_call_lines")
         .select("amount_cents, paid_cents")
         .eq("call_id", callId);
 
       if (allLines) {
         const totalCalledAll = allLines.reduce(
-          (s, l) => s + (l.amount_cents as number),
+          (s: number, l: any) => s + (l.amount_cents as number),
           0,
         );
         const totalPaidAll = allLines.reduce(
-          (s, l) => s + (l.paid_cents as number),
+          (s: number, l: any) => s + (l.paid_cents as number),
           0,
         );
 
@@ -294,7 +294,7 @@ export async function POST(request: Request, context: Context) {
           callStatus = "pending";
         }
 
-        await supabase
+        await (supabase as any)
           .from("copro_fund_calls")
           .update({
             payment_status: callStatus,

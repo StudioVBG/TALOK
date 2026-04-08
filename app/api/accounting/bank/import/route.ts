@@ -334,7 +334,7 @@ export async function POST(request: Request) {
     }
 
     // Validate connection exists and get entity_id
-    const { data: connection, error: connError } = await supabase
+    const { data: connection, error: connError } = await (supabase as any)
       .from("bank_connections")
       .select("id, entity_id")
       .eq("id", connectionId)
@@ -396,7 +396,7 @@ export async function POST(request: Request) {
       }));
 
       // Use upsert with onConflict to skip duplicates
-      const { data: inserted, error: insertError } = await supabase
+      const { data: inserted, error: insertError } = await (supabase as any)
         .from("bank_transactions")
         .upsert(rows, {
           onConflict: "connection_id,provider_transaction_id",
