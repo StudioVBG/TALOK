@@ -115,7 +115,8 @@ CREATE INDEX IF NOT EXISTS idx_entry_lines_lettrage ON accounting_entry_lines(le
 
 ALTER TABLE accounting_entry_lines ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "entry_lines_via_entry" ON accounting_entry_lines
+DROP POLICY IF EXISTS "entry_lines_via_entry" ON accounting_entry_lines;
+CREATE POLICY "entry_lines_via_entry" ON accounting_entry_lines
   FOR ALL TO authenticated
   USING (
     entry_id IN (
