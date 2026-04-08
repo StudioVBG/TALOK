@@ -127,9 +127,6 @@ export async function syncPropertyBillingToStripe(ownerId: string): Promise<void
           proration_behavior: "create_prorations",
           metadata: { type: "extra_properties" },
         });
-        console.log(
-          `[syncPropertyBilling] Created extra_properties item: quantity=${extraCount} for owner=${ownerId}`
-        );
       } catch (err) {
         console.error("[syncPropertyBilling] Error creating subscription item:", err);
         return;
@@ -141,9 +138,6 @@ export async function syncPropertyBillingToStripe(ownerId: string): Promise<void
           quantity: extraCount,
           proration_behavior: "create_prorations",
         });
-        console.log(
-          `[syncPropertyBilling] Updated extra_properties item: quantity=${extraCount} for owner=${ownerId}`
-        );
       } catch (err) {
         console.error("[syncPropertyBilling] Error updating subscription item:", err);
         return;
@@ -156,9 +150,6 @@ export async function syncPropertyBillingToStripe(ownerId: string): Promise<void
       await stripe.subscriptionItems.del(existingItem.id, {
         proration_behavior: "create_prorations",
       });
-      console.log(
-        `[syncPropertyBilling] Removed extra_properties item for owner=${ownerId}`
-      );
     } catch (err) {
       console.error("[syncPropertyBilling] Error deleting subscription item:", err);
       return;

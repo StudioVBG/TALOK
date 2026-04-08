@@ -205,6 +205,12 @@ TALOK/
 ├── app/tenant/          # 8 sous-repertoires
 ├── app/api/             # 457 routes API
 ├── lib/
+│   ├── accounting/
+│   │   ├── index.ts             # Barrel export
+│   │   ├── engine.ts            # Double-entry CRUD, 14 auto-entries
+│   │   ├── fec.ts               # Générateur FEC 18 champs
+│   │   ├── reconciliation.ts    # Rapprochement bancaire auto
+│   │   └── chart-amort-ocr.ts   # Plan comptable, amortissements, OCR
 │   ├── documents/
 │   │   ├── constants.ts         # SOURCE UNIQUE types, MIME, labels
 │   │   ├── format-name.ts       # getDisplayName()
@@ -270,3 +276,16 @@ TALOK/
 - Wrapper emails en try/catch
 - Mobile-first : commencer par 320px
 - Respecter prefers-reduced-motion pour les animations
+
+---
+
+## 12. Renvois croisés entre skills
+
+| Sujet | Skill source unique | Ne PAS dupliquer ici |
+|-------|-------------------|---------------------|
+| Documents : upload, storage, GED, quittances | `talok-documents-sota` | types, bucket, hooks React |
+| Comptabilité : écritures, FEC, rapprochement, plan comptable | `talok-accounting` | tables SQL compta, engine, TVA OCR |
+| Onboarding : inscription, emails, tour guidé | `talok-onboarding-sota` | flow, WelcomeModal, emails |
+| Feature gating comptabilité (matrice par plan) | `talok-accounting` section 9 | OCR, FEC, connexions par plan |
+| TVA validation justificatifs utilisateurs | `talok-accounting` (TVA_RATES) | taux DROM-COM pour OCR |
+| Grille tarifaire Talok (prix, limites) | ICI section 6 | — source unique — |

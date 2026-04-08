@@ -311,6 +311,7 @@ class MeterNotificationsService {
         count++;
       }
 
+      // TODO: replace with structured logger once available
       console.log(`[MeterNotifications] Sent ${count} monthly reminders`);
       return count;
 

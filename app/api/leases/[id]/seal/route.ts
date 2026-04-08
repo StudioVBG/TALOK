@@ -179,6 +179,7 @@ export async function POST(
     }
     
     // 10. Créer l'entrée document
+    // SYSTEM DOCUMENT: Direct insert acceptable for auto-generated PDFs (no user upload flow)
     await serviceClient.from("documents").insert({
       type: "bail",
       lease_id: leaseId,

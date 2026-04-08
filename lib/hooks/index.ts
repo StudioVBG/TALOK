@@ -82,5 +82,11 @@ export { usePullToRefresh } from "./use-pull-to-refresh";
 export { useOnlineStatus } from "./use-online-status";
 export { useHaptic } from "./use-haptic";
 
+// Hooks copropriété syndic
+export { useCoproLots, useCoproSites } from "./use-copro-lots";
+export { useCoproBudget } from "./use-copro-budget";
+export { useCoproAppels, useCoproAppelDetail, useCoproAppelGeneration } from "./use-copro-appels";
+export { useSyndicDashboard } from "./use-syndic-dashboard";
+
 // Re-export des hooks courants
 export { useToast, toast } from "@/components/ui/use-toast";

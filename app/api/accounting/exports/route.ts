@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
 
 /**
  * @deprecated Utiliser POST /api/exports avec type='accounting' pour un export asynchrone sécurisé.
@@ -32,6 +33,10 @@ export async function GET(request: Request) {
 
     const profileData = profile as any;
     const isAdmin = profileData?.role === "admin";
+
+    // Feature gate: check subscription plan
+    const featureGate = await requireAccountingAccess(profileData?.id, 'exports');
+    if (featureGate) return featureGate;
 
     if (scope === "global" && !isAdmin) {
       return NextResponse.json(

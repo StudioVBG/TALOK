@@ -71,8 +71,6 @@ class WhisperService {
       file = audioFile as File;
     }
 
-    console.log(`[Whisper] Transcribing ${file.name} (${file.size} bytes)`);
-
     const startTime = Date.now();
 
     try {
@@ -86,8 +84,6 @@ class WhisperService {
       });
 
       const duration = Date.now() - startTime;
-
-      console.log(`[Whisper] Transcription completed in ${duration}ms`);
 
       return {
         text: response.text,
@@ -108,8 +104,6 @@ class WhisperService {
     audioUrl: string,
     options?: TranscriptionOptions
   ): Promise<TranscriptionResult> {
-    console.log(`[Whisper] Fetching audio from URL: ${audioUrl}`);
-
     const response = await fetch(audioUrl);
     if (!response.ok) {
       throw new Error(`Failed to fetch audio: ${response.statusText}`);

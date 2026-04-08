@@ -147,7 +147,6 @@ export async function generateSignedLeasePDF(
     .maybeSingle();
 
   if (existing) {
-    console.log("[lease-pdf-generator] PDF déjà généré pour le bail:", leaseId);
     return {
       id: (existing as any).id,
       storage_path: (existing as any).storage_path,
@@ -266,8 +265,6 @@ export async function generateSignedLeasePDF(
     .update({ signed_pdf_generated: true } as any)
     .eq("id", leaseId);
 
-  console.log("[lease-pdf-generator] PDF signé généré:", { leaseId, docId: doc.id, storagePath });
-
   // 6. Envoyer email au locataire (non bloquant)
   try {
     if (tenantProfile.email) {
@@ -288,7 +285,6 @@ export async function generateSignedLeasePDF(
           <p>Cordialement,<br/>L'équipe Talok</p>
         `,
       });
-      console.log("[lease-pdf-generator] Email envoyé au locataire:", tenantProfile.email);
     }
   } catch (emailErr) {
     console.warn("[lease-pdf-generator] Erreur envoi email (non bloquant):", String(emailErr));

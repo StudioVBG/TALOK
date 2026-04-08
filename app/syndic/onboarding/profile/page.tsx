@@ -52,7 +52,9 @@ export default function SyndicOnboardingProfilePage() {
     setLoading(true);
     try {
       // Sauvegarder les infos cabinet dans localStorage (utilisées lors de la création du site)
-      localStorage.setItem("syndic_profile", JSON.stringify(form));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem("syndic_profile", JSON.stringify(form));
+      }
 
       // Mettre à jour le profil utilisateur avec les champs supportés par l'API
       const nameParts = form.contact_name.trim().split(/\s+/);

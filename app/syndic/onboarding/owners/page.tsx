@@ -82,6 +82,7 @@ export default function OnboardingOwnersPage() {
 
   // Charger les données
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const storedUnits = localStorage.getItem('syndic_onboarding_units');
     const storedOwners = localStorage.getItem('syndic_onboarding_owners');
 
@@ -196,7 +197,9 @@ export default function OnboardingOwnersPage() {
     setSaving(true);
 
     try {
-      localStorage.setItem('syndic_onboarding_owners', JSON.stringify(owners));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('syndic_onboarding_owners', JSON.stringify(owners));
+      }
       router.push('/syndic/onboarding/complete');
     } catch (error) {
       console.error('Erreur sauvegarde:', error);

@@ -195,8 +195,9 @@ export async function sendEmail(options: SendEmailOptions): Promise<EmailResult>
 
     // 6. Log succès
     const duration = Date.now() - startTime;
+    // TODO: replace with structured logger once available
     console.log(
-      `[Email] ✅ Envoyé avec succès | ID: ${result.id} | To: ${validation.validEmails.join(', ')} | ` +
+      `[Email] Envoyé avec succès | ID: ${result.id} | To: ${validation.validEmails.join(', ')} | ` +
       `Durée: ${duration}ms | Tentatives: ${attempts}`
     );
 

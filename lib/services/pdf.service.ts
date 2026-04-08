@@ -155,7 +155,6 @@ class PDFService {
       
       // ✅ NOUVEAU: Si le serveur indique "method: client", générer côté client
       if (result.method === 'client' || !result.url) {
-        console.log("📄 Génération PDF côté client (serveur non disponible)");
         return await this.generateLeaseDocumentClient(html, filename, leaseId);
       }
 
@@ -166,7 +165,6 @@ class PDFService {
       };
     } catch (error) {
       // Fallback: générer côté client si le serveur échoue
-      console.log("📄 Fallback: Génération PDF côté client", error);
       return await this.generateLeaseDocumentClient(html, filename, leaseId);
     }
   }

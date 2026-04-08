@@ -334,3 +334,23 @@ AUTO_GENERATED_DOCS = [
 - Insérer dans documents sans `title`
 - Afficher storage_path, sha256, ou tout path technique à l'utilisateur
 - Supprimer storage sans supprimer l'entrée DB (et inversement)
+
+---
+
+## 13. Frontières avec le module comptabilité (talok-accounting)
+
+Le flux justificatif traverse les deux skills :
+
+1. **Upload du document** → ICI (`talok-documents-sota`) : upload via `/api/documents/upload`, stockage bucket, table `documents`, SHA-256
+2. **Analyse OCR/IA** → `talok-accounting` : table `document_analyses`, prompt GPT-4, validation TVA DROM-COM, suggestion de compte
+3. **Création écriture comptable** → `talok-accounting` : `createEntry()` ou `createAutoEntry()`, validation humaine obligatoire
+
+| Ce qui reste ICI | Ce qui est dans talok-accounting |
+|-----------------|--------------------------------|
+| Table `documents` (upload, metadata, storage_path) | Table `document_analyses` (OCR, confidence, suggested_account) |
+| Bucket Supabase Storage, signed URLs | Prompt `OCR_EXTRACTION_SYSTEM_PROMPT` |
+| `receipt-generator.ts` (génération quittance PDF) | Écriture auto `rent_received` déclenchée par webhook Stripe |
+| SHA-256, archivage, coffre-fort | Durée conservation 10 ans (règle compta) |
+| `useGedUpload`, hooks React documents | Pas de hooks React compta (server-side only) |
+
+**Règle :** ne JAMAIS dupliquer la logique OCR/analyse dans ce skill. Importer depuis `@/lib/accounting`.

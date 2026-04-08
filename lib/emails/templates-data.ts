@@ -77,10 +77,10 @@ const PREVIEW_DATA = {
 
   // Prix
   planName: "Pro",
-  oldPriceMonthly: 2900,
-  newPriceMonthly: 3400,
-  oldPriceYearly: 29000,
-  newPriceYearly: 34000,
+  oldPriceMonthly: 5900,
+  newPriceMonthly: 6900,
+  oldPriceYearly: 59000,
+  newPriceYearly: 69000,
   grandfatheredUntil: "31 mars 2026",
   changeReason: "Ajout de nouvelles fonctionnalités premium et amélioration de l'infrastructure.",
 };

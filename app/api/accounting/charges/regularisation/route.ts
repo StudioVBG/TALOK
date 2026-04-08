@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { ChargeRegularizationService } from "@/features/accounting/services/charge-regularization.service";
+import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -40,6 +41,10 @@ export async function GET(request: Request) {
     if (!profile) {
       throw new ApiError(404, "Profil non trouvé");
     }
+
+    // Feature gate: check subscription plan
+    const featureGate = await requireAccountingAccess(profile.id, 'charges');
+    if (featureGate) return featureGate;
 
     // Parser les paramètres
     const { searchParams } = new URL(request.url);
@@ -125,6 +130,10 @@ export async function POST(request: Request) {
     if (!profile) {
       throw new ApiError(404, "Profil non trouvé");
     }
+
+    // Feature gate: check subscription plan
+    const featureGatePost = await requireAccountingAccess(profile.id, 'charges');
+    if (featureGatePost) return featureGatePost;
 
     // Seuls les propriétaires et admins peuvent créer des régularisations
     if (profile.role !== "owner" && profile.role !== "admin") {

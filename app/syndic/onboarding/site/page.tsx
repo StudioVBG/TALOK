@@ -52,7 +52,7 @@ export default function SyndicOnboardingSitePage() {
     setLoading(true);
     try {
       // Récupérer les infos du cabinet syndic depuis le profil (étape précédente)
-      const syndicProfileRaw = localStorage.getItem("syndic_profile");
+      const syndicProfileRaw = typeof window !== 'undefined' ? localStorage.getItem("syndic_profile") : null;
       const syndicProfile = syndicProfileRaw ? JSON.parse(syndicProfileRaw) : {};
 
       const response = await fetch("/api/copro/sites", {
@@ -79,7 +79,7 @@ export default function SyndicOnboardingSitePage() {
       const siteId = data.site?.id || data.id;
 
       // Persister le site créé dans localStorage pour les étapes suivantes
-      localStorage.setItem("syndic_onboarding_site", JSON.stringify({
+      if (typeof window !== 'undefined') localStorage.setItem("syndic_onboarding_site", JSON.stringify({
         id: siteId,
         name: form.name,
         address: form.address,

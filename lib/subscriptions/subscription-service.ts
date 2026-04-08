@@ -532,7 +532,7 @@ export async function logSubscriptionEvent(
     });
   } catch {
     // Table n'existe peut-être pas
-    console.log('[SubscriptionService] subscription_events table not found');
+    console.error('[SubscriptionService] subscription_events table not found');
   }
 }
 

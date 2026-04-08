@@ -44,12 +44,14 @@ export default function PrivacyPage() {
             <p>Le responsable du traitement des données est :</p>
             <ul>
               <li>
+                {/* LEGAL: Thomas doit fournir cette info */}
                 <strong>Société :</strong>{" "}
                 <span className="text-amber-600 font-semibold">
                   [À REMPLIR — raison sociale]
                 </span>
               </li>
               <li>
+                {/* LEGAL: Thomas doit fournir cette info */}
                 <strong>Siège social :</strong>{" "}
                 <span className="text-amber-600 font-semibold">
                   [À REMPLIR — adresse, Martinique]

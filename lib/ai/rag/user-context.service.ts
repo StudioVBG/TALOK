@@ -257,7 +257,6 @@ export class UserContextService {
       if (success) stats.tickets++;
     }
 
-    console.log("[UserContext] Indexed all user data:", stats);
     return stats;
   }
 

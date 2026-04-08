@@ -40,17 +40,20 @@ export default function MentionsLegalesPage() {
             <ul>
               <li>
                 <strong>Raison sociale :</strong>{" "}
+                {/* LEGAL: Thomas doit fournir cette info */}
                 <span className="text-amber-600 font-semibold">
                   [À REMPLIR — nom exact de la société]
                 </span>
               </li>
               <li>
                 <strong>Forme juridique :</strong>{" "}
+                {/* LEGAL: Thomas doit fournir cette info */}
                 <span className="text-amber-600 font-semibold">
                   [À REMPLIR — SAS, SARL, EURL, Auto-entrepreneur…]
                 </span>
               </li>
               <li>
+                {/* LEGAL: Thomas doit fournir cette info */}
                 <strong>Capital social :</strong>{" "}
                 <span className="text-amber-600 font-semibold">
                   [À REMPLIR]
@@ -59,11 +62,13 @@ export default function MentionsLegalesPage() {
               </li>
               <li>
                 <strong>Siège social :</strong>{" "}
+                {/* LEGAL: Thomas doit fournir cette info */}
                 <span className="text-amber-600 font-semibold">
                   [À REMPLIR — adresse complète, Martinique]
                 </span>
               </li>
               <li>
+                {/* LEGAL: Thomas doit fournir cette info */}
                 <strong>SIRET :</strong>{" "}
                 <span className="text-amber-600 font-semibold">
                   [À REMPLIR]
@@ -71,12 +76,14 @@ export default function MentionsLegalesPage() {
               </li>
               <li>
                 <strong>RCS :</strong>{" "}
+                {/* LEGAL: Thomas doit fournir cette info */}
                 <span className="text-amber-600 font-semibold">
                   [À REMPLIR — ex : RCS Fort-de-France B 000 000 000]
                 </span>
               </li>
               <li>
                 <strong>N° TVA intracommunautaire :</strong>{" "}
+                {/* LEGAL: Thomas doit fournir cette info */}
                 <span className="text-amber-600 font-semibold">
                   [À REMPLIR ou &quot;Non applicable&quot; si franchise en base
                   de TVA]
@@ -95,6 +102,7 @@ export default function MentionsLegalesPage() {
                 </a>
               </li>
               <li>
+                {/* LEGAL: Thomas doit fournir cette info */}
                 <strong>Téléphone :</strong>{" "}
                 <span className="text-amber-600 font-semibold">
                   [À REMPLIR]

@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { z } from "zod";
+import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +47,10 @@ export async function GET(request: Request, context: Context) {
     if (!profile) {
       throw new ApiError(403, "Profil non trouvé");
     }
+
+    // Feature gate: check subscription plan
+    const featureGate = await requireAccountingAccess(profile.id, 'entries');
+    if (featureGate) return featureGate;
 
     let query = supabase
       .from("accounting_entries")
@@ -95,6 +100,10 @@ export async function PUT(request: Request, context: Context) {
     if (!profile || profile.role !== "admin") {
       throw new ApiError(403, "Seuls les administrateurs peuvent modifier les écritures");
     }
+
+    // Feature gate: check subscription plan
+    const featureGatePut = await requireAccountingAccess(profile.id, 'entries');
+    if (featureGatePut) return featureGatePut;
 
     // Vérifier que l'écriture existe et n'est pas validée
     const { data: existing } = await supabase
@@ -159,6 +168,10 @@ export async function DELETE(request: Request, context: Context) {
     if (!profile || profile.role !== "admin") {
       throw new ApiError(403, "Seuls les administrateurs peuvent supprimer les écritures");
     }
+
+    // Feature gate: check subscription plan
+    const featureGateDel = await requireAccountingAccess(profile.id, 'entries');
+    if (featureGateDel) return featureGateDel;
 
     // Vérifier que l'écriture existe et n'est pas validée
     const { data: existing } = await supabase

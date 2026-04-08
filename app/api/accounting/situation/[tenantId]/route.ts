@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { accountingService } from "@/features/accounting/services/accounting.service";
+import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -47,6 +48,10 @@ export async function GET(
     if (!profile) {
       throw new ApiError(404, "Profil non trouvé");
     }
+
+    // Feature gate: check subscription plan
+    const featureGate = await requireAccountingAccess(profile.id, 'situation');
+    if (featureGate) return featureGate;
 
     // Vérifier les autorisations
     if (profile.role === "tenant") {

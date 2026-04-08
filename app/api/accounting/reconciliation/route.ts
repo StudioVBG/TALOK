@@ -8,6 +8,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { CreateReconciliationSchema } from "@/lib/validations/accounting";
+import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,10 @@ export async function GET(request: Request) {
     if (!profile || profile.role !== "admin") {
       throw new ApiError(403, "Accès réservé aux administrateurs");
     }
+
+    // Feature gate: check subscription plan
+    const featureGate = await requireAccountingAccess(profile.id, 'reconciliation');
+    if (featureGate) return featureGate;
 
     const { searchParams } = new URL(request.url);
     const compteType = searchParams.get("compte_type");
@@ -92,6 +97,10 @@ export async function POST(request: Request) {
     if (!profile || profile.role !== "admin") {
       throw new ApiError(403, "Accès réservé aux administrateurs");
     }
+
+    // Feature gate: check subscription plan
+    const featureGatePost = await requireAccountingAccess(profile.id, 'reconciliation');
+    if (featureGatePost) return featureGatePost;
 
     const body = await request.json();
     const validation = CreateReconciliationSchema.safeParse(body);
