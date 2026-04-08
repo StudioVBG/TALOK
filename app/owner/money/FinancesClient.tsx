@@ -29,6 +29,7 @@ import {
   Clock,
   CheckCircle2,
   RefreshCw,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,6 +56,7 @@ import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 // Tab components
 import { CompteBancaireTab } from "./tabs/CompteBancaireTab";
 import { MonForfaitTab } from "./tabs/MonForfaitTab";
+import { DepotsGarantieTab } from "./tabs/DepotsGarantieTab";
 
 // ── Types ──
 
@@ -77,7 +79,7 @@ interface FinancesClientProps {
 
 // ── Constants ──
 
-const TAB_IDS = ["encaissements", "banque", "forfait", "paiement"] as const;
+const TAB_IDS = ["encaissements", "banque", "depots", "forfait", "paiement"] as const;
 type TabId = (typeof TAB_IDS)[number];
 
 const AUDIT_ACTION_MAP: Record<string, { label: string; icon: React.ReactNode }> = {
@@ -431,7 +433,7 @@ export function FinancesClient({ invoices }: FinancesClientProps) {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabId)}>
-          <TabsList className="grid grid-cols-4 h-12 rounded-xl bg-muted/50 p-1">
+          <TabsList className="grid grid-cols-5 h-12 rounded-xl bg-muted/50 p-1">
             <TabsTrigger value="encaissements" className="gap-2 rounded-lg data-[state=active]:shadow-sm text-xs sm:text-sm">
               <Euro className="h-4 w-4" />
               <span className="hidden sm:inline">Encaissements</span>
@@ -441,6 +443,11 @@ export function FinancesClient({ invoices }: FinancesClientProps) {
               <Building2 className="h-4 w-4" />
               <span className="hidden sm:inline">Compte bancaire</span>
               <span className="sm:hidden">Banque</span>
+            </TabsTrigger>
+            <TabsTrigger value="depots" className="gap-2 rounded-lg data-[state=active]:shadow-sm text-xs sm:text-sm">
+              <ShieldCheck className="h-4 w-4" />
+              <span className="hidden sm:inline">Dépôts de garantie</span>
+              <span className="sm:hidden">Dépôts</span>
             </TabsTrigger>
             <TabsTrigger value="forfait" className="gap-2 rounded-lg data-[state=active]:shadow-sm text-xs sm:text-sm">
               <Sparkles className="h-4 w-4" />
@@ -464,6 +471,12 @@ export function FinancesClient({ invoices }: FinancesClientProps) {
             <PlanGate feature="tenant_payment_online" mode="blur">
               <CompteBancaireTab />
             </PlanGate>
+          </TabsContent>
+
+          <TabsContent value="depots" className="mt-6">
+            <Suspense fallback={<Skeleton className="h-96 w-full rounded-2xl" />}>
+              <DepotsGarantieTab />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="forfait" className="mt-6">
