@@ -29,12 +29,28 @@ export async function GET(request: Request) {
 
   const results = {
     processed: 0,
+    trials_expired: 0,
     trial_ending_alerts: 0,
     renewal_alerts: 0,
     errors: [] as string[],
   };
 
   try {
+    // 0. Expirer les trials dépassés (AVANT les alertes)
+    const { data: expiredTrials, error: expireError } = await supabase
+      .from("subscriptions")
+      .update({ status: "expired", updated_at: today.toISOString() })
+      .eq("status", "trialing")
+      .not("trial_end", "is", null)
+      .lt("trial_end", today.toISOString())
+      .select("id");
+
+    if (expireError) {
+      results.errors.push(`Erreur expiration trials: ${expireError.message}`);
+    } else {
+      results.trials_expired = expiredTrials?.length || 0;
+    }
+
     // 1. Alerter les essais gratuits qui se terminent dans 3 jours
     const trialEndingSoon = addDays(today, 3);
 

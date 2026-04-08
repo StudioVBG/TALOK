@@ -168,6 +168,16 @@ export function SubscriptionProvider({
         console.error("[SubscriptionProvider] Error fetching subscription:", subError);
       }
 
+      // Trial expiré ? Marquer côté client et fire-and-forget update BDD
+      if (sub && sub.status === 'trialing' && sub.trial_end && new Date(sub.trial_end) < new Date()) {
+        sub.status = 'expired';
+        supabase
+          .from('subscriptions')
+          .update({ status: 'expired', updated_at: new Date().toISOString() })
+          .eq('id', sub.id)
+          .then(() => {});
+      }
+
       // Si subscription existe, récupérer le plan séparément
       let subscriptionWithPlan: SubscriptionWithPlan | null = null;
       if (sub) {
