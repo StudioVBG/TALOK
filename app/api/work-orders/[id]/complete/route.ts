@@ -68,9 +68,12 @@ export async function POST(
     const workOrderData = workOrder as any;
 
     // Vérifier que le statut permet la complétion
-    if (workOrderData.statut !== "scheduled") {
+    // Support both legacy statut and new status field
+    const currentStatus = workOrderData.status || workOrderData.statut;
+    const allowedStatuses = ["scheduled", "in_progress"];
+    if (!allowedStatuses.includes(currentStatus)) {
       return NextResponse.json(
-        { error: `Impossible de terminer un ordre au statut "${workOrderData.statut}"` },
+        { error: `Impossible de terminer un ordre au statut "${currentStatus}"` },
         { status: 400 }
       );
     }
@@ -79,15 +82,18 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const { cout_final, notes, date_intervention_reelle } = body;
 
-    // Mettre à jour le statut
+    // Mettre à jour le statut (both legacy and new fields)
     const { data: updated, error: updateError } = await supabase
       .from("work_orders")
       .update({
         statut: "done",
+        status: "completed",
         cout_final: cout_final || workOrderData.cout_estime,
         notes: notes || null,
         date_intervention_reelle: date_intervention_reelle || new Date().toISOString().split("T")[0],
         completed_at: new Date().toISOString(),
+        intervention_report: body.intervention_report || notes || null,
+        intervention_photos: body.intervention_photos || [],
       } as any)
       .eq("id", id)
       .select()

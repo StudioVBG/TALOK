@@ -224,8 +224,13 @@ export default function ProvidersMarketplacePage() {
             {totalCount} prestataires disponibles dans votre zone
           </p>
         </div>
-        
+
         <div className="flex items-center gap-2">
+          <Button asChild>
+            <Link href="/owner/providers/add">
+              Ajouter un prestataire
+            </Link>
+          </Button>
           <Button
             variant={viewMode === 'grid' ? 'default' : 'outline'}
             size="icon"
