@@ -270,12 +270,24 @@ export const POST = withSecurity(async function POST(request: Request) {
       }
     }
 
+    // Résoudre owner_id depuis la propriété
+    let propertyOwnerId: string | null = null;
+    if (validated.property_id) {
+      const { data: propOwner } = await serviceClient
+        .from("properties")
+        .select("owner_id")
+        .eq("id", validated.property_id)
+        .single();
+      propertyOwnerId = propOwner?.owner_id || null;
+    }
+
     // Créer le ticket avec service client
     const { data: ticket, error: insertError } = await serviceClient
       .from("tickets")
       .insert({
         ...validated,
         created_by_profile_id: profileData.id,
+        owner_id: propertyOwnerId,
         statut: "open",
       })
       .select()
