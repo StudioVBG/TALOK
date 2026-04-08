@@ -5,10 +5,11 @@ import { InnovationBar } from "@/components/marketing/sections/InnovationBar"
 import { ProblemSolution } from "@/components/marketing/sections/ProblemSolution"
 import { ArgumentsSection } from "@/components/landing/ArgumentsSection"
 import { Features } from "@/components/marketing/sections/Features"
-import { Testimonials } from "@/components/marketing/sections/Testimonials"
-import { PourQui } from "@/components/marketing/sections/PourQui"
-import { OutreMer } from "@/components/marketing/sections/OutreMer"
+import { PropertyTypes } from "@/components/marketing/sections/PropertyTypes"
 import { Pricing } from "@/components/marketing/sections/Pricing"
+import { CompetitorComparison } from "@/components/marketing/sections/CompetitorComparison"
+import { OutreMer } from "@/components/marketing/sections/OutreMer"
+import { Testimonials } from "@/components/marketing/sections/Testimonials"
 import { FAQ } from "@/components/marketing/sections/FAQ"
 import { FinalCTA, StickyMobileCTA } from "@/components/marketing/sections/FinalCTA"
 
@@ -25,10 +26,11 @@ export function LandingPageClient({ images }: Props) {
         <ProblemSolution images={images} />
         <ArgumentsSection images={images} />
         <Features />
-        <Testimonials />
-        <PourQui images={images} />
-        <OutreMer />
+        <PropertyTypes />
         <Pricing />
+        <CompetitorComparison />
+        <OutreMer />
+        <Testimonials />
         <FAQ />
         <FinalCTA />
       </div>
