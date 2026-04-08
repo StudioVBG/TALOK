@@ -701,7 +701,39 @@ export async function POST(request: NextRequest) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         await syncSubscriptionFromCheckoutSession(supabase, stripe, session);
-        
+
+        // ── Add-on activation ──
+        const addonId = session.metadata?.addon_id;
+        if (addonId) {
+          await supabase
+            .from("subscription_addons")
+            .update({
+              status: "active",
+              activated_at: new Date().toISOString(),
+              stripe_invoice_id: typeof session.invoice === "string" ? session.invoice : session.invoice?.id || null,
+              stripe_subscription_id: typeof session.subscription === "string" ? session.subscription : session.subscription?.id || null,
+            })
+            .eq("id", addonId);
+
+          // For storage add-on subscriptions, store subscription_item_id
+          const stripeSubId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
+          if (stripeSubId) {
+            try {
+              const stripeSub = await stripe.subscriptions.retrieve(stripeSubId);
+              const itemId = stripeSub.items?.data?.[0]?.id;
+              if (itemId) {
+                await supabase
+                  .from("subscription_addons")
+                  .update({ stripe_subscription_item_id: itemId })
+                  .eq("id", addonId);
+              }
+            } catch (e) {
+              console.error("[Stripe Webhook] Failed to retrieve addon subscription item:", e);
+            }
+          }
+          break;
+        }
+
         // Récupérer les métadonnées
         const invoiceId = session.metadata?.invoice_id;
         const leaseId = session.metadata?.lease_id;
@@ -1183,6 +1215,26 @@ export async function POST(request: NextRequest) {
       // ===============================================
       case "customer.subscription.deleted": {
         const subscription = event.data.object as Stripe.Subscription;
+
+        // ── Check if this is an add-on subscription cancellation ──
+        const { data: cancelledAddon } = await supabase
+          .from("subscription_addons")
+          .select("id")
+          .eq("stripe_subscription_id", subscription.id)
+          .maybeSingle();
+
+        if (cancelledAddon) {
+          await supabase
+            .from("subscription_addons")
+            .update({
+              status: "cancelled",
+              cancelled_at: new Date().toISOString(),
+            })
+            .eq("id", cancelledAddon.id);
+          break;
+        }
+
+        // ── Main subscription cancellation ──
         const stripeCustomerId =
           typeof subscription.customer === "string" ? subscription.customer : subscription.customer?.id || null;
 
