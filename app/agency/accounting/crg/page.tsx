@@ -1,4 +1,51 @@
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 import { Suspense } from "react";
-import CRGClient from "./CRGClient";
-export const metadata = { title: "Comptes Rendus de Gestion | Talok" };
-export default function CRGPage() { return (<Suspense fallback={<div className="p-6 animate-pulse"><div className="h-8 bg-muted rounded w-48 mb-6" /><div className="h-64 bg-muted rounded-xl" /></div>}><CRGClient /></Suspense>); }
+import { Skeleton } from "@/components/ui/skeleton";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import { CRGClient } from "./CRGClient";
+
+export const metadata = {
+  title: "Gestion CRG | Comptabilite Agence | Talok",
+  description: "Comptes Rendus de Gestion — generation, envoi, suivi",
+};
+
+async function fetchCRGData() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/auth/signin");
+  }
+
+  return { userId: user.id };
+}
+
+function CRGSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-10 w-48" />
+      </div>
+      <Skeleton className="h-10 w-80" />
+      {[1, 2, 3].map((i) => (
+        <Skeleton key={i} className="h-28 rounded-xl" />
+      ))}
+    </div>
+  );
+}
+
+export default async function CRGPage() {
+  await fetchCRGData();
+
+  return (
+    <Suspense fallback={<CRGSkeleton />}>
+      <CRGClient />
+    </Suspense>
+  );
+}
