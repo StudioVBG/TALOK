@@ -117,6 +117,7 @@ export async function GET(request: Request) {
 /**
  * POST /api/providers
  * Crée un nouveau prestataire
+ * SOTA 2026: owners (Confort+) and admins can create providers
  */
 export async function POST(request: Request) {
   try {
@@ -129,87 +130,90 @@ export async function POST(request: Request) {
       throw new ApiError(401, "Non authentifié");
     }
 
-    // Récupérer le profil - seuls les admins peuvent créer des prestataires
     const { data: profile } = await supabase
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
       .single();
 
-    if (!profile || profile.role !== "admin") {
-      throw new ApiError(403, "Seuls les administrateurs peuvent créer des prestataires");
+    if (!profile) {
+      throw new ApiError(403, "Profil non trouvé");
+    }
+
+    // Owners and admins can create providers
+    if (!["admin", "owner"].includes(profile.role)) {
+      throw new ApiError(403, "Accès refusé");
     }
 
     const body = await request.json();
-    const {
-      company_name,
-      contact_name,
-      email,
-      phone,
-      category,
-      specialties,
-      address,
-      city,
-      postal_code,
-      siret,
-      insurance_number,
-      insurance_expiry,
-      hourly_rate,
-      intervention_zone,
-      notes,
-    } = body;
 
-    // Validation
-    if (!company_name) {
-      throw new ApiError(400, "company_name est requis");
-    }
-    if (!email) {
-      throw new ApiError(400, "email est requis");
-    }
-    if (!category) {
-      throw new ApiError(400, "category est requis");
+    // Basic validation
+    if (!body.company_name) throw new ApiError(400, "company_name est requis");
+    if (!body.email) throw new ApiError(400, "email est requis");
+    if (!body.contact_name) throw new ApiError(400, "contact_name est requis");
+    if (!body.phone) throw new ApiError(400, "phone est requis");
+
+    // SIRET validation (14 digits if provided)
+    if (body.siret && !/^\d{14}$/.test(body.siret)) {
+      throw new ApiError(400, "Le SIRET doit contenir exactement 14 chiffres");
     }
 
-    // Vérifier si le prestataire existe déjà
+    // Check duplicate email
     const { data: existing } = await supabase
       .from("providers")
       .select("id")
-      .eq("email", email)
+      .eq("email", body.email)
       .single();
 
     if (existing) {
       throw new ApiError(409, "Un prestataire avec cet email existe déjà");
     }
 
-    // Créer le prestataire
+    // Create provider — owner adds to their personal directory
+    const insertData: Record<string, unknown> = {
+      company_name: body.company_name,
+      contact_name: body.contact_name,
+      email: body.email,
+      phone: body.phone,
+      trade_categories: body.trade_categories || [body.category].filter(Boolean),
+      description: body.description || null,
+      address: body.address || null,
+      city: body.city || null,
+      postal_code: body.postal_code || null,
+      department: body.department || null,
+      service_radius_km: body.service_radius_km || 30,
+      certifications: body.certifications || [],
+      insurance_number: body.insurance_number || null,
+      insurance_expiry: body.insurance_expiry || null,
+      decennale_number: body.decennale_number || null,
+      decennale_expiry: body.decennale_expiry || null,
+      emergency_available: body.emergency_available || false,
+      response_time_hours: body.response_time_hours || 48,
+      siret: body.siret || null,
+      status: "active",
+      is_verified: false,
+      is_marketplace: false,
+      added_by_owner_id: profile.role === "owner" ? profile.id : null,
+    };
+
     const { data: provider, error } = await supabase
       .from("providers")
-      .insert({
-        company_name,
-        contact_name,
-        email,
-        phone,
-        category,
-        specialties: specialties || [],
-        address,
-        city,
-        postal_code,
-        siret,
-        insurance_number,
-        insurance_expiry,
-        hourly_rate,
-        intervention_zone: intervention_zone || [],
-        notes,
-        status: "active",
-        is_verified: false,
-        created_by: profile.id,
-      })
+      .insert(insertData)
       .select()
       .single();
 
     if (error) {
       console.error("[Providers API] Erreur création:", error);
       throw new ApiError(500, "Erreur lors de la création du prestataire");
+    }
+
+    // Auto-add to owner's address book
+    if (profile.role === "owner" && provider) {
+      await supabase.from("owner_providers").insert({
+        owner_id: profile.id,
+        provider_id: provider.id,
+        is_favorite: false,
+      });
     }
 
     return NextResponse.json(

@@ -152,6 +152,10 @@ export type PropertyRow = {
   building_id?: string | null
   digicode?: string | null
   interphone?: string | null
+  // Colocation module - SOTA 2026
+  colocation_type?: 'bail_unique' | 'baux_individuels' | null
+  has_solidarity_clause?: boolean
+  max_colocataires?: number | null
   created_at: string
   updated_at: string
 
@@ -256,6 +260,10 @@ export type LeaseRow = {
   bailleur_nom?: string | null
   bailleur_adresse?: string | null
   bailleur_siret?: string | null
+  // Colocation module - SOTA 2026
+  is_colocation?: boolean
+  colocation_type?: 'bail_unique' | 'baux_individuels' | null
+  solidarity_clause?: boolean
   created_at: string
   updated_at: string
 
@@ -514,7 +522,100 @@ export type LeaseSignerRow = {
 }
 
 // ============================================
-// COLOCATION TYPES
+// COLOCATION MODULE TYPES - SOTA 2026
+// ============================================
+
+export type ColocationRoomRow = {
+  id: string
+  property_id: string
+  room_number: string
+  room_label: string | null
+  surface_m2: number | null
+  rent_share_cents: number
+  charges_share_cents: number
+  is_furnished: boolean
+  description: string | null
+  photos: Json
+  is_available: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type ColocationMemberRow = {
+  id: string
+  property_id: string
+  room_id: string | null
+  lease_id: string
+  tenant_profile_id: string
+  status: 'pending' | 'active' | 'departing' | 'departed'
+  move_in_date: string
+  move_out_date: string | null
+  notice_given_at: string | null
+  notice_effective_date: string | null
+  solidarity_end_date: string | null
+  rent_share_cents: number
+  charges_share_cents: number
+  deposit_cents: number
+  deposit_returned: boolean
+  stripe_payment_method_id: string | null
+  pays_individually: boolean
+  replaced_by_member_id: string | null
+  replaces_member_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type ColocationRuleRow = {
+  id: string
+  property_id: string
+  title: string
+  category: 'general' | 'menage' | 'bruit' | 'invites' | 'animaux' | 'espaces_communs' | 'charges' | 'autre'
+  description: string
+  is_active: boolean
+  sort_order: number
+  created_at: string
+}
+
+export type ColocationTaskRow = {
+  id: string
+  property_id: string
+  title: string
+  description: string | null
+  recurrence: 'daily' | 'weekly' | 'biweekly' | 'monthly'
+  assigned_member_id: string | null
+  assigned_room_id: string | null
+  due_date: string | null
+  completed_at: string | null
+  completed_by: string | null
+  rotation_enabled: boolean
+  sort_order: number
+  created_at: string
+}
+
+export type ColocationExpenseRow = {
+  id: string
+  property_id: string
+  paid_by_member_id: string
+  title: string
+  amount_cents: number
+  category: 'menage' | 'courses' | 'internet' | 'electricite' | 'eau' | 'reparation' | 'autre'
+  split_type: 'equal' | 'by_room' | 'custom'
+  split_details: Json | null
+  receipt_document_id: string | null
+  date: string
+  is_settled: boolean
+  created_at: string
+}
+
+export type ColocationBalanceRow = {
+  property_id: string
+  payer_id: string
+  debtor_id: string
+  total_owed_cents: number
+}
+
+// ============================================
+// COLOCATION LEGACY TYPES
 // ============================================
 
 export type UnitRow = {
@@ -2709,7 +2810,15 @@ export type EDLSignature = EDLSignatureRow
 export type Signature = SignatureRow
 export type LeaseSigner = LeaseSignerRow
 
-// Colocation - P0.2 SOTA 2026
+// Colocation Module - SOTA 2026
+export type ColocationRoom = ColocationRoomRow
+export type ColocationMember = ColocationMemberRow
+export type ColocationRule = ColocationRuleRow
+export type ColocationTask = ColocationTaskRow
+export type ColocationExpense = ColocationExpenseRow
+export type ColocationBalance = ColocationBalanceRow
+
+// Colocation Legacy - P0.2 SOTA 2026
 export type Unit = UnitRow
 export type Roommate = RoommateRow
 export type PaymentShare = PaymentShareRow

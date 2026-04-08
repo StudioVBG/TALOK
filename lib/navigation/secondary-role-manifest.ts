@@ -1,5 +1,6 @@
 import {
   Building2,
+  Calculator,
   Calendar,
   ClipboardList,
   Euro,
@@ -63,8 +64,9 @@ export const SECONDARY_ROLE_MANIFESTS: Record<SecondaryRoleKey, SecondaryRoleMan
     subtitle: "Copropriétaire",
     navigation: [
       { name: "Dashboard", href: "/copro/dashboard", icon: Home },
+      { name: "Appels de fonds", href: "/copro/appels", icon: Euro },
+      { name: "Mon compte", href: "/copro/comptabilite", icon: Calculator },
       { name: "Assemblées", href: "/copro/assemblies", icon: Calendar },
-      { name: "Charges", href: "/copro/charges", icon: Euro },
       { name: "Documents", href: "/copro/documents", icon: FileText },
       { name: "Signalements", href: "/copro/tickets", icon: MessageSquare },
     ],

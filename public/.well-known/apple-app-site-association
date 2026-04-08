@@ -1,16 +1,18 @@
 {
   "applinks": {
-    "apps": [],
     "details": [
       {
-        "appID": "TEAM_ID.com.gestionlocative.app",
-        "paths": [
-          "/tenant/*",
-          "/owner/*",
-          "/signature/*",
-          "/signature-edl/*",
-          "/key-handover/*",
-          "/invite/*"
+        "appIDs": ["TEAM_ID.com.gestionlocative.app"],
+        "components": [
+          { "/": "/owner/*" },
+          { "/": "/tenant/*" },
+          { "/": "/syndic/*" },
+          { "/": "/provider/*" },
+          { "/": "/copro/*" },
+          { "/": "/signature/*" },
+          { "/": "/signature-edl/*" },
+          { "/": "/key-handover/*" },
+          { "/": "/invite/*" }
         ]
       }
     ]

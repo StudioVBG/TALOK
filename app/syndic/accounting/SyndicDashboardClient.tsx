@@ -398,7 +398,7 @@ function SyndicDashboardContent() {
       )}
 
       {/* Quick actions */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <QuickAction
           href="/syndic/accounting/entries"
           icon={<PlusCircle className="w-5 h-5" />}
@@ -413,6 +413,11 @@ function SyndicDashboardContent() {
           href="/syndic/accounting/budget"
           icon={<BarChart3 className="w-5 h-5" />}
           label="Budget"
+        />
+        <QuickAction
+          href="/syndic/fonds-travaux"
+          icon={<Hammer className="w-5 h-5" />}
+          label="Fonds travaux"
         />
         <QuickAction
           href="/syndic/accounting/close"

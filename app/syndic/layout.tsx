@@ -17,17 +17,21 @@ import Link from "next/link";
 import {
   Building2, Users, Calendar, Euro,
   FileText, Settings, Bell, HelpCircle,
-  LayoutDashboard, ClipboardList, UserPlus
+  LayoutDashboard, ClipboardList, UserPlus,
+  Calculator, AlertTriangle, Hammer,
 } from "lucide-react";
 
 // Navigation syndic
 const navigation = [
   { name: "Dashboard", href: "/syndic/dashboard", icon: LayoutDashboard },
   { name: "Copropriétés", href: "/syndic/sites", icon: Building2 },
+  { name: "Comptabilité", href: "/syndic/accounting", icon: Calculator },
   { name: "Assemblées", href: "/syndic/assemblies", icon: Calendar },
   { name: "Appels de fonds", href: "/syndic/calls", icon: Euro },
   { name: "Dépenses", href: "/syndic/expenses", icon: FileText },
+  { name: "Impayés", href: "/syndic/impayes", icon: AlertTriangle },
   { name: "Invitations", href: "/syndic/invites", icon: UserPlus },
+  { name: "Paramètres", href: "/syndic/settings", icon: Settings },
 ];
 
 /**
@@ -187,7 +191,7 @@ export default async function SyndicLayout({
         >
           <div className="pb-safe">
             <div className="grid grid-cols-5 h-14">
-              {navigation.slice(0, 5).map((item) => (
+              {[navigation[0], navigation[1], navigation[2], navigation[3], navigation[8]].map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
