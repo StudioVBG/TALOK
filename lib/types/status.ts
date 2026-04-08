@@ -326,6 +326,8 @@ const VARIANT_TO_BADGE_TYPE: Record<StatusVariant, StatusBadgeType> = {
   default: "neutral",
 };
 
+import { match } from "ts-pattern";
+
 /**
  * Helper centralisé : convertit un statut brut en props pour <StatusBadge>.
  *
@@ -339,52 +341,36 @@ export function getStatusBadgeProps(
   entity: "lease" | "invoice" | "ticket" | "edl" | "property" | "payment",
   status: string,
 ): { label: string; type: StatusBadgeType } {
-  switch (entity) {
-    case "lease": {
-      const s = status as LeaseStatus;
-      return {
-        label: LEASE_STATUS_LABELS[s] || status,
-        type: VARIANT_TO_BADGE_TYPE[LEASE_STATUS_VARIANTS[s] || "muted"],
-      };
-    }
-    case "invoice": {
-      const s = status as InvoiceStatus;
-      return {
-        label: INVOICE_STATUS_LABELS[s] || status,
-        type: VARIANT_TO_BADGE_TYPE[INVOICE_STATUS_VARIANTS[s] || "muted"],
-      };
-    }
-    case "ticket": {
-      const s = status as TicketStatus;
-      return {
-        label: TICKET_STATUS_LABELS[s] || status,
-        type: VARIANT_TO_BADGE_TYPE[TICKET_STATUS_VARIANTS[s] || "muted"],
-      };
-    }
-    case "edl": {
-      const s = status as EDLStatus;
-      return {
-        label: EDL_STATUS_LABELS[s] || status,
-        type: VARIANT_TO_BADGE_TYPE[EDL_STATUS_VARIANTS[s] || "muted"],
-      };
-    }
-    case "property": {
-      const s = status as PropertyStatus;
-      return {
-        label: PROPERTY_STATUS_LABELS[s] || status,
-        type: VARIANT_TO_BADGE_TYPE[PROPERTY_STATUS_VARIANTS[s] || "muted"],
-      };
-    }
-    case "payment": {
+  return match(entity)
+    .with("lease", () => ({
+      label: LEASE_STATUS_LABELS[status as LeaseStatus] || status,
+      type: VARIANT_TO_BADGE_TYPE[LEASE_STATUS_VARIANTS[status as LeaseStatus] || "muted"],
+    }))
+    .with("invoice", () => ({
+      label: INVOICE_STATUS_LABELS[status as InvoiceStatus] || status,
+      type: VARIANT_TO_BADGE_TYPE[INVOICE_STATUS_VARIANTS[status as InvoiceStatus] || "muted"],
+    }))
+    .with("ticket", () => ({
+      label: TICKET_STATUS_LABELS[status as TicketStatus] || status,
+      type: VARIANT_TO_BADGE_TYPE[TICKET_STATUS_VARIANTS[status as TicketStatus] || "muted"],
+    }))
+    .with("edl", () => ({
+      label: EDL_STATUS_LABELS[status as EDLStatus] || status,
+      type: VARIANT_TO_BADGE_TYPE[EDL_STATUS_VARIANTS[status as EDLStatus] || "muted"],
+    }))
+    .with("property", () => ({
+      label: PROPERTY_STATUS_LABELS[status as PropertyStatus] || status,
+      type: VARIANT_TO_BADGE_TYPE[PROPERTY_STATUS_VARIANTS[status as PropertyStatus] || "muted"],
+    }))
+    .with("payment", () => {
       const s = status as PaymentStatus;
+      const variant: StatusVariant =
+        s === "succeeded" ? "success" : s === "failed" ? "danger" :
+        s === "refunded" ? "info" : s === "processing" ? "warning" : "muted";
       return {
         label: PAYMENT_STATUS_LABELS[s] || status,
-        type: VARIANT_TO_BADGE_TYPE[
-          (s === "succeeded" ? "success" : s === "failed" ? "danger" : s === "refunded" ? "info" : s === "processing" ? "warning" : "muted") as StatusVariant
-        ],
+        type: VARIANT_TO_BADGE_TYPE[variant],
       };
-    }
-    default:
-      return { label: status, type: "neutral" };
-  }
+    })
+    .exhaustive();
 }

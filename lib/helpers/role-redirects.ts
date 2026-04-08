@@ -1,39 +1,26 @@
+import { match, P } from "ts-pattern";
+
 /**
  * Fonction centralisée pour obtenir l'URL du dashboard d'un rôle.
  * Source de vérité unique pour toutes les redirections par rôle.
  * Gère tous les rôles et sous-rôles (copropriétaires, platform_admin, etc.)
  */
 export function getRoleDashboardUrl(role: string | null | undefined): string {
-  if (!role) return "/auth/signin";
-
-  switch (role) {
-    case "admin":
-    case "platform_admin":
-      return "/admin/dashboard";
-    case "owner":
-      return "/owner/dashboard";
-    case "tenant":
-      return "/tenant/dashboard";
-    case "provider":
-      return "/provider/dashboard";
-    case "agency":
-      return "/agency/dashboard";
-    case "syndic":
-      return "/syndic/dashboard";
-    case "guarantor":
-      return "/guarantor/dashboard";
-    // Tous les sous-rôles copropriété → espace copro
-    case "coproprietaire":
-    case "coproprietaire_occupant":
-    case "coproprietaire_bailleur":
-    case "coproprietaire_nu":
-    case "usufruitier":
-    case "president_cs":
-    case "conseil_syndical":
-      return "/copro/dashboard";
-    default:
-      return "/";
-  }
+  return match(role)
+    .with(P.nullish, () => "/auth/signin")
+    .with("admin", "platform_admin", () => "/admin/dashboard")
+    .with("owner", () => "/owner/dashboard")
+    .with("tenant", () => "/tenant/dashboard")
+    .with("provider", () => "/provider/dashboard")
+    .with("agency", () => "/agency/dashboard")
+    .with("syndic", () => "/syndic/dashboard")
+    .with("guarantor", () => "/guarantor/dashboard")
+    .with(
+      "coproprietaire", "coproprietaire_occupant", "coproprietaire_bailleur",
+      "coproprietaire_nu", "usufruitier", "president_cs", "conseil_syndical",
+      () => "/copro/dashboard"
+    )
+    .otherwise(() => "/");
 }
 
 /**
