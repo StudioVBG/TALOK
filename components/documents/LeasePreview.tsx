@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download, FileText, Loader2, Maximize2, RefreshCw } from "lucide-react";
+import { FileText, Loader2, Maximize2, RefreshCw } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -17,9 +17,12 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
   const [isSealed, setIsSealed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
+  const [iframeKey, setIframeKey] = useState(0);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const fullscreenIframeRef = useRef<HTMLIFrameElement>(null);
   const { toast } = useToast();
 
-  const fetchLeaseHtml = async () => {
+  const fetchLeaseHtml = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch(`/api/leases/${leaseId}/html`);
@@ -27,16 +30,16 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
 
       const data = await response.json();
 
-      // Si le bail est scellé, afficher le PDF stocké directement
       if (data.sealed && data.pdfUrl) {
         setPdfUrl(data.pdfUrl);
         setIsSealed(true);
         setHtml("");
       } else {
-        setHtml(data.html);
+        setHtml(data.html || "");
         setPdfUrl(null);
         setIsSealed(false);
       }
+      setIframeKey(prev => prev + 1);
     } catch (error) {
       console.error("LeasePreview Error:", error);
       toast({
@@ -47,13 +50,26 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [leaseId, toast]);
 
   useEffect(() => {
     fetchLeaseHtml();
-  }, [leaseId]);
+  }, [fetchLeaseHtml]);
 
-  // No longer needed — using srcDoc on the iframe directly
+  // Ensure srcdoc is applied directly on the DOM element as a fallback.
+  // React's attribute reconciliation may not reliably update srcdoc on
+  // existing iframes in all browsers.
+  useEffect(() => {
+    if (iframeRef.current && html && !isSealed) {
+      iframeRef.current.srcdoc = html;
+    }
+  }, [html, isSealed, iframeKey]);
+
+  useEffect(() => {
+    if (fullscreenIframeRef.current && html && !isSealed && fullscreen) {
+      fullscreenIframeRef.current.srcdoc = html;
+    }
+  }, [html, isSealed, fullscreen, iframeKey]);
 
   return (
     <Card className="h-full flex flex-col">
@@ -87,13 +103,23 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
               <div className="flex-1 min-h-0 bg-[#525659] overflow-y-auto">
                 <div className="flex justify-center py-6 px-4">
                   <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)]">
-                    <iframe
-                      src={isSealed && pdfUrl ? pdfUrl : undefined}
-                      srcDoc={!isSealed ? html : undefined}
-                      className="w-full border-0"
-                      style={{ height: "calc(297mm * 2)" }}
-                      title={isSealed ? "Bail signé plein écran" : "Aperçu bail plein écran"}
-                    />
+                    {isSealed && pdfUrl ? (
+                      <iframe
+                        src={pdfUrl}
+                        className="w-full border-0"
+                        style={{ height: "calc(297mm * 2)" }}
+                        title="Bail signé plein écran"
+                      />
+                    ) : html ? (
+                      <iframe
+                        ref={fullscreenIframeRef}
+                        key={`fullscreen-${iframeKey}`}
+                        srcDoc={html}
+                        className="w-full border-0"
+                        style={{ height: "calc(297mm * 2)" }}
+                        title="Aperçu bail plein écran"
+                      />
+                    ) : null}
                   </div>
                 </div>
               </div>
@@ -110,7 +136,6 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
               <p className="text-xs sm:text-sm text-white/80 text-center">Chargement du contrat...</p>
             </div>
           ) : isSealed && pdfUrl ? (
-            /* Bail scellé : afficher le PDF stocké directement */
             <div className="h-full overflow-y-auto flex justify-center py-4 px-2 sm:px-4">
               <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)] flex-shrink-0 h-fit">
                 <iframe
@@ -121,11 +146,12 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
                 />
               </div>
             </div>
-          ) : (
-            /* Bail en cours : afficher le HTML généré */
+          ) : html ? (
             <div className="h-full overflow-y-auto flex justify-center py-4 px-2 sm:px-4">
               <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)] flex-shrink-0 h-fit">
                 <iframe
+                  ref={iframeRef}
+                  key={`preview-${iframeKey}`}
                   srcDoc={html}
                   className="w-full border-0 bg-white"
                   style={{ height: "calc(297mm * 1.5)" }}
@@ -133,10 +159,14 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
                 />
               </div>
             </div>
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+              <FileText className="h-8 w-8 text-white/40" />
+              <p className="text-xs text-white/60 mt-2">Aucun aperçu disponible</p>
+            </div>
           )}
         </div>
       </CardContent>
     </Card>
   );
 }
-
