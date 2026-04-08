@@ -194,7 +194,7 @@ export interface PropertyComponent {
 }
 
 /** Standard decomposition for residential property */
-const STANDARD_COMPONENTS: Omit<PropertyComponent, 'amountCents'>[] = [
+export const STANDARD_COMPONENTS: Omit<PropertyComponent, 'amountCents'>[] = [
   { component: 'terrain', percent: 15, durationYears: 0 }, // non amortissable
   { component: 'gros_oeuvre', percent: 40, durationYears: 50 },
   { component: 'facade', percent: 10, durationYears: 25 },
