@@ -1276,7 +1276,6 @@ CREATE INDEX IF NOT EXISTS idx_entry_lines_lettrage ON accounting_entry_lines(le
 ALTER TABLE accounting_entry_lines ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "entry_lines_via_entry" ON accounting_entry_lines;
-DROP POLICY IF EXISTS "entry_lines_via_entry" ON accounting_entry_lines;
 CREATE POLICY "entry_lines_via_entry" ON accounting_entry_lines
   FOR ALL TO authenticated
   USING (
@@ -1303,7 +1302,6 @@ CREATE POLICY "entry_lines_via_entry" ON accounting_entry_lines
 
 -- accounting_entries: add entity-based policy
 DROP POLICY IF EXISTS "entries_entity_access" ON public.accounting_entries;
-DROP POLICY IF EXISTS "entries_entity_access" ON public;
 CREATE POLICY "entries_entity_access" ON public.accounting_entries
   FOR ALL TO authenticated
   USING (
@@ -1321,7 +1319,6 @@ CREATE POLICY "entries_entity_access" ON public.accounting_entries
 
 -- mandant_accounts: add entity-based policy
 DROP POLICY IF EXISTS "mandant_entity_access" ON public.mandant_accounts;
-DROP POLICY IF EXISTS "mandant_entity_access" ON public;
 CREATE POLICY "mandant_entity_access" ON public.mandant_accounts
   FOR ALL TO authenticated
   USING (
