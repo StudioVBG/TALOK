@@ -16,7 +16,7 @@
  * @module ServerExportService
  * @see Pour les exports rapides cote client, voir `@/lib/services/export-service`
  */
-import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 export interface ExportOptions {
   userId: string;
@@ -77,7 +77,7 @@ export class ExportService {
    * Crée un job d'export, génère le fichier et l'upload vers le stockage sécurisé.
    */
   static async startExport(options: ExportOptions): Promise<string> {
-    const supabase = await createClient();
+    const supabase = getServiceClient();
     
     // 1. Créer le record du job (statut pending)
     const { data: job, error: jobError } = await supabase
@@ -165,7 +165,7 @@ export class ExportService {
    * Génère une URL signée pour le téléchargement sécurisé.
    */
   static async getSignedUrl(jobId: string, userId: string): Promise<string> {
-    const supabase = await createClient();
+    const supabase = getServiceClient();
     
     const { data: job, error: jobError } = await supabase
       .from("export_jobs")
