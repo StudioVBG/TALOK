@@ -63,18 +63,20 @@ CREATE TABLE IF NOT EXISTS entity_members (
   CONSTRAINT entity_member_unique UNIQUE (entity_id, user_id)
 );
 
-CREATE INDEX idx_entity_members_entity ON entity_members(entity_id);
-CREATE INDEX idx_entity_members_user ON entity_members(user_id);
-CREATE INDEX idx_entity_members_profile ON entity_members(profile_id) WHERE profile_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_entity_members_entity ON entity_members(entity_id);
+CREATE INDEX IF NOT EXISTS idx_entity_members_user ON entity_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_entity_members_profile ON entity_members(profile_id) WHERE profile_id IS NOT NULL;
 
 ALTER TABLE entity_members ENABLE ROW LEVEL SECURITY;
 
 -- Policy: un utilisateur voit ses propres memberships
+DROP POLICY IF EXISTS "entity_members_own_access" ON entity_members;
 CREATE POLICY "entity_members_own_access" ON entity_members
   FOR SELECT TO authenticated
   USING (user_id = auth.uid());
 
 -- Policy: un admin d'une entite peut gerer ses membres
+DROP POLICY IF EXISTS "entity_members_admin_manage" ON entity_members;
 CREATE POLICY "entity_members_admin_manage" ON entity_members
   FOR ALL TO authenticated
   USING (
@@ -180,15 +182,18 @@ CREATE TRIGGER trg_entity_members_updated_at
   BEFORE UPDATE ON entity_members
   FOR EACH ROW
   EXECUTE FUNCTION fn_entity_members_updated_at();
+
+
+
 -- =====================================================
--- PRE-FIX: Add entity_id to old tables BEFORE policies
--- These tables were created by 20260110 without entity_id
+-- PRE-FIX: Add columns to OLD tables BEFORE new policies
+-- These tables exist from migration 20260110 without entity_id
 -- =====================================================
 ALTER TABLE public.accounting_journals ADD COLUMN IF NOT EXISTS entity_id UUID REFERENCES legal_entities(id);
 ALTER TABLE public.accounting_journals ADD COLUMN IF NOT EXISTS label TEXT;
 ALTER TABLE public.accounting_journals ADD COLUMN IF NOT EXISTS journal_type TEXT;
 ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS entity_id UUID REFERENCES legal_entities(id);
-ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS exercise_id UUID REFERENCES accounting_exercises(id);
+ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS exercise_id UUID;
 ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS entry_number TEXT;
 ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS entry_date DATE;
 ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS label TEXT;
@@ -204,6 +209,14 @@ ALTER TABLE public.mandant_accounts ADD COLUMN IF NOT EXISTS mandant_name TEXT;
 ALTER TABLE public.mandant_accounts ADD COLUMN IF NOT EXISTS mandant_user_id UUID REFERENCES auth.users(id);
 ALTER TABLE public.mandant_accounts ADD COLUMN IF NOT EXISTS commission_rate NUMERIC(5,2) DEFAULT 0;
 ALTER TABLE public.mandant_accounts ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+
+-- Backfill new columns from old
+UPDATE public.accounting_entries SET entry_number = ecriture_num WHERE entry_number IS NULL AND ecriture_num IS NOT NULL;
+UPDATE public.accounting_entries SET entry_date = ecriture_date WHERE entry_date IS NULL AND ecriture_date IS NOT NULL;
+UPDATE public.accounting_entries SET label = ecriture_lib WHERE label IS NULL AND ecriture_lib IS NOT NULL;
+UPDATE public.accounting_entries SET is_validated = (valid_date IS NOT NULL) WHERE is_validated IS NULL OR is_validated = false;
+UPDATE public.accounting_journals SET label = libelle WHERE label IS NULL AND libelle IS NOT NULL;
+
 
 -- =====================================================
 -- MIGRATION: Module Comptabilite complet
@@ -231,11 +244,12 @@ CREATE TABLE IF NOT EXISTS accounting_exercises (
   CONSTRAINT exercise_unique_period UNIQUE (entity_id, start_date, end_date)
 );
 
-CREATE INDEX idx_exercises_entity ON accounting_exercises(entity_id);
-CREATE INDEX idx_exercises_status ON accounting_exercises(entity_id, status);
+CREATE INDEX IF NOT EXISTS idx_exercises_entity ON accounting_exercises(entity_id);
+CREATE INDEX IF NOT EXISTS idx_exercises_status ON accounting_exercises(entity_id, status);
 
 ALTER TABLE accounting_exercises ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "exercises_entity_access" ON accounting_exercises;
 CREATE POLICY "exercises_entity_access" ON accounting_exercises
   FOR ALL TO authenticated
   USING (
@@ -270,12 +284,13 @@ CREATE TABLE IF NOT EXISTS chart_of_accounts (
   CONSTRAINT account_number_entity_unique UNIQUE (entity_id, account_number)
 );
 
-CREATE INDEX idx_coa_entity ON chart_of_accounts(entity_id);
-CREATE INDEX idx_coa_number ON chart_of_accounts(entity_id, account_number);
-CREATE INDEX idx_coa_class ON chart_of_accounts(entity_id, account_class);
+CREATE INDEX IF NOT EXISTS idx_coa_entity ON chart_of_accounts(entity_id);
+CREATE INDEX IF NOT EXISTS idx_coa_number ON chart_of_accounts(entity_id, account_number);
+CREATE INDEX IF NOT EXISTS idx_coa_class ON chart_of_accounts(entity_id, account_class);
 
 ALTER TABLE chart_of_accounts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "coa_entity_access" ON chart_of_accounts;
 CREATE POLICY "coa_entity_access" ON chart_of_accounts
   FOR ALL TO authenticated
   USING (
@@ -306,6 +321,7 @@ CREATE TABLE IF NOT EXISTS accounting_journals (
 
 ALTER TABLE accounting_journals ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "journals_entity_access" ON accounting_journals;
 CREATE POLICY "journals_entity_access" ON accounting_journals
   FOR ALL TO authenticated
   USING (
@@ -343,12 +359,13 @@ CREATE TABLE IF NOT EXISTS accounting_entries (
   CONSTRAINT entry_number_unique UNIQUE (entity_id, exercise_id, entry_number)
 );
 
-CREATE INDEX idx_entries_exercise ON accounting_entries(exercise_id);
-CREATE INDEX idx_entries_journal ON accounting_entries(entity_id, journal_code);
-CREATE INDEX idx_entries_date ON accounting_entries(entity_id, entry_date);
+CREATE INDEX IF NOT EXISTS idx_entries_exercise ON accounting_entries(exercise_id);
+CREATE INDEX IF NOT EXISTS idx_entries_journal ON accounting_entries(entity_id, journal_code);
+CREATE INDEX IF NOT EXISTS idx_entries_date ON accounting_entries(entity_id, entry_date);
 
 ALTER TABLE accounting_entries ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "entries_entity_access" ON accounting_entries;
 CREATE POLICY "entries_entity_access" ON accounting_entries
   FOR ALL TO authenticated
   USING (
@@ -381,12 +398,13 @@ CREATE TABLE IF NOT EXISTS accounting_entry_lines (
   )
 );
 
-CREATE INDEX idx_entry_lines_entry ON accounting_entry_lines(entry_id);
-CREATE INDEX idx_entry_lines_account ON accounting_entry_lines(account_number);
-CREATE INDEX idx_entry_lines_lettrage ON accounting_entry_lines(lettrage) WHERE lettrage IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_entry_lines_entry ON accounting_entry_lines(entry_id);
+CREATE INDEX IF NOT EXISTS idx_entry_lines_account ON accounting_entry_lines(account_number);
+CREATE INDEX IF NOT EXISTS idx_entry_lines_lettrage ON accounting_entry_lines(lettrage) WHERE lettrage IS NOT NULL;
 
 ALTER TABLE accounting_entry_lines ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "entry_lines_via_entry" ON accounting_entry_lines;
 CREATE POLICY "entry_lines_via_entry" ON accounting_entry_lines
   FOR ALL TO authenticated
   USING (
@@ -429,10 +447,11 @@ CREATE TABLE IF NOT EXISTS bank_connections (
   CONSTRAINT iban_hash_unique UNIQUE (iban_hash)
 );
 
-CREATE INDEX idx_bank_conn_entity ON bank_connections(entity_id);
+CREATE INDEX IF NOT EXISTS idx_bank_conn_entity ON bank_connections(entity_id);
 
 ALTER TABLE bank_connections ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "bank_conn_entity_access" ON bank_connections;
 CREATE POLICY "bank_conn_entity_access" ON bank_connections
   FOR ALL TO authenticated
   USING (
@@ -473,13 +492,14 @@ CREATE TABLE IF NOT EXISTS bank_transactions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_bank_tx_connection ON bank_transactions(connection_id);
-CREATE INDEX idx_bank_tx_date ON bank_transactions(transaction_date);
-CREATE INDEX idx_bank_tx_status ON bank_transactions(reconciliation_status);
-CREATE INDEX idx_bank_tx_matched ON bank_transactions(matched_entry_id) WHERE matched_entry_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_bank_tx_connection ON bank_transactions(connection_id);
+CREATE INDEX IF NOT EXISTS idx_bank_tx_date ON bank_transactions(transaction_date);
+CREATE INDEX IF NOT EXISTS idx_bank_tx_status ON bank_transactions(reconciliation_status);
+CREATE INDEX IF NOT EXISTS idx_bank_tx_matched ON bank_transactions(matched_entry_id) WHERE matched_entry_id IS NOT NULL;
 
 ALTER TABLE bank_transactions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "bank_tx_via_connection" ON bank_transactions;
 CREATE POLICY "bank_tx_via_connection" ON bank_transactions
   FOR ALL TO authenticated
   USING (
@@ -522,11 +542,12 @@ CREATE TABLE IF NOT EXISTS document_analyses (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_doc_analyses_entity ON document_analyses(entity_id);
-CREATE INDEX idx_doc_analyses_status ON document_analyses(processing_status);
+CREATE INDEX IF NOT EXISTS idx_doc_analyses_entity ON document_analyses(entity_id);
+CREATE INDEX IF NOT EXISTS idx_doc_analyses_status ON document_analyses(processing_status);
 
 ALTER TABLE document_analyses ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "doc_analyses_entity_access" ON document_analyses;
 CREATE POLICY "doc_analyses_entity_access" ON document_analyses
   FOR ALL TO authenticated
   USING (
@@ -561,10 +582,11 @@ CREATE TABLE IF NOT EXISTS amortization_schedules (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_amort_sched_entity ON amortization_schedules(entity_id);
+CREATE INDEX IF NOT EXISTS idx_amort_sched_entity ON amortization_schedules(entity_id);
 
 ALTER TABLE amortization_schedules ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "amort_sched_entity_access" ON amortization_schedules;
 CREATE POLICY "amort_sched_entity_access" ON amortization_schedules
   FOR ALL TO authenticated
   USING (
@@ -595,6 +617,7 @@ CREATE TABLE IF NOT EXISTS amortization_lines (
 
 ALTER TABLE amortization_lines ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "amort_lines_via_schedule" ON amortization_lines;
 CREATE POLICY "amort_lines_via_schedule" ON amortization_lines
   FOR ALL TO authenticated
   USING (
@@ -633,10 +656,11 @@ CREATE TABLE IF NOT EXISTS deficit_tracking (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_deficit_entity ON deficit_tracking(entity_id);
+CREATE INDEX IF NOT EXISTS idx_deficit_entity ON deficit_tracking(entity_id);
 
 ALTER TABLE deficit_tracking ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "deficit_entity_access" ON deficit_tracking;
 CREATE POLICY "deficit_entity_access" ON deficit_tracking
   FOR ALL TO authenticated
   USING (
@@ -673,6 +697,7 @@ CREATE TABLE IF NOT EXISTS charge_regularizations (
 
 ALTER TABLE charge_regularizations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "charge_reg_entity_access" ON charge_regularizations;
 CREATE POLICY "charge_reg_entity_access" ON charge_regularizations
   FOR ALL TO authenticated
   USING (
@@ -703,10 +728,11 @@ CREATE TABLE IF NOT EXISTS ec_access (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_ec_access_entity ON ec_access(entity_id);
+CREATE INDEX IF NOT EXISTS idx_ec_access_entity ON ec_access(entity_id);
 
 ALTER TABLE ec_access ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "ec_access_owner" ON ec_access;
 CREATE POLICY "ec_access_owner" ON ec_access
   FOR ALL TO authenticated
   USING (
@@ -738,6 +764,7 @@ CREATE TABLE IF NOT EXISTS ec_annotations (
 
 ALTER TABLE ec_annotations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "ec_annotations_access" ON ec_annotations;
 CREATE POLICY "ec_annotations_access" ON ec_annotations
   FOR ALL TO authenticated
   USING (
@@ -768,6 +795,7 @@ CREATE TABLE IF NOT EXISTS copro_budgets (
 
 ALTER TABLE copro_budgets ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "copro_budgets_entity_access" ON copro_budgets;
 CREATE POLICY "copro_budgets_entity_access" ON copro_budgets
   FOR ALL TO authenticated
   USING (
@@ -803,6 +831,7 @@ CREATE TABLE IF NOT EXISTS copro_fund_calls (
 
 ALTER TABLE copro_fund_calls ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "copro_fund_calls_entity_access" ON copro_fund_calls;
 CREATE POLICY "copro_fund_calls_entity_access" ON copro_fund_calls
   FOR ALL TO authenticated
   USING (
@@ -832,6 +861,7 @@ CREATE TABLE IF NOT EXISTS mandant_accounts (
 
 ALTER TABLE mandant_accounts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "mandant_accounts_entity_access" ON mandant_accounts;
 CREATE POLICY "mandant_accounts_entity_access" ON mandant_accounts
   FOR ALL TO authenticated
   USING (
@@ -866,6 +896,7 @@ CREATE TABLE IF NOT EXISTS crg_reports (
 
 ALTER TABLE crg_reports ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "crg_reports_entity_access" ON crg_reports;
 CREATE POLICY "crg_reports_entity_access" ON crg_reports
   FOR ALL TO authenticated
   USING (
@@ -895,12 +926,13 @@ CREATE TABLE IF NOT EXISTS accounting_audit_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_audit_entity ON accounting_audit_log(entity_id);
-CREATE INDEX idx_audit_target ON accounting_audit_log(target_type, target_id);
-CREATE INDEX idx_audit_date ON accounting_audit_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_entity ON accounting_audit_log(entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_target ON accounting_audit_log(target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_audit_date ON accounting_audit_log(created_at);
 
 ALTER TABLE accounting_audit_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "audit_log_entity_access" ON accounting_audit_log;
 CREATE POLICY "audit_log_entity_access" ON accounting_audit_log
   FOR SELECT TO authenticated
   USING (
@@ -910,6 +942,7 @@ CREATE POLICY "audit_log_entity_access" ON accounting_audit_log
   );
 
 -- Audit log is insert-only for the system, read-only for users
+DROP POLICY IF EXISTS "audit_log_system_insert" ON accounting_audit_log;
 CREATE POLICY "audit_log_system_insert" ON accounting_audit_log
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -1085,6 +1118,8 @@ COMMENT ON TABLE chart_of_accounts IS 'Plan comptable PCG/copro/custom par entit
 COMMENT ON TABLE accounting_entries IS 'Ecritures comptables double-entry avec intangibilite';
 COMMENT ON TABLE bank_transactions IS 'Transactions bancaires importees pour rapprochement';
 COMMENT ON TABLE accounting_audit_log IS 'Journal audit comptable (insertion seule, lecture utilisateur)';
+
+
 -- Migration: Audit fixes — missing indexes, CHECK constraints, and RLS
 -- Idempotent: safe to run multiple times
 
@@ -1136,6 +1171,8 @@ END $$;
 
 -- 3. Enable RLS on lease_notices (idempotent — ENABLE is a no-op if already on)
 ALTER TABLE IF EXISTS lease_notices ENABLE ROW LEVEL SECURITY;
+
+
 -- =====================================================
 -- MIGRATION: Reconcile accounting schemas
 -- Date: 2026-04-07
@@ -1254,6 +1291,7 @@ CREATE INDEX IF NOT EXISTS idx_entry_lines_lettrage ON accounting_entry_lines(le
 ALTER TABLE accounting_entry_lines ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "entry_lines_via_entry" ON accounting_entry_lines;
+DROP POLICY IF EXISTS "entry_lines_via_entry" ON accounting_entry_lines;
 CREATE POLICY "entry_lines_via_entry" ON accounting_entry_lines
   FOR ALL TO authenticated
   USING (
@@ -1280,6 +1318,7 @@ CREATE POLICY "entry_lines_via_entry" ON accounting_entry_lines
 
 -- accounting_entries: add entity-based policy
 DROP POLICY IF EXISTS "entries_entity_access" ON public.accounting_entries;
+DROP POLICY IF EXISTS "entries_entity_access" ON public;
 CREATE POLICY "entries_entity_access" ON public.accounting_entries
   FOR ALL TO authenticated
   USING (
@@ -1297,6 +1336,7 @@ CREATE POLICY "entries_entity_access" ON public.accounting_entries
 
 -- mandant_accounts: add entity-based policy
 DROP POLICY IF EXISTS "mandant_entity_access" ON public.mandant_accounts;
+DROP POLICY IF EXISTS "mandant_entity_access" ON public;
 CREATE POLICY "mandant_entity_access" ON public.mandant_accounts
   FOR ALL TO authenticated
   USING (
@@ -1321,6 +1361,8 @@ CREATE POLICY "mandant_entity_access" ON public.mandant_accounts
 COMMENT ON TABLE public.accounting_journals IS 'Journaux comptables — extended with entity support for multi-entity accounting';
 COMMENT ON TABLE public.accounting_entries IS 'Ecritures comptables — extended with double-entry header fields and entity support';
 COMMENT ON TABLE public.mandant_accounts IS 'Comptes mandants — extended with entity support';
+
+
 -- =====================================================
 -- MIGRATION: OCR Category Rules + document_analyses extensions
 -- Date: 2026-04-07
@@ -1347,6 +1389,7 @@ CREATE INDEX IF NOT EXISTS idx_ocr_rules_match ON ocr_category_rules(match_type,
 
 ALTER TABLE ocr_category_rules ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "ocr_rules_entity_access" ON ocr_category_rules;
 CREATE POLICY "ocr_rules_entity_access" ON ocr_category_rules
   FOR ALL TO authenticated
   USING (entity_id IN (SELECT entity_id FROM entity_members WHERE user_id = auth.uid()))
@@ -1357,6 +1400,8 @@ ALTER TABLE document_analyses ADD COLUMN IF NOT EXISTS entry_id UUID REFERENCES 
 ALTER TABLE document_analyses ADD COLUMN IF NOT EXISTS raw_ocr_text TEXT;
 ALTER TABLE document_analyses ADD COLUMN IF NOT EXISTS processing_time_ms INTEGER;
 ALTER TABLE document_analyses ADD COLUMN IF NOT EXISTS suggested_entry JSONB;
+
+
 -- Migration: Table expenses (dépenses/travaux propriétaire)
 -- Date: 2026-04-08
 -- RLS via chaîne : legal_entities.owner_profile_id → owner_profiles.profile_id
@@ -1455,6 +1500,7 @@ ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 -- Supporte à la fois :
 --   - Dépenses rattachées à une entité (legal_entity_id IS NOT NULL)
 --   - Dépenses en direct (owner_profile_id = profile courant)
+DROP POLICY IF EXISTS "Owners can view own expenses" ON expenses;
 CREATE POLICY "Owners can view own expenses" ON expenses
   FOR SELECT TO authenticated
   USING (
@@ -1466,6 +1512,7 @@ CREATE POLICY "Owners can view own expenses" ON expenses
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Owners can insert own expenses" ON expenses;
 CREATE POLICY "Owners can insert own expenses" ON expenses
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -1476,6 +1523,7 @@ CREATE POLICY "Owners can insert own expenses" ON expenses
     )
   );
 
+DROP POLICY IF EXISTS "Owners can update own expenses" ON expenses;
 CREATE POLICY "Owners can update own expenses" ON expenses
   FOR UPDATE TO authenticated
   USING (
@@ -1493,6 +1541,7 @@ CREATE POLICY "Owners can update own expenses" ON expenses
     )
   );
 
+DROP POLICY IF EXISTS "Owners can delete own expenses" ON expenses;
 CREATE POLICY "Owners can delete own expenses" ON expenses
   FOR DELETE TO authenticated
   USING (
@@ -1503,6 +1552,7 @@ CREATE POLICY "Owners can delete own expenses" ON expenses
     )
   );
 
+DROP POLICY IF EXISTS "Admins full access on expenses" ON expenses;
 CREATE POLICY "Admins full access on expenses" ON expenses
   FOR ALL TO authenticated
   USING (public.user_role() = 'admin')
@@ -1526,6 +1576,8 @@ CREATE TRIGGER update_expenses_updated_at
   EXECUTE FUNCTION update_expenses_updated_at();
 
 COMMIT;
+
+
 -- =====================================================
 -- MIGRATION: Réconciliation finale des schémas comptables
 -- Date: 2026-04-08
@@ -1832,6 +1884,8 @@ WHERE
 --   );
 
 COMMIT;
+
+
 -- Sprint 5: Copropriété lots + fund call lines
 -- Tables for syndic copropriété module
 
@@ -1851,8 +1905,9 @@ CREATE TABLE IF NOT EXISTS copro_lots (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(copro_entity_id, lot_number)
 );
-CREATE INDEX idx_copro_lots_entity ON copro_lots(copro_entity_id);
+CREATE INDEX IF NOT EXISTS idx_copro_lots_entity ON copro_lots(copro_entity_id);
 ALTER TABLE copro_lots ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "copro_lots_entity_access" ON copro_lots;
 CREATE POLICY "copro_lots_entity_access" ON copro_lots FOR ALL TO authenticated
   USING (copro_entity_id IN (SELECT entity_id FROM entity_members WHERE user_id = auth.uid()))
   WITH CHECK (copro_entity_id IN (SELECT entity_id FROM entity_members WHERE user_id = auth.uid()));
@@ -1892,8 +1947,11 @@ CREATE TABLE IF NOT EXISTS copro_fund_call_lines (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE copro_fund_call_lines ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "copro_fund_call_lines_access" ON copro_fund_call_lines;
 CREATE POLICY "copro_fund_call_lines_access" ON copro_fund_call_lines FOR ALL TO authenticated
   USING (call_id IN (SELECT id FROM copro_fund_calls WHERE entity_id IN (SELECT entity_id FROM entity_members WHERE user_id = auth.uid())));
+
+
 -- ============================================================================
 -- Sprint 6: Agency Hoguet compliance columns
 --
