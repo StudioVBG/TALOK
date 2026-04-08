@@ -1,21 +1,48 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 /**
- * Middleware SOTA 2025 - Edge Safe
+ * Middleware SOTA 2026 - Edge Safe + RBAC Route Guard
  *
  * RÈGLE D'OR : Zéro import @supabase/* ici pour éviter les erreurs
  * "Node API used in Edge runtime" (process.version).
  *
  * On se contente d'une vérification de la présence des cookies de session.
- * La validation forte est faite dans les layouts serveurs Node.js.
+ * La validation forte (rôle, 2FA, feature flags) est faite dans les
+ * layouts serveurs Node.js.
  *
  * WHITE-LABEL: Détection des domaines personnalisés via le header Host.
  * La résolution complète se fait via l'API /api/white-label/resolve.
+ *
+ * ROUTE_ROLES: Mapping déclaratif des chemins protégés par rôle.
+ * La vérification réelle du rôle est faite côté serveur (layouts/API),
+ * ici on ne fait que du cookie-check pour le redirect.
  */
 
 // Domaine principal de l'application
 const MAIN_DOMAIN = process.env.NEXT_PUBLIC_APP_DOMAIN || "talok.fr";
 const MAIN_DOMAINS = [MAIN_DOMAIN, `www.${MAIN_DOMAIN}`, "localhost"];
+
+/**
+ * ROUTE_ROLES — Mapping déclaratif des rôles autorisés par chemin.
+ * La vérification effective du rôle JWT est faite dans les layouts serveur Node.js,
+ * pas ici (Edge runtime = pas d'accès à Supabase Auth).
+ * Ce mapping sert de documentation et de référence pour les layouts.
+ */
+const ROUTE_ROLES: Record<string, string[]> = {
+  "/owner": ["owner"],
+  "/tenant": ["tenant"],
+  "/provider": ["provider"],
+  "/syndic": ["syndic"],
+  "/agency": ["agency"],
+  "/admin": ["admin"],
+  "/guarantor": ["guarantor"],
+  "/copro": ["tenant", "owner"], // copropriétaires
+  "/dashboard": ["owner", "tenant", "provider", "syndic", "agency", "admin"],
+  "/messages": ["owner", "tenant", "provider", "syndic", "agency", "admin"],
+  "/notifications": ["owner", "tenant", "provider", "syndic", "agency", "admin"],
+  "/settings": ["owner", "tenant", "provider", "syndic", "agency", "admin"],
+  "/profile": ["owner", "tenant", "provider", "syndic", "agency", "admin", "guarantor"],
+};
 
 // Routes publiques qui ne nécessitent aucune vérification
 const publicRoutes = [
@@ -158,9 +185,18 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 7. Propager le pathname pour les layouts serveur (identity gate)
+  // 7. Propager le pathname et les rôles autorisés pour les layouts serveur (identity gate)
   const response = NextResponse.next();
   response.headers.set("x-pathname", pathname);
+
+  // Trouver les rôles autorisés pour cette route et les propager au layout serveur
+  const matchedRoute = Object.keys(ROUTE_ROLES).find(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+  if (matchedRoute) {
+    response.headers.set("x-allowed-roles", ROUTE_ROLES[matchedRoute].join(","));
+  }
+
   return response;
 }
 
