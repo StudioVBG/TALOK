@@ -16,6 +16,7 @@ const giftSchema = z.object({
   days: z.number().min(1).max(365),
   reason: z.string().min(3),
   notify_user: z.boolean().default(false),
+  plan_slug: z.enum(["gratuit", "starter", "confort", "pro", "enterprise_s", "enterprise_m", "enterprise_l", "enterprise_xl"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -36,14 +37,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: parsed.error.message }, { status: 400 });
     }
 
-    const { user_id, days, reason, notify_user } = parsed.data;
+    const { user_id, days, reason, notify_user, plan_slug } = parsed.data;
 
     const result = await adminGiftDays(
       user.id,
       user_id,
       days,
       reason,
-      notify_user
+      notify_user,
+      plan_slug
     );
 
     if (!result.success) {

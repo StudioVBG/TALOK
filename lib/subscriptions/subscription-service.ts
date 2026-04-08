@@ -875,13 +875,16 @@ export async function adminOverridePlan(
 
 /**
  * Offre des jours gratuits (admin)
+ * Si planSlug est fourni, change aussi le plan et passe en trialing.
+ * Sinon, prolonge le trial sur le plan actuel.
  */
 export async function adminGiftDays(
   adminUserId: string,
   targetUserId: string,
   days: number,
   reason: string,
-  notifyUser = false
+  notifyUser = false,
+  planSlug?: PlanSlug
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = createServiceRoleClient();
 
@@ -890,36 +893,84 @@ export async function adminGiftDays(
     return { success: false, error: 'Profil non trouvé' };
   }
 
-  // Récupérer l'abonnement
+  // Récupérer l'abonnement existant (peut ne pas exister)
   const { data: sub, error: subError } = await supabase
     .from('subscriptions')
-    .select('current_period_end, trial_end')
+    .select('id, status, current_period_end, trial_end, trial_start')
     .eq('owner_id', profileId)
-    .single();
+    .maybeSingle();
 
-  if (subError || !sub) {
-    return { success: false, error: 'Abonnement non trouvé' };
+  const now = new Date();
+  const trialEnd = new Date(now);
+  trialEnd.setDate(trialEnd.getDate() + days);
+
+  // Résoudre le plan_id si un planSlug est fourni
+  let resolvedPlanId: string | null = null;
+  if (planSlug) {
+    const { data: planRow, error: planError } = await supabase
+      .from('subscription_plans')
+      .select('id')
+      .eq('slug', planSlug)
+      .single();
+
+    if (planError || !planRow) {
+      return { success: false, error: `Plan "${planSlug}" non trouvé` };
+    }
+    resolvedPlanId = planRow.id;
   }
 
-  // Étendre la période
-  const currentEnd = sub.current_period_end 
-    ? new Date(sub.current_period_end) 
-    : sub.trial_end
-    ? new Date(sub.trial_end)
-    : new Date();
-  currentEnd.setDate(currentEnd.getDate() + days);
+  const updateData: Record<string, unknown> = {
+    status: 'trialing',
+    trial_end: trialEnd.toISOString(),
+    current_period_start: now.toISOString(),
+    current_period_end: trialEnd.toISOString(),
+    updated_at: now.toISOString(),
+  };
 
-  const { error } = await supabase
-    .from('subscriptions')
-    .update({
-      current_period_end: currentEnd.toISOString(),
-      trial_end: currentEnd.toISOString(),
-      updated_at: new Date().toISOString(),
-    })
-    .eq('owner_id', profileId);
+  // Set trial_start seulement si pas déjà en trial
+  if (!sub || sub.status !== 'trialing') {
+    updateData.trial_start = now.toISOString();
+  }
 
-  if (error) {
-    return { success: false, error: error.message };
+  // Changer le plan si demandé
+  if (planSlug) {
+    updateData.plan_slug = planSlug;
+  }
+  if (resolvedPlanId) {
+    updateData.plan_id = resolvedPlanId;
+  }
+
+  // Ajouter metadata de traçabilité
+  updateData.metadata = {
+    granted_by: adminUserId,
+    granted_at: now.toISOString(),
+    grant_reason: reason,
+    grant_days: days,
+    ...(planSlug ? { grant_plan: planSlug } : {}),
+  };
+
+  if (sub) {
+    // Mettre à jour l'abonnement existant
+    const { error } = await supabase
+      .from('subscriptions')
+      .update(updateData)
+      .eq('owner_id', profileId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+  } else {
+    // Créer un nouvel abonnement en trial
+    const { error } = await supabase
+      .from('subscriptions')
+      .insert({
+        owner_id: profileId,
+        ...updateData,
+      });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
   }
 
   try {
@@ -929,7 +980,7 @@ export async function adminGiftDays(
       action_type: 'gift_days',
       reason,
       notify_user: notifyUser,
-      action_metadata: { days },
+      action_metadata: { days, ...(planSlug ? { plan: planSlug } : {}) },
     });
   } catch {
     // Table optionnelle

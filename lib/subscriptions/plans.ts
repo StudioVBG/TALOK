@@ -126,14 +126,15 @@ export interface Plan {
   gradient?: string;
 }
 
-export type SubscriptionStatus = 
-  | 'active' 
-  | 'trialing' 
-  | 'past_due' 
-  | 'canceled' 
-  | 'paused' 
+export type SubscriptionStatus =
+  | 'active'
+  | 'trialing'
+  | 'past_due'
+  | 'canceled'
+  | 'paused'
   | 'incomplete'
-  | 'unpaid';
+  | 'unpaid'
+  | 'expired';
 
 export type BillingCycle = 'monthly' | 'yearly';
 
