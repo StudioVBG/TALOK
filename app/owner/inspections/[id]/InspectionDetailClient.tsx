@@ -148,7 +148,10 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.E
 };
 
 const conditionConfig: Record<string, { label: string; color: string }> = {
+  neuf: { label: "Neuf", color: "bg-blue-100 text-blue-800" },
+  tres_bon: { label: "Très bon", color: "bg-emerald-100 text-emerald-800" },
   bon: { label: "Bon état", color: "bg-green-100 text-green-800" },
+  usage_normal: { label: "Usage normal", color: "bg-yellow-100 text-yellow-800" },
   moyen: { label: "État moyen", color: "bg-yellow-100 text-yellow-800" },
   mauvais: { label: "Mauvais état", color: "bg-orange-100 text-orange-800" },
   tres_mauvais: { label: "Très mauvais", color: "bg-red-100 text-red-800" },
@@ -606,6 +609,17 @@ export function InspectionDetailClient({ data }: Props) {
               <Printer className="h-4 w-4 mr-2" />
               Imprimer
             </Button>
+
+            {edl.type === "sortie" && (
+              <Link
+                href={`/owner/inspections/${edl.id}/compare`}
+                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "bg-card border-border shadow-sm hover:bg-muted h-9 sm:h-10 px-2.5 sm:px-3")}
+                aria-label="Comparer entrée / sortie"
+              >
+                <ClipboardList className="h-4 w-4 sm:mr-2 text-purple-600" />
+                <span className="hidden sm:inline">Comparer</span>
+              </Link>
+            )}
 
             {["draft", "scheduled", "in_progress", "completed"].includes(edl.status) && (
               <Link
