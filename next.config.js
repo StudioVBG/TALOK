@@ -3,51 +3,14 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
 });
 
-// next-pwa@5.6.0 — n'est appliqué que si NON désactivé.
-// Sur Netlify (NETLIFY=true) et en dev, on saute complètement le wrapper
-// pour éviter les interférences avec @netlify/plugin-nextjs.
+// Serwist — successeur de next-pwa (maintenu, compatible Turbopack)
+// Desactive sur Netlify et en dev pour eviter les interferences.
 const isPWADisabled = process.env.NODE_ENV === 'development' || process.env.NETLIFY === 'true';
-const withPWA = isPWADisabled
-  ? (config) => config  // no-op wrapper
-  : require('next-pwa')({
-      dest: 'public',
-      register: true,
-      skipWaiting: true,
-      runtimeCaching: [
-        {
-          urlPattern: /^https:\/\/fonts\.(?:gstatic|googleapis)\.com\/.*/i,
-          handler: 'CacheFirst',
-          options: {
-            cacheName: 'google-fonts',
-            expiration: {
-              maxEntries: 10,
-              maxAgeSeconds: 365 * 24 * 60 * 60, // 1 an
-            },
-          },
-        },
-        {
-          urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/.*/i,
-          handler: 'StaleWhileRevalidate',
-          options: {
-            cacheName: 'supabase-storage',
-            expiration: {
-              maxEntries: 100,
-              maxAgeSeconds: 30 * 24 * 60 * 60, // 30 jours
-            },
-          },
-        },
-        {
-          urlPattern: /\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i,
-          handler: 'StaleWhileRevalidate',
-          options: {
-            cacheName: 'static-images',
-            expiration: {
-              maxEntries: 64,
-              maxAgeSeconds: 24 * 60 * 60, // 24 heures
-            },
-          },
-        },
-      ],
+const withSerwist = isPWADisabled
+  ? (config) => config
+  : require('@serwist/next').withSerwist({
+      swSrc: 'app/sw.ts',
+      swDest: 'public/sw.js',
     });
 
 const nextConfig = {
@@ -316,4 +279,4 @@ const nextConfig = {
   },
 };
 
-module.exports = withBundleAnalyzer(withPWA(nextConfig));
+module.exports = withBundleAnalyzer(withSerwist(nextConfig));
