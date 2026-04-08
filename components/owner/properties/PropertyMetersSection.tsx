@@ -56,6 +56,8 @@ import {
 } from "@/components/ui/alert";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { Wifi } from "lucide-react";
 
 // ============================================
 // TYPES
@@ -135,6 +137,7 @@ const METER_CONFIG: Record<string, {
 
 export function PropertyMetersSection({ propertyId, className }: PropertyMetersSectionProps) {
   const { toast } = useToast();
+  const router = useRouter();
   
   // États
   const [meters, setMeters] = useState<Meter[]>([]);
@@ -317,10 +320,20 @@ export function PropertyMetersSection({ propertyId, className }: PropertyMetersS
               Gérez les compteurs d'énergie du logement
             </CardDescription>
           </div>
-          <Button onClick={handleOpenAdd} size="sm">
-            <Plus className="w-4 h-4 mr-1" />
-            Ajouter
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(`/owner/properties/${propertyId}/meters`)}
+            >
+              <Wifi className="w-4 h-4 mr-1" />
+              Compteurs connectes
+            </Button>
+            <Button onClick={handleOpenAdd} size="sm">
+              <Plus className="w-4 h-4 mr-1" />
+              Ajouter
+            </Button>
+          </div>
         </div>
       </CardHeader>
 
