@@ -4,6 +4,26 @@
 **Stack actuelle** : Next.js 14 / React 18 / TypeScript / Supabase / Tailwind v3 / Capacitor v8 / Netlify
 **Dependances actuelles** : 91 dependencies, 19 devDependencies
 
+## STATUT D'IMPLEMENTATION
+
+| Outil | Statut | Commit |
+|-------|--------|--------|
+| SWR -> TanStack Query | FAIT | Phase 1 |
+| LazyMotion provider | FAIT | Phase 1 |
+| Zustand devtools | FAIT | Phase 1 |
+| @axe-core/react | FAIT | Phase 1 |
+| Biome (remplace ESLint) | FAIT | Phase 2 |
+| MSW (Mock Service Worker) | FAIT | Phase 2 |
+| ts-pattern | FAIT | Phase 2 |
+| next-safe-action | FAIT | Phase 3 |
+| Serwist (remplace next-pwa) | FAIT | Phase 3 |
+| OpenTelemetry | FAIT | Phase 3 |
+| Knip | A EXECUTER (`npx knip`) |
+| @tanstack/react-virtual | A FAIRE |
+| React Email | A FAIRE |
+| Trigger.dev | A FAIRE |
+| PowerSync | A EVALUER |
+
 ---
 
 ## PRIORITE 1 — Impact immediat, effort minimal
