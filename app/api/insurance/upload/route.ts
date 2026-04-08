@@ -124,6 +124,7 @@ export async function POST(request: Request) {
       .is("is_archived", null);
 
     // Créer un document avec toutes les liaisons
+    // SYSTEM DOCUMENT: Direct insert acceptable for auto-generated PDFs (no user upload flow)
     const { error: docError } = await serviceClient.from("documents").insert({
       type: "attestation_assurance",
       title: "Attestation d'assurance habitation",

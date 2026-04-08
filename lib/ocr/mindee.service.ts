@@ -152,7 +152,6 @@ class MindeeService {
       );
     }
 
-    console.log(`[Mindee] Appel ${endpoint} réussi (${responseTime}ms)`);
     return response.json();
   }
 

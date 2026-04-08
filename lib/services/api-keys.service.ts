@@ -161,10 +161,6 @@ class ApiKeysService {
     const envVar = ENV_VAR_MAP[provider];
     const value = process.env[envVar];
     
-    if (value) {
-      console.log(`[ApiKeysService] Utilisation fallback env pour ${provider}`);
-    }
-    
     return value || null;
   }
 
@@ -265,10 +261,8 @@ class ApiKeysService {
           this.cache.delete(key);
         }
       }
-      console.log(`[ApiKeysService] Cache vidé pour ${provider}`);
     } else {
       this.cache.clear();
-      console.log("[ApiKeysService] Cache entièrement vidé");
     }
   }
 

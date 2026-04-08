@@ -179,7 +179,8 @@ async function sendViaTwilio(options: SMSOptions): Promise<SMSResult> {
       to: formattedTo,
     });
 
-    console.log(`[SMS] ✅ Envoyé à ${formattedTo} - SID: ${message.sid}`);
+    // TODO: replace with structured logger once available
+    console.log(`[SMS] Envoyé à ${formattedTo} - SID: ${message.sid}`);
     
     return {
       success: true,
@@ -248,7 +249,8 @@ export async function sendSMS(options: SMSOptions): Promise<SMSResult> {
   
   // Mode simulation si pas de credentials en développement
   if (!hasCredentials && process.env.NODE_ENV === "development") {
-    console.log("[SMS] ⚠️ Twilio non configuré - Mode simulation activé");
+    // TODO: replace with structured logger once available
+    console.log("[SMS] Twilio non configuré - Mode simulation activé");
     return simulateSMS(options);
   }
   

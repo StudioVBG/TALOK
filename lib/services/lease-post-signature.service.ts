@@ -72,7 +72,6 @@ export async function handleLeaseFullySigned(
 
   // En mode force, réinitialiser sealed_at et signed_pdf_path pour permettre le re-scellement
   if (force && lease.sealed_at) {
-    console.log("[post-signature] Mode force: réinitialisation sealed_at/signed_pdf_path pour", leaseId);
     await serviceClient
       .from("leases")
       .update({ sealed_at: null, signed_pdf_path: null } as any)
@@ -114,8 +113,6 @@ export async function handleLeaseFullySigned(
     } else {
       result.pdfStored = true;
       result.pdfPath = sealedDocPath;
-      console.log("[post-signature] HTML signé stocké:", sealedDocPath, "size:", htmlBuffer.length);
-
       // ── 3. Upsert document bail_signe en DB ─────────────────────────
       const { data: existingDoc } = await serviceClient
         .from("documents")
@@ -201,7 +198,6 @@ export async function handleLeaseFullySigned(
     } else {
       result.sealed = true;
       result.sealedAt = new Date().toISOString();
-      console.log("[post-signature] Bail scellé:", leaseId);
     }
   } catch (sealErr) {
     console.warn("[post-signature] Exception scellement:", String(sealErr));
@@ -226,12 +222,6 @@ export async function handleLeaseFullySigned(
     result.invoiceCreated = invoiceResult.created;
     result.invoiceAmount = invoiceResult.amount;
     result.depositAmount = invoiceResult.depositAmount;
-
-    console.log("[post-signature] Facture initiale:", {
-      invoiceId: invoiceResult.invoiceId,
-      created: invoiceResult.created,
-      amount: invoiceResult.amount,
-    });
 
     if (invoiceResult.created) {
       await serviceClient.from("outbox").insert({

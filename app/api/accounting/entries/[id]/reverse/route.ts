@@ -1,12 +1,18 @@
 /**
  * API Route: Reverse Accounting Entry
  * POST /api/accounting/entries/:id/reverse - Crée une écriture d'extourne
+ *
+ * Uses the double-entry engine reverseEntry when the original entry
+ * belongs to the new accounting_entries schema (has entity_id).
+ * Falls back to legacy flat reversal otherwise.
  */
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { z } from "zod";
+import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
+import { reverseEntry } from '@/lib/accounting/engine';
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +49,10 @@ export async function POST(request: Request, context: Context) {
       throw new ApiError(403, "Seuls les administrateurs peuvent extourner des écritures");
     }
 
+    // Feature gate: check subscription plan
+    const featureGate = await requireAccountingAccess(profile.id, 'entries');
+    if (featureGate) return featureGate;
+
     const body = await request.json();
     const validation = ReverseSchema.safeParse(body);
 
@@ -50,10 +60,9 @@ export async function POST(request: Request, context: Context) {
       throw new ApiError(400, validation.error.errors[0].message);
     }
 
-    const { motif, date } = validation.data;
-    const reversalDate = date || new Date().toISOString().split("T")[0];
+    const { motif } = validation.data;
 
-    // Récupérer l'écriture originale
+    // Check if this is a double-entry entry (has entity_id) or legacy flat entry
     const { data: original, error: fetchError } = await supabase
       .from("accounting_entries")
       .select("*")
@@ -63,6 +72,23 @@ export async function POST(request: Request, context: Context) {
     if (fetchError || !original) {
       throw new ApiError(404, "Écriture non trouvée");
     }
+
+    // ---------- New double-entry mode (entry has entity_id) ----------
+    if (original.entity_id) {
+      const reversal = await reverseEntry(supabase, id, user.id, motif);
+
+      return NextResponse.json({
+        success: true,
+        message: `Écriture d'extourne créée: ${reversal.entryNumber}`,
+        data: {
+          original: original,
+          reversal: reversal,
+        },
+      }, { status: 201 });
+    }
+
+    // ---------- Legacy flat-entry mode ----------
+    const reversalDate = validation.data.date || new Date().toISOString().split("T")[0];
 
     // Générer le numéro d'écriture d'extourne
     const year = reversalDate.substring(0, 4);
@@ -79,7 +105,7 @@ export async function POST(request: Request, context: Context) {
     const { data: reversal, error: insertError } = await supabase
       .from("accounting_entries")
       .insert({
-        journal_code: "OD", // Opérations Diverses pour les extournes
+        journal_code: "OD",
         ecriture_num: ecritureNum,
         ecriture_date: reversalDate,
         compte_num: original.compte_num,
@@ -89,8 +115,8 @@ export async function POST(request: Request, context: Context) {
         piece_ref: `EXT-${original.piece_ref}`,
         piece_date: reversalDate,
         ecriture_lib: `Extourne: ${motif} (réf: ${original.ecriture_num})`,
-        debit: original.credit, // Inverse
-        credit: original.debit, // Inverse
+        debit: original.credit,
+        credit: original.debit,
         owner_id: original.owner_id,
         property_id: original.property_id,
         invoice_id: original.invoice_id,
@@ -107,13 +133,12 @@ export async function POST(request: Request, context: Context) {
 
     // Si l'écriture originale affectait un compte mandant, mettre à jour le solde
     if (original.owner_id && (original.compte_num as string).startsWith("4671")) {
-      // Inverser l'impact sur le solde mandant propriétaire
       await supabase.rpc("update_mandant_balance", {
         p_profile_id: original.owner_id,
         p_property_id: original.property_id,
         p_account_type: "proprietaire",
-        p_debit: original.credit, // Inverse
-        p_credit: original.debit, // Inverse
+        p_debit: original.credit,
+        p_credit: original.debit,
       });
     }
 

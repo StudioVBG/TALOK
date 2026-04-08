@@ -93,7 +93,7 @@ export async function executeSaga<T = any>(
         try {
           await step.compensate(client, result);
           compensated = true;
-          console.log(`[Saga] Compensation "${step.name}" exécutée`);
+          console.warn(`[Saga] Compensation "${step.name}" exécutée`);
         } catch (compError) {
           console.error(`[Saga] Compensation "${step.name}" échouée:`, compError);
         }

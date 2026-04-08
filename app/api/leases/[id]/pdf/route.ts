@@ -102,6 +102,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       if (existingDoc) {
         await serviceClient.from("documents").update({ ...docPayload, updated_at: new Date().toISOString() } as any).eq("id", existingDoc.id);
       } else {
+        // SYSTEM DOCUMENT: Direct insert acceptable for auto-generated PDFs (no user upload flow)
         await serviceClient.from("documents").insert({ ...docPayload, owner_id: property.owner_id, property_id: property.id, lease_id: leaseId } as any);
       }
 

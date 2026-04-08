@@ -4,8 +4,8 @@
  * 
  * NOUVELLE GRILLE:
  * - starter: 9€/mois (3 biens)
- * - confort: 29€/mois (10 biens)
- * - pro: 59€/mois (50 biens)
+ * - confort: 35€/mois (10 biens)
+ * - pro: 69€/mois (50 biens)
  * - enterprise: Sur devis
  */
 
@@ -45,8 +45,8 @@ const NEW_PLANS = [
     slug: 'confort',
     name: 'Confort',
     description: 'Pour les propriétaires actifs avec plusieurs biens',
-    price_monthly: 2900,  // 29€
-    price_yearly: 29000,  // 290€
+    price_monthly: 3500,  // 35€
+    price_yearly: 35000,  // 350€
     max_properties: 10,
     max_leases: 25,
     max_tenants: 40,
@@ -68,8 +68,8 @@ const NEW_PLANS = [
     slug: 'pro',
     name: 'Pro',
     description: 'Pour les gestionnaires professionnels et SCI',
-    price_monthly: 5900,  // 59€
-    price_yearly: 59000,  // 590€
+    price_monthly: 6900,  // 69€
+    price_yearly: 69000,  // 690€
     max_properties: 50,
     max_leases: -1,
     max_tenants: -1,

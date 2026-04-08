@@ -332,7 +332,7 @@ const FEATURE_GROUPS = [
     label: "Documents & Signatures",
     icon: FileText,
     features: [
-      { key: "signatures", label: "E-signature Yousign", type: "boolean" },
+      { key: "signatures", label: "Signatures électroniques", type: "boolean" },
       { key: "signatures_monthly_quota", label: "Signatures/mois", type: "number", unlimited: -1 },
       { key: "lease_generation", label: "Génération auto baux", type: "boolean" },
       { key: "lease_templates", label: "Modèles de baux", type: "level", levels: ["basic", "full", "custom"] },

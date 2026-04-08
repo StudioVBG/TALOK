@@ -455,10 +455,18 @@ export function useDocument(documentId: string | null) {
 
 /**
  * Hook pour créer un document
- * 
+ *
+ * @deprecated Use useGedUpload instead. All document inserts must go through the API route.
+ * This hook bypasses the GED upload pipeline (validation, virus scan, metadata extraction).
+ * It remains exported only for backward compatibility — do NOT use in new code.
+ *
  * 🔒 SÉCURITÉ: Lie automatiquement le document au profil de l'utilisateur
  */
 export function useCreateDocument() {
+  console.warn(
+    "[useCreateDocument] DEPRECATED: This hook is forbidden by architecture rules. " +
+    "Use useGedUpload instead. All document inserts must go through the API route."
+  );
   const queryClient = useQueryClient();
   const { profile } = useAuth();
   

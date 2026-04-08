@@ -160,7 +160,6 @@ class WebhookRetryService {
       throw new Error(`Failed to enqueue webhook: ${error.message}`);
     }
 
-    console.log(`[WebhookRetry] Webhook enqueued: ${data.id} (${eventType})`);
     return data.id as string;
   }
 
@@ -168,8 +167,6 @@ class WebhookRetryService {
    * Traite un webhook en attente
    */
   async processWebhook(webhook: WebhookPayload): Promise<boolean> {
-    console.log(`[WebhookRetry] Processing webhook: ${webhook.id} (attempt ${webhook.retry_count + 1})`);
-
     // Marquer comme en cours de traitement
     await this.supabase
       .from("webhook_queue")
@@ -192,7 +189,6 @@ class WebhookRetryService {
         })
         .eq("id", webhook.id);
 
-      console.log(`[WebhookRetry] Webhook succeeded: ${webhook.id}`);
       return true;
     }
 
@@ -230,9 +226,6 @@ class WebhookRetryService {
       })
       .eq("id", webhook.id);
 
-    console.log(
-      `[WebhookRetry] Webhook scheduled for retry: ${webhook.id} at ${nextRetryAt.toISOString()} (attempt ${newRetryCount + 1})`
-    );
     return false;
   }
 
@@ -261,8 +254,6 @@ class WebhookRetryService {
       return 0;
     }
 
-    console.log(`[WebhookRetry] Processing ${webhooks.length} pending webhooks`);
-
     // Traiter en parallèle (avec limite de concurrence)
     const results = await Promise.allSettled(
       webhooks.map((webhook) => this.processWebhook(webhook as unknown as WebhookPayload))
@@ -272,7 +263,6 @@ class WebhookRetryService {
       (r) => r.status === "fulfilled" && r.value === true
     ).length;
 
-    console.log(`[WebhookRetry] Processed ${webhooks.length} webhooks, ${successCount} succeeded`);
     return successCount;
   }
 
@@ -327,7 +317,6 @@ class WebhookRetryService {
       return false;
     }
 
-    console.log(`[WebhookRetry] Dead letter webhook reset for retry: ${webhookId}`);
     return true;
   }
 
@@ -352,9 +341,7 @@ class WebhookRetryService {
     }
 
     const count = data?.length || 0;
-    if (count > 0) {
-      console.log(`[WebhookRetry] Cleaned up ${count} old webhooks`);
-    }
+    // cleanup complete
 
     return count;
   }

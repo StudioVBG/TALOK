@@ -71,10 +71,6 @@ export class RAGPipeline {
     results.userContext = contextResults;
     results.platformKnowledge = knowledgeResults;
 
-    console.log(
-      `[RAG Pipeline] Found: ${results.legal.length} legal, ${results.userContext.length} context, ${results.platformKnowledge.length} knowledge`
-    );
-
     return results;
   }
 

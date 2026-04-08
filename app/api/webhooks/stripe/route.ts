@@ -904,6 +904,54 @@ export async function POST(request: NextRequest) {
               paymentMethod: paymentIntent.payment_method_types?.[0] || "card",
             });
           }
+
+          // --- Accounting auto-entry (non-blocking) ---
+          try {
+            const { createAutoEntry } = await import('@/lib/accounting/engine');
+            const { getOrCreateCurrentExercise } = await import('@/lib/accounting/auto-exercise');
+
+            // Resolve entity: invoice → lease → property → legal_entity_id
+            const { data: invoiceForEntity } = await supabase
+              .from('invoices')
+              .select(`
+                lease:leases (
+                  property:properties (
+                    legal_entity_id,
+                    adresse_complete
+                  )
+                ),
+                tenant:profiles!invoices_tenant_id_fkey (
+                  prenom,
+                  nom
+                )
+              `)
+              .eq('id', invoiceId)
+              .maybeSingle();
+
+            const entityId = invoiceForEntity?.lease?.property?.legal_entity_id;
+            if (entityId) {
+              const exercise = await getOrCreateCurrentExercise(supabase, entityId);
+              if (exercise) {
+                const tenantName = invoiceForEntity?.tenant
+                  ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
+                  : '';
+                const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
+
+                await createAutoEntry(supabase, 'rent_received', {
+                  entityId,
+                  exerciseId: exercise.id,
+                  userId: 'system',
+                  amountCents: paymentIntent.amount, // already in cents from Stripe
+                  label: `Loyer ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
+                  date: new Date().toISOString().split('T')[0],
+                  reference: paymentIntent.id,
+                });
+              }
+            }
+          } catch (accountingError) {
+            console.error('[ACCOUNTING] Auto-entry failed (non-blocking):', accountingError);
+            // Never throw — payment is already confirmed
+          }
         }
         break;
       }
@@ -939,6 +987,54 @@ export async function POST(request: NextRequest) {
             } catch (notifError) {
               console.error("[Stripe Webhook] Payment failed notifications error:", notifError);
             }
+          }
+
+          // --- Accounting auto-entry for SEPA rejection (non-blocking) ---
+          try {
+            const { createAutoEntry } = await import('@/lib/accounting/engine');
+            const { getOrCreateCurrentExercise } = await import('@/lib/accounting/auto-exercise');
+
+            // Resolve entity: invoice → lease → property → legal_entity_id
+            const { data: invoiceForEntity } = await supabase
+              .from('invoices')
+              .select(`
+                lease:leases (
+                  property:properties (
+                    legal_entity_id,
+                    adresse_complete
+                  )
+                ),
+                tenant:profiles!invoices_tenant_id_fkey (
+                  prenom,
+                  nom
+                )
+              `)
+              .eq('id', invoiceId)
+              .maybeSingle();
+
+            const entityId = invoiceForEntity?.lease?.property?.legal_entity_id;
+            if (entityId) {
+              const exercise = await getOrCreateCurrentExercise(supabase, entityId);
+              if (exercise) {
+                const tenantName = invoiceForEntity?.tenant
+                  ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
+                  : '';
+                const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
+
+                await createAutoEntry(supabase, 'sepa_rejected', {
+                  entityId,
+                  exerciseId: exercise.id,
+                  userId: 'system',
+                  amountCents: paymentIntent.amount,
+                  label: `Rejet prelevement ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
+                  date: new Date().toISOString().split('T')[0],
+                  reference: paymentIntent.id,
+                });
+              }
+            }
+          } catch (accountingError) {
+            console.error('[ACCOUNTING] sepa_rejected auto-entry failed (non-blocking):', accountingError);
+            // Never throw — payment failure handling is already complete
           }
         }
         break;

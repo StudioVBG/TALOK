@@ -72,7 +72,6 @@ class LangfuseService {
     const baseUrl = process.env.LANGFUSE_BASE_URL || "https://cloud.langfuse.com";
 
     if (!publicKey || !secretKey) {
-      console.log("[Langfuse] Keys not configured, monitoring disabled");
       return;
     }
 
@@ -88,7 +87,6 @@ class LangfuseService {
       });
 
       this.enabled = true;
-      console.log("[Langfuse] Monitoring enabled");
     } catch (error) {
       console.warn("[Langfuse] Package not installed, monitoring disabled");
       this.enabled = false;

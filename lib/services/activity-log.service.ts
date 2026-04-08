@@ -168,7 +168,7 @@ export async function logActivity(params: CreateActivityParams): Promise<Activit
 
     if (error) {
       // Si la table n'existe pas, log en console seulement
-      console.log("[ActivityLog] Activité:", params.title);
+      console.error("[ActivityLog] Failed to log activity:", params.title);
       return null;
     }
 

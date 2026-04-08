@@ -47,7 +47,6 @@ class TesseractOCRService {
    */
   private async getWorker(): Promise<Tesseract.Worker> {
     if (!this.workerPromise) {
-      console.log('[Tesseract] Initialisation du worker OCR français...');
       this.workerPromise = Tesseract.createWorker('fra', 1, {
         // Logger désactivé en production, activer pour debug:
         // logger: (m) => console.log('[Tesseract]', m.status, m.progress),
@@ -61,8 +60,6 @@ class TesseractOCRService {
    */
   private async preprocessImage(imageBuffer: Buffer): Promise<Buffer> {
     try {
-      console.log('[Tesseract] Prétraitement de l\'image...');
-      
       return await sharp(imageBuffer)
         // Redimensionner si trop petit (min 1200px de large pour bonne qualité)
         .resize(1400, null, { 
@@ -93,7 +90,6 @@ class TesseractOCRService {
     imageBuffer: Buffer,
     fileName: string = "id.jpg"
   ): Promise<InternalIdCardData> {
-    console.log('[Tesseract] Début analyse OCR...');
     const startTime = Date.now();
 
     try {
@@ -106,9 +102,6 @@ class TesseractOCRService {
       
       const rawText = data.text;
       const confidence = data.confidence / 100; // Normaliser entre 0 et 1
-
-      const duration = Date.now() - startTime;
-      console.log(`[Tesseract] Extraction terminée en ${duration}ms, confiance: ${(confidence * 100).toFixed(1)}%`);
 
       // Extraire les champs depuis le texte brut
       const extractedData = this.extractFieldsFromText(rawText);
@@ -152,16 +145,12 @@ class TesseractOCRService {
     const normalizedText = text.toUpperCase().replace(/\s+/g, ' ');
     const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
 
-    console.log('[Tesseract] Extraction des champs depuis le texte...');
-
     // Détecter le type de document
     const detectedType = this.detectDocumentType(normalizedText);
     const result: Partial<InternalIdCardData> = {
       documentType: detectedType,
     };
     
-    console.log(`[Tesseract] Type de document détecté: ${detectedType}`);
-
     // ==== EXTRACTION DU NOM ====
     // Patterns pour trouver le nom de famille
     const nomPatterns = [
@@ -350,17 +339,6 @@ class TesseractOCRService {
       }
     }
 
-    // Log des champs extraits
-    const extractedCount = Object.keys(result).filter(k => 
-      k !== 'documentType' && result[k as keyof typeof result]
-    ).length;
-    console.log(`[Tesseract] ${extractedCount} champs extraits:`, 
-      Object.entries(result)
-        .filter(([k, v]) => k !== 'documentType' && v)
-        .map(([k, v]) => `${k}=${typeof v === 'string' ? v.substring(0, 20) : v}`)
-        .join(', ')
-    );
-
     return result;
   }
 
@@ -445,7 +423,6 @@ class TesseractOCRService {
    */
   async terminate(): Promise<void> {
     if (this.workerPromise) {
-      console.log('[Tesseract] Arrêt du worker OCR...');
       const worker = await this.workerPromise;
       await worker.terminate();
       this.workerPromise = null;

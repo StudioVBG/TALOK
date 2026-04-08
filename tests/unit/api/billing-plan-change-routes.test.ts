@@ -103,8 +103,8 @@ describe("billing plan change routes", () => {
             data: {
               id: "plan-pro",
               slug: "pro",
-              price_monthly: 2900,
-              price_yearly: 29000,
+              price_monthly: 6900,
+              price_yearly: 69000,
               stripe_price_monthly_id: "price_pro_monthly",
               stripe_price_yearly_id: "price_pro_yearly",
             },

@@ -281,8 +281,6 @@ export async function handleEDLFullySigned(edlId: string): Promise<EDLPostSignat
 
     result.htmlStored = true;
     result.storagePath = storagePath;
-    console.log("[edl-post-signature] HTML EDL signé stocké:", storagePath, "size:", htmlBuffer.length);
-
     // Mettre à jour le storage_path du document existant en DB
     await serviceClient
       .from("documents")
