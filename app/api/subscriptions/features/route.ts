@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       .maybeSingle() : { data: null };
 
     const planSlug = (subscription?.plan_slug || 'gratuit') as PlanSlug;
-    const status = subscription?.status || 'active';
+    const status = subscription?.status || 'free';
     const planFeatures = PLANS[planSlug].features;
     const isActive = isSubscriptionStatusEntitled(status);
 

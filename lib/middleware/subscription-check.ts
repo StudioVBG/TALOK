@@ -156,6 +156,18 @@ export async function withSubscriptionLimit(
       };
     }
 
+    // Vérifier que le statut de la subscription permet l'usage
+    if (!isSubscriptionStatusEntitled(subscription.status)) {
+      return {
+        allowed: false,
+        current: 0,
+        max: 0,
+        remaining: 0,
+        plan: planSlug,
+        message: `Votre abonnement n'est plus actif (${subscription.status}). Veuillez mettre à jour votre moyen de paiement.`,
+      };
+    }
+
     const plan = (subscription.plan || {}) as any;
     let current = 0;
     let max = 0;
