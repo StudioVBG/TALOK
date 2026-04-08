@@ -308,7 +308,7 @@ export async function GET(request: Request) {
       const { data: recentCRGs } = await supabase
         .from("crg_reports")
         .select("id")
-        .eq("mandant_id", mandant.id)
+        .eq("mandant_id", mandant.id as string)
         .gte("period_end", threeMonthsAgoStr)
         .limit(1);
 
