@@ -106,11 +106,12 @@ export async function GET(request: Request) {
         // Aggregate actual amounts by account
         const actualMap = new Map<string, number>();
         for (const line of entryLines ?? []) {
-          const current = actualMap.get(line.account_number) ?? 0;
+          const accNum = line.account_number as string;
+          const current = actualMap.get(accNum) ?? 0;
           // Charges (class 6) are debits, produits (class 7) are credits
           actualMap.set(
-            line.account_number,
-            current + line.debit_cents - line.credit_cents,
+            accNum,
+            current + (line.debit_cents as number) - (line.credit_cents as number),
           );
         }
 
