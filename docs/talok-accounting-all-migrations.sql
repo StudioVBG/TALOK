@@ -127,10 +127,10 @@ SELECT
   p.user_id AS user_id,
   p.id AS profile_id,
   CASE
-    WHEN ea.est_gerant THEN 'admin'
+    WHEN ea.is_gerant THEN 'admin'
     ELSE 'member'
   END AS role,
-  ea.pourcentage_parts AS share_percentage
+  ea.pourcentage_capital AS share_percentage
 FROM entity_associates ea
 JOIN profiles p ON ea.profile_id = p.id
 WHERE p.user_id IS NOT NULL
