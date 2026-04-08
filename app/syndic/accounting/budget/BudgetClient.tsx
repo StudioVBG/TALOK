@@ -510,10 +510,7 @@ function BudgetActiveView({
                       cx="50%"
                       cy="50%"
                       outerRadius={80}
-                      label={({ name, percent }) =>
-                        `${(name as string).slice(0, 10)} ${(percent * 100).toFixed(0)}%`
-                      }
-                      labelLine={false}
+                      label={false}
                     >
                       {pieData.map((entry, index) => (
                         <Cell key={index} fill={entry.color} />
