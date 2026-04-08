@@ -615,6 +615,13 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
     if (e.key === "Escape") setIsGalleryOpen(false);
   }, [isGalleryOpen, allDisplayPhotos.length]);
 
+  // Attacher le listener clavier pour la navigation galerie
+  useEffect(() => {
+    if (!isGalleryOpen) return;
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isGalleryOpen, handleKeyDown]);
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Breadcrumb */}
@@ -829,7 +836,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
 
                   {/* Info sur la photo principale */}
                   <div className="absolute bottom-0 left-0 p-6 text-white">
-                    <Badge className="mb-2 bg-white/20 backdrop-blur">{property.type}</Badge>
+                    <Badge className="mb-2 bg-card/20 backdrop-blur">{property.type}</Badge>
                     <h1 className="text-2xl md:text-3xl font-bold drop-shadow-lg">
                       {isEditing ? editedValues.adresse_complete : property.adresse_complete}
                     </h1>
@@ -1538,7 +1545,7 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
               {selectedPhotoIndex + 1} / {allDisplayPhotos.length}
             </span>
             <DialogClose asChild>
-              <Button variant="ghost" size="icon" className="text-white hover:bg-white/20 rounded-full">
+              <Button variant="ghost" size="icon" className="text-white hover:bg-card/20 rounded-full">
                 <X className="h-6 w-6" />
               </Button>
             </DialogClose>

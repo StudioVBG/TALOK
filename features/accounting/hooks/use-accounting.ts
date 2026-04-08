@@ -5,8 +5,7 @@
  */
 
 import { useState, useCallback } from "react";
-// @ts-ignore
-import useSWR, { mutate } from "swr";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import type { SituationLocataire } from "@/features/accounting/types";
 
@@ -78,16 +77,20 @@ export function useCRG(ownerId?: string, startDate?: string, endDate?: string) {
   if (startDate) params.append("start_date", startDate);
   if (endDate) params.append("end_date", endDate);
 
-  const { data, error, isLoading, mutate } = useSWR<{ data: CRGData[] }>(
-    startDate && endDate ? `/api/accounting/crg?${params.toString()}` : null,
-    apiClient.get
-  );
+  const queryClient = useQueryClient();
+  const url = `/api/accounting/crg?${params.toString()}`;
+
+  const { data, error, isLoading } = useQuery<{ data: CRGData[] }>({
+    queryKey: ["accounting", "crg", ownerId, startDate, endDate],
+    queryFn: () => apiClient.get(url),
+    enabled: !!(startDate && endDate),
+  });
 
   return {
     crgs: data?.data || [],
     isLoading,
     error,
-    refresh: mutate,
+    refresh: () => queryClient.invalidateQueries({ queryKey: ["accounting", "crg"] }),
   };
 }
 
@@ -97,17 +100,18 @@ export function useCRG(ownerId?: string, startDate?: string, endDate?: string) {
 
 export function useBalance(date?: string) {
   const params = date ? `?date=${date}` : "";
+  const queryClient = useQueryClient();
 
-  const { data, error, isLoading, mutate } = useSWR<{ data: BalanceData }>(
-    `/api/accounting/balance${params}`,
-    apiClient.get
-  );
+  const { data, error, isLoading } = useQuery<{ data: BalanceData }>({
+    queryKey: ["accounting", "balance", date],
+    queryFn: () => apiClient.get(`/api/accounting/balance${params}`),
+  });
 
   return {
     balance: data?.data,
     isLoading,
     error,
-    refresh: mutate,
+    refresh: () => queryClient.invalidateQueries({ queryKey: ["accounting", "balance"] }),
   };
 }
 
@@ -120,16 +124,18 @@ export function useFiscal(year?: number, ownerId?: string) {
   if (year) params.append("year", year.toString());
   if (ownerId) params.append("owner_id", ownerId);
 
-  const { data, error, isLoading, mutate } = useSWR<{ data: FiscalData }>(
-    `/api/accounting/fiscal?${params.toString()}`,
-    apiClient.get
-  );
+  const queryClient = useQueryClient();
+
+  const { data, error, isLoading } = useQuery<{ data: FiscalData }>({
+    queryKey: ["accounting", "fiscal", year, ownerId],
+    queryFn: () => apiClient.get(`/api/accounting/fiscal?${params.toString()}`),
+  });
 
   return {
     recap: data?.data,
     isLoading,
     error,
-    refresh: mutate,
+    refresh: () => queryClient.invalidateQueries({ queryKey: ["accounting", "fiscal"] }),
   };
 }
 
@@ -138,9 +144,18 @@ export function useFiscal(year?: number, ownerId?: string) {
 // ============================================================================
 
 export function useRegularisations(leaseId: string) {
-  const { data, error, isLoading, mutate } = useSWR<{ data: RegularisationData[] }>(
-    leaseId ? `/api/accounting/charges/regularisation?lease_id=${leaseId}` : null,
-    apiClient.get
+  const queryClient = useQueryClient();
+  const queryKey = ["accounting", "regularisations", leaseId];
+
+  const { data, error, isLoading } = useQuery<{ data: RegularisationData[] }>({
+    queryKey,
+    queryFn: () => apiClient.get(`/api/accounting/charges/regularisation?lease_id=${leaseId}`),
+    enabled: !!leaseId,
+  });
+
+  const refresh = useCallback(
+    () => queryClient.invalidateQueries({ queryKey }),
+    [queryClient, queryKey]
   );
 
   const createRegularisation = useCallback(
@@ -153,10 +168,10 @@ export function useRegularisations(leaseId: string) {
           charges_reelles: chargesReelles,
         }
       );
-      mutate();
+      refresh();
       return result.data;
     },
-    [leaseId, mutate]
+    [leaseId, refresh]
   );
 
   const applyRegularisation = useCallback(
@@ -165,17 +180,17 @@ export function useRegularisations(leaseId: string) {
         `/api/accounting/charges/regularisation/${regularisationId}/apply`,
         {}
       );
-      mutate();
+      refresh();
       return result.data;
     },
-    [mutate]
+    [refresh]
   );
 
   return {
     regularisations: data?.data || [],
     isLoading,
     error,
-    refresh: mutate,
+    refresh,
     createRegularisation,
     applyRegularisation,
   };
@@ -187,14 +202,21 @@ export function useRegularisations(leaseId: string) {
 
 export function useDeposits(leaseId?: string) {
   const params = leaseId ? `?lease_id=${leaseId}` : "";
+  const queryClient = useQueryClient();
+  const queryKey = ["accounting", "deposits", leaseId];
 
-  const { data, error, isLoading, mutate } = useSWR<{ data: DepositData[] }>(
-    `/api/accounting/deposits${params}`,
-    apiClient.get
+  const { data, error, isLoading } = useQuery<{ data: DepositData[] }>({
+    queryKey,
+    queryFn: () => apiClient.get(`/api/accounting/deposits${params}`),
+  });
+
+  const refresh = useCallback(
+    () => queryClient.invalidateQueries({ queryKey }),
+    [queryClient, queryKey]
   );
 
   const recordDeposit = useCallback(
-    async (params: {
+    async (depositParams: {
       lease_id: string;
       operation_type: "encaissement" | "restitution" | "retenue";
       amount: number;
@@ -204,19 +226,19 @@ export function useDeposits(leaseId?: string) {
     }) => {
       const result = await apiClient.post<{ data: any }>(
         "/api/accounting/deposits",
-        params
+        depositParams
       );
-      mutate();
+      refresh();
       return result.data;
     },
-    [mutate]
+    [refresh]
   );
 
   return {
     deposits: data?.data || [],
     isLoading,
     error,
-    refresh: mutate,
+    refresh,
     recordDeposit,
   };
 }
@@ -296,16 +318,19 @@ interface SituationApiResponse {
 }
 
 export function useTenantSituation(tenantId?: string) {
-  const { data, error, isLoading, mutate } = useSWR<SituationApiResponse>(
-    tenantId ? `/api/accounting/situation/${tenantId}` : null,
-    (url: string) => apiClient.get<SituationApiResponse>(url)
-  );
+  const queryClient = useQueryClient();
+
+  const { data, error, isLoading } = useQuery<SituationApiResponse>({
+    queryKey: ["accounting", "situation", tenantId],
+    queryFn: () => apiClient.get<SituationApiResponse>(`/api/accounting/situation/${tenantId}`),
+    enabled: !!tenantId,
+  });
 
   return {
     situation: data?.data,
     isLoading,
     error,
-    refresh: mutate,
+    refresh: () => queryClient.invalidateQueries({ queryKey: ["accounting", "situation", tenantId] }),
   };
 }
 

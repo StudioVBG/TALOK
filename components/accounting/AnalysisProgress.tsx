@@ -43,7 +43,7 @@ export function AnalysisProgress({ status }: AnalysisProgressProps) {
     <div className="flex flex-col items-center gap-6 py-8">
       {/* Spinner */}
       <div className="relative">
-        <Loader2 className="w-12 h-12 text-[#2563EB] animate-spin" />
+        <Loader2 className="w-12 h-12 text-primary animate-spin" />
       </div>
 
       <p className="text-sm text-muted-foreground font-medium">

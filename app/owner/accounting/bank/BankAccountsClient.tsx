@@ -172,7 +172,7 @@ function BankAccountsContent() {
         <div className="flex gap-2">
           <Link
             href="/owner/accounting/bank/reconciliation"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2563EB] text-white text-sm font-medium hover:bg-[#1B2A6B] transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-[#1B2A6B] transition-colors"
           >
             <Link2 className="w-4 h-4" />
             Rapprochement bancaire
@@ -293,7 +293,7 @@ function ReconciliationProgress({
         </h3>
         <Link
           href="/owner/accounting/bank/reconciliation"
-          className="text-xs text-[#2563EB] hover:underline inline-flex items-center gap-1"
+          className="text-xs text-primary hover:underline inline-flex items-center gap-1"
         >
           Voir le detail
           <ArrowRight className="w-3 h-3" />
@@ -357,7 +357,7 @@ function EmptyState() {
       </div>
       <Link
         href="/owner/accounting/bank/connect"
-        className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-[#2563EB] text-white text-sm font-medium hover:bg-[#1B2A6B] transition-colors"
+        className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-white text-sm font-medium hover:bg-[#1B2A6B] transition-colors"
       >
         <Plus className="w-4 h-4" />
         Ajouter un compte bancaire

@@ -167,7 +167,7 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button asChild size="lg" className="bg-[#2563EB] hover:bg-[#1D4ED8] font-bold">
+            <Button asChild size="lg" className="bg-primary hover:bg-primary/90 font-bold">
               <Link href={`${OWNER_ROUTES.properties.path}/new`}>
                 <Plus className="mr-2 h-5 w-5" />
                 Ajouter un bien
@@ -400,10 +400,10 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
           </div>
 
           {/* Quick Stats in Header - Grid responsive */}
-          <div className="mt-4 sm:mt-6 lg:mt-8 grid grid-cols-2 lg:grid-cols-4 gap-2.5 xs:gap-3 sm:gap-4 border-t border-white/10 pt-4 sm:pt-6">
+          <div className="mt-4 sm:mt-6 lg:mt-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 xs:gap-3 sm:gap-4 border-t border-white/10 pt-4 sm:pt-6">
              {/* KPI 1: Revenus */}
              <div className="min-w-0">
-                <p className="text-muted-foreground text-[10px] xs:text-xs sm:text-sm font-medium truncate">Revenus du mois</p>
+                <p className="text-muted-foreground text-xs xs:text-xs sm:text-sm font-medium truncate">Revenus du mois</p>
                 {isLoadingApi ? (
                   <Skeleton className="h-7 w-24 mt-0.5 sm:mt-1 bg-white/20" />
                 ) : (
@@ -414,21 +414,21 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
              </div>
              {/* KPI 2: Biens */}
              <div className="min-w-0">
-                <p className="text-muted-foreground text-[10px] xs:text-xs sm:text-sm font-medium truncate">Biens gérés</p>
+                <p className="text-muted-foreground text-xs xs:text-xs sm:text-sm font-medium truncate">Biens gérés</p>
                 <p className="text-base xs:text-lg sm:text-xl lg:text-2xl font-bold mt-0.5 sm:mt-1">
                    <AnimatedCounter value={dashboard.properties?.total || 0} />
                 </p>
              </div>
              {/* KPI 3: Baux */}
              <div className="min-w-0">
-                <p className="text-muted-foreground text-[10px] xs:text-xs sm:text-sm font-medium truncate">Baux actifs</p>
+                <p className="text-muted-foreground text-xs xs:text-xs sm:text-sm font-medium truncate">Baux actifs</p>
                 <p className="text-base xs:text-lg sm:text-xl lg:text-2xl font-bold mt-0.5 sm:mt-1">
                    <AnimatedCounter value={dashboard.leases?.active || 0} />
                 </p>
              </div>
              {/* KPI 4: Taux d'occupation */}
              <div className="min-w-0">
-                <p className="text-muted-foreground text-[10px] xs:text-xs sm:text-sm font-medium truncate">Taux d'occupation</p>
+                <p className="text-muted-foreground text-xs xs:text-xs sm:text-sm font-medium truncate">Taux d'occupation</p>
                 {(() => {
                   const rate = dashboard.properties?.total > 0 
                     ? Math.round(((dashboard.leases?.active || 0) / dashboard.properties.total) * 100) 
@@ -487,7 +487,7 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
                 Ajoutez un locataire et créez un bail pour commencer à encaisser vos loyers.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button asChild className="bg-[#2563EB] hover:bg-[#1D4ED8] font-bold">
+                <Button asChild className="bg-primary hover:bg-primary/90 font-bold">
                   <Link href={`${OWNER_ROUTES.contracts.path}/new`}>
                     <Plus className="mr-2 h-4 w-4" />
                     Créer un bail
@@ -557,7 +557,7 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
                   <div className="mb-3 sm:mb-4 flex flex-row items-center justify-between gap-2">
                     <h3 className="text-sm xs:text-base sm:text-lg lg:text-xl font-semibold text-foreground truncate">Performance Financière</h3>
                     <div className="flex items-center gap-1.5 xs:gap-2 shrink-0">
-                      <StartTourButton className="text-[10px] xs:text-xs hidden xs:flex" />
+                      <StartTourButton className="text-xs xs:text-xs hidden xs:flex" />
                       <Button variant="ghost" size="sm" asChild className="text-blue-600 hover:text-blue-700 h-7 xs:h-8 sm:h-9 px-2 xs:px-3 text-xs xs:text-sm">
                         <Link href="/owner/money">
                           <span className="hidden sm:inline">Voir détails</span>

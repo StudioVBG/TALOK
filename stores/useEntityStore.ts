@@ -6,7 +6,7 @@
  */
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { devtools, persist } from "zustand/middleware";
 import { createClient } from "@/lib/supabase/client";
 
 // ============================================
@@ -55,6 +55,7 @@ interface EntityState {
 // ============================================
 
 export const useEntityStore = create<EntityState>()(
+  devtools(
   persist(
     (set, get) => ({
       entities: [],
@@ -195,5 +196,7 @@ export const useEntityStore = create<EntityState>()(
         activeEntityId: state.activeEntityId,
       }),
     }
+  ),
+  { name: "EntityStore", enabled: process.env.NODE_ENV === "development" }
   )
 );

@@ -83,6 +83,8 @@ import { SubscriptionProvider } from "@/components/subscription/subscription-pro
 import { PostHogProvider } from "@/components/analytics/posthog-provider";
 import { AIProvider } from "@/components/providers/ai-provider";
 import { CapacitorProvider } from "@/components/providers/capacitor-provider";
+import { MotionProvider } from "@/components/providers/motion-provider";
+import { AccessibilityProvider } from "@/components/providers/accessibility-provider";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -250,6 +252,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+          <MotionProvider>
           <CapacitorProvider>
             <QueryProvider>
               <PostHogProvider>
@@ -267,12 +270,14 @@ export default function RootLayout({
                       <main id="main-content" className="flex-1" tabIndex={-1}>{children}</main>
                       <Toaster />
                       <LocalStorageMigration />
+                      <AccessibilityProvider />
                     </div>
                   </AIProvider>
                 </SubscriptionProvider>
               </PostHogProvider>
             </QueryProvider>
           </CapacitorProvider>
+          </MotionProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -506,7 +506,7 @@ export default function TenantDocumentsPage() {
                         "flex items-center gap-4 p-4 border cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.01] motion-reduce:hover:scale-100",
                         action.bgColor,
                       )}>
-                        <div className="p-2.5 bg-white/80 rounded-xl shrink-0 shadow-sm">
+                        <div className="p-2.5 bg-card/80 rounded-xl shrink-0 shadow-sm">
                           <ActionIcon className={cn("h-5 w-5", action.color)} />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -822,7 +822,7 @@ export default function TenantDocumentsPage() {
           <div className="mt-12 p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-indigo-950 text-white relative overflow-hidden">
             <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-white/10 rounded-2xl backdrop-blur-md">
+                <div className="p-3 bg-card/10 rounded-2xl backdrop-blur-md">
                   <Shield className="h-8 w-8 text-indigo-400" />
                 </div>
                 <div>
@@ -832,7 +832,7 @@ export default function TenantDocumentsPage() {
                   </p>
                 </div>
               </div>
-              <Button variant="secondary" className="bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-md h-11 px-6" asChild>
+              <Button variant="secondary" className="bg-card/10 hover:bg-card/20 text-white border-white/20 backdrop-blur-md h-11 px-6" asChild>
                 <Link href="/tenant/help">En savoir plus</Link>
               </Button>
             </div>

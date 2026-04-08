@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { devtools, persist } from 'zustand/middleware';
 import { propertiesService, type RoomPayload } from '../services/properties.service';
 import { toast } from '@/components/ui/use-toast';
 import type { Property, Room, Photo } from '@/lib/types';
@@ -293,6 +293,7 @@ function clearDebounceState(propertyId: string) {
 }
 
 export const usePropertyWizardStore = create<WizardState>()(
+  devtools(
   persist(
     (set, get) => ({
   ...INITIAL_STATE,
@@ -744,6 +745,8 @@ export const usePropertyWizardStore = create<WizardState>()(
       // Migrer les anciennes versions du store si nécessaire
       version: 1,
     }
+  ),
+  { name: "PropertyWizardStore", enabled: process.env.NODE_ENV === "development" }
   )
 );
 

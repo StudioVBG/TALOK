@@ -28,7 +28,7 @@ export function UploadStepIndicator({ currentStep }: UploadStepIndicatorProps) {
               <div
                 className={cn(
                   "flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-colors",
-                  isCompleted && "bg-[#2563EB] text-white",
+                  isCompleted && "bg-primary text-white",
                   isCurrent && "bg-[#1B2A6B] text-white ring-2 ring-[#2563EB]",
                   !isCompleted && !isCurrent && "bg-muted text-muted-foreground"
                 )}
@@ -42,7 +42,7 @@ export function UploadStepIndicator({ currentStep }: UploadStepIndicatorProps) {
               <span
                 className={cn(
                   "text-[10px] sm:text-xs font-medium whitespace-nowrap",
-                  isCurrent ? "text-[#2563EB]" : "text-muted-foreground"
+                  isCurrent ? "text-primary" : "text-muted-foreground"
                 )}
               >
                 {step.label}
@@ -52,7 +52,7 @@ export function UploadStepIndicator({ currentStep }: UploadStepIndicatorProps) {
               <div
                 className={cn(
                   "flex-1 h-0.5 mx-1 sm:mx-2 rounded-full transition-colors",
-                  currentStep > step.number ? "bg-[#2563EB]" : "bg-muted"
+                  currentStep > step.number ? "bg-primary" : "bg-muted"
                 )}
               />
             )}

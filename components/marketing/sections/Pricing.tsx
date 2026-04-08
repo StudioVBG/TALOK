@@ -49,7 +49,7 @@ const plans = [
     desc: "1 à 3 logements",
     features: ["3 logements", "1 Go de documents", "Paiements en ligne", "Reçus automatiques"],
     cta: "1er mois offert",
-    ctaStyle: "border border-[#2563EB] bg-card text-[#2563EB] hover:bg-[#2563EB]/5",
+    ctaStyle: "border border-primary bg-card text-primary hover:bg-primary/5",
     featured: false,
   },
   {
@@ -65,7 +65,7 @@ const plans = [
       "Relances automatiques",
     ],
     cta: "Choisir Confort",
-    ctaStyle: "bg-[#2563EB] text-white shadow-lg shadow-[#2563EB]/25 hover:bg-[#2563EB]/90",
+    ctaStyle: "bg-primary text-white shadow-lg shadow-primary/25 hover:bg-primary/90",
     featured: true,
   },
   {
@@ -81,7 +81,7 @@ const plans = [
       "Multi-utilisateurs (5)",
     ],
     cta: "1er mois offert",
-    ctaStyle: "border border-[#2563EB] bg-card text-[#2563EB] hover:bg-[#2563EB]/5",
+    ctaStyle: "border border-primary bg-card text-primary hover:bg-primary/5",
     featured: false,
   },
 ]
@@ -136,7 +136,7 @@ export function Pricing() {
               <TiltCard
                 className={`flex h-full flex-col rounded-2xl border p-6 ${
                   plan.featured
-                    ? "border-2 border-[#2563EB] bg-[#2563EB]/5 shadow-lg shadow-[#2563EB]/10"
+                    ? "border-2 border-primary bg-primary/5 shadow-lg shadow-primary/10"
                     : "border-slate-200 bg-card shadow-sm"
                 }`}
               >
@@ -167,7 +167,7 @@ export function Pricing() {
                         }}
                         className="flex items-start gap-2 text-sm text-slate-600"
                       >
-                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-[#2563EB]/10 text-[8px] text-[#2563EB]">
+                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[8px] text-primary">
                           ✓
                         </span>
                         {f}

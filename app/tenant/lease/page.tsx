@@ -253,7 +253,7 @@ export default function TenantLeasePage() {
                     )}>
                       <div className="relative z-10 flex items-center justify-between">
                         <div className="flex items-center gap-4">
-                          <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
+                          <div className="p-3 bg-card/20 rounded-2xl backdrop-blur-md">
                             {isFullySigned && <ShieldCheck className="h-6 w-6" />}
                             {isCancelled && <CalendarOff className="h-6 w-6" />}
                             {isArchived && <FileText className="h-6 w-6" />}
@@ -688,7 +688,7 @@ export default function TenantLeasePage() {
                           <p className="text-xs text-muted-foreground">Enregistrez vos index eau, élec, gaz</p>
                         </div>
                       </div>
-                      <Button className="bg-[#2563EB] hover:bg-[#1D4ED8] rounded-xl font-bold" asChild>
+                      <Button className="bg-primary hover:bg-primary/90 rounded-xl font-bold" asChild>
                         <Link href="/tenant/meters">Saisir un relevé</Link>
                       </Button>
                     </GlassCard>
@@ -935,7 +935,7 @@ export default function TenantLeasePage() {
                       </div>
                       <ShieldCheck className="h-16 w-16 text-indigo-500 opacity-30" />
             </div>
-                    <div className="absolute -right-10 -bottom-10 h-40 w-40 bg-white/5 rounded-full blur-3xl" />
+                    <div className="absolute -right-10 -bottom-10 h-40 w-40 bg-card/5 rounded-full blur-3xl" />
                   </motion.div>
 
               </div>

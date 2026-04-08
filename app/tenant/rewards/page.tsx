@@ -99,7 +99,7 @@ export default function TenantRewardsPage() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="inline-block">
-                      <Button size="lg" disabled className="bg-white text-indigo-600 font-black rounded-2xl h-12 md:h-14 px-6 md:px-10 shadow-xl w-full sm:w-auto opacity-70 cursor-not-allowed">
+                      <Button size="lg" disabled className="bg-card text-indigo-600 font-black rounded-2xl h-12 md:h-14 px-6 md:px-10 shadow-xl w-full sm:w-auto opacity-70 cursor-not-allowed">
                         Découvrir la boutique <ShoppingBag className="ml-2 h-5 w-5" />
                       </Button>
                     </span>
@@ -117,7 +117,7 @@ export default function TenantRewardsPage() {
                   transition={{ repeat: Infinity, duration: 20, ease: "linear" }}
                   className="absolute -inset-8 border-2 border-dashed border-white/20 rounded-full"
                 />
-                <div className="h-48 w-48 bg-white/10 backdrop-blur-2xl rounded-full flex items-center justify-center border border-white/20 shadow-inner">
+                <div className="h-48 w-48 bg-card/10 backdrop-blur-2xl rounded-full flex items-center justify-center border border-white/20 shadow-inner">
                   <Star className="h-24 w-24 text-white fill-white" />
                 </div>
               </div>

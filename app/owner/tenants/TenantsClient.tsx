@@ -5,6 +5,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSubscription } from "@/components/subscription";
 import { motion, type Variants } from "framer-motion";
+import { VirtualGrid } from "@/components/ui/virtual-grid";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -494,6 +495,7 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
+              aria-label="Rechercher un locataire"
               placeholder="Rechercher par nom, adresse, email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -556,15 +558,17 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
           </motion.div>
         )}
 
-        {/* Liste des locataires */}
-        <motion.div
-          variants={containerVariants}
-          className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
-        >
-          {filteredTenants.map((tenant) => (
+        {/* Liste des locataires — virtualisée au-delà de 30 items */}
+        <VirtualGrid
+          items={filteredTenants}
+          estimateSize={260}
+          columns={{ sm: 1, md: 2, xl: 3 }}
+          virtualizeThreshold={30}
+          gap={24}
+          renderItem={(tenant: TenantWithDetails) => (
             <TenantCard key={tenant.id} tenant={tenant} />
-          ))}
-        </motion.div>
+          )}
+        />
 
         {/* Message si aucun résultat */}
         {filteredTenants.length === 0 && tenants.length > 0 && (

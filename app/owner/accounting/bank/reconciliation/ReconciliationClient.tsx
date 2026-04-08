@@ -147,7 +147,7 @@ function ReconciliationContent() {
             onClick={() => setSelectedConnectionId(undefined)}
             className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
               !selectedConnectionId
-                ? "bg-[#2563EB] text-white"
+                ? "bg-primary text-white"
                 : "bg-card border border-border text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -159,7 +159,7 @@ function ReconciliationContent() {
               onClick={() => setSelectedConnectionId(c.id)}
               className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
                 selectedConnectionId === c.id
-                  ? "bg-[#2563EB] text-white"
+                  ? "bg-primary text-white"
                   : "bg-card border border-border text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -230,7 +230,7 @@ function ReconciliationContent() {
             onClick={() => setFilterTab(tab.key)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
               filterTab === tab.key
-                ? "bg-[#2563EB] text-white"
+                ? "bg-primary text-white"
                 : "bg-card border border-border text-muted-foreground hover:text-foreground"
             }`}
           >
@@ -280,7 +280,7 @@ function ReconciliationContent() {
         <button
           onClick={handleRunMatching}
           disabled={runningMatch}
-          className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-[#2563EB] text-white text-sm font-medium shadow-lg hover:bg-[#1B2A6B] transition-colors disabled:opacity-50"
+          className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-primary text-white text-sm font-medium shadow-lg hover:bg-[#1B2A6B] transition-colors disabled:opacity-50"
         >
           {runningMatch ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -547,7 +547,7 @@ function TransactionCard({
           <div className="flex gap-2">
             <button
               onClick={() => setShowCategorize(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2563EB] text-white text-xs font-medium hover:bg-[#1B2A6B] transition-colors"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-medium hover:bg-[#1B2A6B] transition-colors"
             >
               <Tag className="w-3 h-3" />
               Categoriser
@@ -614,7 +614,7 @@ function TransactionCard({
             <button
               onClick={handleCategorize}
               disabled={loading || !catAccount || !catLabel}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#2563EB] text-white text-xs font-medium hover:bg-[#1B2A6B] transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white text-xs font-medium hover:bg-[#1B2A6B] transition-colors disabled:opacity-50"
             >
               {loading ? (
                 <Loader2 className="w-3 h-3 animate-spin" />

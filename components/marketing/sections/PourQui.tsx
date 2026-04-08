@@ -61,7 +61,7 @@ export function PourQui({ images }: { images?: Record<string, string> }) {
           className="mb-12 text-center"
         >
           <motion.div variants={blurUp} className="mb-3">
-            <span className="inline-block rounded-full bg-[#2563EB]/10 px-3 py-1 text-xs font-semibold text-[#2563EB]">
+            <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
               Pour qui ?
             </span>
           </motion.div>
@@ -93,12 +93,12 @@ export function PourQui({ images }: { images?: Record<string, string> }) {
               {...(p.featured ? glowPulse : {})}
               className={`relative rounded-2xl border bg-card overflow-hidden ${
                 p.featured
-                  ? "border-[#2563EB] shadow-lg"
+                  ? "border-primary shadow-lg"
                   : "border-slate-200 shadow-sm"
               }`}
             >
               {p.featured && (
-                <span className="absolute top-3 left-3 z-10 inline-block rounded-full bg-[#2563EB] px-3 py-0.5 text-[10px] font-bold text-white">
+                <span className="absolute top-3 left-3 z-10 inline-block rounded-full bg-primary px-3 py-0.5 text-[10px] font-bold text-white">
                   Le plus populaire
                 </span>
               )}

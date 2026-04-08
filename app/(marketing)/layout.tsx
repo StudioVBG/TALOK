@@ -22,10 +22,12 @@ export default function MarketingLayout({
   const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30 });
 
   return (
-    <div className="light bg-white text-slate-900 font-display" style={{ colorScheme: "light" }}>
+    <div className="bg-background text-foreground font-display">
       {/* Scroll progress bar */}
       <motion.div
-        className="fixed top-0 left-0 right-0 h-[3px] bg-[#2563EB] origin-left z-50"
+        className="fixed top-0 left-0 right-0 h-[3px] bg-primary origin-left z-50"
+        role="progressbar"
+        aria-label="Progression de lecture"
         style={{ scaleX }}
       />
       <MarketingNavbar />

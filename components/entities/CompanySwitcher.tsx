@@ -98,7 +98,7 @@ export function CompanySwitcher({ variant = "sidebar" }: CompanySwitcherProps) {
             "hover:bg-muted/50 transition-colors text-left",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
             activeEntity
-              ? "border-[#2563EB]/40 bg-[#2563EB]/5 ring-1 ring-[#2563EB]/20"
+              ? "border-primary/40 bg-primary/5 ring-1 ring-[#2563EB]/20"
               : "border-border/50 bg-muted/30"
           )}
           aria-label="Changer d'entité"
@@ -123,7 +123,7 @@ export function CompanySwitcher({ variant = "sidebar" }: CompanySwitcherProps) {
           <div className="flex-1 min-w-0">
             <p className={cn(
               "text-sm font-medium truncate",
-              activeEntity && "text-[#2563EB]"
+              activeEntity && "text-primary"
             )}>
               {activeEntity?.nom || "Tous mes biens"}
             </p>

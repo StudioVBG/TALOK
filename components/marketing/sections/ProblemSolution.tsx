@@ -130,9 +130,9 @@ export function ProblemSolution({ images }: { images?: Record<string, string> })
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true, margin: "-80px" }}
-            className="rounded-2xl border-l-4 border-l-[#2563EB] border border-[#2563EB]/20 bg-[#2563EB]/5 p-6 md:p-8"
+            className="rounded-2xl border-l-4 border-l-[#2563EB] border border-primary/20 bg-primary/5 p-6 md:p-8"
           >
-            <h3 className="mb-5 text-sm font-bold uppercase tracking-wider text-[#2563EB]">
+            <h3 className="mb-5 text-sm font-bold uppercase tracking-wider text-primary">
               Avec TALOK
             </h3>
             <div className="space-y-4">
