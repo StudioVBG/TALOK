@@ -38,8 +38,12 @@ interface Section {
   items: Array<{
     id?: string;
     name: string;
-    condition: "neuf" | "bon" | "moyen" | "mauvais" | "tres_mauvais" | null;
+    condition: "neuf" | "tres_bon" | "bon" | "usage_normal" | "moyen" | "mauvais" | "tres_mauvais" | null;
     notes: string;
+    entry_condition?: string | null;
+    entry_description?: string | null;
+    degradation_noted?: boolean;
+    cout_reparation_cents?: number;
   }>;
 }
 
@@ -73,7 +77,9 @@ interface Inspection {
 
 const stateOptions = [
   { value: "neuf", label: "Neuf", color: "bg-blue-100 text-blue-700" },
+  { value: "tres_bon", label: "Très bon", color: "bg-emerald-100 text-emerald-700" },
   { value: "bon", label: "Bon état", color: "bg-green-100 text-green-700" },
+  { value: "usage_normal", label: "Usage normal", color: "bg-yellow-100 text-yellow-700" },
   { value: "moyen", label: "État moyen", color: "bg-amber-100 text-amber-700" },
   { value: "mauvais", label: "Mauvais état", color: "bg-red-100 text-red-700" },
   { value: "tres_mauvais", label: "Très mauvais", color: "bg-red-200 text-red-900" },
@@ -148,7 +154,11 @@ export default function EditInspectionPage() {
             id: item.id,
             name: item.item_name,
             condition: item.condition,
-            notes: item.notes || ""
+            notes: item.notes || "",
+            entry_condition: item.entry_condition || null,
+            entry_description: item.entry_description || null,
+            degradation_noted: item.degradation_noted || false,
+            cout_reparation_cents: item.cout_reparation_cents || 0,
           });
           sectionsMap.set(item.room_name, roomItems);
         });
@@ -349,10 +359,17 @@ export default function EditInspectionPage() {
             <h1 className="text-2xl font-bold">Modifier l&apos;état des lieux {inspection.type === "entree" ? "d'entrée" : "de sortie"}</h1>
             <p className="text-muted-foreground">{inspection.property_address}</p>
           </div>
-          <Button onClick={handleSave} disabled={saving} className="bg-indigo-600 hover:bg-indigo-700 shadow-lg px-8">
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            Enregistrer les modifications
-          </Button>
+          <div className="flex gap-2">
+            {inspection.type === "sortie" && (
+              <Button variant="outline" onClick={() => router.push(`/owner/inspections/${inspectionId}/compare`)} className="border-indigo-200">
+                <ClipboardCheck className="mr-2 h-4 w-4" /> Comparer
+              </Button>
+            )}
+            <Button onClick={handleSave} disabled={saving} className="bg-indigo-600 hover:bg-indigo-700 shadow-lg px-8">
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Enregistrer les modifications
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-8">
@@ -535,6 +552,19 @@ export default function EditInspectionPage() {
                   <div className="divide-y">
                     {section.items.map((item, itemIdx) => (
                       <div key={itemIdx} className="p-4 space-y-3 hover:bg-muted/50 transition-colors">
+                        {/* Sortie: afficher l'état à l'entrée */}
+                        {inspection.type === "sortie" && item.entry_condition && (
+                          <div className="bg-blue-50 rounded-lg px-3 py-2 text-xs">
+                            <span className="font-semibold text-blue-700">État à l&apos;entrée :</span>{" "}
+                            <Badge variant="outline" className="text-[10px] ml-1">
+                              {stateOptions.find(o => o.value === item.entry_condition)?.label || item.entry_condition}
+                            </Badge>
+                            {item.entry_description && (
+                              <span className="text-blue-600 ml-2">{item.entry_description}</span>
+                            )}
+                          </div>
+                        )}
+
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                           <span className="font-medium text-foreground">{item.name}</span>
                           <div className="flex flex-wrap gap-2">
@@ -556,8 +586,8 @@ export default function EditInspectionPage() {
                             ))}
                           </div>
                         </div>
-                        <Textarea 
-                          value={item.notes} 
+                        <Textarea
+                          value={item.notes}
                           onChange={(e) => {
                             const newSections = [...inspection.sections];
                             newSections[sectionIdx].items[itemIdx].notes = e.target.value;
@@ -566,6 +596,44 @@ export default function EditInspectionPage() {
                           placeholder="Notes sur l'état..."
                           className="bg-card resize-none text-sm h-20"
                         />
+
+                        {/* Sortie: dégradation et coût de réparation */}
+                        {inspection.type === "sortie" && (
+                          <div className="flex flex-col md:flex-row gap-3 items-start md:items-center pt-2 border-t border-dashed">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={item.degradation_noted || false}
+                                onChange={(e) => {
+                                  const newSections = [...inspection.sections];
+                                  newSections[sectionIdx].items[itemIdx].degradation_noted = e.target.checked;
+                                  setInspection({...inspection, sections: newSections});
+                                }}
+                                className="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                              />
+                              <span className="text-xs font-medium text-red-700">Dégradation constatée</span>
+                            </label>
+                            {item.degradation_noted && (
+                              <div className="flex items-center gap-2">
+                                <Label className="text-xs text-muted-foreground whitespace-nowrap">Coût réparation :</Label>
+                                <Input
+                                  type="number"
+                                  value={item.cout_reparation_cents ? (item.cout_reparation_cents / 100).toFixed(2) : ""}
+                                  onChange={(e) => {
+                                    const newSections = [...inspection.sections];
+                                    newSections[sectionIdx].items[itemIdx].cout_reparation_cents = Math.round(parseFloat(e.target.value || "0") * 100);
+                                    setInspection({...inspection, sections: newSections});
+                                  }}
+                                  placeholder="0.00"
+                                  className="h-8 w-28 text-xs font-mono"
+                                  step="0.01"
+                                  min="0"
+                                />
+                                <span className="text-xs text-muted-foreground">€</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

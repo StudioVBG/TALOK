@@ -40,6 +40,14 @@ export interface CreateEDLParams {
   generalNotes?: string;
   /** Keys data */
   keys?: Array<{ type: string; quantite: number; notes?: string }>;
+  /** Sortie: linked entry EDL ID (auto-resolved if not provided) */
+  linkedEntryEdlId?: string;
+  /** Owner present during inspection */
+  ownerPresent?: boolean;
+  /** Owner representative name (if owner not present) */
+  ownerRepresentative?: string;
+  /** Tenant profile IDs present */
+  tenantProfiles?: string[];
 }
 
 export interface CreateEDLResult {
@@ -66,6 +74,10 @@ export async function createEDL(
     scheduledAt,
     generalNotes,
     keys,
+    linkedEntryEdlId,
+    ownerPresent,
+    ownerRepresentative,
+    tenantProfiles,
   } = params;
 
   // 1. Validate type
@@ -124,6 +136,24 @@ export async function createEDL(
     };
   }
 
+  // 4b. Sortie: auto-resolve linked entry EDL
+  let resolvedEntryEdlId = linkedEntryEdlId || null;
+  if (type === "sortie" && !resolvedEntryEdlId) {
+    const { data: entryEdl } = await serviceClient
+      .from("edl")
+      .select("id")
+      .eq("lease_id", leaseId)
+      .eq("type", "entree")
+      .in("status", ["signed", "completed"])
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (entryEdl) {
+      resolvedEntryEdlId = entryEdl.id;
+    }
+  }
+
   // 5. Create the EDL
   const scheduledDate = scheduledAt
     ? new Date(scheduledAt).toISOString().split("T")[0]
@@ -141,6 +171,10 @@ export async function createEDL(
       general_notes: generalNotes || null,
       keys: keys || [],
       created_by: userId,
+      linked_entry_edl_id: resolvedEntryEdlId,
+      owner_present: ownerPresent ?? true,
+      owner_representative: ownerRepresentative || null,
+      tenant_profiles: tenantProfiles || [],
     } as Record<string, unknown>)
     .select()
     .single();
@@ -203,6 +237,100 @@ export async function createEDL(
     }
   } catch (sigError) {
     console.error("[createEDL] Signature injection error:", sigError);
+  }
+
+  // 6b. Sortie: auto-copy rooms and items from entry EDL with entry_condition
+  if (type === "sortie" && resolvedEntryEdlId) {
+    try {
+      // Copy rooms from entry EDL
+      const { data: entryRooms } = await serviceClient
+        .from("edl_rooms")
+        .select("*")
+        .eq("edl_id", resolvedEntryEdlId)
+        .order("sort_order");
+
+      if (entryRooms && entryRooms.length > 0) {
+        const roomIdMap = new Map<string, string>();
+
+        for (const entryRoom of entryRooms) {
+          const er = entryRoom as Record<string, unknown>;
+          const newRoomId = crypto.randomUUID();
+          roomIdMap.set(er.id as string, newRoomId);
+
+          await serviceClient.from("edl_rooms").insert({
+            id: newRoomId,
+            edl_id: edlData.id,
+            room_name: er.room_name,
+            room_type: er.room_type,
+            sort_order: er.sort_order,
+            observations: null,
+          } as Record<string, unknown>);
+        }
+
+        // Copy items with entry data pre-filled
+        const { data: entryItems } = await serviceClient
+          .from("edl_items")
+          .select("*")
+          .eq("edl_id", resolvedEntryEdlId)
+          .order("sort_order");
+
+        if (entryItems && entryItems.length > 0) {
+          const newItems = entryItems.map((ei: Record<string, unknown>) => ({
+            edl_id: edlData.id,
+            room_name: ei.room_name,
+            room_id: ei.room_id ? roomIdMap.get(ei.room_id as string) || null : null,
+            item_name: ei.item_name,
+            element_type: ei.element_type,
+            element_label: ei.element_label,
+            sort_order: ei.sort_order,
+            condition: null, // To be filled during sortie inspection
+            notes: null,
+            entry_condition: ei.condition,
+            entry_description: ei.notes || ei.description,
+            entry_photos: ei.photos || [],
+            degradation_noted: false,
+            vetuste_applicable: false,
+          }));
+
+          // Batch insert in chunks of 50
+          for (let i = 0; i < newItems.length; i += 50) {
+            const chunk = newItems.slice(i, i + 50);
+            await serviceClient.from("edl_items").insert(chunk as Record<string, unknown>[]);
+          }
+        }
+      } else {
+        // Fallback: copy flat items (old-style without rooms)
+        const { data: entryItems } = await serviceClient
+          .from("edl_items")
+          .select("*")
+          .eq("edl_id", resolvedEntryEdlId)
+          .order("room_name", { ascending: true });
+
+        if (entryItems && entryItems.length > 0) {
+          const newItems = entryItems.map((ei: Record<string, unknown>) => ({
+            edl_id: edlData.id,
+            room_name: ei.room_name,
+            item_name: ei.item_name,
+            element_type: ei.element_type,
+            element_label: ei.element_label,
+            sort_order: ei.sort_order || 0,
+            condition: null,
+            notes: null,
+            entry_condition: ei.condition,
+            entry_description: ei.notes || ei.description,
+            entry_photos: ei.photos || [],
+            degradation_noted: false,
+          }));
+
+          for (let i = 0; i < newItems.length; i += 50) {
+            const chunk = newItems.slice(i, i + 50);
+            await serviceClient.from("edl_items").insert(chunk as Record<string, unknown>[]);
+          }
+        }
+      }
+    } catch (copyError) {
+      console.error("[createEDL] Error copying entry data for sortie:", copyError);
+    }
   }
 
   // 7. Outbox event (non-blocking)
