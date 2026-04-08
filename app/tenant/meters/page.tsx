@@ -41,6 +41,7 @@ import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { logger } from "@/lib/monitoring";
 import { metersService } from "@/features/tenant/services/meters.service";
+import { Wifi } from "lucide-react";
 
 // Types
 interface Meter {
@@ -422,10 +423,15 @@ export default function TenantMetersPage() {
                             <div className={cn("p-4 rounded-2xl shadow-inner transition-transform group-hover:scale-110", config.bgColor)}>
                               <Icon className={cn("h-8 w-8", config.color)} />
                             </div>
-                            <div className="text-right">
-                              <Badge variant="outline" className="bg-muted text-[10px] font-black uppercase tracking-[0.1em] mb-1">
+                            <div className="text-right space-y-1">
+                              <Badge variant="outline" className="bg-muted text-[10px] font-black uppercase tracking-[0.1em]">
                                 {config.label}
                               </Badge>
+                              {meter.is_active && (
+                                <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-[9px] gap-1 block">
+                                  <Wifi className="h-2.5 w-2.5" /> Connecte
+                                </Badge>
+                              )}
                               <p className="text-[10px] text-muted-foreground font-mono">{meter.serial_number}</p>
                             </div>
                           </div>

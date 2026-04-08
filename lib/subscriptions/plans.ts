@@ -96,7 +96,8 @@ export type FeatureKey =
   | 'scoring_advanced'
   | 'edl_digital'
   | 'copro_module'
-  | 'sla_guarantee';
+  | 'sla_guarantee'
+  | 'connected_meters';
 
 export interface PlanLimits {
   max_properties: number; // -1 = illimité
@@ -208,6 +209,7 @@ export const PLANS: Record<PlanSlug, Plan> = {
       priority_support: false,
       dedicated_account_manager: false,
       sla_guarantee: false,
+      connected_meters: false,
       gli_discount: GLI_DISCOUNTS.gratuit, // 0%
     },
     highlights: [
@@ -285,6 +287,7 @@ export const PLANS: Record<PlanSlug, Plan> = {
       priority_support: false,
       dedicated_account_manager: false,
       sla_guarantee: false,
+      connected_meters: false,
       gli_discount: GLI_DISCOUNTS.starter, // 0%
     },
     highlights: [
@@ -348,6 +351,7 @@ export const PLANS: Record<PlanSlug, Plan> = {
       api_access: false,
       scoring_tenant: true,
       edl_digital: true,
+      connected_meters: false,
       gli_discount: GLI_DISCOUNTS.confort, // -10%
     },
     highlights: [
@@ -419,6 +423,7 @@ export const PLANS: Record<PlanSlug, Plan> = {
       scoring_tenant: true,
       scoring_advanced: true,
       edl_digital: true,
+      connected_meters: true,
       gli_discount: GLI_DISCOUNTS.pro, // -15%
     },
     highlights: [
@@ -502,6 +507,7 @@ export const PLANS: Record<PlanSlug, Plan> = {
       account_manager_type: 'shared',
       sla_guarantee: true,
       sla_percent: 99,
+      connected_meters: true,
       gli_discount: GLI_DISCOUNTS.enterprise_s, // -18%
     },
     highlights: [
@@ -586,6 +592,7 @@ export const PLANS: Record<PlanSlug, Plan> = {
       account_manager_type: 'shared',
       sla_guarantee: true,
       sla_percent: 99,
+      connected_meters: true,
       gli_discount: GLI_DISCOUNTS.enterprise_m, // -20%
     },
     highlights: [
@@ -670,6 +677,7 @@ export const PLANS: Record<PlanSlug, Plan> = {
       account_manager_type: 'dedicated', // Dédié!
       sla_guarantee: true,
       sla_percent: 99.5,
+      connected_meters: true,
       gli_discount: GLI_DISCOUNTS.enterprise_l, // -22%
     },
     highlights: [
@@ -756,6 +764,7 @@ export const PLANS: Record<PlanSlug, Plan> = {
       training_hours: 10, // 10h de formation
       sla_guarantee: true,
       sla_percent: 99.9, // SLA premium
+      connected_meters: true,
       gli_discount: GLI_DISCOUNTS.enterprise_xl, // -25%
     },
     highlights: [
@@ -837,6 +846,7 @@ export const PLANS: Record<PlanSlug, Plan> = {
       priority_support: true,
       dedicated_account_manager: true,
       sla_guarantee: true,
+      connected_meters: true,
       gli_discount: GLI_DISCOUNTS.enterprise,
     },
     highlights: [
@@ -971,6 +981,12 @@ export const FEATURE_LABELS: Record<string, {
     icon: 'Building2',
     category: 'advanced',
   },
+  connected_meters: {
+    label: 'Compteurs connectés',
+    description: 'Relevés automatiques Enedis/GRDF',
+    icon: 'Gauge',
+    category: 'automation',
+  },
   gli_discount: {
     label: 'Réduction GLI',
     description: 'Réduction sur l\'assurance Garantie Loyers Impayés',
@@ -999,7 +1015,7 @@ export const FEATURE_GROUPS = [
   {
     id: 'automation',
     title: '⚡ Automatisation',
-    features: ['auto_reminders', 'auto_reminders_sms', 'irl_revision'],
+    features: ['auto_reminders', 'auto_reminders_sms', 'irl_revision', 'connected_meters'],
   },
   {
     id: 'ai',
