@@ -181,6 +181,31 @@ CREATE TRIGGER trg_entity_members_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION fn_entity_members_updated_at();
 -- =====================================================
+-- PRE-FIX: Add entity_id to old tables BEFORE policies
+-- These tables were created by 20260110 without entity_id
+-- =====================================================
+ALTER TABLE public.accounting_journals ADD COLUMN IF NOT EXISTS entity_id UUID REFERENCES legal_entities(id);
+ALTER TABLE public.accounting_journals ADD COLUMN IF NOT EXISTS label TEXT;
+ALTER TABLE public.accounting_journals ADD COLUMN IF NOT EXISTS journal_type TEXT;
+ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS entity_id UUID REFERENCES legal_entities(id);
+ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS exercise_id UUID REFERENCES accounting_exercises(id);
+ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS entry_number TEXT;
+ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS entry_date DATE;
+ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS label TEXT;
+ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS source TEXT;
+ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS reference TEXT;
+ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS is_validated BOOLEAN DEFAULT false;
+ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS validated_by UUID REFERENCES auth.users(id);
+ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS validated_at TIMESTAMPTZ;
+ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS is_locked BOOLEAN DEFAULT false;
+ALTER TABLE public.accounting_entries ADD COLUMN IF NOT EXISTS reversal_of UUID REFERENCES accounting_entries(id);
+ALTER TABLE public.mandant_accounts ADD COLUMN IF NOT EXISTS entity_id UUID REFERENCES legal_entities(id);
+ALTER TABLE public.mandant_accounts ADD COLUMN IF NOT EXISTS mandant_name TEXT;
+ALTER TABLE public.mandant_accounts ADD COLUMN IF NOT EXISTS mandant_user_id UUID REFERENCES auth.users(id);
+ALTER TABLE public.mandant_accounts ADD COLUMN IF NOT EXISTS commission_rate NUMERIC(5,2) DEFAULT 0;
+ALTER TABLE public.mandant_accounts ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+
+-- =====================================================
 -- MIGRATION: Module Comptabilite complet
 -- Date: 2026-04-06
 --
