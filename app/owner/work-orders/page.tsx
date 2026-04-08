@@ -170,6 +170,12 @@ export default function WorkOrdersPage() {
             Gérez les interventions des prestataires sur vos logements
           </p>
         </div>
+        <Button asChild>
+          <Link href="/owner/work-orders/create">
+            <Wrench className="h-4 w-4 mr-2" />
+            Nouvel ordre de travail
+          </Link>
+        </Button>
       </div>
 
       {/* SOTA 2026 — Navigation Tickets / Ordres de travaux */}
@@ -341,9 +347,11 @@ export default function WorkOrdersPage() {
                             </Button>
                           </Link>
                         )}
-                        <Button variant="ghost" size="sm">
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
+                        <Link href={`/owner/work-orders/${workOrder.id}`}>
+                          <Button variant="ghost" size="sm">
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </Link>
                       </div>
                     </div>
 

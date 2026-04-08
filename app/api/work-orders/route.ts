@@ -51,7 +51,61 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    // Get profile
+    const { data: profile } = await supabaseClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
     const body = await request.json();
+
+    // SOTA 2026: Support both legacy (ticket-based) and new (standalone) work orders
+    const isExtended = !!body.property_id && !!body.title;
+
+    if (isExtended) {
+      // New extended work order (from owner providers module)
+      const featureCheck = await withFeatureAccess(profile?.id || '', "work_orders");
+      if (!featureCheck.allowed) {
+        return createSubscriptionErrorResponse(featureCheck);
+      }
+
+      const { data: workOrder, error } = await supabaseClient
+        .from("work_orders")
+        .insert({
+          property_id: body.property_id,
+          lease_id: body.lease_id || null,
+          ticket_id: body.ticket_id || null,
+          provider_id: body.provider_id || null,
+          entity_id: body.entity_id || null,
+          owner_id: profile?.id,
+          title: body.title,
+          description: body.description,
+          category: body.category,
+          urgency: body.urgency || 'normal',
+          status: 'draft',
+          statut: 'assigned',
+          is_deductible: body.is_deductible ?? true,
+          deductible_category: body.deductible_category || null,
+          requested_at: new Date().toISOString(),
+        } as any)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // If from a ticket, update ticket status
+      if (body.ticket_id) {
+        await supabaseClient
+          .from("tickets")
+          .update({ statut: "in_progress" } as any)
+          .eq("id", body.ticket_id as any);
+      }
+
+      return NextResponse.json({ workOrder });
+    }
+
+    // Legacy: ticket-based work order
     const validated = workOrderSchema.parse(body);
     const validatedData = validated as any;
 
@@ -81,6 +135,7 @@ export async function POST(request: Request) {
       .insert({
         ...validated,
         statut: "assigned",
+        status: "draft",
       } as any)
       .select()
       .single();
