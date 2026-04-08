@@ -495,6 +495,7 @@ export function TenantsClient({ tenants }: TenantsClientProps) {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
+              aria-label="Rechercher un locataire"
               placeholder="Rechercher par nom, adresse, email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}

@@ -615,6 +615,13 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
     if (e.key === "Escape") setIsGalleryOpen(false);
   }, [isGalleryOpen, allDisplayPhotos.length]);
 
+  // Attacher le listener clavier pour la navigation galerie
+  useEffect(() => {
+    if (!isGalleryOpen) return;
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isGalleryOpen, handleKeyDown]);
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
       {/* Breadcrumb */}

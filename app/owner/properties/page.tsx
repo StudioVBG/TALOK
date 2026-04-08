@@ -343,7 +343,7 @@ export default function OwnerPropertiesPage() {
                 <span className="ml-1.5 inline-flex items-center gap-1">
                   <span className="text-muted-foreground/50">·</span>
                   <span
-                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted"
+                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-muted"
                     style={property.entity_couleur ? { borderLeft: `2px solid ${property.entity_couleur}` } : undefined}
                   >
                     {property.entity_nom}
@@ -482,22 +482,11 @@ export default function OwnerPropertiesPage() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.5 }}
               >
-                <motion.h1
-                  className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 bg-clip-text text-transparent"
-                  animate={{
-                    backgroundPosition: ["0%", "100%", "0%"],
-                  }}
-                  transition={{
-                    duration: 5,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  style={{
-                    backgroundSize: "200% 100%",
-                  }}
+                <h1
+                  className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-slate-900 bg-clip-text text-transparent dark:from-slate-100 dark:via-blue-200 dark:to-slate-100"
                 >
                   {activeEntity ? `Biens · ${activeEntity.nom}` : "Mes biens"}
-                </motion.h1>
+                </h1>
                 <motion.p
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -581,13 +570,13 @@ export default function OwnerPropertiesPage() {
                       {currentPlanConfig.limits.max_properties === -1 ? " (illimite)" : ""}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Le blocage d'ajout se base sur le total reel compte pour votre forfait, pas uniquement sur les cartes visibles a l'ecran.
+                      Le blocage d'ajout se base sur le total réel compté pour votre forfait, pas uniquement sur les cartes visibles à l'écran.
                     </p>
                     {propertyQuotaSummary.showScopedHint && propertyQuotaSummary.scopedHint && (
                       <p className="mt-1 text-sm text-amber-700">{propertyQuotaSummary.scopedHint}</p>
                     )}
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Le badge sur chaque carte indique l'occupation ou l'etat du bail, pas le paiement du forfait.
+                      Le badge sur chaque carte indique l'occupation ou l'état du bail, pas le paiement du forfait.
                     </p>
                   </div>
                   {isAtLimit && !canNavigateToNew && (
@@ -634,6 +623,7 @@ export default function OwnerPropertiesPage() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
                   <Input
+                    aria-label="Rechercher un bien"
                     placeholder="Rechercher par adresse, code postal, ville..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
