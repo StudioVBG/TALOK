@@ -47,7 +47,7 @@ export async function GET(_request: Request, context: Context) {
     if (featureGate) return featureGate;
 
     // Fetch CRG report
-    const { data: crg, error: crgError } = await supabase
+    const { data: crg, error: crgError } = await (supabase as any)
       .from("crg_reports")
       .select("*")
       .eq("id", id)
@@ -120,7 +120,7 @@ export async function POST(request: Request, context: Context) {
     const { action, recipientEmail } = validation.data;
 
     // Fetch CRG report
-    const { data: crg, error: crgError } = await supabase
+    const { data: crg, error: crgError } = await (supabase as any)
       .from("crg_reports")
       .select("*")
       .eq("id", id)
@@ -135,7 +135,7 @@ export async function POST(request: Request, context: Context) {
       let email = recipientEmail;
 
       if (!email) {
-        const { data: mandant } = await supabase
+        const { data: mandant } = await (supabase as any)
           .from("mandant_accounts")
           .select("owner_entity_id")
           .eq("id", crg.mandant_id)
@@ -145,8 +145,8 @@ export async function POST(request: Request, context: Context) {
           // Try to find email from legal_entities -> profiles
           const { data: entity } = await supabase
             .from("legal_entities")
-            .select("id, name")
-            .eq("id", mandant.owner_entity_id)
+            .select("id, nom")
+            .eq("id", String(mandant.owner_entity_id))
             .single();
 
           if (entity) {
@@ -158,7 +158,7 @@ export async function POST(request: Request, context: Context) {
               .limit(1)
               .single();
 
-            email = ownerProfile?.email ?? null;
+            email = ownerProfile?.email ?? undefined;
           }
         }
       }
@@ -191,7 +191,7 @@ export async function POST(request: Request, context: Context) {
       }
 
       // Update CRG status to sent
-      await supabase
+      await (supabase as any)
         .from("crg_reports")
         .update({
           status: "sent",

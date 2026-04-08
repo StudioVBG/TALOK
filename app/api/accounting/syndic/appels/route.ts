@@ -50,7 +50,7 @@ export async function GET(request: Request) {
       throw new ApiError(400, "entityId est requis");
     }
 
-    let query = supabase
+    let query = (supabase as any)
       .from("copro_fund_calls")
       .select("*")
       .eq("entity_id", entityId)

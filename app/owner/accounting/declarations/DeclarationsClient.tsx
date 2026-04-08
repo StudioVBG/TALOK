@@ -1,5 +1,6 @@
 // @ts-nocheck
 "use client";
+// @ts-nocheck — TODO: remove once database.types.ts is regenerated
 
 import { useState } from "react";
 import { PlanGate } from "@/components/subscription/plan-gate";
@@ -20,7 +21,7 @@ function DeclarationsContent() {
   const [regime, setRegime] = useState<string>("reel-2044");
   const [exerciseId, setExerciseId] = useState<string>("");
 
-  const { data: exercises } = useQuery({
+  const { data: exercises } = useQuery<any>({
     queryKey: ["exercises", activeEntityId],
     queryFn: () => apiClient.get(`/accounting/exercises?entityId=${activeEntityId}`),
     enabled: !!activeEntityId,
@@ -30,7 +31,7 @@ function DeclarationsContent() {
 
   const declarationType = regime === "micro-foncier" ? "micro-foncier" : regime === "reel-2044" ? "2044" : regime === "reel-2072" ? "2072" : "2042-cpro";
 
-  const { data: declaration, isLoading: declLoading } = useQuery({
+  const { data: declaration, isLoading: declLoading } = useQuery<any>({
     queryKey: ["declaration", declarationType, exerciseId],
     queryFn: () => apiClient.get(`/accounting/declarations/${declarationType}?exerciseId=${exerciseId}`),
     enabled: !!exerciseId && step >= 2,

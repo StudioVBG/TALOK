@@ -44,7 +44,7 @@ export async function GET(request: Request, context: Context) {
     const featureGate = await requireAccountingAccess(profile.id, "open_banking");
     if (featureGate) return featureGate;
 
-    const { data: connection, error } = await supabase
+    const { data: connection, error } = await (supabase as any)
       .from("bank_connections")
       .select("*")
       .eq("id", id)
@@ -55,13 +55,13 @@ export async function GET(request: Request, context: Context) {
     }
 
     // Fetch latest transactions count for this connection
-    const { count: txCount } = await supabase
+    const { count: txCount } = await (supabase as any)
       .from("bank_transactions")
       .select("*", { count: "exact", head: true })
       .eq("connection_id", id);
 
     // Fetch reconciliation stats
-    const { count: pendingCount } = await supabase
+    const { count: pendingCount } = await (supabase as any)
       .from("bank_transactions")
       .select("*", { count: "exact", head: true })
       .eq("connection_id", id)
@@ -109,7 +109,7 @@ export async function DELETE(request: Request, context: Context) {
     const featureGate = await requireAccountingAccess(profile.id, "open_banking");
     if (featureGate) return featureGate;
 
-    const { data: existing } = await supabase
+    const { data: existing } = await (supabase as any)
       .from("bank_connections")
       .select("id, bank_name")
       .eq("id", id)
@@ -119,7 +119,7 @@ export async function DELETE(request: Request, context: Context) {
       throw new ApiError(404, "Connexion bancaire non trouvee");
     }
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("bank_connections")
       .update({
         sync_status: "disconnected",
