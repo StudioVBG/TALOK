@@ -952,3 +952,58 @@ export type GDPRExportRequestInput = z.infer<typeof GDPRExportRequestSchema>;
 export type GDPREraseRequestInput = z.infer<typeof GDPREraseRequestSchema>;
 export type AuditDashboardQueryInput = z.infer<typeof AuditDashboardQuerySchema>;
 
+// ==========================================
+// REST API — Third-party API Key & Webhook Schemas
+// ==========================================
+
+/**
+ * Create a third-party API key (owner self-service)
+ */
+export const CreateThirdPartyApiKeySchema = z.object({
+  name: z.string().min(1, "Nom requis").max(100, "100 caractères maximum"),
+  permissions: z.array(z.enum(["read", "write", "delete"])).min(1).default(["read"]),
+  scopes: z.array(z.enum(["properties", "leases", "documents", "accounting", "tenants", "payments"])).min(1).default(["properties"]),
+  expires_in_days: z.number().int().min(1).max(365).optional(),
+});
+
+/**
+ * Update a third-party API key
+ */
+export const UpdateThirdPartyApiKeySchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  permissions: z.array(z.enum(["read", "write", "delete"])).min(1).optional(),
+  scopes: z.array(z.enum(["properties", "leases", "documents", "accounting", "tenants", "payments"])).min(1).optional(),
+  is_active: z.boolean().optional(),
+});
+
+/**
+ * Create a webhook endpoint
+ */
+export const CreateWebhookSchema = z.object({
+  url: z.string().url("URL invalide").refine(
+    (url) => url.startsWith("https://"),
+    "L'URL doit utiliser HTTPS"
+  ),
+  events: z.array(z.string()).min(1, "Au moins un événement requis"),
+  description: z.string().max(255).optional(),
+});
+
+/**
+ * Update a webhook endpoint
+ */
+export const UpdateWebhookSchema = z.object({
+  url: z.string().url("URL invalide").refine(
+    (url) => url.startsWith("https://"),
+    "L'URL doit utiliser HTTPS"
+  ).optional(),
+  events: z.array(z.string()).min(1).optional(),
+  description: z.string().max(255).optional(),
+  is_active: z.boolean().optional(),
+});
+
+// REST API types
+export type CreateThirdPartyApiKeyInput = z.infer<typeof CreateThirdPartyApiKeySchema>;
+export type UpdateThirdPartyApiKeyInput = z.infer<typeof UpdateThirdPartyApiKeySchema>;
+export type CreateWebhookInput = z.infer<typeof CreateWebhookSchema>;
+export type UpdateWebhookInput = z.infer<typeof UpdateWebhookSchema>;
+
