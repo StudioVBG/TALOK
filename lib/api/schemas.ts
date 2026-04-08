@@ -236,7 +236,24 @@ export const CreateTicketSchema = z.object({
   lease_id: z.string().uuid().optional().nullable(),
   titre: z.string().min(3, "Titre: 3 caractères minimum"),
   description: z.string().min(10, "Description: 10 caractères minimum"),
-  priorite: z.enum(["basse", "normale", "haute"]).default("normale"),
+  category: z.enum([
+    "plomberie", "electricite", "serrurerie", "chauffage", "humidite",
+    "nuisibles", "bruit", "parties_communes", "equipement", "autre",
+  ]).optional().nullable(),
+  priorite: z.enum(["low", "normal", "urgent", "emergency", "basse", "normale", "haute", "urgente"]).default("normal"),
+  photos: z.array(z.string()).optional(),
+});
+
+export const UpdateTicketSchema = z.object({
+  titre: z.string().min(3).optional(),
+  description: z.string().min(10).optional(),
+  category: z.enum([
+    "plomberie", "electricite", "serrurerie", "chauffage", "humidite",
+    "nuisibles", "bruit", "parties_communes", "equipement", "autre",
+  ]).optional().nullable(),
+  priorite: z.enum(["low", "normal", "urgent", "emergency", "basse", "normale", "haute", "urgente"]).optional(),
+  resolution_notes: z.string().optional(),
+  satisfaction_rating: z.number().int().min(1).max(5).optional(),
 });
 
 export const AssignTicketSchema = z.object({
@@ -244,7 +261,26 @@ export const AssignTicketSchema = z.object({
 });
 
 export const UpdateTicketStatusSchema = z.object({
-  status: z.enum(["open", "in_progress", "paused", "resolved", "closed"]),
+  status: z.enum([
+    "open", "acknowledged", "assigned", "in_progress",
+    "resolved", "closed", "rejected", "reopened", "paused",
+  ]),
+});
+
+export const CreateTicketCommentSchema = z.object({
+  content: z.string().min(1, "Contenu requis"),
+  attachments: z.array(z.string()).optional(),
+  is_internal: z.boolean().optional().default(false),
+});
+
+export const CreateWorkOrderFromTicketSchema = z.object({
+  provider_id: z.string().uuid(),
+  date_intervention_prevue: z.string().optional().nullable(),
+  cout_estime: z.number().positive().optional().nullable(),
+});
+
+export const ResolveTicketSchema = z.object({
+  resolution_notes: z.string().optional(),
 });
 
 export const CreateQuoteSchema = z.object({

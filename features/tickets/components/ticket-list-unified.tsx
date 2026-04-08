@@ -3,30 +3,40 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { 
-  AlertCircle, 
-  CheckCircle2, 
-  Clock, 
-  MessageSquare, 
-  Hammer,
+import {
   ChevronRight,
   Wrench,
-  User
+  User,
+  MessageSquare,
+  Hammer,
 } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/ui/status-badge";
+import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
+import { TicketStatusBadge } from "./ticket-status-badge";
+import { PriorityBadge } from "./priority-badge";
 
-const TICKET_STATUS_FR: Record<string, { label: string; type: "success" | "warning" | "error" | "info" | "neutral" }> = {
-  open: { label: "Ouvert", type: "info" },
-  in_progress: { label: "En cours", type: "warning" },
-  paused: { label: "En pause", type: "neutral" },
-  resolved: { label: "Résolu", type: "success" },
-  closed: { label: "Clôturé", type: "neutral" },
+const CATEGORY_LABELS: Record<string, string> = {
+  plomberie: "Plomberie",
+  electricite: "Électricité",
+  serrurerie: "Serrurerie",
+  chauffage: "Chauffage",
+  humidite: "Humidité",
+  nuisibles: "Nuisibles",
+  bruit: "Bruit",
+  parties_communes: "Parties communes",
+  equipement: "Équipement",
+  autre: "Autre",
+};
+
+const WORK_ORDER_STATUS_LABELS: Record<string, string> = {
+  assigned: "Assigné",
+  scheduled: "Planifié",
+  done: "Terminé",
+  cancelled: "Annulé",
 };
 
 interface WorkOrder {
@@ -44,12 +54,16 @@ interface Ticket {
   description: string;
   statut: string;
   priorite: string;
+  category?: string | null;
   created_at: string;
   lease_id?: string | null;
+  assigned_to?: string | null;
   property?: { adresse_complete: string };
   lease?: { id: string; date_debut: string; date_fin?: string; statut: string } | null;
   creator?: { nom: string; prenom: string };
+  assignee?: { nom: string; prenom: string } | null;
   messages?: { count: number }[];
+  ticket_comments?: unknown[];
   work_orders?: WorkOrder[];
 }
 
@@ -58,27 +72,13 @@ interface TicketListProps {
   variant: "owner" | "tenant" | "provider";
 }
 
-const WORK_ORDER_STATUS_LABELS: Record<string, string> = {
-  assigned: "Assigné",
-  scheduled: "Planifié",
-  done: "Terminé",
-  cancelled: "Annulé",
-};
-
 export function TicketListUnified({ tickets, variant }: TicketListProps) {
-  
-  const getPriorityColor = (priority: string) => {
-    switch(priority) {
-      case 'urgente': return 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800';
-      case 'haute': return 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800';
-      case 'basse': return 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800';
-      default: return 'bg-muted text-muted-foreground border-border';
-    }
-  };
-
-  const basePath = variant === 'owner' ? '/owner/tickets' 
-                 : variant === 'tenant' ? '/tenant/requests' 
-                 : '/provider/jobs';
+  const basePath =
+    variant === "owner"
+      ? "/owner/tickets"
+      : variant === "tenant"
+        ? "/tenant/requests"
+        : "/provider/tickets";
 
   if (tickets.length === 0) {
     return (
@@ -86,7 +86,11 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
         icon={Hammer}
         title="Aucun ticket"
         description="Tout fonctionne parfaitement ! Signalez un problème si nécessaire."
-        action={variant === "tenant" ? { label: "Signaler un problème", href: "/tenant/requests/new" } : undefined}
+        action={
+          variant === "tenant"
+            ? { label: "Signaler un problème", href: "/tenant/requests/new" }
+            : undefined
+        }
       />
     );
   }
@@ -94,52 +98,77 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
   return (
     <div className="grid gap-4">
       {tickets.map((ticket) => {
-        const activeWorkOrder = ticket.work_orders?.find(wo => wo.statut !== 'cancelled');
-        
+        const activeWorkOrder = ticket.work_orders?.find(
+          (wo) => wo.statut !== "cancelled"
+        );
+        const commentCount =
+          ticket.ticket_comments?.length ||
+          ticket.messages?.[0]?.count ||
+          0;
+
         return (
-          <Card key={ticket.id} className="group relative overflow-hidden transition-all hover:shadow-md">
+          <Card
+            key={ticket.id}
+            className="group relative overflow-hidden transition-all hover:shadow-md"
+          >
             <div className="p-5 flex flex-col sm:flex-row gap-4">
-              
-              {/* Status Line Mobile */}
+              {/* Status indicator */}
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-border group-hover:bg-blue-500 transition-colors" />
 
               <div className="flex-1 space-y-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge variant="outline" className={getPriorityColor(ticket.priorite)}>
-                    {ticket.priorite}
-                  </Badge>
+                {/* Priority + Category + Date */}
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <PriorityBadge priority={ticket.priorite} size="sm" />
+                  {ticket.category && (
+                    <Badge variant="secondary" className="text-[10px] py-0 capitalize">
+                      {CATEGORY_LABELS[ticket.category] || ticket.category}
+                    </Badge>
+                  )}
                   <span className="text-xs text-muted-foreground">
-                    {(() => { const d = new Date(ticket.created_at); return isNaN(d.getTime()) ? "—" : format(d, "d MMM yyyy", { locale: fr }); })()}
+                    {(() => {
+                      const d = new Date(ticket.created_at);
+                      return isNaN(d.getTime())
+                        ? "—"
+                        : format(d, "d MMM yyyy", { locale: fr });
+                    })()}
                   </span>
                 </div>
-                
+
+                {/* Title */}
                 <h3 className="font-semibold text-lg text-foreground line-clamp-1">
                   {ticket.titre}
                 </h3>
-                
+
+                {/* Description */}
                 <p className="text-muted-foreground text-sm line-clamp-2">
                   {ticket.description}
                 </p>
 
+                {/* Meta */}
                 <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground flex-wrap">
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {ticket.property?.adresse_complete}
-                  </span>
+                  {ticket.property && (
+                    <span className="flex items-center gap-1">
+                      {ticket.property.adresse_complete}
+                    </span>
+                  )}
                   {ticket.lease && (
-                    <Badge variant="outline" className="text-[10px] h-5 border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400">
-                      Bail {ticket.lease.statut === "active" ? "actif" : ticket.lease.statut}
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] h-5 border-indigo-200 text-indigo-600 dark:border-indigo-800 dark:text-indigo-400"
+                    >
+                      Bail{" "}
+                      {ticket.lease.statut === "active" ? "actif" : ticket.lease.statut}
                     </Badge>
                   )}
-                  {ticket.messages?.[0]?.count ? (
+                  {commentCount > 0 && (
                     <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium">
                       <MessageSquare className="h-3 w-3" />
-                      {ticket.messages[0].count} message(s)
+                      {commentCount}
                     </span>
-                  ) : null}
+                  )}
                 </div>
 
-                {/* Prestataire assigné */}
+                {/* Assigned provider */}
                 {activeWorkOrder && activeWorkOrder.provider && (
                   <div className="mt-3 p-2.5 rounded-lg bg-indigo-50/80 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/50 flex items-center gap-3">
                     <div className="h-7 w-7 rounded-full bg-indigo-100 dark:bg-indigo-800/50 flex items-center justify-center flex-shrink-0">
@@ -147,15 +176,24 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300 truncate">
-                        {activeWorkOrder.provider.prenom} {activeWorkOrder.provider.nom}
+                        {activeWorkOrder.provider.prenom}{" "}
+                        {activeWorkOrder.provider.nom}
                       </p>
                       <div className="flex items-center gap-2 text-[10px] text-indigo-500 dark:text-indigo-400/70">
-                        <span>{WORK_ORDER_STATUS_LABELS[activeWorkOrder.statut] || activeWorkOrder.statut}</span>
+                        <span>
+                          {WORK_ORDER_STATUS_LABELS[activeWorkOrder.statut] ||
+                            activeWorkOrder.statut}
+                        </span>
                         {activeWorkOrder.date_intervention_prevue && (
                           <>
                             <span>•</span>
                             <span>
-                              Prévu le {format(new Date(activeWorkOrder.date_intervention_prevue), "d MMM", { locale: fr })}
+                              Prévu le{" "}
+                              {format(
+                                new Date(activeWorkOrder.date_intervention_prevue),
+                                "d MMM",
+                                { locale: fr }
+                              )}
                             </span>
                           </>
                         )}
@@ -166,13 +204,15 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
                 )}
               </div>
 
+              {/* Right: status + action */}
               <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 pl-4 border-l-0 sm:border-l border-border">
-                <StatusBadge
-                  status={TICKET_STATUS_FR[ticket.statut]?.label ?? ticket.statut}
-                  type={TICKET_STATUS_FR[ticket.statut]?.type ?? "info"}
-                />
-                
-                <Button variant="ghost" size="sm" asChild className="gap-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400">
+                <TicketStatusBadge status={ticket.statut} />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className="gap-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400"
+                >
                   <Link href={`${basePath}/${ticket.id}`}>
                     Voir <ChevronRight className="h-4 w-4" />
                   </Link>
