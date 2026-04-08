@@ -26,7 +26,7 @@ const COLORS = {
 /**
  * Layout de base pour tous les emails
  */
-function baseLayout(content: string, preheader?: string): string {
+export function baseLayout(content: string, preheader?: string): string {
   return `
 <!DOCTYPE html>
 <html lang="fr">
