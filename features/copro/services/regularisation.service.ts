@@ -310,7 +310,7 @@ export async function getLeasesForCoproUnit(
   tenant_name: string;
   start_date: string;
   end_date: string | null;
-  status: string;
+  statut: string;
   property_id: string;
 }>> {
   const supabase = createClient();
@@ -332,12 +332,12 @@ export async function getLeasesForCoproUnit(
       id,
       start_date,
       end_date,
-      status,
+      statut,
       property_id,
       tenant:profiles!leases_tenant_id_fkey(first_name, last_name)
     `)
     .eq('property_id', (unit as any).linked_property_id)
-    .in('status', ['active', 'terminated'])
+    .in('statut', ['active', 'terminated'])
     .order('start_date', { ascending: false });
   
   if (leasesError) throw leasesError;
@@ -349,7 +349,7 @@ export async function getLeasesForCoproUnit(
       : 'Locataire inconnu',
     start_date: lease.start_date,
     end_date: lease.end_date,
-    status: lease.status,
+    statut: lease.statut,
     property_id: lease.property_id,
   }));
 }

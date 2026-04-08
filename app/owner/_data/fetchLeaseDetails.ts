@@ -334,7 +334,7 @@ async function fetchLeaseDetailsFallback(
       invited_email,
       invited_name,
       invited_at,
-      profiles (
+      profiles:profiles!profile_id (
         id,
         prenom,
         nom,
