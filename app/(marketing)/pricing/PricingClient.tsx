@@ -112,7 +112,7 @@ function TerritorySelector({
         type="button"
         onClick={() => setOpen(!open)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 transition-colors hover:border-[#2563EB]/40 hover:text-[#2563EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:ring-offset-2"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-slate-600 transition-colors hover:border-primary/40 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-label={`Territoire : ${TERRITORY_LABELS[value]}. TVA ${formatTVARate(value)}`}
@@ -144,7 +144,7 @@ function TerritorySelector({
               tabIndex={0}
               className={cn(
                 "flex cursor-pointer items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-slate-50 focus-visible:bg-slate-50 focus-visible:outline-none",
-                value === territory && "bg-[#2563EB]/5 text-[#2563EB]"
+                value === territory && "bg-primary/5 text-primary"
               )}
               onClick={() => {
                 onChange(territory);
@@ -193,9 +193,9 @@ function BillingToggle({
         aria-checked={!isYearly}
         onClick={() => onChange(false)}
         className={cn(
-          "rounded-full px-4 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:ring-offset-1",
+          "rounded-full px-4 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
           !isYearly
-            ? "bg-[#2563EB] text-white shadow-sm"
+            ? "bg-primary text-white shadow-sm"
             : "text-slate-500 hover:text-slate-700"
         )}
       >
@@ -206,9 +206,9 @@ function BillingToggle({
         aria-checked={isYearly}
         onClick={() => onChange(true)}
         className={cn(
-          "rounded-full px-4 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:ring-offset-1",
+          "rounded-full px-4 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-1",
           isYearly
-            ? "bg-[#2563EB] text-white shadow-sm"
+            ? "bg-primary text-white shadow-sm"
             : "text-slate-500 hover:text-slate-700"
         )}
       >
@@ -250,14 +250,14 @@ function PricingCard({
       variants={fadeUp}
       tabIndex={0}
       className={cn(
-        "relative flex flex-col rounded-2xl border p-6 transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:ring-offset-2",
+        "relative flex flex-col rounded-2xl border p-6 transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
         plan.isPopular
-          ? "border-[#2563EB] bg-white ring-2 ring-[#2563EB]/20 shadow-lg shadow-[#2563EB]/10"
+          ? "border-primary bg-white ring-2 ring-primary/20 shadow-lg shadow-primary/10"
           : "border-slate-200 bg-white shadow-sm hover:shadow-md"
       )}
     >
       {plan.badge && (
-        <span className="absolute -top-3 left-6 inline-block rounded-full bg-[#2563EB] px-3 py-1 text-[11px] font-semibold text-white">
+        <span className="absolute -top-3 left-6 inline-block rounded-full bg-primary px-3 py-1 text-[11px] font-semibold text-white">
           {plan.badge}
         </span>
       )}
@@ -306,7 +306,7 @@ function PricingCard({
             className="flex items-start gap-2 text-sm text-slate-600"
           >
             <Check
-              className="mt-0.5 h-4 w-4 shrink-0 text-[#2563EB]"
+              className="mt-0.5 h-4 w-4 shrink-0 text-primary"
               aria-hidden="true"
             />
             {feature}
@@ -327,10 +327,10 @@ function PricingCard({
         }
         aria-label={ariaLabel}
         className={cn(
-          "mt-8 block rounded-xl py-3 text-center text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:ring-offset-2",
+          "mt-8 block rounded-xl py-3 text-center text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
           plan.isPopular
-            ? "bg-[#2563EB] text-white shadow-lg shadow-[#2563EB]/25 hover:bg-[#1D4ED8]"
-            : "border border-slate-200 bg-white text-slate-700 hover:border-[#2563EB]/40 hover:text-[#2563EB]"
+            ? "bg-primary text-white shadow-lg shadow-primary/25 hover:bg-primary/90"
+            : "border border-slate-200 bg-white text-slate-700 hover:border-primary/40 hover:text-primary"
         )}
       >
         {plan.ctaText}
@@ -359,7 +359,7 @@ function ComparisonTable({
   function renderCell(value: boolean | string | number) {
     if (value === true)
       return (
-        <Check className="mx-auto h-5 w-5 text-[#2563EB]" aria-label="Inclus" />
+        <Check className="mx-auto h-5 w-5 text-primary" aria-label="Inclus" />
       );
     if (value === false)
       return (
@@ -431,7 +431,7 @@ function FAQSection({ items }: { items: FAQItem[] }) {
           <dt>
             <button
               onClick={() => setOpenIndex(openIndex === i ? null : i)}
-              className="flex w-full items-center justify-between text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:rounded-lg focus-visible:ring-offset-2"
+              className="flex w-full items-center justify-between text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:rounded-lg focus-visible:ring-offset-2"
               aria-expanded={openIndex === i}
             >
               <span className="text-sm font-medium text-slate-900">
@@ -484,7 +484,7 @@ export function PricingClient({
           className="font-display text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl md:text-5xl"
         >
           Un prix simple.{" "}
-          <span className="text-[#2563EB]">Pas de mauvaise surprise.</span>
+          <span className="text-primary">Pas de mauvaise surprise.</span>
         </motion.h1>
         <motion.p
           variants={fadeUp}
@@ -542,7 +542,7 @@ export function PricingClient({
           249&nbsp;&euro;/mois.{" "}
           <Link
             href="mailto:contact@talok.fr"
-            className="text-[#2563EB] underline underline-offset-2 hover:text-[#1D4ED8]"
+            className="text-primary underline underline-offset-2 hover:text-[#1D4ED8]"
           >
             Contactez-nous
           </Link>
@@ -622,7 +622,7 @@ export function PricingClient({
         >
           <p className="text-sm font-medium text-slate-500">
             Rejoignez{" "}
-            <span className="font-semibold text-[#2563EB]">
+            <span className="font-semibold text-primary">
               500+ proprietaires
             </span>{" "}
             qui gerent leurs biens avec Talok
@@ -703,14 +703,14 @@ export function PricingClient({
                   source: "pricing_page",
                 })
               }
-              className="inline-flex items-center rounded-xl bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-[#2563EB]/25 transition-all hover:bg-[#1D4ED8] hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:ring-offset-2"
+              className="inline-flex items-center rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
               aria-label="Essayer Talok Confort gratuitement pendant 1 mois"
             >
               Essayer Confort gratuitement
             </Link>
             <Link
               href="/signup/plan"
-              className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:border-[#2563EB]/40 hover:text-[#2563EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2563EB] focus-visible:ring-offset-2"
+              className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition-all hover:border-primary/40 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
               Commencer gratuitement
             </Link>

@@ -407,7 +407,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
           <div className="mx-auto p-3 bg-red-100 dark:bg-red-900/30 rounded-full w-fit">
             <AlertCircle className="h-8 w-8 text-red-600 dark:text-red-400" />
           </div>
-          <h2 className="text-xl font-bold text-foreground">Erreur de chargement</h2>
+          <h2 className="text-xl font-bold text-foreground" role="alert">Erreur de chargement</h2>
           <p className="text-muted-foreground">{error}</p>
           <Button onClick={() => window.location.reload()} className="mt-2">
             Rafraîchir la page

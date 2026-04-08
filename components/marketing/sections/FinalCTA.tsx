@@ -34,7 +34,7 @@ function MagneticGlowCTA() {
       >
         <Link
           href="/auth/signup"
-          className="group relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-[#2563EB] px-6 py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
+          className="group relative inline-flex items-center justify-center overflow-hidden rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-white transition-transform hover:scale-[1.02] active:scale-[0.98]"
         >
           {/* Shine sweep */}
           <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
@@ -134,7 +134,7 @@ export function StickyMobileCTA() {
     >
       <Link
         href="/auth/signup"
-        className="block w-full rounded-xl bg-[#2563EB] py-3 text-center text-sm font-semibold text-white shadow-lg shadow-[#2563EB]/25"
+        className="block w-full rounded-xl bg-primary py-3 text-center text-sm font-semibold text-white shadow-lg shadow-primary/25"
       >
         Commencer gratuitement
       </Link>
