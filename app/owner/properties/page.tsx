@@ -26,6 +26,7 @@ import { useDebounce } from "@/lib/hooks/use-debounce";
 import { PropertyCardGridSkeleton } from "@/components/skeletons/property-card-skeleton";
 import { SmartImageCard } from "@/components/ui/smart-image-card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { VirtualGrid } from "@/components/ui/virtual-grid";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
@@ -735,47 +736,31 @@ export default function OwnerPropertiesPage() {
                 </motion.div>
               ) : !isLoading ? (
                 viewMode === "grid" ? (
-                  <motion.div
-                    key="properties-grid"
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="visible"
-                    className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
-                  >
-                    {filteredProperties.map((property: any, index: number) => (
-                      <motion.div
-                        key={property.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.1 }}
-                      >
-                        <Link href={`/owner/properties/${property.id}`} className="block h-full">
-                          <SmartImageCard
-                            src={property.cover_url}
-                            alt={property.adresse_complete || "Propriété sans nom"}
-                            priority={index < 4}
-
-                            // Titres intégrés
-                            title={property.adresse_complete || "Nouvelle propriété"}
-                            subtitle={`${getTypeLabel(property.type)} • ${property.ville || ""}${!activeEntityId && property.entity_nom ? ` • ${property.entity_nom}` : ""}`}
-
-                            // Badges automatiques adaptés au type de bien
-                            badges={[
-                              ...getBadgesForProperty(property),
-                              // Badge entité si on est en vue "toutes les entités"
-                              ...(!activeEntityId && property.entity_nom ? [{
-                                label: property.entity_nom,
-                                variant: "outline" as const,
-                              }] : []),
-                            ]}
-
-                            // Status badge
-                            status={getStatusBadge(property.status)}
-                          />
-                        </Link>
-                      </motion.div>
-                    ))}
-                  </motion.div>
+                  <VirtualGrid
+                    items={filteredProperties}
+                    estimateSize={320}
+                    columns={{ sm: 1, md: 2, lg: 3 }}
+                    virtualizeThreshold={30}
+                    renderItem={(property: any, index: number) => (
+                      <Link href={`/owner/properties/${property.id}`} className="block h-full">
+                        <SmartImageCard
+                          src={property.cover_url}
+                          alt={property.adresse_complete || "Propriété sans nom"}
+                          priority={index < 4}
+                          title={property.adresse_complete || "Nouvelle propriété"}
+                          subtitle={`${getTypeLabel(property.type)} • ${property.ville || ""}${!activeEntityId && property.entity_nom ? ` • ${property.entity_nom}` : ""}`}
+                          badges={[
+                            ...getBadgesForProperty(property),
+                            ...(!activeEntityId && property.entity_nom ? [{
+                              label: property.entity_nom,
+                              variant: "outline" as const,
+                            }] : []),
+                          ]}
+                          status={getStatusBadge(property.status)}
+                        />
+                      </Link>
+                    )}
+                  />
                 ) : (
                   <motion.div
                     key="properties-list"
