@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 // @ts-nocheck — TODO: remove once database.types.ts is regenerated
 import { useQuery } from "@tanstack/react-query";

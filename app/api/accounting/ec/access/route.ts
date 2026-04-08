@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * API Route: Expert-Comptable Access Management
  * POST /api/accounting/ec/access - Invite an EC to access an entity

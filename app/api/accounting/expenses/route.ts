@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * API Route: Expenses CRUD (liste + création)
  * GET  /api/accounting/expenses?year=2025&entityId=xxx

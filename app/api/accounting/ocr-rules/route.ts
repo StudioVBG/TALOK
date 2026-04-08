@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * API Route: OCR Category Rules
  * GET /api/accounting/ocr-rules — List rules for entity

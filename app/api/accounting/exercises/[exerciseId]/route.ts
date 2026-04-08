@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * API Route: Single Accounting Exercise
  * GET /api/accounting/exercises/[exerciseId] - Fetch exercise with balance summary

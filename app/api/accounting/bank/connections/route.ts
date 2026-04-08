@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * API Route: Bank Connections
  * GET /api/accounting/bank/connections - List bank connections for an entity

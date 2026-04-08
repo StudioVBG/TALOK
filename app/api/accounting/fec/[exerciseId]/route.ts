@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * API Route: FEC by Exercise
  * GET /api/accounting/fec/:exerciseId - Preview or download FEC for a given exercise

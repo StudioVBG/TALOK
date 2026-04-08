@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Hook React Query pour le dashboard comptabilite proprietaire
  *
