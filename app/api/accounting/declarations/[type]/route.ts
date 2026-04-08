@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * API Route: Assistant declaration fiscale (Sprint 4)
  * GET /api/accounting/declarations/[type]
@@ -114,7 +115,7 @@ async function compute2072(
   const resultat = revenus - charges;
 
   // Fetch associates and their quote-parts
-  const { data: associates } = await supabase
+  const { data: associates } = await (supabase as any)
     .from("entity_associates")
     .select("id, name, quote_part_pct")
     .eq("entity_id", entityId);

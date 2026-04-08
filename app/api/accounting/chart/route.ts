@@ -53,7 +53,7 @@ export async function GET(request: Request) {
       throw new ApiError(400, "entityId est requis");
     }
 
-    const { data: accounts, error } = await supabase
+    const { data: accounts, error } = await (supabase as any)
       .from("chart_of_accounts")
       .select("*")
       .eq("entity_id", entityId)

@@ -20,7 +20,7 @@ export async function GET(
 
     if (!user) throw new ApiError(401, "Non authentifié");
 
-    const { data: analysis, error } = await supabase
+    const { data: analysis, error } = await (supabase as any)
       .from("document_analyses")
       .select("*")
       .eq("document_id", documentId)

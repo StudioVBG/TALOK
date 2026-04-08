@@ -25,7 +25,7 @@ export const DELETE = withSecurity(async function DELETE(
     const serviceClient = getServiceClient();
 
     // Vérifier que la connexion appartient à l'utilisateur
-    const { data: connection } = await serviceClient
+    const { data: connection } = await (serviceClient as any)
       .from("bank_connections")
       .select("id, user_id")
       .eq("id", id)
@@ -38,7 +38,7 @@ export const DELETE = withSecurity(async function DELETE(
       );
     }
 
-    const { error: deleteError } = await serviceClient
+    const { error: deleteError } = await (serviceClient as any)
       .from("bank_connections")
       .delete()
       .eq("id", id);

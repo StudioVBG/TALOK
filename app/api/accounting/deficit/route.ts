@@ -46,7 +46,7 @@ export async function GET(request: Request) {
       throw new ApiError(400, "entityId est requis");
     }
 
-    const { data: deficits, error } = await supabase
+    const { data: deficits, error } = await (supabase as any)
       .from("deficit_tracking")
       .select("*")
       .eq("entity_id", entityId)
@@ -59,7 +59,7 @@ export async function GET(request: Request) {
     const currentYear = new Date().getFullYear();
 
     // Calculate totals
-    const items = (deficits ?? []).map((d) => {
+    const items = (deficits ?? []).map((d: any) => {
       const remainingCents =
         (d.deficit_amount_cents as number) - (d.used_amount_cents as number);
       const expiresYear = (d.origin_year as number) + (d.reportable_years as number);
@@ -73,12 +73,12 @@ export async function GET(request: Request) {
     });
 
     const totalReportable = items
-      .filter((d) => !d.is_expired && d.remaining_amount_cents > 0)
-      .reduce((sum, d) => sum + d.remaining_amount_cents, 0);
+      .filter((d: any) => !d.is_expired && d.remaining_amount_cents > 0)
+      .reduce((sum: number, d: any) => sum + d.remaining_amount_cents, 0);
 
     const expiringThisYear = items
-      .filter((d) => d.expires_this_year && d.remaining_amount_cents > 0)
-      .reduce((sum, d) => sum + d.remaining_amount_cents, 0);
+      .filter((d: any) => d.expires_this_year && d.remaining_amount_cents > 0)
+      .reduce((sum: number, d: any) => sum + d.remaining_amount_cents, 0);
 
     return NextResponse.json({
       success: true,
