@@ -12,7 +12,7 @@ import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
 
 export default function VerifyEmailOnboardingPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-950"><Loader2 className="h-8 w-8 animate-spin text-indigo-400" /></div>}>
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-950"><Loader2 className="h-8 w-8 animate-spin text-blue-400" /></div>}>
       <VerifyEmailContent />
     </Suspense>
   );
@@ -158,6 +158,9 @@ function VerifyEmailContent() {
         break;
       case "syndic":
         router.push("/syndic/onboarding/profile");
+        break;
+      case "agency":
+        router.push("/agency/onboarding/profile");
         break;
       default:
         router.push("/dashboard");
