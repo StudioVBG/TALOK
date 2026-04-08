@@ -54,6 +54,13 @@ export const OWNER_ROUTES = {
     auth: ["owner"],
     icon: "Euro",
   },
+  accounting: {
+    path: "/owner/accounting",
+    name: "Comptabilité",
+    component: "OwnerAccountingPage",
+    auth: ["owner"],
+    icon: "Landmark",
+  },
   /** @deprecated Utiliser money à la place - même path /owner/money */
   finances: {
     path: "/owner/money",

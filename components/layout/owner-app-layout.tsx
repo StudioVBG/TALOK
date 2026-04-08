@@ -13,6 +13,7 @@ import {
   Building2,
   FileText,
   Euro,
+  Landmark,
   FileCheck,
   HelpCircle,
   User,
@@ -77,6 +78,7 @@ const navigationGroups: NavGroup[] = [
       { name: "Mes biens", href: OWNER_ROUTES.properties.path, icon: Building2, tourId: "nav-properties" },
       { name: "Mes baux", href: OWNER_ROUTES.contracts.path, icon: FileText, tourId: "nav-leases" },
       { name: "Finances", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
+      { name: "Comptabilité", href: OWNER_ROUTES.accounting.path, icon: Landmark, tourId: "nav-accounting" },
     ],
   },
   {
