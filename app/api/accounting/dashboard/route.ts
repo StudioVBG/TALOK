@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { userHasFeature } from "@/lib/subscriptions/subscription-service";
+import { resolvePropertyIdsForEntity } from "@/lib/accounting/resolve-entity-filter";
 
 export async function GET(request: Request) {
   try {
@@ -61,59 +62,66 @@ export async function GET(request: Request) {
       throw new ApiError(400, "Année invalide");
     }
 
+    // Entity filter
+    const entityId = searchParams.get("entityId");
+    const propIds = await resolvePropertyIdsForEntity(serviceClient, ownerId, entityId);
+
     // ────────────────────────────────────────────
     // 1. Baux actifs de l'année
     // ────────────────────────────────────────────
 
-    const { data: leases } = await serviceClient
+    let leasesQuery = serviceClient
       .from("leases")
       .select(`
-        id,
-        loyer,
-        charges_forfaitaires,
-        date_debut,
-        date_fin,
-        statut,
-        property_id,
+        id, loyer, charges_forfaitaires, date_debut, date_fin, statut, property_id,
         property:properties!inner(id, adresse_complete)
       `)
       .eq("property.owner_id", ownerId)
       .in("statut", ["active", "terminated"]);
+    if (propIds) leasesQuery = leasesQuery.in("property_id", propIds.length > 0 ? propIds : ["__none__"]);
+    const { data: leases } = await leasesQuery;
 
     // ────────────────────────────────────────────
     // 2. Factures de l'année
     // ────────────────────────────────────────────
 
-    const { data: invoices } = await serviceClient
+    let invoicesQuery = serviceClient
       .from("invoices")
       .select("id, periode, montant_total, montant_loyer, montant_charges, statut, lease_id, property_id")
       .eq("owner_id", ownerId)
       .gte("periode", `${year}-01`)
       .lte("periode", `${year}-12`);
+    if (propIds) invoicesQuery = invoicesQuery.in("property_id", propIds.length > 0 ? propIds : ["__none__"]);
+    const { data: invoices } = await invoicesQuery;
 
     // ────────────────────────────────────────────
     // 3. Paiements encaissés de l'année
     // ────────────────────────────────────────────
 
-    const { data: payments } = await serviceClient
+    let paymentsQuery = serviceClient
       .from("payments")
       .select(`
-        id,
-        montant,
-        date_paiement,
-        statut,
-        invoice_id,
-        invoice:invoices!inner(
-          owner_id,
-          periode,
-          lease_id,
-          property_id
-        )
+        id, montant, date_paiement,
+        invoice:invoices!inner(owner_id, periode, lease_id, property_id)
       `)
       .eq("statut", "succeeded")
       .eq("invoice.owner_id", ownerId)
       .gte("date_paiement", `${year}-01-01`)
       .lte("date_paiement", `${year}-12-31`);
+    if (propIds) paymentsQuery = paymentsQuery.in("invoice.property_id", propIds.length > 0 ? propIds : ["__none__"]);
+    const { data: payments } = await paymentsQuery;
+
+    // ────────────────────────────────────────────
+    // 4. Dépenses de l'année
+    // ────────────────────────────────────────────
+
+    let expensesQuery = serviceClient
+      .from("expenses")
+      .select("id, montant, date_depense, category, property_id")
+      .eq("owner_profile_id", ownerId).eq("statut", "confirmed")
+      .gte("date_depense", `${year}-01-01`).lte("date_depense", `${year}-12-31`);
+    if (propIds) expensesQuery = expensesQuery.in("property_id", propIds.length > 0 ? propIds : ["__none__"]);
+    const { data: expenseRows } = await expensesQuery;
 
     // ────────────────────────────────────────────
     // Calculs
@@ -151,9 +159,13 @@ export async function GET(request: Request) {
       0
     );
 
-    // Commissions Talok — pas de table expenses, on estime 0 pour le MVP
+    // Commissions Talok — pas de table dédiée pour le MVP
     const totalCommissions = 0;
-    const totalExpenses = 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allExpenses = (expenseRows || []) as any[];
+    const totalExpenses = allExpenses.reduce(
+      (sum: number, e: any) => sum + (Number(e.montant) || 0), 0
+    );
 
     const netIncome = totalRentCollected - totalCommissions - totalExpenses;
     const collectionRate =
@@ -178,20 +190,23 @@ export async function GET(request: Request) {
       );
 
       const rentExpected = monthInvoices.reduce(
-        (sum, inv) => sum + (Number(inv.montant_total) || 0),
+        (sum: number, inv: any) => sum + (Number(inv.montant_total) || 0),
         0
       );
       const rentCollected = monthPayments.reduce(
-        (sum, p) => sum + (Number(p.montant) || 0),
+        (sum: number, p: any) => sum + (Number(p.montant) || 0),
         0
       );
+      const monthExpenses = allExpenses
+        .filter((e: any) => (e.date_depense || "").startsWith(prefix))
+        .reduce((sum: number, e: any) => sum + (Number(e.montant) || 0), 0);
 
       return {
         month,
         rentExpected,
         rentCollected,
-        expenses: 0,
-        netIncome: rentCollected,
+        expenses: monthExpenses,
+        netIncome: rentCollected - monthExpenses,
       };
     });
 

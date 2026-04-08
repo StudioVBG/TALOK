@@ -18,6 +18,7 @@ import {
   generateFiscalSummaryPDF,
   type FiscalSummaryData,
 } from "@/lib/accounting/fiscal-summary";
+import { resolvePropertyIdsForEntity } from "@/lib/accounting/resolve-entity-filter";
 
 export async function GET(request: Request) {
   try {
@@ -63,13 +64,11 @@ export async function GET(request: Request) {
       throw new ApiError(400, "Année invalide");
     }
 
-    // Fetch dashboard data for the PDF
-    const dashboardUrl = new URL(
-      `/api/accounting/dashboard?year=${year}`,
-      request.url
-    );
-    // Reuse the same logic inline to avoid internal fetch
-    const { data: payments } = await serviceClient
+    const entityId = searchParams.get("entityId");
+    const propIds = await resolvePropertyIdsForEntity(serviceClient, ownerId, entityId);
+
+    // Fetch data for the PDF
+    let paymentsQ = serviceClient
       .from("payments")
       .select(`
         id, montant, date_paiement,
@@ -79,13 +78,22 @@ export async function GET(request: Request) {
       .eq("invoice.owner_id", ownerId)
       .gte("date_paiement", `${year}-01-01`)
       .lte("date_paiement", `${year}-12-31`);
+    if (propIds) paymentsQ = paymentsQ.in("invoice.property_id", propIds.length > 0 ? propIds : ["__none__"]);
 
-    const { data: invoices } = await serviceClient
+    let invoicesQ = serviceClient
       .from("invoices")
       .select("id, periode, montant_total, montant_loyer, montant_charges, statut, property_id")
       .eq("owner_id", ownerId)
       .gte("periode", `${year}-01`)
       .lte("periode", `${year}-12`);
+    if (propIds) invoicesQ = invoicesQ.in("property_id", propIds.length > 0 ? propIds : ["__none__"]);
+
+    let expensesQ = serviceClient
+      .from("expenses")
+      .select("id, montant, date_depense, property_id")
+      .eq("owner_profile_id", ownerId).eq("statut", "confirmed")
+      .gte("date_depense", `${year}-01-01`).lte("date_depense", `${year}-12-31`);
+    if (propIds) expensesQ = expensesQ.in("property_id", propIds.length > 0 ? propIds : ["__none__"]);
 
     const { data: properties } = await serviceClient
       .from("properties")
@@ -97,10 +105,16 @@ export async function GET(request: Request) {
       (properties || []).map((p: any) => [p.id, p.adresse_complete || "Bien"])
     );
 
+    const { data: payments } = await paymentsQ;
+    const { data: invoices } = await invoicesQ;
+    const { data: expenseRows } = await expensesQ;
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allPayments = (payments || []) as any[];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allInvoices = (invoices || []) as any[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const allExpenses = (expenseRows || []) as any[];
 
     const totalRentCollected = allPayments.reduce(
       (s, p) => s + (Number(p.montant) || 0),
@@ -110,14 +124,21 @@ export async function GET(request: Request) {
       .filter((i) => i.statut === "paid")
       .reduce((s, i) => s + (Number(i.montant_charges) || 0), 0);
 
+    const totalExpenses = allExpenses.reduce(
+      (s: number, e: any) => s + (Number(e.montant) || 0), 0
+    );
+
     // Monthly breakdown
     const monthlyBreakdown = Array.from({ length: 12 }, (_, i) => {
       const mm = String(i + 1).padStart(2, "0");
       const prefix = `${year}-${mm}`;
       const rentCollected = allPayments
-        .filter((p) => ((p as any).date_paiement || "").startsWith(prefix))
-        .reduce((s, p) => s + (Number(p.montant) || 0), 0);
-      return { month: i + 1, rentCollected, expenses: 0, netIncome: rentCollected };
+        .filter((p: any) => (p.date_paiement || "").startsWith(prefix))
+        .reduce((s: number, p: any) => s + (Number(p.montant) || 0), 0);
+      const monthExpenses = allExpenses
+        .filter((e: any) => (e.date_depense || "").startsWith(prefix))
+        .reduce((s: number, e: any) => s + (Number(e.montant) || 0), 0);
+      return { month: i + 1, rentCollected, expenses: monthExpenses, netIncome: rentCollected - monthExpenses };
     });
 
     // By property
@@ -153,8 +174,8 @@ export async function GET(request: Request) {
       totalRentCollected,
       totalChargesCollected,
       totalCommissions: 0,
-      totalExpenses: 0,
-      netIncome: totalRentCollected,
+      totalExpenses,
+      netIncome: totalRentCollected - totalExpenses,
       monthlyBreakdown,
       byProperty,
     };

@@ -22,6 +22,9 @@ import {
   ChevronDown,
   Landmark,
   Lock,
+  Plus,
+  Receipt,
+  Trash2,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,12 +34,31 @@ import { useToast } from "@/components/ui/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
 import { cn } from "@/lib/utils";
 import { usePlanAccess } from "@/lib/hooks/use-plan-access";
+import { useEntityStore } from "@/stores/useEntityStore";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Recharts — SSR-disabled
 const RechartsBar = dynamic(
@@ -171,8 +193,15 @@ export default function AccountingPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState<"fec" | "fiscal" | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [expenseCategories, setExpenseCategories] = useState<Record<string, string>>({});
+  const [showAddExpense, setShowAddExpense] = useState(false);
+  const [savingExpense, setSavingExpense] = useState(false);
 
   const hasAccounting = planAccess.hasFeature("hasAccounting");
+  const activeEntityId = useEntityStore((s) => s.activeEntityId);
+  const entityParam = activeEntityId ? `&entityId=${encodeURIComponent(activeEntityId)}` : "";
 
   useEffect(() => {
     if (!hasAccounting) {
@@ -180,12 +209,17 @@ export default function AccountingPage() {
       return;
     }
     setLoading(true);
-    fetch(`/api/accounting/dashboard?year=${year}`)
-      .then((r) => {
-        if (!r.ok) throw new Error("Erreur chargement");
-        return r.json();
+    Promise.all([
+      fetch(`/api/accounting/dashboard?year=${year}${entityParam}`).then((r) => r.ok ? r.json() : null),
+      fetch(`/api/accounting/expenses?year=${year}${entityParam}`).then((r) => r.ok ? r.json() : null),
+    ])
+      .then(([dashData, expData]) => {
+        if (dashData) setData(dashData);
+        if (expData) {
+          setExpenses(expData.expenses || []);
+          setExpenseCategories(expData.categories || {});
+        }
       })
-      .then(setData)
       .catch(() =>
         toast({
           title: "Erreur",
@@ -194,7 +228,7 @@ export default function AccountingPage() {
         })
       )
       .finally(() => setLoading(false));
-  }, [year, hasAccounting]);
+  }, [year, hasAccounting, activeEntityId]);
 
   const chartData = useMemo(() => {
     if (!data) return [];
@@ -240,7 +274,7 @@ export default function AccountingPage() {
   const handleExportFEC = async () => {
     setExporting("fec");
     try {
-      const res = await fetch(`/api/accounting/fec?year=${year}`);
+      const res = await fetch(`/api/accounting/fec?year=${year}${entityParam}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Erreur export FEC");
@@ -269,7 +303,7 @@ export default function AccountingPage() {
   const handleExportFiscal = async () => {
     setExporting("fiscal");
     try {
-      const res = await fetch(`/api/accounting/fiscal-summary?year=${year}`);
+      const res = await fetch(`/api/accounting/fiscal-summary?year=${year}${entityParam}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Erreur export");
@@ -570,6 +604,182 @@ export default function AccountingPage() {
             </CardContent>
           </Card>
         )}
+
+        {/* Expenses section */}
+        <Card className="bg-card">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Receipt className="h-5 w-5 text-orange-500" />
+                Dépenses et charges
+              </CardTitle>
+              <CardDescription>
+                Travaux, assurances, taxes, et autres charges déductibles
+              </CardDescription>
+            </div>
+            <Dialog open={showAddExpense} onOpenChange={setShowAddExpense}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="gap-2">
+                  <Plus className="h-4 w-4" /> Ajouter
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Nouvelle dépense</DialogTitle>
+                  <DialogDescription>
+                    Ajoutez une dépense pour la retrouver dans vos exports FEC et votre récapitulatif fiscal.
+                  </DialogDescription>
+                </DialogHeader>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setSavingExpense(true);
+                    const form = e.target as HTMLFormElement;
+                    const fd = new FormData(form);
+                    try {
+                      const res = await fetch("/api/accounting/expenses", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          description: fd.get("description"),
+                          montant: parseFloat(fd.get("montant") as string),
+                          category: fd.get("category"),
+                          date_depense: fd.get("date_depense"),
+                          fournisseur: fd.get("fournisseur") || null,
+                          legal_entity_id: activeEntityId && activeEntityId !== "personal" ? activeEntityId : null,
+                        }),
+                      });
+                      if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        throw new Error(err.error || "Erreur");
+                      }
+                      const { expense } = await res.json();
+                      setExpenses((prev) => [expense, ...prev]);
+                      setShowAddExpense(false);
+                      toast({ title: "Dépense ajoutée" });
+                    } catch (err) {
+                      toast({
+                        title: "Erreur",
+                        description: err instanceof Error ? err.message : "Impossible d'ajouter",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setSavingExpense(false);
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <div className="space-y-2">
+                    <Label htmlFor="exp-desc">Description</Label>
+                    <Input id="exp-desc" name="description" required placeholder="Ex: Remplacement chaudière" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="exp-amount">Montant HT (€)</Label>
+                      <Input id="exp-amount" name="montant" type="number" step="0.01" min="0.01" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="exp-date">Date</Label>
+                      <Input id="exp-date" name="date_depense" type="date" required defaultValue={new Date().toISOString().split("T")[0]} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="exp-cat">Catégorie</Label>
+                      <Select name="category" defaultValue="travaux">
+                        <SelectTrigger id="exp-cat"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(expenseCategories).map(([key, label]) => (
+                            <SelectItem key={key} value={key}>{label}</SelectItem>
+                          ))}
+                          {Object.keys(expenseCategories).length === 0 && (
+                            <>
+                              <SelectItem value="travaux">Travaux / réparations</SelectItem>
+                              <SelectItem value="assurance">Assurance</SelectItem>
+                              <SelectItem value="taxe_fonciere">Taxe foncière</SelectItem>
+                              <SelectItem value="charges_copro">Charges copropriété</SelectItem>
+                              <SelectItem value="entretien">Entretien</SelectItem>
+                              <SelectItem value="autre">Autre</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="exp-fourn">Fournisseur</Label>
+                      <Input id="exp-fourn" name="fournisseur" placeholder="Optionnel" />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setShowAddExpense(false)}>Annuler</Button>
+                    <Button type="submit" disabled={savingExpense}>
+                      {savingExpense ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Enregistrer
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </CardHeader>
+          <CardContent>
+            {expenses.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Receipt className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                <p className="font-medium">Aucune dépense enregistrée</p>
+                <p className="text-sm mt-1">
+                  Ajoutez vos dépenses pour les retrouver dans votre export FEC et votre récapitulatif fiscal.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {expenses.slice(0, 20).map((exp: any) => (
+                  <div
+                    key={exp.id}
+                    className="flex items-center gap-4 p-3 rounded-xl border bg-card hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium text-sm truncate">{exp.description}</span>
+                        <Badge variant="outline" className="text-xs shrink-0">
+                          {expenseCategories[exp.category] || exp.category}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                        <span>{new Date(exp.date_depense).toLocaleDateString("fr-FR")}</span>
+                        {exp.fournisseur && <span>— {exp.fournisseur}</span>}
+                        {exp.property?.adresse_complete && (
+                          <span className="truncate">— {exp.property.adresse_complete}</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="font-semibold text-sm tabular-nums shrink-0">
+                      {formatCurrency(Number(exp.montant) || 0)}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 text-destructive hover:text-destructive h-8 w-8"
+                      onClick={async () => {
+                        const res = await fetch(`/api/accounting/expenses/${exp.id}`, { method: "DELETE" });
+                        if (res.ok) {
+                          setExpenses((prev) => prev.filter((e: any) => e.id !== exp.id));
+                          toast({ title: "Dépense supprimée" });
+                        }
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+                {expenses.length > 20 && (
+                  <p className="text-xs text-muted-foreground text-center pt-2">
+                    + {expenses.length - 20} dépenses supplémentaires
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Export section */}
         <Card className="bg-card border-dashed">
