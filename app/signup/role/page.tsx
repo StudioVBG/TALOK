@@ -24,7 +24,7 @@ import { TalokLogo } from "@/components/marketing/TalokLogo";
 function RoleChoiceLoading() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950">
-      <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+      <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
     </div>
   );
 }
@@ -153,7 +153,7 @@ function RoleChoiceContent() {
         "Assistant juridique IA",
         "Encaissement & signature en 1 clic",
       ],
-      gradient: "from-indigo-400/25 via-indigo-500/10 to-transparent",
+      gradient: "from-blue-400/25 via-blue-500/10 to-transparent",
     },
     {
       role: "tenant" as const,
@@ -276,7 +276,7 @@ function RoleChoiceContent() {
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
-                <ShieldCheck className="h-5 w-5 text-indigo-200" />
+                <ShieldCheck className="h-5 w-5 text-blue-200" />
               </div>
               <div>
                 <h3 className="text-xl font-semibold">Garant ? Utilisez votre lien sécurisé.</h3>

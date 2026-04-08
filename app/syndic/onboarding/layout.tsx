@@ -34,7 +34,7 @@ export default function SyndicOnboardingLayout({
       <div className="mx-auto max-w-4xl px-4 pt-8 pb-4">
         {/* Header compact */}
         <div className="flex items-center justify-center gap-2 mb-6">
-          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center">
             <Building2 className="h-5 w-5 text-white" />
           </div>
           <span className="text-lg font-bold text-foreground">Talok</span>
