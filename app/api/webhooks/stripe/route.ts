@@ -880,11 +880,14 @@ export async function POST(request: NextRequest) {
             const sourceTransactionId = await resolveSourceTransactionId(stripe, paymentIntent.id);
             const receiptGenerated = !!settlement?.isSettled;
             if (settlement?.isSettled) {
-              await processReceiptGeneration(
+              // Fire-and-forget : ne pas bloquer la réponse webhook (200 immédiat)
+              processReceiptGeneration(
                 supabase,
                 invoiceId,
                 paymentId,
                 paymentIntent.amount / 100
+              ).catch((err) =>
+                console.error("[receipt-gen] fire-and-forget failed:", err?.message ?? err)
               );
             }
             await emitPaymentSucceededEvent(supabase, paymentId, invoiceId, paymentIntent.amount / 100, {

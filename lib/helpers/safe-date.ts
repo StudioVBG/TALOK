@@ -7,8 +7,12 @@ import { fr } from "date-fns/locale";
  */
 export function safeDate(value: string | Date | null | undefined): Date | null {
   if (value == null || value === "") return null;
-  const d = value instanceof Date ? value : new Date(value);
-  return isNaN(d.getTime()) ? null : d;
+  try {
+    const d = value instanceof Date ? value : new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -22,5 +26,9 @@ export function safeDateFormat(
 ): string {
   const d = safeDate(value);
   if (!d) return fallback;
-  return format(d, pattern, { locale: fr });
+  try {
+    return format(d, pattern, { locale: fr });
+  } catch {
+    return fallback;
+  }
 }

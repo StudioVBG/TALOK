@@ -119,7 +119,15 @@ async function stripeRequest<T>(
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.error?.message || `Erreur Stripe: ${response.status}`);
+    const stripeError = data.error;
+    console.error("[stripe-connect]", {
+      message: stripeError?.message,
+      code: stripeError?.code,
+      type: stripeError?.type,
+      param: stripeError?.param,
+      endpoint,
+    });
+    throw new Error(stripeError?.message || `Erreur Stripe: ${response.status}`);
   }
 
   return data as T;

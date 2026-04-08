@@ -371,7 +371,10 @@ export async function POST(request: NextRequest) {
       { status: hasExistingAccount ? 200 : 201 }
     );
   } catch (error) {
-    console.error("[Stripe Connect] Erreur POST:", error);
+    console.error("[Stripe Connect] Erreur POST:", {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
 
     // If Stripe is not configured, return a user-friendly error instead of 500
     if (isStripeConfigurationError(error)) {

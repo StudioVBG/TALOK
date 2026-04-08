@@ -21,39 +21,41 @@ export async function getOwnerInvoices(limit = 50) {
     .select(`
       *,
       lease:leases(
-        property:properties(adresse_complete),
-        signers:lease_signers(
-          role,
-          profile:profiles(nom, prenom)
-        )
-      )
+        property:properties(adresse_complete)
+      ),
+      tenant:profiles!invoices_tenant_id_fkey(nom, prenom)
     `)
     .eq("owner_id", profile.id)
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  // Transformation des données pour correspondre à l'interface Invoice
-  return (data || []).map((inv: any) => {
-    // Trouver le nom du locataire principal
-    const tenantSigner = inv.lease?.signers?.find((s: any) => s.role === 'locataire_principal');
-    const tenantName = tenantSigner?.profile 
-      ? `${tenantSigner.profile.prenom} ${tenantSigner.profile.nom}` 
-      : "Locataire inconnu";
+  // Déduplication par id (sécurité contre les doublons PostgREST)
+  const seen = new Set<string>();
+  return (data || [])
+    .filter((inv: any) => {
+      if (seen.has(inv.id)) return false;
+      seen.add(inv.id);
+      return true;
+    })
+    .map((inv: any) => {
+      const tenantName = inv.tenant
+        ? `${inv.tenant.prenom || ""} ${inv.tenant.nom || ""}`.trim() || "Locataire inconnu"
+        : "Locataire inconnu";
 
-    return {
-      id: inv.id,
-      periode: inv.periode,
-      montant_total: inv.montant_total,
-      statut: inv.statut as "draft" | "sent" | "paid" | "late" | "cancelled",
-      created_at: inv.created_at,
-      lease: {
-        property: {
-          adresse_complete: inv.lease?.property?.adresse_complete
-        },
-        tenant_name: tenantName
-      }
-    };
-  });
+      return {
+        id: inv.id,
+        periode: inv.periode,
+        montant_total: inv.montant_total,
+        statut: inv.statut as "draft" | "sent" | "paid" | "late" | "cancelled",
+        created_at: inv.created_at,
+        lease: {
+          property: {
+            adresse_complete: inv.lease?.property?.adresse_complete
+          },
+          tenant_name: tenantName
+        }
+      };
+    });
 }
 
 export async function getTenantInvoices() {

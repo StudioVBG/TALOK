@@ -95,6 +95,7 @@ export async function GET(
       invoice: {
         ...invoiceAny,
         date_echeance: invoiceAny.date_echeance || invoiceAny.due_date || null,
+        date_emission: invoiceAny.date_emission || invoiceAny.created_at || null,
         property: invoiceAny.lease?.property || null,
         payments: payments || [],
         montant_paye: settlement?.totalPaid || 0,
