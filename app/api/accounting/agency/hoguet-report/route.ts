@@ -88,7 +88,7 @@ export async function GET(request: Request) {
 
     const { data: entity } = await supabase
       .from("legal_entities")
-      .select("id, name, carte_g_numero, carte_g_expiry, caisse_garantie, caisse_garantie_numero")
+      .select("id, nom, carte_g_numero, carte_g_expiry, caisse_garantie, caisse_garantie_numero")
       .eq("id", agencyEntityId)
       .single();
 
