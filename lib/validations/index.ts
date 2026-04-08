@@ -819,7 +819,12 @@ export const ticketSchema = z.object({
   lease_id: z.string().uuid().optional().nullable(),
   titre: z.string().min(1, "Le titre est requis"),
   description: z.string().min(1, "La description est requise"),
-  priorite: z.enum(["basse", "normale", "haute"]),
+  category: z.enum([
+    "plomberie", "electricite", "serrurerie", "chauffage", "humidite",
+    "nuisibles", "bruit", "parties_communes", "equipement", "autre",
+  ]).optional().nullable(),
+  priorite: z.enum(["low", "normal", "urgent", "emergency", "basse", "normale", "haute", "urgente"]),
+  photos: z.array(z.string()).optional(),
 });
 
 // Validation des ordres de travail

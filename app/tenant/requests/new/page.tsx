@@ -45,15 +45,21 @@ import { motion, AnimatePresence } from "framer-motion";
 const categories = [
   { value: "plomberie", label: "Plomberie", icon: Droplet, color: "text-blue-500", bgColor: "bg-blue-50" },
   { value: "electricite", label: "Électricité", icon: Zap, color: "text-amber-500", bgColor: "bg-amber-50" },
-  { value: "chauffage", label: "Chauffage", icon: Thermometer, color: "text-red-500", bgColor: "bg-red-50" },
   { value: "serrurerie", label: "Serrurerie", icon: Lock, color: "text-foreground/80", bgColor: "bg-muted" },
+  { value: "chauffage", label: "Chauffage", icon: Thermometer, color: "text-red-500", bgColor: "bg-red-50" },
+  { value: "humidite", label: "Humidité", icon: Droplet, color: "text-cyan-500", bgColor: "bg-cyan-50" },
+  { value: "nuisibles", label: "Nuisibles", icon: HelpCircle, color: "text-green-600", bgColor: "bg-green-50" },
+  { value: "bruit", label: "Bruit", icon: HelpCircle, color: "text-purple-500", bgColor: "bg-purple-50" },
+  { value: "parties_communes", label: "Parties communes", icon: HelpCircle, color: "text-indigo-500", bgColor: "bg-indigo-50" },
+  { value: "equipement", label: "Équipement", icon: Wrench, color: "text-orange-500", bgColor: "bg-orange-50" },
   { value: "autre", label: "Autre", icon: HelpCircle, color: "text-muted-foreground", bgColor: "bg-muted" },
 ];
 
 const priorities = [
-  { value: "basse", label: "Basse", description: "Peut attendre" },
-  { value: "normale", label: "Normale", description: "Dans la semaine" },
-  { value: "haute", label: "Haute", description: "Urgent" },
+  { value: "low", label: "Basse", description: "Peut attendre" },
+  { value: "normal", label: "Normale", description: "Dans la semaine" },
+  { value: "urgent", label: "Urgent", description: "Sous 48h" },
+  { value: "emergency", label: "Urgence", description: "Immédiat" },
 ];
 
 const MAX_ATTACHMENTS = 5;
@@ -76,7 +82,7 @@ export default function NewTenantRequestPage() {
     titre: "",
     description: "",
     categorie: "",
-    priorite: "normale",
+    priorite: "normal",
   });
 
   // Brouillon : restauration au montage (une seule fois)
@@ -117,7 +123,7 @@ export default function NewTenantRequestPage() {
 
   const clearDraft = useCallback(() => {
     localStorage.removeItem(DRAFT_STORAGE_KEY);
-    setForm({ titre: "", description: "", categorie: "", priorite: "normale" });
+    setForm({ titre: "", description: "", categorie: "", priorite: "normal" });
     toast({ title: "Brouillon effacé", description: "Le formulaire a été réinitialisé." });
   }, [toast]);
 
@@ -161,7 +167,7 @@ export default function NewTenantRequestPage() {
           titre: args.titre,
           description: args.description,
           priorite: args.priorite,
-          categorie: "autre",
+          category: "autre",
           property_id: propertyId,
         }),
       });
@@ -208,7 +214,10 @@ export default function NewTenantRequestPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
+          titre: form.titre,
+          description: form.description,
+          priorite: form.priorite,
+          category: form.categorie || null,
           property_id: propertyId,
         }),
       });

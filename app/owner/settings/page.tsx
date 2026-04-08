@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CreditCard, Lock, Palette, User, Wallet, type LucideIcon } from "lucide-react";
+import { ArrowRight, Code2, CreditCard, Lock, Palette, User, Wallet, type LucideIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +47,13 @@ const premiumSettingsItems = [
     href: "/owner/settings/branding",
     icon: Palette,
     feature: "white_label" as const,
+  },
+  {
+    title: "API & Intégrations",
+    description: "Gérez vos clés API, webhooks et intégrations tierces",
+    href: "/owner/settings/api",
+    icon: Code2,
+    feature: "api_access" as const,
   },
 ];
 

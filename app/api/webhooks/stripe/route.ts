@@ -22,6 +22,10 @@ import { reconcileOwnerTransfer } from "@/lib/billing/owner-payout.service";
 import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
 import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
 import {
+  handleRentPaymentSucceeded,
+  handleRentPaymentFailed,
+} from "@/lib/payments/rent-collection.service";
+import {
   buildSubscriptionUpdateFromStripe,
   resolvePlanIdentifiers,
 } from "@/lib/subscriptions/market-standard";
@@ -860,12 +864,28 @@ export async function POST(request: NextRequest) {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const invoiceId = paymentIntent.metadata?.invoice_id;
 
+        // Sync rent_payments if this is a Connect rent payment
+        if (paymentIntent.metadata?.type === "rent") {
+          try {
+            const chargeId = typeof paymentIntent.latest_charge === "string"
+              ? paymentIntent.latest_charge
+              : (paymentIntent.latest_charge as any)?.id || null;
+            const transferId = paymentIntent.transfer_data?.destination
+              ? `tr_${paymentIntent.id}`
+              : null;
+            await handleRentPaymentSucceeded(paymentIntent.id, chargeId, transferId);
+          } catch (rentErr) {
+            console.error("[Stripe Webhook] rent_payments sync failed:", rentErr);
+          }
+        }
+
         if (invoiceId) {
           const paidAt = new Date().toISOString();
+          const paymentMethod = paymentIntent.payment_method_types?.[0] || "cb";
           const paymentResult = await upsertPaymentAttempt(supabase, {
             invoiceId,
             amount: paymentIntent.amount / 100,
-            method: "cb",
+            method: paymentMethod === "sepa_debit" ? "prelevement" : "cb",
             providerRef: paymentIntent.id,
             status: "succeeded",
             paidAt,
@@ -876,6 +896,7 @@ export async function POST(request: NextRequest) {
             .from("invoices")
             .update({
               stripe_payment_intent_id: paymentIntent.id,
+              paid_at: paidAt,
             })
             .eq("id", invoiceId);
 
@@ -995,11 +1016,22 @@ export async function POST(request: NextRequest) {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const invoiceId = paymentIntent.metadata?.invoice_id;
 
+        // Sync rent_payments failure
+        if (paymentIntent.metadata?.type === "rent") {
+          try {
+            const failureReason = paymentIntent.last_payment_error?.message || "Paiement échoué";
+            await handleRentPaymentFailed(paymentIntent.id, failureReason);
+          } catch (rentErr) {
+            console.error("[Stripe Webhook] rent_payments failure sync failed:", rentErr);
+          }
+        }
+
         if (invoiceId) {
+          const paymentMethod = paymentIntent.payment_method_types?.[0] || "cb";
           const paymentResult = await upsertPaymentAttempt(supabase, {
             invoiceId,
             amount: paymentIntent.amount / 100,
-            method: paymentIntent.payment_method_types?.[0] || "cb",
+            method: paymentMethod === "sepa_debit" ? "prelevement" : paymentMethod,
             providerRef: paymentIntent.id,
             status: "failed",
             paidAt: new Date().toISOString(),

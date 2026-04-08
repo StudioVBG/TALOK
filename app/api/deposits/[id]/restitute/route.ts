@@ -1,281 +1,278 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { withSecurity } from "@/lib/api/with-security";
 
 /**
- * POST /api/deposits/[id]/restitute — Restituer un dépôt de garantie
+ * POST /api/deposits/[id]/restitute
  *
- * Body:
- *   - restitution_amount_cents: number (montant à restituer)
- *   - retenue_cents: number (montant retenu, défaut 0)
- *   - retenue_details: array (détails des retenues)
- *   - restitution_method: 'virement' | 'cheque' | 'especes'
- *   - notes: string (optionnel)
+ * Restitute a security deposit (full or partial).
  *
- * Règles métier:
- *   - Le bail doit être terminé
- *   - Le dépôt doit être en statut 'received'
- *   - restitution_amount_cents + retenue_cents = amount_cents
- *   - Si EDL conforme : restitution sous 1 mois
- *   - Si dégradations : restitution sous 2 mois, retenues justifiées
- *   - Pénalité de retard : 10% loyer/mois
+ * Règles loi n°89-462:
+ * - EDL conforme → restitution sous 1 mois
+ * - Dégradations → restitution sous 2 mois, retenues justifiées
+ * - Pénalité de retard : 10% du loyer/mois de retard
  */
+const restituteSchema = z.object({
+  restitution_amount_cents: z.number().int().min(0),
+  retenue_cents: z.number().int().min(0).default(0),
+  retenue_details: z
+    .array(
+      z.object({
+        type: z.string().optional(),
+        motif: z.string().optional(),
+        label: z.string().optional(),
+        amount_cents: z.number().int().min(0),
+        justification: z.string().optional(),
+      })
+    )
+    .default([]),
+  restitution_method: z
+    .enum(["virement", "cheque", "especes", "bank_transfer", "check", "sepa_credit"])
+    .default("virement"),
+  restitution_due_date: z.string().optional(),
+  notes: z.string().optional(),
+});
+
 export const POST = withSecurity(
   async function POST(
     request: Request,
-    { params }: { params: Promise<{ id: string }> }
+    context: { params: Promise<{ id: string }> }
   ) {
-    const { id: depositId } = await params;
-    const { user, error } = await getAuthenticatedUser(request);
+    try {
+      const { user, error } = await getAuthenticatedUser(request);
 
-    if (error || !user) {
-      return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
-      );
-    }
-
-    const serviceClient = getServiceClient();
-
-    // Récupérer le profil
-    const { data: profile } = await serviceClient
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile) {
-      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
-    }
-
-    const profileData = profile as any;
-
-    // Récupérer le dépôt avec le bail
-    const { data: deposit, error: depositError } = await serviceClient
-      .from("security_deposits")
-      .select(
-        `
-        *,
-        lease:leases!inner(
-          id,
-          statut,
-          date_fin,
-          loyer,
-          type_bail,
-          property:properties!inner(
-            id,
-            owner_id,
-            adresse_complete
-          )
-        )
-      `
-      )
-      .eq("id", depositId)
-      .single();
-
-    if (depositError || !deposit) {
-      return NextResponse.json(
-        { error: "Dépôt de garantie non trouvé" },
-        { status: 404 }
-      );
-    }
-
-    const depositData = deposit as any;
-
-    // Vérifier les permissions
-    const isOwner = depositData.lease?.property?.owner_id === profileData.id;
-    const isAdmin = profileData.role === "admin";
-
-    if (!isOwner && !isAdmin) {
-      return NextResponse.json(
-        { error: "Seul le propriétaire peut restituer le dépôt" },
-        { status: 403 }
-      );
-    }
-
-    // Vérifier le statut du dépôt
-    if (depositData.status !== "received") {
-      return NextResponse.json(
-        {
-          error: `Impossible de restituer : le dépôt est en statut "${depositData.status}"`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Vérifier que le bail est terminé
-    if (depositData.lease?.statut !== "terminated" && depositData.lease?.statut !== "ended") {
-      return NextResponse.json(
-        { error: "Le bail doit être terminé pour restituer le dépôt" },
-        { status: 400 }
-      );
-    }
-
-    // Parser le body
-    const body = await request.json();
-    const {
-      restitution_amount_cents,
-      retenue_cents = 0,
-      retenue_details = [],
-      restitution_method,
-      notes,
-    } = body;
-
-    // Validations
-    if (restitution_amount_cents == null || restitution_amount_cents < 0) {
-      return NextResponse.json(
-        { error: "Montant de restitution invalide" },
-        { status: 400 }
-      );
-    }
-
-    if (retenue_cents < 0) {
-      return NextResponse.json(
-        { error: "Montant de retenue invalide" },
-        { status: 400 }
-      );
-    }
-
-    // Vérifier que la somme correspond
-    if (restitution_amount_cents + retenue_cents !== depositData.amount_cents) {
-      return NextResponse.json(
-        {
-          error: `La somme (restitution ${restitution_amount_cents} + retenues ${retenue_cents}) ne correspond pas au dépôt (${depositData.amount_cents} centimes)`,
-        },
-        { status: 400 }
-      );
-    }
-
-    if (!restitution_method || !["virement", "cheque", "especes"].includes(restitution_method)) {
-      return NextResponse.json(
-        { error: "Méthode de restitution invalide (virement, cheque, especes)" },
-        { status: 400 }
-      );
-    }
-
-    // Retenues doivent être justifiées
-    if (retenue_cents > 0 && (!retenue_details || retenue_details.length === 0)) {
-      return NextResponse.json(
-        { error: "Les retenues doivent être détaillées et justifiées" },
-        { status: 400 }
-      );
-    }
-
-    // Calculer la pénalité de retard éventuelle (10% loyer/mois)
-    let latePenaltyCents = 0;
-    if (depositData.restitution_due_date) {
-      const dueDate = new Date(depositData.restitution_due_date);
-      const now = new Date();
-      if (now > dueDate) {
-        const monthsLate = Math.ceil(
-          (now.getTime() - dueDate.getTime()) / (30 * 24 * 60 * 60 * 1000)
-        );
-        const monthlyRentCents = (depositData.lease?.loyer || 0) * 100;
-        latePenaltyCents = Math.round(monthlyRentCents * 0.1 * monthsLate);
+      if (error || !user) {
+        return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
       }
-    }
 
-    // Déterminer le statut final
-    const newStatus = retenue_cents > 0 ? "partially_returned" : "returned";
+      const { id: depositId } = await context.params;
+      const serviceClient = getServiceClient();
 
-    // Mettre à jour le dépôt
-    const { data: updatedDeposit, error: updateError } = await serviceClient
-      .from("security_deposits")
-      .update({
-        restitution_amount_cents,
-        retenue_cents,
-        retenue_details,
-        restitution_method,
-        restituted_at: new Date().toISOString(),
-        late_penalty_cents: latePenaltyCents,
-        status: newStatus,
-        metadata: {
-          ...(depositData.metadata || {}),
-          notes,
-          restituted_by: user.id,
-        },
-      })
-      .eq("id", depositId)
-      .select()
-      .single();
+      // Profile check
+      const { data: profile } = await serviceClient
+        .from("profiles")
+        .select("id, role")
+        .eq("user_id", user.id)
+        .single();
 
-    if (updateError) {
-      console.error("[deposits/restitute] Update error:", updateError);
-      throw updateError;
-    }
+      if (!profile) {
+        return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+      }
 
-    // Notifier le locataire
-    const { data: tenantProfile } = await serviceClient
-      .from("profiles")
-      .select("user_id, prenom, nom")
-      .eq("id", depositData.tenant_id)
-      .single();
+      const typedProfile = profile as { id: string; role: string };
+      const isAdmin = typedProfile.role === "admin";
 
-    if (tenantProfile?.user_id) {
-      const amountEur = (restitution_amount_cents / 100).toFixed(2);
-      await serviceClient.from("notifications").insert({
-        user_id: tenantProfile.user_id,
-        type: "deposit_refund",
-        title: "Restitution de votre dépôt de garantie",
-        body:
-          restitution_amount_cents > 0
-            ? `Votre dépôt sera restitué : ${amountEur}€ par ${restitution_method}.`
-            : `Votre dépôt a été intégralement retenu (retenues justifiées).`,
-        priority: "high",
-        metadata: {
-          deposit_id: depositId,
-          lease_id: depositData.lease_id,
-          restitution_amount_cents,
-          retenue_cents,
+      if (typedProfile.role !== "owner" && !isAdmin) {
+        return NextResponse.json(
+          { error: "Seuls les propriétaires peuvent restituer un dépôt" },
+          { status: 403 }
+        );
+      }
+
+      // Get deposit with lease details (needed for late penalty calc)
+      const { data: deposit, error: depositError } = await serviceClient
+        .from("security_deposits")
+        .select(`
+          *,
+          lease:leases(
+            id,
+            statut,
+            date_fin,
+            loyer,
+            property:properties(
+              owner_id,
+              adresse_complete
+            )
+          )
+        `)
+        .eq("id", depositId)
+        .single();
+
+      if (depositError || !deposit) {
+        return NextResponse.json(
+          { error: "Dépôt de garantie non trouvé" },
+          { status: 404 }
+        );
+      }
+
+      const typedDeposit = deposit as any;
+
+      // Authorization
+      if (!isAdmin && typedDeposit.lease?.property?.owner_id !== typedProfile.id) {
+        return NextResponse.json(
+          { error: "Non autorisé" },
+          { status: 403 }
+        );
+      }
+
+      // Must be in 'received' status to restitute
+      if (typedDeposit.status !== "received") {
+        return NextResponse.json(
+          {
+            error: `Impossible de restituer un dépôt en statut "${typedDeposit.status}"`,
+          },
+          { status: 409 }
+        );
+      }
+
+      // Lease should be terminated
+      const leaseStatus = typedDeposit.lease?.statut;
+      if (leaseStatus !== "terminated" && leaseStatus !== "ended") {
+        return NextResponse.json(
+          { error: "Le bail doit être terminé pour restituer le dépôt" },
+          { status: 400 }
+        );
+      }
+
+      // Validate body
+      const body = await request.json();
+      const validated = restituteSchema.parse(body);
+
+      // Sanity: restitution + retenue should equal deposit
+      const totalReturn =
+        validated.restitution_amount_cents + validated.retenue_cents;
+      if (totalReturn !== typedDeposit.amount_cents) {
+        return NextResponse.json(
+          {
+            error: `Le montant restitué (${validated.restitution_amount_cents}) + les retenues (${validated.retenue_cents}) doivent égaler le dépôt (${typedDeposit.amount_cents})`,
+          },
+          { status: 400 }
+        );
+      }
+
+      // Retenues must be justified
+      if (validated.retenue_cents > 0 && validated.retenue_details.length === 0) {
+        return NextResponse.json(
+          { error: "Les retenues doivent être détaillées et justifiées" },
+          { status: 400 }
+        );
+      }
+
+      // Calculate late penalty (10% of monthly rent per month late)
+      let latePenaltyCents = 0;
+      const dueDateStr = validated.restitution_due_date || typedDeposit.restitution_due_date;
+      if (dueDateStr) {
+        const dueDate = new Date(dueDateStr);
+        const now = new Date();
+        if (now > dueDate) {
+          const monthsLate = Math.ceil(
+            (now.getTime() - dueDate.getTime()) / (30 * 24 * 60 * 60 * 1000)
+          );
+          const monthlyRentCents = (typedDeposit.lease?.loyer || 0) * 100;
+          latePenaltyCents = Math.round(monthlyRentCents * 0.1 * monthsLate);
+        }
+      }
+
+      // Determine status
+      const newStatus =
+        validated.retenue_cents > 0 ? "partially_returned" : "returned";
+
+      // Update deposit
+      const { data: updated, error: updateError } = await serviceClient
+        .from("security_deposits")
+        .update({
+          restitution_amount_cents: validated.restitution_amount_cents,
+          retenue_cents: validated.retenue_cents,
+          retenue_details: validated.retenue_details,
+          restitution_method: validated.restitution_method,
+          restitution_due_date: dueDateStr || null,
+          restituted_at: new Date().toISOString(),
           late_penalty_cents: latePenaltyCents,
+          status: newStatus,
+          metadata: {
+            ...(typedDeposit.metadata || {}),
+            notes: validated.notes || null,
+            restituted_by: user.id,
+          },
+        } as any)
+        .eq("id", depositId)
+        .select()
+        .single();
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Notify tenant
+      const { data: tenantProfile } = await serviceClient
+        .from("profiles")
+        .select("user_id, prenom, nom")
+        .eq("id", typedDeposit.tenant_id)
+        .single();
+
+      if (tenantProfile?.user_id) {
+        const amountEur = (validated.restitution_amount_cents / 100).toFixed(2);
+        await serviceClient.from("notifications").insert({
+          user_id: tenantProfile.user_id,
+          type: "deposit_refund",
+          title: "Restitution de votre dépôt de garantie",
+          body:
+            validated.restitution_amount_cents > 0
+              ? `Votre dépôt sera restitué : ${amountEur}€ par ${validated.restitution_method}.`
+              : `Votre dépôt a été intégralement retenu (retenues justifiées).`,
+          priority: "high",
+          metadata: {
+            deposit_id: depositId,
+            lease_id: typedDeposit.lease_id,
+            restitution_amount_cents: validated.restitution_amount_cents,
+            retenue_cents: validated.retenue_cents,
+          },
+        });
+      }
+
+      // Emit event
+      await serviceClient.from("outbox").insert({
+        event_type: "Deposit.Restituted",
+        payload: {
+          deposit_id: depositId,
+          lease_id: typedDeposit.lease_id,
+          tenant_id: typedDeposit.tenant_id,
+          restitution_amount_cents: validated.restitution_amount_cents,
+          retenue_cents: validated.retenue_cents,
+          late_penalty_cents: latePenaltyCents,
+          method: validated.restitution_method,
+          property_address: typedDeposit.lease?.property?.adresse_complete,
         },
+      } as any);
+
+      // Audit log
+      await serviceClient.from("audit_log").insert({
+        user_id: user.id,
+        action: "deposit_restituted",
+        entity_type: "security_deposit",
+        entity_id: depositId,
+        metadata: {
+          lease_id: typedDeposit.lease_id,
+          restitution_amount_cents: validated.restitution_amount_cents,
+          retenue_cents: validated.retenue_cents,
+          retenue_details: validated.retenue_details,
+          late_penalty_cents: latePenaltyCents,
+          method: validated.restitution_method,
+        },
+      } as any);
+
+      return NextResponse.json({
+        deposit: updated,
+        late_penalty_cents: latePenaltyCents,
       });
+    } catch (err: unknown) {
+      if ((err as any).name === "ZodError") {
+        return NextResponse.json(
+          { error: "Données invalides", details: (err as any).errors },
+          { status: 400 }
+        );
+      }
+      console.error("[POST /api/deposits/[id]/restitute] Error:", err);
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "Erreur serveur" },
+        { status: 500 }
+      );
     }
-
-    // Émettre un événement outbox
-    await serviceClient.from("outbox").insert({
-      event_type: "Deposit.Restituted",
-      payload: {
-        deposit_id: depositId,
-        lease_id: depositData.lease_id,
-        tenant_id: depositData.tenant_id,
-        restitution_amount_cents,
-        retenue_cents,
-        late_penalty_cents: latePenaltyCents,
-        restitution_method,
-        property_address: depositData.lease?.property?.adresse_complete,
-      },
-    });
-
-    // Journaliser
-    await serviceClient.from("audit_log").insert({
-      user_id: user.id,
-      action: "deposit_restituted",
-      entity_type: "security_deposit",
-      entity_id: depositId,
-      metadata: {
-        lease_id: depositData.lease_id,
-        restitution_amount_cents,
-        retenue_cents,
-        retenue_details,
-        late_penalty_cents: latePenaltyCents,
-        restitution_method,
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      message:
-        newStatus === "returned"
-          ? "Dépôt intégralement restitué"
-          : "Restitution partielle enregistrée",
-      deposit: updatedDeposit,
-      late_penalty_cents: latePenaltyCents,
-    });
   },
   { routeName: "POST /api/deposits/[id]/restitute", csrf: true }
 );

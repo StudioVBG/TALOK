@@ -183,9 +183,21 @@ export type PaymentMethod =
 
 export type PaymentStatus = "pending" | "succeeded" | "failed";
 
-export type TicketPriority = "basse" | "normale" | "haute";
+export type TicketPriority = "low" | "normal" | "urgent" | "emergency" | "basse" | "normale" | "haute" | "urgente";
 
-export type TicketStatus = "open" | "in_progress" | "resolved" | "closed";
+export type TicketStatus = "open" | "acknowledged" | "assigned" | "in_progress" | "resolved" | "closed" | "rejected" | "reopened" | "paused";
+
+export type TicketCategory =
+  | "plomberie"
+  | "electricite"
+  | "serrurerie"
+  | "chauffage"
+  | "humidite"
+  | "nuisibles"
+  | "bruit"
+  | "parties_communes"
+  | "equipement"
+  | "autre";
 
 export type WorkOrderStatus = "assigned" | "scheduled" | "done" | "cancelled";
 
@@ -746,12 +758,35 @@ export interface Ticket {
   property_id: string;
   lease_id: string | null;
   created_by_profile_id: string;
+  assigned_to: string | null;
+  owner_id: string | null;
+  entity_id: string | null;
   titre: string;
   description: string;
+  category: TicketCategory | null;
   priorite: TicketPriority;
   statut: TicketStatus;
+  photos: string[];
+  work_order_id: string | null;
+  resolved_at: string | null;
+  closed_at: string | null;
+  resolution_notes: string | null;
+  satisfaction_rating: number | null;
+  ai_summary?: string | null;
+  ai_suggested_action?: string | null;
+  ai_suggested_provider_type?: string[] | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface TicketComment {
+  id: string;
+  ticket_id: string;
+  author_id: string;
+  content: string;
+  attachments: string[];
+  is_internal: boolean;
+  created_at: string;
 }
 
 export interface WorkOrder {

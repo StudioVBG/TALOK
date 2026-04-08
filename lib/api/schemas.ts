@@ -236,7 +236,24 @@ export const CreateTicketSchema = z.object({
   lease_id: z.string().uuid().optional().nullable(),
   titre: z.string().min(3, "Titre: 3 caractères minimum"),
   description: z.string().min(10, "Description: 10 caractères minimum"),
-  priorite: z.enum(["basse", "normale", "haute"]).default("normale"),
+  category: z.enum([
+    "plomberie", "electricite", "serrurerie", "chauffage", "humidite",
+    "nuisibles", "bruit", "parties_communes", "equipement", "autre",
+  ]).optional().nullable(),
+  priorite: z.enum(["low", "normal", "urgent", "emergency", "basse", "normale", "haute", "urgente"]).default("normal"),
+  photos: z.array(z.string()).optional(),
+});
+
+export const UpdateTicketSchema = z.object({
+  titre: z.string().min(3).optional(),
+  description: z.string().min(10).optional(),
+  category: z.enum([
+    "plomberie", "electricite", "serrurerie", "chauffage", "humidite",
+    "nuisibles", "bruit", "parties_communes", "equipement", "autre",
+  ]).optional().nullable(),
+  priorite: z.enum(["low", "normal", "urgent", "emergency", "basse", "normale", "haute", "urgente"]).optional(),
+  resolution_notes: z.string().optional(),
+  satisfaction_rating: z.number().int().min(1).max(5).optional(),
 });
 
 export const AssignTicketSchema = z.object({
@@ -244,7 +261,26 @@ export const AssignTicketSchema = z.object({
 });
 
 export const UpdateTicketStatusSchema = z.object({
-  status: z.enum(["open", "in_progress", "paused", "resolved", "closed"]),
+  status: z.enum([
+    "open", "acknowledged", "assigned", "in_progress",
+    "resolved", "closed", "rejected", "reopened", "paused",
+  ]),
+});
+
+export const CreateTicketCommentSchema = z.object({
+  content: z.string().min(1, "Contenu requis"),
+  attachments: z.array(z.string()).optional(),
+  is_internal: z.boolean().optional().default(false),
+});
+
+export const CreateWorkOrderFromTicketSchema = z.object({
+  provider_id: z.string().uuid(),
+  date_intervention_prevue: z.string().optional().nullable(),
+  cout_estime: z.number().positive().optional().nullable(),
+});
+
+export const ResolveTicketSchema = z.object({
+  resolution_notes: z.string().optional(),
 });
 
 export const CreateQuoteSchema = z.object({
@@ -951,4 +987,59 @@ export type QueryAuditEventsInput = z.infer<typeof QueryAuditEventsSchema>;
 export type GDPRExportRequestInput = z.infer<typeof GDPRExportRequestSchema>;
 export type GDPREraseRequestInput = z.infer<typeof GDPREraseRequestSchema>;
 export type AuditDashboardQueryInput = z.infer<typeof AuditDashboardQuerySchema>;
+
+// ==========================================
+// REST API — Third-party API Key & Webhook Schemas
+// ==========================================
+
+/**
+ * Create a third-party API key (owner self-service)
+ */
+export const CreateThirdPartyApiKeySchema = z.object({
+  name: z.string().min(1, "Nom requis").max(100, "100 caractères maximum"),
+  permissions: z.array(z.enum(["read", "write", "delete"])).min(1).default(["read"]),
+  scopes: z.array(z.enum(["properties", "leases", "documents", "accounting", "tenants", "payments"])).min(1).default(["properties"]),
+  expires_in_days: z.number().int().min(1).max(365).optional(),
+});
+
+/**
+ * Update a third-party API key
+ */
+export const UpdateThirdPartyApiKeySchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  permissions: z.array(z.enum(["read", "write", "delete"])).min(1).optional(),
+  scopes: z.array(z.enum(["properties", "leases", "documents", "accounting", "tenants", "payments"])).min(1).optional(),
+  is_active: z.boolean().optional(),
+});
+
+/**
+ * Create a webhook endpoint
+ */
+export const CreateWebhookSchema = z.object({
+  url: z.string().url("URL invalide").refine(
+    (url) => url.startsWith("https://"),
+    "L'URL doit utiliser HTTPS"
+  ),
+  events: z.array(z.string()).min(1, "Au moins un événement requis"),
+  description: z.string().max(255).optional(),
+});
+
+/**
+ * Update a webhook endpoint
+ */
+export const UpdateWebhookSchema = z.object({
+  url: z.string().url("URL invalide").refine(
+    (url) => url.startsWith("https://"),
+    "L'URL doit utiliser HTTPS"
+  ).optional(),
+  events: z.array(z.string()).min(1).optional(),
+  description: z.string().max(255).optional(),
+  is_active: z.boolean().optional(),
+});
+
+// REST API types
+export type CreateThirdPartyApiKeyInput = z.infer<typeof CreateThirdPartyApiKeySchema>;
+export type UpdateThirdPartyApiKeyInput = z.infer<typeof UpdateThirdPartyApiKeySchema>;
+export type CreateWebhookInput = z.infer<typeof CreateWebhookSchema>;
+export type UpdateWebhookInput = z.infer<typeof UpdateWebhookSchema>;
 

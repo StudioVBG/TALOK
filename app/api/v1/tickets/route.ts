@@ -36,13 +36,16 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const priority = searchParams.get("priority");
 
+    const category = searchParams.get("category");
+
     let query = supabase
       .from("tickets")
       .select(`
         *,
         properties!inner(id, adresse_complete, ville, owner_id),
         profiles:created_by_profile_id(prenom, nom),
-        work_orders(id, provider_id, statut)
+        assignee:profiles!assigned_to(prenom, nom),
+        work_orders(id, provider_id, statut, date_intervention_prevue, cout_estime)
       `, { count: "exact" })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
@@ -83,6 +86,10 @@ export async function GET(request: NextRequest) {
 
     if (priority && priority !== "all") {
       query = query.eq("priorite", priority);
+    }
+
+    if (category && category !== "all") {
+      query = query.eq("category", category);
     }
 
     const { data, error, count } = await query;
@@ -175,12 +182,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create ticket
+    // Create ticket with SOTA fields
     const { data: ticket, error } = await supabase
       .from("tickets")
       .insert({
-        ...data,
+        property_id: data.property_id,
+        lease_id: data.lease_id || null,
+        titre: data.titre,
+        description: data.description,
+        category: data.category || null,
+        priorite: data.priorite || "normal",
+        photos: data.photos || [],
         created_by_profile_id: auth.profile.id,
+        owner_id: property.owner_id,
         statut: "open",
       })
       .select()
