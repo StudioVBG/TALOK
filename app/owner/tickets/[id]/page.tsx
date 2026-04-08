@@ -475,7 +475,7 @@ function ProviderSearchModal({
                     {!isPremium && (
                       <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
                         <div className="flex items-start gap-3">
-                          <div className="p-2 rounded-full bg-white/20">
+                          <div className="p-2 rounded-full bg-card/20">
                             <Sparkles className="h-5 w-5" />
                           </div>
                           <div className="flex-1 text-left">
@@ -486,7 +486,7 @@ function ProviderSearchModal({
                             <Link href="/owner/money?tab=forfait">
                               <Button 
                                 size="sm" 
-                                className="mt-3 bg-white text-indigo-600 hover:bg-white/90"
+                                className="mt-3 bg-card text-indigo-600 hover:bg-card/90"
                               >
                                 Voir les offres →
                               </Button>

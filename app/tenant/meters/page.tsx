@@ -478,7 +478,7 @@ export default function TenantMetersPage() {
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
                 <GlassCard className="p-5 border-border bg-card shadow-lg">
                   <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-[#2563EB]" /> Évolution 12 mois
+                    <TrendingUp className="h-4 w-4 text-primary" /> Évolution 12 mois
                   </h3>
                   {meters.length > 0 ? (
                     <div className="space-y-3">
@@ -526,7 +526,7 @@ export default function TenantMetersPage() {
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
                 <GlassCard className="p-6 border-none bg-gradient-to-br from-indigo-600 to-blue-700 text-white shadow-2xl relative overflow-hidden">
                   <div className="relative z-10 space-y-4">
-                    <div className="h-12 w-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                    <div className="h-12 w-12 bg-card/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
                       <TrendingUp className="h-6 w-6 text-white" />
                     </div>
                     <h3 className="text-xl font-bold">Consommation Responsable</h3>
@@ -537,7 +537,7 @@ export default function TenantMetersPage() {
                       Les éco-gestes personnalisés arrivent bientôt.
                     </p>
                   </div>
-                  <div className="absolute -right-10 -bottom-10 h-40 w-40 bg-white/5 rounded-full blur-3xl" />
+                  <div className="absolute -right-10 -bottom-10 h-40 w-40 bg-card/5 rounded-full blur-3xl" />
                 </GlassCard>
               </motion.div>
 

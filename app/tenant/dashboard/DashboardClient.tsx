@@ -663,7 +663,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
               className={cn(
                 "h-14 rounded-2xl font-bold text-sm shadow-md transition-all hover:scale-[1.02]",
                 (dashboard.stats?.unpaid_amount > 0 || (nextDue && nextDue.daysLeft <= 7))
-                  ? "bg-[#2563EB] hover:bg-[#1D4ED8] text-white"
+                  ? "bg-primary hover:bg-primary/90 text-white"
                   : "bg-card border border-border text-foreground hover:bg-muted"
               )}
             >

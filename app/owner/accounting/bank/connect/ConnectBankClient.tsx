@@ -195,7 +195,7 @@ function ConnectBankFlow() {
           <div key={s} className="flex items-center gap-2 flex-1">
             <div
               className={`w-full h-1.5 rounded-full transition-colors ${
-                s <= step ? "bg-[#2563EB]" : "bg-muted"
+                s <= step ? "bg-primary" : "bg-muted"
               }`}
             />
           </div>
@@ -261,7 +261,7 @@ function ConnectBankFlow() {
                   <button
                     key={inst.id}
                     onClick={() => handleSelectBank(inst)}
-                    className="bg-card rounded-xl border border-border p-4 text-center hover:shadow-md hover:border-[#2563EB] transition-all space-y-2"
+                    className="bg-card rounded-xl border border-border p-4 text-center hover:shadow-md hover:border-primary transition-all space-y-2"
                   >
                     {inst.logo ? (
                       <img
@@ -285,7 +285,7 @@ function ConnectBankFlow() {
               {/* Manual import option */}
               <button
                 onClick={handleSelectManual}
-                className="w-full bg-card rounded-xl border border-dashed border-border p-4 flex items-center gap-3 hover:border-[#2563EB] transition-colors"
+                className="w-full bg-card rounded-xl border border-dashed border-border p-4 flex items-center gap-3 hover:border-primary transition-colors"
               >
                 <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
                   <FileSpreadsheet className="w-5 h-5 text-muted-foreground" />
@@ -388,7 +388,7 @@ function ConnectBankFlow() {
           <button
             onClick={handleSubmit}
             disabled={submitting || (isManual && !manualIban)}
-            className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-[#2563EB] text-white text-sm font-medium hover:bg-[#1B2A6B] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-white text-sm font-medium hover:bg-[#1B2A6B] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />

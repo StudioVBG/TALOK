@@ -141,7 +141,7 @@ function GenerateCRGForm({
           <Button
             onClick={handleGenerate}
             disabled={!selectedMandant || !period || mandantDetail.isGeneratingCrg}
-            className="bg-[#2563EB] hover:bg-[#1B2A6B] text-white"
+            className="bg-primary hover:bg-[#1B2A6B] text-white"
           >
             <Receipt className="w-4 h-4 mr-1" />
             {mandantDetail.isGeneratingCrg ? "Generation..." : "Generer"}
@@ -352,7 +352,7 @@ export function CRGClient() {
           </div>
           <Button
             onClick={() => setShowForm(!showForm)}
-            className="bg-[#2563EB] hover:bg-[#1B2A6B] text-white"
+            className="bg-primary hover:bg-[#1B2A6B] text-white"
           >
             <Plus className="w-4 h-4 mr-2" />
             Generer un CRG

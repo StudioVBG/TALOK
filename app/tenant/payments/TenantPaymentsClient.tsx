@@ -514,7 +514,7 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                               {isInvoicePayableStatus(invoice.statut) ? (
                                 <Button
                                   size="sm"
-                                  className="bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold h-10 px-6 rounded-xl shadow-lg shadow-blue-100 dark:shadow-blue-900/30"
+                                  className="bg-primary hover:bg-primary/90 text-white font-bold h-10 px-6 rounded-xl shadow-lg shadow-blue-100 dark:shadow-blue-900/30"
                                   onClick={() => {
                                     setSelectedInvoice(invoice);
                                     setIsPaymentOpen(true);
@@ -585,20 +585,20 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
         <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="mt-12 p-8 rounded-[2rem] bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-800 dark:to-slate-700 text-white relative overflow-hidden shadow-2xl">
           <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div className="space-y-4">
-              <div className="h-14 w-14 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md">
+              <div className="h-14 w-14 bg-card/10 rounded-2xl flex items-center justify-center backdrop-blur-md">
                 <PartyPopper className="h-8 w-8 text-emerald-400" />
               </div>
               <h2 className="text-3xl font-black">Besoin d'un justificatif ?</h2>
               <p className="text-white/60 leading-relaxed">
                 Vos quittances de loyer sont générées automatiquement dès réception de votre paiement. Elles servent de justificatif de domicile officiel.
               </p>
-              <Button variant="secondary" className="bg-white/10 hover:bg-white/20 border-white/20 text-white font-bold h-12 px-8" asChild>
+              <Button variant="secondary" className="bg-card/10 hover:bg-card/20 border-white/20 text-white font-bold h-12 px-8" asChild>
                 <Link href="/tenant/documents">Accéder à mes quittances</Link>
               </Button>
             </div>
             <div className="flex justify-end">
               <div className="relative group">
-                <GlassCard className="p-6 bg-white/5 border-white/10 backdrop-blur-xl rotate-3 group-hover:rotate-0 transition-transform duration-500">
+                <GlassCard className="p-6 bg-card/5 border-white/10 backdrop-blur-xl rotate-3 group-hover:rotate-0 transition-transform duration-500">
                   <CheckCircle2 className="h-12 w-12 text-emerald-400 mb-4" />
                   <p className="text-xl font-bold">Paiement Garanti</p>
                   <p className="text-sm text-white/60 mt-2">Toutes vos transactions sont sécurisées par cryptage SSL 256 bits.</p>

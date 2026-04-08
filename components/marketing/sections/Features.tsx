@@ -158,7 +158,7 @@ export function Features() {
                 {/* Illustration — slides in from side */}
                 <motion.div
                   variants={illustrationSlide}
-                  className={isReversed ? "md:[direction:ltr]" : ""}
+                  className={`min-h-[280px] ${isReversed ? "md:[direction:ltr]" : ""}`}
                 >
                   <feat.Illustration />
                 </motion.div>

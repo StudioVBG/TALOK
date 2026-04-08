@@ -288,7 +288,7 @@ export default function TenantColocationPage() {
                   return (
                     <div
                       key={roommate.id}
-                      className={`flex items-center gap-3 p-4 rounded-xl bg-white/80 border ${
+                      className={`flex items-center gap-3 p-4 rounded-xl bg-card/80 border ${
                         isMe ? "border-indigo-200 ring-2 ring-indigo-100" : "border-gray-100"
                       }`}
                     >

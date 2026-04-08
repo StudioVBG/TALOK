@@ -299,11 +299,11 @@ export default function NewTenantRequestPage() {
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="bg-white rounded-[2.5rem] border-2 border-indigo-50 shadow-2xl overflow-hidden"
+                  className="bg-card rounded-[2.5rem] border-2 border-indigo-50 shadow-2xl overflow-hidden"
                 >
                   <div className="bg-indigo-600 p-8 text-white">
                     <div className="flex items-center gap-4">
-                      <div className="h-16 w-16 bg-white/20 rounded-[2rem] flex items-center justify-center backdrop-blur-md">
+                      <div className="h-16 w-16 bg-card/20 rounded-[2rem] flex items-center justify-center backdrop-blur-md">
                         <MessageCircle className="h-8 w-8 text-white" />
                       </div>
                       <div>

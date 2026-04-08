@@ -31,7 +31,7 @@ function SplitHeading() {
       variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06 } } }}
       initial="hidden"
       animate="visible"
-      className="mt-6 font-display text-[32px] font-extrabold leading-[1.08] tracking-tight text-[#1B2A6B] sm:text-[44px] md:text-[52px] lg:text-[56px]"
+      className="mt-6 font-display text-[40px] font-extrabold leading-[1.08] tracking-tight text-[#1B2A6B] sm:text-[48px] md:text-[52px] lg:text-[56px]"
     >
       {line1.map((word, i) => (
         <motion.span key={i} variants={blurWord(0)} className="mr-[0.3em] inline-block">

@@ -167,7 +167,7 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button asChild size="lg" className="bg-[#2563EB] hover:bg-[#1D4ED8] font-bold">
+            <Button asChild size="lg" className="bg-primary hover:bg-primary/90 font-bold">
               <Link href={`${OWNER_ROUTES.properties.path}/new`}>
                 <Plus className="mr-2 h-5 w-5" />
                 Ajouter un bien
@@ -487,7 +487,7 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
                 Ajoutez un locataire et créez un bail pour commencer à encaisser vos loyers.
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button asChild className="bg-[#2563EB] hover:bg-[#1D4ED8] font-bold">
+                <Button asChild className="bg-primary hover:bg-primary/90 font-bold">
                   <Link href={`${OWNER_ROUTES.contracts.path}/new`}>
                     <Plus className="mr-2 h-4 w-4" />
                     Créer un bail

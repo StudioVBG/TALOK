@@ -386,13 +386,13 @@ export function LeaseTypeCards({ selectedType, onSelect, propertyType }: LeaseTy
                       animate={{ scale: 1 }}
                       className="absolute top-2 right-2"
                     >
-                      <Badge className="bg-white/20 text-white border-0 backdrop-blur-sm">
+                      <Badge className="bg-card/20 text-white border-0 backdrop-blur-sm">
                         ✓ Sélectionné
                       </Badge>
                     </motion.div>
                   ) : isRecommended ? (
                     <div className="absolute top-2 right-2">
-                      <Badge className="bg-white/20 text-white border-0 backdrop-blur-sm text-[10px]">
+                      <Badge className="bg-card/20 text-white border-0 backdrop-blur-sm text-[10px]">
                         Courant
                       </Badge>
                     </div>
