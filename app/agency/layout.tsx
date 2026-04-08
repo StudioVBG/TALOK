@@ -13,6 +13,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { AgencySidebar } from "./_components/AgencySidebar";
+import { AgencyThemeWrapper } from "./_components/AgencyThemeWrapper";
 
 /**
  * Layout Agency - Server Component
@@ -87,7 +88,9 @@ export default async function AgencyLayout({
             aria-label="Contenu principal"
           >
             <div className="py-6 px-4 sm:px-6 lg:px-8">
-              {children}
+              <AgencyThemeWrapper>
+                {children}
+              </AgencyThemeWrapper>
             </div>
           </main>
         </div>
