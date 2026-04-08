@@ -185,10 +185,7 @@ CREATE TRIGGER trg_entity_members_updated_at
 
 
 
--- =====================================================
 -- PRE-FIX: Add columns to OLD tables BEFORE new policies
--- These tables exist from migration 20260110 without entity_id
--- =====================================================
 ALTER TABLE public.accounting_journals ADD COLUMN IF NOT EXISTS entity_id UUID REFERENCES legal_entities(id);
 ALTER TABLE public.accounting_journals ADD COLUMN IF NOT EXISTS label TEXT;
 ALTER TABLE public.accounting_journals ADD COLUMN IF NOT EXISTS journal_type TEXT;
@@ -209,12 +206,9 @@ ALTER TABLE public.mandant_accounts ADD COLUMN IF NOT EXISTS mandant_name TEXT;
 ALTER TABLE public.mandant_accounts ADD COLUMN IF NOT EXISTS mandant_user_id UUID REFERENCES auth.users(id);
 ALTER TABLE public.mandant_accounts ADD COLUMN IF NOT EXISTS commission_rate NUMERIC(5,2) DEFAULT 0;
 ALTER TABLE public.mandant_accounts ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
-
--- Backfill new columns from old
 UPDATE public.accounting_entries SET entry_number = ecriture_num WHERE entry_number IS NULL AND ecriture_num IS NOT NULL;
 UPDATE public.accounting_entries SET entry_date = ecriture_date WHERE entry_date IS NULL AND ecriture_date IS NOT NULL;
 UPDATE public.accounting_entries SET label = ecriture_lib WHERE label IS NULL AND ecriture_lib IS NOT NULL;
-UPDATE public.accounting_entries SET is_validated = (valid_date IS NOT NULL) WHERE is_validated IS NULL OR is_validated = false;
 UPDATE public.accounting_journals SET label = libelle WHERE label IS NULL AND libelle IS NOT NULL;
 
 
@@ -1123,50 +1117,41 @@ COMMENT ON TABLE accounting_audit_log IS 'Journal audit comptable (insertion seu
 -- Migration: Audit fixes — missing indexes, CHECK constraints, and RLS
 -- Idempotent: safe to run multiple times
 
--- 1. Missing index on sepa_mandates.owner_profile_id
-CREATE INDEX IF NOT EXISTS idx_sepa_mandates_owner ON sepa_mandates(owner_profile_id);
-
--- 2. CHECK constraints on status columns
+-- 1. Missing index on sepa_mandates.owner_profile_id (skip if table missing)
 DO $$ BEGIN
-  ALTER TABLE reconciliation_matches
-    ADD CONSTRAINT chk_reconciliation_matches_status
-    CHECK (status IN ('pending','matched','disputed','resolved'));
-EXCEPTION WHEN duplicate_object THEN NULL;
+  CREATE INDEX IF NOT EXISTS idx_sepa_mandates_owner ON sepa_mandates(owner_profile_id);
+EXCEPTION WHEN undefined_table THEN NULL;
+END $$;
+
+-- 2. CHECK constraints on status columns (skip if table does not exist)
+DO $$ BEGIN
+  ALTER TABLE reconciliation_matches ADD CONSTRAINT chk_reconciliation_matches_status CHECK (status IN ('pending','matched','disputed','resolved'));
+EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
-  ALTER TABLE payment_schedules
-    ADD CONSTRAINT chk_payment_schedules_status
-    CHECK (status IN ('pending','active','paused','completed','cancelled'));
-EXCEPTION WHEN duplicate_object THEN NULL;
+  ALTER TABLE payment_schedules ADD CONSTRAINT chk_payment_schedules_status CHECK (status IN ('pending','active','paused','completed','cancelled'));
+EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
-  ALTER TABLE receipt_stubs
-    ADD CONSTRAINT chk_receipt_stubs_status
-    CHECK (status IN ('signed','cancelled','archived'));
-EXCEPTION WHEN duplicate_object THEN NULL;
+  ALTER TABLE receipt_stubs ADD CONSTRAINT chk_receipt_stubs_status CHECK (status IN ('signed','cancelled','archived'));
+EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
-  ALTER TABLE subscriptions
-    ADD CONSTRAINT chk_subscriptions_status
-    CHECK (status IN ('trialing','active','past_due','canceled','incomplete','paused'));
-EXCEPTION WHEN duplicate_object THEN NULL;
+  ALTER TABLE subscriptions ADD CONSTRAINT chk_subscriptions_status CHECK (status IN ('trialing','active','past_due','canceled','incomplete','paused'));
+EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
-  ALTER TABLE visit_slots
-    ADD CONSTRAINT chk_visit_slots_status
-    CHECK (status IN ('available','booked','cancelled','completed'));
-EXCEPTION WHEN duplicate_object THEN NULL;
+  ALTER TABLE visit_slots ADD CONSTRAINT chk_visit_slots_status CHECK (status IN ('available','booked','cancelled','completed'));
+EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_table THEN NULL;
 END $$;
 
 DO $$ BEGIN
-  ALTER TABLE visit_bookings
-    ADD CONSTRAINT chk_visit_bookings_status
-    CHECK (status IN ('pending','confirmed','cancelled','no_show','completed'));
-EXCEPTION WHEN duplicate_object THEN NULL;
+  ALTER TABLE visit_bookings ADD CONSTRAINT chk_visit_bookings_status CHECK (status IN ('pending','confirmed','cancelled','no_show','completed'));
+EXCEPTION WHEN duplicate_object THEN NULL; WHEN undefined_table THEN NULL;
 END $$;
 
 -- 3. Enable RLS on lease_notices (idempotent — ENABLE is a no-op if already on)
