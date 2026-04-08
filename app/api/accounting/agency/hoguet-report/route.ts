@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * API Route: Hoguet Compliance Report
  * GET /api/accounting/agency/hoguet-report

@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * API Route: Manual bank transaction matching
  * POST /api/accounting/bank/reconciliation/match

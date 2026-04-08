@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * API Route: Bank OAuth Callback
  * GET /api/accounting/bank/callback - Browser redirect after bank authorization

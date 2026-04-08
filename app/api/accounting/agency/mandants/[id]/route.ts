@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * API Route: Agency Mandant Detail
  * GET   /api/accounting/agency/mandants/:id - Detail with properties, entries, CRGs

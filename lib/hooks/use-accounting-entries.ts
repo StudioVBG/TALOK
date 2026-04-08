@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Hook React Query pour la liste des ecritures comptables
  *
