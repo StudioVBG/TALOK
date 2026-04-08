@@ -160,7 +160,7 @@ destinée au marché français (métropole + France d'outre-mer).
 | Pro | 59,90€ | 599€/an | 50 | ∞ | ∞ | 200 Go |
 | Enterprise | Sur devis | — | ∞ | ∞ | ∞ | ∞ |
 
-Annuel = -17%
+Annuel = -17% | **Plan Starter supprimé**
 
 ---
 
@@ -284,4 +284,5 @@ TALOK/
 | Onboarding : inscription, emails, tour guidé | `talok-onboarding-sota` | flow, WelcomeModal, emails |
 | Feature gating comptabilité (matrice par plan) | `talok-accounting` section 9 | OCR, FEC, connexions par plan |
 | TVA validation justificatifs utilisateurs | `talok-accounting` (TVA_RATES) | taux DROM-COM pour OCR |
+| Agent IA TALO : chat, scoring, fiscal, classification | `talok-talo-agent` | prompts, tools, quotas, tables IA |
 | Grille tarifaire Talok (prix, limites) | ICI section 6 | — source unique — |
