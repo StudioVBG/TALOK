@@ -88,7 +88,7 @@ export async function GET(request: Request) {
 
     const { data: entity } = await supabase
       .from("legal_entities")
-      .select("id, name, carte_g_numero, carte_g_expiry, caisse_garantie, caisse_garantie_numero")
+      .select("id, nom, carte_g_numero, carte_g_expiry, caisse_garantie, caisse_garantie_numero")
       .eq("id", agencyEntityId)
       .single();
 
@@ -159,17 +159,18 @@ export async function GET(request: Request) {
 
     const { data: bankConnections } = await supabase
       .from("bank_connections")
-      .select("id, bank_name, account_label, iban")
+      .select("id, bank_name, account_type, iban_hash")
       .eq("entity_id", agencyEntityId)
       .eq("is_active", true);
 
-    const hasMandantBankAccount = (bankConnections ?? []).some(
+    const connectionCount = (bankConnections ?? []).length;
+    const hasMandantBankAccount = connectionCount >= 2 || (bankConnections ?? []).some(
       (conn: Record<string, unknown>) => {
-        const label = ((conn.account_label as string) || "").toLowerCase();
+        const bankName = ((conn.bank_name as string) || "").toLowerCase();
         return (
-          label.includes("mandant") ||
-          label.includes("gestion") ||
-          label.includes("fonds tiers")
+          bankName.includes("mandant") ||
+          bankName.includes("gestion") ||
+          bankName.includes("fonds tiers")
         );
       },
     );
@@ -201,7 +202,7 @@ export async function GET(request: Request) {
     // Find mandants with pending reversals > 30 days
     const { data: mandants } = await supabase
       .from("mandant_accounts")
-      .select("id, mandant_name, sub_account_number")
+      .select("id, mandant_name, account_number")
       .eq("entity_id", agencyEntityId)
       .eq("is_active", true);
 
@@ -209,7 +210,7 @@ export async function GET(request: Request) {
     const lateReversalDetails: string[] = [];
 
     for (const mandant of mandants ?? []) {
-      const accountNumber = mandant.sub_account_number as string;
+      const accountNumber = (mandant.account_number as string) ?? `467${(mandant.id as string).slice(0, 3)}`;
 
       // Get balance on the mandant sub-account (467XXX)
       const { data: subAccountLines } = await supabase
