@@ -124,7 +124,7 @@ export async function GET(request: Request) {
     // Agency flow: list CRGs for a mandant
     // ------------------------------------------------------------------
     if (mandantId) {
-      const { data: crgs, error } = await supabase
+      const { data: crgs, error } = await (supabase as any)
         .from("crg_reports")
         .select("*")
         .eq("mandant_id", mandantId)

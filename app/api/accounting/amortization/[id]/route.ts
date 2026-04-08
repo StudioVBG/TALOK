@@ -50,7 +50,7 @@ export async function GET(
     const featureGate = await requireAccountingAccess(profile.id, "entries");
     if (featureGate) return featureGate;
 
-    const { data: schedule, error } = await supabase
+    const { data: schedule, error } = await (supabase as any)
       .from("amortization_schedules")
       .select("*, amortization_lines(*)")
       .eq("id", id)
@@ -99,7 +99,7 @@ export async function PATCH(
     if (featureGate) return featureGate;
 
     // Check that no lines exist yet
-    const { count } = await supabase
+    const { count } = await (supabase as any)
       .from("amortization_lines")
       .select("id", { count: "exact", head: true })
       .eq("schedule_id", id);
@@ -130,7 +130,7 @@ export async function PATCH(
       throw new ApiError(400, "Aucune modification fournie");
     }
 
-    const { data: updated, error } = await supabase
+    const { data: updated, error } = await (supabase as any)
       .from("amortization_schedules")
       .update(updates)
       .eq("id", id)

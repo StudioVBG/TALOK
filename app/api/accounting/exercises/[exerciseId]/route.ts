@@ -42,7 +42,7 @@ export async function GET(
     if (featureGate) return featureGate;
 
     // Fetch the exercise
-    const { data: exercise, error } = await supabase
+    const { data: exercise, error } = await (supabase as any)
       .from("accounting_exercises")
       .select("*")
       .eq("id", exerciseId)
@@ -53,7 +53,7 @@ export async function GET(
     }
 
     // Fetch balance summary: total debits/credits for validated entries
-    const { data: lines } = await supabase
+    const { data: lines } = await (supabase as any)
       .from("accounting_entry_lines")
       .select(`
         debit_cents,

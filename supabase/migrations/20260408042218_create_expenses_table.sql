@@ -99,10 +99,10 @@ ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Owners can view own expenses" ON expenses
   FOR SELECT TO authenticated
   USING (
-    owner_profile_id = get_current_owner_profile_id()
+    owner_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
     OR legal_entity_id IN (
       SELECT le.id FROM legal_entities le
-      WHERE le.owner_profile_id = get_current_owner_profile_id()
+      WHERE le.owner_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
     )
     OR public.user_role() = 'admin'
   );
@@ -110,37 +110,37 @@ CREATE POLICY "Owners can view own expenses" ON expenses
 CREATE POLICY "Owners can insert own expenses" ON expenses
   FOR INSERT TO authenticated
   WITH CHECK (
-    owner_profile_id = get_current_owner_profile_id()
+    owner_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
     OR legal_entity_id IN (
       SELECT le.id FROM legal_entities le
-      WHERE le.owner_profile_id = get_current_owner_profile_id()
+      WHERE le.owner_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
     )
   );
 
 CREATE POLICY "Owners can update own expenses" ON expenses
   FOR UPDATE TO authenticated
   USING (
-    owner_profile_id = get_current_owner_profile_id()
+    owner_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
     OR legal_entity_id IN (
       SELECT le.id FROM legal_entities le
-      WHERE le.owner_profile_id = get_current_owner_profile_id()
+      WHERE le.owner_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
     )
   )
   WITH CHECK (
-    owner_profile_id = get_current_owner_profile_id()
+    owner_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
     OR legal_entity_id IN (
       SELECT le.id FROM legal_entities le
-      WHERE le.owner_profile_id = get_current_owner_profile_id()
+      WHERE le.owner_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
     )
   );
 
 CREATE POLICY "Owners can delete own expenses" ON expenses
   FOR DELETE TO authenticated
   USING (
-    owner_profile_id = get_current_owner_profile_id()
+    owner_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
     OR legal_entity_id IN (
       SELECT le.id FROM legal_entities le
-      WHERE le.owner_profile_id = get_current_owner_profile_id()
+      WHERE le.owner_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
     )
   );
 

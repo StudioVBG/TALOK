@@ -52,7 +52,7 @@ export async function GET(request: Request) {
       throw new ApiError(400, "entityId est requis");
     }
 
-    const { data: exercises, error } = await supabase
+    const { data: exercises, error } = await (supabase as any)
       .from("accounting_exercises")
       .select("*")
       .eq("entity_id", entityId)
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     }
 
     // Check for overlapping exercises
-    const { data: overlapping } = await supabase
+    const { data: overlapping } = await (supabase as any)
       .from("accounting_exercises")
       .select("id")
       .eq("entity_id", entityId)

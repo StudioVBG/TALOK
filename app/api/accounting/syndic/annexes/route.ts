@@ -46,7 +46,7 @@ export async function GET(request: Request) {
     }
 
     // Verify exercise exists
-    const { data: exercise, error: exErr } = await supabase
+    const { data: exercise, error: exErr } = await (supabase as any)
       .from("accounting_exercises")
       .select("id")
       .eq("id", exerciseId)

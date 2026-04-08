@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     const { entityId, ecEmail, ecFirmName, accessLevel } = validation.data;
 
     // Check if an active access already exists for this email + entity
-    const { data: existing } = await supabase
+    const { data: existing } = await (supabase as any)
       .from("ec_access")
       .select("id")
       .eq("entity_id", entityId)
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       .single();
 
     // Insert ec_access
-    const { data: access, error: insertError } = await supabase
+    const { data: access, error: insertError } = await (supabase as any)
       .from("ec_access")
       .insert({
         entity_id: entityId,
@@ -156,7 +156,7 @@ export async function GET(request: Request) {
       throw new ApiError(400, "entityId est requis");
     }
 
-    const { data: accesses, error } = await supabase
+    const { data: accesses, error } = await (supabase as any)
       .from("ec_access")
       .select("*")
       .eq("entity_id", entityId)

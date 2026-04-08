@@ -70,10 +70,10 @@ export async function GET(request: Request, context: Context) {
     const { data: properties } = await supabase
       .from("properties")
       .select("id, address, city, property_type, status")
-      .eq("owner_entity_id", mandant.owner_entity_id);
+      .eq("owner_entity_id", mandant.owner_entity_id as string);
 
     // Fetch recent accounting entries related to this mandant
-    const { data: recentEntries } = await supabase
+    const { data: recentEntries } = await (supabase as any)
       .from("accounting_entry_lines")
       .select(
         `
@@ -93,7 +93,7 @@ export async function GET(request: Request, context: Context) {
       .limit(50);
 
     // Fetch CRG reports for this mandant
-    const { data: crgReports } = await supabase
+    const { data: crgReports } = await (supabase as any)
       .from("crg_reports")
       .select("*")
       .eq("mandant_id", id)
@@ -102,11 +102,11 @@ export async function GET(request: Request, context: Context) {
 
     // Compute balance on sub-account
     const totalDebit = (recentEntries ?? []).reduce(
-      (sum, l) => sum + ((l.debit_cents as number) || 0),
+      (sum: number, l: any) => sum + ((l.debit_cents as number) || 0),
       0,
     );
     const totalCredit = (recentEntries ?? []).reduce(
-      (sum, l) => sum + ((l.credit_cents as number) || 0),
+      (sum: number, l: any) => sum + ((l.credit_cents as number) || 0),
       0,
     );
 
@@ -115,7 +115,7 @@ export async function GET(request: Request, context: Context) {
       data: {
         mandant,
         properties: properties ?? [],
-        recentEntries: (recentEntries ?? []).map((line) => ({
+        recentEntries: (recentEntries ?? []).map((line: any) => ({
           lineId: line.id,
           accountNumber: line.account_number,
           lineLabel: line.label,

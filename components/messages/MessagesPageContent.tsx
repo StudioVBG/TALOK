@@ -123,7 +123,7 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
                 lease_signers(profile_id, profiles(prenom, nom))
               `)
               .eq("properties.owner_id", profile.id)
-              .in("status", ["active", "signed"]);
+              .in("statut", ["active", "signed"]);
 
             if (ownerLeases && ownerLeases.length > 0) {
               const tenants: TenantOption[] = [];

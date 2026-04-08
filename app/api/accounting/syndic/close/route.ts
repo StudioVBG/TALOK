@@ -64,7 +64,7 @@ export async function POST(request: Request) {
     const { entityId, exerciseId } = validation.data;
 
     // Verify exercise exists and is open
-    const { data: exercise, error: exErr } = await supabase
+    const { data: exercise, error: exErr } = await (supabase as any)
       .from("accounting_exercises")
       .select("*")
       .eq("id", exerciseId)
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
     );
 
     // Load active lots for repartition
-    const { data: lots } = await supabase
+    const { data: lots } = await (supabase as any)
       .from("copro_lots")
       .select("*")
       .eq("copro_entity_id", entityId)
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
     }
 
     const totalTantiemes = lots.reduce(
-      (sum, l) => sum + (l.tantiemes_generaux as number),
+      (sum: number, l: any) => sum + (l.tantiemes_generaux as number),
       0,
     );
 

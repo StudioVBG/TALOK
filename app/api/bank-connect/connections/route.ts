@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 
     const serviceClient = getServiceClient();
 
-    const { data: connections, error: dbError } = await serviceClient
+    const { data: connections, error: dbError } = await (serviceClient as any)
       .from("bank_connections")
       .select("*")
       .eq("user_id", user.id)
