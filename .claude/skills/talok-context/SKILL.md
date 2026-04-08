@@ -153,18 +153,14 @@ destinée au marché français (métropole + France d'outre-mer).
 
 ## 6. Grille tarifaire
 
-| Plan | Prix HT/mois | Biens | Users | Signatures/mois | Stockage |
-|------|-------------|-------|-------|----------------|----------|
-| Gratuit | 0 euros | 1 | 1 | 0 | 100 MB |
-| Starter | 9 euros | 3 | 1 | 0 | 1 GB |
-| Confort (star) | 35 euros | 10 | 2 | 2 | 5 GB |
-| Pro | 69 euros | 50 | 5 | 10 | 30 GB |
-| Enterprise S | 249 euros | 100 | inf | 25 | 50 GB |
-| Enterprise M | 349 euros | 200 | inf | 40 | 100 GB |
-| Enterprise L | 499 euros | 500 | inf | 60 | 200 GB |
-| Enterprise XL | 799 euros | inf | inf | inf | inf |
+| Plan | Prix HT/mois | Annuel | Biens | Users | Signatures/mois | Stockage |
+|------|-------------|--------|-------|-------|----------------|----------|
+| Gratuit | 0€ | — | 2 | 1 | 0 | 500 Mo |
+| Confort ⭐ | 24,90€ | 249€/an | 10 | 3 | 5 | 15 Go |
+| Pro | 59,90€ | 599€/an | 50 | ∞ | ∞ | 200 Go |
+| Enterprise | Sur devis | — | ∞ | ∞ | ∞ | ∞ |
 
-Annuel = -20% | 1er mois offert sur Starter, Confort, Pro
+Annuel = -17% | **Plan Starter supprimé**
 
 ---
 
@@ -240,20 +236,20 @@ TALOK/
 
 ---
 
-## 10. Ce qui différencie Talok
+## 10. Ce qui différencie Talok (état réel)
 
-1. Courte + longue durée dans la même app
-2. Syndic intégré
-3. Colocation avancée (planning, règlement, partage)
-4. Mise en relation prestataires dans l'app
-5. IA intégrée (scoring GPT-4, OCR, tickets)
-6. App mobile iOS/Android native (Capacitor)
-7. White-label pour agences
-8. Compteurs connectés (Enedis, GRDF, Veolia)
-9. Comptabilité complète avec export FEC
-10. "Mes droits de locataire" — module légal unique
-11. Né en France d'outre-mer — seule solution native Antilles
-12. DROM-COM natif — TVA, codes postaux, spécificités locales
+1. ✅ Courte + longue durée dans la même app
+2. ⏳ Syndic intégré (backend codé, UI à construire)
+3. ⏳ Colocation avancée (skill créé, code à construire)
+4. ⏳ Mise en relation prestataires (skill créé, code à construire)
+5. ⏳ IA intégrée — scoring GPT-4, OCR (OCR codé, agent TALO à construire)
+6. ⏳ App mobile iOS/Android (Capacitor configuré, build à faire)
+7. ❌ White-label pour agences (pas commencé)
+8. ❌ Compteurs connectés Enedis/GRDF/Veolia (pas commencé)
+9. ✅ Comptabilité avec export FEC (5 sprints codés, déploiement en attente)
+10. ❌ "Mes droits de locataire" (pas commencé)
+11. ✅ Né en France d'outre-mer — seule solution native Antilles
+12. ✅ DROM-COM natif — TVA, codes postaux, spécificités locales
 
 ---
 
@@ -288,4 +284,5 @@ TALOK/
 | Onboarding : inscription, emails, tour guidé | `talok-onboarding-sota` | flow, WelcomeModal, emails |
 | Feature gating comptabilité (matrice par plan) | `talok-accounting` section 9 | OCR, FEC, connexions par plan |
 | TVA validation justificatifs utilisateurs | `talok-accounting` (TVA_RATES) | taux DROM-COM pour OCR |
+| Agent IA TALO : chat, scoring, fiscal, classification | `talok-talo-agent` | prompts, tools, quotas, tables IA |
 | Grille tarifaire Talok (prix, limites) | ICI section 6 | — source unique — |
