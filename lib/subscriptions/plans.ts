@@ -1113,10 +1113,17 @@ export function getYearlyDiscount(plan: Plan): number {
 }
 
 /**
+ * Statuts d'abonnement qui donnent accès complet au plan souscrit.
+ * Le statut Stripe fait autorité — ne JAMAIS forcer un changement de statut côté code.
+ */
+export const ENTITLED_STATUSES = ["active", "trialing", "past_due"] as const;
+
+/**
  * Vérifie si le statut d'abonnement permet l'usage des features
  */
 export function isSubscriptionStatusEntitled(status?: string | null): boolean {
-  return !status || status === "active" || status === "trialing";
+  if (!status) return false;
+  return (ENTITLED_STATUSES as readonly string[]).includes(status);
 }
 
 /**
