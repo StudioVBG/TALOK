@@ -91,12 +91,23 @@ export async function GET() {
       });
     }
 
-    // Récupérer le solde depuis Stripe
-    const balance = await connectService.getAccountBalance(connectAccount.stripe_account_id as string);
-
-    // Extraire les montants en EUR
-    const available = balance.available.find((b) => b.currency === "eur")?.amount || 0;
-    const pending = balance.pending.find((b) => b.currency === "eur")?.amount || 0;
+    // Récupérer le solde depuis Stripe (avec fallback si le compte est restreint)
+    let available = 0;
+    let pending = 0;
+    try {
+      const balance = await connectService.getAccountBalance(connectAccount.stripe_account_id as string);
+      available = balance.available.find((b) => b.currency === "eur")?.amount || 0;
+      pending = balance.pending.find((b) => b.currency === "eur")?.amount || 0;
+    } catch (balanceError) {
+      console.warn("[Stripe Connect] Balance fetch failed for account, returning zeros:", balanceError);
+      return NextResponse.json({
+        available: 0,
+        pending: 0,
+        currency: "eur",
+        has_account: true,
+        balance_unavailable: true,
+      });
+    }
 
     return NextResponse.json({
       available: available / 100, // Convertir en euros

@@ -35,7 +35,8 @@ function formatCurrency(amount: number): string {
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("fr-FR");
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("fr-FR");
 }
 
 export function FinancesDashboardClient() {

@@ -147,6 +147,22 @@ export function OwnerDataProvider({
       const data = await res.json();
       if (data && !data.error) {
         setApiData(data);
+        // Update dashboard KPIs from entity-filtered API counts
+        if (data.counts) {
+          setDashboard((prev) => prev ? {
+            ...prev,
+            properties: {
+              ...prev.properties,
+              total: data.counts.properties?.total ?? prev.properties?.total ?? 0,
+            },
+            leases: {
+              ...prev.leases,
+              active: data.counts.leases?.active ?? prev.leases?.active ?? 0,
+              pending: data.counts.leases?.pending ?? prev.leases?.pending ?? 0,
+              total: data.counts.leases?.total ?? prev.leases?.total ?? 0,
+            },
+          } : prev);
+        }
       }
     } catch (err) {
       console.error("[OwnerDataProvider] Erreur chargement API dashboard:", err);

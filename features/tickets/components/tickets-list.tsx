@@ -45,7 +45,8 @@ export function TicketsList({ propertyId }: TicketsListProps) {
     if (profile) {
       fetchTickets();
     }
-  }, [profile, propertyId]);
+    // Use profile.id (stable string) instead of profile (object reference that changes every render)
+  }, [profile?.id, propertyId]);
 
   async function fetchTickets() {
     if (!profile) return;
