@@ -134,33 +134,21 @@ export async function POST(request: Request) {
       .limit(1)
       .maybeSingle();
 
-    // Déduire usage_principal depuis le type de bien
-    const HABITATION = ["appartement", "maison", "studio", "colocation", "saisonnier"];
-    const PARKING = ["parking", "box"];
-    const PRO = ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"];
-    const usagePrincipal = HABITATION.includes(type) ? "habitation"
-      : PARKING.includes(type) ? "parking"
-      : PRO.includes(type) ? "professionnel"
-      : "habitation";
-
     const insertData: Record<string, any> = {
       owner_id: profile.id,
       legal_entity_id: defaultEntity?.id ?? null,
-      type: type, // Correspond au champ 'type' de la table properties
-      type_bien: type, // Support V3 : type_bien (nouveau champ) aligné avec /api/properties
-      usage_principal: usagePrincipal, // Requis pour la soumission
-      etat: "draft", // Toujours 'draft' au début
-      unique_code: uniqueCode, // Code unique obligatoire
-      // Champs obligatoires mais qu'on peut mettre par défaut pour un draft
+      type: type,
+      type_bien: type,
+      etat: "draft",
+      unique_code: uniqueCode,
       adresse_complete: adresse || "",
       code_postal: cp || "",
       ville: ville || "",
-      departement: departement || "", // Valeur par défaut vide si pas de CP (évite NOT NULL constraint)
+      departement: departement || "",
       surface: 0,
       nb_pieces: 0,
-      nb_chambres: 0, // Aligné avec /api/properties
-      ascenseur: false, // Aligné avec /api/properties
-      // On initialise les compteurs à 0
+      nb_chambres: 0,
+      ascenseur: false,
       loyer_hc: 0,
       charges_mensuelles: 0,
       // depot_garantie n'existe pas dans la table properties (c'est dans leases)
