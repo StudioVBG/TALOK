@@ -49,6 +49,7 @@ import { GarantForm, type Garant } from "./GarantForm";
 import { LeasePreview } from "@/features/leases/components/lease-preview";
 import { RentControlAlert } from "@/components/lease/RentControlAlert";
 import { DomTomDiagnostics } from "@/components/lease/DomTomDiagnostics";
+import { RequiredDiagnosticsChecker } from "@/features/diagnostics/components/RequiredDiagnosticsChecker";
 import { CustomClauses } from "@/components/lease/CustomClauses";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import type { BailComplet } from "@/lib/templates/bail/types";
@@ -1100,6 +1101,16 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                         typeBail={selectedType || ""}
                       />
                       <DomTomDiagnostics codePostal={selectedProperty.code_postal} />
+                    </div>
+                  )}
+
+                  {/* DDT Checklist — diagnostics obligatoires */}
+                  {selectedPropertyId && !isDpeBlocked && (
+                    <div className="mt-6 p-4 rounded-xl bg-card border">
+                      <RequiredDiagnosticsChecker
+                        propertyId={selectedPropertyId}
+                        compact
+                      />
                     </div>
                   )}
 
