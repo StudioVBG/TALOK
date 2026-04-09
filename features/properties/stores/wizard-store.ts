@@ -390,9 +390,44 @@ export const usePropertyWizardStore = create<WizardState>()(
         propertiesService.listRooms(id),
         propertiesService.listPhotos(id)
       ]);
+
+      let buildingId: string | null = null;
+      let buildingFormData: Partial<WizardFormData> = {};
+
+      // Charger les données building/units si c'est un immeuble
+      if ((property as any).type === 'immeuble') {
+        const buildingData = await propertiesService.getBuildingForProperty(id);
+        if (buildingData?.building) {
+          buildingId = buildingData.building.id;
+          buildingFormData = {
+            building_floors: buildingData.building.floors ?? 4,
+            has_ascenseur: buildingData.building.has_ascenseur ?? false,
+            has_gardien: buildingData.building.has_gardien ?? false,
+            has_interphone: buildingData.building.has_interphone ?? false,
+            has_digicode: buildingData.building.has_digicode ?? false,
+            has_local_velo: buildingData.building.has_local_velo ?? false,
+            has_local_poubelles: buildingData.building.has_local_poubelles ?? false,
+            building_units: (buildingData.units ?? []).map((u: any) => ({
+              id: u.id,
+              floor: u.floor,
+              position: u.position,
+              type: u.type,
+              surface: u.surface,
+              nb_pieces: u.nb_pieces,
+              template: u.template,
+              loyer_hc: u.loyer_hc,
+              charges: u.charges,
+              depot_garantie: u.depot_garantie,
+              status: u.status,
+            })),
+          };
+        }
+      }
+
       set({
         propertyId: id,
-        formData: property as WizardFormData,
+        buildingId,
+        formData: { ...(property as WizardFormData), ...buildingFormData },
         rooms,
         photos,
         syncStatus: 'saved'

@@ -73,6 +73,7 @@ export async function POST(
           type,
           surface,
           nb_pieces,
+          loyer_hc,
           loyer_base,
           charges_mensuelles,
           depot_garantie,
@@ -86,6 +87,11 @@ export async function POST(
           dpe_emissions,
           dpe_estimation_conso_min,
           dpe_estimation_conso_max,
+          chauffage_type,
+          chauffage_energie,
+          eau_chaude_type,
+          clim_presence,
+          clim_type,
           permis_louer_requis,
           permis_louer_numero,
           permis_louer_date
@@ -116,9 +122,10 @@ export async function POST(
 
     // Déterminer le type de bien pour adapter les validations
     const propertyType = propertyData.type as string;
-    const isHabitation = ["appartement", "maison", "studio", "colocation"].includes(propertyType);
+    const isHabitation = ["appartement", "maison", "studio", "colocation", "saisonnier"].includes(propertyType);
     const isParking = ["parking", "box"].includes(propertyType);
     const isLocal = ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"].includes(propertyType);
+    const isImmeuble = propertyType === "immeuble";
 
     const { data: rooms, error: roomsError } = await serviceClient
       .from("rooms")
@@ -148,16 +155,18 @@ export async function POST(
     // Vérifications basiques de complétude adaptées selon le type de bien
     const missingFields: string[] = [];
     if (!propertyData.adresse_complete) missingFields.push("adresse_complete");
-    if (!propertyData.usage_principal) missingFields.push("usage_principal");
+    if (!isImmeuble && !propertyData.usage_principal) missingFields.push("usage_principal");
     if (!propertyData.type) missingFields.push("type");
 
+    // Immeuble : les conditions financières sont au niveau des lots, pas de la property parent
     const loyerHC = propertyData.loyer_hc ?? propertyData.loyer_base;
-
-    if (!loyerHC || loyerHC <= 0) missingFields.push("loyer_hc");
-    if (propertyData.charges_mensuelles === null || propertyData.charges_mensuelles < 0)
-      missingFields.push("charges_mensuelles");
-    if (propertyData.depot_garantie === null || propertyData.depot_garantie < 0)
-      missingFields.push("depot_garantie");
+    if (!isImmeuble) {
+      if (!loyerHC || loyerHC <= 0) missingFields.push("loyer_hc");
+      if (propertyData.charges_mensuelles === null || propertyData.charges_mensuelles < 0)
+        missingFields.push("charges_mensuelles");
+      if (propertyData.depot_garantie === null || propertyData.depot_garantie < 0)
+        missingFields.push("depot_garantie");
+    }
 
     // Validations spécifiques selon le type de bien
     if (isHabitation) {
@@ -176,13 +185,29 @@ export async function POST(
         missingFields.push("clim_type");
       }
     } else if (isParking) {
-      // Parking : pas de DPE/chauffage requis, mais surface et gabarit requis
-      // Note: Les champs parking_* sont vérifiés dans la validation Zod côté frontend
-      // Ici on vérifie juste les champs de base
+      // Parking : pas de DPE/chauffage requis
     } else if (isLocal) {
-      // Locaux : surface totale requise, pas de DPE/chauffage requis
-      // Note: Les champs local_* sont vérifiés dans la validation Zod côté frontend
-      // Ici on vérifie juste les champs de base
+      // Locaux : pas de DPE/chauffage requis
+    } else if (isImmeuble) {
+      // Immeuble : vérifier que des lots existent
+      const { data: building } = await serviceClient
+        .from("buildings")
+        .select("id")
+        .eq("property_id", propertyId)
+        .maybeSingle();
+
+      if (!building) {
+        missingFields.push("building_config");
+      } else {
+        const { count } = await serviceClient
+          .from("building_units")
+          .select("id", { count: "exact", head: true })
+          .eq("building_id", building.id);
+
+        if (!count || count === 0) {
+          missingFields.push("building_units");
+        }
+      }
     }
 
     if (missingFields.length > 0) {
@@ -217,7 +242,7 @@ export async function POST(
       }
     }
 
-    if (propertyData.zone_encadrement) {
+    if (!isImmeuble && propertyData.zone_encadrement) {
       if (propertyData.loyer_reference_majoré === null) {
         return NextResponse.json(
           {
@@ -343,28 +368,14 @@ export async function POST(
           { status: 400 }
         );
       }
-    } else if (isParking || isLocal) {
-      // Parking/Locaux : au moins une photo avec tag valide
-      const allowedTags = new Set(["vue_generale", "exterieur", "interieur", "detail"]);
-      
+    } else if (isParking || isLocal || isImmeuble) {
+      // Parking/Locaux/Immeuble : au moins une photo
       if (photosList.length === 0) {
         return NextResponse.json(
           {
-            error: "Ajoutez au moins une photo avant de soumettre.",
-          },
-          { status: 400 }
-        );
-      }
-
-      const invalidPhotos = photosList.filter(
-        (photo) => !photo.tag || !allowedTags.has(photo.tag as string)
-      );
-
-      if (invalidPhotos.length > 0) {
-        return NextResponse.json(
-          {
-            error:
-              "Toutes les photos doivent être marquées avec un tag valide (vue générale, extérieur, intérieur, détail).",
+            error: isImmeuble
+              ? "Ajoutez au moins une photo de la façade ou des parties communes."
+              : "Ajoutez au moins une photo avant de soumettre.",
           },
           { status: 400 }
         );

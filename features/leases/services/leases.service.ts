@@ -5,6 +5,7 @@ import type { Lease, LeaseSigner, LeaseType, LeaseStatus } from "@/lib/types";
 export interface CreateLeaseData {
   property_id?: string | null;
   unit_id?: string | null;
+  building_unit_id?: string | null;
   type_bail: LeaseType;
   loyer: number;
   charges_forfaitaires: number;

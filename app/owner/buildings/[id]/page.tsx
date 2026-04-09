@@ -86,27 +86,30 @@ export default async function BuildingDetailPage({ params }: PageProps) {
     .eq("property_id", id)
     .single();
 
-  // Fetch units
-  const { data: units } = await supabase
-    .from("building_units")
-    .select(`
-      id,
-      floor,
-      position,
-      type,
-      template,
-      surface,
-      nb_pieces,
-      loyer_hc,
-      charges,
-      depot_garantie,
-      status,
-      current_lease_id,
-      notes
-    `)
-    .eq("property_id", id)
-    .order("floor", { ascending: true })
-    .order("position", { ascending: true });
+  // Fetch units via building_id (pas property_id qui pointe vers le lot individuel)
+  const units = buildingMeta?.id
+    ? (await supabase
+        .from("building_units")
+        .select(`
+          id,
+          floor,
+          position,
+          type,
+          template,
+          surface,
+          nb_pieces,
+          loyer_hc,
+          charges,
+          depot_garantie,
+          status,
+          property_id,
+          current_lease_id,
+          notes
+        `)
+        .eq("building_id", buildingMeta.id)
+        .order("floor", { ascending: true })
+        .order("position", { ascending: true })).data
+    : null;
 
   return (
     <BuildingDetailClient

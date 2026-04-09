@@ -70,15 +70,15 @@ const unitTypes: { value: BuildingUnitType; label: string; icon: typeof Home }[]
 ];
 
 const templates: { value: BuildingUnitTemplate; label: string }[] = [
-  { value: "T1", label: "T1 (1 pièce)" },
-  { value: "T2", label: "T2 (2 pièces)" },
-  { value: "T3", label: "T3 (3 pièces)" },
-  { value: "T4", label: "T4 (4 pièces)" },
-  { value: "T5", label: "T5+ (5+ pièces)" },
+  { value: "t1", label: "T1 (1 pièce)" },
+  { value: "t2", label: "T2 (2 pièces)" },
+  { value: "t3", label: "T3 (3 pièces)" },
+  { value: "t4", label: "T4 (4 pièces)" },
+  { value: "t5", label: "T5+ (5+ pièces)" },
   { value: "studio", label: "Studio" },
   { value: "parking", label: "Parking" },
   { value: "cave", label: "Cave" },
-  { value: "bureau", label: "Bureau" },
+  { value: "local", label: "Local" },
 ];
 
 function createEmptyUnit(): UnitDraft {
@@ -87,7 +87,7 @@ function createEmptyUnit(): UnitDraft {
     floor: 0,
     position: "",
     type: "appartement",
-    template: "T2",
+    template: "t2",
     surface: 0,
     nb_pieces: 2,
     loyer_hc: 0,

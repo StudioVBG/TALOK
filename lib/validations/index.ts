@@ -522,14 +522,22 @@ export const propertyGeneralUpdateSchema = z
     local_rideau_metal: z.boolean().optional(),
     local_acces_camion: z.boolean().optional(),
     local_parking_clients: z.boolean().optional(),
-    // SOTA 2026 - Immeuble
+    // SOTA 2026 - Immeuble (strippés côté route avant UPDATE properties)
     building_floors: z.number().int().min(1).max(50).optional().nullable(),
+    building_units: z.any().optional(),
     has_ascenseur: z.boolean().optional(),
     has_gardien: z.boolean().optional(),
     has_interphone: z.boolean().optional(),
     has_digicode: z.boolean().optional(),
     has_local_velo: z.boolean().optional(),
     has_local_poubelles: z.boolean().optional(),
+    // Publication & Annonce
+    etat: z.enum(["draft", "published", "archived", "pending_review", "rejected"]).optional(),
+    mode_location: z.enum(["longue_duree", "courte_duree", "colocation", "commercial", "parking"]).optional().nullable(),
+    visibility: z.enum(["public", "private"]).optional(),
+    available_from: z.string().optional().nullable(),
+    description: z.string().optional().nullable(),
+    usage_principal: z.enum(["habitation", "habitation_secondaire", "mixte"]).optional().nullable(),
     // Conditions de location V3
     type_bail: z.enum([
       "vide", "meuble", "colocation",
@@ -548,10 +556,7 @@ export const propertyGeneralUpdateSchema = z
     complement_justification: z.string().optional().nullable(),
     // Accès & Sécurité
     digicode: z.string().max(50).optional().nullable()
-      .refine(
-        (val) => val !== "",
-        { message: "Le digicode ne peut pas être vide" }
-      ),
+      .transform((val) => val === "" ? null : val),
     interphone: z.string().max(100).optional().nullable(),
     // Visite virtuelle (Matterport, Nodalview, etc.)
     visite_virtuelle_url: z.string().url("L'URL de visite virtuelle doit être valide").optional().nullable(),

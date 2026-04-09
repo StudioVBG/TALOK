@@ -415,7 +415,7 @@ export default function OwnerPropertiesPage() {
       cell: (property: any) => (
         <div className="flex justify-end">
           <Button size="sm" variant="ghost" asChild>
-            <Link href={`/owner/properties/${property.id}`}>
+            <Link href={property.type === "immeuble" ? `/owner/buildings/${property.id}` : `/owner/properties/${property.id}`}>
               Gérer
             </Link>
           </Button>
@@ -732,7 +732,7 @@ export default function OwnerPropertiesPage() {
                     columns={{ sm: 1, md: 2, lg: 3 }}
                     virtualizeThreshold={30}
                     renderItem={(property: any, index: number) => (
-                      <Link href={`/owner/properties/${property.id}`} className="block h-full">
+                      <Link href={property.type === "immeuble" ? `/owner/buildings/${property.id}` : `/owner/properties/${property.id}`} className="block h-full">
                         <SmartImageCard
                           src={property.cover_url}
                           alt={property.adresse_complete || "Propriété sans nom"}
