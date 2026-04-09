@@ -1317,15 +1317,15 @@ export type BuildingUnitStatus =
   | 'reserve'
 
 export type BuildingUnitTemplate =
-  | 'T1'
-  | 'T2'
-  | 'T3'
-  | 'T4'
-  | 'T5'
+  | 't1'
+  | 't2'
+  | 't3'
+  | 't4'
+  | 't5'
   | 'studio'
+  | 'local'
   | 'parking'
   | 'cave'
-  | 'bureau'
 
 export type BuildingRow = {
   id: string
@@ -1356,7 +1356,6 @@ export type BuildingRow = {
 export type BuildingUnitRow = {
   id: string
   building_id: string
-  property_id: string | null
   floor: number
   position: string
   type: BuildingUnitType

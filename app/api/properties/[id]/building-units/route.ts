@@ -144,7 +144,7 @@ export async function POST(
       type: u.type,
       surface: u.surface,
       nb_pieces: u.nb_pieces,
-      template: (u.template ?? null) as BuildingUnitTemplate | null,
+      template: (u.template?.toLowerCase() ?? null) as BuildingUnitTemplate | null,
       loyer_hc: u.loyer_hc,
       charges: u.charges,
       depot_garantie: u.depot_garantie,

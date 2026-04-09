@@ -310,14 +310,19 @@ export async function PATCH(
 
     const updates: Record<string, unknown> = { ...validated, updated_at: new Date().toISOString() };
 
-    // Strip les champs buildings — ils appartiennent à la table buildings,
-    // pas properties. Le wizard les garde dans le store et les persiste
-    // via POST /api/properties/[id]/building-units au publish.
+    // Strip champs buildings (table buildings, pas properties)
+    // Le wizard les persiste via POST /api/properties/[id]/building-units au publish.
     const BUILDING_ONLY_FIELDS = [
       'building_floors', 'building_units',
-      'has_ascenseur', 'has_gardien', 'has_interphone', 'has_digicode', 'has_local_velo',
+      'has_ascenseur', 'has_gardien', 'has_interphone', 'has_digicode',
+      'has_local_velo', 'has_local_poubelles',
     ];
-    for (const field of BUILDING_ONLY_FIELDS) {
+    // Strip champs wizard/UI qui n'existent pas dans la table properties
+    const NON_DB_FIELDS = [
+      'mode_location', 'visibility', 'available_from', 'description',
+      'type_bien',
+    ];
+    for (const field of [...BUILDING_ONLY_FIELDS, ...NON_DB_FIELDS]) {
       delete updates[field];
     }
 
