@@ -1,6 +1,19 @@
 -- Batch 5 — migrations 74 a 127 sur 169
 -- 54 migrations
 
+-- HOTFIX: Ensure invoice columns exist (referenced by functions in this batch)
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS invoice_number TEXT;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS date_echeance DATE;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS period_start DATE;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS period_end DATE;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS generated_at TIMESTAMPTZ;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS metadata JSONB;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS stripe_payment_intent_id TEXT;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS receipt_generated BOOLEAN DEFAULT false;
+
 -- === [74/169] 20260305000002_payment_crons.sql ===
 -- ============================================
 -- Migration : Ajouter overdue-check au pg_cron
