@@ -8142,32 +8142,34 @@ DROP POLICY IF EXISTS "Ticket messages same lease select" ON ticket_messages;
 CREATE POLICY "Ticket messages same lease select"
   ON ticket_messages FOR SELECT
   USING (
-    -- Créateur du ticket
-    ticket_id IN (
-      SELECT t.id FROM tickets t
-      WHERE t.created_by_profile_id = public.user_profile_id()
-    )
-    -- Membre du bail via lease_signers
-    OR ticket_id IN (
-      SELECT t.id FROM tickets t
-      WHERE t.lease_id IN (
-        SELECT ls.lease_id FROM lease_signers ls
-        WHERE ls.profile_id = public.user_profile_id()
+    (
+      -- Créateur du ticket
+      ticket_id IN (
+        SELECT t.id FROM tickets t
+        WHERE t.created_by_profile_id = public.user_profile_id()
       )
+      -- Membre du bail via lease_signers
+      OR ticket_id IN (
+        SELECT t.id FROM tickets t
+        WHERE t.lease_id IN (
+          SELECT ls.lease_id FROM lease_signers ls
+          WHERE ls.profile_id = public.user_profile_id()
+        )
+      )
+      -- Propriétaire du bien
+      OR ticket_id IN (
+        SELECT t.id FROM tickets t
+        JOIN properties p ON p.id = t.property_id
+        WHERE p.owner_id = public.user_profile_id()
+      )
+      -- Admin
+      OR public.user_role() = 'admin'
     )
-    -- Propriétaire du bien
-    OR ticket_id IN (
-      SELECT t.id FROM tickets t
-      JOIN properties p ON p.id = t.property_id
-      WHERE p.owner_id = public.user_profile_id()
+    -- Messages internes visibles uniquement par owner/admin
+    AND (
+      NOT is_internal
+      OR public.user_role() IN ('owner', 'admin')
     )
-    -- Admin
-    OR public.user_role() = 'admin'
-  )
-  -- Messages internes visibles uniquement par owner/admin
-  AND (
-    NOT is_internal
-    OR public.user_role() IN ('owner', 'admin')
   );
 
 -- INSERT policy
