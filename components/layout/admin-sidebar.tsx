@@ -27,6 +27,10 @@ import {
   UserCheck,
   FolderOpen,
   LogOut,
+  Flag,
+  Ticket,
+  TrendingUp,
+  UserCog,
 } from "lucide-react";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
 import { cn } from "@/lib/utils";
@@ -61,6 +65,7 @@ const adminNavItems: NavCategory[] = [
     category: "A traiter",
     items: [
       { href: "/admin/dashboard", label: "Tableau de bord", icon: BarChart3 },
+      { href: "/admin/support", label: "Support", icon: Ticket },
       { href: "/admin/moderation", label: "Modération IA", icon: Brain },
       { href: "/admin/providers/pending", label: "Validation Prestataires", icon: ShieldCheck },
       { href: "/admin/compliance", label: "Documents & Conformité", icon: Shield },
@@ -69,6 +74,7 @@ const adminNavItems: NavCategory[] = [
   {
     category: "Utilisateurs & parc",
     items: [
+      { href: "/admin/users", label: "Utilisateurs", icon: UserCog },
       { href: "/admin/people", label: "Annuaire", icon: Users },
       { href: "/admin/tenants", label: "Locataires", icon: UserCheck },
       { href: "/admin/properties", label: "Parc immobilier", icon: Building2 },
@@ -94,6 +100,13 @@ const adminNavItems: NavCategory[] = [
       { href: "/admin/accounting", label: "Comptabilité", icon: Calculator },
       { href: "/admin/branding", label: "Branding", icon: Palette },
       { href: "/admin/integrations", label: "Intégrations", icon: Key },
+    ],
+  },
+  {
+    category: "Plateforme",
+    items: [
+      { href: "/admin/metrics", label: "Métriques", icon: TrendingUp },
+      { href: "/admin/flags", label: "Feature Flags", icon: Flag },
     ],
   },
   {

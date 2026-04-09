@@ -17,6 +17,10 @@ export const adminKeys = {
   users: (filters?: Record<string, string>) =>
     [...adminKeys.all, "users", filters] as const,
   user: (id: string) => [...adminKeys.all, "users", id] as const,
+  supportTickets: (filters?: Record<string, string>) =>
+    [...adminKeys.all, "support-tickets", filters] as const,
+  featureFlags: () => [...adminKeys.all, "feature-flags"] as const,
+  metrics: () => [...adminKeys.all, "metrics"] as const,
 };
 
 // ─── Generic fetch helper ──────────────────────────────────
@@ -227,5 +231,195 @@ export function useSuspendSubscription() {
         queryKey: adminKeys.subscriptions(),
       });
     },
+  });
+}
+
+// ─── Support Tickets ──────────────────────────────────────
+interface SupportTicketsResponse {
+  tickets: unknown[];
+  total: number;
+  stats: {
+    total: number;
+    open: number;
+    in_progress: number;
+    waiting: number;
+    resolved: number;
+    closed: number;
+    urgent: number;
+    high: number;
+  };
+}
+
+export function useSupportTickets(filters: {
+  status?: string;
+  priority?: string;
+  page?: number;
+  per_page?: number;
+}) {
+  const params = new URLSearchParams();
+  if (filters.status && filters.status !== "all")
+    params.set("status", filters.status);
+  if (filters.priority && filters.priority !== "all")
+    params.set("priority", filters.priority);
+  if (filters.page) params.set("page", String(filters.page));
+  if (filters.per_page) params.set("per_page", String(filters.per_page));
+
+  return useQuery({
+    queryKey: adminKeys.supportTickets(Object.fromEntries(params)),
+    queryFn: () =>
+      adminFetch<SupportTicketsResponse>(`/api/admin/support?${params}`),
+    staleTime: 30_000,
+  });
+}
+
+export function useUpdateSupportTicket() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      id: string;
+      status?: string;
+      priority?: string;
+      assigned_to?: string | null;
+    }) => adminMutate<unknown>("/api/admin/support", "PATCH", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: adminKeys.supportTickets(),
+      });
+    },
+  });
+}
+
+// ─── Feature Flags ────────────────────────────────────────
+interface FeatureFlagsResponse {
+  flags: Array<{
+    id: string;
+    name: string;
+    enabled: boolean;
+    rollout_percentage: number;
+    description: string | null;
+    updated_by: string | null;
+    updated_at: string;
+    created_at: string;
+  }>;
+}
+
+export function useFeatureFlags() {
+  return useQuery({
+    queryKey: adminKeys.featureFlags(),
+    queryFn: () => adminFetch<FeatureFlagsResponse>("/api/admin/flags"),
+    staleTime: 30_000,
+  });
+}
+
+export function useUpdateFeatureFlag() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...data
+    }: {
+      id: string;
+      enabled?: boolean;
+      rollout_percentage?: number;
+      description?: string;
+    }) => adminMutate<unknown>(`/api/admin/flags/${id}`, "PATCH", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.featureFlags() });
+    },
+  });
+}
+
+export function useCreateFeatureFlag() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: {
+      name: string;
+      description?: string;
+      enabled?: boolean;
+      rollout_percentage?: number;
+    }) => adminMutate<unknown>("/api/admin/flags", "POST", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.featureFlags() });
+    },
+  });
+}
+
+export function useDeleteFeatureFlag() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      adminMutate<unknown>(`/api/admin/flags/${id}`, "DELETE"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.featureFlags() });
+    },
+  });
+}
+
+// ─── Metrics ──────────────────────────────────────────────
+interface MetricsResponse {
+  signupsByDay: Record<string, number>;
+  signupsByRole: Record<string, number>;
+  totalByRole: Record<string, number>;
+  newProperties: number;
+  activeLeases: number;
+  totalLeases: number;
+  paymentStats: {
+    total_volume: number;
+    paid_volume: number;
+    count: number;
+    paid_count: number;
+  };
+  openTickets: number;
+  totalUsers: number;
+  payingUsers: number;
+  conversionRate: number;
+  signupsChart: Array<{ month: string; inscriptions: number }>;
+}
+
+export function useAdminMetrics() {
+  return useQuery({
+    queryKey: adminKeys.metrics(),
+    queryFn: () => adminFetch<MetricsResponse>("/api/admin/metrics"),
+    staleTime: 5 * 60_000,
+  });
+}
+
+// ─── Admin Users List ─────────────────────────────────────
+interface AdminUsersResponse {
+  users: Array<{
+    id: string;
+    user_id: string;
+    role: string;
+    prenom: string | null;
+    nom: string | null;
+    email: string | null;
+    telephone: string | null;
+    avatar_url: string | null;
+    suspended?: boolean;
+    created_at: string;
+  }>;
+  total: number;
+}
+
+export function useAdminUsers(filters: {
+  search?: string;
+  role?: string;
+  status?: string;
+  page?: number;
+  per_page?: number;
+}) {
+  const params = new URLSearchParams();
+  if (filters.search) params.set("search", filters.search);
+  if (filters.role && filters.role !== "all") params.set("role", filters.role);
+  if (filters.status && filters.status !== "all")
+    params.set("status", filters.status);
+  if (filters.page) params.set("page", String(filters.page));
+  if (filters.per_page) params.set("per_page", String(filters.per_page));
+
+  return useQuery({
+    queryKey: adminKeys.users(Object.fromEntries(params)),
+    queryFn: () =>
+      adminFetch<AdminUsersResponse>(`/api/admin/users?${params}`),
+    staleTime: 30_000,
   });
 }
