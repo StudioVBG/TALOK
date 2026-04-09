@@ -49,23 +49,27 @@ export default function CGVPage() {
             <ul>
               <li>
                 <strong>Gratuit :</strong> accès aux fonctionnalités de base
-                (gestion de 2 biens, 1 utilisateur, 500 Mo de stockage)
+                (gestion de 1 bien, 1 utilisateur, 500 Mo de stockage)
+              </li>
+              <li>
+                <strong>Starter :</strong> fonctionnalités essentielles
+                (3 biens, 1 utilisateur, 2 Go de stockage, paiements en ligne)
               </li>
               <li>
                 <strong>Confort :</strong> fonctionnalités avancées (10 biens, 3
-                utilisateurs, 5 signatures électroniques/mois, 15 Go de
+                utilisateurs, 2 signatures électroniques/mois, 15 Go de
                 stockage, collecte automatique des loyers, comptabilité et
                 export FEC)
               </li>
               <li>
                 <strong>Pro :</strong> fonctionnalités complètes (50 biens,
-                utilisateurs illimités, signatures illimitées, 200 Go de
+                utilisateurs illimités, 10 signatures/mois, 200 Go de
                 stockage, agent IA, accès API)
               </li>
               <li>
-                <strong>Enterprise :</strong> offre sur mesure pour les grands
-                parcs immobiliers et agences (biens illimités, white-label,
-                support dédié)
+                <strong>Enterprise (S/M/L/XL) :</strong> offre sur mesure pour
+                les grands parcs immobiliers et agences (50 à 500+ biens,
+                white-label, support dédié)
               </li>
             </ul>
             <p>
@@ -98,18 +102,39 @@ export default function CGVPage() {
                     <td>0 €</td>
                   </tr>
                   <tr>
+                    <td>Starter</td>
+                    <td>9 €/mois</td>
+                    <td>90 €/an (soit 7,50 €/mois)</td>
+                  </tr>
+                  <tr>
                     <td>Confort</td>
-                    <td>24,90 €/mois</td>
-                    <td>249 €/an (soit 20,75 €/mois)</td>
+                    <td>35 €/mois</td>
+                    <td>336 €/an (soit 28 €/mois)</td>
                   </tr>
                   <tr>
                     <td>Pro</td>
-                    <td>59,90 €/mois</td>
-                    <td>599 €/an (soit 49,92 €/mois)</td>
+                    <td>69 €/mois</td>
+                    <td>662,40 €/an (soit 55,20 €/mois)</td>
                   </tr>
                   <tr>
-                    <td>Enterprise</td>
-                    <td colSpan={2}>Sur devis — contactez-nous</td>
+                    <td>Enterprise S</td>
+                    <td>249 €/mois</td>
+                    <td>2 390,40 €/an (soit 199,20 €/mois)</td>
+                  </tr>
+                  <tr>
+                    <td>Enterprise M</td>
+                    <td>349 €/mois</td>
+                    <td>3 350,40 €/an (soit 279,20 €/mois)</td>
+                  </tr>
+                  <tr>
+                    <td>Enterprise L</td>
+                    <td>499 €/mois</td>
+                    <td>4 790,40 €/an (soit 399,20 €/mois)</td>
+                  </tr>
+                  <tr>
+                    <td>Enterprise XL</td>
+                    <td>799 €/mois</td>
+                    <td>7 670,40 €/an (soit 639,20 €/mois)</td>
                   </tr>
                 </tbody>
               </table>
@@ -125,7 +150,7 @@ export default function CGVPage() {
               <li>Mayotte : 0 %</li>
             </ul>
             <p>
-              L&apos;abonnement annuel bénéficie d&apos;une réduction de 17 %
+              L&apos;abonnement annuel bénéficie d&apos;une réduction de 20 %
               par rapport au tarif mensuel.
             </p>
             <p>

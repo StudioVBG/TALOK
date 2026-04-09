@@ -70,14 +70,24 @@ export async function getTickets(role: "owner" | "tenant" | "provider") {
     query = query.in("id", allIds);
   }
 
-  const { data } = await query;
+  const { data, error } = await query;
+
+  if (error) {
+    // RLS infinite recursion (42P17) — return empty gracefully
+    if (error.code === "42P17" || error.message?.includes("infinite recursion")) {
+      console.warn("[getTickets] RLS recursion detected, returning empty:", error.message);
+      return [];
+    }
+    console.error("[getTickets] Supabase error:", error.message);
+    return [];
+  }
+
   return data || [];
 }
 
 export async function getTicketDetails(id: string) {
   const supabase = await createClient();
-
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("tickets")
     .select(
       `
@@ -106,6 +116,15 @@ export async function getTicketDetails(id: string) {
     )
     .eq("id", id)
     .single();
+
+  if (error) {
+    if (error.code === "42P17" || error.message?.includes("infinite recursion")) {
+      console.warn("[getTicketDetails] RLS recursion detected:", error.message);
+      return null;
+    }
+    console.error("[getTicketDetails] Supabase error:", error.message);
+    return null;
+  }
 
   return data;
 }

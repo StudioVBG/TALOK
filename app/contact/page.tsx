@@ -6,7 +6,7 @@
  * Formulaire de contact + coordonnées
  */
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +44,7 @@ const SUBJECTS = [
   { value: "press", label: "Presse / Média" },
 ];
 
-export default function ContactPage() {
+function ContactContent() {
   const searchParams = useSearchParams();
   const initialSubject = searchParams.get("subject") || "general";
 
@@ -90,8 +90,8 @@ export default function ContactPage() {
             Merci pour votre message. Notre équipe vous répondra dans les plus brefs délais,
             généralement sous 24h.
           </p>
-          <Button onClick={() => window.location.href = "/"} variant="outline">
-            Retour à l'accueil
+          <Button asChild variant="outline">
+            <a href="/">Retour à l&apos;accueil</a>
           </Button>
         </motion.div>
       </div>
@@ -225,6 +225,7 @@ export default function ContactPage() {
                           <Label className="text-slate-300">Nom complet *</Label>
                           <Input
                             required
+                            autoComplete="name"
                             value={formData.name}
                             onChange={(e) => handleChange("name", e.target.value)}
                             className="bg-slate-900/50 border-slate-700 text-white"
@@ -236,6 +237,7 @@ export default function ContactPage() {
                           <Input
                             required
                             type="email"
+                            autoComplete="email"
                             value={formData.email}
                             onChange={(e) => handleChange("email", e.target.value)}
                             className="bg-slate-900/50 border-slate-700 text-white"
@@ -248,6 +250,7 @@ export default function ContactPage() {
                         <div className="space-y-2">
                           <Label className="text-slate-300">Téléphone</Label>
                           <Input
+                            autoComplete="tel"
                             value={formData.phone}
                             onChange={(e) => handleChange("phone", e.target.value)}
                             className="bg-slate-900/50 border-slate-700 text-white"
@@ -257,6 +260,7 @@ export default function ContactPage() {
                         <div className="space-y-2">
                           <Label className="text-slate-300">Entreprise / SCI</Label>
                           <Input
+                            autoComplete="organization"
                             value={formData.company}
                             onChange={(e) => handleChange("company", e.target.value)}
                             className="bg-slate-900/50 border-slate-700 text-white"
@@ -319,5 +323,13 @@ export default function ContactPage() {
       {/* Footer */}
       <PublicFooter variant="dark" />
     </div>
+  );
+}
+
+export default function ContactPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <ContactContent />
+    </Suspense>
   );
 }

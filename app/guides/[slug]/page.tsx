@@ -134,7 +134,7 @@ const GUIDES: Record<string, {
     ],
   },
   "investissement-dom-tom": {
-    title: "Guide Investissement DOM-TOM",
+    title: "Guide Investissement outre-mer",
     description: "Pinel Outre-Mer, Girardin, spécificités locales.",
     icon: Palmtree,
     pages: 18,
@@ -146,7 +146,7 @@ const GUIDES: Record<string, {
       "Spécificités locatives en Martinique et Guadeloupe",
       "Le marché immobilier à La Réunion",
       "Guyane et Mayotte : opportunités et contraintes",
-      "Fiscalité spécifique des DOM-TOM (TVA, octroi de mer)",
+      "Fiscalité spécifique de l'outre-mer (TVA, octroi de mer)",
       "Talok : gestion locative adaptée aux territoires d'Outre-Mer",
     ],
   },

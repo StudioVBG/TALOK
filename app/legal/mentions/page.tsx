@@ -40,54 +40,49 @@ export default function MentionsLegalesPage() {
             <ul>
               <li>
                 <strong>Raison sociale :</strong>{" "}
-                {/* LEGAL: Thomas doit fournir cette info */}
-                <span className="text-amber-600 font-semibold">
-                  [À REMPLIR — nom exact de la société]
-                </span>
+                {process.env.NEXT_PUBLIC_COMPANY_NAME || (
+                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_NAME]</span>
+                )}
               </li>
               <li>
                 <strong>Forme juridique :</strong>{" "}
-                {/* LEGAL: Thomas doit fournir cette info */}
-                <span className="text-amber-600 font-semibold">
-                  [À REMPLIR — SAS, SARL, EURL, Auto-entrepreneur…]
-                </span>
+                {process.env.NEXT_PUBLIC_COMPANY_FORM || (
+                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_FORM]</span>
+                )}
               </li>
               <li>
                 {/* LEGAL: Thomas doit fournir cette info */}
                 <strong>Capital social :</strong>{" "}
-                <span className="text-amber-600 font-semibold">
-                  [À REMPLIR]
-                </span>{" "}
-                euros
+                {process.env.NEXT_PUBLIC_COMPANY_CAPITAL ? (
+                  <>{process.env.NEXT_PUBLIC_COMPANY_CAPITAL} euros</>
+                ) : (
+                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_CAPITAL]</span>
+                )}
               </li>
               <li>
                 <strong>Siège social :</strong>{" "}
-                {/* LEGAL: Thomas doit fournir cette info */}
-                <span className="text-amber-600 font-semibold">
-                  [À REMPLIR — adresse complète, Martinique]
-                </span>
+                {process.env.NEXT_PUBLIC_COMPANY_ADDRESS || (
+                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_ADDRESS]</span>
+                )}
               </li>
               <li>
                 {/* LEGAL: Thomas doit fournir cette info */}
                 <strong>SIRET :</strong>{" "}
-                <span className="text-amber-600 font-semibold">
-                  [À REMPLIR]
-                </span>
+                {process.env.NEXT_PUBLIC_COMPANY_SIRET || (
+                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_SIRET]</span>
+                )}
               </li>
               <li>
                 <strong>RCS :</strong>{" "}
-                {/* LEGAL: Thomas doit fournir cette info */}
-                <span className="text-amber-600 font-semibold">
-                  [À REMPLIR — ex : RCS Fort-de-France B 000 000 000]
-                </span>
+                {process.env.NEXT_PUBLIC_COMPANY_RCS || (
+                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_RCS]</span>
+                )}
               </li>
               <li>
                 <strong>N° TVA intracommunautaire :</strong>{" "}
-                {/* LEGAL: Thomas doit fournir cette info */}
-                <span className="text-amber-600 font-semibold">
-                  [À REMPLIR ou &quot;Non applicable&quot; si franchise en base
-                  de TVA]
-                </span>
+                {process.env.NEXT_PUBLIC_COMPANY_TVA || (
+                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_TVA]</span>
+                )}
               </li>
               <li>
                 <strong>Directeur de la publication :</strong> Thomas VOLBERG
@@ -104,9 +99,9 @@ export default function MentionsLegalesPage() {
               <li>
                 {/* LEGAL: Thomas doit fournir cette info */}
                 <strong>Téléphone :</strong>{" "}
-                <span className="text-amber-600 font-semibold">
-                  [À REMPLIR]
-                </span>
+                {process.env.NEXT_PUBLIC_COMPANY_PHONE || (
+                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_PHONE]</span>
+                )}
               </li>
             </ul>
 

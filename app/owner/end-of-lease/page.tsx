@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { safeDateFormat } from "@/lib/helpers/safe-date";
 import {
   Calendar,
   Plus,
@@ -382,7 +383,7 @@ export default function EndOfLeasePage() {
                                   : `J-${lease.days_until_trigger}`}
                               </Badge>
                               <div className="text-xs text-muted-foreground mt-1">
-                                Fin : {new Date(lease.date_fin).toLocaleDateString("fr-FR")}
+                                Fin : {safeDateFormat(lease.date_fin)}
                               </div>
                             </div>
 

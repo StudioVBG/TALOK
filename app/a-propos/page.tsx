@@ -54,7 +54,7 @@ const MILESTONES = [
   { year: "2023", event: "Lancement beta, 100 premiers utilisateurs", icon: Users },
   { year: "2024", event: "+5 000 propriétaires, expansion métropole", icon: Target },
   { year: "2025", event: "+10 000 clients, scoring IA lancé", icon: Award },
-  { year: "2026", event: "Leader DOM-TOM, Open Banking", icon: Sparkles },
+  { year: "2026", event: "Leader outre-mer, Open Banking", icon: Sparkles },
 ];
 
 const STATS = [

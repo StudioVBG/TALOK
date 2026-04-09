@@ -1,9 +1,9 @@
 /**
- * Composant Diagnostics DOM-TOM
+ * Composant Diagnostics DROM-COM
  * Diagnostics spécifiques aux départements et territoires d'outre-mer
  *
  * Réglementations applicables:
- * - Diagnostic termites: Arrêtés préfectoraux DOM-TOM
+ * - Diagnostic termites: Arrêtés préfectoraux DROM-COM
  * - Risques naturels: Plan de Prévention des Risques Naturels (PPRN)
  * - Normes parasismiques: Eurocode 8 / PS-92
  * - Normes paracycloniques: Eurocode 1 partie 1-4
@@ -188,15 +188,15 @@ export function DomtomDiagnostics({
     }
   };
 
-  // Afficher un avertissement si pas en DOM-TOM
+  // Afficher un avertissement si pas en DROM-COM
   if (!isDomtom) {
     return (
       <Alert>
         <Info className="h-4 w-4" />
-        <AlertTitle>Diagnostics DOM-TOM</AlertTitle>
+        <AlertTitle>Diagnostics outre-mer</AlertTitle>
         <AlertDescription>
-          Ce bien n'est pas situé dans un département d'outre-mer. Les diagnostics
-          DOM-TOM spécifiques (termites tropicaux, cyclones, etc.) ne sont pas
+          Ce bien n&apos;est pas situé dans un département d&apos;outre-mer. Les diagnostics
+          spécifiques outre-mer (termites tropicaux, cyclones, etc.) ne sont pas
           applicables.
         </AlertDescription>
       </Alert>
@@ -214,7 +214,7 @@ export function DomtomDiagnostics({
                 <MapPin className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <CardTitle>Diagnostics DOM-TOM</CardTitle>
+                <CardTitle>Diagnostics outre-mer</CardTitle>
                 <CardDescription>
                   {deptInfo.name} ({departement}) - Diagnostics obligatoires spécifiques
                 </CardDescription>
@@ -283,7 +283,7 @@ export function DomtomDiagnostics({
                 Diagnostic Termites
               </CardTitle>
               <CardDescription>
-                Obligatoire en DOM-TOM - Validité 6 mois (Arrêté préfectoral)
+                Obligatoire en outre-mer - Validité 6 mois (Arrêté préfectoral)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -478,7 +478,7 @@ export function DomtomDiagnostics({
                 Risques Naturels Spécifiques
               </CardTitle>
               <CardDescription>
-                Information obligatoire - État des Risques et Pollutions (ERP) DOM-TOM
+                Information obligatoire - État des Risques et Pollutions (ERP) outre-mer
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">

@@ -388,7 +388,10 @@ export default function InvoiceDetailPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Échéance</span>
                   <span className={cn(
-                    safeDate(invoice.date_echeance) && safeDate(invoice.date_echeance)! < new Date() && !isPaid && "text-red-600 font-medium"
+                    (() => {
+                      const d = safeDate(invoice.date_echeance);
+                      return d && d < new Date() && !isPaid;
+                    })() && "text-red-600 font-medium"
                   )}>
                     {safeDateFormat(invoice.date_echeance)}
                   </span>

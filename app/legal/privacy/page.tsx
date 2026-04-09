@@ -46,16 +46,16 @@ export default function PrivacyPage() {
               <li>
                 {/* LEGAL: Thomas doit fournir cette info */}
                 <strong>Société :</strong>{" "}
-                <span className="text-amber-600 font-semibold">
-                  [À REMPLIR — raison sociale]
-                </span>
+                {process.env.NEXT_PUBLIC_COMPANY_NAME || (
+                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_NAME]</span>
+                )}
               </li>
               <li>
                 {/* LEGAL: Thomas doit fournir cette info */}
                 <strong>Siège social :</strong>{" "}
-                <span className="text-amber-600 font-semibold">
-                  [À REMPLIR — adresse, Martinique]
-                </span>
+                {process.env.NEXT_PUBLIC_COMPANY_ADDRESS || (
+                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_ADDRESS]</span>
+                )}
               </li>
               <li>
                 <strong>Contact RGPD / DPO :</strong>{" "}

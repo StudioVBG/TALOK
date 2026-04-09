@@ -1649,7 +1649,7 @@ export default function BillingPage() {
               <div className="text-xs text-muted-foreground space-y-2">
                 <p>
                   Tous les prix sont affiches hors taxes (HT). TVA applicable : {TVA_RATE}% (France metropolitaine).
-                  Taux reduits DOM-TOM : Martinique/Guadeloupe/Reunion {TVA_RATE_MARTINIQUE}%, Guyane/Mayotte {TVA_RATE_GUYANE}%.
+                  Taux reduits outre-mer : Martinique/Guadeloupe/Reunion {TVA_RATE_MARTINIQUE}%, Guyane/Mayotte {TVA_RATE_GUYANE}%.
                   Le taux applicable est determine automatiquement selon votre adresse de facturation.
                 </p>
                 <p>

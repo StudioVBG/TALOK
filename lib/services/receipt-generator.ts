@@ -35,7 +35,7 @@ export interface ReceiptData {
   propertyAddress: string;
   /** Ville du logement */
   propertyCity: string;
-  /** Code postal (France métropolitaine + DOM-TOM) */
+  /** Code postal (France métropolitaine + DROM-COM) */
   propertyPostalCode: string;
 
   // === Période de location (OBLIGATOIRE ALUR - détaillée) ===

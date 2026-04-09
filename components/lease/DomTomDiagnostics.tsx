@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * P2-5: Diagnostics obligatoires DOM-TOM
+ * P2-5: Diagnostics obligatoires DROM-COM
  *
  * Affiche les diagnostics spécifiques requis pour les biens situés en Outre-Mer:
  * - Termites: obligatoire dans tous les DOM
@@ -14,7 +14,7 @@ import { useMemo } from "react";
 import { AlertTriangle, Bug, Mountain, Shield, FileWarning } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
-// DOM-TOM department codes
+// DROM-COM department codes
 const DOM_TOM_DEPARTMENTS: Record<string, {
   name: string;
   termites: boolean;
@@ -85,7 +85,7 @@ export function DomTomDiagnostics({ codePostal }: DomTomDiagnosticsProps) {
         <span className="text-sm font-semibold text-amber-800">
           Diagnostics spécifiques — {domInfo.name}
         </span>
-        <Badge variant="secondary" className="text-[10px]">DOM-TOM</Badge>
+        <Badge variant="secondary" className="text-[10px]">Outre-mer</Badge>
       </div>
 
       <div className="space-y-2">

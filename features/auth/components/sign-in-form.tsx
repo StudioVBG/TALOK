@@ -281,6 +281,7 @@ export function SignInForm() {
             <Input
               id="email"
               type="email"
+              autoComplete="email"
               placeholder="votre@email.com"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -292,6 +293,7 @@ export function SignInForm() {
             <Label htmlFor="password">Mot de passe</Label>
             <PasswordInput
               id="password"
+              autoComplete="current-password"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
               required
