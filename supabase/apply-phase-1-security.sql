@@ -3969,32 +3969,38 @@ CREATE POLICY "Admins can view all subscriptions" ON subscriptions
   USING (public.is_admin());
 
 -- ============================================
--- 2. CORRIGER subscription_invoices
+-- 2. CORRIGER subscription_invoices (si la table existe)
 -- ============================================
-DROP POLICY IF EXISTS "Owners can view their invoices" ON subscription_invoices;
-
-CREATE POLICY "Owners can view their invoices" ON subscription_invoices
-  FOR SELECT TO authenticated
-  USING (
-    subscription_id IN (
-      SELECT id FROM subscriptions
-      WHERE owner_id = public.get_my_profile_id()
-    )
-  );
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Owners can view their invoices" ON subscription_invoices;
+  CREATE POLICY "Owners can view their invoices" ON subscription_invoices
+    FOR SELECT TO authenticated
+    USING (
+      subscription_id IN (
+        SELECT id FROM subscriptions
+        WHERE owner_id = public.get_my_profile_id()
+      )
+    );
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'subscription_invoices does not exist yet, skipping';
+END $$;
 
 -- ============================================
--- 3. CORRIGER subscription_usage
+-- 3. CORRIGER subscription_usage (si la table existe)
 -- ============================================
-DROP POLICY IF EXISTS "Owners can view their usage" ON subscription_usage;
-
-CREATE POLICY "Owners can view their usage" ON subscription_usage
-  FOR SELECT TO authenticated
-  USING (
-    subscription_id IN (
-      SELECT id FROM subscriptions
-      WHERE owner_id = public.get_my_profile_id()
-    )
-  );
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Owners can view their usage" ON subscription_usage;
+  CREATE POLICY "Owners can view their usage" ON subscription_usage
+    FOR SELECT TO authenticated
+    USING (
+      subscription_id IN (
+        SELECT id FROM subscriptions
+        WHERE owner_id = public.get_my_profile_id()
+      )
+    );
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'subscription_usage does not exist yet, skipping';
+END $$;
 
 -- ============================================
 -- 4. CORRIGER notifications
