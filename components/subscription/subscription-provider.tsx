@@ -158,14 +158,31 @@ export function SubscriptionProvider({
       }
 
       // Fetch subscription via owner_id (schéma existant)
-      const { data: sub, error: subError } = await supabase
+      let sub: any = null;
+      const { data: subData, error: subError } = await supabase
         .from("subscriptions")
         .select("*")
         .eq("owner_id", profile.id)
         .maybeSingle();
 
-      if (subError && subError.code !== "PGRST116") {
-        console.error("[SubscriptionProvider] Error fetching subscription:", subError);
+      if (subError) {
+        // Si erreur de récursion RLS sur subscriptions, utiliser l'API en fallback
+        if (subError.code === '42P17' || subError.message?.includes('infinite recursion')) {
+          console.warn("[SubscriptionProvider] RLS recursion on subscriptions, using API fallback");
+          try {
+            const response = await fetch("/api/subscriptions/current", { credentials: "include" });
+            if (response.ok) {
+              const apiData = await response.json();
+              sub = apiData.subscription;
+            }
+          } catch (apiError) {
+            console.error("[SubscriptionProvider] API fallback for subscription error:", apiError);
+          }
+        } else if (subError.code !== "PGRST116") {
+          console.error("[SubscriptionProvider] Error fetching subscription:", subError);
+        }
+      } else {
+        sub = subData;
       }
 
       // Trial expiré ? Marquer côté client et fire-and-forget update BDD
@@ -181,7 +198,17 @@ export function SubscriptionProvider({
       // Si subscription existe, récupérer le plan séparément
       let subscriptionWithPlan: SubscriptionWithPlan | null = null;
       if (sub) {
-        let plan = null;
+        // Si le plan a déjà été résolu par l'API (join), l'utiliser directement
+        let plan = sub.plan ? {
+          ...sub.plan,
+          limits: {
+            max_properties: sub.plan.max_properties,
+            max_leases: sub.plan.max_leases,
+            max_tenants: sub.plan.max_tenants,
+            max_documents_gb: sub.plan.max_documents_gb,
+          }
+        } : null;
+
         const planFields = "name, price_monthly, price_yearly, max_properties, max_leases, max_tenants, max_documents_gb, features, slug";
         const toPlan = (data: any) => data ? {
           ...data,
@@ -193,8 +220,8 @@ export function SubscriptionProvider({
           }
         } : null;
 
-        // 1. Essayer plan_slug d'abord
-        if (sub.plan_slug) {
+        // 1. Essayer plan_slug d'abord (si plan pas déjà résolu par l'API)
+        if (!plan && sub.plan_slug) {
           const { data } = await supabase
             .from("subscription_plans")
             .select(planFields)

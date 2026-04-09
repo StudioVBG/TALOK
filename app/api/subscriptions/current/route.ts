@@ -17,8 +17,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    // Récupérer le profil via service role (évite la récursion RLS 42P17 sur profiles)
+    const { getServiceClient } = await import("@/lib/supabase/service-client");
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)

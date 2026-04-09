@@ -21,27 +21,16 @@ export async function GET() {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le profil (avec fallback service role si RLS recursion)
+    // Récupérer le profil via service role (évite la récursion RLS 42P17 sur profiles)
+    const { supabaseAdmin } = await import("@/app/api/_lib/supabase");
+    const adminClient = supabaseAdmin();
     let profile: { id: string; role: string } | null = null;
-    const { data: profileData, error: profileError } = await supabase
+    const { data: profileData } = await adminClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
       .single();
-
-    if (profileError && (profileError.code === '42P17' || profileError.message?.includes('infinite recursion'))) {
-      // Fallback: utiliser le service role pour bypasser les RLS
-      const { supabaseAdmin } = await import("@/app/api/_lib/supabase");
-      const adminClient = supabaseAdmin();
-      const { data: adminProfile } = await adminClient
-        .from("profiles")
-        .select("id, role")
-        .eq("user_id", user.id)
-        .single();
-      profile = adminProfile;
-    } else {
-      profile = profileData;
-    }
+    profile = profileData;
 
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
@@ -62,8 +51,8 @@ export async function GET() {
       });
     }
 
-    // Récupérer l'abonnement via owner_id (schéma existant)
-    const { data: subscription } = await supabase
+    // Récupérer l'abonnement via owner_id (service role pour éviter récursion RLS)
+    const { data: subscription } = await adminClient
       .from("subscriptions")
       .select("*")
       .eq("owner_id", profile.id)
@@ -72,7 +61,7 @@ export async function GET() {
     // Résoudre plan_slug : priorité plan_slug, fallback plan_id, puis "gratuit"
     let planSlug: PlanSlug = (subscription?.plan_slug as PlanSlug) || 'gratuit';
     if (planSlug === 'gratuit' && subscription?.plan_id) {
-      const { data: planData } = await supabase
+      const { data: planData } = await adminClient
         .from("subscription_plans")
         .select("slug")
         .eq("id", subscription.plan_id)
