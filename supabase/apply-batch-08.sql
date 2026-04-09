@@ -1,111 +1,7 @@
--- Batch 8 — migrations 167 a 169 sur 169
--- 3 migrations
-
--- === [167/169] 20260408200000_unified_notification_system.sql ===
-DO $wrapper$ BEGIN
--- =====================================================
--- MIGRATION: Système de notifications unifié
--- Ajoute la table notification_event_preferences (per-event)
--- et les colonnes manquantes sur notifications
--- =====================================================
-
--- 1. Ajouter colonnes manquantes à notifications
-DO $mig$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'route') THEN
-    ALTER TABLE notifications ADD COLUMN route TEXT;
-    COMMENT ON COLUMN notifications.route IS 'Deep link route (e.g. /owner/invoices/xxx)';
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'channels_sent') THEN
-    ALTER TABLE notifications ADD COLUMN channels_sent TEXT[] DEFAULT '{}';
-    COMMENT ON COLUMN notifications.channels_sent IS 'Channels actually used: email, push, in_app, sms';
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'is_read') THEN
-    ALTER TABLE notifications ADD COLUMN is_read BOOLEAN DEFAULT false;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'read_at') THEN
-    ALTER TABLE notifications ADD COLUMN read_at TIMESTAMPTZ;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'profile_id') THEN
-    ALTER TABLE notifications ADD COLUMN profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE;
-  END IF;
-END$mig$;
-
--- Index for profile-based queries
-CREATE INDEX IF NOT EXISTS idx_notif_profile_read_created
-  ON notifications(profile_id, is_read, created_at DESC);
-
--- 2. Table de préférences par événement
-CREATE TABLE IF NOT EXISTS notification_event_preferences (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  event_type TEXT NOT NULL,
-  email_enabled BOOLEAN DEFAULT true,
-  push_enabled BOOLEAN DEFAULT true,
-  sms_enabled BOOLEAN DEFAULT false,
-  in_app_enabled BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(profile_id, event_type)
-);
-
-CREATE INDEX IF NOT EXISTS idx_notif_event_prefs_profile
-  ON notification_event_preferences(profile_id);
-
-ALTER TABLE notification_event_preferences ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Users can view own event preferences" ON notification_event_preferences;
-CREATE POLICY "Users can view own event preferences"
-  ON notification_event_preferences FOR SELECT
-  USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
-
-DROP POLICY IF EXISTS "Users can manage own event preferences" ON notification_event_preferences;
-CREATE POLICY "Users can manage own event preferences"
-  ON notification_event_preferences FOR ALL
-  USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()))
-  WITH CHECK (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
-
--- Allow service role to insert
-DROP POLICY IF EXISTS "Service can manage event preferences" ON notification_event_preferences;
-CREATE POLICY "Service can manage event preferences"
-  ON notification_event_preferences FOR ALL
-  USING (true)
-  WITH CHECK (true);
-
--- Updated_at trigger
-CREATE OR REPLACE FUNCTION update_notification_event_prefs_updated_at()
-RETURNS TRIGGER AS $mig$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$mig$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trigger_update_notif_event_prefs ON notification_event_preferences;
-CREATE TRIGGER trigger_update_notif_event_prefs
-  BEFORE UPDATE ON notification_event_preferences
-  FOR EACH ROW
-  EXECUTE FUNCTION update_notification_event_prefs_updated_at();
-
-COMMENT ON TABLE notification_event_preferences IS 'Per-event notification channel preferences for each user';
-
-SELECT 'Unified notification system migration complete' AS result;
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
+-- Batch 8 — migrations 168 a 169 sur 169
+-- 2 migrations
 
 -- === [168/169] 20260408220000_payment_architecture_sota.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- Migration: Payment Architecture SOTA 2026
 -- Date: 2026-04-08
@@ -116,7 +12,7 @@ DO $wrapper$ BEGIN
 -- 4. RLS policies
 -- 5. Helper functions
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- =====================================================
 -- 1. RENT PAYMENTS — Stripe Connect Express
 -- Tracks the split between tenant payment, platform
@@ -168,6 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_rent_payments_created_at ON rent_payments(created
 ALTER TABLE rent_payments ENABLE ROW LEVEL SECURITY;
 
 -- Owner can view rent payments for their properties
+DROP POLICY IF EXISTS "Owner can view rent_payments" ON rent_payments;
 CREATE POLICY "Owner can view rent_payments" ON rent_payments
   FOR SELECT USING (
     EXISTS (
@@ -179,6 +76,7 @@ CREATE POLICY "Owner can view rent_payments" ON rent_payments
   );
 
 -- Tenant can view their own payments
+DROP POLICY IF EXISTS "Tenant can view own rent_payments" ON rent_payments;
 CREATE POLICY "Tenant can view own rent_payments" ON rent_payments
   FOR SELECT USING (
     EXISTS (
@@ -189,6 +87,7 @@ CREATE POLICY "Tenant can view own rent_payments" ON rent_payments
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS "Admin can manage rent_payments" ON rent_payments;
 CREATE POLICY "Admin can manage rent_payments" ON rent_payments
   FOR ALL USING (
     EXISTS (
@@ -245,6 +144,7 @@ CREATE OR REPLACE TRIGGER set_updated_at_security_deposits
 ALTER TABLE security_deposits ENABLE ROW LEVEL SECURITY;
 
 -- Owner can manage deposits for their properties
+DROP POLICY IF EXISTS "Owner can manage security_deposits" ON security_deposits;
 CREATE POLICY "Owner can manage security_deposits" ON security_deposits
   FOR ALL USING (
     EXISTS (
@@ -256,12 +156,14 @@ CREATE POLICY "Owner can manage security_deposits" ON security_deposits
   );
 
 -- Tenant can view their own deposits
+DROP POLICY IF EXISTS "Tenant can view own security_deposits" ON security_deposits;
 CREATE POLICY "Tenant can view own security_deposits" ON security_deposits
   FOR SELECT USING (
     tenant_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS "Admin can manage all security_deposits" ON security_deposits;
 CREATE POLICY "Admin can manage all security_deposits" ON security_deposits
   FOR ALL USING (
     EXISTS (
@@ -278,7 +180,7 @@ CREATE POLICY "Admin can manage all security_deposits" ON security_deposits
 -- =====================================================
 
 -- Add missing columns if they don't exist
-DO $mig$
+DO $$
 BEGIN
   -- period_start / period_end for spec alignment
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns
@@ -348,7 +250,7 @@ BEGIN
     WHERE table_name = 'invoices' AND column_name = 'stripe_invoice_id') THEN
     ALTER TABLE invoices ADD COLUMN stripe_invoice_id TEXT;
   END IF;
-END $mig$;
+END $$;
 
 -- Backfill cents columns from existing euro columns
 UPDATE invoices
@@ -375,7 +277,7 @@ CREATE OR REPLACE FUNCTION transition_invoice_status(
   p_invoice_id UUID,
   p_new_status TEXT,
   p_metadata JSONB DEFAULT '{}'
-) RETURNS BOOLEAN AS $mig$
+) RETURNS BOOLEAN AS $$
 DECLARE
   v_current_status TEXT;
   v_allowed BOOLEAN := FALSE;
@@ -420,7 +322,7 @@ BEGIN
 
   RETURN TRUE;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- =====================================================
@@ -432,7 +334,7 @@ RETURNS TABLE(
   stripe_account_id TEXT,
   charges_enabled BOOLEAN,
   owner_id UUID
-) AS $mig$
+) AS $$
 BEGIN
   RETURN QUERY
   SELECT
@@ -445,7 +347,7 @@ BEGIN
   WHERE i.id = p_invoice_id
   LIMIT 1;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- =====================================================
@@ -461,18 +363,9 @@ CREATE INDEX IF NOT EXISTS idx_invoices_overdue_check
 CREATE INDEX IF NOT EXISTS idx_invoices_receipt_pending
   ON invoices(id)
   WHERE statut = 'paid' AND receipt_generated IS NOT TRUE;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [169/169] 20260409100000_add_missing_rls.sql ===
-DO $wrapper$ BEGIN
 -- ==========================================================
 -- Migration: Add missing RLS to 8 unprotected tables
 -- Date: 2026-04-09
@@ -485,6 +378,8 @@ DO $wrapper$ BEGIN
 -- ──────────────────────────────────────────────
 ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "tenants_admin_only" ON tenants;
+
 CREATE POLICY "tenants_admin_only"
   ON tenants FOR ALL
   USING (false);
@@ -495,6 +390,8 @@ CREATE POLICY "tenants_admin_only"
 -- ──────────────────────────────────────────────
 ALTER TABLE two_factor_sessions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "users_own_2fa_sessions" ON two_factor_sessions;
+
 CREATE POLICY "users_own_2fa_sessions"
   ON two_factor_sessions FOR ALL
   USING (auth.uid() = user_id);
@@ -504,9 +401,13 @@ CREATE POLICY "users_own_2fa_sessions"
 -- ──────────────────────────────────────────────
 ALTER TABLE lease_templates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "lease_templates_read_authenticated" ON lease_templates;
+
 CREATE POLICY "lease_templates_read_authenticated"
   ON lease_templates FOR SELECT
   USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "lease_templates_write_admin_only" ON lease_templates;
 
 CREATE POLICY "lease_templates_write_admin_only"
   ON lease_templates FOR ALL
@@ -518,6 +419,8 @@ CREATE POLICY "lease_templates_write_admin_only"
 -- ──────────────────────────────────────────────
 ALTER TABLE idempotency_keys ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "idempotency_keys_service_only" ON idempotency_keys;
+
 CREATE POLICY "idempotency_keys_service_only"
   ON idempotency_keys FOR ALL
   USING (false);
@@ -528,9 +431,13 @@ CREATE POLICY "idempotency_keys_service_only"
 -- ──────────────────────────────────────────────
 ALTER TABLE repair_cost_grid ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "repair_cost_grid_read_authenticated" ON repair_cost_grid;
+
 CREATE POLICY "repair_cost_grid_read_authenticated"
   ON repair_cost_grid FOR SELECT
   USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "repair_cost_grid_write_admin_only" ON repair_cost_grid;
 
 CREATE POLICY "repair_cost_grid_write_admin_only"
   ON repair_cost_grid FOR ALL
@@ -542,9 +449,13 @@ CREATE POLICY "repair_cost_grid_write_admin_only"
 -- ──────────────────────────────────────────────
 ALTER TABLE vetuste_grid ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "vetuste_grid_read_authenticated" ON vetuste_grid;
+
 CREATE POLICY "vetuste_grid_read_authenticated"
   ON vetuste_grid FOR SELECT
   USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "vetuste_grid_write_admin_only" ON vetuste_grid;
 
 CREATE POLICY "vetuste_grid_write_admin_only"
   ON vetuste_grid FOR ALL
@@ -553,23 +464,25 @@ CREATE POLICY "vetuste_grid_write_admin_only"
 -- ──────────────────────────────────────────────
 -- 7. vetusty_grid (variant of vetuste_grid, read-only)
 -- ──────────────────────────────────────────────
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vetusty_grid') THEN
     ALTER TABLE vetusty_grid ENABLE ROW LEVEL SECURITY;
   END IF;
-END $mig$;
+END $$;
 
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vetusty_grid') THEN
     EXECUTE 'CREATE POLICY "vetusty_grid_read_authenticated" ON vetusty_grid FOR SELECT USING (auth.role() = ''authenticated'')';
     EXECUTE 'CREATE POLICY "vetusty_grid_write_admin_only" ON vetusty_grid FOR ALL USING (false)';
   END IF;
-END $mig$;
+END $$;
 
 -- ──────────────────────────────────────────────
 -- 8. api_webhook_deliveries (indirect user link via webhook_id)
 -- ──────────────────────────────────────────────
 ALTER TABLE api_webhook_deliveries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "webhook_deliveries_owner_access" ON api_webhook_deliveries;
 
 CREATE POLICY "webhook_deliveries_owner_access"
   ON api_webhook_deliveries FOR SELECT
@@ -583,17 +496,11 @@ CREATE POLICY "webhook_deliveries_owner_access"
     )
   );
 
+DROP POLICY IF EXISTS "webhook_deliveries_write_service_only" ON api_webhook_deliveries;
+
 CREATE POLICY "webhook_deliveries_write_service_only"
   ON api_webhook_deliveries FOR INSERT
   USING (false);
 -- Deliveries are created by the system (service role), users can only read their own
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 

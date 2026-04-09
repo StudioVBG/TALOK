@@ -3,7 +3,7 @@
 
 -- === [HOTFIX] Fix trigger auto_verify_tenant_on_signup ===
 CREATE OR REPLACE FUNCTION auto_verify_tenant_on_signup()
-RETURNS TRIGGER AS $hf$
+RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.kyc_status IS NULL OR NEW.kyc_status = 'pending' THEN
     IF EXISTS (
@@ -16,10 +16,9 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$hf$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 -- === [1/169] 20260208100000_fix_data_storage_audit.sql ===
-DO $wrapper$ BEGIN
 -- Migration: Fix data storage issues found during route audit (2026-02-08)
 --
 -- FIX #3: Add room_label, has_guarantor, guarantor_email, guarantor_name to roommates
@@ -68,7 +67,7 @@ COMMENT ON COLUMN roommates.guarantor_name IS 'Nom du garant de ce colocataire';
 -- We need it to accept JSON strings from the API.
 -- TEXT is fine — the API serialises with JSON.stringify.
 -- No change needed, just verify it exists:
-DO $mig$
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -77,7 +76,7 @@ BEGIN
     ALTER TABLE leases ADD COLUMN clauses_particulieres TEXT;
     COMMENT ON COLUMN leases.clauses_particulieres IS 'Clauses personnalisées du bail (JSON sérialisé)';
   END IF;
-END $mig$;
+END $$;
 
 -- ============================================================
 -- 4. Drop the unique constraint that blocks invited roommates
@@ -95,17 +94,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS roommates_lease_email_unique
   ON roommates (lease_id, invited_email)
   WHERE invited_email IS NOT NULL;
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [2/169] 20260209100000_create_sms_messages_table.sql ===
-DO $wrapper$ BEGIN
 -- Migration: Create sms_messages table for Twilio SMS tracking (2026-02-09)
 --
 -- The application code (API routes) already references this table:
@@ -168,12 +158,12 @@ CREATE INDEX IF NOT EXISTS idx_sms_messages_created_at
 -- ============================================================
 
 CREATE OR REPLACE FUNCTION update_sms_messages_updated_at()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_sms_messages_updated_at ON sms_messages;
 CREATE TRIGGER trg_sms_messages_updated_at
@@ -188,6 +178,7 @@ CREATE TRIGGER trg_sms_messages_updated_at
 ALTER TABLE sms_messages ENABLE ROW LEVEL SECURITY;
 
 -- Admins can see all SMS
+DROP POLICY IF EXISTS sms_messages_admin_all ON sms_messages;
 CREATE POLICY sms_messages_admin_all ON sms_messages
   FOR ALL
   USING (
@@ -198,6 +189,7 @@ CREATE POLICY sms_messages_admin_all ON sms_messages
   );
 
 -- Owners can see SMS they sent (via their profile)
+DROP POLICY IF EXISTS sms_messages_owner_select ON sms_messages;
 CREATE POLICY sms_messages_owner_select ON sms_messages
   FOR SELECT
   USING (
@@ -211,26 +203,18 @@ CREATE POLICY sms_messages_owner_select ON sms_messages
 
 -- Service role inserts (API routes use service role client, bypasses RLS)
 -- No explicit INSERT policy needed for service role, but add one for completeness
+DROP POLICY IF EXISTS sms_messages_service_insert ON sms_messages;
 CREATE POLICY sms_messages_service_insert ON sms_messages
   FOR INSERT
   WITH CHECK (true);
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [3/169] 20260211000000_p2_unique_constraint_and_gdpr_rpc.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- Migration P2: Contrainte UNIQUE partielle + RPC GDPR transactionnelle
 -- Date: 2026-02-11
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- ============================================
 -- 1. CONTRAINTE UNIQUE PARTIELLE SUR DOCUMENTS
 -- ============================================
@@ -259,7 +243,7 @@ CREATE OR REPLACE FUNCTION anonymize_user_cascade(
   p_reason TEXT,
   p_keep_financial_records BOOLEAN DEFAULT TRUE
 )
-RETURNS JSONB AS $mig$
+RETURNS JSONB AS $$
 DECLARE
   v_profile_id UUID;
   v_profile_role TEXT;
@@ -434,7 +418,7 @@ BEGIN
 
   RETURN v_result;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION anonymize_user_cascade IS
   'Anonymise toutes les données d''un utilisateur en une seule transaction atomique (RGPD Art. 17)';
@@ -445,7 +429,7 @@ COMMENT ON FUNCTION anonymize_user_cascade IS
 
 DROP FUNCTION IF EXISTS cleanup_orphan_documents();
 CREATE OR REPLACE FUNCTION cleanup_orphan_documents()
-RETURNS JSONB AS $mig$
+RETURNS JSONB AS $$
 DECLARE
   v_orphan_lease_count INTEGER := 0;
   v_orphan_property_count INTEGER := 0;
@@ -498,29 +482,20 @@ BEGIN
     'executed_at', NOW()
   );
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION cleanup_orphan_documents IS
   'Nettoie les enregistrements orphelins en une transaction. Retourne les storage_path à supprimer côté Storage.';
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [4/169] 20260211100000_bic_compliance_tax_regime.sql ===
-DO $wrapper$ BEGIN
 -- ============================================
 -- BIC Compliance: Régime fiscal + Inventaire mobilier
 -- Corrige les lacunes identifiées dans l'audit BIC
 -- ============================================
 
 -- 1. Enum pour le régime fiscal BIC
-DO $mig$ BEGIN
+DO $$ BEGIN
   CREATE TYPE tax_regime_type AS ENUM (
     'micro_foncier',    -- Revenus fonciers < 15k€ (location nue)
     'reel_foncier',     -- Revenus fonciers réel (location nue)
@@ -528,16 +503,16 @@ DO $mig$ BEGIN
     'reel_bic'          -- BIC réel (location meublée)
   );
 EXCEPTION WHEN duplicate_object THEN NULL;
-END $mig$;
+END $$;
 
 -- 2. Enum pour le statut LMNP/LMP
-DO $mig$ BEGIN
+DO $$ BEGIN
   CREATE TYPE lmnp_status_type AS ENUM (
     'lmnp',  -- Loueur Meublé Non Professionnel
     'lmp'    -- Loueur Meublé Professionnel
   );
 EXCEPTION WHEN duplicate_object THEN NULL;
-END $mig$;
+END $$;
 
 -- 3. Ajouter colonnes au tableau leases
 ALTER TABLE leases
@@ -569,7 +544,7 @@ COMMENT ON COLUMN properties.default_tax_regime IS
 
 -- 6. Auto-update is_furnished quand un bail meublé est créé
 CREATE OR REPLACE FUNCTION update_property_furnished_status()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.type_bail IN ('meuble', 'bail_mobilite', 'etudiant') THEN
     UPDATE properties
@@ -579,7 +554,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_update_property_furnished ON leases;
 CREATE TRIGGER trg_update_property_furnished
@@ -613,17 +588,8 @@ GROUP BY p.owner_id, EXTRACT(YEAR FROM i.periode::date);
 CREATE INDEX IF NOT EXISTS idx_leases_tax_regime ON leases(tax_regime) WHERE tax_regime IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_properties_is_furnished ON properties(is_furnished) WHERE is_furnished = true;
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [5/169] 20260212000000_audit_database_integrity.sql ===
-DO $wrapper$ BEGIN
 -- ============================================================================
 -- AUDIT D'INTÉGRITÉ DE LA BASE DE DONNÉES TALOK
 -- Date: 2026-02-12
@@ -652,7 +618,7 @@ RETURNS TABLE(
   orphan_count BIGINT,
   severity TEXT,
   description TEXT
-) AS $mig$
+) AS $$
 BEGIN
 
   -- ── PROFILES ──────────────────────────────────────────────────────
@@ -1367,7 +1333,7 @@ BEGIN
   -- (handled by caller, but the function returns all checks for completeness)
 
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION audit_orphan_records() IS
   'Audit complet des enregistrements orphelins. Retourne toutes les relations cassées avec leur sévérité.';
@@ -1385,7 +1351,7 @@ RETURNS TABLE(
   severity TEXT,
   description TEXT,
   sample_ids TEXT
-) AS $mig$
+) AS $$
 BEGIN
 
   -- ── PROFILES : même user_id (devrait être UNIQUE) ────────────────
@@ -1594,7 +1560,7 @@ BEGIN
   HAVING COUNT(*) > 1;
 
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION audit_duplicate_records() IS
   'Audit complet des enregistrements dupliqués. Retourne tous les doublons détectés avec leur sévérité.';
@@ -1611,7 +1577,7 @@ RETURNS TABLE(
   expected_target TEXT,
   has_fk BOOLEAN,
   recommendation TEXT
-) AS $mig$
+) AS $$
 BEGIN
 
   -- Lister toutes les colonnes finissant par _id dans le schéma public
@@ -1682,7 +1648,7 @@ BEGIN
     ic.tbl, ic.col;
 
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION audit_missing_fk_constraints() IS
   'Détecte les colonnes *_id sans contrainte FK formelle (FK implicites).';
@@ -1761,7 +1727,7 @@ RETURNS TABLE(
   fk_column TEXT,
   records_affected BIGINT,
   detail TEXT
-) AS $mig$
+) AS $$
 DECLARE
   v_batch_id UUID := gen_random_uuid();
   v_count BIGINT;
@@ -2068,7 +2034,7 @@ BEGIN
   RETURN NEXT;
 
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION safe_cleanup_orphans(BOOLEAN, TEXT) IS
   'Nettoyage SAFE des orphelins avec archivage. Par défaut en DRY RUN. Usage: SELECT * FROM safe_cleanup_orphans(false) pour exécuter.';
@@ -2082,7 +2048,7 @@ CREATE OR REPLACE FUNCTION restore_cleanup_batch(p_batch_id UUID)
 RETURNS TABLE(
   restored_table TEXT,
   restored_count BIGINT
-) AS $mig$
+) AS $$
 DECLARE
   r RECORD;
   v_count BIGINT := 0;
@@ -2125,7 +2091,7 @@ BEGIN
   RETURN NEXT;
 
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION restore_cleanup_batch(UUID) IS
   'Liste les enregistrements restaurables pour un batch de nettoyage donné.';
@@ -2134,7 +2100,7 @@ COMMENT ON FUNCTION restore_cleanup_batch(UUID) IS
 -- ============================================================================
 -- LOGS DE MIGRATION
 -- ============================================================================
-DO $mig$
+DO $$
 BEGIN
   RAISE NOTICE '══════════════════════════════════════════════════════════════';
   RAISE NOTICE '  AUDIT D''INTÉGRITÉ TALOK — Migration installée';
@@ -2153,19 +2119,10 @@ BEGIN
   RAISE NOTICE '  Restauration :';
   RAISE NOTICE '    SELECT * FROM restore_cleanup_batch(''<batch_id>'');';
   RAISE NOTICE '══════════════════════════════════════════════════════════════';
-END $mig$;
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+END $$;
 
 
 -- === [6/169] 20260212000001_fix_guarantor_role_and_tables.sql ===
-DO $wrapper$ BEGIN
 -- ============================================
 -- Migration: Ajouter le rôle guarantor + tables manquantes
 -- Date: 2026-02-12
@@ -2188,7 +2145,7 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $mig$
+AS $$
 DECLARE
   v_role TEXT;
   v_prenom TEXT;
@@ -2223,7 +2180,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$;
+$$;
 
 COMMENT ON FUNCTION public.handle_new_user() IS
 'Crée automatiquement un profil lors de la création d''un utilisateur.
@@ -2249,6 +2206,7 @@ CREATE TABLE IF NOT EXISTS guarantor_profiles (
 ALTER TABLE guarantor_profiles ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "guarantor_profiles_select_own" ON guarantor_profiles;
+DROP POLICY IF EXISTS "guarantor_profiles_select_own" ON guarantor_profiles;
 CREATE POLICY "guarantor_profiles_select_own" ON guarantor_profiles
   FOR SELECT USING (
     profile_id IN (
@@ -2257,6 +2215,7 @@ CREATE POLICY "guarantor_profiles_select_own" ON guarantor_profiles
   );
 
 DROP POLICY IF EXISTS "guarantor_profiles_insert_own" ON guarantor_profiles;
+DROP POLICY IF EXISTS "guarantor_profiles_insert_own" ON guarantor_profiles;
 CREATE POLICY "guarantor_profiles_insert_own" ON guarantor_profiles
   FOR INSERT WITH CHECK (
     profile_id IN (
@@ -2264,6 +2223,7 @@ CREATE POLICY "guarantor_profiles_insert_own" ON guarantor_profiles
     )
   );
 
+DROP POLICY IF EXISTS "guarantor_profiles_update_own" ON guarantor_profiles;
 DROP POLICY IF EXISTS "guarantor_profiles_update_own" ON guarantor_profiles;
 CREATE POLICY "guarantor_profiles_update_own" ON guarantor_profiles
   FOR UPDATE USING (
@@ -2296,11 +2256,17 @@ CREATE INDEX IF NOT EXISTS idx_user_consents_user_id ON user_consents(user_id);
 -- RLS pour user_consents
 ALTER TABLE user_consents ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "user_consents_select_own" ON user_consents;
+
 CREATE POLICY "user_consents_select_own" ON user_consents
   FOR SELECT USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "user_consents_insert_own" ON user_consents;
+
 CREATE POLICY "user_consents_insert_own" ON user_consents
   FOR INSERT WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "user_consents_update_own" ON user_consents;
 
 CREATE POLICY "user_consents_update_own" ON user_consents
   FOR UPDATE USING (user_id = auth.uid());
@@ -2315,17 +2281,8 @@ ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_telephone_check;
 ALTER TABLE profiles ADD CONSTRAINT profiles_telephone_check
   CHECK (telephone IS NULL OR telephone ~ '^\+[1-9]\d{1,14}$');
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [7/169] 20260212100000_audit_v2_merge_and_prevention.sql ===
-DO $wrapper$ BEGIN
 -- ============================================================================
 -- AUDIT D'INTÉGRITÉ V2 — FUSION, DRY RUN, ROLLBACK, PRÉVENTION
 -- Date: 2026-02-12
@@ -2381,7 +2338,7 @@ RETURNS TABLE(
   premier_cree TIMESTAMPTZ,
   dernier_cree TIMESTAMPTZ,
   match_type TEXT
-) AS $mig$
+) AS $$
 BEGIN
   -- Doublons exacts : même adresse normalisée + CP + ville + même owner
   RETURN QUERY
@@ -2438,7 +2395,7 @@ BEGIN
     -- Exclure les paires déjà capturées en exact
     AND LOWER(TRIM(p1.adresse_complete)) != LOWER(TRIM(p2.adresse_complete));
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ----------------------------------------------------------------------------
 -- 3.2 Doublons de profils/contacts (email OU nom+prénom+date_naissance)
@@ -2453,7 +2410,7 @@ RETURNS TABLE(
   premier_cree TIMESTAMPTZ,
   dernier_cree TIMESTAMPTZ,
   match_type TEXT
-) AS $mig$
+) AS $$
 BEGIN
   -- Doublons par email (même email dans profiles)
   RETURN QUERY
@@ -2503,7 +2460,7 @@ BEGIN
   GROUP BY p.user_id
   HAVING COUNT(*) > 1;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ----------------------------------------------------------------------------
 -- 3.3 Doublons de baux (property_id + tenant_id + date_debut ±7j)
@@ -2517,7 +2474,7 @@ RETURNS TABLE(
   premier_cree TIMESTAMPTZ,
   dernier_cree TIMESTAMPTZ,
   match_type TEXT
-) AS $mig$
+) AS $$
 BEGIN
   -- Doublons exacts : même property + même période
   RETURN QUERY
@@ -2573,7 +2530,7 @@ BEGIN
     AND l1.date_debut <= COALESCE(l2.date_fin, '9999-12-31'::DATE)
     AND l2.date_debut <= COALESCE(l1.date_fin, '9999-12-31'::DATE);
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ----------------------------------------------------------------------------
 -- 3.4 Doublons de documents (nom + entité + created_at ±1min)
@@ -2586,7 +2543,7 @@ RETURNS TABLE(
   premier_cree TIMESTAMPTZ,
   dernier_cree TIMESTAMPTZ,
   match_type TEXT
-) AS $mig$
+) AS $$
 BEGIN
   -- Doublons par storage_path (même fichier physique)
   RETURN QUERY
@@ -2633,7 +2590,7 @@ BEGIN
   GROUP BY LOWER(TRIM(COALESCE(d.nom, d.nom_fichier, ''))), COALESCE(d.lease_id::TEXT, d.property_id::TEXT, 'none')
   HAVING COUNT(*) > 1;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ----------------------------------------------------------------------------
 -- 3.5 Doublons de paiements (montant + invoice_id + date ±1j)
@@ -2647,7 +2604,7 @@ RETURNS TABLE(
   premier_cree TIMESTAMPTZ,
   dernier_cree TIMESTAMPTZ,
   match_type TEXT
-) AS $mig$
+) AS $$
 BEGIN
   -- Doublons exacts : même invoice + même montant
   RETURN QUERY
@@ -2679,7 +2636,7 @@ BEGIN
     AND p1.montant = p2.montant
     AND ABS(EXTRACT(EPOCH FROM (p1.created_at - p2.created_at))) < 86400;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ----------------------------------------------------------------------------
 -- 3.6 Doublons d'EDL (lease_id + type + date ±1j)
@@ -2693,7 +2650,7 @@ RETURNS TABLE(
   premier_cree TIMESTAMPTZ,
   dernier_cree TIMESTAMPTZ,
   match_type TEXT
-) AS $mig$
+) AS $$
 BEGIN
   -- Doublons exacts : même bail + même type
   RETURN QUERY
@@ -2725,7 +2682,7 @@ BEGIN
     AND e1.id < e2.id
     AND ABS(EXTRACT(EPOCH FROM (e1.created_at - e2.created_at))) < 86400;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ----------------------------------------------------------------------------
 -- 3.7 Doublons de factures (lease_id + periode)
@@ -2740,7 +2697,7 @@ RETURNS TABLE(
   premier_cree TIMESTAMPTZ,
   dernier_cree TIMESTAMPTZ,
   match_type TEXT
-) AS $mig$
+) AS $$
 BEGIN
   RETURN QUERY
   SELECT
@@ -2756,7 +2713,7 @@ BEGIN
   GROUP BY i.lease_id, i.periode
   HAVING COUNT(*) > 1;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ----------------------------------------------------------------------------
 -- 3.8 Rapport consolidé de tous les doublons
@@ -2768,7 +2725,7 @@ RETURNS TABLE(
   duplicate_groups BIGINT,
   total_excess_records BIGINT,
   severity TEXT
-) AS $mig$
+) AS $$
 BEGIN
   RETURN QUERY
   SELECT 'properties'::TEXT, dp.match_type, COUNT(*)::BIGINT,
@@ -2814,7 +2771,7 @@ BEGIN
   FROM audit_duplicate_invoices() di
   GROUP BY di.match_type;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- ============================================================================
@@ -2827,7 +2784,7 @@ $mig$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Helper : compter les champs non-null d'un enregistrement
 CREATE OR REPLACE FUNCTION _count_non_null_fields(p_table TEXT, p_id UUID)
-RETURNS INTEGER AS $mig$
+RETURNS INTEGER AS $$
 DECLARE
   v_count INTEGER;
 BEGIN
@@ -2843,7 +2800,7 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
   RETURN 0;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 -- 4.2 Merge de propriétés
 CREATE OR REPLACE FUNCTION merge_duplicate_properties(
@@ -2851,7 +2808,7 @@ CREATE OR REPLACE FUNCTION merge_duplicate_properties(
   p_duplicate_id UUID,
   p_dry_run BOOLEAN DEFAULT TRUE
 )
-RETURNS TABLE(step TEXT, detail TEXT, affected_rows INTEGER) AS $mig$
+RETURNS TABLE(step TEXT, detail TEXT, affected_rows INTEGER) AS $$
 DECLARE
   v_count INTEGER;
 BEGIN
@@ -3008,7 +2965,7 @@ BEGIN
   affected_rows := 0;
   RETURN NEXT;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 4.3 Merge de factures dupliquées
 CREATE OR REPLACE FUNCTION merge_duplicate_invoices(
@@ -3016,7 +2973,7 @@ CREATE OR REPLACE FUNCTION merge_duplicate_invoices(
   p_duplicate_id UUID,
   p_dry_run BOOLEAN DEFAULT TRUE
 )
-RETURNS TABLE(step TEXT, detail TEXT, affected_rows INTEGER) AS $mig$
+RETURNS TABLE(step TEXT, detail TEXT, affected_rows INTEGER) AS $$
 DECLARE
   v_count INTEGER;
 BEGIN
@@ -3071,7 +3028,7 @@ BEGIN
   affected_rows := 0;
   RETURN NEXT;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 4.4 Merge de documents dupliqués
 CREATE OR REPLACE FUNCTION merge_duplicate_documents(
@@ -3079,7 +3036,7 @@ CREATE OR REPLACE FUNCTION merge_duplicate_documents(
   p_duplicate_id UUID,
   p_dry_run BOOLEAN DEFAULT TRUE
 )
-RETURNS TABLE(step TEXT, detail TEXT, affected_rows INTEGER) AS $mig$
+RETURNS TABLE(step TEXT, detail TEXT, affected_rows INTEGER) AS $$
 DECLARE
   v_count INTEGER;
 BEGIN
@@ -3138,7 +3095,7 @@ BEGIN
   affected_rows := 0;
   RETURN NEXT;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 4.5 Merge d'EDL dupliqués
 CREATE OR REPLACE FUNCTION merge_duplicate_edl(
@@ -3146,7 +3103,7 @@ CREATE OR REPLACE FUNCTION merge_duplicate_edl(
   p_duplicate_id UUID,
   p_dry_run BOOLEAN DEFAULT TRUE
 )
-RETURNS TABLE(step TEXT, detail TEXT, affected_rows INTEGER) AS $mig$
+RETURNS TABLE(step TEXT, detail TEXT, affected_rows INTEGER) AS $$
 DECLARE
   v_count INTEGER;
 BEGIN
@@ -3221,7 +3178,7 @@ BEGIN
   affected_rows := 0;
   RETURN NEXT;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- ============================================================================
@@ -3229,7 +3186,7 @@ $mig$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================================================
 -- ⚠️ Ces contraintes sont ajoutées avec NOT VALID + VALIDATE séparément
 -- pour éviter de bloquer la table pendant la création.
--- Elles sont idempotentes (IF NOT EXISTS / DO $mig$ ... $mig$).
+-- Elles sont idempotentes (IF NOT EXISTS / DO $$ ... $$).
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
@@ -3237,7 +3194,7 @@ $mig$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ----------------------------------------------------------------------------
 
 -- leases.tenant_id → profiles.id
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.table_constraints
     WHERE constraint_name = 'fk_leases_tenant_id' AND table_name = 'leases'
@@ -3251,10 +3208,10 @@ DO $mig$ BEGIN
       ADD CONSTRAINT fk_leases_tenant_id
       FOREIGN KEY (tenant_id) REFERENCES profiles(id) ON DELETE SET NULL;
   END IF;
-END $mig$;
+END $$;
 
 -- leases.owner_id → profiles.id (skip if column doesn't exist)
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'leases' AND column_name = 'owner_id'
@@ -3269,10 +3226,10 @@ DO $mig$ BEGIN
       ADD CONSTRAINT fk_leases_owner_id
       FOREIGN KEY (owner_id) REFERENCES profiles(id) ON DELETE SET NULL;
   END IF;
-END $mig$;
+END $$;
 
 -- tickets.assigned_provider_id → profiles.id (skip if column doesn't exist)
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.columns
     WHERE table_name = 'tickets' AND column_name = 'assigned_provider_id'
@@ -3287,64 +3244,64 @@ DO $mig$ BEGIN
       ADD CONSTRAINT fk_tickets_assigned_provider_id
       FOREIGN KEY (assigned_provider_id) REFERENCES profiles(id) ON DELETE SET NULL;
   END IF;
-END $mig$;
+END $$;
 
 -- tickets.owner_id → profiles.id (skip if column doesn't exist)
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'tickets' AND column_name = 'owner_id')
   AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_tickets_owner_id' AND table_name = 'tickets')
   THEN
     UPDATE tickets SET owner_id = NULL WHERE owner_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM profiles WHERE id = tickets.owner_id);
     ALTER TABLE tickets ADD CONSTRAINT fk_tickets_owner_id FOREIGN KEY (owner_id) REFERENCES profiles(id) ON DELETE SET NULL;
   END IF;
-END $mig$;
+END $$;
 
 -- documents.profile_id → profiles.id (skip if column doesn't exist)
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'documents' AND column_name = 'profile_id')
   AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_documents_profile_id' AND table_name = 'documents')
   THEN
     UPDATE documents SET profile_id = NULL WHERE profile_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM profiles WHERE id = documents.profile_id);
     ALTER TABLE documents ADD CONSTRAINT fk_documents_profile_id FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE SET NULL;
   END IF;
-END $mig$;
+END $$;
 
 -- building_units.current_lease_id → leases.id (skip if column/table doesn't exist)
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'building_units' AND column_name = 'current_lease_id')
   AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_building_units_current_lease_id' AND table_name = 'building_units')
   THEN
     UPDATE building_units SET current_lease_id = NULL WHERE current_lease_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM leases WHERE id = building_units.current_lease_id);
     ALTER TABLE building_units ADD CONSTRAINT fk_building_units_current_lease_id FOREIGN KEY (current_lease_id) REFERENCES leases(id) ON DELETE SET NULL;
   END IF;
-END $mig$;
+END $$;
 
 -- work_orders.quote_id → quotes.id (skip if column doesn't exist)
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'quote_id')
   AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_work_orders_quote_id' AND table_name = 'work_orders')
   THEN
     UPDATE work_orders SET quote_id = NULL WHERE quote_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM quotes WHERE id = work_orders.quote_id);
     ALTER TABLE work_orders ADD CONSTRAINT fk_work_orders_quote_id FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL;
   END IF;
-END $mig$;
+END $$;
 
 -- work_orders.property_id → properties.id (skip if column doesn't exist)
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'property_id')
   AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_work_orders_property_id' AND table_name = 'work_orders')
   THEN
     UPDATE work_orders SET property_id = NULL WHERE property_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM properties WHERE id = work_orders.property_id);
     ALTER TABLE work_orders ADD CONSTRAINT fk_work_orders_property_id FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE SET NULL;
   END IF;
-END $mig$;
+END $$;
 
 -- ----------------------------------------------------------------------------
 -- 5.2 Contraintes UNIQUE pour empêcher les futurs doublons
 -- ----------------------------------------------------------------------------
 
 -- Empêcher 2 factures pour le même bail + même période
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'uq_invoices_lease_periode'
   ) THEN
@@ -3367,10 +3324,10 @@ DO $mig$ BEGIN
       ADD CONSTRAINT uq_invoices_lease_periode
       UNIQUE (lease_id, periode);
   END IF;
-END $mig$;
+END $$;
 
 -- Empêcher 2 signataires identiques sur le même bail
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'uq_lease_signers_lease_profile'
   ) THEN
@@ -3394,10 +3351,10 @@ DO $mig$ BEGIN
       ON lease_signers (lease_id, profile_id)
       WHERE profile_id IS NOT NULL;
   END IF;
-END $mig$;
+END $$;
 
 -- Empêcher 2 EDL de même type sur le même bail (hors annulés)
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_indexes WHERE indexname = 'uq_edl_lease_type_active'
   ) THEN
@@ -3405,10 +3362,10 @@ DO $mig$ BEGIN
       ON edl (lease_id, type)
       WHERE status NOT IN ('cancelled', 'disputed');
   END IF;
-END $mig$;
+END $$;
 
 -- Empêcher les doublons de roommates sur le même bail
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_indexes WHERE indexname = 'uq_roommates_lease_profile'
   ) THEN
@@ -3425,10 +3382,10 @@ DO $mig$ BEGIN
     CREATE UNIQUE INDEX IF NOT EXISTS uq_roommates_lease_profile
       ON roommates (lease_id, profile_id);
   END IF;
-END $mig$;
+END $$;
 
 -- Empêcher les abonnements actifs multiples par user
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_indexes WHERE indexname = 'uq_subscriptions_user_active'
   ) THEN
@@ -3436,13 +3393,13 @@ DO $mig$ BEGIN
       ON subscriptions (owner_id)
       WHERE status IN ('active', 'trialing');
   END IF;
-END $mig$;
+END $$;
 
 -- ----------------------------------------------------------------------------
 -- 5.3 Trigger anti-doublon sur INSERT de propriétés
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION prevent_duplicate_property()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_existing_id UUID;
 BEGIN
@@ -3464,7 +3421,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_prevent_duplicate_property ON properties;
 CREATE TRIGGER trg_prevent_duplicate_property
@@ -3476,7 +3433,7 @@ CREATE TRIGGER trg_prevent_duplicate_property
 -- 5.4 Trigger anti-doublon sur INSERT de paiements (même invoice + même montant + <24h)
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION prevent_duplicate_payment()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_existing_id UUID;
 BEGIN
@@ -3495,7 +3452,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_prevent_duplicate_payment ON payments;
 CREATE TRIGGER trg_prevent_duplicate_payment
@@ -3507,7 +3464,7 @@ CREATE TRIGGER trg_prevent_duplicate_payment
 -- ============================================================================
 -- LOGS
 -- ============================================================================
-DO $mig$
+DO $$
 BEGIN
   RAISE NOTICE '══════════════════════════════════════════════════════════════';
   RAISE NOTICE '  AUDIT V2 — Fusion, Prévention, Contraintes installés';
@@ -3534,19 +3491,10 @@ BEGIN
   RAISE NOTICE '    - 5 contraintes UNIQUE ajoutées';
   RAISE NOTICE '    - 2 triggers anti-doublon activés';
   RAISE NOTICE '══════════════════════════════════════════════════════════════';
-END $mig$;
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+END $$;
 
 
 -- === [8/169] 20260212100001_email_template_system.sql ===
-DO $wrapper$ BEGIN
 -- ============================================================
 -- Email Template System
 -- Tables: email_templates, email_template_versions, email_logs
@@ -3606,12 +3554,12 @@ CREATE INDEX IF NOT EXISTS idx_email_logs_sent_at ON email_logs(sent_at DESC);
 
 -- Trigger pour updated_at automatique
 CREATE OR REPLACE FUNCTION update_email_template_updated_at()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_email_templates_updated_at ON email_templates;
 CREATE TRIGGER trg_email_templates_updated_at
@@ -3621,7 +3569,7 @@ CREATE TRIGGER trg_email_templates_updated_at
 
 -- Trigger pour versionner automatiquement les modifications
 CREATE OR REPLACE FUNCTION version_email_template()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   -- Sauvegarder l'ancienne version si le contenu a changé
   IF OLD.subject IS DISTINCT FROM NEW.subject
@@ -3632,7 +3580,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS trg_email_template_version ON email_templates;
 CREATE TRIGGER trg_email_template_version
@@ -3649,6 +3597,7 @@ ALTER TABLE email_template_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_logs ENABLE ROW LEVEL SECURITY;
 
 -- email_templates: lecture pour les admins, écriture pour les admins
+DROP POLICY IF EXISTS "email_templates_admin_read" ON email_templates;
 CREATE POLICY "email_templates_admin_read" ON email_templates
   FOR SELECT TO authenticated
   USING (
@@ -3658,6 +3607,8 @@ CREATE POLICY "email_templates_admin_read" ON email_templates
       AND profiles.role = 'admin'
     )
   );
+
+DROP POLICY IF EXISTS "email_templates_admin_write" ON email_templates;
 
 CREATE POLICY "email_templates_admin_write" ON email_templates
   FOR ALL TO authenticated
@@ -3677,11 +3628,13 @@ CREATE POLICY "email_templates_admin_write" ON email_templates
   );
 
 -- email_templates: lecture pour le service role (envoi d'emails)
+DROP POLICY IF EXISTS "email_templates_service_read" ON email_templates;
 CREATE POLICY "email_templates_service_read" ON email_templates
   FOR SELECT TO service_role
   USING (true);
 
 -- email_template_versions: lecture pour les admins
+DROP POLICY IF EXISTS "email_template_versions_admin_read" ON email_template_versions;
 CREATE POLICY "email_template_versions_admin_read" ON email_template_versions
   FOR SELECT TO authenticated
   USING (
@@ -3693,6 +3646,7 @@ CREATE POLICY "email_template_versions_admin_read" ON email_template_versions
   );
 
 -- email_logs: lecture pour les admins
+DROP POLICY IF EXISTS "email_logs_admin_read" ON email_logs;
 CREATE POLICY "email_logs_admin_read" ON email_logs
   FOR SELECT TO authenticated
   USING (
@@ -3704,16 +3658,9 @@ CREATE POLICY "email_logs_admin_read" ON email_logs
   );
 
 -- email_logs: insertion pour service role
+DROP POLICY IF EXISTS "email_logs_service_insert" ON email_logs;
 CREATE POLICY "email_logs_service_insert" ON email_logs
   FOR INSERT TO service_role
   WITH CHECK (true);
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 

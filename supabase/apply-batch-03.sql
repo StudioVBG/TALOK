@@ -2,7 +2,6 @@
 -- 17 migrations
 
 -- === [22/169] 20260216300000_fix_auth_profile_sync.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Correction synchronisation auth <-> profiles
 -- Date: 2026-02-16
@@ -25,7 +24,7 @@ DO $wrapper$ BEGIN
 --   C. Backfill les emails NULL dans les profils existants
 --   D. Assurer qu'une policy INSERT RLS existe sur profiles
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- ============================================
 -- A. MISE A JOUR DE handle_new_user()
 -- ============================================
@@ -37,7 +36,7 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $mig$
+AS $$
 DECLARE
   v_role TEXT;
   v_prenom TEXT;
@@ -84,7 +83,7 @@ EXCEPTION WHEN OTHERS THEN
     NEW.id, NEW.email, SQLERRM, SQLSTATE;
   RETURN NEW;
 END;
-$mig$;
+$$;
 
 COMMENT ON FUNCTION public.handle_new_user() IS
 'Cree automatiquement un profil lors de la creation d''un utilisateur auth.
@@ -95,14 +94,14 @@ Utilise ON CONFLICT pour gerer les cas ou le profil existe deja.
 Ne bloque jamais la creation auth meme en cas d''erreur (EXCEPTION handler).';
 
 -- S'assurer que le trigger existe (idempotent)
-DO $mig$ BEGIN
+DO $$ BEGIN
   DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
   CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 EXCEPTION WHEN insufficient_privilege THEN
   RAISE NOTICE '[fix_auth_sync] Cannot modify trigger on auth.users (insufficient privilege) — skipping';
-END $mig$;
+END $$;
 
 -- ============================================
 -- B. CREER LES PROFILS MANQUANTS
@@ -110,7 +109,7 @@ END $mig$;
 -- Pour chaque utilisateur dans auth.users qui n'a pas de profil,
 -- en creer un avec les donnees disponibles.
 
-DO $mig$
+DO $$
 DECLARE
   v_count INTEGER := 0;
   v_user RECORD;
@@ -156,7 +155,7 @@ BEGIN
   ELSE
     RAISE NOTICE '[fix_auth_sync] Aucun profil manquant — tous les auth.users ont un profil';
   END IF;
-END $mig$;
+END $$;
 
 -- ============================================
 -- C. BACKFILL DES EMAILS NULL
@@ -164,7 +163,7 @@ END $mig$;
 -- Mettre a jour les profils existants qui ont email = NULL
 -- avec l'email provenant de auth.users.
 
-DO $mig$
+DO $$
 DECLARE
   v_updated INTEGER;
 BEGIN
@@ -185,7 +184,7 @@ BEGIN
   ELSE
     RAISE NOTICE '[fix_auth_sync] Tous les profils ont deja un email renseigne';
   END IF;
-END $mig$;
+END $$;
 
 -- ============================================
 -- D. POLICY INSERT EXPLICITE SUR PROFILES
@@ -200,6 +199,7 @@ DROP POLICY IF EXISTS "profiles_insert_own" ON profiles;
 -- Permettre a un utilisateur authentifie de creer son propre profil
 -- (couvre le cas ou le trigger handle_new_user echoue et que le
 --  client tente un INSERT direct ou via l'API)
+DROP POLICY IF EXISTS "profiles_insert_own" ON profiles;
 CREATE POLICY "profiles_insert_own" ON profiles
   FOR INSERT TO authenticated
   WITH CHECK (user_id = auth.uid());
@@ -207,7 +207,7 @@ CREATE POLICY "profiles_insert_own" ON profiles
 -- ============================================
 -- E. VERIFICATION FINALE
 -- ============================================
-DO $mig$
+DO $$
 DECLARE
   v_total_auth INTEGER;
   v_total_profiles INTEGER;
@@ -241,7 +241,7 @@ BEGIN
   END IF;
 
   RAISE NOTICE '========================================';
-END $mig$;
+END $$;
 
 -- ============================================
 -- F. FONCTIONS RPC POUR LE HEALTH CHECK (/api/health/auth)
@@ -256,9 +256,9 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public
-AS $mig$
+AS $$
   SELECT count(*)::INTEGER FROM auth.users;
-$mig$;
+$$;
 
 -- Compter les auth.users sans profil
 CREATE OR REPLACE FUNCTION public.check_auth_without_profile()
@@ -267,12 +267,12 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public
-AS $mig$
+AS $$
   SELECT count(*)::INTEGER
   FROM auth.users u
   LEFT JOIN public.profiles p ON p.user_id = u.id
   WHERE p.id IS NULL;
-$mig$;
+$$;
 
 -- Compter les profils orphelins (sans auth.users)
 CREATE OR REPLACE FUNCTION public.check_orphan_profiles()
@@ -281,12 +281,12 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public
-AS $mig$
+AS $$
   SELECT count(*)::INTEGER
   FROM public.profiles p
   LEFT JOIN auth.users u ON u.id = p.user_id
   WHERE u.id IS NULL AND p.user_id IS NOT NULL;
-$mig$;
+$$;
 
 -- Compter les emails desynchronises
 CREATE OR REPLACE FUNCTION public.check_desync_emails()
@@ -295,14 +295,14 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public
-AS $mig$
+AS $$
   SELECT count(*)::INTEGER
   FROM public.profiles p
   INNER JOIN auth.users u ON u.id = p.user_id
   WHERE p.email IS DISTINCT FROM u.email
     AND p.email IS NOT NULL
     AND u.email IS NOT NULL;
-$mig$;
+$$;
 
 -- Verifier si un trigger existe sur auth.users
 CREATE OR REPLACE FUNCTION public.check_trigger_exists(p_trigger_name TEXT)
@@ -311,7 +311,7 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public
-AS $mig$
+AS $$
   SELECT EXISTS(
     SELECT 1 FROM pg_trigger t
     JOIN pg_class c ON c.oid = t.tgrelid
@@ -320,7 +320,7 @@ AS $mig$
       AND n.nspname = 'auth'
       AND c.relname = 'users'
   );
-$mig$;
+$$;
 
 -- Verifier si une policy INSERT ou ALL existe sur une table
 CREATE OR REPLACE FUNCTION public.check_insert_policy_exists(p_table_name TEXT)
@@ -329,14 +329,14 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public
-AS $mig$
+AS $$
   SELECT EXISTS(
     SELECT 1 FROM pg_policies
     WHERE tablename = p_table_name
       AND schemaname = 'public'
       AND (cmd = 'INSERT' OR cmd = '*')
   );
-$mig$;
+$$;
 
 -- Permissions pour les fonctions de health check (admin seulement via service role)
 GRANT EXECUTE ON FUNCTION public.count_auth_users() TO authenticated;
@@ -345,18 +345,9 @@ GRANT EXECUTE ON FUNCTION public.check_orphan_profiles() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_desync_emails() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_trigger_exists(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_insert_policy_exists(TEXT) TO authenticated;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [23/169] 20260216400000_performance_indexes_rls.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Index de performance pour les policies RLS
 -- Date: 2026-02-16
@@ -365,7 +356,7 @@ DO $wrapper$ BEGIN
 -- des EXISTS avec 3 niveaux de jointure. Ces index accélèrent
 -- les lookups les plus fréquents.
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- ============================================
 -- 1. LEASE_SIGNERS: Index composite pour lookup par profile_id + lease_id
 -- Utilisé par quasi toutes les policies RLS inter-comptes
@@ -451,7 +442,7 @@ CREATE INDEX IF NOT EXISTS idx_profiles_user_id
 -- ============================================
 -- VÉRIFICATION
 -- ============================================
-DO $mig$
+DO $$
 DECLARE
   idx_count INT;
 BEGIN
@@ -461,19 +452,10 @@ BEGIN
     AND indexname LIKE 'idx_%';
 
   RAISE NOTICE '✅ % index de performance créés/vérifiés', idx_count;
-END $mig$;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+END $$;
 
 
 -- === [24/169] 20260216500000_fix_tenant_dashboard_complete.sql ===
-DO $wrapper$ BEGIN
 -- ============================================================================
 -- MIGRATION: Compléter la RPC tenant_dashboard avec toutes les données nécessaires
 -- Date: 2026-02-16
@@ -489,7 +471,7 @@ CREATE OR REPLACE FUNCTION tenant_dashboard(p_tenant_user_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $mig$
+AS $$
 DECLARE
   v_profile_id UUID;
   v_user_email TEXT;
@@ -795,33 +777,24 @@ BEGIN
 
   RETURN v_result;
 END;
-$mig$;
+$$;
 
 COMMENT ON FUNCTION tenant_dashboard(UUID) IS
 'RPC dashboard locataire v4. Cherche par profile_id OU invited_email.
 Inclut: signers enrichis, property complète (DPE, meters, keys), insurance, KYC status.';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [25/169] 20260216500001_enforce_unique_constraints_safety.sql ===
-DO $wrapper$ BEGIN
 -- Migration: Enforce unique constraints safety net
 -- Date: 2026-02-16
 -- Description: S'assure que les contraintes uniques critiques sont bien appliquées.
 --              Idempotent : ne fait rien si elles existent déjà.
 --              Nettoie les doublons existants avant de créer les contraintes.
--- (BEGIN removed for DO wrapper compatibility)
+
 -- =============================================
 -- 1. INVOICES: unique (lease_id, periode)
 -- =============================================
-DO $mig$
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'uq_invoices_lease_periode'
@@ -848,12 +821,12 @@ BEGIN
   ELSE
     RAISE NOTICE 'Constraint uq_invoices_lease_periode already exists, skipping';
   END IF;
-END $mig$;
+END $$;
 
 -- =============================================
 -- 2. LEASE_SIGNERS: unique (lease_id, profile_id) WHERE profile_id IS NOT NULL
 -- =============================================
-DO $mig$
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_indexes WHERE indexname = 'uq_lease_signers_lease_profile'
@@ -883,12 +856,12 @@ BEGIN
   ELSE
     RAISE NOTICE 'Index uq_lease_signers_lease_profile already exists, skipping';
   END IF;
-END $mig$;
+END $$;
 
 -- =============================================
 -- 3. ROOMMATES: unique (lease_id, profile_id)
 -- =============================================
-DO $mig$
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_indexes WHERE indexname = 'uq_roommates_lease_profile'
@@ -917,12 +890,12 @@ BEGIN
   ELSE
     RAISE NOTICE 'Index uq_roommates_lease_profile already exists, skipping';
   END IF;
-END $mig$;
+END $$;
 
 -- =============================================
 -- 4. DOCUMENTS: Empêcher les doublons de fichiers (même storage_path)
 -- =============================================
-DO $mig$
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_indexes WHERE indexname = 'uq_documents_storage_path'
@@ -947,19 +920,10 @@ BEGIN
   ELSE
     RAISE NOTICE 'Index uq_documents_storage_path already exists, skipping';
   END IF;
-END $mig$;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+END $$;
 
 
 -- === [26/169] 20260217000000_data_integrity_audit_repair.sql ===
-DO $wrapper$ BEGIN
 -- ============================================================================
 -- MIGRATION: Audit & Réparation Intégrité Relationnelle Complète
 -- Date: 2026-02-17
@@ -997,7 +961,7 @@ DO $wrapper$ BEGIN
 --   H. Ajouter les FK manquantes (si safe)
 --   I. Rapport final
 -- ============================================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- ============================================
 -- A. TABLE D'AUDIT _repair_log
 -- ============================================
@@ -1018,7 +982,7 @@ COMMENT ON TABLE public._repair_log IS
 -- B. RÉPARER auth.users → profiles
 -- ============================================
 -- B.1 Créer les profils manquants (consolidated - may already be done by 20260216300000)
-DO $mig$
+DO $$
 DECLARE
   v_count INTEGER := 0;
   v_user RECORD;
@@ -1056,10 +1020,10 @@ BEGIN
   END LOOP;
 
   RAISE NOTICE '[B.1] % profil(s) manquant(s) créé(s)', v_count;
-END $mig$;
+END $$;
 
 -- B.2 Backfill emails NULL dans profiles
-DO $mig$
+DO $$
 DECLARE
   v_updated INTEGER;
 BEGIN
@@ -1079,10 +1043,10 @@ BEGIN
 
   GET DIAGNOSTICS v_updated = ROW_COUNT;
   RAISE NOTICE '[B.2] % email(s) backfillé(s)', v_updated;
-END $mig$;
+END $$;
 
 -- B.3 Synchroniser les emails désynchronisés (auth.email != profile.email)
-DO $mig$
+DO $$
 DECLARE
   v_updated INTEGER;
 BEGIN
@@ -1103,13 +1067,13 @@ BEGIN
 
   GET DIAGNOSTICS v_updated = ROW_COUNT;
   RAISE NOTICE '[B.3] % email(s) resynchronisé(s)', v_updated;
-END $mig$;
+END $$;
 
 -- ============================================
 -- C. RÉPARER lease_signers ORPHELINS
 -- ============================================
 -- C.1 Lier les lease_signers dont invited_email matche un profil existant
-DO $mig$
+DO $$
 DECLARE
   v_linked INTEGER := 0;
   rec RECORD;
@@ -1139,10 +1103,10 @@ BEGIN
   END LOOP;
 
   RAISE NOTICE '[C.1] % profil(s) liés à des lease_signers orphelins', v_linked;
-END $mig$;
+END $$;
 
 -- C.2 Compter les lease_signers encore orphelins (ceux qui n'ont pas de compte)
-DO $mig$
+DO $$
 DECLARE
   v_orphan_count INTEGER;
 BEGIN
@@ -1163,13 +1127,13 @@ BEGIN
   ELSE
     RAISE NOTICE '[C.2] Aucun lease_signer orphelin restant';
   END IF;
-END $mig$;
+END $$;
 
 -- ============================================
 -- D. RÉPARER invoices.tenant_id ORPHELINS
 -- ============================================
 -- Les invoices doivent avoir un tenant_id qui pointe vers le profile du locataire du bail
-DO $mig$
+DO $$
 DECLARE
   v_fixed INTEGER := 0;
 BEGIN
@@ -1193,12 +1157,12 @@ BEGIN
 
   GET DIAGNOSTICS v_fixed = ROW_COUNT;
   RAISE NOTICE '[D] % invoice(s) avec tenant_id réparé(s)', v_fixed;
-END $mig$;
+END $$;
 
 -- ============================================
 -- E. RÉPARER invoices.owner_id ORPHELINS
 -- ============================================
-DO $mig$
+DO $$
 DECLARE
   v_fixed INTEGER := 0;
 BEGIN
@@ -1221,7 +1185,7 @@ BEGIN
 
   GET DIAGNOSTICS v_fixed = ROW_COUNT;
   RAISE NOTICE '[E] % invoice(s) avec owner_id réparé(s)', v_fixed;
-END $mig$;
+END $$;
 
 -- ============================================
 -- F. FONCTION check_data_integrity()
@@ -1236,7 +1200,7 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $mig$
+AS $$
 BEGIN
   -- Check 1: Auth users sans profil
   RETURN QUERY
@@ -1464,7 +1428,7 @@ BEGIN
     0::INT,
     'Trigger auto_link_lease_signers sur profiles'::TEXT;
 END;
-$mig$;
+$$;
 
 COMMENT ON FUNCTION public.check_data_integrity() IS
   'Fonction de diagnostic complète pour vérifier l''intégrité relationnelle de toutes les tables.
@@ -1479,7 +1443,7 @@ GRANT EXECUTE ON FUNCTION public.check_data_integrity() TO authenticated;
 CREATE OR REPLACE FUNCTION public.validate_lease_insert()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-AS $mig$
+AS $$
 BEGIN
   -- Vérifier que la property existe
   IF NOT EXISTS (
@@ -1501,7 +1465,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$;
+$$;
 
 DROP TRIGGER IF EXISTS validate_lease_before_insert ON public.leases;
 CREATE TRIGGER validate_lease_before_insert
@@ -1517,7 +1481,7 @@ COMMENT ON TRIGGER validate_lease_before_insert ON public.leases IS
 -- ============================================
 -- Couvre le cas où un profil existant n'avait pas d'email et le reçoit plus tard
 CREATE OR REPLACE FUNCTION public.auto_link_lease_signers_on_profile_email_update()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   user_email TEXT;
   linked_count INT;
@@ -1543,7 +1507,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS trigger_auto_link_on_profile_update ON public.profiles;
 CREATE TRIGGER trigger_auto_link_on_profile_update
@@ -1556,7 +1520,7 @@ CREATE TRIGGER trigger_auto_link_on_profile_update
 -- ============================================
 
 -- H.1 properties.owner_id → profiles.id
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.table_constraints
     WHERE constraint_name = 'fk_properties_owner'
@@ -1584,10 +1548,10 @@ DO $mig$ BEGIN
   ELSE
     RAISE NOTICE '[H.1] FK sur properties.owner_id existe déjà — skip';
   END IF;
-END $mig$;
+END $$;
 
 -- H.2 leases.property_id → properties.id
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.table_constraints tc
     JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
@@ -1609,10 +1573,10 @@ DO $mig$ BEGIN
   ELSE
     RAISE NOTICE '[H.2] FK sur leases.property_id existe déjà — skip';
   END IF;
-END $mig$;
+END $$;
 
 -- H.3 lease_signers.lease_id → leases.id
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.table_constraints tc
     JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
@@ -1634,10 +1598,10 @@ DO $mig$ BEGIN
   ELSE
     RAISE NOTICE '[H.3] FK sur lease_signers.lease_id existe déjà — skip';
   END IF;
-END $mig$;
+END $$;
 
 -- H.4 lease_signers.profile_id → profiles.id
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.table_constraints tc
     JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
@@ -1659,10 +1623,10 @@ DO $mig$ BEGIN
   ELSE
     RAISE NOTICE '[H.4] FK sur lease_signers.profile_id existe déjà — skip';
   END IF;
-END $mig$;
+END $$;
 
 -- H.5 invoices.lease_id → leases.id
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.table_constraints tc
     JOIN information_schema.key_column_usage kcu ON tc.constraint_name = kcu.constraint_name
@@ -1684,12 +1648,12 @@ DO $mig$ BEGIN
   ELSE
     RAISE NOTICE '[H.5] FK sur invoices.lease_id existe déjà — skip';
   END IF;
-END $mig$;
+END $$;
 
 -- ============================================
 -- I. RAPPORT FINAL
 -- ============================================
-DO $mig$
+DO $$
 DECLARE
   v_auth_users INT;
   v_profiles INT;
@@ -1795,19 +1759,10 @@ BEGIN
     'signers_linkables', v_signers_linkables,
     'chaines_completes', v_chaines_completes
   ));
-END $mig$;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+END $$;
 
 
 -- === [27/169] 20260218000000_audit_repair_profiles.sql ===
-DO $wrapper$ BEGIN
 -- ============================================================================
 -- BLOC 1 : TABLE D'AUDIT + RÉPARATION PROFILS
 -- ============================================================================
@@ -1887,17 +1842,8 @@ FROM public._repair_log
 WHERE table_name = 'profiles'
 GROUP BY action, details->>'reason';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [28/169] 20260218100000_sync_auth_email_updates.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Synchronisation des changements d'email auth -> profiles
 -- Date: 2026-02-18
@@ -1920,7 +1866,7 @@ DO $wrapper$ BEGIN
 --   et mettre a jour le profil sans restrictions.
 --   SET search_path = public pour eviter les injections de schema.
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- ============================================
 -- A. FONCTION DE SYNCHRONISATION EMAIL
 -- ============================================
@@ -1929,7 +1875,7 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $mig$
+AS $$
 BEGIN
   -- Ne rien faire si l'email n'a pas change
   IF NEW.email IS NOT DISTINCT FROM OLD.email THEN
@@ -1957,7 +1903,7 @@ EXCEPTION WHEN OTHERS THEN
     NEW.id, SQLERRM, SQLSTATE;
   RETURN NEW;
 END;
-$mig$;
+$$;
 
 COMMENT ON FUNCTION public.handle_user_email_change() IS
 'Synchronise automatiquement profiles.email quand auth.users.email change.
@@ -1978,7 +1924,7 @@ CREATE TRIGGER on_auth_user_email_changed
 -- ============================================
 -- C. BACKFILL DES EMAILS DESYNCHRONISES
 -- ============================================
-DO $mig$
+DO $$
 DECLARE
   v_updated INTEGER;
 BEGIN
@@ -1999,12 +1945,12 @@ BEGIN
   ELSE
     RAISE NOTICE '[email_sync] Tous les emails sont deja synchronises';
   END IF;
-END $mig$;
+END $$;
 
 -- ============================================
 -- D. VERIFICATION
 -- ============================================
-DO $mig$
+DO $$
 DECLARE
   v_trigger_exists BOOLEAN;
   v_desync_count INTEGER;
@@ -2031,19 +1977,10 @@ BEGIN
     CASE WHEN v_trigger_exists THEN 'ACTIF' ELSE 'MANQUANT' END;
   RAISE NOTICE '  Emails desynchronises restants     : %', v_desync_count;
   RAISE NOTICE '========================================';
-END $mig$;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+END $$;
 
 
 -- === [29/169] 20260219000000_missing_tables_and_rag.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Tables et fonctions manquantes
 -- Date: 2026-02-19
@@ -2061,7 +1998,7 @@ DO $wrapper$ BEGIN
 --      match_user_context)
 --   7. RLS sur toutes les nouvelles tables
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- =====================================================
 -- 1. TENANT REWARDS
 -- =====================================================
@@ -2088,6 +2025,7 @@ CREATE INDEX IF NOT EXISTS idx_tenant_rewards_profile
 ALTER TABLE tenant_rewards ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "tenant_rewards_select_own" ON tenant_rewards;
+DROP POLICY IF EXISTS "tenant_rewards_select_own" ON tenant_rewards;
 CREATE POLICY "tenant_rewards_select_own" ON tenant_rewards
   FOR SELECT USING (
     profile_id IN (
@@ -2096,6 +2034,7 @@ CREATE POLICY "tenant_rewards_select_own" ON tenant_rewards
   );
 
 DROP POLICY IF EXISTS "tenant_rewards_insert_own" ON tenant_rewards;
+DROP POLICY IF EXISTS "tenant_rewards_insert_own" ON tenant_rewards;
 CREATE POLICY "tenant_rewards_insert_own" ON tenant_rewards
   FOR INSERT WITH CHECK (
     profile_id IN (
@@ -2103,6 +2042,7 @@ CREATE POLICY "tenant_rewards_insert_own" ON tenant_rewards
     )
   );
 
+DROP POLICY IF EXISTS "tenant_rewards_admin" ON tenant_rewards;
 DROP POLICY IF EXISTS "tenant_rewards_admin" ON tenant_rewards;
 CREATE POLICY "tenant_rewards_admin" ON tenant_rewards
   FOR ALL USING (
@@ -2115,14 +2055,14 @@ ALTER TABLE tenant_profiles
 
 -- Trigger pour mettre a jour total_points automatiquement
 CREATE OR REPLACE FUNCTION update_tenant_total_points()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   UPDATE tenant_profiles
   SET total_points = COALESCE(total_points, 0) + NEW.points
   WHERE profile_id = NEW.profile_id;
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS trg_update_tenant_total_points ON tenant_rewards;
 CREATE TRIGGER trg_update_tenant_total_points
@@ -2151,6 +2091,7 @@ CREATE INDEX IF NOT EXISTS idx_invoice_reminders_invoice
 ALTER TABLE invoice_reminders ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "invoice_reminders_select_owner" ON invoice_reminders;
+DROP POLICY IF EXISTS "invoice_reminders_select_owner" ON invoice_reminders;
 CREATE POLICY "invoice_reminders_select_owner" ON invoice_reminders
   FOR SELECT USING (
     EXISTS (
@@ -2163,6 +2104,7 @@ CREATE POLICY "invoice_reminders_select_owner" ON invoice_reminders
   );
 
 DROP POLICY IF EXISTS "invoice_reminders_insert_owner" ON invoice_reminders;
+DROP POLICY IF EXISTS "invoice_reminders_insert_owner" ON invoice_reminders;
 CREATE POLICY "invoice_reminders_insert_owner" ON invoice_reminders
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -2174,6 +2116,7 @@ CREATE POLICY "invoice_reminders_insert_owner" ON invoice_reminders
     )
   );
 
+DROP POLICY IF EXISTS "invoice_reminders_admin" ON invoice_reminders;
 DROP POLICY IF EXISTS "invoice_reminders_admin" ON invoice_reminders;
 CREATE POLICY "invoice_reminders_admin" ON invoice_reminders
   FOR ALL USING (
@@ -2207,12 +2150,14 @@ ALTER TABLE webhook_logs ENABLE ROW LEVEL SECURITY;
 
 -- Seuls les admins et le service_role lisent les webhook logs
 DROP POLICY IF EXISTS "webhook_logs_admin" ON webhook_logs;
+DROP POLICY IF EXISTS "webhook_logs_admin" ON webhook_logs;
 CREATE POLICY "webhook_logs_admin" ON webhook_logs
   FOR ALL USING (
     public.user_role() = 'admin'
   );
 
 -- Permettre l'insertion depuis les API routes (service_role)
+DROP POLICY IF EXISTS "webhook_logs_service_insert" ON webhook_logs;
 DROP POLICY IF EXISTS "webhook_logs_service_insert" ON webhook_logs;
 CREATE POLICY "webhook_logs_service_insert" ON webhook_logs
   FOR INSERT WITH CHECK (true);
@@ -2243,6 +2188,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_conversations_model
 ALTER TABLE ai_conversations ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "ai_conversations_select_own" ON ai_conversations;
+DROP POLICY IF EXISTS "ai_conversations_select_own" ON ai_conversations;
 CREATE POLICY "ai_conversations_select_own" ON ai_conversations
   FOR SELECT USING (
     profile_id IN (
@@ -2251,6 +2197,7 @@ CREATE POLICY "ai_conversations_select_own" ON ai_conversations
   );
 
 DROP POLICY IF EXISTS "ai_conversations_insert_own" ON ai_conversations;
+DROP POLICY IF EXISTS "ai_conversations_insert_own" ON ai_conversations;
 CREATE POLICY "ai_conversations_insert_own" ON ai_conversations
   FOR INSERT WITH CHECK (
     profile_id IN (
@@ -2258,6 +2205,7 @@ CREATE POLICY "ai_conversations_insert_own" ON ai_conversations
     )
   );
 
+DROP POLICY IF EXISTS "ai_conversations_admin" ON ai_conversations;
 DROP POLICY IF EXISTS "ai_conversations_admin" ON ai_conversations;
 CREATE POLICY "ai_conversations_admin" ON ai_conversations
   FOR ALL USING (
@@ -2269,15 +2217,15 @@ CREATE POLICY "ai_conversations_admin" ON ai_conversations
 -- =====================================================
 
 -- Tenter d'installer pgvector. Si indisponible, on skip toute la section RAG.
-DO $mig$ BEGIN
+DO $$ BEGIN
   CREATE EXTENSION IF NOT EXISTS vector;
 EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'Extension vector non disponible: %. Section RAG ignorée.', SQLERRM;
-END $mig$;
+END $$;
 
 -- Si pgvector est disponible, créer les tables RAG avec colonnes vector
 -- Sinon, créer les tables sans colonnes vector (fallback JSONB)
-DO $mig$
+DO $$
 DECLARE
   v_has_vector BOOLEAN;
 BEGIN
@@ -2374,7 +2322,7 @@ BEGIN
       UNIQUE(entity_type, entity_id)
     )';
   END IF;
-END $mig$;
+END $$;
 
 -- Index standards (non-vector)
 CREATE INDEX IF NOT EXISTS idx_legal_embeddings_category ON legal_embeddings(category);
@@ -2384,7 +2332,7 @@ CREATE INDEX IF NOT EXISTS idx_user_context_profile ON user_context_embeddings(p
 CREATE INDEX IF NOT EXISTS idx_user_context_entity ON user_context_embeddings(entity_type, entity_id);
 
 -- Index vector uniquement si pgvector est disponible
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
     BEGIN
       EXECUTE 'CREATE INDEX IF NOT EXISTS idx_legal_embeddings_vector ON legal_embeddings USING ivfflat (embedding vector_cosine_ops) WITH (lists = 20)';
@@ -2394,7 +2342,7 @@ DO $mig$ BEGIN
       RAISE NOTICE 'Skip vector indexes: %', SQLERRM;
     END;
   END IF;
-END $mig$;
+END $$;
 
 -- RLS
 ALTER TABLE legal_embeddings ENABLE ROW LEVEL SECURITY;
@@ -2402,31 +2350,38 @@ ALTER TABLE platform_knowledge ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_context_embeddings ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "legal_embeddings_select_authenticated" ON legal_embeddings;
+DROP POLICY IF EXISTS "legal_embeddings_select_authenticated" ON legal_embeddings;
 CREATE POLICY "legal_embeddings_select_authenticated" ON legal_embeddings
   FOR SELECT USING (auth.uid() IS NOT NULL);
+DROP POLICY IF EXISTS "legal_embeddings_admin_manage" ON legal_embeddings;
 DROP POLICY IF EXISTS "legal_embeddings_admin_manage" ON legal_embeddings;
 CREATE POLICY "legal_embeddings_admin_manage" ON legal_embeddings
   FOR ALL USING (public.user_role() = 'admin');
 
 DROP POLICY IF EXISTS "platform_knowledge_select_authenticated" ON platform_knowledge;
+DROP POLICY IF EXISTS "platform_knowledge_select_authenticated" ON platform_knowledge;
 CREATE POLICY "platform_knowledge_select_authenticated" ON platform_knowledge
   FOR SELECT USING (auth.uid() IS NOT NULL AND is_published = true);
+DROP POLICY IF EXISTS "platform_knowledge_admin_manage" ON platform_knowledge;
 DROP POLICY IF EXISTS "platform_knowledge_admin_manage" ON platform_knowledge;
 CREATE POLICY "platform_knowledge_admin_manage" ON platform_knowledge
   FOR ALL USING (public.user_role() = 'admin');
 
 DROP POLICY IF EXISTS "user_context_select_own" ON user_context_embeddings;
+DROP POLICY IF EXISTS "user_context_select_own" ON user_context_embeddings;
 CREATE POLICY "user_context_select_own" ON user_context_embeddings
   FOR SELECT USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
 DROP POLICY IF EXISTS "user_context_manage_own" ON user_context_embeddings;
+DROP POLICY IF EXISTS "user_context_manage_own" ON user_context_embeddings;
 CREATE POLICY "user_context_manage_own" ON user_context_embeddings
   FOR ALL USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+DROP POLICY IF EXISTS "user_context_admin" ON user_context_embeddings;
 DROP POLICY IF EXISTS "user_context_admin" ON user_context_embeddings;
 CREATE POLICY "user_context_admin" ON user_context_embeddings
   FOR ALL USING (public.user_role() = 'admin');
 
 -- Fonctions RAG (uniquement si pgvector)
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector') THEN
     EXECUTE $fn$
       CREATE OR REPLACE FUNCTION match_legal_documents(
@@ -2472,7 +2427,7 @@ DO $mig$ BEGIN
   ELSE
     RAISE NOTICE 'pgvector absent: fonctions RAG non créées.';
   END IF;
-END $mig$;
+END $$;
 
 -- =====================================================
 -- 7. GRANTS (tables non-vector)
@@ -2498,18 +2453,9 @@ COMMENT ON TABLE ai_conversations IS 'Historique analytique des conversations av
 COMMENT ON TABLE legal_embeddings IS 'Embeddings vectoriels des documents juridiques pour RAG';
 COMMENT ON TABLE platform_knowledge IS 'Base de connaissances plateforme avec embeddings pour RAG';
 COMMENT ON TABLE user_context_embeddings IS 'Embeddings du contexte utilisateur pour recherche personnalisee RAG';
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [30/169] 20260219100000_auto_link_notify_owner.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Notify owner when tenant creates account (auto-link)
 -- Date: 2026-02-19
@@ -2524,9 +2470,9 @@ DO $wrapper$ BEGIN
 -- Enrichir la fonction auto_link_lease_signers_on_profile_created()
 -- pour créer une notification in-app pour chaque propriétaire concerné.
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 CREATE OR REPLACE FUNCTION public.auto_link_lease_signers_on_profile_created()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   user_email TEXT;
   linked_count INT;
@@ -2606,19 +2552,10 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- === [31/169] 20260219200000_fix_autolink_triggers_audit.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Corrections issues de l'audit auto-link triggers
 -- Date: 2026-02-19
@@ -2630,7 +2567,7 @@ DO $wrapper$ BEGIN
 --   P1-2: Supprimer la politique RLS trop permissive "System can insert notifications"
 --   P2-1: Ajouter déduplication aux triggers de notification
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- =====================================================
 -- P0-1: Supprimer le trigger OBSOLÈTE on_profile_created_auto_link
 -- Ce trigger (case-sensitive, sans notifications, sans invitations)
@@ -2649,7 +2586,7 @@ DROP FUNCTION IF EXISTS public.auto_link_signer_profile();
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION public.auto_link_lease_signers_on_profile_created()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   user_email TEXT;
   linked_count INT;
@@ -2734,7 +2671,7 @@ EXCEPTION WHEN OTHERS THEN
   RAISE WARNING '[auto_link] Erreur non-bloquante: % (SQLSTATE=%)', SQLERRM, SQLSTATE;
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =====================================================
 -- P1-2: Remplacer la politique RLS trop permissive
@@ -2759,7 +2696,7 @@ DROP POLICY IF EXISTS "System can insert notifications" ON notifications;
 
 -- TRIGGER 1: notify_invoice_late - ajouter déduplication
 CREATE OR REPLACE FUNCTION notify_invoice_late()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_owner_id UUID;
   v_tenant_name TEXT;
@@ -2804,11 +2741,11 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- TRIGGER 2: notify_payment_received - ajouter déduplication
 CREATE OR REPLACE FUNCTION notify_payment_received()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_owner_id UUID;
   v_tenant_name TEXT;
@@ -2852,11 +2789,11 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- TRIGGER 3: notify_lease_signed - ajouter déduplication
 CREATE OR REPLACE FUNCTION notify_lease_signed()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_owner_id UUID;
   v_property_address TEXT;
@@ -2892,11 +2829,11 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- TRIGGER 5: notify_ticket_resolved - ajouter déduplication
 CREATE OR REPLACE FUNCTION notify_ticket_resolved()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_creator_id UUID;
   v_property_address TEXT;
@@ -2934,22 +2871,13 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Note: trigger_notify_ticket_created (INSERT only) n'a pas besoin de
 -- déduplication car un INSERT ne peut se produire qu'une fois.
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [32/169] 20260220000000_auto_link_signer_on_insert.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: SOTA 2026 — Auto-link signer à l'INSERT
 -- Date: 2026-02-20
@@ -2965,12 +2893,12 @@ DO $wrapper$ BEGIN
 --   3. Fix rétroactif — lier les orphelins existants
 --   4. Vérification finale
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- ============================================
 -- 1. FONCTION: Auto-link à l'INSERT du signer
 -- ============================================
 CREATE OR REPLACE FUNCTION public.auto_link_signer_on_insert()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   found_profile_id UUID;
 BEGIN
@@ -2991,7 +2919,7 @@ EXCEPTION WHEN OTHERS THEN
   RAISE WARNING '[auto_link_on_insert] Erreur non-bloquante: %', SQLERRM;
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION public.auto_link_signer_on_insert() IS
 'SOTA 2026: À l''INSERT d''un lease_signer avec invited_email et profile_id NULL, lie au profil existant si l''email matche auth.users. Ne bloque jamais l''INSERT.';
@@ -3010,7 +2938,7 @@ CREATE TRIGGER trigger_auto_link_signer_on_insert
 -- 3. RPC: find_profile_by_email — pour l'API (remplace listUsers)
 -- ============================================
 CREATE OR REPLACE FUNCTION public.find_profile_by_email(target_email TEXT)
-RETURNS TABLE(id UUID, user_id UUID, role TEXT) AS $mig$
+RETURNS TABLE(id UUID, user_id UUID, role TEXT) AS $$
 BEGIN
   IF target_email IS NULL OR TRIM(target_email) = '' THEN
     RETURN;
@@ -3022,7 +2950,7 @@ BEGIN
   WHERE LOWER(TRIM(u.email)) = LOWER(TRIM(target_email))
   LIMIT 1;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 
 COMMENT ON FUNCTION public.find_profile_by_email(TEXT) IS
 'SOTA 2026: Retourne (id, user_id, role) du profil dont l''email auth correspond. Utilisé par l''API invite pour éviter listUsers().';
@@ -3030,7 +2958,7 @@ COMMENT ON FUNCTION public.find_profile_by_email(TEXT) IS
 -- ============================================
 -- 4. FIX RÉTROACTIF: Lier les lease_signers orphelins existants
 -- ============================================
-DO $mig$
+DO $$
 DECLARE
   linked_total INT := 0;
   rec RECORD;
@@ -3055,12 +2983,12 @@ BEGIN
   ELSE
     RAISE NOTICE '[rétro-link] Aucun lease_signer orphelin à lier';
   END IF;
-END $mig$;
+END $$;
 
 -- ============================================
 -- 5. VÉRIFICATION: Compter les orphelins restants
 -- ============================================
-DO $mig$
+DO $$
 DECLARE
   orphan_count INT;
 BEGIN
@@ -3076,19 +3004,10 @@ BEGIN
   ELSE
     RAISE NOTICE '✅ Tous les signers avec email valide sont liés ou n''ont pas encore de compte';
   END IF;
-END $mig$;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+END $$;
 
 
 -- === [33/169] 20260220100000_fix_orphan_signers_audit.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Audit connexion comptes — fix rétroactif + RPC
 -- Date: 2026-02-20
@@ -3099,12 +3018,12 @@ DO $wrapper$ BEGIN
 --   2. Index LOWER(invited_email) si absent (IF NOT EXISTS)
 --   3. RPC audit_account_connections() — diagnostic réutilisable
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- ============================================
 -- 1. FIX RÉTROACTIF: Lier les orphelins existants
 -- (Idempotent: ne fait rien si déjà liés)
 -- ============================================
-DO $mig$
+DO $$
 DECLARE
   linked_total INT := 0;
   rec RECORD;
@@ -3127,7 +3046,7 @@ BEGIN
   IF linked_total > 0 THEN
     RAISE NOTICE '[audit_fix] % lease_signers orphelins liés à un profil existant', linked_total;
   END IF;
-END $mig$;
+END $$;
 
 -- ============================================
 -- 2. INDEX: LOWER(invited_email) pour lookups
@@ -3145,7 +3064,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $mig$
+AS $$
 DECLARE
   orphan_count INT;
   linkable_count INT;  -- orphelins qui ont un compte (email match)
@@ -3191,22 +3110,13 @@ BEGIN
 
   RETURN result;
 END;
-$mig$;
+$$;
 
 COMMENT ON FUNCTION public.audit_account_connections() IS
 'Audit connexion comptes: retourne orphan_signers_count, linkable_orphans_count, invitations_not_used_count. Ref: docs/AUDIT_CONNEXION_COMPTES.md';
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [34/169] 20260221000001_auto_link_trigger_update.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- Auto-link lease_signers on profile UPDATE
 -- Date: 2026-02-21
@@ -3215,9 +3125,9 @@ DO $wrapper$ BEGIN
 -- lier les lease_signers orphelins dont invited_email matche l'email du user.
 -- Réutilise la même logique que l'INSERT (auth.users.email -> lease_signers.invited_email).
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 CREATE OR REPLACE FUNCTION public.auto_link_lease_signers_on_profile_updated()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   user_email TEXT;
   linked_count INT;
@@ -3244,7 +3154,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION public.auto_link_lease_signers_on_profile_updated() IS
 'SOTA 2026: À l''UPDATE d''un profil, lie les lease_signers orphelins dont invited_email matche l''email auth.';
@@ -3255,18 +3165,9 @@ CREATE TRIGGER trigger_auto_link_lease_signers_on_update
   AFTER UPDATE ON public.profiles
   FOR EACH ROW
   EXECUTE FUNCTION public.auto_link_lease_signers_on_profile_updated();
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [35/169] 20260221000002_fix_edl_signatures_rls.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- Fix RLS edl_signatures pour invités (signer_user NULL)
 -- Date: 2026-02-21
@@ -3275,8 +3176,10 @@ DO $wrapper$ BEGIN
 -- signer_user = NULL, signer_profile_id = NULL, signer_email = son email.
 -- Il doit pouvoir SELECT et UPDATE sa ligne pour signer.
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 DROP POLICY IF EXISTS "EDL signatures creator update" ON edl_signatures;
+
+DROP POLICY IF EXISTS "EDL signatures update" ON edl_signatures;
 
 CREATE POLICY "EDL signatures update"
   ON edl_signatures FOR UPDATE
@@ -3295,18 +3198,9 @@ CREATE POLICY "EDL signatures update"
 
 COMMENT ON POLICY "EDL signatures update" ON edl_signatures IS
 'SOTA 2026: Permet au signataire (uid, profile_id, ou email invité) et au créateur EDL de mettre à jour.';
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [36/169] 20260221100000_fix_tenant_dashboard_draft_visibility.sql ===
-DO $wrapper$ BEGIN
 -- ============================================================================
 -- MIGRATION: Fix tenant_dashboard — inclure les baux 'draft' pour le locataire
 -- Date: 2026-02-21
@@ -3325,7 +3219,7 @@ CREATE OR REPLACE FUNCTION tenant_dashboard(p_tenant_user_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $mig$
+AS $$
 DECLARE
   v_profile_id UUID;
   v_user_email TEXT;
@@ -3632,24 +3526,15 @@ BEGIN
 
   RETURN v_result;
 END;
-$mig$;
+$$;
 
 COMMENT ON FUNCTION tenant_dashboard(UUID) IS
 'RPC dashboard locataire v5. Cherche par profile_id OU invited_email.
 FIX: Inclut les baux draft pour que le locataire voie son logement dès invitation.
 Inclut: signers enrichis, property complète (DPE, meters, keys), insurance, KYC status.';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [37/169] 20260221100001_auto_upgrade_draft_on_tenant_signer.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Auto-upgrade baux draft + fix rétroactif complet
 -- Date: 2026-02-21
@@ -3662,12 +3547,12 @@ DO $wrapper$ BEGIN
 --   4. Fix rétroactif C: créer les lease_signers manquants depuis edl_signatures
 --   5. Audit: vérifier qu'aucun bail ne reste à demi connecté
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- ============================================
 -- 1. FONCTION: Auto-upgrade draft → pending_signature
 -- ============================================
 CREATE OR REPLACE FUNCTION public.auto_upgrade_draft_lease_on_signer()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   -- Quand un signataire locataire est ajouté, upgrader le bail draft
   IF NEW.role IN ('locataire_principal', 'colocataire', 'tenant', 'locataire') THEN
@@ -3682,7 +3567,7 @@ EXCEPTION WHEN OTHERS THEN
   RAISE WARNING '[auto_upgrade_draft] Erreur non-bloquante: %', SQLERRM;
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION public.auto_upgrade_draft_lease_on_signer() IS
 'SOTA 2026: Quand un signataire locataire est ajouté à un bail draft, passe le bail en pending_signature automatiquement.';
@@ -3701,7 +3586,7 @@ CREATE TRIGGER trigger_auto_upgrade_draft_on_signer
 -- 3. FIX RÉTROACTIF A: Re-lier les lease_signers orphelins
 --    (invited_email correspond à un compte existant mais profile_id est NULL)
 -- ============================================
-DO $mig$
+DO $$
 DECLARE
   linked_total INT := 0;
 BEGIN
@@ -3723,12 +3608,12 @@ BEGIN
   ELSE
     RAISE NOTICE '[fix_A] Aucun lease_signer orphelin à re-lier';
   END IF;
-END $mig$;
+END $$;
 
 -- ============================================
 -- 4. FIX RÉTROACTIF B: Upgrader les baux draft qui ont un locataire
 -- ============================================
-DO $mig$
+DO $$
 DECLARE
   upgraded_count INT := 0;
 BEGIN
@@ -3748,13 +3633,13 @@ BEGIN
   ELSE
     RAISE NOTICE '[fix_B] Aucun bail draft avec locataire à upgrader';
   END IF;
-END $mig$;
+END $$;
 
 -- ============================================
 -- 5. FIX RÉTROACTIF C: Créer les lease_signers manquants
 --    depuis les edl_signatures (EDL a un locataire mais le bail n'a pas le signer)
 -- ============================================
-DO $mig$
+DO $$
 DECLARE
   created_count INT := 0;
 BEGIN
@@ -3790,12 +3675,12 @@ BEGIN
   ELSE
     RAISE NOTICE '[fix_C] Aucun lease_signer manquant à créer depuis les EDL';
   END IF;
-END $mig$;
+END $$;
 
 -- ============================================
 -- 6. AUDIT: Vérifier l'état final
 -- ============================================
-DO $mig$
+DO $$
 DECLARE
   orphan_signers INT;
   draft_with_tenant INT;
@@ -3840,19 +3725,10 @@ BEGIN
   ELSE
     RAISE WARNING '⚠️  % baux draft ont encore un locataire — vérifier manuellement', draft_with_tenant;
   END IF;
-END $mig$;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+END $$;
 
 
 -- === [38/169] 20260221200000_sync_edl_signer_to_lease_signer.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Sync edl_signatures → lease_signers (défense en profondeur)
 -- Date: 2026-02-21
@@ -3867,12 +3743,12 @@ DO $wrapper$ BEGIN
 --   un lease_signers si aucun signer tenant n'existe pour le bail associé.
 --   Ne bloque jamais l'INSERT original (exception handler).
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- ============================================
 -- 1. FONCTION: Sync edl_signature → lease_signer
 -- ============================================
 CREATE OR REPLACE FUNCTION public.sync_edl_signer_to_lease_signer()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_lease_id UUID;
   v_exists BOOLEAN;
@@ -3923,7 +3799,7 @@ EXCEPTION WHEN OTHERS THEN
   RAISE WARNING '[sync_edl_signer] Error (non-blocking): %', SQLERRM;
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION public.sync_edl_signer_to_lease_signer() IS
 'SOTA 2026: Quand une edl_signature tenant est créée, vérifie que le bail associé a un lease_signer locataire. Sinon, en crée un. Ne bloque jamais l''INSERT.';
@@ -3937,13 +3813,5 @@ CREATE TRIGGER trigger_sync_edl_signer_to_lease_signer
   AFTER INSERT ON public.edl_signatures
   FOR EACH ROW
   EXECUTE FUNCTION public.sync_edl_signer_to_lease_signer();
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 

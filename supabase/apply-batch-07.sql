@@ -1,417 +1,7 @@
--- Batch 7 — migrations 148 a 166 sur 169
+-- Batch 7 — migrations 149 a 167 sur 169
 -- 19 migrations
 
--- === [148/169] 20260408120000_colocation_module.sql ===
-DO $wrapper$ BEGIN
--- ============================================================
--- Migration: Module Colocation SOTA 2026
--- Tables: colocation_rooms, colocation_members, colocation_rules,
---         colocation_tasks, colocation_expenses
--- View:   v_colocation_balances
--- Alters: properties, leases
--- ============================================================
-
--- ============================================================
--- 1. Alter existing tables
--- ============================================================
-
-ALTER TABLE properties ADD COLUMN IF NOT EXISTS
-  colocation_type TEXT CHECK (colocation_type IN ('bail_unique', 'baux_individuels'));
-ALTER TABLE properties ADD COLUMN IF NOT EXISTS
-  has_solidarity_clause BOOLEAN DEFAULT true;
-ALTER TABLE properties ADD COLUMN IF NOT EXISTS
-  max_colocataires INTEGER;
-
-ALTER TABLE leases ADD COLUMN IF NOT EXISTS
-  is_colocation BOOLEAN DEFAULT false;
-ALTER TABLE leases ADD COLUMN IF NOT EXISTS
-  colocation_type TEXT CHECK (colocation_type IN ('bail_unique', 'baux_individuels'));
-ALTER TABLE leases ADD COLUMN IF NOT EXISTS
-  solidarity_clause BOOLEAN DEFAULT false;
-
--- ============================================================
--- 2. Chambres d'une colocation
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS colocation_rooms (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
-  room_number TEXT NOT NULL,
-  room_label TEXT,
-  surface_m2 NUMERIC(6,2),
-  rent_share_cents INTEGER NOT NULL,
-  charges_share_cents INTEGER DEFAULT 0,
-  is_furnished BOOLEAN DEFAULT false,
-  description TEXT,
-  photos JSONB DEFAULT '[]',
-  is_available BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(property_id, room_number)
-);
-
-ALTER TABLE colocation_rooms ENABLE ROW LEVEL SECURITY;
-CREATE INDEX IF NOT EXISTS idx_coloc_rooms_property ON colocation_rooms(property_id);
-
--- RLS: owner can manage rooms, tenant can read rooms of their property
-CREATE POLICY coloc_rooms_owner_all ON colocation_rooms
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM properties p
-      JOIN profiles pr ON pr.id = p.owner_id
-      WHERE p.id = colocation_rooms.property_id
-        AND pr.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY coloc_rooms_tenant_select ON colocation_rooms
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM leases l
-      JOIN lease_signers ls ON ls.lease_id = l.id
-      JOIN profiles pr ON pr.id = ls.profile_id
-      WHERE l.property_id = colocation_rooms.property_id
-        AND pr.user_id = auth.uid()
-        AND l.statut IN ('active', 'pending')
-    )
-  );
-
--- ============================================================
--- 3. Membres d'une colocation
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS colocation_members (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  property_id UUID NOT NULL REFERENCES properties(id),
-  room_id UUID REFERENCES colocation_rooms(id),
-  lease_id UUID NOT NULL REFERENCES leases(id),
-  tenant_profile_id UUID NOT NULL REFERENCES profiles(id),
-
-  -- Statut
-  status TEXT NOT NULL DEFAULT 'active'
-    CHECK (status IN ('pending', 'active', 'departing', 'departed')),
-
-  -- Dates
-  move_in_date DATE NOT NULL,
-  move_out_date DATE,
-  notice_given_at TIMESTAMPTZ,
-  notice_effective_date DATE,
-  solidarity_end_date DATE,
-
-  -- Financier
-  rent_share_cents INTEGER NOT NULL,
-  charges_share_cents INTEGER DEFAULT 0,
-  deposit_cents INTEGER DEFAULT 0,
-  deposit_returned BOOLEAN DEFAULT false,
-
-  -- Paiement SEPA
-  stripe_payment_method_id TEXT,
-  pays_individually BOOLEAN DEFAULT false,
-
-  -- Remplacement
-  replaced_by_member_id UUID REFERENCES colocation_members(id),
-  replaces_member_id UUID REFERENCES colocation_members(id),
-
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE colocation_members ENABLE ROW LEVEL SECURITY;
-CREATE INDEX IF NOT EXISTS idx_coloc_members_property ON colocation_members(property_id);
-CREATE INDEX IF NOT EXISTS idx_coloc_members_lease ON colocation_members(lease_id);
-CREATE INDEX IF NOT EXISTS idx_coloc_members_tenant ON colocation_members(tenant_profile_id);
-CREATE INDEX IF NOT EXISTS idx_coloc_members_status ON colocation_members(status) WHERE status = 'active';
-
--- RLS: owner can manage members
-CREATE POLICY coloc_members_owner_all ON colocation_members
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM properties p
-      JOIN profiles pr ON pr.id = p.owner_id
-      WHERE p.id = colocation_members.property_id
-        AND pr.user_id = auth.uid()
-    )
-  );
-
--- RLS: tenant can read members of their colocation
-CREATE POLICY coloc_members_tenant_select ON colocation_members
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM colocation_members cm2
-      WHERE cm2.property_id = colocation_members.property_id
-        AND cm2.tenant_profile_id = (
-          SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1
-        )
-        AND cm2.status IN ('active', 'departing')
-    )
-  );
-
--- ============================================================
--- 4. Reglement interieur
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS colocation_rules (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  category TEXT NOT NULL DEFAULT 'general'
-    CHECK (category IN ('general', 'menage', 'bruit', 'invites', 'animaux',
-                        'espaces_communs', 'charges', 'autre')),
-  description TEXT NOT NULL,
-  is_active BOOLEAN DEFAULT true,
-  sort_order INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE colocation_rules ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY coloc_rules_owner_all ON colocation_rules
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM properties p
-      JOIN profiles pr ON pr.id = p.owner_id
-      WHERE p.id = colocation_rules.property_id
-        AND pr.user_id = auth.uid()
-    )
-  );
-
-CREATE POLICY coloc_rules_tenant_select ON colocation_rules
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM colocation_members cm
-      WHERE cm.property_id = colocation_rules.property_id
-        AND cm.tenant_profile_id = (
-          SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1
-        )
-        AND cm.status IN ('active', 'departing')
-    )
-  );
-
--- ============================================================
--- 5. Planning taches partagees
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS colocation_tasks (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  description TEXT,
-  recurrence TEXT DEFAULT 'weekly'
-    CHECK (recurrence IN ('daily', 'weekly', 'biweekly', 'monthly')),
-  assigned_member_id UUID REFERENCES colocation_members(id),
-  assigned_room_id UUID REFERENCES colocation_rooms(id),
-  due_date DATE,
-  completed_at TIMESTAMPTZ,
-  completed_by UUID REFERENCES profiles(id),
-  rotation_enabled BOOLEAN DEFAULT true,
-  sort_order INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE colocation_tasks ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY coloc_tasks_owner_all ON colocation_tasks
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM properties p
-      JOIN profiles pr ON pr.id = p.owner_id
-      WHERE p.id = colocation_tasks.property_id
-        AND pr.user_id = auth.uid()
-    )
-  );
-
--- Tenants can read and update tasks (mark as completed)
-CREATE POLICY coloc_tasks_tenant_select ON colocation_tasks
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM colocation_members cm
-      WHERE cm.property_id = colocation_tasks.property_id
-        AND cm.tenant_profile_id = (
-          SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1
-        )
-        AND cm.status IN ('active', 'departing')
-    )
-  );
-
-CREATE POLICY coloc_tasks_tenant_update ON colocation_tasks
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM colocation_members cm
-      WHERE cm.property_id = colocation_tasks.property_id
-        AND cm.tenant_profile_id = (
-          SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1
-        )
-        AND cm.status = 'active'
-    )
-  );
-
--- ============================================================
--- 6. Depenses partagees entre colocataires
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS colocation_expenses (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  property_id UUID NOT NULL REFERENCES properties(id),
-  paid_by_member_id UUID NOT NULL REFERENCES colocation_members(id),
-  title TEXT NOT NULL,
-  amount_cents INTEGER NOT NULL,
-  category TEXT DEFAULT 'autre'
-    CHECK (category IN ('menage', 'courses', 'internet', 'electricite',
-                        'eau', 'reparation', 'autre')),
-  split_type TEXT DEFAULT 'equal'
-    CHECK (split_type IN ('equal', 'by_room', 'custom')),
-  split_details JSONB,
-  receipt_document_id UUID REFERENCES documents(id),
-  date DATE NOT NULL DEFAULT CURRENT_DATE,
-  is_settled BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE colocation_expenses ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY coloc_expenses_owner_all ON colocation_expenses
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM properties p
-      JOIN profiles pr ON pr.id = p.owner_id
-      WHERE p.id = colocation_expenses.property_id
-        AND pr.user_id = auth.uid()
-    )
-  );
-
--- Tenants can read and create expenses
-CREATE POLICY coloc_expenses_tenant_select ON colocation_expenses
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM colocation_members cm
-      WHERE cm.property_id = colocation_expenses.property_id
-        AND cm.tenant_profile_id = (
-          SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1
-        )
-        AND cm.status IN ('active', 'departing')
-    )
-  );
-
-CREATE POLICY coloc_expenses_tenant_insert ON colocation_expenses
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM colocation_members cm
-      WHERE cm.property_id = colocation_expenses.property_id
-        AND cm.tenant_profile_id = (
-          SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1
-        )
-        AND cm.status = 'active'
-    )
-  );
-
--- ============================================================
--- 7. Vue : Soldes entre colocataires
--- ============================================================
-
-CREATE OR REPLACE VIEW v_colocation_balances AS
-WITH active_member_counts AS (
-  SELECT property_id, COUNT(*) AS cnt
-  FROM colocation_members
-  WHERE status = 'active'
-  GROUP BY property_id
-),
-room_rent_totals AS (
-  SELECT cr.property_id,
-         SUM(cr.rent_share_cents) AS total_rent
-  FROM colocation_rooms cr
-  WHERE cr.is_available = false
-  GROUP BY cr.property_id
-),
-expense_shares AS (
-  SELECT
-    e.property_id,
-    e.paid_by_member_id AS payer_id,
-    cm.id AS debtor_id,
-    CASE e.split_type
-      WHEN 'equal' THEN e.amount_cents / NULLIF(amc.cnt, 0)
-      WHEN 'by_room' THEN
-        CASE WHEN rrt.total_rent > 0 AND cr.rent_share_cents IS NOT NULL
-          THEN cr.rent_share_cents * e.amount_cents / rrt.total_rent
-          ELSE e.amount_cents / NULLIF(amc.cnt, 0)
-        END
-      ELSE COALESCE((e.split_details->>(cm.id::text))::int, 0)
-    END AS share_cents
-  FROM colocation_expenses e
-  JOIN colocation_members cm
-    ON cm.property_id = e.property_id AND cm.status = 'active'
-  LEFT JOIN active_member_counts amc
-    ON amc.property_id = e.property_id
-  LEFT JOIN colocation_rooms cr
-    ON cr.id = cm.room_id
-  LEFT JOIN room_rent_totals rrt
-    ON rrt.property_id = e.property_id
-  WHERE NOT e.is_settled
-)
-SELECT
-  property_id,
-  payer_id,
-  debtor_id,
-  SUM(share_cents)::INTEGER AS total_owed_cents
-FROM expense_shares
-WHERE payer_id != debtor_id
-GROUP BY property_id, payer_id, debtor_id;
-
--- ============================================================
--- 8. Triggers updated_at
--- ============================================================
-
-CREATE OR REPLACE FUNCTION update_colocation_updated_at()
-RETURNS TRIGGER AS $mig$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$mig$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_coloc_rooms_updated_at
-  BEFORE UPDATE ON colocation_rooms
-  FOR EACH ROW EXECUTE FUNCTION update_colocation_updated_at();
-
-CREATE TRIGGER trg_coloc_members_updated_at
-  BEFORE UPDATE ON colocation_members
-  FOR EACH ROW EXECUTE FUNCTION update_colocation_updated_at();
-
--- ============================================================
--- 9. Function: Auto-calculate solidarity_end_date
--- ============================================================
-
-CREATE OR REPLACE FUNCTION auto_solidarity_end_date()
-RETURNS TRIGGER AS $mig$
-BEGIN
-  -- If member is departing and has a move_out_date, calculate solidarity end
-  IF NEW.status = 'departing' AND NEW.move_out_date IS NOT NULL THEN
-    -- If replaced, solidarity ends immediately
-    IF NEW.replaced_by_member_id IS NOT NULL THEN
-      NEW.solidarity_end_date = NEW.move_out_date;
-    ELSE
-      -- 6 months after move_out (loi ALUR)
-      NEW.solidarity_end_date = NEW.move_out_date + INTERVAL '6 months';
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$mig$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_coloc_solidarity_end
-  BEFORE INSERT OR UPDATE ON colocation_members
-  FOR EACH ROW EXECUTE FUNCTION auto_solidarity_end_date();
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
-
 -- === [149/169] 20260408120000_edl_sortie_workflow.sql ===
-DO $wrapper$ BEGIN
 -- ============================================================================
 -- MIGRATION: EDL Sortie Workflow — Pièces, Vétusté, Retenues, Comparaison
 -- Date: 2026-04-08
@@ -425,7 +15,7 @@ DO $wrapper$ BEGIN
 
 -- ─── 1. Étendre la table edl pour le workflow sortie ────────────────────────
 
-DO $mig$
+DO $$
 BEGIN
     -- Lien vers l'EDL d'entrée (pour EDL sortie)
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl' AND column_name = 'linked_entry_edl_id') THEN
@@ -461,7 +51,7 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl' AND column_name = 'montant_restitue_cents') THEN
         ALTER TABLE edl ADD COLUMN montant_restitue_cents INTEGER;
     END IF;
-END $mig$;
+END $$;
 
 -- Index pour la jointure entrée→sortie
 CREATE INDEX IF NOT EXISTS idx_edl_linked_entry ON edl(linked_entry_edl_id);
@@ -493,25 +83,29 @@ ALTER TABLE edl_rooms ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_edl_rooms_edl ON edl_rooms(edl_id);
 
 -- RLS policies pour edl_rooms
-DO $mig$
+DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'edl_rooms' AND policyname = 'edl_rooms_select_policy') THEN
+        DROP POLICY IF EXISTS edl_rooms_select_policy ON edl_rooms;
         CREATE POLICY edl_rooms_select_policy ON edl_rooms FOR SELECT USING (true);
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'edl_rooms' AND policyname = 'edl_rooms_insert_policy') THEN
+        DROP POLICY IF EXISTS edl_rooms_insert_policy ON edl_rooms;
         CREATE POLICY edl_rooms_insert_policy ON edl_rooms FOR INSERT WITH CHECK (true);
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'edl_rooms' AND policyname = 'edl_rooms_update_policy') THEN
+        DROP POLICY IF EXISTS edl_rooms_update_policy ON edl_rooms;
         CREATE POLICY edl_rooms_update_policy ON edl_rooms FOR UPDATE USING (true);
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'edl_rooms' AND policyname = 'edl_rooms_delete_policy') THEN
+        DROP POLICY IF EXISTS edl_rooms_delete_policy ON edl_rooms;
         CREATE POLICY edl_rooms_delete_policy ON edl_rooms FOR DELETE USING (true);
     END IF;
-END $mig$;
+END $$;
 
 -- ─── 3. Étendre edl_items pour comparaison entrée/sortie ───────────────────
 
-DO $mig$
+DO $$
 BEGIN
     -- Lien vers la pièce
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl_items' AND column_name = 'room_id') THEN
@@ -574,11 +168,11 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl_items' AND column_name = 'cout_reparation_cents') THEN
         ALTER TABLE edl_items ADD COLUMN cout_reparation_cents INTEGER DEFAULT 0;
     END IF;
-END $mig$;
+END $$;
 
 -- Mettre à jour la contrainte condition pour 6 niveaux
 -- D'abord supprimer l'ancienne contrainte si elle existe
-DO $mig$
+DO $$
 BEGIN
     IF EXISTS (
         SELECT 1 FROM information_schema.constraint_column_usage
@@ -586,7 +180,7 @@ BEGIN
     ) THEN
         ALTER TABLE edl_items DROP CONSTRAINT IF EXISTS edl_items_condition_check;
     END IF;
-END $mig$;
+END $$;
 
 ALTER TABLE edl_items ADD CONSTRAINT edl_items_condition_check_v2
     CHECK (condition IS NULL OR condition IN ('neuf','tres_bon','bon','usage_normal','moyen','mauvais','tres_mauvais'));
@@ -639,17 +233,8 @@ COMMENT ON COLUMN edl_items.entry_condition IS 'État de l''élément à l''entr
 COMMENT ON COLUMN edl_items.vetuste_coefficient IS 'Coefficient vétusté 0.00 à 1.00 (calculé auto)';
 COMMENT ON COLUMN edl_items.retenue_cents IS 'Retenue nette après vétusté (en centimes)';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [150/169] 20260408120000_providers_module_sota.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Module Prestataires SOTA 2026
 -- Tables: providers, owner_providers
@@ -727,6 +312,7 @@ ALTER TABLE providers ENABLE ROW LEVEL SECURITY;
 
 -- Owners see their own providers + marketplace
 DROP POLICY IF EXISTS "Owners see own providers and marketplace" ON providers;
+DROP POLICY IF EXISTS "Owners see own providers and marketplace" ON providers;
 CREATE POLICY "Owners see own providers and marketplace"
   ON providers FOR SELECT
   USING (
@@ -737,6 +323,7 @@ CREATE POLICY "Owners see own providers and marketplace"
 
 -- Owners can insert providers they add
 DROP POLICY IF EXISTS "Owners can add providers" ON providers;
+DROP POLICY IF EXISTS "Owners can add providers" ON providers;
 CREATE POLICY "Owners can add providers"
   ON providers FOR INSERT
   WITH CHECK (
@@ -744,6 +331,7 @@ CREATE POLICY "Owners can add providers"
   );
 
 -- Owners can update their own providers, providers can update themselves
+DROP POLICY IF EXISTS "Owners update own providers" ON providers;
 DROP POLICY IF EXISTS "Owners update own providers" ON providers;
 CREATE POLICY "Owners update own providers"
   ON providers FOR UPDATE
@@ -757,6 +345,7 @@ CREATE POLICY "Owners update own providers"
   );
 
 -- Admins full access
+DROP POLICY IF EXISTS "Admins full access providers" ON providers;
 DROP POLICY IF EXISTS "Admins full access providers" ON providers;
 CREATE POLICY "Admins full access providers"
   ON providers FOR ALL
@@ -793,6 +382,7 @@ CREATE INDEX IF NOT EXISTS idx_owner_providers_provider ON owner_providers(provi
 ALTER TABLE owner_providers ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Owners manage own provider links" ON owner_providers;
+DROP POLICY IF EXISTS "Owners manage own provider links" ON owner_providers;
 CREATE POLICY "Owners manage own provider links"
   ON owner_providers FOR ALL
   USING (owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()))
@@ -806,7 +396,7 @@ COMMENT ON TABLE owner_providers IS 'Lien propriétaire ↔ prestataire (carnet 
 -- =====================================================
 
 -- Add new columns (idempotent with IF NOT EXISTS pattern via DO block)
-DO $mig$
+DO $$
 BEGIN
   -- property_id
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'property_id') THEN
@@ -944,7 +534,7 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'notes') THEN
     ALTER TABLE work_orders ADD COLUMN notes TEXT;
   END IF;
-END $mig$;
+END $$;
 
 -- Make ticket_id nullable (work orders can now be created standalone)
 ALTER TABLE work_orders ALTER COLUMN ticket_id DROP NOT NULL;
@@ -994,7 +584,7 @@ WHERE wo.ticket_id = t.id
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION update_provider_rating_from_reviews()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_provider_id UUID;
 BEGIN
@@ -1022,7 +612,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_update_provider_rating_from_reviews ON provider_reviews;
 CREATE TRIGGER trg_update_provider_rating_from_reviews
@@ -1034,7 +624,7 @@ CREATE TRIGGER trg_update_provider_rating_from_reviews
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION update_provider_intervention_count()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_provider_record RECORD;
 BEGIN
@@ -1058,7 +648,7 @@ BEGIN
 
   RETURN COALESCE(NEW, OLD);
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_update_provider_intervention_count ON work_orders;
 CREATE TRIGGER trg_update_provider_intervention_count
@@ -1070,7 +660,7 @@ CREATE TRIGGER trg_update_provider_intervention_count
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION validate_provider_siret()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.siret IS NOT NULL AND NEW.siret <> '' THEN
     IF NEW.siret !~ '^\d{14}$' THEN
@@ -1079,7 +669,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_validate_provider_siret ON providers;
 CREATE TRIGGER trg_validate_provider_siret
@@ -1094,17 +684,8 @@ COMMENT ON COLUMN providers.trade_categories IS 'plomberie, electricite, serrure
 COMMENT ON COLUMN work_orders.status IS 'Extended state machine: draft→quote_requested→quote_received→quote_approved→scheduled→in_progress→completed→invoiced→paid';
 COMMENT ON COLUMN work_orders.urgency IS 'low, normal, urgent, emergency';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [151/169] 20260408120000_smart_meters_connected.sql ===
-DO $wrapper$ BEGIN
 -- Migration : Compteurs connectés — Enedis SGE, GRDF ADICT, alertes conso
 -- Feature gate : Pro+ (connected_meters)
 
@@ -1222,12 +803,15 @@ CREATE INDEX IF NOT EXISTS idx_meter_alerts_unacked ON meter_alerts(meter_id) WH
 -- ============================================================
 
 -- property_meters: propriétaire du bien peut tout faire
+DROP POLICY IF EXISTS "property_meters_owner_select" ON property_meters;
 CREATE POLICY "property_meters_owner_select" ON property_meters
   FOR SELECT USING (
     EXISTS (
       SELECT 1 FROM properties p WHERE p.id = property_id AND p.owner_id = auth.uid()
     )
   );
+
+DROP POLICY IF EXISTS "property_meters_owner_insert" ON property_meters;
 
 CREATE POLICY "property_meters_owner_insert" ON property_meters
   FOR INSERT WITH CHECK (
@@ -1236,12 +820,16 @@ CREATE POLICY "property_meters_owner_insert" ON property_meters
     )
   );
 
+DROP POLICY IF EXISTS "property_meters_owner_update" ON property_meters;
+
 CREATE POLICY "property_meters_owner_update" ON property_meters
   FOR UPDATE USING (
     EXISTS (
       SELECT 1 FROM properties p WHERE p.id = property_id AND p.owner_id = auth.uid()
     )
   );
+
+DROP POLICY IF EXISTS "property_meters_owner_delete" ON property_meters;
 
 CREATE POLICY "property_meters_owner_delete" ON property_meters
   FOR DELETE USING (
@@ -1251,6 +839,7 @@ CREATE POLICY "property_meters_owner_delete" ON property_meters
   );
 
 -- property_meters: locataire avec bail actif peut lire
+DROP POLICY IF EXISTS "property_meters_tenant_select" ON property_meters;
 CREATE POLICY "property_meters_tenant_select" ON property_meters
   FOR SELECT USING (
     EXISTS (
@@ -1263,12 +852,15 @@ CREATE POLICY "property_meters_tenant_select" ON property_meters
   );
 
 -- property_meter_readings: propriétaire
+DROP POLICY IF EXISTS "pm_readings_owner_select" ON property_meter_readings;
 CREATE POLICY "pm_readings_owner_select" ON property_meter_readings
   FOR SELECT USING (
     EXISTS (
       SELECT 1 FROM properties p WHERE p.id = property_id AND p.owner_id = auth.uid()
     )
   );
+
+DROP POLICY IF EXISTS "pm_readings_owner_insert" ON property_meter_readings;
 
 CREATE POLICY "pm_readings_owner_insert" ON property_meter_readings
   FOR INSERT WITH CHECK (
@@ -1278,6 +870,7 @@ CREATE POLICY "pm_readings_owner_insert" ON property_meter_readings
   );
 
 -- property_meter_readings: locataire avec bail actif
+DROP POLICY IF EXISTS "pm_readings_tenant_select" ON property_meter_readings;
 CREATE POLICY "pm_readings_tenant_select" ON property_meter_readings
   FOR SELECT USING (
     EXISTS (
@@ -1288,6 +881,8 @@ CREATE POLICY "pm_readings_tenant_select" ON property_meter_readings
         AND l.status IN ('active', 'signed')
     )
   );
+
+DROP POLICY IF EXISTS "pm_readings_tenant_insert" ON property_meter_readings;
 
 CREATE POLICY "pm_readings_tenant_insert" ON property_meter_readings
   FOR INSERT WITH CHECK (
@@ -1301,12 +896,15 @@ CREATE POLICY "pm_readings_tenant_insert" ON property_meter_readings
   );
 
 -- meter_alerts: propriétaire
+DROP POLICY IF EXISTS "meter_alerts_owner_select" ON meter_alerts;
 CREATE POLICY "meter_alerts_owner_select" ON meter_alerts
   FOR SELECT USING (
     EXISTS (
       SELECT 1 FROM properties p WHERE p.id = property_id AND p.owner_id = auth.uid()
     )
   );
+
+DROP POLICY IF EXISTS "meter_alerts_owner_update" ON meter_alerts;
 
 CREATE POLICY "meter_alerts_owner_update" ON meter_alerts
   FOR UPDATE USING (
@@ -1316,6 +914,7 @@ CREATE POLICY "meter_alerts_owner_update" ON meter_alerts
   );
 
 -- meter_alerts: locataire
+DROP POLICY IF EXISTS "meter_alerts_tenant_select" ON meter_alerts;
 CREATE POLICY "meter_alerts_tenant_select" ON meter_alerts
   FOR SELECT USING (
     EXISTS (
@@ -1331,12 +930,12 @@ CREATE POLICY "meter_alerts_tenant_select" ON meter_alerts
 -- Trigger updated_at
 -- ============================================================
 CREATE OR REPLACE FUNCTION update_property_meters_updated_at()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_property_meters_updated_at
   BEFORE UPDATE ON property_meters
@@ -1345,32 +944,28 @@ CREATE TRIGGER trg_property_meters_updated_at
 -- ============================================================
 -- Service role policies (for cron sync & OAuth callbacks)
 -- ============================================================
+DROP POLICY IF EXISTS "property_meters_service_all" ON property_meters;
 CREATE POLICY "property_meters_service_all" ON property_meters
   FOR ALL USING (
     current_setting('role') = 'service_role'
   );
+
+DROP POLICY IF EXISTS "pm_readings_service_all" ON property_meter_readings;
 
 CREATE POLICY "pm_readings_service_all" ON property_meter_readings
   FOR ALL USING (
     current_setting('role') = 'service_role'
   );
 
+DROP POLICY IF EXISTS "meter_alerts_service_all" ON meter_alerts;
+
 CREATE POLICY "meter_alerts_service_all" ON meter_alerts
   FOR ALL USING (
     current_setting('role') = 'service_role'
   );
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [152/169] 20260408120000_subscription_addons.sql ===
-DO $wrapper$ BEGIN
 -- ============================================================
 -- Migration: subscription_addons & sms_usage
 -- Module Add-ons Stripe (packs signatures, stockage, SMS, RAR, état daté)
@@ -1428,9 +1023,12 @@ CREATE TABLE IF NOT EXISTS subscription_addons (
 ALTER TABLE subscription_addons ENABLE ROW LEVEL SECURITY;
 
 -- RLS : les utilisateurs ne voient que leurs propres add-ons
+DROP POLICY IF EXISTS "Users can view their own addons" ON subscription_addons;
 CREATE POLICY "Users can view their own addons"
   ON subscription_addons FOR SELECT
   USING (profile_id = auth.uid());
+
+DROP POLICY IF EXISTS "Service role full access on subscription_addons" ON subscription_addons;
 
 CREATE POLICY "Service role full access on subscription_addons"
   ON subscription_addons FOR ALL
@@ -1444,12 +1042,12 @@ CREATE INDEX idx_addons_stripe_subscription ON subscription_addons(stripe_subscr
 
 -- Trigger updated_at
 CREATE OR REPLACE FUNCTION update_subscription_addons_updated_at()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_subscription_addons_updated_at
   BEFORE UPDATE ON subscription_addons
@@ -1472,9 +1070,13 @@ CREATE TABLE IF NOT EXISTS sms_usage (
 
 ALTER TABLE sms_usage ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their own sms usage" ON sms_usage;
+
 CREATE POLICY "Users can view their own sms usage"
   ON sms_usage FOR SELECT
   USING (profile_id = auth.uid());
+
+DROP POLICY IF EXISTS "Service role full access on sms_usage" ON sms_usage;
 
 CREATE POLICY "Service role full access on sms_usage"
   ON sms_usage FOR ALL
@@ -1490,7 +1092,7 @@ CREATE OR REPLACE FUNCTION increment_sms_usage(
   p_profile_id UUID,
   p_month TEXT
 )
-RETURNS INTEGER AS $mig$
+RETURNS INTEGER AS $$
 DECLARE
   v_count INTEGER;
 BEGIN
@@ -1502,7 +1104,7 @@ BEGIN
 
   RETURN v_count;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================
 -- RPC : Consommer une signature d'un pack (FIFO)
@@ -1511,7 +1113,7 @@ $mig$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION consume_addon_signature(
   p_profile_id UUID
 )
-RETURNS UUID AS $mig$
+RETURNS UUID AS $$
 DECLARE
   v_addon_id UUID;
 BEGIN
@@ -1542,19 +1144,10 @@ BEGIN
 
   RETURN v_addon_id;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- === [153/169] 20260408120000_whitelabel_agency_module.sql ===
-DO $wrapper$ BEGIN
 -- ============================================================================
 -- White-label Agency Module
 --
@@ -1611,6 +1204,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_wl_agency_profile
   ON whitelabel_configs(agency_profile_id);
 
 -- RLS: agency sees own config only
+DROP POLICY IF EXISTS whitelabel_configs_select ON whitelabel_configs;
 CREATE POLICY whitelabel_configs_select ON whitelabel_configs
   FOR SELECT USING (
     agency_profile_id IN (
@@ -1618,12 +1212,16 @@ CREATE POLICY whitelabel_configs_select ON whitelabel_configs
     )
   );
 
+DROP POLICY IF EXISTS whitelabel_configs_insert ON whitelabel_configs;
+
 CREATE POLICY whitelabel_configs_insert ON whitelabel_configs
   FOR INSERT WITH CHECK (
     agency_profile_id IN (
       SELECT id FROM profiles WHERE user_id = auth.uid() AND role = 'agency'
     )
   );
+
+DROP POLICY IF EXISTS whitelabel_configs_update ON whitelabel_configs;
 
 CREATE POLICY whitelabel_configs_update ON whitelabel_configs
   FOR UPDATE USING (
@@ -1633,6 +1231,7 @@ CREATE POLICY whitelabel_configs_update ON whitelabel_configs
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS whitelabel_configs_admin ON whitelabel_configs;
 CREATE POLICY whitelabel_configs_admin ON whitelabel_configs
   FOR ALL USING (
     EXISTS (
@@ -1670,6 +1269,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_mandates_number
   ON agency_mandates(agency_profile_id, mandate_number);
 
 -- RLS: agency sees own mandates
+DROP POLICY IF EXISTS agency_mandates_agency_select ON agency_mandates;
 CREATE POLICY agency_mandates_agency_select ON agency_mandates
   FOR SELECT USING (
     agency_profile_id IN (
@@ -1678,6 +1278,7 @@ CREATE POLICY agency_mandates_agency_select ON agency_mandates
   );
 
 -- RLS: owner sees mandates where they are mandant
+DROP POLICY IF EXISTS agency_mandates_owner_select ON agency_mandates;
 CREATE POLICY agency_mandates_owner_select ON agency_mandates
   FOR SELECT USING (
     owner_profile_id IN (
@@ -1685,12 +1286,16 @@ CREATE POLICY agency_mandates_owner_select ON agency_mandates
     )
   );
 
+DROP POLICY IF EXISTS agency_mandates_insert ON agency_mandates;
+
 CREATE POLICY agency_mandates_insert ON agency_mandates
   FOR INSERT WITH CHECK (
     agency_profile_id IN (
       SELECT id FROM profiles WHERE user_id = auth.uid() AND role = 'agency'
     )
   );
+
+DROP POLICY IF EXISTS agency_mandates_update ON agency_mandates;
 
 CREATE POLICY agency_mandates_update ON agency_mandates
   FOR UPDATE USING (
@@ -1700,6 +1305,7 @@ CREATE POLICY agency_mandates_update ON agency_mandates
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS agency_mandates_admin ON agency_mandates;
 CREATE POLICY agency_mandates_admin ON agency_mandates
   FOR ALL USING (
     EXISTS (
@@ -1733,6 +1339,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_crg_mandate_period
   ON agency_crg(mandate_id, period_start, period_end);
 
 -- RLS: agency sees CRGs for own mandates
+DROP POLICY IF EXISTS agency_crg_agency_select ON agency_crg;
 CREATE POLICY agency_crg_agency_select ON agency_crg
   FOR SELECT USING (
     mandate_id IN (
@@ -1743,6 +1350,7 @@ CREATE POLICY agency_crg_agency_select ON agency_crg
   );
 
 -- RLS: owner sees CRGs for their mandates
+DROP POLICY IF EXISTS agency_crg_owner_select ON agency_crg;
 CREATE POLICY agency_crg_owner_select ON agency_crg
   FOR SELECT USING (
     mandate_id IN (
@@ -1752,6 +1360,8 @@ CREATE POLICY agency_crg_owner_select ON agency_crg
     )
   );
 
+DROP POLICY IF EXISTS agency_crg_insert ON agency_crg;
+
 CREATE POLICY agency_crg_insert ON agency_crg
   FOR INSERT WITH CHECK (
     mandate_id IN (
@@ -1760,6 +1370,8 @@ CREATE POLICY agency_crg_insert ON agency_crg
       WHERE p.user_id = auth.uid()
     )
   );
+
+DROP POLICY IF EXISTS agency_crg_update ON agency_crg;
 
 CREATE POLICY agency_crg_update ON agency_crg
   FOR UPDATE USING (
@@ -1771,6 +1383,7 @@ CREATE POLICY agency_crg_update ON agency_crg
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS agency_crg_admin ON agency_crg;
 CREATE POLICY agency_crg_admin ON agency_crg
   FOR ALL USING (
     EXISTS (
@@ -1796,6 +1409,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_mandant_accounts_mandate
   ON agency_mandant_accounts(mandate_id);
 
 -- RLS: agency sees own mandant accounts
+DROP POLICY IF EXISTS mandant_accounts_agency_select ON agency_mandant_accounts;
 CREATE POLICY mandant_accounts_agency_select ON agency_mandant_accounts
   FOR SELECT USING (
     mandate_id IN (
@@ -1806,6 +1420,7 @@ CREATE POLICY mandant_accounts_agency_select ON agency_mandant_accounts
   );
 
 -- RLS: owner sees their mandant account
+DROP POLICY IF EXISTS mandant_accounts_owner_select ON agency_mandant_accounts;
 CREATE POLICY mandant_accounts_owner_select ON agency_mandant_accounts
   FOR SELECT USING (
     mandate_id IN (
@@ -1815,6 +1430,8 @@ CREATE POLICY mandant_accounts_owner_select ON agency_mandant_accounts
     )
   );
 
+DROP POLICY IF EXISTS mandant_accounts_insert ON agency_mandant_accounts;
+
 CREATE POLICY mandant_accounts_insert ON agency_mandant_accounts
   FOR INSERT WITH CHECK (
     mandate_id IN (
@@ -1823,6 +1440,8 @@ CREATE POLICY mandant_accounts_insert ON agency_mandant_accounts
       WHERE p.user_id = auth.uid()
     )
   );
+
+DROP POLICY IF EXISTS mandant_accounts_update ON agency_mandant_accounts;
 
 CREATE POLICY mandant_accounts_update ON agency_mandant_accounts
   FOR UPDATE USING (
@@ -1834,6 +1453,7 @@ CREATE POLICY mandant_accounts_update ON agency_mandant_accounts
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS mandant_accounts_admin ON agency_mandant_accounts;
 CREATE POLICY mandant_accounts_admin ON agency_mandant_accounts
   FOR ALL USING (
     EXISTS (
@@ -1846,43 +1466,43 @@ CREATE POLICY mandant_accounts_admin ON agency_mandant_accounts
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION trigger_set_updated_at()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'set_updated_at_whitelabel_configs') THEN
     CREATE TRIGGER set_updated_at_whitelabel_configs
       BEFORE UPDATE ON whitelabel_configs
       FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
   END IF;
-END $mig$;
+END $$;
 
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'set_updated_at_agency_mandates') THEN
     CREATE TRIGGER set_updated_at_agency_mandates
       BEFORE UPDATE ON agency_mandates
       FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
   END IF;
-END $mig$;
+END $$;
 
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'set_updated_at_mandant_accounts') THEN
     CREATE TRIGGER set_updated_at_mandant_accounts
       BEFORE UPDATE ON agency_mandant_accounts
       FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
   END IF;
-END $mig$;
+END $$;
 
 -- ============================================================================
 -- Trigger: auto-flag overdue reversements (> 30 days)
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION check_reversement_overdue()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.balance_cents > 0 AND (
     NEW.last_reversement_at IS NULL
@@ -1894,15 +1514,15 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
-DO $mig$ BEGIN
+DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'check_reversement_overdue_trigger') THEN
     CREATE TRIGGER check_reversement_overdue_trigger
       BEFORE INSERT OR UPDATE ON agency_mandant_accounts
       FOR EACH ROW EXECUTE FUNCTION check_reversement_overdue();
   END IF;
-END $mig$;
+END $$;
 
 -- Comments
 COMMENT ON TABLE whitelabel_configs IS 'White-label branding and domain configuration per agency (Enterprise plan)';
@@ -1911,17 +1531,8 @@ COMMENT ON TABLE agency_crg IS 'Compte Rendu de Gestion - periodic management re
 COMMENT ON TABLE agency_mandant_accounts IS 'Mandant fund accounts - strict separation from agency own funds (Hoguet)';
 COMMENT ON COLUMN agency_mandant_accounts.reversement_overdue IS 'Auto-flagged true when balance > 0 and last reversement > 30 days ago';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [154/169] 20260408130000_active_sessions.sql ===
-DO $wrapper$ BEGIN
 -- ============================================================
 -- MIGRATION: active_sessions — Session tracking & multi-device
 -- SOTA 2026 — Auth & RBAC Architecture
@@ -1950,19 +1561,25 @@ CREATE INDEX IF NOT EXISTS idx_active_sessions_not_revoked ON active_sessions(pr
 ALTER TABLE active_sessions ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies: Users can only see and manage their own sessions
+DROP POLICY IF EXISTS "Users can view own sessions" ON active_sessions;
 CREATE POLICY "Users can view own sessions"
   ON active_sessions FOR SELECT
   USING (profile_id = user_profile_id());
 
+DROP POLICY IF EXISTS "Users can insert own sessions" ON active_sessions;
+
 CREATE POLICY "Users can insert own sessions"
   ON active_sessions FOR INSERT
   WITH CHECK (profile_id = user_profile_id());
+
+DROP POLICY IF EXISTS "Users can update own sessions" ON active_sessions;
 
 CREATE POLICY "Users can update own sessions"
   ON active_sessions FOR UPDATE
   USING (profile_id = user_profile_id());
 
 -- Admins can view all sessions (for security audit)
+DROP POLICY IF EXISTS "Admins can view all sessions" ON active_sessions;
 CREATE POLICY "Admins can view all sessions"
   ON active_sessions FOR SELECT
   USING (user_role() = 'admin');
@@ -1984,7 +1601,7 @@ CREATE OR REPLACE FUNCTION upsert_active_session(
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $mig$
+AS $$
 DECLARE
   v_session_id UUID;
   v_device TEXT;
@@ -2030,7 +1647,7 @@ BEGIN
 
   RETURN v_session_id;
 END;
-$mig$;
+$$;
 
 -- Function: revoke_session
 CREATE OR REPLACE FUNCTION revoke_session(
@@ -2040,7 +1657,7 @@ CREATE OR REPLACE FUNCTION revoke_session(
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $mig$
+AS $$
 BEGIN
   UPDATE active_sessions
   SET revoked_at = now()
@@ -2050,7 +1667,7 @@ BEGIN
 
   RETURN FOUND;
 END;
-$mig$;
+$$;
 
 -- Auto-expire sessions older than 30 days (to be called by pg_cron)
 CREATE OR REPLACE FUNCTION cleanup_expired_sessions()
@@ -2058,7 +1675,7 @@ RETURNS INTEGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $mig$
+AS $$
 DECLARE
   v_count INTEGER;
 BEGIN
@@ -2073,19 +1690,10 @@ BEGIN
 
   RETURN v_count;
 END;
-$mig$;
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+$$;
 
 
 -- === [155/169] 20260408130000_admin_panel_tables.sql ===
-DO $wrapper$ BEGIN
 -- Migration: Admin Panel — admin_logs, feature_flags, support_tickets
 -- Tables pour le panneau d'administration Talok
 
@@ -2166,6 +1774,7 @@ ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
 
 -- admin_logs: lecture/écriture pour admins uniquement
+DROP POLICY IF EXISTS "Admins can read admin_logs" ON admin_logs;
 CREATE POLICY "Admins can read admin_logs"
   ON admin_logs FOR SELECT
   USING (
@@ -2174,6 +1783,8 @@ CREATE POLICY "Admins can read admin_logs"
       WHERE user_id = auth.uid() AND role IN ('admin', 'platform_admin')
     )
   );
+
+DROP POLICY IF EXISTS "Admins can insert admin_logs" ON admin_logs;
 
 CREATE POLICY "Admins can insert admin_logs"
   ON admin_logs FOR INSERT
@@ -2185,9 +1796,12 @@ CREATE POLICY "Admins can insert admin_logs"
   );
 
 -- feature_flags: lecture pour tous (utilisateurs connectes), ecriture pour admins
+DROP POLICY IF EXISTS "Authenticated users can read feature_flags" ON feature_flags;
 CREATE POLICY "Authenticated users can read feature_flags"
   ON feature_flags FOR SELECT
   USING (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "Admins can manage feature_flags" ON feature_flags;
 
 CREATE POLICY "Admins can manage feature_flags"
   ON feature_flags FOR ALL
@@ -2199,6 +1813,7 @@ CREATE POLICY "Admins can manage feature_flags"
   );
 
 -- support_tickets: user voit ses propres tickets, admins voient tout
+DROP POLICY IF EXISTS "Users can read own support_tickets" ON support_tickets;
 CREATE POLICY "Users can read own support_tickets"
   ON support_tickets FOR SELECT
   USING (
@@ -2207,6 +1822,8 @@ CREATE POLICY "Users can read own support_tickets"
     )
   );
 
+DROP POLICY IF EXISTS "Users can create support_tickets" ON support_tickets;
+
 CREATE POLICY "Users can create support_tickets"
   ON support_tickets FOR INSERT
   WITH CHECK (
@@ -2214,6 +1831,8 @@ CREATE POLICY "Users can create support_tickets"
       SELECT id FROM profiles WHERE user_id = auth.uid()
     )
   );
+
+DROP POLICY IF EXISTS "Admins can manage all support_tickets" ON support_tickets;
 
 CREATE POLICY "Admins can manage all support_tickets"
   ON support_tickets FOR ALL
@@ -2249,7 +1868,7 @@ CREATE OR REPLACE FUNCTION log_admin_action(
   p_target_id UUID DEFAULT NULL,
   p_details JSONB DEFAULT '{}'
 )
-RETURNS UUID AS $mig$
+RETURNS UUID AS $$
 DECLARE
   v_admin_profile_id UUID;
   v_log_id UUID;
@@ -2270,19 +1889,10 @@ BEGIN
 
   RETURN v_log_id;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- === [156/169] 20260408130000_candidatures_workflow.sql ===
-DO $wrapper$ BEGIN
 -- Migration : Workflow Candidatures Locatives
 -- Tables : property_listings, applications
 -- RLS policies pour owner, tenant et accès public
@@ -2319,10 +1929,12 @@ CREATE INDEX idx_property_listings_token ON property_listings(public_url_token);
 ALTER TABLE property_listings ENABLE ROW LEVEL SECURITY;
 
 -- Owner peut tout faire sur ses annonces
+DROP POLICY IF EXISTS property_listings_owner_all ON property_listings;
 CREATE POLICY property_listings_owner_all ON property_listings
   FOR ALL USING (owner_id = (SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1));
 
 -- Annonces publiées lisibles par tous (page publique)
+DROP POLICY IF EXISTS property_listings_public_read ON property_listings;
 CREATE POLICY property_listings_public_read ON property_listings
   FOR SELECT USING (is_published = true);
 
@@ -2371,14 +1983,17 @@ CREATE INDEX idx_applications_email ON applications(applicant_email);
 ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
 
 -- Owner peut voir les candidatures pour ses biens
+DROP POLICY IF EXISTS applications_owner_all ON applications;
 CREATE POLICY applications_owner_all ON applications
   FOR ALL USING (owner_id = (SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1));
 
 -- Candidat authentifié peut voir ses propres candidatures
+DROP POLICY IF EXISTS applications_applicant_read ON applications;
 CREATE POLICY applications_applicant_read ON applications
   FOR SELECT USING (applicant_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1));
 
 -- Insertion publique (candidats non authentifiés peuvent postuler)
+DROP POLICY IF EXISTS applications_public_insert ON applications;
 CREATE POLICY applications_public_insert ON applications
   FOR INSERT WITH CHECK (true);
 
@@ -2392,7 +2007,7 @@ CREATE TRIGGER update_applications_updated_at
 -- ============================================
 
 CREATE OR REPLACE FUNCTION calculate_application_completeness()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   score INTEGER := 0;
   docs JSONB;
@@ -2430,7 +2045,7 @@ BEGIN
   NEW.completeness_score := LEAST(score, 100);
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER applications_calculate_completeness
   BEFORE INSERT OR UPDATE OF documents, applicant_phone, message ON applications
@@ -2441,7 +2056,7 @@ CREATE TRIGGER applications_calculate_completeness
 -- ============================================
 
 CREATE OR REPLACE FUNCTION cleanup_rejected_applications()
-RETURNS void AS $mig$
+RETURNS void AS $$
 BEGIN
   -- Supprimer les documents des candidatures refusées depuis plus de 6 mois
   UPDATE applications
@@ -2452,19 +2067,10 @@ BEGIN
     AND rejected_at < now() - INTERVAL '6 months'
     AND documents != '[]'::jsonb;
 END;
-$mig$ LANGUAGE plpgsql;
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+$$ LANGUAGE plpgsql;
 
 
 -- === [157/169] 20260408130000_charges_locatives_module.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- CHARGES LOCATIVES MODULE
 -- Tables: charge_categories, charge_entries, charge_regularizations_v2
@@ -2496,6 +2102,8 @@ CREATE INDEX idx_charge_categories_category ON charge_categories(category);
 
 ALTER TABLE charge_categories ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "charge_categories_owner_access" ON charge_categories;
+
 CREATE POLICY "charge_categories_owner_access" ON charge_categories
   FOR ALL TO authenticated
   USING (
@@ -2514,6 +2122,7 @@ CREATE POLICY "charge_categories_owner_access" ON charge_categories
   );
 
 -- Tenants can read categories for their leased properties
+DROP POLICY IF EXISTS "charge_categories_tenant_read" ON charge_categories;
 CREATE POLICY "charge_categories_tenant_read" ON charge_categories
   FOR SELECT TO authenticated
   USING (
@@ -2551,6 +2160,8 @@ CREATE INDEX idx_charge_entries_date ON charge_entries(date);
 
 ALTER TABLE charge_entries ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "charge_entries_owner_access" ON charge_entries;
+
 CREATE POLICY "charge_entries_owner_access" ON charge_entries
   FOR ALL TO authenticated
   USING (
@@ -2569,6 +2180,7 @@ CREATE POLICY "charge_entries_owner_access" ON charge_entries
   );
 
 -- Tenants can read recoverable entries for their leased properties
+DROP POLICY IF EXISTS "charge_entries_tenant_read" ON charge_entries;
 CREATE POLICY "charge_entries_tenant_read" ON charge_entries
   FOR SELECT TO authenticated
   USING (
@@ -2617,6 +2229,7 @@ CREATE INDEX idx_lease_charge_reg_status ON lease_charge_regularizations(status)
 ALTER TABLE lease_charge_regularizations ENABLE ROW LEVEL SECURITY;
 
 -- Owner full access
+DROP POLICY IF EXISTS "lease_charge_reg_owner_access" ON lease_charge_regularizations;
 CREATE POLICY "lease_charge_reg_owner_access" ON lease_charge_regularizations
   FOR ALL TO authenticated
   USING (
@@ -2635,6 +2248,7 @@ CREATE POLICY "lease_charge_reg_owner_access" ON lease_charge_regularizations
   );
 
 -- Tenant can read and update (for contestation) their own regularizations
+DROP POLICY IF EXISTS "lease_charge_reg_tenant_read" ON lease_charge_regularizations;
 CREATE POLICY "lease_charge_reg_tenant_read" ON lease_charge_regularizations
   FOR SELECT TO authenticated
   USING (
@@ -2646,6 +2260,8 @@ CREATE POLICY "lease_charge_reg_tenant_read" ON lease_charge_regularizations
         AND ls.role IN ('locataire_principal', 'colocataire')
     )
   );
+
+DROP POLICY IF EXISTS "lease_charge_reg_tenant_contest" ON lease_charge_regularizations;
 
 CREATE POLICY "lease_charge_reg_tenant_contest" ON lease_charge_regularizations
   FOR UPDATE TO authenticated
@@ -2665,12 +2281,12 @@ CREATE POLICY "lease_charge_reg_tenant_contest" ON lease_charge_regularizations
 
 -- 4. TRIGGER: auto-update updated_at
 CREATE OR REPLACE FUNCTION update_charges_updated_at()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_charge_categories_updated
   BEFORE UPDATE ON charge_categories
@@ -2684,17 +2300,8 @@ CREATE TRIGGER trg_lease_charge_reg_updated
   BEFORE UPDATE ON lease_charge_regularizations
   FOR EACH ROW EXECUTE FUNCTION update_charges_updated_at();
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [158/169] 20260408130000_diagnostics_rent_control.sql ===
-DO $wrapper$ BEGIN
 -- =============================================================================
 -- Migration: property_diagnostics + rent_control_zones
 -- Diagnostics immobiliers obligatoires (DDT) et encadrement des loyers
@@ -2724,6 +2331,7 @@ CREATE TABLE IF NOT EXISTS property_diagnostics (
 ALTER TABLE property_diagnostics ENABLE ROW LEVEL SECURITY;
 
 -- Owners can manage diagnostics on their properties
+DROP POLICY IF EXISTS "property_diagnostics_owner_select" ON property_diagnostics;
 CREATE POLICY "property_diagnostics_owner_select"
   ON property_diagnostics FOR SELECT
   USING (
@@ -2733,6 +2341,8 @@ CREATE POLICY "property_diagnostics_owner_select"
       )
     )
   );
+
+DROP POLICY IF EXISTS "property_diagnostics_owner_insert" ON property_diagnostics;
 
 CREATE POLICY "property_diagnostics_owner_insert"
   ON property_diagnostics FOR INSERT
@@ -2744,6 +2354,8 @@ CREATE POLICY "property_diagnostics_owner_insert"
     )
   );
 
+DROP POLICY IF EXISTS "property_diagnostics_owner_update" ON property_diagnostics;
+
 CREATE POLICY "property_diagnostics_owner_update"
   ON property_diagnostics FOR UPDATE
   USING (
@@ -2753,6 +2365,8 @@ CREATE POLICY "property_diagnostics_owner_update"
       )
     )
   );
+
+DROP POLICY IF EXISTS "property_diagnostics_owner_delete" ON property_diagnostics;
 
 CREATE POLICY "property_diagnostics_owner_delete"
   ON property_diagnostics FOR DELETE
@@ -2765,6 +2379,7 @@ CREATE POLICY "property_diagnostics_owner_delete"
   );
 
 -- Tenants can view diagnostics for their leased properties
+DROP POLICY IF EXISTS "property_diagnostics_tenant_select" ON property_diagnostics;
 CREATE POLICY "property_diagnostics_tenant_select"
   ON property_diagnostics FOR SELECT
   USING (
@@ -2784,12 +2399,12 @@ CREATE INDEX idx_property_diagnostics_expiry ON property_diagnostics(expiry_date
 
 -- Auto-update updated_at
 CREATE OR REPLACE FUNCTION update_property_diagnostics_updated_at()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_property_diagnostics_updated_at
   BEFORE UPDATE ON property_diagnostics
@@ -2813,6 +2428,8 @@ CREATE TABLE IF NOT EXISTS rent_control_zones (
 
 -- RLS: read-only for all authenticated users
 ALTER TABLE rent_control_zones ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "rent_control_zones_read" ON rent_control_zones;
 
 CREATE POLICY "rent_control_zones_read"
   ON rent_control_zones FOR SELECT
@@ -2846,17 +2463,8 @@ INSERT INTO rent_control_zones (city, zone, type_logement, nb_pieces, loyer_refe
   ('Montpellier', '1', 'meuble_ancien', 1, 15.80, 18.96, 11.06, 2026, 1)
 ON CONFLICT DO NOTHING;
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [159/169] 20260408130000_fix_subscription_plan_prices.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- Migration: Fix subscription plan prices to match official pricing grid
 -- Date: 2026-04-08
@@ -2869,7 +2477,7 @@ DO $wrapper$ BEGIN
 --   - Enterprise S: 249€/mois (24900 centimes)
 --   Idempotent — safe to run multiple times.
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 UPDATE subscription_plans SET price_monthly = 0, price_yearly = 0
 WHERE slug = 'gratuit' AND price_monthly != 0;
 
@@ -2884,18 +2492,9 @@ WHERE slug = 'pro' AND price_monthly != 6900;
 
 UPDATE subscription_plans SET price_monthly = 24900, price_yearly = 249000
 WHERE slug = 'enterprise_s' AND price_monthly != 24900;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [160/169] 20260408130000_guarantor_workflow_complete.sql ===
-DO $wrapper$ BEGIN
 -- ============================================
 -- Migration: Workflow garant complet
 -- Date: 2026-04-08
@@ -2908,7 +2507,7 @@ DO $wrapper$ BEGIN
 --   6. Créer la fonction RPC guarantor_dashboard
 --   7. Ajouter les RLS policies manquantes
 -- ============================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- ============================================
 -- 1. TABLE D'INVITATIONS GARANT
 -- ============================================
@@ -3072,15 +2671,20 @@ ADD COLUMN IF NOT EXISTS consent_data_processing_at TIMESTAMPTZ;
 ALTER TABLE guarantor_invitations ENABLE ROW LEVEL SECURITY;
 
 -- Le propriétaire qui a invité peut voir/modifier ses invitations
+DROP POLICY IF EXISTS "guarantor_invitations_owner_select" ON guarantor_invitations;
 CREATE POLICY "guarantor_invitations_owner_select" ON guarantor_invitations
   FOR SELECT USING (
     invited_by = (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "guarantor_invitations_owner_insert" ON guarantor_invitations;
+
 CREATE POLICY "guarantor_invitations_owner_insert" ON guarantor_invitations
   FOR INSERT WITH CHECK (
     invited_by = (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
+
+DROP POLICY IF EXISTS "guarantor_invitations_owner_update" ON guarantor_invitations;
 
 CREATE POLICY "guarantor_invitations_owner_update" ON guarantor_invitations
   FOR UPDATE USING (
@@ -3088,6 +2692,7 @@ CREATE POLICY "guarantor_invitations_owner_update" ON guarantor_invitations
   );
 
 -- Le garant invité peut voir ses invitations (par email lié à son user)
+DROP POLICY IF EXISTS "guarantor_invitations_guarantor_select" ON guarantor_invitations;
 CREATE POLICY "guarantor_invitations_guarantor_select" ON guarantor_invitations
   FOR SELECT USING (
     guarantor_email = (
@@ -3096,6 +2701,7 @@ CREATE POLICY "guarantor_invitations_guarantor_select" ON guarantor_invitations
   );
 
 -- Admin peut tout
+DROP POLICY IF EXISTS "guarantor_invitations_admin_all" ON guarantor_invitations;
 CREATE POLICY "guarantor_invitations_admin_all" ON guarantor_invitations
   FOR ALL USING (
     EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND role = 'admin')
@@ -3106,12 +2712,12 @@ CREATE POLICY "guarantor_invitations_admin_all" ON guarantor_invitations
 -- ============================================
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$mig$ language 'plpgsql';
+$$ language 'plpgsql';
 
 DROP TRIGGER IF EXISTS update_guarantor_invitations_updated_at ON guarantor_invitations;
 CREATE TRIGGER update_guarantor_invitations_updated_at
@@ -3127,7 +2733,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $mig$
+AS $$
 DECLARE
   v_profile_id UUID;
   v_result JSONB;
@@ -3212,27 +2818,18 @@ BEGIN
 
   RETURN v_result;
 END;
-$mig$;
+$$;
 
 COMMENT ON FUNCTION guarantor_dashboard IS 'Retourne les données du dashboard garant (engagements, incidents, stats)';
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [161/169] 20260408130000_insurance_policies.sql ===
-DO $wrapper$ BEGIN
 -- =============================================
 -- Migration: Evolve insurance_policies table
 -- From tenant-only to multi-role (PNO, multirisques, RC Pro, decennale, GLI, garantie financiere)
 -- Original table: 20240101000009_tenant_advanced.sql
 -- =============================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- 1. Add new columns to existing table
 ALTER TABLE insurance_policies
   ADD COLUMN IF NOT EXISTS profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -3298,6 +2895,7 @@ DROP POLICY IF EXISTS insurance_owner_delete ON insurance_policies;
 DROP POLICY IF EXISTS insurance_owner_view_tenants ON insurance_policies;
 
 -- Users can manage their own policies
+DROP POLICY IF EXISTS insurance_self_select ON insurance_policies;
 CREATE POLICY insurance_self_select ON insurance_policies
   FOR SELECT TO authenticated
   USING (
@@ -3305,21 +2903,28 @@ CREATE POLICY insurance_self_select ON insurance_policies
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS insurance_self_insert ON insurance_policies;
+
 CREATE POLICY insurance_self_insert ON insurance_policies
   FOR INSERT TO authenticated
   WITH CHECK (
     profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS insurance_self_update ON insurance_policies;
+
 CREATE POLICY insurance_self_update ON insurance_policies
   FOR UPDATE TO authenticated
   USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+DROP POLICY IF EXISTS insurance_self_delete ON insurance_policies;
 
 CREATE POLICY insurance_self_delete ON insurance_policies
   FOR DELETE TO authenticated
   USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
 -- Owners can view tenant insurance linked to their properties
+DROP POLICY IF EXISTS insurance_owner_view_tenants ON insurance_policies;
 CREATE POLICY insurance_owner_view_tenants ON insurance_policies
   FOR SELECT TO authenticated
   USING (
@@ -3333,6 +2938,7 @@ CREATE POLICY insurance_owner_view_tenants ON insurance_policies
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS insurance_admin_all ON insurance_policies;
 CREATE POLICY insurance_admin_all ON insurance_policies
   FOR ALL TO authenticated
   USING (public.user_role() = 'admin')
@@ -3340,12 +2946,12 @@ CREATE POLICY insurance_admin_all ON insurance_policies
 
 -- 9. Trigger updated_at (idempotent)
 CREATE OR REPLACE FUNCTION update_insurance_policies_updated_at()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_insurance_updated_at ON insurance_policies;
 CREATE TRIGGER trg_insurance_updated_at
@@ -3386,18 +2992,9 @@ FROM insurance_policies ip
 JOIN profiles p ON ip.profile_id = p.id
 LEFT JOIN properties prop ON ip.property_id = prop.id
 WHERE ip.end_date <= CURRENT_DATE + INTERVAL '30 days';
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [162/169] 20260408130000_lease_amendments_table.sql ===
-DO $wrapper$ BEGIN
 -- ============================================================================
 -- Lease Amendments (Avenants) — Table + RLS
 --
@@ -3436,6 +3033,7 @@ ALTER TABLE lease_amendments ENABLE ROW LEVEL SECURITY;
 -- 3. RLS Policies
 
 -- Owner can view amendments for their leases
+DROP POLICY IF EXISTS "owner_select_amendments" ON lease_amendments;
 CREATE POLICY "owner_select_amendments"
   ON lease_amendments
   FOR SELECT
@@ -3450,6 +3048,7 @@ CREATE POLICY "owner_select_amendments"
   );
 
 -- Tenant can view amendments for leases they signed
+DROP POLICY IF EXISTS "tenant_select_amendments" ON lease_amendments;
 CREATE POLICY "tenant_select_amendments"
   ON lease_amendments
   FOR SELECT
@@ -3463,6 +3062,7 @@ CREATE POLICY "tenant_select_amendments"
   );
 
 -- Owner can create amendments for their leases
+DROP POLICY IF EXISTS "owner_insert_amendments" ON lease_amendments;
 CREATE POLICY "owner_insert_amendments"
   ON lease_amendments
   FOR INSERT
@@ -3477,6 +3077,7 @@ CREATE POLICY "owner_insert_amendments"
   );
 
 -- Owner can update amendments for their leases (only unsigned ones)
+DROP POLICY IF EXISTS "owner_update_amendments" ON lease_amendments;
 CREATE POLICY "owner_update_amendments"
   ON lease_amendments
   FOR UPDATE
@@ -3503,12 +3104,12 @@ CREATE INDEX IF NOT EXISTS idx_lease_amendments_effective_date
 
 -- 5. Auto-update updated_at
 CREATE OR REPLACE FUNCTION update_lease_amendments_updated_at()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_lease_amendments_updated_at
   BEFORE UPDATE ON lease_amendments
@@ -3522,17 +3123,8 @@ COMMENT ON COLUMN lease_amendments.old_values IS 'Valeurs avant modification (JS
 COMMENT ON COLUMN lease_amendments.new_values IS 'Valeurs après modification (JSONB)';
 COMMENT ON COLUMN lease_amendments.signed_at IS 'Date de signature de l''avenant par toutes les parties';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [163/169] 20260408130000_rgpd_consent_records_and_data_requests.sql ===
-DO $wrapper$ BEGIN
 -- Migration RGPD : consent_records (historique granulaire) + data_requests (demandes export/suppression)
 -- Complète la table user_consents existante avec un historique versionné
 
@@ -3556,11 +3148,15 @@ CREATE TABLE IF NOT EXISTS consent_records (
 
 ALTER TABLE consent_records ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own consent records" ON consent_records;
+
 CREATE POLICY "Users can view own consent records"
   ON consent_records FOR SELECT
   USING (profile_id IN (
     SELECT id FROM profiles WHERE user_id = auth.uid()
   ));
+
+DROP POLICY IF EXISTS "Users can insert own consent records" ON consent_records;
 
 CREATE POLICY "Users can insert own consent records"
   ON consent_records FOR INSERT
@@ -3588,17 +3184,23 @@ CREATE TABLE IF NOT EXISTS data_requests (
 
 ALTER TABLE data_requests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own data requests" ON data_requests;
+
 CREATE POLICY "Users can view own data requests"
   ON data_requests FOR SELECT
   USING (profile_id IN (
     SELECT id FROM profiles WHERE user_id = auth.uid()
   ));
 
+DROP POLICY IF EXISTS "Users can insert own data requests" ON data_requests;
+
 CREATE POLICY "Users can insert own data requests"
   ON data_requests FOR INSERT
   WITH CHECK (profile_id IN (
     SELECT id FROM profiles WHERE user_id = auth.uid()
   ));
+
+DROP POLICY IF EXISTS "Users can update own pending data requests" ON data_requests;
 
 CREATE POLICY "Users can update own pending data requests"
   ON data_requests FOR UPDATE
@@ -3610,17 +3212,8 @@ CREATE POLICY "Users can update own pending data requests"
 CREATE INDEX idx_data_requests_profile_id ON data_requests(profile_id);
 CREATE INDEX idx_data_requests_status ON data_requests(status);
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [164/169] 20260408130000_seasonal_rental_module.sql ===
-DO $wrapper$ BEGIN
 -- ============================================================
 -- Migration: Location saisonnière (seasonal rental module)
 -- Tables: seasonal_listings, seasonal_rates, reservations, seasonal_blocked_dates
@@ -3655,6 +3248,8 @@ CREATE TABLE IF NOT EXISTS seasonal_listings (
 
 ALTER TABLE seasonal_listings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "owners_manage_own_listings" ON seasonal_listings;
+
 CREATE POLICY "owners_manage_own_listings" ON seasonal_listings
   FOR ALL USING (owner_id IN (
     SELECT id FROM profiles WHERE user_id = auth.uid()
@@ -3682,6 +3277,8 @@ CREATE TABLE IF NOT EXISTS seasonal_rates (
 );
 
 ALTER TABLE seasonal_rates ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "owners_manage_rates" ON seasonal_rates;
 
 CREATE POLICY "owners_manage_rates" ON seasonal_rates
   FOR ALL USING (listing_id IN (
@@ -3736,6 +3333,8 @@ CREATE TABLE IF NOT EXISTS reservations (
 
 ALTER TABLE reservations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "owners_manage_reservations" ON reservations;
+
 CREATE POLICY "owners_manage_reservations" ON reservations
   FOR ALL USING (listing_id IN (
     SELECT id FROM seasonal_listings WHERE owner_id IN (
@@ -3765,6 +3364,8 @@ CREATE TABLE IF NOT EXISTS seasonal_blocked_dates (
 
 ALTER TABLE seasonal_blocked_dates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "owners_manage_blocked" ON seasonal_blocked_dates;
+
 CREATE POLICY "owners_manage_blocked" ON seasonal_blocked_dates
   FOR ALL USING (listing_id IN (
     SELECT id FROM seasonal_listings WHERE owner_id IN (
@@ -3779,12 +3380,12 @@ CREATE INDEX idx_blocked_dates_range ON seasonal_blocked_dates(start_date, end_d
 -- 5. Triggers updated_at
 -- ============================================================
 CREATE OR REPLACE FUNCTION update_seasonal_updated_at()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_seasonal_listings_updated_at
   BEFORE UPDATE ON seasonal_listings
@@ -3794,23 +3395,14 @@ CREATE TRIGGER trg_reservations_updated_at
   BEFORE UPDATE ON reservations
   FOR EACH ROW EXECUTE FUNCTION update_seasonal_updated_at();
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [165/169] 20260408130000_security_deposits.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- Migration: Table des dépôts de garantie (lifecycle tracking)
 -- Date: 2026-04-08
 -- Spec: talok-paiements — Section 7
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- Table principale : un enregistrement par dépôt de garantie par bail
 CREATE TABLE IF NOT EXISTS security_deposits (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -3865,6 +3457,7 @@ CREATE OR REPLACE TRIGGER set_updated_at_security_deposits
 ALTER TABLE security_deposits ENABLE ROW LEVEL SECURITY;
 
 -- Politique: Le propriétaire peut gérer les dépôts de ses baux
+DROP POLICY IF EXISTS "Owner manages security_deposits" ON security_deposits;
 CREATE POLICY "Owner manages security_deposits" ON security_deposits
   FOR ALL
   USING (
@@ -3877,6 +3470,7 @@ CREATE POLICY "Owner manages security_deposits" ON security_deposits
   );
 
 -- Politique: Le locataire peut voir son dépôt
+DROP POLICY IF EXISTS "Tenant views own security_deposit" ON security_deposits;
 CREATE POLICY "Tenant views own security_deposit" ON security_deposits
   FOR SELECT
   USING (
@@ -3884,6 +3478,7 @@ CREATE POLICY "Tenant views own security_deposit" ON security_deposits
   );
 
 -- Politique: Admin peut tout gérer
+DROP POLICY IF EXISTS "Admin manages all security_deposits" ON security_deposits;
 CREATE POLICY "Admin manages all security_deposits" ON security_deposits
   FOR ALL
   USING (
@@ -3897,7 +3492,7 @@ CREATE POLICY "Admin manages all security_deposits" ON security_deposits
 -- Trigger : créer automatiquement un security_deposit à la signature du bail
 -- =====================================================
 CREATE OR REPLACE FUNCTION create_security_deposit_on_lease_activation()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_tenant_id UUID;
   v_deposit_amount INTEGER;
@@ -3931,25 +3526,16 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS trg_create_security_deposit ON leases;
 CREATE TRIGGER trg_create_security_deposit
   AFTER UPDATE ON leases
   FOR EACH ROW
   EXECUTE FUNCTION create_security_deposit_on_lease_activation();
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [166/169] 20260408140000_tickets_module_sota.sql ===
-DO $wrapper$ BEGIN
 -- =============================================
 -- TICKETS MODULE SOTA — Upgrade complet
 -- State machine: open → acknowledged → assigned → in_progress → resolved → closed
@@ -4021,6 +3607,7 @@ CREATE INDEX IF NOT EXISTS idx_ticket_comments_ticket_id ON ticket_comments(tick
 CREATE INDEX IF NOT EXISTS idx_ticket_comments_author_id ON ticket_comments(author_id);
 
 -- 9. RLS policies pour ticket_comments
+DROP POLICY IF EXISTS "ticket_comments_select_owner" ON ticket_comments;
 CREATE POLICY "ticket_comments_select_owner"
   ON ticket_comments FOR SELECT
   USING (
@@ -4032,6 +3619,8 @@ CREATE POLICY "ticket_comments_select_owner"
     )
   );
 
+DROP POLICY IF EXISTS "ticket_comments_select_creator" ON ticket_comments;
+
 CREATE POLICY "ticket_comments_select_creator"
   ON ticket_comments FOR SELECT
   USING (
@@ -4041,6 +3630,8 @@ CREATE POLICY "ticket_comments_select_creator"
         AND t.created_by_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
     )
   );
+
+DROP POLICY IF EXISTS "ticket_comments_select_assigned" ON ticket_comments;
 
 CREATE POLICY "ticket_comments_select_assigned"
   ON ticket_comments FOR SELECT
@@ -4052,11 +3643,15 @@ CREATE POLICY "ticket_comments_select_assigned"
     )
   );
 
+DROP POLICY IF EXISTS "ticket_comments_insert" ON ticket_comments;
+
 CREATE POLICY "ticket_comments_insert"
   ON ticket_comments FOR INSERT
   WITH CHECK (
     author_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
+
+DROP POLICY IF EXISTS "ticket_comments_select_admin" ON ticket_comments;
 
 CREATE POLICY "ticket_comments_select_admin"
   ON ticket_comments FOR SELECT
@@ -4068,12 +3663,12 @@ CREATE POLICY "ticket_comments_select_admin"
 
 -- 10. Trigger updated_at pour tickets (si pas déjà présent)
 CREATE OR REPLACE FUNCTION update_tickets_updated_at()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trigger_update_tickets_updated_at ON tickets;
 CREATE TRIGGER trigger_update_tickets_updated_at
@@ -4081,12 +3676,101 @@ CREATE TRIGGER trigger_update_tickets_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_tickets_updated_at();
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+
+-- === [167/169] 20260408200000_unified_notification_system.sql ===
+-- =====================================================
+-- MIGRATION: Système de notifications unifié
+-- Ajoute la table notification_event_preferences (per-event)
+-- et les colonnes manquantes sur notifications
+-- =====================================================
+
+-- 1. Ajouter colonnes manquantes à notifications
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'route') THEN
+    ALTER TABLE notifications ADD COLUMN route TEXT;
+    COMMENT ON COLUMN notifications.route IS 'Deep link route (e.g. /owner/invoices/xxx)';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'channels_sent') THEN
+    ALTER TABLE notifications ADD COLUMN channels_sent TEXT[] DEFAULT '{}';
+    COMMENT ON COLUMN notifications.channels_sent IS 'Channels actually used: email, push, in_app, sms';
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'is_read') THEN
+    ALTER TABLE notifications ADD COLUMN is_read BOOLEAN DEFAULT false;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'read_at') THEN
+    ALTER TABLE notifications ADD COLUMN read_at TIMESTAMPTZ;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'profile_id') THEN
+    ALTER TABLE notifications ADD COLUMN profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE;
+  END IF;
+END$$;
+
+-- Index for profile-based queries
+CREATE INDEX IF NOT EXISTS idx_notif_profile_read_created
+  ON notifications(profile_id, is_read, created_at DESC);
+
+-- 2. Table de préférences par événement
+CREATE TABLE IF NOT EXISTS notification_event_preferences (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  event_type TEXT NOT NULL,
+  email_enabled BOOLEAN DEFAULT true,
+  push_enabled BOOLEAN DEFAULT true,
+  sms_enabled BOOLEAN DEFAULT false,
+  in_app_enabled BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(profile_id, event_type)
+);
+
+CREATE INDEX IF NOT EXISTS idx_notif_event_prefs_profile
+  ON notification_event_preferences(profile_id);
+
+ALTER TABLE notification_event_preferences ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own event preferences" ON notification_event_preferences;
+DROP POLICY IF EXISTS "Users can view own event preferences" ON notification_event_preferences;
+CREATE POLICY "Users can view own event preferences"
+  ON notification_event_preferences FOR SELECT
+  USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+DROP POLICY IF EXISTS "Users can manage own event preferences" ON notification_event_preferences;
+DROP POLICY IF EXISTS "Users can manage own event preferences" ON notification_event_preferences;
+CREATE POLICY "Users can manage own event preferences"
+  ON notification_event_preferences FOR ALL
+  USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()))
+  WITH CHECK (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+
+-- Allow service role to insert
+DROP POLICY IF EXISTS "Service can manage event preferences" ON notification_event_preferences;
+DROP POLICY IF EXISTS "Service can manage event preferences" ON notification_event_preferences;
+CREATE POLICY "Service can manage event preferences"
+  ON notification_event_preferences FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+-- Updated_at trigger
+CREATE OR REPLACE FUNCTION update_notification_event_prefs_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_notif_event_prefs ON notification_event_preferences;
+CREATE TRIGGER trigger_update_notif_event_prefs
+  BEFORE UPDATE ON notification_event_preferences
+  FOR EACH ROW
+  EXECUTE FUNCTION update_notification_event_prefs_updated_at();
+
+COMMENT ON TABLE notification_event_preferences IS 'Per-event notification channel preferences for each user';
+
+SELECT 'Unified notification system migration complete' AS result;
 
 

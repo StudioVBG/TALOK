@@ -1,160 +1,7 @@
--- Batch 5 — migrations 69 a 105 sur 169
--- 37 migrations
-
--- === [69/169] 20260304000000_fix_invoice_generation_jour_paiement.sql ===
-DO $wrapper$ BEGIN
--- ============================================
--- Migration : Corriger generate_monthly_invoices pour utiliser jour_paiement
--- Date : 2026-03-04
--- Description : La fonction SQL de génération de factures n'utilisait pas
---   le champ leases.jour_paiement pour calculer la date_echeance.
---   Elle n'insérait pas non plus date_echeance ni invoice_number.
--- ============================================
-
-CREATE OR REPLACE FUNCTION generate_monthly_invoices(p_target_month TEXT)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $mig$
-DECLARE
-  v_count INT := 0;
-  v_lease RECORD;
-  v_result JSONB;
-  v_days_in_month INT;
-  v_jour_paiement INT;
-  v_date_echeance DATE;
-BEGIN
-  -- Vérifier le format du mois (YYYY-MM)
-  IF p_target_month !~ '^\d{4}-\d{2}$' THEN
-    RAISE EXCEPTION 'Format de mois invalide. Attendu: YYYY-MM';
-  END IF;
-
-  -- Calculer le nombre de jours dans le mois cible
-  v_days_in_month := EXTRACT(DAY FROM ((p_target_month || '-01')::DATE + INTERVAL '1 month' - INTERVAL '1 day'));
-
-  -- Parcourir tous les baux actifs qui n'ont pas encore de facture pour ce mois
-  FOR v_lease IN
-    SELECT
-      l.id as lease_id,
-      l.property_id,
-      p.owner_id,
-      ls.profile_id as tenant_id,
-      l.loyer,
-      l.charges_forfaitaires,
-      COALESCE(l.jour_paiement, 5) as jour_paiement
-    FROM leases l
-    JOIN properties p ON p.id = l.property_id
-    JOIN lease_signers ls ON ls.lease_id = l.id AND ls.role IN ('locataire', 'locataire_principal')
-    WHERE l.statut = 'active'
-    AND l.date_debut <= (p_target_month || '-01')::DATE
-    AND (l.date_fin IS NULL OR l.date_fin >= (p_target_month || '-01')::DATE)
-    AND NOT EXISTS (
-      SELECT 1 FROM invoices
-      WHERE lease_id = l.id
-      AND periode = p_target_month
-    )
-  LOOP
-    -- Clamper jour_paiement au dernier jour du mois (ex: 30 → 28 en février)
-    v_jour_paiement := LEAST(v_lease.jour_paiement, v_days_in_month);
-    v_date_echeance := (p_target_month || '-' || LPAD(v_jour_paiement::TEXT, 2, '0'))::DATE;
-
-    INSERT INTO invoices (
-      lease_id,
-      owner_id,
-      tenant_id,
-      periode,
-      montant_loyer,
-      montant_charges,
-      montant_total,
-      date_echeance,
-      invoice_number,
-      statut,
-      created_at
-    ) VALUES (
-      v_lease.lease_id,
-      v_lease.owner_id,
-      v_lease.tenant_id,
-      p_target_month,
-      v_lease.loyer,
-      v_lease.charges_forfaitaires,
-      v_lease.loyer + v_lease.charges_forfaitaires,
-      v_date_echeance,
-      'QUI-' || REPLACE(p_target_month, '-', '') || '-' || UPPER(LEFT(v_lease.lease_id::TEXT, 8)),
-      'sent',
-      NOW()
-    );
-
-    v_count := v_count + 1;
-  END LOOP;
-
-  v_result := jsonb_build_object(
-    'success', true,
-    'month', p_target_month,
-    'generated_count', v_count
-  );
-
-  RETURN v_result;
-END;
-$mig$;
-
-COMMENT ON FUNCTION generate_monthly_invoices IS 'Génère les factures de loyer pour tous les baux actifs pour un mois donné (YYYY-MM). Utilise leases.jour_paiement pour la date d''échéance.';
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
-
--- === [70/169] 20260304000001_sync_sepa_collection_day.sql ===
-DO $wrapper$ BEGIN
--- ============================================
--- Migration : Synchroniser payment_schedules.collection_day avec leases.jour_paiement
--- Date : 2026-03-04
--- Description : Quand leases.jour_paiement est mis à jour, propager la valeur
---   vers payment_schedules.collection_day pour les prélèvements SEPA.
--- ============================================
-
--- Trigger function : propager jour_paiement vers payment_schedules
-CREATE OR REPLACE FUNCTION sync_lease_jour_paiement_to_schedules()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $mig$
-BEGIN
-  -- Seulement si jour_paiement a changé
-  IF NEW.jour_paiement IS DISTINCT FROM OLD.jour_paiement THEN
-    UPDATE payment_schedules
-    SET collection_day = COALESCE(NEW.jour_paiement, 5)
-    WHERE lease_id = NEW.id
-      AND is_active = true;
-  END IF;
-  RETURN NEW;
-END;
-$mig$;
-
--- Créer le trigger
-DROP TRIGGER IF EXISTS trg_sync_jour_paiement ON leases;
-CREATE TRIGGER trg_sync_jour_paiement
-  AFTER UPDATE OF jour_paiement ON leases
-  FOR EACH ROW
-  EXECUTE FUNCTION sync_lease_jour_paiement_to_schedules();
-
-COMMENT ON FUNCTION sync_lease_jour_paiement_to_schedules IS 'Propage leases.jour_paiement vers payment_schedules.collection_day';
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
+-- Batch 5 — migrations 71 a 112 sur 169
+-- 42 migrations
 
 -- === [71/169] 20260304100000_activate_pg_cron_schedules.sql ===
-DO $wrapper$ BEGIN
 -- ============================================
 -- Migration : Activer pg_cron + pg_net et planifier tous les crons
 -- Date : 2026-03-04
@@ -192,112 +39,103 @@ WHERE jobname IN (
 
 -- Relances de paiement : quotidien à 8h UTC
 SELECT cron.schedule('payment-reminders', '0 8 * * *',
-  $mig$SELECT net.http_post(
+  $$SELECT net.http_post(
     url := current_setting('app.settings.app_url') || '/api/cron/payment-reminders',
     headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
     body := '{}'::jsonb
-  )$mig$
+  )$$
 );
 
 -- Génération factures mensuelles (route API) : 1er du mois à 6h
 SELECT cron.schedule('generate-monthly-invoices', '0 6 1 * *',
-  $mig$SELECT net.http_post(
+  $$SELECT net.http_post(
     url := current_setting('app.settings.app_url') || '/api/cron/generate-monthly-invoices',
     headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
     body := '{}'::jsonb
-  )$mig$
+  )$$
 );
 
 -- Génération factures (RPC SQL) : 1er du mois à 6h30
 SELECT cron.schedule('generate-invoices', '30 6 1 * *',
-  $mig$SELECT net.http_post(
+  $$SELECT net.http_post(
     url := current_setting('app.settings.app_url') || '/api/cron/generate-invoices',
     headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
     body := '{}'::jsonb
-  )$mig$
+  )$$
 );
 
 -- Process webhooks : toutes les 5 min
 SELECT cron.schedule('process-webhooks', '*/5 * * * *',
-  $mig$SELECT net.http_post(
+  $$SELECT net.http_post(
     url := current_setting('app.settings.app_url') || '/api/cron/process-webhooks',
     headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
     body := '{}'::jsonb
-  )$mig$
+  )$$
 );
 
 -- ===== CRONS SECONDAIRES =====
 
 -- Alertes fin de bail : lundi 8h
 SELECT cron.schedule('lease-expiry-alerts', '0 8 * * 1',
-  $mig$SELECT net.http_post(
+  $$SELECT net.http_post(
     url := current_setting('app.settings.app_url') || '/api/cron/lease-expiry-alerts',
     headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
     body := '{}'::jsonb
-  )$mig$
+  )$$
 );
 
 -- Vérif CNI expirées : quotidien 10h
 SELECT cron.schedule('check-cni-expiry', '0 10 * * *',
-  $mig$SELECT net.http_post(
+  $$SELECT net.http_post(
     url := current_setting('app.settings.app_url') || '/api/cron/check-cni-expiry',
     headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
     body := '{}'::jsonb
-  )$mig$
+  )$$
 );
 
 -- Alertes abonnements : quotidien 10h
 SELECT cron.schedule('subscription-alerts', '0 10 * * *',
-  $mig$SELECT net.http_post(
+  $$SELECT net.http_post(
     url := current_setting('app.settings.app_url') || '/api/cron/subscription-alerts',
     headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
     body := '{}'::jsonb
-  )$mig$
+  )$$
 );
 
 -- Indexation IRL : 1er du mois 7h
 SELECT cron.schedule('irl-indexation', '0 7 1 * *',
-  $mig$SELECT net.http_post(
+  $$SELECT net.http_post(
     url := current_setting('app.settings.app_url') || '/api/cron/irl-indexation',
     headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
     body := '{}'::jsonb
-  )$mig$
+  )$$
 );
 
 -- Rappels de visites : toutes les 30 min
 SELECT cron.schedule('visit-reminders', '*/30 * * * *',
-  $mig$SELECT net.http_post(
+  $$SELECT net.http_post(
     url := current_setting('app.settings.app_url') || '/api/cron/visit-reminders',
     headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
     body := '{}'::jsonb
-  )$mig$
+  )$$
 );
 
 -- ===== NETTOYAGE =====
 
 -- Nettoyage exports expirés : quotidien 3h
 SELECT cron.schedule('cleanup-exports', '0 3 * * *',
-  $mig$SELECT cleanup_expired_exports()$mig$
+  $$SELECT cleanup_expired_exports()$$
 );
 
 -- Nettoyage webhooks anciens : quotidien 4h
 SELECT cron.schedule('cleanup-webhooks', '0 4 * * *',
-  $mig$SELECT cleanup_old_webhooks()$mig$
+  $$SELECT cleanup_old_webhooks()$$
 );
 
 COMMENT ON EXTENSION pg_cron IS 'Scheduling automatique des crons via Supabase pg_cron + pg_net';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [72/169] 20260304200000_auto_mark_late_invoices.sql ===
-DO $wrapper$ BEGIN
 -- ============================================
 -- Migration : Transition automatique des factures en retard
 -- Date : 2026-03-04
@@ -312,7 +150,7 @@ CREATE OR REPLACE FUNCTION mark_overdue_invoices_late()
 RETURNS INTEGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $mig$
+AS $$
 DECLARE
   v_count INTEGER;
 BEGIN
@@ -332,7 +170,7 @@ BEGIN
 
   RETURN v_count;
 END;
-$mig$;
+$$;
 
 -- Supprimer l'ancien job s'il existe
 SELECT cron.unschedule(jobname)
@@ -341,22 +179,13 @@ WHERE jobname = 'mark-overdue-invoices';
 
 -- Planifier : quotidien à 00h05 UTC
 SELECT cron.schedule('mark-overdue-invoices', '5 0 * * *',
-  $mig$SELECT mark_overdue_invoices_late()$mig$
+  $$SELECT mark_overdue_invoices_late()$$
 );
 
 COMMENT ON FUNCTION mark_overdue_invoices_late IS 'Marque automatiquement les factures dont due_date < aujourd''hui comme "late"';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [73/169] 20260305000001_invoice_engine_fields.sql ===
-DO $wrapper$ BEGIN
 -- ============================================
 -- Migration : Moteur de facturation locative — Champs, tables et triggers
 -- Date : 2026-03-05
@@ -537,9 +366,13 @@ COMMENT ON TABLE tenant_credit_score IS 'Score de ponctualité du locataire (cac
 -- payment_reminders
 ALTER TABLE payment_reminders ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Tenants can view own reminders" ON payment_reminders;
+
 CREATE POLICY "Tenants can view own reminders"
   ON payment_reminders FOR SELECT
   USING (tenant_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "Owners can view reminders of own invoices" ON payment_reminders;
 
 CREATE POLICY "Owners can view reminders of own invoices"
   ON payment_reminders FOR SELECT
@@ -551,12 +384,16 @@ CREATE POLICY "Owners can view reminders of own invoices"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can view all reminders" ON payment_reminders;
+
 CREATE POLICY "Admins can view all reminders"
   ON payment_reminders FOR SELECT
   USING (public.user_role() = 'admin');
 
 -- late_fees
 ALTER TABLE late_fees ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view late fees of accessible invoices" ON late_fees;
 
 CREATE POLICY "Users can view late fees of accessible invoices"
   ON late_fees FOR SELECT
@@ -575,13 +412,19 @@ CREATE POLICY "Users can view late fees of accessible invoices"
 -- receipts
 ALTER TABLE receipts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Tenants can view own receipts" ON receipts;
+
 CREATE POLICY "Tenants can view own receipts"
   ON receipts FOR SELECT
   USING (tenant_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "Owners can view receipts of own properties" ON receipts;
+
 CREATE POLICY "Owners can view receipts of own properties"
   ON receipts FOR SELECT
   USING (owner_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "Admins can view all receipts" ON receipts;
 
 CREATE POLICY "Admins can view all receipts"
   ON receipts FOR SELECT
@@ -590,9 +433,13 @@ CREATE POLICY "Admins can view all receipts"
 -- tenant_credit_score
 ALTER TABLE tenant_credit_score ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Tenants can view own credit score" ON tenant_credit_score;
+
 CREATE POLICY "Tenants can view own credit score"
   ON tenant_credit_score FOR SELECT
   USING (tenant_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "Admins can view all credit scores" ON tenant_credit_score;
 
 CREATE POLICY "Admins can view all credit scores"
   ON tenant_credit_score FOR SELECT
@@ -606,7 +453,7 @@ CREATE OR REPLACE FUNCTION trigger_invoice_engine_on_lease_active()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $mig$
+AS $$
 DECLARE
   v_tenant_signer RECORD;
   v_owner_id UUID;
@@ -653,7 +500,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$;
+$$;
 
 -- Fonction pour générer la première facture avec calcul prorata
 CREATE OR REPLACE FUNCTION generate_first_invoice(
@@ -664,7 +511,7 @@ CREATE OR REPLACE FUNCTION generate_first_invoice(
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $mig$
+AS $$
 DECLARE
   v_lease RECORD;
   v_now DATE := CURRENT_DATE;
@@ -743,7 +590,7 @@ BEGIN
   -- Mettre à jour first_invoice_date
   UPDATE leases SET first_invoice_date = v_date_debut WHERE id = p_lease_id;
 END;
-$mig$;
+$$;
 
 -- Installer le trigger (BEFORE UPDATE pour pouvoir modifier NEW)
 DROP TRIGGER IF EXISTS trg_invoice_engine_on_lease_active ON leases;
@@ -755,17 +602,8 @@ CREATE TRIGGER trg_invoice_engine_on_lease_active
 COMMENT ON FUNCTION trigger_invoice_engine_on_lease_active IS 'Déclenche la génération de la première facture quand un bail passe à actif';
 COMMENT ON FUNCTION generate_first_invoice IS 'Génère la première facture avec calcul prorata conforme loi 6 juillet 1989';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [74/169] 20260305000002_payment_crons.sql ===
-DO $wrapper$ BEGIN
 -- ============================================
 -- Migration : Ajouter overdue-check au pg_cron
 -- Date : 2026-03-05
@@ -781,24 +619,15 @@ WHERE jobname = 'overdue-check';
 
 -- Cron overdue-check : quotidien à 9h UTC
 SELECT cron.schedule('overdue-check', '0 9 * * *',
-  $mig$SELECT net.http_post(
+  $$SELECT net.http_post(
     url := current_setting('app.settings.app_url') || '/api/cron/overdue-check',
     headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
     body := '{}'::jsonb
-  )$mig$
+  )$$
 );
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [75/169] 20260305100000_fix_invoice_draft_notification.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- FIX: Corriger la logique inversée dans notify_tenant_invoice_created
 --
@@ -810,7 +639,7 @@ DO $wrapper$ BEGIN
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION notify_tenant_invoice_created()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_tenant RECORD;
   v_property_address TEXT;
@@ -859,19 +688,10 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- === [76/169] 20260305100001_add_missing_notification_triggers.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- Ajout des triggers de notification manquants
 -- Identifiés lors de l'audit de propagation inter-comptes
@@ -882,7 +702,7 @@ DO $wrapper$ BEGIN
 -- par un locataire sur l'un de ses biens
 -- =====================================================
 CREATE OR REPLACE FUNCTION notify_owner_on_ticket_created()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_owner_id UUID;
   v_property_address TEXT;
@@ -921,10 +741,10 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Créer le trigger seulement s'il n'existe pas déjà
-DO $mig$
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger WHERE tgname = 'trg_notify_owner_on_ticket_created'
@@ -935,14 +755,14 @@ BEGIN
       EXECUTE FUNCTION notify_owner_on_ticket_created();
   END IF;
 END;
-$mig$;
+$$;
 
 -- =====================================================
 -- TRIGGER 2: Notifier le prestataire quand un ticket lui est assigné
 -- (work order / intervention assignée)
 -- =====================================================
 CREATE OR REPLACE FUNCTION notify_provider_on_work_order()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_property_address TEXT;
 BEGIN
@@ -985,10 +805,10 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Créer le trigger seulement s'il n'existe pas déjà
-DO $mig$
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger WHERE tgname = 'trg_notify_provider_on_work_order'
@@ -999,19 +819,10 @@ BEGIN
       EXECUTE FUNCTION notify_provider_on_work_order();
   END IF;
 END;
-$mig$;
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+$$;
 
 
 -- === [77/169] 20260306000000_lease_documents_visible_tenant.sql ===
-DO $wrapper$ BEGIN
 -- Migration: Add visible_tenant column to documents table
 -- Allows owners to control which documents are visible to tenants
 
@@ -1023,6 +834,7 @@ CREATE INDEX IF NOT EXISTS idx_documents_lease_visible_tenant
 
 -- RLS policy: tenants can only see documents marked as visible_tenant = true
 -- (Updates existing tenant read policy to add visible_tenant check)
+DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
 DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
 CREATE POLICY "Tenants can read visible lease documents"
   ON documents FOR SELECT
@@ -1051,17 +863,8 @@ CREATE POLICY "Tenants can read visible lease documents"
     OR public.user_role() = 'admin'
   );
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [78/169] 20260306100000_add_digicode_interphone_columns.sql ===
-DO $wrapper$ BEGIN
 -- Add digicode and interphone text columns to properties table
 -- These store the actual access codes/names for tenant display
 
@@ -1071,17 +874,8 @@ ALTER TABLE properties ADD COLUMN IF NOT EXISTS interphone TEXT;
 COMMENT ON COLUMN properties.digicode IS 'Code digicode de l''immeuble';
 COMMENT ON COLUMN properties.interphone IS 'Nom/numéro interphone du logement';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [79/169] 20260306100000_invoice_on_fully_signed.sql ===
-DO $wrapper$ BEGIN
 -- ============================================
 -- Migration : Facture initiale à la signature du bail (fully_signed)
 -- Date : 2026-03-06
@@ -1107,7 +901,7 @@ CREATE OR REPLACE FUNCTION generate_initial_signing_invoice(
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $mig$
+AS $$
 DECLARE
   v_lease RECORD;
   v_date_debut DATE;
@@ -1196,7 +990,7 @@ BEGIN
     END
   );
 END;
-$mig$;
+$$;
 
 COMMENT ON FUNCTION generate_initial_signing_invoice IS
   'Génère la facture initiale (loyer prorata + dépôt de garantie) à la signature du bail, conformément à la Loi Alur';
@@ -1209,7 +1003,7 @@ CREATE OR REPLACE FUNCTION trigger_invoice_on_lease_fully_signed()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $mig$
+AS $$
 DECLARE
   v_tenant_id UUID;
   v_owner_id UUID;
@@ -1237,7 +1031,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$;
+$$;
 
 DROP TRIGGER IF EXISTS trg_invoice_on_lease_fully_signed ON leases;
 CREATE TRIGGER trg_invoice_on_lease_fully_signed
@@ -1257,7 +1051,7 @@ CREATE OR REPLACE FUNCTION trigger_invoice_engine_on_lease_active()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $mig$
+AS $$
 DECLARE
   v_tenant_signer RECORD;
   v_owner_id UUID;
@@ -1314,19 +1108,10 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$;
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+$$;
 
 
 -- === [80/169] 20260306100001_backfill_initial_invoices.sql ===
-DO $wrapper$ BEGIN
 -- ============================================
 -- Migration : Backfill des factures initiales pour les baux existants
 -- Date : 2026-03-06
@@ -1340,7 +1125,7 @@ DO $wrapper$ BEGIN
 -- 1. Backfill : générer les factures initiales manquantes
 -- =====================
 
-DO $mig$
+DO $$
 DECLARE
   v_lease RECORD;
   v_tenant_id UUID;
@@ -1372,7 +1157,7 @@ BEGIN
       PERFORM generate_initial_signing_invoice(v_lease.id, v_tenant_id, v_owner_id);
     END IF;
   END LOOP;
-END $mig$;
+END $$;
 
 -- =====================
 -- 2. Fix : corriger date_echeance NULL sur les factures initiales existantes
@@ -1399,17 +1184,8 @@ SET date_echeance = COALESCE(
 WHERE date_echeance IS NULL
 AND statut IN ('sent', 'late', 'overdue', 'unpaid');
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [81/169] 20260306200000_notify_tenant_digicode_changed.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- Migration: Trigger notification changement digicode
 -- Date: 2026-03-06
@@ -1418,7 +1194,7 @@ DO $wrapper$ BEGIN
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION notify_tenant_digicode_changed()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_tenant RECORD;
   v_property_address TEXT;
@@ -1451,7 +1227,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS trigger_notify_tenant_digicode_changed ON properties;
 CREATE TRIGGER trigger_notify_tenant_digicode_changed
@@ -1462,24 +1238,15 @@ CREATE TRIGGER trigger_notify_tenant_digicode_changed
 -- =====================================================
 -- Logs de la migration
 -- =====================================================
-DO $mig$
+DO $$
 BEGIN
   RAISE NOTICE '=== Migration: Trigger notification changement digicode ===';
   RAISE NOTICE 'Trigger 8: notify_tenant_digicode_changed (digicode modifié)';
   RAISE NOTICE 'Notifie les locataires actifs quand le digicode est modifié';
-END $mig$;
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+END $$;
 
 
 -- === [82/169] 20260306300000_add_owner_payment_preferences.sql ===
-DO $wrapper$ BEGIN
 -- Migration : Ajouter les colonnes de préférences financières et d'automatisation au profil propriétaire
 -- Ces colonnes étaient précédemment stockées uniquement dans le brouillon d'onboarding et perdues après
 
@@ -1507,17 +1274,8 @@ COMMENT ON COLUMN owner_profiles.payout_seuil IS 'Seuil de déclenchement du ver
 COMMENT ON COLUMN owner_profiles.payout_jour IS 'Jour du mois pour le versement (si fréquence = mensuel)';
 COMMENT ON COLUMN owner_profiles.automation_level IS 'Niveau d''automatisation choisi par le propriétaire';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [83/169] 20260309000000_entity_status_and_dedup.sql ===
-DO $wrapper$ BEGIN
 -- ============================================
 -- Migration: Ajout status sur legal_entities + anti-doublons + déduplication
 -- Date: 2026-03-09
@@ -1526,7 +1284,7 @@ DO $wrapper$ BEGIN
 --   2. Index partiel anti-doublons pour entités sans SIRET
 --   3. Fonction admin de déduplication des entités
 -- ============================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- ============================================
 -- 1. Ajout de la colonne `status`
 -- ============================================
@@ -1547,7 +1305,7 @@ CREATE INDEX IF NOT EXISTS idx_legal_entities_status ON legal_entities(status);
 -- ============================================
 
 CREATE OR REPLACE FUNCTION sync_entity_status_and_is_active()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   -- Si status a changé, mettre à jour is_active
   IF TG_OP = 'INSERT' OR NEW.status IS DISTINCT FROM OLD.status THEN
@@ -1563,7 +1321,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_sync_entity_status ON legal_entities;
 CREATE TRIGGER trg_sync_entity_status
@@ -1589,7 +1347,7 @@ CREATE OR REPLACE FUNCTION admin_deduplicate_entities(p_owner_profile_id UUID)
 RETURNS TABLE(deleted_count INTEGER, reassigned_properties INTEGER, reassigned_leases INTEGER)
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $mig$
+AS $$
 DECLARE
   v_deleted INTEGER := 0;
   v_reassigned_props INTEGER := 0;
@@ -1667,23 +1425,15 @@ BEGIN
 
   RETURN QUERY SELECT v_deleted, v_reassigned_props, v_reassigned_leases;
 END;
-$mig$;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+$$;
 
 
 -- === [84/169] 20260309000001_messages_update_rls.sql ===
-DO $wrapper$ BEGIN
 -- Migration: Allow users to update their own messages (edit + soft-delete)
 -- Needed for message edit/delete feature
 
 -- Policy for UPDATE: users can only update their own messages in their conversations
+DROP POLICY IF EXISTS "Users can update own messages" ON messages;
 DROP POLICY IF EXISTS "Users can update own messages" ON messages;
 CREATE POLICY "Users can update own messages"
   ON messages FOR UPDATE
@@ -1699,33 +1449,15 @@ CREATE POLICY "Users can update own messages"
     sender_profile_id = public.user_profile_id()
   );
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [85/169] 20260309000002_add_ticket_to_conversations.sql ===
-DO $wrapper$ BEGIN
 -- Migration: Add ticket_id to conversations table for ticket-chat integration
 
 ALTER TABLE conversations ADD COLUMN IF NOT EXISTS ticket_id UUID REFERENCES tickets(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_conversations_ticket_id ON conversations(ticket_id);
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [86/169] 20260309100000_sync_subscription_plans_features.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- Migration: Synchronisation complète des plans d'abonnement
 -- Date: 2026-03-09
@@ -1739,7 +1471,7 @@ DO $wrapper$ BEGIN
 --   - Crée les abonnements manquants pour les propriétaires orphelins
 --   - Met à jour has_subscription_feature() pour les features non-booléennes
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 -- =====================================================
 -- ÉTAPE 1: UPSERT des 8 plans avec features complètes
 -- Source de vérité : lib/subscriptions/plans.ts
@@ -2340,7 +2072,7 @@ WHERE s.plan_id = sp.id
 AND (s.plan_slug IS NULL OR s.plan_slug != sp.slug);
 
 -- 2b. Migrer les abonnements enterprise legacy → enterprise_s
-DO $mig$
+DO $$
 DECLARE
   v_enterprise_s_id UUID;
   v_count INTEGER := 0;
@@ -2359,7 +2091,7 @@ BEGIN
       RAISE NOTICE '% abonnement(s) enterprise migré(s) vers enterprise_s', v_count;
     END IF;
   END IF;
-END $mig$;
+END $$;
 
 -- =====================================================
 -- ÉTAPE 3: Recalculer les compteurs d'usage
@@ -2398,7 +2130,7 @@ AND s.status IN ('active', 'trialing');
 -- ÉTAPE 4: Créer abonnements manquants
 -- =====================================================
 
-DO $mig$
+DO $$
 DECLARE
   v_starter_id UUID;
   v_count INTEGER := 0;
@@ -2432,7 +2164,7 @@ BEGIN
       RAISE NOTICE '% abonnement(s) Starter créé(s) pour propriétaires orphelins', v_count;
     END IF;
   END IF;
-END $mig$;
+END $$;
 
 -- =====================================================
 -- ÉTAPE 5: Mettre à jour has_subscription_feature()
@@ -2440,7 +2172,7 @@ END $mig$;
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION has_subscription_feature(p_owner_id UUID, p_feature TEXT)
-RETURNS BOOLEAN AS $mig$
+RETURNS BOOLEAN AS $$
 DECLARE
   feature_raw JSONB;
   feature_type TEXT;
@@ -2483,7 +2215,7 @@ BEGIN
   -- Autres types (array, object) : considérer comme true
   RETURN true;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION has_subscription_feature(UUID, TEXT) IS
   'Vérifie si un owner a accès à une feature selon son forfait. Supporte bool, niveaux (string) et quotas (number).';
@@ -2494,7 +2226,7 @@ COMMENT ON FUNCTION has_subscription_feature(UUID, TEXT) IS
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION create_owner_subscription()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_plan_id UUID;
 BEGIN
@@ -2540,19 +2272,10 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
 -- === [87/169] 20260310000000_fix_subscription_plans_display_order.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- Migration: Fix display_order des plans d'abonnement
 -- Date: 2026-03-10
@@ -2560,7 +2283,7 @@ DO $wrapper$ BEGIN
 --   - Corrige display_order du plan Gratuit (-1 → 0)
 --   - Réordonne tous les plans avec des valeurs séquentielles
 -- =====================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 UPDATE subscription_plans SET display_order = 0, updated_at = NOW() WHERE slug = 'gratuit';
 UPDATE subscription_plans SET display_order = 1, updated_at = NOW() WHERE slug = 'starter';
 UPDATE subscription_plans SET display_order = 2, updated_at = NOW() WHERE slug = 'confort';
@@ -2570,18 +2293,9 @@ UPDATE subscription_plans SET display_order = 5, updated_at = NOW() WHERE slug =
 UPDATE subscription_plans SET display_order = 6, updated_at = NOW() WHERE slug = 'enterprise_l';
 UPDATE subscription_plans SET display_order = 7, updated_at = NOW() WHERE slug = 'enterprise_xl';
 UPDATE subscription_plans SET display_order = 99, updated_at = NOW() WHERE slug = 'enterprise';
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [88/169] 20260310100000_fix_property_limit_enforcement.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- Migration: Fix Property Limit Enforcement & Counter Sync
 --
@@ -2604,7 +2318,7 @@ DO $wrapper$ BEGIN
 -- 1. Fix enforce_property_limit() : utiliser un vrai COUNT
 -- =====================================================
 CREATE OR REPLACE FUNCTION enforce_property_limit()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   current_count INTEGER;
   max_allowed INTEGER;
@@ -2638,13 +2352,13 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =====================================================
 -- 2. Fix enforce_lease_limit() : COUNT live + deleted_at IS NULL
 -- =====================================================
 CREATE OR REPLACE FUNCTION enforce_lease_limit()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   current_count INTEGER;
   max_allowed INTEGER;
@@ -2690,14 +2404,14 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =====================================================
 -- 3. Fix update_subscription_properties_count() : gérer soft-deletes
 --    Utilise un recount complet (self-healing) au lieu de inc/dec
 -- =====================================================
 CREATE OR REPLACE FUNCTION update_subscription_properties_count()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_owner_id UUID;
 BEGIN
@@ -2720,7 +2434,7 @@ BEGIN
 
   RETURN NULL;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 -- Mettre à jour le trigger pour écouter aussi les UPDATE (soft-delete/restore)
 DROP TRIGGER IF EXISTS trg_update_subscription_properties ON properties;
@@ -2766,17 +2480,8 @@ COMMENT ON FUNCTION enforce_property_limit() IS 'Vérifie la limite de biens via
 COMMENT ON FUNCTION enforce_lease_limit() IS 'Vérifie la limite de baux via COUNT réel. Exclut les propriétés soft-deleted.';
 COMMENT ON FUNCTION update_subscription_properties_count() IS 'Met à jour le compteur properties_count via recount complet sur INSERT, DELETE et soft-delete (UPDATE deleted_at).';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [89/169] 20260310200000_add_signature_push_franceconnect.sql ===
-DO $wrapper$ BEGIN
 -- Migration: Ajout colonnes signatures (Yousign), table franceconnect_sessions,
 -- et colonnes push Web Push sur notification_settings
 -- Date: 2026-03-10
@@ -2784,7 +2489,7 @@ DO $wrapper$ BEGIN
 -- =============================================================================
 -- 1. signatures: ajout colonnes provider et signing_url pour intégration Yousign
 -- =============================================================================
-DO $mig$
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -2799,7 +2504,7 @@ BEGIN
   ) THEN
     ALTER TABLE signatures ADD COLUMN signing_url TEXT;
   END IF;
-END $mig$;
+END $$;
 
 COMMENT ON COLUMN signatures.provider IS 'Provider de signature: internal, yousign, docusign';
 COMMENT ON COLUMN signatures.signing_url IS 'URL de signature externe (Yousign)';
@@ -2827,11 +2532,13 @@ CREATE INDEX IF NOT EXISTS idx_fc_sessions_expires_at ON franceconnect_sessions(
 ALTER TABLE franceconnect_sessions ENABLE ROW LEVEL SECURITY;
 
 -- Les utilisateurs ne peuvent voir que leurs propres sessions
+DROP POLICY IF EXISTS "Users can view own FC sessions" ON franceconnect_sessions;
 CREATE POLICY "Users can view own FC sessions"
   ON franceconnect_sessions FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Seul le service role peut insérer/modifier (via l'API route)
+DROP POLICY IF EXISTS "Service role can manage FC sessions" ON franceconnect_sessions;
 CREATE POLICY "Service role can manage FC sessions"
   ON franceconnect_sessions FOR ALL
   USING (auth.role() = 'service_role');
@@ -2843,7 +2550,7 @@ CREATE POLICY "Service role can manage FC sessions"
 -- 3. notification_settings: colonnes push_enabled et push_subscription
 --    pour le Web Push API (VAPID)
 -- =============================================================================
-DO $mig$
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -2858,22 +2565,13 @@ BEGIN
   ) THEN
     ALTER TABLE notification_settings ADD COLUMN push_subscription JSONB;
   END IF;
-END $mig$;
+END $$;
 
 COMMENT ON COLUMN notification_settings.push_enabled IS 'Web Push activé pour cet utilisateur';
 COMMENT ON COLUMN notification_settings.push_subscription IS 'Objet PushSubscription (endpoint, keys) pour Web Push API';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [90/169] 20260310200000_fix_property_limit_extra_properties.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- Migration: Allow extra properties for paid plans
 --
@@ -2905,7 +2603,7 @@ UPDATE subscription_plans SET extra_property_price = 0   WHERE slug LIKE 'enterp
 -- 3. Mettre à jour enforce_property_limit() pour autoriser les biens
 --    supplémentaires sur les forfaits qui le permettent
 CREATE OR REPLACE FUNCTION enforce_property_limit()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   current_count INTEGER;
   max_allowed INTEGER;
@@ -2947,22 +2645,13 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION enforce_property_limit() IS
   'Vérifie la limite de biens. Autorise les biens supplémentaires payants pour les forfaits avec extra_property_price > 0.';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [91/169] 20260310300000_add_stripe_price_extra_property_id.sql ===
-DO $wrapper$ BEGIN
 -- Add stripe_price_extra_property_id column to subscription_plans
 -- Stores the Stripe Price ID for per-unit extra property billing
 
@@ -2972,17 +2661,8 @@ ADD COLUMN IF NOT EXISTS stripe_price_extra_property_id TEXT;
 COMMENT ON COLUMN subscription_plans.stripe_price_extra_property_id
 IS 'Stripe Price ID for recurring per-unit billing of extra properties beyond included quota';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [92/169] 20260311100000_sync_subscription_plan_slugs.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- Migration: Synchroniser plan_slug depuis plan_id
 --
@@ -3005,7 +2685,7 @@ WHERE sp.id = s.plan_id
 
 -- 2. Trigger auto-sync plan_slug quand plan_id change
 CREATE OR REPLACE FUNCTION sync_subscription_plan_slug()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   -- Si plan_id change ou plan_slug est NULL, synchroniser depuis subscription_plans
   IF NEW.plan_id IS NOT NULL AND (
@@ -3020,7 +2700,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_sync_subscription_plan_slug ON subscriptions;
 CREATE TRIGGER trg_sync_subscription_plan_slug
@@ -3030,17 +2710,8 @@ CREATE TRIGGER trg_sync_subscription_plan_slug
 COMMENT ON FUNCTION sync_subscription_plan_slug() IS
   'Auto-synchronise plan_slug depuis plan_id pour éviter les fallbacks vers gratuit.';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [93/169] 20260312000000_admin_dashboard_rpcs.sql ===
-DO $wrapper$ BEGIN
 -- ============================================================================
 -- Migration: Admin Dashboard RPCs
 -- Date: 2026-03-12
@@ -3057,7 +2728,7 @@ RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $mig$
+AS $$
 DECLARE
   result json;
 BEGIN
@@ -3080,7 +2751,7 @@ BEGIN
 
   RETURN COALESCE(result, '[]'::json);
 END;
-$mig$;
+$$;
 
 -- 2. RPC: admin_subscription_stats
 -- Retourne les statistiques d'abonnements
@@ -3089,7 +2760,7 @@ RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $mig$
+AS $$
 DECLARE
   result json;
 BEGIN
@@ -3104,7 +2775,7 @@ BEGIN
 
   RETURN COALESCE(result, json_build_object('total', 0, 'active', 0, 'trial', 0, 'churned', 0));
 END;
-$mig$;
+$$;
 
 -- 3. RPC: admin_daily_trends
 -- Retourne les tendances des 7 derniers jours (nouveaux users, properties, leases)
@@ -3113,7 +2784,7 @@ RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $mig$
+AS $$
 DECLARE
   users_arr int[];
   properties_arr int[];
@@ -3147,24 +2818,15 @@ BEGIN
     'leases', to_json(leases_arr)
   );
 END;
-$mig$;
+$$;
 
 -- Grant execute permissions
 GRANT EXECUTE ON FUNCTION admin_monthly_revenue() TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_subscription_stats() TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_daily_trends() TO authenticated;
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [94/169] 20260312000001_fix_owner_subscription_defaults.sql ===
-DO $wrapper$ BEGIN
 -- =====================================================
 -- Migration: Fix Owner Subscription Defaults & Data Repair
 --
@@ -3188,7 +2850,7 @@ DO $wrapper$ BEGIN
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION create_owner_subscription()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_plan_id UUID;
   v_prop_count INTEGER;
@@ -3246,7 +2908,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Recreer le trigger
 DROP TRIGGER IF EXISTS trg_create_owner_subscription ON profiles;
@@ -3309,7 +2971,7 @@ WHERE sp.id = s.plan_id
 --    (plan gratuit, status active)
 -- =====================================================
 
-DO $mig$
+DO $$
 DECLARE
   v_gratuit_id UUID;
   v_count INTEGER := 0;
@@ -3340,7 +3002,7 @@ BEGIN
       RAISE NOTICE '% abonnement(s) Gratuit cree(s) pour proprietaires orphelins', v_count;
     END IF;
   END IF;
-END $mig$;
+END $$;
 
 -- =====================================================
 -- Commentaires
@@ -3348,17 +3010,8 @@ END $mig$;
 COMMENT ON FUNCTION create_owner_subscription() IS
   'Cree un abonnement Gratuit (plan_slug=gratuit, status=active) pour chaque nouveau proprietaire. Les compteurs sont initialises a partir de l''etat reel de la base.';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [95/169] 20260312100000_fix_handle_new_user_all_roles.sql ===
-DO $wrapper$ BEGIN
 -- ============================================
 -- Migration: Ajouter guarantor et syndic au trigger handle_new_user
 -- Date: 2026-03-12
@@ -3371,7 +3024,7 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $mig$
+AS $$
 DECLARE
   v_role TEXT;
   v_prenom TEXT;
@@ -3406,7 +3059,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$;
+$$;
 
 COMMENT ON FUNCTION public.handle_new_user() IS
 'Crée automatiquement un profil lors de la création d''un utilisateur.
@@ -3414,26 +3067,19 @@ Lit le rôle et les informations personnelles depuis les raw_user_meta_data.
 Supporte tous les rôles: admin, owner, tenant, provider, guarantor, syndic.
 Utilise ON CONFLICT pour gérer les cas où le profil existe déjà.';
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [96/169] 20260314001000_fix_stripe_connect_rls.sql ===
-DO $wrapper$ BEGIN
 -- Migration: corriger la RLS Stripe Connect avec profiles.id
 -- Date: 2026-03-14
--- (BEGIN removed for DO wrapper compatibility)
+
 ALTER TABLE stripe_connect_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stripe_transfers ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Owners can view own connect account" ON stripe_connect_accounts;
 DROP POLICY IF EXISTS "Owners can create own connect account" ON stripe_connect_accounts;
 DROP POLICY IF EXISTS "Service role full access connect" ON stripe_connect_accounts;
+
+DROP POLICY IF EXISTS "Owners can view own connect account" ON stripe_connect_accounts;
 
 CREATE POLICY "Owners can view own connect account" ON stripe_connect_accounts
   FOR SELECT
@@ -3442,12 +3088,16 @@ CREATE POLICY "Owners can view own connect account" ON stripe_connect_accounts
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Owners can create own connect account" ON stripe_connect_accounts;
+
 CREATE POLICY "Owners can create own connect account" ON stripe_connect_accounts
   FOR INSERT
   WITH CHECK (
     profile_id = public.user_profile_id()
     OR public.user_role() = 'admin'
   );
+
+DROP POLICY IF EXISTS "Owners can update own connect account" ON stripe_connect_accounts;
 
 CREATE POLICY "Owners can update own connect account" ON stripe_connect_accounts
   FOR UPDATE
@@ -3460,6 +3110,8 @@ CREATE POLICY "Owners can update own connect account" ON stripe_connect_accounts
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Service role full access connect" ON stripe_connect_accounts;
+
 CREATE POLICY "Service role full access connect" ON stripe_connect_accounts
   FOR ALL
   USING (auth.jwt() ->> 'role' = 'service_role')
@@ -3467,6 +3119,8 @@ CREATE POLICY "Service role full access connect" ON stripe_connect_accounts
 
 DROP POLICY IF EXISTS "Owners can view own transfers" ON stripe_transfers;
 DROP POLICY IF EXISTS "Service role full access transfers" ON stripe_transfers;
+
+DROP POLICY IF EXISTS "Owners can view own transfers" ON stripe_transfers;
 
 CREATE POLICY "Owners can view own transfers" ON stripe_transfers
   FOR SELECT
@@ -3482,22 +3136,15 @@ CREATE POLICY "Owners can view own transfers" ON stripe_transfers
     )
   );
 
+DROP POLICY IF EXISTS "Service role full access transfers" ON stripe_transfers;
+
 CREATE POLICY "Service role full access transfers" ON stripe_transfers
   FOR ALL
   USING (auth.jwt() ->> 'role' = 'service_role')
   WITH CHECK (auth.jwt() ->> 'role' = 'service_role');
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [97/169] 20260314020000_canonical_lease_activation_flow.sql ===
-DO $wrapper$ BEGIN
 -- Migration: recentrer le flux bail sur un parcours canonique
 -- Date: 2026-03-14
 --
@@ -3505,7 +3152,7 @@ DO $wrapper$ BEGIN
 -- 1. Empêcher les activations implicites depuis les signataires ou l'EDL
 -- 2. Faire de la facture initiale une étape explicite après fully_signed
 -- 3. Préserver le dépôt de garantie dans le total de la facture initiale
--- (BEGIN removed for DO wrapper compatibility)
+
 -- ---------------------------------------------------------------------------
 -- 1. Neutraliser les activations SQL implicites legacy
 -- ---------------------------------------------------------------------------
@@ -3519,7 +3166,7 @@ DROP TRIGGER IF EXISTS trg_invoice_on_lease_fully_signed ON leases;
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.check_edl_finalization()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
     v_has_owner BOOLEAN;
     v_has_tenant BOOLEAN;
@@ -3556,14 +3203,14 @@ BEGIN
 
     RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ---------------------------------------------------------------------------
 -- 3. Préserver le dépôt de garantie dans le calcul du total
 -- ---------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION set_invoice_total()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 DECLARE
   v_deposit_amount DECIMAL := 0;
 BEGIN
@@ -3576,7 +3223,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 -- ---------------------------------------------------------------------------
 -- 4. Fonction SSOT de génération de la facture initiale
@@ -3590,7 +3237,7 @@ CREATE OR REPLACE FUNCTION generate_initial_signing_invoice(
 RETURNS VOID
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $mig$
+AS $$
 DECLARE
   v_lease RECORD;
   v_date_debut DATE;
@@ -3698,19 +3345,10 @@ BEGIN
     END
   );
 END;
-$mig$;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+$$;
 
 
 -- === [98/169] 20260314030000_payments_production_hardening.sql ===
-DO $wrapper$ BEGIN
 -- Migration: hardening production paiements
 -- Objectifs:
 -- 1. Neutraliser les derniers chemins legacy qui activent un bail implicitement
@@ -3723,7 +3361,7 @@ DO $wrapper$ BEGIN
 -- -----------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION public.sync_signature_session_to_entity()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.status = 'done' AND OLD.status != 'done' THEN
     IF NEW.entity_type = 'lease' THEN
@@ -3748,7 +3386,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS auto_activate_lease_on_edl ON public.edl;
 DROP TRIGGER IF EXISTS tr_check_activate_lease ON public.lease_signers;
@@ -3798,6 +3436,7 @@ CREATE INDEX IF NOT EXISTS idx_stripe_payouts_status
 ALTER TABLE public.stripe_payouts ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Owners can view own payouts" ON public.stripe_payouts;
+DROP POLICY IF EXISTS "Owners can view own payouts" ON public.stripe_payouts;
 CREATE POLICY "Owners can view own payouts" ON public.stripe_payouts
   FOR SELECT USING (
     connect_account_id IN (
@@ -3809,6 +3448,7 @@ CREATE POLICY "Owners can view own payouts" ON public.stripe_payouts
   );
 
 DROP POLICY IF EXISTS "Service role full access payouts" ON public.stripe_payouts;
+DROP POLICY IF EXISTS "Service role full access payouts" ON public.stripe_payouts;
 CREATE POLICY "Service role full access payouts" ON public.stripe_payouts
   FOR ALL USING (auth.jwt() ->> 'role' = 'service_role')
   WITH CHECK (auth.jwt() ->> 'role' = 'service_role');
@@ -3819,7 +3459,7 @@ CREATE TRIGGER update_stripe_payouts_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION public.update_updated_at_column();
 
-DO $mig$
+DO $$
 BEGIN
   IF EXISTS (
     SELECT 1
@@ -3836,7 +3476,7 @@ BEGIN
       WHEN duplicate_object THEN NULL;
     END;
   END IF;
-END $mig$;
+END $$;
 
 -- -----------------------------------------------------------------------------
 -- Backfills securises et idempotents
@@ -3861,18 +3501,9 @@ WHERE tpm.type = 'sepa_debit'
   AND tpm.tenant_profile_id = sm.tenant_profile_id
   AND tpm.stripe_payment_method_id = sm.stripe_payment_method_id;
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [99/169] 20260315090000_market_standard_subscription_alignment.sql ===
-DO $wrapper$ BEGIN
--- (BEGIN removed for DO wrapper compatibility)
+
 ALTER TABLE subscriptions
   ADD COLUMN IF NOT EXISTS selected_plan_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS selected_plan_source TEXT,
@@ -3950,26 +3581,17 @@ WHERE subscriptions.owner_id = property_counts.owner_id;
 UPDATE subscriptions
 SET properties_count = 0
 WHERE properties_count IS NULL;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [100/169] 20260318000000_fix_auth_reset_template_examples.sql ===
-DO $wrapper$ BEGIN
 -- =============================================================================
 -- Migration : Align auth reset template examples with live recovery flow
 -- Date      : 2026-03-18
 -- Objectif  : Éviter les exemples legacy /auth/reset?token=... qui ne
 --             correspondent plus au flux actuel /auth/callback -> /auth/reset-password
 -- =============================================================================
--- (BEGIN removed for DO wrapper compatibility)
-DO $mig$
+
+DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'email_templates') THEN
     UPDATE email_templates
@@ -3986,25 +3608,16 @@ BEGIN
   ELSE
     RAISE NOTICE 'email_templates table does not exist, skipping';
   END IF;
-END $mig$;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+END $$;
 
 
 -- === [101/169] 20260318010000_password_reset_requests.sql ===
-DO $wrapper$ BEGIN
 -- =============================================================================
 -- Migration : Password reset requests SOTA 2026
 -- Objectif  : Introduire une couche applicative one-time au-dessus du recovery
 --             Supabase pour sécuriser le changement de mot de passe.
 -- =============================================================================
--- (BEGIN removed for DO wrapper compatibility)
+
 CREATE TABLE IF NOT EXISTS password_reset_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -4033,12 +3646,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_password_reset_requests_single_pending
   WHERE status = 'pending';
 
 CREATE OR REPLACE FUNCTION set_password_reset_requests_updated_at()
-RETURNS TRIGGER AS $mig$
+RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$mig$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_password_reset_requests_updated_at ON password_reset_requests;
 CREATE TRIGGER trg_password_reset_requests_updated_at
@@ -4047,18 +3660,9 @@ CREATE TRIGGER trg_password_reset_requests_updated_at
   EXECUTE FUNCTION set_password_reset_requests_updated_at();
 
 ALTER TABLE password_reset_requests ENABLE ROW LEVEL SECURITY;
--- (COMMIT removed for DO wrapper compatibility)
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
 
 
 -- === [102/169] 20260318020000_buildings_rls_sota2026.sql ===
-DO $wrapper$ BEGIN
 -- ============================================
 -- Migration : RLS SOTA 2026 pour buildings & building_units
 -- Remplace auth.uid() par user_profile_id() / user_role()
@@ -4081,17 +3685,24 @@ DROP POLICY IF EXISTS "Owners can delete their building units" ON building_units
 
 -- 3. Nouvelles policies buildings (owner)
 -- ============================================
+DROP POLICY IF EXISTS "buildings_owner_select" ON buildings;
 CREATE POLICY "buildings_owner_select" ON buildings
   FOR SELECT TO authenticated
   USING (owner_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "buildings_owner_insert" ON buildings;
 
 CREATE POLICY "buildings_owner_insert" ON buildings
   FOR INSERT TO authenticated
   WITH CHECK (owner_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "buildings_owner_update" ON buildings;
+
 CREATE POLICY "buildings_owner_update" ON buildings
   FOR UPDATE TO authenticated
   USING (owner_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "buildings_owner_delete" ON buildings;
 
 CREATE POLICY "buildings_owner_delete" ON buildings
   FOR DELETE TO authenticated
@@ -4099,12 +3710,14 @@ CREATE POLICY "buildings_owner_delete" ON buildings
 
 -- 4. Policies buildings (admin)
 -- ============================================
+DROP POLICY IF EXISTS "buildings_admin_all" ON buildings;
 CREATE POLICY "buildings_admin_all" ON buildings
   FOR ALL TO authenticated
   USING (public.user_role() = 'admin');
 
 -- 5. Policies buildings (tenant via bail actif)
 -- ============================================
+DROP POLICY IF EXISTS "buildings_tenant_select" ON buildings;
 CREATE POLICY "buildings_tenant_select" ON buildings
   FOR SELECT TO authenticated
   USING (
@@ -4121,6 +3734,7 @@ CREATE POLICY "buildings_tenant_select" ON buildings
 
 -- 6. Nouvelles policies building_units (owner)
 -- ============================================
+DROP POLICY IF EXISTS "building_units_owner_select" ON building_units;
 CREATE POLICY "building_units_owner_select" ON building_units
   FOR SELECT TO authenticated
   USING (
@@ -4130,6 +3744,8 @@ CREATE POLICY "building_units_owner_select" ON building_units
         AND b.owner_id = public.user_profile_id()
     )
   );
+
+DROP POLICY IF EXISTS "building_units_owner_insert" ON building_units;
 
 CREATE POLICY "building_units_owner_insert" ON building_units
   FOR INSERT TO authenticated
@@ -4141,6 +3757,8 @@ CREATE POLICY "building_units_owner_insert" ON building_units
     )
   );
 
+DROP POLICY IF EXISTS "building_units_owner_update" ON building_units;
+
 CREATE POLICY "building_units_owner_update" ON building_units
   FOR UPDATE TO authenticated
   USING (
@@ -4150,6 +3768,8 @@ CREATE POLICY "building_units_owner_update" ON building_units
         AND b.owner_id = public.user_profile_id()
     )
   );
+
+DROP POLICY IF EXISTS "building_units_owner_delete" ON building_units;
 
 CREATE POLICY "building_units_owner_delete" ON building_units
   FOR DELETE TO authenticated
@@ -4163,12 +3783,14 @@ CREATE POLICY "building_units_owner_delete" ON building_units
 
 -- 7. Policies building_units (admin)
 -- ============================================
+DROP POLICY IF EXISTS "building_units_admin_all" ON building_units;
 CREATE POLICY "building_units_admin_all" ON building_units
   FOR ALL TO authenticated
   USING (public.user_role() = 'admin');
 
 -- 8. Policies building_units (tenant via bail actif)
 -- ============================================
+DROP POLICY IF EXISTS "building_units_tenant_select" ON building_units;
 CREATE POLICY "building_units_tenant_select" ON building_units
   FOR SELECT TO authenticated
   USING (
@@ -4187,17 +3809,8 @@ CREATE POLICY "building_units_tenant_select" ON building_units
 ALTER TABLE building_units ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS idx_building_units_property ON building_units(property_id);
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [103/169] 20260320100000_fix_owner_id_mismatch_and_rls.sql ===
-DO $wrapper$ BEGIN
 -- ============================================================================
 -- Migration: Fix owner_id mismatch on properties table
 -- Date: 2026-03-20
@@ -4217,7 +3830,7 @@ DO $wrapper$ BEGIN
 -- ============================================================================
 
 -- Diagnostic d'abord (visible dans les logs)
-DO $mig$
+DO $$
 DECLARE
   mismatch_count INTEGER;
 BEGIN
@@ -4229,7 +3842,7 @@ BEGIN
     AND pr.deleted_at IS NULL;
 
   RAISE NOTICE 'Propriétés avec owner_id mismatch (user_id au lieu de profiles.id): %', mismatch_count;
-END $mig$;
+END $$;
 
 -- Correction: remplacer owner_id = user_id par owner_id = profiles.id
 UPDATE properties pr
@@ -4245,9 +3858,9 @@ WHERE pr.owner_id = p.user_id
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION public.user_profile_id()
-RETURNS UUID AS $mig$
+RETURNS UUID AS $$
   SELECT id FROM public.profiles WHERE user_id = auth.uid() LIMIT 1;
-$mig$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public;
+$$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public;
 
 -- ============================================================================
 -- 3. Vérifier et supprimer les doublons de propriétés
@@ -4274,7 +3887,7 @@ WHERE id IN (
 );
 
 -- Log du nombre de doublons supprimés
-DO $mig$
+DO $$
 DECLARE
   dedup_count INTEGER;
 BEGIN
@@ -4284,13 +3897,13 @@ BEGIN
     AND deleted_at >= NOW() - INTERVAL '1 minute';
 
   RAISE NOTICE 'Propriétés doublons soft-deleted: %', dedup_count;
-END $mig$;
+END $$;
 
 -- ============================================================================
 -- 4. Vérification finale
 -- ============================================================================
 
-DO $mig$
+DO $$
 DECLARE
   remaining_mismatch INTEGER;
   total_active INTEGER;
@@ -4307,19 +3920,10 @@ BEGIN
   WHERE deleted_at IS NULL;
 
   RAISE NOTICE 'Vérification: % propriétés actives, % mismatches restants', total_active, remaining_mismatch;
-END $mig$;
-
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+END $$;
 
 
 -- === [104/169] 20260321000000_drop_invoice_trigger_sota2026.sql ===
-DO $wrapper$ BEGIN
 -- SOTA 2026: Supprimer le trigger SQL redondant pour la facture initiale.
 -- Le service TS ensureInitialInvoiceForLease() (appele par handleLeaseFullySigned)
 -- est desormais le seul chemin de creation de la facture initiale.
@@ -4330,17 +3934,8 @@ DROP TRIGGER IF EXISTS trg_invoice_on_lease_fully_signed ON leases;
 -- Supprimer egalement la fonction associee si elle existe
 DROP FUNCTION IF EXISTS fn_generate_initial_invoice_on_fully_signed() CASCADE;
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
-
 
 -- === [105/169] 20260321100000_fix_cron_post_refactoring_sota2026.sql ===
-DO $wrapper$ BEGIN
 -- ============================================
 -- Migration corrective : SOTA 2026 post-refactoring
 -- Date : 2026-03-21
@@ -4356,19 +3951,370 @@ WHERE jobname = 'generate-monthly-invoices';
 
 -- 2. Ajouter le processeur outbox (toutes les 5 minutes)
 SELECT cron.schedule('process-outbox', '*/5 * * * *',
-  $mig$SELECT net.http_post(
+  $$SELECT net.http_post(
     url := current_setting('app.settings.app_url') || '/api/cron/process-outbox',
     headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
     body := '{}'::jsonb
-  )$mig$
+  )$$
 );
 
-EXCEPTION WHEN undefined_table THEN
-  RAISE NOTICE 'Skipped: table does not exist yet';
-WHEN undefined_column THEN
-  RAISE NOTICE 'Skipped: column does not exist yet';
-WHEN duplicate_object THEN
-  RAISE NOTICE 'Skipped: object already exists';
-END $wrapper$;
+
+-- === [106/169] 20260323000000_fix_document_visibility_and_dedup.sql ===
+-- Migration: Fix document visibility RLS + add deduplication constraint
+-- 1) RLS: tenant_id match must also respect visible_tenant
+-- 2) Unique partial index to prevent duplicate quittances per payment
+-- 3) Unique partial index to prevent duplicate attestations per handover
+
+-- ============================================================
+-- 1. Fix RLS: tenant with tenant_id = user MUST still respect visible_tenant
+-- Previously: tenant_id = user_profile_id() bypassed visible_tenant = false
+-- ============================================================
+
+DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
+
+DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
+
+CREATE POLICY "Tenants can read visible lease documents"
+  ON documents FOR SELECT
+  USING (
+    -- Tenant direct match: must respect visible_tenant
+    (
+      tenant_id = public.user_profile_id()
+      AND visible_tenant IS NOT FALSE
+    )
+    -- Tenant via lease signer: must respect visible_tenant
+    OR (
+      visible_tenant = true
+      AND lease_id IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM lease_signers ls
+        JOIN profiles p ON p.id = ls.profile_id
+        WHERE ls.lease_id = documents.lease_id
+          AND p.id = public.user_profile_id()
+          AND ls.role IN ('locataire_principal', 'locataire', 'colocataire')
+      )
+    )
+    -- Owner direct match
+    OR owner_id = public.user_profile_id()
+    -- Owner via property
+    OR (
+      property_id IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM properties p
+        WHERE p.id = documents.property_id
+          AND p.owner_id = public.user_profile_id()
+      )
+    )
+    -- Admin
+    OR public.user_role() = 'admin'
+  );
+
+-- ============================================================
+-- 2. Unique partial index: one quittance per payment_id
+-- Prevents race-condition duplicates in receipt generation
+-- ============================================================
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_unique_quittance_payment
+  ON documents ((metadata->>'payment_id'))
+  WHERE type = 'quittance'
+    AND metadata->>'payment_id' IS NOT NULL;
+
+-- ============================================================
+-- 3. Unique partial index: one attestation per handover_id
+-- Prevents duplicate key handover attestations
+-- ============================================================
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_unique_attestation_handover
+  ON documents ((metadata->>'handover_id'))
+  WHERE type = 'attestation_remise_cles'
+    AND metadata->>'handover_id' IS NOT NULL;
+
+-- ============================================================
+-- 4. Index for document-access helper: lookup by storage_path
+-- Used by the unified access check when path doesn't match known patterns
+-- ============================================================
+
+CREATE INDEX IF NOT EXISTS idx_documents_storage_path
+  ON documents (storage_path)
+  WHERE storage_path IS NOT NULL;
+
+
+-- === [107/169] 20260324100000_prevent_duplicate_payments.sql ===
+-- ============================================
+-- Migration : Anti-doublon paiements
+-- Date : 2026-03-24
+-- Description :
+--   1. Contrainte UNIQUE partielle sur payments : un seul paiement pending par facture
+--   2. Empêche la race condition qui a causé le double paiement sur bail da2eb9da
+-- ============================================
+
+-- Un seul paiement 'pending' par facture à la fois
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_one_pending_per_invoice
+  ON payments (invoice_id)
+  WHERE statut = 'pending';
+
+COMMENT ON INDEX idx_payments_one_pending_per_invoice
+  IS 'Empêche plusieurs paiements pending simultanés sur la même facture (anti-doublon)';
+
+
+-- === [108/169] 20260326022619_fix_documents_bucket_mime.sql ===
+-- Fix: Aligner les MIME types du bucket storage avec lib/documents/constants.ts
+-- Bug: Word/Excel etaient acceptes par le code mais rejetes par le bucket
+
+UPDATE storage.buckets
+SET allowed_mime_types = ARRAY[
+  'application/pdf',
+  'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.oasis.opendocument.text',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain', 'text/csv'
+]::text[],
+file_size_limit = 52428800  -- 50 Mo
+WHERE id = 'documents';
+
+
+-- === [109/169] 20260326022700_migrate_tenant_documents.sql ===
+-- Migration: Unifier tenant_documents dans la table documents
+-- Les CNI et autres pieces d'identite locataire sont dans tenant_documents
+-- mais invisibles dans le systeme unifie. Cette migration les copie.
+
+DO $$
+DECLARE
+  migrated_count INT := 0;
+BEGIN
+  -- Verifier que tenant_documents existe
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_name = 'tenant_documents'
+  ) THEN
+    RAISE NOTICE 'Table tenant_documents absente, rien a migrer';
+    RETURN;
+  END IF;
+
+  -- Copier les documents qui ne sont pas deja dans documents (par storage_path)
+  INSERT INTO documents (
+    type, category, title, original_filename,
+    tenant_id, owner_id,
+    storage_path, file_size, mime_type,
+    uploaded_by, is_generated, ged_status,
+    visible_tenant, verification_status,
+    metadata, created_at, updated_at
+  )
+  SELECT
+    CASE
+      WHEN td.document_type ILIKE '%recto%' OR td.document_type = 'cni_recto' THEN 'cni_recto'
+      WHEN td.document_type ILIKE '%verso%' OR td.document_type = 'cni_verso' THEN 'cni_verso'
+      WHEN td.document_type = 'passeport' THEN 'passeport'
+      WHEN td.document_type = 'titre_sejour' THEN 'titre_sejour'
+      WHEN td.document_type ILIKE '%identit%' THEN 'piece_identite'
+      ELSE COALESCE(td.document_type, 'autre')
+    END AS type,
+    'identite' AS category,
+    CASE
+      WHEN td.document_type ILIKE '%recto%' OR td.document_type = 'cni_recto'
+        THEN 'Carte d''identite (recto)'
+      WHEN td.document_type ILIKE '%verso%' OR td.document_type = 'cni_verso'
+        THEN 'Carte d''identite (verso)'
+      WHEN td.document_type = 'passeport' THEN 'Passeport'
+      WHEN td.document_type = 'titre_sejour' THEN 'Titre de sejour'
+      ELSE COALESCE(td.file_name, 'Document identite')
+    END AS title,
+    td.file_name AS original_filename,
+    td.tenant_profile_id AS tenant_id,
+    NULL AS owner_id,
+    td.file_path AS storage_path,
+    td.file_size,
+    td.mime_type,
+    td.uploaded_by,
+    false AS is_generated,
+    'active' AS ged_status,
+    true AS visible_tenant,
+    CASE WHEN td.is_valid = true THEN 'verified' ELSE 'pending' END AS verification_status,
+    jsonb_build_object(
+      'migrated_from', 'tenant_documents',
+      'original_id', td.id,
+      'ocr_confidence', td.ocr_confidence,
+      'extracted_data', td.extracted_data
+    ) AS metadata,
+    td.created_at,
+    COALESCE(td.updated_at, td.created_at)
+  FROM tenant_documents td
+  WHERE NOT EXISTS (
+    SELECT 1 FROM documents d
+    WHERE d.storage_path = td.file_path
+  )
+  AND td.file_path IS NOT NULL
+  AND td.file_path != '';
+
+  GET DIAGNOSTICS migrated_count = ROW_COUNT;
+
+  RAISE NOTICE 'Migration tenant_documents: % documents copies vers documents', migrated_count;
+
+  -- Le trigger auto_fill_document_fk completera owner_id et property_id
+  -- via lease_signers si disponible
+END $$;
+
+
+-- === [110/169] 20260326022800_create_document_links.sql ===
+-- Table document_links: liens de partage temporaires
+-- Utilisee par POST /api/documents/[id]/download et /api/documents/[id]/copy-link
+
+CREATE TABLE IF NOT EXISTS document_links (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  document_id UUID NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  token TEXT UNIQUE NOT NULL DEFAULT encode(gen_random_bytes(32), 'hex'),
+  created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '7 days',
+  max_views INTEGER DEFAULT 10,
+  view_count INTEGER NOT NULL DEFAULT 0,
+  accessed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_links_token ON document_links(token);
+CREATE INDEX IF NOT EXISTS idx_document_links_document_id ON document_links(document_id);
+CREATE INDEX IF NOT EXISTS idx_document_links_expires_at ON document_links(expires_at);
+
+-- RLS
+ALTER TABLE document_links ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own document links" ON document_links;
+
+CREATE POLICY "Users can view own document links" ON document_links
+  FOR SELECT TO authenticated
+  USING (
+    created_by IN (SELECT id FROM profiles WHERE user_id = auth.uid())
+    OR EXISTS (
+      SELECT 1 FROM documents d
+      WHERE d.id = document_links.document_id
+      AND (d.owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
+           OR d.tenant_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()))
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can create document links" ON document_links;
+
+CREATE POLICY "Users can create document links" ON document_links
+  FOR INSERT TO authenticated
+  WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Service role full access document_links" ON document_links;
+
+CREATE POLICY "Service role full access document_links" ON document_links
+  FOR ALL TO service_role
+  USING (true) WITH CHECK (true);
+
+
+-- === [111/169] 20260326023000_fix_document_titles.sql ===
+-- Fix document titles for existing records with NULL, screenshot names, or raw technical names
+-- Uses TYPE_TO_LABEL mapping from lib/documents/constants.ts as source of truth
+
+UPDATE documents SET title = CASE
+  WHEN type = 'cni_recto' THEN 'Carte d''identite (recto)'
+  WHEN type = 'cni_verso' THEN 'Carte d''identite (verso)'
+  WHEN type = 'attestation_assurance' THEN 'Attestation d''assurance'
+  WHEN type = 'assurance_pno' THEN 'Assurance PNO'
+  WHEN type = 'bail' THEN 'Contrat de bail'
+  WHEN type = 'avenant' THEN 'Avenant au bail'
+  WHEN type = 'engagement_garant' THEN 'Engagement de caution'
+  WHEN type = 'bail_signe_locataire' THEN 'Bail signe (locataire)'
+  WHEN type = 'bail_signe_proprietaire' THEN 'Bail signe (proprietaire)'
+  WHEN type = 'piece_identite' THEN 'Piece d''identite'
+  WHEN type = 'passeport' THEN 'Passeport'
+  WHEN type = 'titre_sejour' THEN 'Titre de sejour'
+  WHEN type = 'quittance' THEN 'Quittance de loyer'
+  WHEN type = 'facture' THEN 'Facture'
+  WHEN type = 'rib' THEN 'RIB'
+  WHEN type = 'avis_imposition' THEN 'Avis d''imposition'
+  WHEN type = 'bulletin_paie' THEN 'Bulletin de paie'
+  WHEN type = 'attestation_loyer' THEN 'Attestation de loyer'
+  WHEN type = 'justificatif_revenus' THEN 'Justificatif de revenus'
+  WHEN type = 'diagnostic' THEN 'Diagnostic'
+  WHEN type = 'dpe' THEN 'DPE'
+  WHEN type = 'diagnostic_gaz' THEN 'Diagnostic gaz'
+  WHEN type = 'diagnostic_electricite' THEN 'Diagnostic electricite'
+  WHEN type = 'diagnostic_plomb' THEN 'Diagnostic plomb'
+  WHEN type = 'diagnostic_amiante' THEN 'Diagnostic amiante'
+  WHEN type = 'diagnostic_termites' THEN 'Diagnostic termites'
+  WHEN type = 'diagnostic_performance' THEN 'Diagnostic de performance'
+  WHEN type = 'erp' THEN 'Etat des risques (ERP)'
+  WHEN type = 'EDL_entree' THEN 'Etat des lieux d''entree'
+  WHEN type = 'EDL_sortie' THEN 'Etat des lieux de sortie'
+  WHEN type = 'inventaire' THEN 'Inventaire mobilier'
+  WHEN type = 'devis' THEN 'Devis'
+  WHEN type = 'ordre_mission' THEN 'Ordre de mission'
+  WHEN type = 'rapport_intervention' THEN 'Rapport d''intervention'
+  WHEN type = 'taxe_fonciere' THEN 'Taxe fonciere'
+  WHEN type = 'copropriete' THEN 'Document copropriete'
+  WHEN type = 'proces_verbal' THEN 'Proces-verbal'
+  WHEN type = 'appel_fonds' THEN 'Appel de fonds'
+  WHEN type = 'photo' THEN 'Photo'
+  WHEN type = 'courrier' THEN 'Courrier'
+  WHEN type = 'autre' THEN 'Autre document'
+  ELSE title
+END
+WHERE title IS NULL
+   OR title ~ '^Capture d.cran'
+   OR title ~ '^[A-Z_]+$';
+
+
+-- === [112/169] 20260326205416_add_agency_role_to_handle_new_user.sql ===
+-- ============================================
+-- Migration: Ajouter agency au trigger handle_new_user
+-- Date: 2026-03-26
+-- Description: Le trigger acceptait admin/owner/tenant/provider/guarantor/syndic.
+--              Le role agency etait silencieusement converti en tenant.
+-- ============================================
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_role TEXT;
+  v_prenom TEXT;
+  v_nom TEXT;
+  v_telephone TEXT;
+BEGIN
+  -- Lire le role depuis les metadata, avec fallback sur 'tenant'
+  v_role := COALESCE(
+    NEW.raw_user_meta_data->>'role',
+    'tenant'
+  );
+
+  -- Valider le role (tous les roles supportes par la plateforme)
+  IF v_role NOT IN ('admin', 'owner', 'tenant', 'provider', 'guarantor', 'syndic', 'agency') THEN
+    v_role := 'tenant';
+  END IF;
+
+  -- Lire les autres donnees depuis les metadata
+  v_prenom := NEW.raw_user_meta_data->>'prenom';
+  v_nom := NEW.raw_user_meta_data->>'nom';
+  v_telephone := NEW.raw_user_meta_data->>'telephone';
+
+  -- Inserer le profil avec toutes les donnees
+  INSERT INTO public.profiles (user_id, role, prenom, nom, telephone)
+  VALUES (NEW.id, v_role, v_prenom, v_nom, v_telephone)
+  ON CONFLICT (user_id) DO UPDATE SET
+    role = EXCLUDED.role,
+    prenom = COALESCE(EXCLUDED.prenom, profiles.prenom),
+    nom = COALESCE(EXCLUDED.nom, profiles.nom),
+    telephone = COALESCE(EXCLUDED.telephone, profiles.telephone),
+    updated_at = NOW();
+
+  RETURN NEW;
+END;
+$$;
+
+COMMENT ON FUNCTION public.handle_new_user() IS
+'Cree automatiquement un profil lors de la creation d''un utilisateur.
+Lit le role et les informations personnelles depuis les raw_user_meta_data.
+Supporte tous les roles: admin, owner, tenant, provider, guarantor, syndic, agency.
+Utilise ON CONFLICT pour gerer les cas ou le profil existe deja.';
 
 
