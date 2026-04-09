@@ -237,7 +237,7 @@ export interface ParkingLease {
   // Métadonnées
   reference: string;
   createdAt: string;
-  status: 'draft' | 'pending_signature' | 'active' | 'terminated' | 'expired';
+  statut: 'draft' | 'pending_signature' | 'active' | 'terminated' | 'expired';
   
   // Parties
   owner: ParkingOwner;

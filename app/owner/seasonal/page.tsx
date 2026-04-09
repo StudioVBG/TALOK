@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/tabs";
 
 import { SeasonalDashboardClient } from "./SeasonalDashboardClient";
+import { SeasonalGate } from "./SeasonalGate";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +107,7 @@ export default async function SeasonalDashboardPage() {
     new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(cents / 100);
 
   return (
+    <SeasonalGate>
     <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -198,5 +200,6 @@ export default async function SeasonalDashboardPage() {
         <SeasonalDashboardClient />
       </Suspense>
     </div>
+    </SeasonalGate>
   );
 }

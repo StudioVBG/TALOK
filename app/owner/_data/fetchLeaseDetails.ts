@@ -400,7 +400,7 @@ async function fetchLeaseDetailsFallback(
 
   // 6. Récupérer la photo principale
   const { data: mainPhoto } = await supabase
-    .from("property_photos")
+    .from("photos")
     .select("url")
     .eq("property_id", propertyRow.id)
     .eq("is_main", true)

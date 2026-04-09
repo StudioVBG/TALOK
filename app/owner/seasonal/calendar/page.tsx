@@ -19,6 +19,7 @@ import { SeasonalCalendar } from "@/features/seasonal/components/SeasonalCalenda
 import { BlockDatesModal } from "@/features/seasonal/components/BlockDatesModal";
 import { SyncStatusBadge } from "@/features/seasonal/components/SyncStatusBadge";
 import type { CalendarDay } from "@/lib/types/seasonal";
+import { SeasonalGate } from "../SeasonalGate";
 
 export default function SeasonalCalendarPage() {
   const { data: listingsData, isLoading: listingsLoading } = useSeasonalListings();
@@ -57,6 +58,7 @@ export default function SeasonalCalendarPage() {
   }
 
   return (
+    <SeasonalGate>
     <div className="container mx-auto px-4 py-8 max-w-7xl space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -128,5 +130,6 @@ export default function SeasonalCalendarPage() {
         />
       )}
     </div>
+    </SeasonalGate>
   );
 }

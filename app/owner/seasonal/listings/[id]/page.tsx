@@ -41,6 +41,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { SeasonalGate } from "../../SeasonalGate";
 
 export default function ListingDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -118,6 +119,7 @@ export default function ListingDetailPage() {
   }
 
   return (
+    <SeasonalGate>
     <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
@@ -308,5 +310,6 @@ export default function ListingDetailPage() {
         </CardContent>
       </Card>
     </div>
+    </SeasonalGate>
   );
 }

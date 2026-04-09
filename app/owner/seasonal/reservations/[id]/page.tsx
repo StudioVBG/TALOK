@@ -23,6 +23,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useReservation } from "@/features/seasonal/hooks/use-seasonal";
 import { GuestCard } from "@/features/seasonal/components/GuestCard";
+import { SeasonalGate } from "../../SeasonalGate";
 import { CleaningScheduler } from "@/features/seasonal/components/CleaningScheduler";
 import { BookingSourceBadge } from "@/features/seasonal/components/BookingSourceBadge";
 import { TouristTaxCalculator } from "@/features/seasonal/components/TouristTaxCalculator";
@@ -94,6 +95,7 @@ export default function ReservationDetailPage() {
   const canCheckOut = reservation.status === "checked_in";
 
   return (
+    <SeasonalGate>
     <div className="container mx-auto px-4 py-8 max-w-4xl space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
@@ -270,5 +272,6 @@ export default function ReservationDetailPage() {
         />
       )}
     </div>
+    </SeasonalGate>
   );
 }

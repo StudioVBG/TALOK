@@ -35,7 +35,7 @@ export default function BrandingSettingsPage() {
   }
 
   return (
-    <PlanGate feature="bank_reconciliation" mode="block">
+    <PlanGate feature="white_label" mode="block">
       <motion.div
         variants={containerVariants}
         initial="hidden"

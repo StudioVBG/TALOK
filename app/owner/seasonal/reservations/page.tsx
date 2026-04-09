@@ -18,6 +18,7 @@ import {
   useReservationAction,
 } from "@/features/seasonal/hooks/use-seasonal";
 import { ReservationCard } from "@/features/seasonal/components/ReservationCard";
+import { SeasonalGate } from "../SeasonalGate";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "Toutes" },
@@ -59,6 +60,7 @@ export default function ReservationsListPage() {
   }
 
   return (
+    <SeasonalGate>
     <div className="container mx-auto px-4 py-8 max-w-7xl space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
@@ -117,5 +119,6 @@ export default function ReservationsListPage() {
         </div>
       )}
     </div>
+    </SeasonalGate>
   );
 }
