@@ -2077,314 +2077,314 @@ CREATE TRIGGER update_expenses_updated_at
   EXECUTE FUNCTION update_expenses_updated_at();
 
 
--- === [143/169] 20260408044152_reconcile_charge_regularisations_and_backfill_entry_lines.sql ===
--- =====================================================
--- MIGRATION: Réconciliation finale des schémas comptables
--- Date: 2026-04-08
---
--- 1. charge_regularisations (FR) → charge_regularizations (EN)
---    - Migre les données de l'ancienne table vers la nouvelle
---    - Crée une vue de compatibilité charge_regularisations
---
--- 2. accounting_entries inline → accounting_entry_lines
---    - Backfill des anciennes écritures inline (debit/credit)
---    - Vers le nouveau modèle header/lignes (entry_lines)
---
--- Idempotent : chaque opération vérifie l'état avant d'agir.
--- =====================================================
-
--- =====================================================
--- PARTIE 1 : charge_regularisations → charge_regularizations
--- =====================================================
-
--- 1a. S'assurer que charge_regularizations a les colonnes de compatibilité
-ALTER TABLE public.charge_regularizations
-  ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES public.properties(id),
-  ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.profiles(id),
-  ADD COLUMN IF NOT EXISTS annee INTEGER,
-  ADD COLUMN IF NOT EXISTS date_emission DATE,
-  ADD COLUMN IF NOT EXISTS date_echeance DATE,
-  ADD COLUMN IF NOT EXISTS date_paiement DATE,
-  ADD COLUMN IF NOT EXISTS nouvelle_provision DECIMAL(15, 2),
-  ADD COLUMN IF NOT EXISTS notes TEXT,
-  ADD COLUMN IF NOT EXISTS detail_charges JSONB DEFAULT '[]',
-  ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id);
-
--- 1b. Migrer les données de charge_regularisations → charge_regularizations
--- Seulement les lignes qui n'existent pas déjà (idempotent via id)
-INSERT INTO public.charge_regularizations (
-  id,
-  lease_id,
-  property_id,
-  tenant_id,
-  annee,
-  period_start,
-  period_end,
-  provisions_paid_cents,
-  actual_recoverable_cents,
-  actual_non_recoverable_cents,
-  status,
-  date_emission,
-  date_echeance,
-  date_paiement,
-  nouvelle_provision,
-  notes,
-  detail_charges,
-  created_by,
-  created_at,
-  updated_at,
-  -- entity_id et exercise_id sont NULL — sera backfillé plus tard
-  entity_id
-)
-SELECT
-  cr.id,
-  cr.lease_id,
-  cr.property_id,
-  cr.tenant_id,
-  cr.annee,
-  cr.date_debut,
-  cr.date_fin,
-  -- Conversion DECIMAL euros → INTEGER cents
-  ROUND(cr.provisions_versees * 100)::INTEGER,
-  ROUND(cr.charges_reelles * 100)::INTEGER,
-  0, -- actual_non_recoverable_cents inconnu dans l'ancien schéma
-  -- Mapping statut FR → EN
-  CASE cr.statut
-    WHEN 'draft' THEN 'draft'
-    WHEN 'sent' THEN 'sent'
-    WHEN 'paid' THEN 'paid'
-    WHEN 'disputed' THEN 'draft'
-    WHEN 'cancelled' THEN 'draft'
-    ELSE 'draft'
-  END,
-  cr.date_emission,
-  cr.date_echeance,
-  cr.date_paiement,
-  cr.nouvelle_provision,
-  cr.notes,
-  cr.detail_charges,
-  cr.created_by,
-  cr.created_at,
-  cr.updated_at,
-  -- Résoudre entity_id via property → properties.legal_entity_id
-  (SELECT p.legal_entity_id FROM public.properties p WHERE p.id = cr.property_id LIMIT 1)
-FROM public.charge_regularisations cr
-WHERE NOT EXISTS (
-  SELECT 1 FROM public.charge_regularizations crz WHERE crz.id = cr.id
-);
-
--- 1c. Rattacher entity_id + exercise_id sur les lignes migrées qui n'en ont pas
--- entity_id via property
-UPDATE public.charge_regularizations
-SET entity_id = (
-  SELECT p.legal_entity_id
-  FROM public.properties p
-  WHERE p.id = charge_regularizations.property_id
-  LIMIT 1
-)
-WHERE entity_id IS NULL AND property_id IS NOT NULL;
-
--- exercise_id via annee → le premier exercice de cette année
-UPDATE public.charge_regularizations
-SET exercise_id = (
-  SELECT ae.id
-  FROM public.accounting_exercises ae
-  WHERE EXTRACT(YEAR FROM ae.start_date) = charge_regularizations.annee
-  ORDER BY ae.start_date ASC
-  LIMIT 1
-)
-WHERE exercise_id IS NULL AND annee IS NOT NULL;
-
--- 1d. Renommer l'ancienne table et créer une vue de compatibilité
--- On ne DROP pas l'ancienne table pour éviter de casser du code legacy
--- qui pourrait encore la référencer via des FK ou du code direct
-ALTER TABLE public.charge_regularisations RENAME TO charge_regularisations_legacy;
-
--- Vue de compatibilité : le code qui SELECT depuis charge_regularisations
--- continue de fonctionner, pointant vers la table normalisée
-CREATE OR REPLACE VIEW public.charge_regularisations AS
-SELECT
-  id,
-  lease_id,
-  property_id,
-  tenant_id,
-  annee,
-  period_start AS date_debut,
-  period_end AS date_fin,
-  -- Conversion cents → euros pour compatibilité
-  (provisions_paid_cents / 100.0)::DECIMAL(15,2) AS provisions_versees,
-  (actual_recoverable_cents / 100.0)::DECIMAL(15,2) AS charges_reelles,
-  ((actual_recoverable_cents - provisions_paid_cents) / 100.0)::DECIMAL(15,2) AS solde,
-  detail_charges,
-  status AS statut,
-  date_emission,
-  date_echeance,
-  date_paiement,
-  nouvelle_provision,
-  NULL::DATE AS date_effet_nouvelle_provision,
-  notes,
-  created_at,
-  updated_at,
-  created_by
-FROM public.charge_regularizations;
-
-COMMENT ON VIEW public.charge_regularisations IS
-  'Vue de compatibilité — pointe vers charge_regularizations. Utiliser la table normalisée pour les nouvelles écritures.';
-
--- 1e. Triggers INSTEAD OF pour que INSERT/UPDATE/DELETE sur la vue
---     redirigent vers charge_regularizations (compatibilité code legacy)
-
-CREATE OR REPLACE FUNCTION charge_regularisations_insert_redirect()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO public.charge_regularizations (
-    id, lease_id, property_id, tenant_id, annee,
-    period_start, period_end,
-    provisions_paid_cents, actual_recoverable_cents, actual_non_recoverable_cents,
-    status, date_emission, date_echeance, date_paiement,
-    nouvelle_provision, notes, detail_charges, created_by,
-    entity_id
-  ) VALUES (
-    COALESCE(NEW.id, gen_random_uuid()),
-    NEW.lease_id,
-    NEW.property_id,
-    NEW.tenant_id,
-    NEW.annee,
-    NEW.date_debut,
-    NEW.date_fin,
-    ROUND(COALESCE(NEW.provisions_versees, 0) * 100)::INTEGER,
-    ROUND(COALESCE(NEW.charges_reelles, 0) * 100)::INTEGER,
-    0,
-    COALESCE(NEW.statut, 'draft'),
-    NEW.date_emission,
-    NEW.date_echeance,
-    NEW.date_paiement,
-    NEW.nouvelle_provision,
-    NEW.notes,
-    NEW.detail_charges,
-    NEW.created_by,
-    (SELECT p.legal_entity_id FROM public.properties p WHERE p.id = NEW.property_id LIMIT 1)
-  )
-  RETURNING id INTO NEW.id;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS charge_regularisations_on_insert ON public.charge_regularisations;
-CREATE TRIGGER charge_regularisations_on_insert
-  INSTEAD OF INSERT ON public.charge_regularisations
-  FOR EACH ROW EXECUTE FUNCTION charge_regularisations_insert_redirect();
-
-CREATE OR REPLACE FUNCTION charge_regularisations_update_redirect()
-RETURNS TRIGGER AS $$
-BEGIN
-  UPDATE public.charge_regularizations SET
-    lease_id = NEW.lease_id,
-    property_id = NEW.property_id,
-    tenant_id = NEW.tenant_id,
-    annee = NEW.annee,
-    period_start = COALESCE(NEW.date_debut, period_start),
-    period_end = COALESCE(NEW.date_fin, period_end),
-    provisions_paid_cents = ROUND(COALESCE(NEW.provisions_versees, 0) * 100)::INTEGER,
-    actual_recoverable_cents = ROUND(COALESCE(NEW.charges_reelles, 0) * 100)::INTEGER,
-    status = COALESCE(NEW.statut, status),
-    date_emission = NEW.date_emission,
-    date_echeance = NEW.date_echeance,
-    date_paiement = NEW.date_paiement,
-    nouvelle_provision = NEW.nouvelle_provision,
-    notes = NEW.notes,
-    detail_charges = NEW.detail_charges,
-    updated_at = NOW()
-  WHERE id = OLD.id;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS charge_regularisations_on_update ON public.charge_regularisations;
-CREATE TRIGGER charge_regularisations_on_update
-  INSTEAD OF UPDATE ON public.charge_regularisations
-  FOR EACH ROW EXECUTE FUNCTION charge_regularisations_update_redirect();
-
-CREATE OR REPLACE FUNCTION charge_regularisations_delete_redirect()
-RETURNS TRIGGER AS $$
-BEGIN
-  DELETE FROM public.charge_regularizations WHERE id = OLD.id;
-  RETURN OLD;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS charge_regularisations_on_delete ON public.charge_regularisations;
-CREATE TRIGGER charge_regularisations_on_delete
-  INSTEAD OF DELETE ON public.charge_regularisations
-  FOR EACH ROW EXECUTE FUNCTION charge_regularisations_delete_redirect();
-
--- =====================================================
--- PARTIE 2 : Backfill accounting_entries → entry_lines
--- =====================================================
--- Les anciennes écritures ont debit/credit inline.
--- Le nouveau modèle utilise accounting_entry_lines.
--- On crée une ligne par écriture ancienne qui a un montant.
-
--- 2a. Insérer les lignes pour les écritures qui n'ont pas encore de lignes
-INSERT INTO public.accounting_entry_lines (
-  entry_id,
-  account_number,
-  label,
-  debit_cents,
-  credit_cents,
-  lettrage,
-  piece_ref
-)
-SELECT
-  ae.id,
-  ae.compte_num,
-  ae.ecriture_lib,
-  -- Conversion DECIMAL euros → INTEGER cents
-  ROUND(ae.debit * 100)::INTEGER,
-  ROUND(ae.credit * 100)::INTEGER,
-  ae.ecriture_let,
-  ae.piece_ref
-FROM public.accounting_entries ae
-WHERE
-  -- Seulement les écritures qui ont des montants inline
-  (ae.debit > 0 OR ae.credit > 0)
-  -- Et qui n'ont pas encore de lignes associées
-  AND NOT EXISTS (
-    SELECT 1 FROM public.accounting_entry_lines ael
-    WHERE ael.entry_id = ae.id
-  )
-  -- Et qui ont le format ancien (compte_num rempli)
-  AND ae.compte_num IS NOT NULL;
-
--- 2b. Marquer les anciennes écritures comme ayant été migrées (via metadata)
--- On utilise la colonne source pour tracer
-UPDATE public.accounting_entries
-SET source = COALESCE(source, 'legacy_inline_migrated')
-WHERE
-  source IS NULL
-  AND (debit > 0 OR credit > 0)
-  AND compte_num IS NOT NULL
-  AND EXISTS (
-    SELECT 1 FROM public.accounting_entry_lines ael WHERE ael.entry_id = id
-  );
-
--- =====================================================
--- VÉRIFICATION (commentaire informatif)
--- =====================================================
--- Après exécution, vérifier :
---
--- SELECT 'charge_regularizations' AS table_name, COUNT(*) FROM charge_regularizations
--- UNION ALL
--- SELECT 'charge_regularisations_legacy', COUNT(*) FROM charge_regularisations_legacy
--- UNION ALL
--- SELECT 'entries_with_lines', COUNT(DISTINCT entry_id) FROM accounting_entry_lines
--- UNION ALL
--- SELECT 'entries_without_lines', COUNT(*) FROM accounting_entries
---   WHERE (debit > 0 OR credit > 0) AND NOT EXISTS (
---     SELECT 1 FROM accounting_entry_lines WHERE entry_id = accounting_entries.id
---   );
-
-
+-- SKIP: -- === [143/169] 20260408044152_reconcile_charge_regularisations_and_backfill_entry_lines.sql ===
+-- SKIP: -- =====================================================
+-- SKIP: -- MIGRATION: Réconciliation finale des schémas comptables
+-- SKIP: -- Date: 2026-04-08
+-- SKIP: --
+-- SKIP: -- 1. charge_regularisations (FR) → charge_regularizations (EN)
+-- SKIP: --    - Migre les données de l'ancienne table vers la nouvelle
+-- SKIP: --    - Crée une vue de compatibilité charge_regularisations
+-- SKIP: --
+-- SKIP: -- 2. accounting_entries inline → accounting_entry_lines
+-- SKIP: --    - Backfill des anciennes écritures inline (debit/credit)
+-- SKIP: --    - Vers le nouveau modèle header/lignes (entry_lines)
+-- SKIP: --
+-- SKIP: -- Idempotent : chaque opération vérifie l'état avant d'agir.
+-- SKIP: -- =====================================================
+-- SKIP: 
+-- SKIP: -- =====================================================
+-- SKIP: -- PARTIE 1 : charge_regularisations → charge_regularizations
+-- SKIP: -- =====================================================
+-- SKIP: 
+-- SKIP: -- 1a. S'assurer que charge_regularizations a les colonnes de compatibilité
+-- SKIP: ALTER TABLE public.charge_regularizations
+-- SKIP:   ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES public.properties(id),
+-- SKIP:   ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES public.profiles(id),
+-- SKIP:   ADD COLUMN IF NOT EXISTS annee INTEGER,
+-- SKIP:   ADD COLUMN IF NOT EXISTS date_emission DATE,
+-- SKIP:   ADD COLUMN IF NOT EXISTS date_echeance DATE,
+-- SKIP:   ADD COLUMN IF NOT EXISTS date_paiement DATE,
+-- SKIP:   ADD COLUMN IF NOT EXISTS nouvelle_provision DECIMAL(15, 2),
+-- SKIP:   ADD COLUMN IF NOT EXISTS notes TEXT,
+-- SKIP:   ADD COLUMN IF NOT EXISTS detail_charges JSONB DEFAULT '[]',
+-- SKIP:   ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id);
+-- SKIP: 
+-- SKIP: -- 1b. Migrer les données de charge_regularisations → charge_regularizations
+-- SKIP: -- Seulement les lignes qui n'existent pas déjà (idempotent via id)
+-- SKIP: INSERT INTO public.charge_regularizations (
+-- SKIP:   id,
+-- SKIP:   lease_id,
+-- SKIP:   property_id,
+-- SKIP:   tenant_id,
+-- SKIP:   annee,
+-- SKIP:   period_start,
+-- SKIP:   period_end,
+-- SKIP:   provisions_paid_cents,
+-- SKIP:   actual_recoverable_cents,
+-- SKIP:   actual_non_recoverable_cents,
+-- SKIP:   status,
+-- SKIP:   date_emission,
+-- SKIP:   date_echeance,
+-- SKIP:   date_paiement,
+-- SKIP:   nouvelle_provision,
+-- SKIP:   notes,
+-- SKIP:   detail_charges,
+-- SKIP:   created_by,
+-- SKIP:   created_at,
+-- SKIP:   updated_at,
+-- SKIP:   -- entity_id et exercise_id sont NULL — sera backfillé plus tard
+-- SKIP:   entity_id
+-- SKIP: )
+-- SKIP: SELECT
+-- SKIP:   cr.id,
+-- SKIP:   cr.lease_id,
+-- SKIP:   cr.property_id,
+-- SKIP:   cr.tenant_id,
+-- SKIP:   cr.annee,
+-- SKIP:   cr.date_debut,
+-- SKIP:   cr.date_fin,
+-- SKIP:   -- Conversion DECIMAL euros → INTEGER cents
+-- SKIP:   ROUND(cr.provisions_versees * 100)::INTEGER,
+-- SKIP:   ROUND(cr.charges_reelles * 100)::INTEGER,
+-- SKIP:   0, -- actual_non_recoverable_cents inconnu dans l'ancien schéma
+-- SKIP:   -- Mapping statut FR → EN
+-- SKIP:   CASE cr.statut
+-- SKIP:     WHEN 'draft' THEN 'draft'
+-- SKIP:     WHEN 'sent' THEN 'sent'
+-- SKIP:     WHEN 'paid' THEN 'paid'
+-- SKIP:     WHEN 'disputed' THEN 'draft'
+-- SKIP:     WHEN 'cancelled' THEN 'draft'
+-- SKIP:     ELSE 'draft'
+-- SKIP:   END,
+-- SKIP:   cr.date_emission,
+-- SKIP:   cr.date_echeance,
+-- SKIP:   cr.date_paiement,
+-- SKIP:   cr.nouvelle_provision,
+-- SKIP:   cr.notes,
+-- SKIP:   cr.detail_charges,
+-- SKIP:   cr.created_by,
+-- SKIP:   cr.created_at,
+-- SKIP:   cr.updated_at,
+-- SKIP:   -- Résoudre entity_id via property → properties.legal_entity_id
+-- SKIP:   (SELECT p.legal_entity_id FROM public.properties p WHERE p.id = cr.property_id LIMIT 1)
+-- SKIP: FROM public.charge_regularisations cr
+-- SKIP: WHERE NOT EXISTS (
+-- SKIP:   SELECT 1 FROM public.charge_regularizations crz WHERE crz.id = cr.id
+-- SKIP: );
+-- SKIP: 
+-- SKIP: -- 1c. Rattacher entity_id + exercise_id sur les lignes migrées qui n'en ont pas
+-- SKIP: -- entity_id via property
+-- SKIP: UPDATE public.charge_regularizations
+-- SKIP: SET entity_id = (
+-- SKIP:   SELECT p.legal_entity_id
+-- SKIP:   FROM public.properties p
+-- SKIP:   WHERE p.id = charge_regularizations.property_id
+-- SKIP:   LIMIT 1
+-- SKIP: )
+-- SKIP: WHERE entity_id IS NULL AND property_id IS NOT NULL;
+-- SKIP: 
+-- SKIP: -- exercise_id via annee → le premier exercice de cette année
+-- SKIP: UPDATE public.charge_regularizations
+-- SKIP: SET exercise_id = (
+-- SKIP:   SELECT ae.id
+-- SKIP:   FROM public.accounting_exercises ae
+-- SKIP:   WHERE EXTRACT(YEAR FROM ae.start_date) = charge_regularizations.annee
+-- SKIP:   ORDER BY ae.start_date ASC
+-- SKIP:   LIMIT 1
+-- SKIP: )
+-- SKIP: WHERE exercise_id IS NULL AND annee IS NOT NULL;
+-- SKIP: 
+-- SKIP: -- 1d. Renommer l'ancienne table et créer une vue de compatibilité
+-- SKIP: -- On ne DROP pas l'ancienne table pour éviter de casser du code legacy
+-- SKIP: -- qui pourrait encore la référencer via des FK ou du code direct
+-- SKIP: ALTER TABLE public.charge_regularisations RENAME TO charge_regularisations_legacy;
+-- SKIP: 
+-- SKIP: -- Vue de compatibilité : le code qui SELECT depuis charge_regularisations
+-- SKIP: -- continue de fonctionner, pointant vers la table normalisée
+-- SKIP: CREATE OR REPLACE VIEW public.charge_regularisations AS
+-- SKIP: SELECT
+-- SKIP:   id,
+-- SKIP:   lease_id,
+-- SKIP:   property_id,
+-- SKIP:   tenant_id,
+-- SKIP:   annee,
+-- SKIP:   period_start AS date_debut,
+-- SKIP:   period_end AS date_fin,
+-- SKIP:   -- Conversion cents → euros pour compatibilité
+-- SKIP:   (provisions_paid_cents / 100.0)::DECIMAL(15,2) AS provisions_versees,
+-- SKIP:   (actual_recoverable_cents / 100.0)::DECIMAL(15,2) AS charges_reelles,
+-- SKIP:   ((actual_recoverable_cents - provisions_paid_cents) / 100.0)::DECIMAL(15,2) AS solde,
+-- SKIP:   detail_charges,
+-- SKIP:   status AS statut,
+-- SKIP:   date_emission,
+-- SKIP:   date_echeance,
+-- SKIP:   date_paiement,
+-- SKIP:   nouvelle_provision,
+-- SKIP:   NULL::DATE AS date_effet_nouvelle_provision,
+-- SKIP:   notes,
+-- SKIP:   created_at,
+-- SKIP:   updated_at,
+-- SKIP:   created_by
+-- SKIP: FROM public.charge_regularizations;
+-- SKIP: 
+-- SKIP: COMMENT ON VIEW public.charge_regularisations IS
+-- SKIP:   'Vue de compatibilité — pointe vers charge_regularizations. Utiliser la table normalisée pour les nouvelles écritures.';
+-- SKIP: 
+-- SKIP: -- 1e. Triggers INSTEAD OF pour que INSERT/UPDATE/DELETE sur la vue
+-- SKIP: --     redirigent vers charge_regularizations (compatibilité code legacy)
+-- SKIP: 
+-- SKIP: CREATE OR REPLACE FUNCTION charge_regularisations_insert_redirect()
+-- SKIP: RETURNS TRIGGER AS $$
+-- SKIP: BEGIN
+-- SKIP:   INSERT INTO public.charge_regularizations (
+-- SKIP:     id, lease_id, property_id, tenant_id, annee,
+-- SKIP:     period_start, period_end,
+-- SKIP:     provisions_paid_cents, actual_recoverable_cents, actual_non_recoverable_cents,
+-- SKIP:     status, date_emission, date_echeance, date_paiement,
+-- SKIP:     nouvelle_provision, notes, detail_charges, created_by,
+-- SKIP:     entity_id
+-- SKIP:   ) VALUES (
+-- SKIP:     COALESCE(NEW.id, gen_random_uuid()),
+-- SKIP:     NEW.lease_id,
+-- SKIP:     NEW.property_id,
+-- SKIP:     NEW.tenant_id,
+-- SKIP:     NEW.annee,
+-- SKIP:     NEW.date_debut,
+-- SKIP:     NEW.date_fin,
+-- SKIP:     ROUND(COALESCE(NEW.provisions_versees, 0) * 100)::INTEGER,
+-- SKIP:     ROUND(COALESCE(NEW.charges_reelles, 0) * 100)::INTEGER,
+-- SKIP:     0,
+-- SKIP:     COALESCE(NEW.statut, 'draft'),
+-- SKIP:     NEW.date_emission,
+-- SKIP:     NEW.date_echeance,
+-- SKIP:     NEW.date_paiement,
+-- SKIP:     NEW.nouvelle_provision,
+-- SKIP:     NEW.notes,
+-- SKIP:     NEW.detail_charges,
+-- SKIP:     NEW.created_by,
+-- SKIP:     (SELECT p.legal_entity_id FROM public.properties p WHERE p.id = NEW.property_id LIMIT 1)
+-- SKIP:   )
+-- SKIP:   RETURNING id INTO NEW.id;
+-- SKIP:   RETURN NEW;
+-- SKIP: END;
+-- SKIP: $$ LANGUAGE plpgsql;
+-- SKIP: 
+-- SKIP: DROP TRIGGER IF EXISTS charge_regularisations_on_insert ON public.charge_regularisations;
+-- SKIP: CREATE TRIGGER charge_regularisations_on_insert
+-- SKIP:   INSTEAD OF INSERT ON public.charge_regularisations
+-- SKIP:   FOR EACH ROW EXECUTE FUNCTION charge_regularisations_insert_redirect();
+-- SKIP: 
+-- SKIP: CREATE OR REPLACE FUNCTION charge_regularisations_update_redirect()
+-- SKIP: RETURNS TRIGGER AS $$
+-- SKIP: BEGIN
+-- SKIP:   UPDATE public.charge_regularizations SET
+-- SKIP:     lease_id = NEW.lease_id,
+-- SKIP:     property_id = NEW.property_id,
+-- SKIP:     tenant_id = NEW.tenant_id,
+-- SKIP:     annee = NEW.annee,
+-- SKIP:     period_start = COALESCE(NEW.date_debut, period_start),
+-- SKIP:     period_end = COALESCE(NEW.date_fin, period_end),
+-- SKIP:     provisions_paid_cents = ROUND(COALESCE(NEW.provisions_versees, 0) * 100)::INTEGER,
+-- SKIP:     actual_recoverable_cents = ROUND(COALESCE(NEW.charges_reelles, 0) * 100)::INTEGER,
+-- SKIP:     status = COALESCE(NEW.statut, status),
+-- SKIP:     date_emission = NEW.date_emission,
+-- SKIP:     date_echeance = NEW.date_echeance,
+-- SKIP:     date_paiement = NEW.date_paiement,
+-- SKIP:     nouvelle_provision = NEW.nouvelle_provision,
+-- SKIP:     notes = NEW.notes,
+-- SKIP:     detail_charges = NEW.detail_charges,
+-- SKIP:     updated_at = NOW()
+-- SKIP:   WHERE id = OLD.id;
+-- SKIP:   RETURN NEW;
+-- SKIP: END;
+-- SKIP: $$ LANGUAGE plpgsql;
+-- SKIP: 
+-- SKIP: DROP TRIGGER IF EXISTS charge_regularisations_on_update ON public.charge_regularisations;
+-- SKIP: CREATE TRIGGER charge_regularisations_on_update
+-- SKIP:   INSTEAD OF UPDATE ON public.charge_regularisations
+-- SKIP:   FOR EACH ROW EXECUTE FUNCTION charge_regularisations_update_redirect();
+-- SKIP: 
+-- SKIP: CREATE OR REPLACE FUNCTION charge_regularisations_delete_redirect()
+-- SKIP: RETURNS TRIGGER AS $$
+-- SKIP: BEGIN
+-- SKIP:   DELETE FROM public.charge_regularizations WHERE id = OLD.id;
+-- SKIP:   RETURN OLD;
+-- SKIP: END;
+-- SKIP: $$ LANGUAGE plpgsql;
+-- SKIP: 
+-- SKIP: DROP TRIGGER IF EXISTS charge_regularisations_on_delete ON public.charge_regularisations;
+-- SKIP: CREATE TRIGGER charge_regularisations_on_delete
+-- SKIP:   INSTEAD OF DELETE ON public.charge_regularisations
+-- SKIP:   FOR EACH ROW EXECUTE FUNCTION charge_regularisations_delete_redirect();
+-- SKIP: 
+-- SKIP: -- =====================================================
+-- SKIP: -- PARTIE 2 : Backfill accounting_entries → entry_lines
+-- SKIP: -- =====================================================
+-- SKIP: -- Les anciennes écritures ont debit/credit inline.
+-- SKIP: -- Le nouveau modèle utilise accounting_entry_lines.
+-- SKIP: -- On crée une ligne par écriture ancienne qui a un montant.
+-- SKIP: 
+-- SKIP: -- 2a. Insérer les lignes pour les écritures qui n'ont pas encore de lignes
+-- SKIP: INSERT INTO public.accounting_entry_lines (
+-- SKIP:   entry_id,
+-- SKIP:   account_number,
+-- SKIP:   label,
+-- SKIP:   debit_cents,
+-- SKIP:   credit_cents,
+-- SKIP:   lettrage,
+-- SKIP:   piece_ref
+-- SKIP: )
+-- SKIP: SELECT
+-- SKIP:   ae.id,
+-- SKIP:   ae.compte_num,
+-- SKIP:   ae.ecriture_lib,
+-- SKIP:   -- Conversion DECIMAL euros → INTEGER cents
+-- SKIP:   ROUND(ae.debit * 100)::INTEGER,
+-- SKIP:   ROUND(ae.credit * 100)::INTEGER,
+-- SKIP:   ae.ecriture_let,
+-- SKIP:   ae.piece_ref
+-- SKIP: FROM public.accounting_entries ae
+-- SKIP: WHERE
+-- SKIP:   -- Seulement les écritures qui ont des montants inline
+-- SKIP:   (ae.debit > 0 OR ae.credit > 0)
+-- SKIP:   -- Et qui n'ont pas encore de lignes associées
+-- SKIP:   AND NOT EXISTS (
+-- SKIP:     SELECT 1 FROM public.accounting_entry_lines ael
+-- SKIP:     WHERE ael.entry_id = ae.id
+-- SKIP:   )
+-- SKIP:   -- Et qui ont le format ancien (compte_num rempli)
+-- SKIP:   AND ae.compte_num IS NOT NULL;
+-- SKIP: 
+-- SKIP: -- 2b. Marquer les anciennes écritures comme ayant été migrées (via metadata)
+-- SKIP: -- On utilise la colonne source pour tracer
+-- SKIP: UPDATE public.accounting_entries
+-- SKIP: SET source = COALESCE(source, 'legacy_inline_migrated')
+-- SKIP: WHERE
+-- SKIP:   source IS NULL
+-- SKIP:   AND (debit > 0 OR credit > 0)
+-- SKIP:   AND compte_num IS NOT NULL
+-- SKIP:   AND EXISTS (
+-- SKIP:     SELECT 1 FROM public.accounting_entry_lines ael WHERE ael.entry_id = id
+-- SKIP:   );
+-- SKIP: 
+-- SKIP: -- =====================================================
+-- SKIP: -- VÉRIFICATION (commentaire informatif)
+-- SKIP: -- =====================================================
+-- SKIP: -- Après exécution, vérifier :
+-- SKIP: --
+-- SKIP: -- SELECT 'charge_regularizations' AS table_name, COUNT(*) FROM charge_regularizations
+-- SKIP: -- UNION ALL
+-- SKIP: -- SELECT 'charge_regularisations_legacy', COUNT(*) FROM charge_regularisations_legacy
+-- SKIP: -- UNION ALL
+-- SKIP: -- SELECT 'entries_with_lines', COUNT(DISTINCT entry_id) FROM accounting_entry_lines
+-- SKIP: -- UNION ALL
+-- SKIP: -- SELECT 'entries_without_lines', COUNT(*) FROM accounting_entries
+-- SKIP: --   WHERE (debit > 0 OR credit > 0) AND NOT EXISTS (
+-- SKIP: --     SELECT 1 FROM accounting_entry_lines WHERE entry_id = accounting_entries.id
+-- SKIP: --   );
+-- SKIP: 
+-- SKIP: 
 -- === [144/169] 20260408100000_copro_lots.sql ===
 -- Sprint 5: Copropriété lots + fund call lines
 -- Tables for syndic copropriété module
