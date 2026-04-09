@@ -3386,7 +3386,7 @@ DECLARE
 BEGIN
   SELECT COUNT(*) INTO dedup_count
   FROM properties
-  WHERE deleted_by = 'system-dedup-migration'
+  WHERE deleted_by IS NULL
     AND deleted_at >= NOW() - INTERVAL '1 minute';
 
   RAISE NOTICE 'Propriétés doublons soft-deleted: %', dedup_count;
