@@ -65,6 +65,23 @@ export async function withSubscriptionLimit(
       .eq("owner_id", ownerId)
       .maybeSingle();
 
+    // DEBUG: log pour tracer le bug "trialing traité comme gratuit"
+    if (subError) {
+      console.error(`[subscription-check] Query error for owner_id=${ownerId}:`, subError.code, subError.message);
+    }
+    if (!subscription && !subError) {
+      console.warn(`[subscription-check] No subscription found for owner_id=${ownerId}, falling back to free plan`);
+      // Vérifier si le problème est un mismatch owner_id vs user_id
+      const { data: subByAny, error: debugError } = await serviceClient
+        .from("subscriptions")
+        .select("id, owner_id, plan_slug, status")
+        .limit(1)
+        .maybeSingle();
+      if (subByAny) {
+        console.warn(`[subscription-check] DEBUG: Found subscription ${subByAny.id} with owner_id=${subByAny.owner_id}, plan_slug=${subByAny.plan_slug}, status=${subByAny.status}`);
+      }
+    }
+
     if (subError || !subscription) {
       // Pas de subscription en BDD = plan gratuit
       // On doit quand même compter l'usage réel avant de décider
