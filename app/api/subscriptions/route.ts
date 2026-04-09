@@ -21,7 +21,7 @@ export async function GET(request: Request) {
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
@@ -102,7 +102,7 @@ export async function POST(request: Request) {
       .from("subscription_plans")
       .select("id, slug, name, price_monthly, price_yearly")
       .eq("slug", plan_slug)
-      .single();
+      .maybeSingle();
 
     if (planError || !plan) {
       return NextResponse.json({ error: "Plan non trouvé" }, { status: 404 });
@@ -141,7 +141,7 @@ export async function POST(request: Request) {
         })
         .eq("id", existingSub.id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (updateError) throw updateError;
 
@@ -168,7 +168,7 @@ export async function POST(request: Request) {
         current_period_end: periodEnd.toISOString(),
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (createError) throw createError;
 

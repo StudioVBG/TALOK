@@ -138,7 +138,6 @@ export async function POST(request: Request) {
       owner_id: profile.id,
       legal_entity_id: defaultEntity?.id ?? null,
       type: type,
-      type_bien: type,
       etat: "draft",
       unique_code: uniqueCode,
       adresse_complete: adresse || "",
