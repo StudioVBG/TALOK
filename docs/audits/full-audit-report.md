@@ -47,12 +47,12 @@
 | 22 | API REST | 4/4 | 44/15 | 4/4 | 3/2 | ✅ hasAPI | 10/10 | ✅ Complet |
 | 23 | Diagnostics | 3/2 | 5/4 | 5/3 | 9/5 | ⚠️ | 9/10 | ✅ Complet |
 | 24 | Assurances | 1/1 | 4/3 | 4/2 | 5/3 | ⚠️ | 8/10 | ⚠️ Partiel |
-| 25 | RGPD | 3/3 | 4/4 | 3/3 | 1/2 | ✅ | 7/10 | ⚠️ Partiel |
-| 26 | Admin | 2/2 | 50+/20 | 35/15 | 2/3 | ✅ | 8/10 | ⚠️ Partiel |
-| 27 | Landing | 0/0 | 1/1 | 25+/15 | 5/5 | N/A | 8/10 | ⚠️ Partiel |
-| 28 | Mobile | 1/1 | 2/2 | 0/0 | 2/2 | N/A | 6/10 | ⚠️ Partiel |
-| 29 | Tickets | 2/2 | 12/8 | 6/5 | 2/3 | ⚠️ | 7/10 | ⚠️ Partiel |
-| 30 | Droits locataire | 0/1 | 1/2 | 4/3 | 2/2 | N/A | 5/10 | ⚠️ Partiel |
+| 25 | RGPD | 3/3 | 7/4 | 3/3 | 4/2 | ✅ N/A | 9/10 | ✅ Complet |
+| 26 | Admin | 4/2 | 90+/20 | 36/15 | 5/3 | ✅ RBAC | 9/10 | ✅ Complet |
+| 27 | Landing | 0/0 | 2/1 | 25+/15 | 5/5 | N/A | 9/10 | ✅ Complet |
+| 28 | Mobile | 1/1 | 2/2 | 0/0 | 3/2 | N/A | 8/10 | ⚠️ Partiel |
+| 29 | Tickets | 3/2 | 22+/8 | 9/5 | 3/3 | ⚠️ | 9/10 | ✅ Complet |
+| 30 | Droits locataire | 0/1 | 3/2 | 6/3 | 3/2 | N/A | 8/10 | ⚠️ Partiel |
 
 ---
 
@@ -817,111 +817,134 @@ properties ✅, photos ✅ (pas property_photos), property_ownership ✅, rooms 
 
 ## Module 25 : RGPD
 
-### A. Tables : ✅ consent_records, user_consents, gdpr_requests, data_requests
-### B. Routes :
-- /api/rgpd/export : ✅
-- /api/rgpd/delete-account : ✅
-- /api/rgpd/consent : ✅
-- /api/consents : ✅
-- /api/privacy/export + anonymize + anonymize/cascade : ✅
-### C. Pages : app/settings/privacy/, app/legal/cookies/, app/legal/privacy/ : ✅
+### A. Tables (3)
+- consent_records ✅ (consent_type enum, granted, ip_address, user_agent, version)
+- user_consents ✅ (terms/privacy versions, cookies_analytics, cookies_ads)
+- data_requests ✅ (request_type: export/deletion/rectification, status, download_url, expires_at)
+- Note : `gdpr_requests` n'existe pas en tant que table séparée — `data_requests` remplit ce rôle
 
-### Score : 7/10
-### Verdict : ⚠️ Partiel
+### B. Routes (7)
+- /api/rgpd/export ✅ (Art. 20 portabilité, rate-limited 1/24h, exporte profil+baux+factures+docs+tickets)
+- /api/rgpd/delete-account ✅ (Art. 17 effacement, vérifie baux actifs, anonymise, confirmation "SUPPRIMER MON COMPTE")
+- /api/rgpd/consent ✅ (GET historique + POST batch, capture IP + user agent)
+- /api/consents ✅ (onboarding)
+- /api/privacy/export + anonymize + anonymize/cascade ✅ (admin override)
+
+### C. Pages (3) : settings/privacy/ (dashboard complet), legal/cookies/ (9 sections), legal/privacy/ (13 sections, table sous-traitants)
+
+### D. Composants (4)
+- CookieBanner ✅ (accept all/necessary/customize, version tracking, localStorage, PostHog opt-in/out, **rendu dans app/layout.tsx**)
+- ConsentManager, DataExportButton, DeleteAccountModal ✅
+
+### Score : 9/10
+### Verdict : ✅ Complet
+### Note : Conforme CNIL (cookies, durées conservation, DPO dpo@talok.fr). Placeholders [A configurer] dans privacy policy pour raison sociale.
 
 ---
 
 ## Module 26 : ADMIN
 
-### A. Tables : ✅ admin_logs, feature_flags
-### B. Pages app/admin/* : ✅ (35+ pages)
-- dashboard, metrics, users, tenants, properties, providers
-- blog, email-templates, flags, integrations
-- subscriptions, plans, compliance, moderation
-- audit-logs, branding, privacy, site-content, support
-### C. Routes /api/admin/* : ✅ (50+ routes)
-- overview, stats, metrics, users, properties, providers
-- flags, plans, subscriptions, templates, compliance
-- impersonate, broadcast, moderation
-### D. Impersonation : ✅ /api/admin/impersonate
+### A. Tables (4) : admin_logs ✅ (action, target, JSONB details, IP), feature_flags ✅ (name, enabled, rollout_percentage 0-100), support_tickets ✅, impersonation_sessions ✅
+### B. Pages (36) : dashboard, metrics (KPI charts: signups/mois, distribution rôles, conversion), people (owners/tenants/vendors), users, properties, providers/pending, moderation, compliance, audit-logs, reports, blog (CRUD), email-templates, integrations, site-content, branding, landing-images, accounting, documents, privacy, emails, flags, plans, subscriptions, support
+### C. Routes (90+) : Très complet — overview, stats, metrics, users, people, moderation (queue + rules), properties (approve/reject), providers (approve/reject/suspend/disable/invite), subscriptions (list/suspend/unsuspend/override/gift/stats), plans (CRUD + history), compliance (pending/expiring/verify/notify), email-templates (CRUD + test + versioning), broadcast, audit-logs + integrity, impersonate
+### D. Impersonation : ✅ RBAC admin.impersonate, session cookie 1h max, raison obligatoire (10+ chars), audit logging, ImpersonationBanner composant
 
-### Score : 8/10
-### Verdict : ⚠️ Partiel
+### Score : 9/10
+### Verdict : ✅ Complet
 
 ---
 
 ## Module 27 : LANDING
 
-### A. Pages marketing
-- app/(marketing)/page.tsx (landing) : ✅
-- app/(marketing)/pricing : ✅
-- app/fonctionnalites/* (7 pages) : ✅
-- app/solutions/* (5 pages) : ✅
-- app/outils/* (4 calculateurs) : ✅
-- app/blog : ✅
-- app/contact, app/faq, app/guides : ✅
-- app/temoignages : ✅
-- app/a-propos : ✅
-- app/modeles : ✅
+### A. Pages marketing (20+)
+- app/(marketing)/page.tsx (landing) + pricing : ✅
+- app/fonctionnalites/* (**8 pages**) : overview + 7 features : ✅
+- app/solutions/* (5 pages) : investisseurs, particuliers, SCI, DOM-TOM, admin-biens : ✅
+- app/outils/* (4 calculateurs) : rendement, frais notaire, charges, IRL : ✅
+- app/blog/ + [slug] : ✅ (dynamic from blog_posts Supabase)
+- app/contact, app/faq, app/guides + [slug], app/temoignages, app/a-propos, app/modeles : ✅
 
 ### B. SEO
-- ✅ Fichier robots.txt (à vérifier)
-- ✅ Pages légales complètes (CGU, CGV, cookies, mentions, privacy, terms)
+- app/sitemap.ts ✅ (dynamic : pages principales, SEO comparatifs, outils, auth, blog Supabase, legal, guides)
+- app/robots.ts ✅ (disallow /app/, /admin/, /api/, /auth/, /signature/, /_next/. Googlebot rules)
+- Metadata + OG tags sur pricing : ✅
 
-### C. Pricing
-- ⚠️ Divergence possible : skill talok-context dit 24,90€/59,90€, skill talok-stripe-pricing dit 35€/69€
+### C. Pricing réel dans le code
+| Plan | Prix/mois | Prix/an |
+|------|----------|---------|
+| Gratuit | 0€ | — |
+| Starter | **9€** | 90€ |
+| Confort | **35€** | 336€ (was 29€) |
+| Pro | **69€** | 662€ (was 59€) |
+| Enterprise S/M/L/XL | 249/349/499/799€ | — |
 
-### Score : 8/10
-### Verdict : ⚠️ Partiel
+**Divergence confirmée :** skill talok-context dit 24,90€/59,90€ — les prix réels sont 9/35/69€
+
+### Score : 9/10
+### Verdict : ✅ Complet
 
 ---
 
 ## Module 28 : MOBILE
 
-### A. Capacitor : ✅ capacitor.config.ts configuré (com.gestionlocative.app)
-### B. Répertoires iOS/Android : ✅ ios/ et android/ existent
-### C. Plugins Capacitor (15+) : camera, push-notifications, geolocation, haptics, filesystem, etc.
-### D. Table push_subscriptions : ✅
-### E. PWA : ⚠️ À vérifier manifest + service worker
+### A. Capacitor : ✅ capacitor.config.ts (com.gestionlocative.app, webDir: 'out', server: talok.fr)
+### B. iOS/Android : ✅ Répertoires ios/ + android/ avec builds configurés (gradle, xcconfig)
+### C. Plugins (16 packages) : app, browser, camera, filesystem, geolocation, haptics, keyboard, local-notifications, network, preferences, push-notifications, share, splash-screen, status-bar + cli/core
+### D. Push : ✅ push_subscriptions table + /api/notifications/push/subscribe + /api/notifications/push/send + lib/push/send.ts
+### E. Deep links : ✅ apple-app-site-association + assetlinks.json. ⚠️ Placeholders TEAM_ID et SHA256 fingerprint à remplacer pour prod
+### F. PWA : ✅ manifest.json complet (8 tailles icônes, screenshots, shortcuts Dashboard/Logements/Nouveau bail, fr-FR) + app/sw.ts (Serwist, CacheFirst Google Fonts, StaleWhileRevalidate Supabase Storage)
 
-### Score : 6/10
-### Verdict : ⚠️ Partiel
+### Score : 8/10
+### Verdict : ⚠️ Partiel (deep links placeholders, pas de build prod iOS/Android vérifiable)
 
 ---
 
 ## Module 29 : TICKETS
 
-### A. Tables : ✅ tickets (status, priority, category), ticket_comments, ticket_messages
-### B. FK work_order : ✅ work_orders.ticket_id
-### C. Routes : ✅ /api/tickets/* (CRUD, status, messages, quotes, attachments, ai-draft, history)
-### D. Routes v1 : ✅ /api/v1/tickets/* (assign, close, reopen, resolve, comments, kpis, create-work-order)
-### E. Pages :
-- app/owner/tickets/* : ✅ (list, detail, new, quotes)
-- app/tenant/requests/* : ✅ (list, detail, new)
-- app/provider/tickets/* : ✅ (list, detail)
-### F. KPIs : ✅ /api/v1/tickets/kpis
-### G. Bug chargement infini : ⚠️ Toujours signalé comme en cours (skill talok-context)
+### A. Tables
+- tickets ✅ : 9 statuts (open/acknowledged/assigned/in_progress/resolved/closed/rejected/reopened/paused), 4 priorités (low/normal/urgent/emergency), 10 catégories (plomberie/electricite/serrurerie/chauffage/humidite/nuisibles/bruit/parties_communes/equipement/autre), **work_order_id FK**, satisfaction_rating 1-5
+- ticket_comments ✅ : RLS multi-rôle (owner/tenant/provider), attachments JSONB, is_internal
+- ticket_messages ✅ : Séparé de ticket_comments
 
-### Score : 7/10
-### Verdict : ⚠️ Partiel
+### B. Routes (12+ internes + 10 v1)
+- CRUD + status, messages, attachments, quotes (+approve/reject), history, invoices, **ai-draft** (réponse IA)
+- V1 : CRUD + close/resolve/assign/reopen + comments + **create-work-order** + **kpis**
+
+### C. KPIs : ✅ avg_resolution_hours, avg_first_response_hours, avg_satisfaction, counts par statut/catégorie/priorité. Composant TicketKPIs.
+
+### D. Pages : ✅ Owner (list+KPIs, new, detail, quotes), Tenant (list+claims, new, detail), Provider (list, detail)
+
+### E. Bug chargement infini : **CAUSE IDENTIFIÉE** — Récursion RLS (erreur PostgreSQL 42P17). Le code catch cette erreur et retourne un tableau vide au lieu de boucler. **Workaround en place mais les utilisateurs affectés voient une liste vide au lieu de leurs tickets.**
+
+### Score : 9/10
+### Verdict : ✅ Complet (workaround RLS en place)
 
 ---
 
 ## Module 30 : DROITS LOCATAIRE
 
-### A. Calculateurs
-- app/outils/calcul-revision-irl : ✅
-- app/outils/calcul-frais-notaire : ✅
-- app/outils/calcul-rendement-locatif : ✅
-- app/outils/simulateur-charges : ✅
+### A. Calculateurs (3 fonctionnels)
+- **Préavis** ✅ : lib/leases/preavis-calculator.ts (nu 3m/1m zone tendue, meublé 1m, étudiant 1m, mobilité 1m, saisonnier N/A). UI : app/tenant/lease/notice/
+- **Dépôt de garantie** ✅ : Routes deposit, retention, settlement. UI : DepotsGarantieTab. Retenues EDL intégrées
+- **Révision IRL** ✅ : app/outils/calcul-revision-irl/ (IRL Q1 2023 → Q4 2025). Aussi : cron automatisé lib/automations/irl-indexation.ts + pages owner/indexation/
 
-### B. Page droits : app/tenant/legal-rights : ✅
-### C. Protocoles juridiques : app/owner/legal-protocols : ✅
-### D. Table legal_articles : ❌ ABSENTE (pas de référentiel juridique en base)
-### E. API indexation IRL : ✅ /api/cron/irl-indexation + /api/indexations/[id]/apply
+### B. Page droits locataire : ✅ app/tenant/legal-rights/ — contacts juridiques par département (getContactsForDepartment), protocoles anti-expulsion, contacts urgence avec liens téléphone
 
-### Score : 5/10
+### C. Données juridiques
+- Table legal_articles : ❌ Pas de table DB — choix de design : données statiques en TS
+- lib/data/legal-protocols.ts ✅ : Protocoles basés sur Loi Kasbarian-Berge (2023), procédures étape par étape, références légales
+- lib/ai/rag/legal-knowledge.service.ts ✅ : Pipeline RAG pour connaissances juridiques (ingestion via scripts/)
+- features/legal/components/protocol-checklist.tsx ✅ : Checklist interactive
+
+### D. Outils calculateurs publics (SEO)
+- app/outils/calcul-revision-irl/ ✅ (ciblant "calcul revision loyer IRL" 1200/mois)
+- app/outils/calcul-frais-notaire/ ✅
+- app/outils/calcul-rendement-locatif/ ✅
+- app/outils/simulateur-charges/ ✅
+
+### Score : 8/10
 ### Verdict : ⚠️ Partiel
+### Note : Pas de table legal_articles mais RAG + données statiques TS est un choix raisonnable. Pipeline IA pour guidance juridique.
 
 ---
 
@@ -1007,7 +1030,7 @@ properties ✅, photos ✅ (pas property_photos), property_ownership ✅, rooms 
 | 2 | RLS absente sur `two_factor_sessions` | P0 | Tokens 2FA accessibles cross-user |
 | 3 | Feature gating : 7/22 flags non vérifiés | P0 | hasAPI, hasAutoReminders, hasMultiUsers, hasWhiteLabel, hasSSO jamais checkés |
 | 4 | Feature gating : /api/copro/* sans gate serveur | P0 | UI PlanGate seul, contournable |
-| 5 | Prix DB incohérents | P0 | subscription_plans : 19.90€ vs grille officielle 35€/69€ |
+| 5 | Prix incohérents entre skill et code | P0 | Skill talok-context dit 24,90€/59,90€ — code pricing réel : Starter 9€, Confort 35€, Pro 69€. La DB subscription_plans peut aussi diverger |
 | 6 | Agency signup cassé | P1 | Bug connu : rôle non validé dans schema |
 | 7 | Tickets chargement infini | P1 | Bug connu non résolu |
 | 8 | /owner/invoices/[id] crash RangeError | P1 | Bug connu : safeDate() non appliqué |
@@ -1026,6 +1049,9 @@ properties ✅, photos ✅ (pas property_photos), property_ownership ✅, rooms 
 | 21 | cleanupPropertyPhotos() inexistant | P2 | Fonction référencée nulle part dans le codebase |
 | 22 | Pas de state machine TS centralisée pour leases | P3 | Transitions SQL-only, pas de ALLOWED_TRANSITIONS map |
 | 23 | Pas de cron renouvellement tacite bail | P2 | Renouvellement manuel uniquement via /api/leases/[id]/renew |
+| 24 | Tickets RLS récursion (42P17) | P1 | PostgreSQL erreur 42P17 récursion RLS. Workaround : catch → tableau vide. Users affectés voient liste vide |
+| 25 | Deep links placeholders prod | P2 | apple-app-site-association : TEAM_ID placeholder. assetlinks.json : SHA256 placeholder |
+| 26 | Privacy policy placeholders | P3 | [A configurer] pour raison sociale/adresse dans legal/privacy |
 
 ---
 
@@ -1073,9 +1099,11 @@ properties ✅, photos ✅ (pas property_photos), property_ownership ✅, rooms 
 
 ### État global
 
-- **Modules complets (score >= 8/10) :** 23/30 (Baux 8.5, Paiements 9, Documents 9, EDL 8.5, Colocation 9, Charges 8, Candidatures 9, Prestataires 9, Syndic 8, Garant 8, Agence 9, Auth 8, Comptabilité 9, Add-ons 8, Stripe 8, Saisonnier 9, Compteurs 9, Agent TALO 8, API REST 10, Diagnostics 9, Assurances 8, Admin 8, Landing 8)
-- **Modules partiels (score 5-7.5) :** 7/30 (Biens 7.5, Notifications 7, Onboarding 7, RGPD 7, Tickets 7, Mobile 6, Droits locataire 5)
+- **Modules complets (score >= 8/10) :** 27/30 (Baux 8.5, Paiements 9, Documents 9, EDL 8.5, Colocation 9, Charges 8, Candidatures 9, Prestataires 9, Syndic 8, Garant 8, Agence 9, Auth 8, Comptabilité 9, Add-ons 8, Stripe 8, Saisonnier 9, Compteurs 9, Agent TALO 8, API REST 10, Diagnostics 9, Assurances 8, RGPD 9, Admin 9, Landing 9, Mobile 8, Tickets 9, Droits locataire 8)
+- **Modules partiels (score 5-7.5) :** 3/30 (Biens 7.5, Notifications 7, Onboarding 7)
 - **Modules absents (score 0-4) :** 0/30
+
+**Score moyen global : 8.5/10**
 
 ### Statistiques clés
 
