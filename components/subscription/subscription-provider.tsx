@@ -123,8 +123,9 @@ export function SubscriptionProvider({
         .maybeSingle();
 
       if (profileError) {
-        // Si erreur de récursion RLS, utiliser le cache React Query ou la route API en fallback
-        if (profileError.code === '42P17' || profileError.message?.includes('infinite recursion')) {
+        // Si erreur de récursion RLS ou erreur 500, utiliser le cache React Query ou la route API en fallback
+        const isRlsError = profileError.code === '42P17' || profileError.message?.includes('infinite recursion') || profileError.message?.includes('500');
+        if (isRlsError) {
           console.warn("[SubscriptionProvider] RLS recursion detected, using cache/API fallback");
           // Essayer d'abord le cache React Query (évite un appel réseau)
           const cached = queryClient.getQueryData<{ id: string }>(PROFILE_QUERY_KEY);
@@ -138,11 +139,15 @@ export function SubscriptionProvider({
                 profile = { id: apiProfile.id };
                 // Peupler le cache pour les autres consommateurs
                 queryClient.setQueryData(PROFILE_QUERY_KEY, apiProfile);
+              } else {
+                console.warn("[SubscriptionProvider] Profile API fallback returned", response.status);
               }
             } catch (apiError) {
-              console.error("[SubscriptionProvider] API fallback error:", apiError);
+              console.warn("[SubscriptionProvider] Profile API fallback network error");
             }
           }
+        } else {
+          console.error("[SubscriptionProvider] Profile query error:", profileError.code, profileError.message);
         }
       } else {
         profile = profileData;
@@ -167,16 +172,19 @@ export function SubscriptionProvider({
 
       if (subError) {
         // Si erreur de récursion RLS sur subscriptions, utiliser l'API en fallback
-        if (subError.code === '42P17' || subError.message?.includes('infinite recursion')) {
+        if (subError.code === '42P17' || subError.message?.includes('infinite recursion') || subError.message?.includes('500')) {
           console.warn("[SubscriptionProvider] RLS recursion on subscriptions, using API fallback");
           try {
             const response = await fetch("/api/subscriptions/current", { credentials: "include" });
             if (response.ok) {
               const apiData = await response.json();
               sub = apiData.subscription;
+            } else {
+              // API fallback a aussi échoué - on continue avec sub = null (plan gratuit)
+              console.warn("[SubscriptionProvider] API fallback returned", response.status, "- defaulting to free plan");
             }
           } catch (apiError) {
-            console.error("[SubscriptionProvider] API fallback for subscription error:", apiError);
+            console.warn("[SubscriptionProvider] API fallback network error - defaulting to free plan");
           }
         } else if (subError.code !== "PGRST116") {
           console.error("[SubscriptionProvider] Error fetching subscription:", subError);
@@ -258,13 +266,18 @@ export function SubscriptionProvider({
 
       setSubscription(subscriptionWithPlan);
 
-      // Fetch usage from API
-      const usageRes = await fetch("/api/subscriptions/usage");
-      if (usageRes.ok) {
-        const usageData = await usageRes.json();
-        setUsage(usageData.usage);
-        setUsagePlanSlug(resolveCurrentPlan(undefined, usageData.plan_slug));
-      } else {
+      // Fetch usage from API (non-bloquant)
+      try {
+        const usageRes = await fetch("/api/subscriptions/usage");
+        if (usageRes.ok) {
+          const usageData = await usageRes.json();
+          setUsage(usageData.usage);
+          setUsagePlanSlug(resolveCurrentPlan(undefined, usageData.plan_slug));
+        } else {
+          setUsagePlanSlug(null);
+        }
+      } catch {
+        // Usage fetch failed - non-blocking, continue with null usage
         setUsagePlanSlug(null);
       }
 
