@@ -1032,35 +1032,50 @@
 
 ---
 
-## B. Matrice Feature Gating
+## B. Matrice Feature Gating (audit détaillé)
 
-| Feature flag | Dans PLAN_LIMITS ? | Vérifié côté API ? | Vérifié côté UI ? | Pages qui oublient |
-|-------------|-------------------|-------------------|------------------|-------------------|
-| maxProperties | ✅ | ✅ canCreateProperty() | ✅ usePlanAccess() | — |
-| maxSignaturesPerMonth | ✅ | ✅ consume-signature route | ✅ SignatureUsageBar | — |
-| maxStorageMB | ✅ | ⚠️ Pas vérifié sur upload | ✅ StorageUsageBar | /api/documents/upload |
-| hasRentCollection | ✅ | ⚠️ Partiel | ⚠️ Partiel | Certaines routes payments |
-| hasAccounting | ✅ | ✅ requireAccountingAccess() | ✅ | — |
-| hasFECExport | ✅ | ✅ | ✅ | — |
-| hasFiscalAI | ✅ | ⚠️ Non vérifié (routes talo absentes) | ❌ | app/owner/talo/* absent |
-| hasAITalo | ✅ | ❌ Non vérifié | ❌ | Agent TALO non construit |
-| hasMultiEntity | ✅ | ⚠️ Partiel | ⚠️ | — |
-| hasAPI | ✅ | ⚠️ Non vérifié dans routes v1 | ✅ | /api/v1/* routes |
-| hasOpenBanking | ✅ | ⚠️ Partiel | ⚠️ | /api/bank-connect/* |
-| hasAutoReminders | ✅ | ⚠️ Non vérifié dans crons | ⚠️ | Crons relances |
-| hasAutoRemindersSMS | ✅ | ⚠️ | ⚠️ | SMS routes |
-| hasIRLRevision | ✅ | ⚠️ | ⚠️ | /api/cron/irl-indexation |
-| hasEdlDigital | ✅ | ❌ Non vérifié | ❌ | /api/edl/* routes |
-| hasScoringTenant | ✅ | ⚠️ | ⚠️ | /api/applications/[id]/score |
-| hasWorkOrders | ✅ | ❌ Non vérifié | ❌ | /api/work-orders/* |
-| hasProvidersManagement | ✅ | ❌ Non vérifié | ❌ | /api/providers/* |
-| hasMultiUsers | ✅ | ⚠️ | ⚠️ | — |
-| hasCoproModule | ✅ | ✅ withFeatureAccess | ✅ PlanGate | — |
-| hasWhiteLabel | ✅ | ⚠️ Non vérifié | ⚠️ | /api/whitelabel/* |
-| hasSSO | ✅ | ❌ Non implémenté | ❌ | — |
-| hasPrioritySupport | ✅ | N/A | N/A | — |
+**PlanLimits interface :** 20 flags (6 quantitatifs + 14 booléens) sur 9 plans.
+**Mécanismes :** UI = `PlanGate` + `hasFeature()` | API = `withFeatureAccess()` + `requireAccountingAccess()`
 
-**Résumé :** Sur 23 flags, seulement ~6 sont vérifiés côté API ET UI. C'est la lacune transversale la plus critique.
+| Feature flag | Vérifié UI ? | Vérifié API ? | État | Risque |
+|-------------|-------------|--------------|------|--------|
+| maxProperties | ✅ usePlanAccess | ✅ canCreateProperty | ✅ OK | — |
+| maxSignaturesPerMonth | ✅ SignatureUsageBar | ✅ consume-signature | ✅ OK | — |
+| maxStorageMB | ✅ StorageUsageBar | ⚠️ Non vérifié upload | ⚠️ PARTIEL | /api/documents/upload |
+| hasRentCollection | ✅ PlanGate FinancesClient | ✅ withFeatureAccess invoices | ✅ OK | — |
+| hasAccounting | ✅ PlanGate (11 composants) | ✅ requireAccountingAccess (~50 routes) | ✅ OK | — |
+| hasFECExport | ✅ (via hasAccounting) | ✅ userHasFeature fec/* | ✅ OK | — |
+| hasFiscalAI | ✅ PlanGate taxes | ✅ withFeatureAccess exports | ✅ OK | — |
+| hasAITalo | ✅ (mappé scoring_advanced) | ✅ (via hasFiscalAI) | ✅ OK | — |
+| hasMultiEntity | ✅ hasFeature EntitiesClient | ✅ server-side entities/actions | ✅ OK | — |
+| hasAPI | ❌ Défini seulement | ❌ **Aucune route v1 gate** | ❌ MANQUANT | /api/v1/* |
+| hasOpenBanking | ✅ (via accounting PlanGate) | ✅ requireAccountingAccess + open_banking | ✅ OK | — |
+| hasAutoReminders | ❌ Défini seulement | ❌ **Aucune gate trouvée** | ❌ MANQUANT | Crons relances |
+| hasAutoRemindersSMS | ❌ | ✅ withFeatureAccess sms/send | ⚠️ API seulement | — |
+| hasIRLRevision | ✅ PlanGate IndexationGate | ✅ withFeatureAccess indexations | ✅ OK | — |
+| hasEdlDigital | ✅ hasFeature InspectionsClient | ⚠️ POST seulement, GET/PDF/preview non gatés | ⚠️ PARTIEL | /api/edl/[id], pdf, preview |
+| hasScoringTenant | ✅ hasFeature TenantsClient | ❌ **Aucune API gate** | ⚠️ UI seulement | /api/applications/[id]/score |
+| hasWorkOrders | ❌ Défini types seulement | ⚠️ POST gaté, GET/[id] non gaté | ⚠️ PARTIEL | /api/work-orders/[id] |
+| hasProvidersManagement | ✅ hasFeature (3 pages) | ✅ withFeatureAccess providers/search | ✅ OK | — |
+| hasMultiUsers | ❌ Défini seulement | ❌ **Aucune gate trouvée** | ❌ MANQUANT | — |
+| hasCoproModule | ✅ PlanGate CoproGate | ❌ **Aucune API gate /api/copro/** | ⚠️ UI seulement | /api/copro/* |
+| hasWhiteLabel | ❌ Défini seulement | ❌ **Aucune gate trouvée** | ❌ MANQUANT | /api/whitelabel/* |
+| hasSSO | ❌ Défini seulement | ❌ **Non implémenté** | ❌ MANQUANT | — |
+| hasPrioritySupport | N/A | N/A | N/A | — |
+
+### Résumé Feature Gating
+- **Bien gatés (UI + API) :** 11/22 flags actifs (50%)
+- **Partiellement gatés :** 4/22 (UI ou API seul)
+- **Non gatés du tout :** 7/22 (hasAPI, hasAutoReminders, hasMultiUsers, hasWhiteLabel, hasSSO, hasScoringTenant API, hasCoproModule API)
+
+### Routes critiques sans gate
+| Route | Gate attendu | Risque |
+|-------|-------------|--------|
+| GET /api/edl/[id], /api/edl/pdf, /api/edl/preview | hasEdlDigital | ÉLEVÉ |
+| GET/PUT /api/work-orders/[id] | hasWorkOrders | ÉLEVÉ |
+| /api/copro/* (toutes) | hasCoproModule | ÉLEVÉ — UI seule |
+| /api/v1/* (toutes) | hasAPI | MOYEN |
+| /api/applications/[id]/score | hasScoringTenant | MOYEN |
 
 ---
 
@@ -1095,44 +1110,53 @@
 
 | # | Problème | Criticité | Détail |
 |---|----------|-----------|--------|
-| 1 | Agent TALO non construit | P1 | Tables existent (noms différents), pages et routes dédiées absentes |
-| 2 | Feature gating incomplet | P0 | ~17/23 flags non vérifiés côté API |
-| 3 | Agency signup cassé | P1 | Bug connu : rôle non validé dans schema |
-| 4 | Tour guidé en doublon | P2 | OnboardingTour.tsx + guided-tour.tsx |
+| 1 | RLS absente sur `tenants` | P0 | PII locataires exposée sans RLS — tout client Supabase peut lire/écrire |
+| 2 | RLS absente sur `two_factor_sessions` | P0 | Tokens 2FA accessibles cross-user |
+| 3 | Feature gating : 7/22 flags non vérifiés | P0 | hasAPI, hasAutoReminders, hasMultiUsers, hasWhiteLabel, hasSSO jamais checkés |
+| 4 | Feature gating : /api/copro/* sans gate serveur | P0 | UI PlanGate seul, contournable |
 | 5 | Prix DB incohérents | P0 | subscription_plans : 19.90€ vs grille officielle 35€/69€ |
-| 6 | Tickets chargement infini | P1 | Bug connu non résolu |
-| 7 | Libération garant non automatisée | P2 | Manuel seulement, pas de cron 6 mois |
-| 8 | Stripe metered billing syndic | P2 | UI seulement, pas branché Stripe |
-| 9 | CNI groupement non raccordé | P2 | Composant créé mais pas dans documents-list.tsx |
-| 10 | Tables nommées différemment du skill | P3 | ai_conversations vs talo_conversations, solvability_scores vs tenant_scorings |
-| 11 | /owner/invoices/[id] crash RangeError | P1 | Bug connu : safeDate() non appliqué |
-| 12 | Dashboard Biens=0 Baux=0 | P1 | Filtre entityId manquant |
-| 13 | SSO non implémenté | P3 | Flag hasSSO existe mais aucune implémentation |
-| 14 | Génération PDF bail signé | P2 | Pas encore implémenté post-signature |
+| 6 | Agency signup cassé | P1 | Bug connu : rôle non validé dans schema |
+| 7 | Tickets chargement infini | P1 | Bug connu non résolu |
+| 8 | /owner/invoices/[id] crash RangeError | P1 | Bug connu : safeDate() non appliqué |
+| 9 | Dashboard Biens=0 Baux=0 | P1 | Filtre entityId manquant |
+| 10 | Pages dédiées Agent TALO absentes | P1 | Architecture multi-agent existe mais pas de /owner/talo/* |
+| 11 | 111 fichiers @ts-nocheck | P1 | TypeScript effectivement désactivé dans ces fichiers |
+| 12 | 3647 usages de `any` | P2 | Surtout casting Supabase dans API routes (2425) |
+| 13 | Tour guidé en doublon | P2 | OnboardingTour.tsx + guided-tour.tsx |
+| 14 | Libération garant non automatisée | P2 | Manuel seulement, pas de cron 6 mois |
+| 15 | CNI groupement non raccordé | P2 | Composant créé mais pas dans documents-list.tsx |
+| 16 | Stripe metered billing syndic | P2 | UI seulement, pas branché Stripe |
+| 17 | Génération PDF bail signé | P2 | Pas encore implémenté post-signature |
+| 18 | SSO non implémenté | P3 | Flag hasSSO existe mais aucune implémentation |
 
 ---
 
 ## E. Tables SQL sans RLS (DANGER)
 
-| Table | Données sensibles ? | Action requise |
-|-------|--------------------|-|
-| tenants | ✅ OUI — données locataires | 🔴 ACTIVER RLS immédiatement |
-| two_factor_sessions | ✅ OUI — sessions 2FA | 🔴 ACTIVER RLS immédiatement |
-| lease_templates | ⚠️ Templates bail | 🟡 Activer RLS (lecture seule publique) |
-| vetuste_grid | ❌ Données référentiel | 🟢 Acceptable (données statiques) |
-| vetusty_grid | ❌ Données référentiel | 🟢 Acceptable |
-| repair_cost_grid | ❌ Données référentiel | 🟢 Acceptable |
-| idempotency_keys | ❌ Clés techniques | 🟢 Acceptable |
-| api_webhook_deliveries | ⚠️ Données webhook | 🟡 Activer RLS |
-| _audit_cleanup_archive | ❌ Archive interne | 🟢 Acceptable |
-| _audit_log | ❌ Log interne | 🟢 Acceptable |
-| _schema_translations | ❌ Traductions | 🟢 Acceptable |
-| public._repair_log | ❌ Log réparation | 🟢 Acceptable |
-| public.accounting_accounts | ⚠️ Comptes | 🟡 Vérifier |
-| public.accounting_journals | ⚠️ Journaux | 🟡 Vérifier |
-| public.lease_notices | ⚠️ Congés | 🟡 Activer RLS |
+**Note :** Toutes les instructions `DISABLE ROW LEVEL SECURITY` dans les migrations sont immédiatement suivies de `ENABLE ROW LEVEL SECURITY` (clear/recreate policies). Aucune désactivation nette trouvée.
+
+| Table | Sensibilité | Action requise |
+|-------|-----------|---------------|
+| **tenants** | 🔴 CRITIQUE — PII locataires | **ACTIVER RLS immédiatement** — Tout client Supabase peut lire/écrire toutes les lignes |
+| **two_factor_sessions** | 🔴 CRITIQUE — Tokens 2FA | **ACTIVER RLS immédiatement** — Un utilisateur peut lire les sessions 2FA d'autres utilisateurs |
+| lease_templates | 🟠 MOYEN — Templates propriétaire | Activer RLS (lecture seule publique) |
+| api_webhook_deliveries | 🟠 MOYEN — Payloads webhook | Activer RLS |
+| idempotency_keys | 🟢 FAIBLE — Clés techniques | Acceptable (server-side only) |
+| repair_cost_grid | 🟢 FAIBLE — Données référentiel statiques | Acceptable |
+| vetuste_grid | 🟢 FAIBLE — Données référentiel statiques | Acceptable |
+| vetusty_grid | 🟢 FAIBLE — Doublon du précédent | Acceptable |
 
 **Tables critiques sans RLS : 2 (tenants, two_factor_sessions)**
+
+### Statistiques TypeScript (bonus)
+| Métrique | Valeur |
+|----------|--------|
+| Fichiers .ts/.tsx | 2 728 |
+| Usages de `any` (`: any` + `as any`) | 3 647 (1.3/fichier) |
+| `@ts-nocheck` directives | 111 fichiers |
+| `@ts-ignore` directives | 30 occurrences |
+| Pire zone | app/api/ (2 425 `any` — casting Supabase) |
+| Mode strict | ✅ Activé |
 
 ---
 

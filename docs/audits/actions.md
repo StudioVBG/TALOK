@@ -11,13 +11,15 @@
 - [ ] Activer RLS sur `public.lease_notices` (congés avec données sensibles)
 - [ ] Vérifier/activer RLS sur `api_webhook_deliveries`
 
-### Feature Gating critique
-- [ ] Ajouter vérification `hasAPI` dans middleware des routes /api/v1/* (tout utilisateur peut accéder à l'API REST)
-- [ ] Ajouter vérification `hasWorkOrders` dans routes /api/work-orders/*
-- [ ] Ajouter vérification `hasEdlDigital` dans routes /api/edl/*
-- [ ] Ajouter vérification `hasProvidersManagement` dans routes /api/providers/*
-- [ ] Ajouter vérification `hasScoringTenant` dans routes scoring
-- [ ] Ajouter vérification `hasOpenBanking` dans routes /api/bank-connect/*
+### Feature Gating critique (7 flags jamais vérifiés)
+- [ ] Ajouter vérification `hasAPI` dans middleware des routes /api/v1/* (tout utilisateur accède à l'API)
+- [ ] Ajouter vérification `hasCoproModule` côté serveur /api/copro/* (UI PlanGate seul, contournable)
+- [ ] Ajouter vérification `hasEdlDigital` sur GET/PDF/preview /api/edl/* (POST seul est gaté)
+- [ ] Ajouter vérification `hasWorkOrders` sur GET/[id] /api/work-orders/* (POST seul est gaté)
+- [ ] Ajouter vérification `hasScoringTenant` côté API /api/applications/[id]/score (UI seule)
+- [ ] Ajouter vérification `hasAutoReminders` dans crons relances (jamais vérifié nulle part)
+- [ ] Ajouter vérification `hasMultiUsers` (jamais vérifié nulle part)
+- [ ] Ajouter vérification `hasWhiteLabel` dans routes /api/whitelabel/* (jamais vérifié)
 - [ ] Ajouter vérification `maxStorageMB` dans /api/documents/upload
 
 ### Données incohérentes
@@ -118,8 +120,10 @@
 - [ ] PostHog : vérifier tracking analytics complet
 
 ### Performance & Qualité
+- [ ] Supprimer les 111 fichiers `@ts-nocheck` (compta, syndic, provider, signature surtout)
+- [ ] Réduire les 3647 usages de `any` (priorité : 2425 dans app/api/ — casting Supabase)
+- [ ] Régénérer les types Supabase (`supabase gen types`) pour éliminer les `as any` de contournement
 - [ ] Run tsc --noEmit et corriger erreurs TypeScript
-- [ ] Auditer usage de `any` dans le codebase
 - [ ] Vérifier SSG (generateStaticParams) sur pages marketing
 - [ ] Optimiser bundle size (code splitting pages lourdes)
 
@@ -129,8 +133,8 @@
 
 | Priorité | Nombre d'actions | Effort estimé |
 |----------|-----------------|---------------|
-| P0 — Bloquant | 14 | 3-5 jours |
+| P0 — Bloquant | 16 | 3-5 jours |
 | P1 — Important | 18 | 5-8 jours |
-| P2 — Amélioration | 25 | 15-25 jours |
-| P3 — Nice to have | 13 | 10-15 jours |
-| **Total** | **70** | **33-53 jours** |
+| P2 — Amélioration | 22 | 12-20 jours |
+| P3 — Nice to have | 16 | 10-15 jours |
+| **Total** | **72** | **30-48 jours** |
