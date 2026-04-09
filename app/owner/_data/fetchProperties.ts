@@ -41,7 +41,9 @@ export async function fetchProperties(
   }
 
   // Vérifier que l'utilisateur est bien le propriétaire
-  const { data: profile } = await supabase
+  // Utiliser le service role pour bypasser RLS (évite la récursion 42P17 sur profiles)
+  const serviceClient = createServiceRoleClient();
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)
@@ -51,9 +53,7 @@ export async function fetchProperties(
     throw new Error("Accès non autorisé");
   }
 
-  // Récupérer les propriétés via service role pour bypasser RLS
   // La sécurité est assurée par le filtre owner_id vérifié manuellement ci-dessus
-  const serviceClient = createServiceRoleClient();
   const { data: properties, error: propertiesError } = await serviceClient
     .from("properties")
     .select("*")

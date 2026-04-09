@@ -242,8 +242,9 @@ export async function fetchDashboard(ownerId: string): Promise<OwnerDashboardDat
     redirect("/auth/signin");
   }
 
-  // Vérifier les permissions
-  const { data: profile } = await supabase
+  // Vérifier les permissions via service role (évite la récursion RLS 42P17 sur profiles)
+  const serviceClient = createServiceRoleClient();
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)
