@@ -221,6 +221,7 @@ export async function POST(
           .insert({
             owner_id: property.owner_id,
             legal_entity_id: (property as any).legal_entity_id ?? null,
+            parent_property_id: propertyId,
             type: u.type,
             etat: "published",
             unique_code: uniqueCode,

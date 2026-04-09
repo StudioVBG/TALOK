@@ -45,6 +45,7 @@ export interface LeaseCreationInput {
   ownerProfileId: string;
   ownerName: string;
   propertyId: string;
+  buildingUnitId?: string | null;
   typeBail: string;
   signatoryEntityId?: string | null;
   loyer: number;
@@ -132,6 +133,7 @@ export async function createLease(input: LeaseCreationInput): Promise<LeaseCreat
 
   const leaseData: Record<string, unknown> = {
     property_id: input.propertyId,
+    building_unit_id: input.buildingUnitId || null,
     type_bail: input.typeBail,
     signatory_entity_id: signatoryEntityId,
     loyer: input.loyer,

@@ -28,6 +28,7 @@ const colocConfigSchema = z.object({
 
 const inviteSchema = z.object({
   property_id: z.string().uuid("ID de propriété invalide"),
+  building_unit_id: z.string().uuid().nullable().optional(),
   type_bail: z.string().min(1, "Type de bail requis"),
   signatory_entity_id: z.string().uuid().nullable().optional(),
   loyer: z.number().positive("Loyer doit être positif"),
@@ -92,6 +93,7 @@ export async function POST(request: Request) {
       ownerProfileId: profile.id,
       ownerName: `${profile.prenom || ""} ${profile.nom || ""}`.trim(),
       propertyId: validated.property_id,
+      buildingUnitId: validated.building_unit_id || null,
       typeBail: validated.type_bail,
       signatoryEntityId: validated.signatory_entity_id || null,
       loyer: validated.loyer,

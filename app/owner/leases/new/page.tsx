@@ -10,6 +10,7 @@ import { LeaseWizard } from "./LeaseWizard";
 export default function NewContractPage() {
   const searchParams = useSearchParams();
   const propertyId = searchParams.get("propertyId");
+  const buildingUnitId = searchParams.get("buildingUnitId");
 
   const { properties: propertiesData, isLoading } = useOwnerData();
   const properties = useMemo(() => propertiesData?.properties || [], [propertiesData]);
@@ -30,6 +31,7 @@ export default function NewContractPage() {
     <LeaseWizard
       properties={properties as any}
       initialPropertyId={propertyId || undefined}
+      initialBuildingUnitId={buildingUnitId || undefined}
     />
   );
 }

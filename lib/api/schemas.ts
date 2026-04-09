@@ -112,6 +112,7 @@ export const UpdateMemberRoleSchema = z.object({
 export const CreateLeaseSchema = z.object({
   property_id: z.string().uuid().optional().nullable(),
   unit_id: z.string().uuid().optional().nullable(),
+  building_unit_id: z.string().uuid().optional().nullable(),
   type_bail: z.enum(["nu", "meuble", "colocation", "saisonnier", "bail_mobilite", "commercial_3_6_9"]),
   loyer: z.number().positive("Loyer positif requis"),
   charges_forfaitaires: z.number().nonnegative().default(0),

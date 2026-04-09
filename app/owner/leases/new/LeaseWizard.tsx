@@ -116,6 +116,7 @@ interface Property {
 interface LeaseWizardProps {
   properties: Property[];
   initialPropertyId?: string;
+  initialBuildingUnitId?: string;
 }
 
 // Étapes du wizard
@@ -134,7 +135,7 @@ function calculateEndDate(startDate: string, durationMonths: number): string {
   return end.toISOString().split("T")[0];
 }
 
-export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps) {
+export function LeaseWizard({ properties, initialPropertyId, initialBuildingUnitId }: LeaseWizardProps) {
   const router = useRouter();
   const { toast } = useToast();
 
@@ -864,6 +865,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           property_id: selectedPropertyId,
+          building_unit_id: initialBuildingUnitId || null,
           type_bail: selectedType,
           signatory_entity_id: selectedEntityId,
           loyer,

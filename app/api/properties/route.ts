@@ -141,6 +141,7 @@ export async function GET(request: Request) {
           .from("properties")
           .select(essentialColumns, { count: "exact" })
           .is("deleted_at", null)
+          .is("parent_property_id", null)
           .order("created_at", { ascending: false });
       } else {
         baseQuery = dbClient
@@ -148,6 +149,7 @@ export async function GET(request: Request) {
           .select(essentialColumns, { count: "exact" })
           .eq("owner_id", profile.id)
           .is("deleted_at", null)
+          .is("parent_property_id", null)
           .order("created_at", { ascending: false });
       }
 
