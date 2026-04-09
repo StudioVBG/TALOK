@@ -17,7 +17,8 @@ export const DOCUMENT_TYPES = [
   // Finance
   "quittance", "facture", "rib", "avis_imposition", "bulletin_paie", "attestation_loyer", "justificatif_revenus",
   // Assurance
-  "attestation_assurance", "assurance_pno",
+  "attestation_assurance", "assurance_pno", "assurance_rc_pro", "assurance_decennale",
+  "assurance_gli", "assurance_garantie_financiere",
   // Diagnostics
   "diagnostic", "dpe", "diagnostic_gaz", "diagnostic_electricite",
   "diagnostic_plomb", "diagnostic_amiante", "diagnostic_termites",
@@ -65,6 +66,8 @@ export const TYPE_TO_CATEGORY: Record<DocumentType, DocumentCategory> = {
   attestation_loyer: "finance", justificatif_revenus: "finance",
 
   attestation_assurance: "assurance", assurance_pno: "assurance",
+  assurance_rc_pro: "assurance", assurance_decennale: "assurance",
+  assurance_gli: "assurance", assurance_garantie_financiere: "assurance",
 
   diagnostic: "diagnostic", dpe: "diagnostic", diagnostic_gaz: "diagnostic",
   diagnostic_electricite: "diagnostic", diagnostic_plomb: "diagnostic",
@@ -112,6 +115,10 @@ export const TYPE_TO_LABEL: Record<DocumentType, string> = {
   justificatif_revenus: "Justificatif de revenus",
   attestation_assurance: "Attestation d'assurance",
   assurance_pno: "Assurance PNO",
+  assurance_rc_pro: "Assurance RC Professionnelle",
+  assurance_decennale: "Assurance decennale",
+  assurance_gli: "Assurance GLI",
+  assurance_garantie_financiere: "Garantie financiere",
   diagnostic: "Diagnostic",
   dpe: "DPE",
   diagnostic_gaz: "Diagnostic gaz",
@@ -209,7 +216,8 @@ export const GROUPED_DOCUMENT_TYPES: DocumentGroup[] = [
 
 export const EXPIRABLE_DOCUMENT_TYPES: DocumentType[] = [
   "cni_recto", "cni_verso", "passeport", "titre_sejour",
-  "attestation_assurance", "assurance_pno",
+  "attestation_assurance", "assurance_pno", "assurance_rc_pro",
+  "assurance_decennale", "assurance_gli", "assurance_garantie_financiere",
   "dpe", "diagnostic_gaz", "diagnostic_electricite",
   "diagnostic_plomb", "diagnostic_amiante", "diagnostic_termites",
   "diagnostic_tertiaire", "diagnostic_performance", "erp",
