@@ -168,24 +168,8 @@ export async function withSubscriptionLimit(
       };
     }
 
-    // Trial expiré ? Mettre à jour en BDD et bloquer
-    if (subscription.status === 'trialing' && subscription.trial_end && new Date(subscription.trial_end) < new Date()) {
-      // Fire-and-forget : mettre à jour le statut en BDD
-      serviceClient
-        .from('subscriptions')
-        .update({ status: 'expired', updated_at: new Date().toISOString() })
-        .eq('id', subscription.id)
-        .then(() => {});
-
-      return {
-        allowed: false,
-        current: 0,
-        max: 0,
-        remaining: 0,
-        plan: planSlug,
-        message: "Votre période d'essai est terminée. Passez à un forfait payant pour continuer.",
-      };
-    }
+    // Le statut Stripe fait autorité — ne jamais forcer expired côté code.
+    // Si le trial est terminé, Stripe enverra un webhook customer.subscription.updated.
 
     const plan = (subscription.plan || {}) as any;
     let current = 0;

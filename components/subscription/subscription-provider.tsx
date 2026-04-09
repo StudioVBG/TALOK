@@ -159,15 +159,8 @@ export function SubscriptionProvider({
         // Network error - continue with sub = null (plan gratuit)
       }
 
-      // Trial expiré ? Marquer côté client et fire-and-forget update BDD
-      if (sub && sub.status === 'trialing' && sub.trial_end && new Date(sub.trial_end) < new Date()) {
-        sub.status = 'expired';
-        supabase
-          .from('subscriptions')
-          .update({ status: 'expired', updated_at: new Date().toISOString() })
-          .eq('id', sub.id)
-          .then(() => {});
-      }
+      // Le statut Stripe fait autorité — ne jamais forcer expired côté client.
+      // Si le trial est terminé, Stripe enverra un webhook customer.subscription.updated.
 
       // Si subscription existe, construire SubscriptionWithPlan
       let subscriptionWithPlan: SubscriptionWithPlan | null = null;
@@ -382,7 +375,7 @@ export function SubscriptionProvider({
   // ============================================
 
   const isActive = useMemo(
-    () => subscription?.status === "active" || subscription?.status === "trialing",
+    () => isSubscriptionStatusEntitled(subscription?.status),
     [subscription]
   );
 
