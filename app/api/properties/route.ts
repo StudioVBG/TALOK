@@ -560,6 +560,7 @@ const typeBienEnum = z.enum([
   "parking",
   "box",
   "fonds_de_commerce",
+  "immeuble",
 ]);
 
 const usagePrincipalEnum = z.enum([

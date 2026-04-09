@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
+import { generateCode } from "@/lib/helpers/code-generator";
 import type { BuildingUnitTemplate } from "@/lib/supabase/database.types";
 import { z } from "zod";
 
@@ -33,9 +34,17 @@ const bodySchema = z.object({
   units: z.array(buildingUnitPayloadSchema).min(1, "Au moins un lot requis"),
 });
 
+/** Étiquette étage lisible */
+function floorLabel(floor: number): string {
+  if (floor < 0) return `SS${Math.abs(floor)}`;
+  if (floor === 0) return "RDC";
+  return `Étage ${floor}`;
+}
+
 /**
  * POST /api/properties/[id]/building-units
  * Crée ou met à jour l'immeuble et ses lots pour une propriété de type immeuble.
+ * Sprint 1 : chaque lot génère une property indépendante (idempotent).
  */
 export async function POST(
   request: Request,
@@ -64,7 +73,7 @@ export async function POST(
 
     const { data: property, error: propErr } = await serviceClient
       .from("properties")
-      .select("id, owner_id, adresse_complete, code_postal, ville, departement")
+      .select("id, owner_id, legal_entity_id, adresse_complete, code_postal, ville, departement")
       .eq("id", propertyId)
       .single();
     if (propErr || !property) {
@@ -84,6 +93,7 @@ export async function POST(
     }
     const { building_floors, has_ascenseur, has_gardien, has_interphone, has_digicode, has_local_velo, has_local_poubelles, units } = parsed.data;
 
+    // ─── 1. Upsert building ───────────────────────────────────────────
     let buildingId: string;
 
     const { data: existingBuilding } = await serviceClient
@@ -135,29 +145,139 @@ export async function POST(
       buildingId = newBuilding.id;
     }
 
+    // ─── 2. Récupérer les units existants avec leur property_id ───────
+    const { data: existingUnits } = await serviceClient
+      .from("building_units")
+      .select("id, floor, position, property_id")
+      .eq("building_id", buildingId);
+
+    // Index des property_id existants par clé floor-position
+    const existingPropertyMap = new Map<string, string>();
+    if (existingUnits) {
+      for (const eu of existingUnits) {
+        if (eu.property_id) {
+          existingPropertyMap.set(`${eu.floor}-${eu.position}`, eu.property_id);
+        }
+      }
+    }
+
+    // ─── 3. Supprimer les anciens units (les properties lots restent) ─
     await serviceClient.from("building_units").delete().eq("building_id", buildingId);
 
-    const rows = units.map((u) => ({
-      building_id: buildingId,
-      floor: u.floor,
-      position: u.position,
-      type: u.type,
-      surface: u.surface,
-      nb_pieces: u.nb_pieces,
-      template: (u.template?.toLowerCase() ?? null) as BuildingUnitTemplate | null,
-      loyer_hc: u.loyer_hc,
-      charges: u.charges,
-      depot_garantie: u.depot_garantie,
-      status: u.status ?? "vacant",
-    }));
+    // ─── 4. Créer une property indépendante par lot ───────────────────
+    const unitRows: Array<{
+      building_id: string;
+      floor: number;
+      position: string;
+      type: string;
+      surface: number;
+      nb_pieces: number;
+      template: BuildingUnitTemplate | null;
+      loyer_hc: number;
+      charges: number;
+      depot_garantie: number;
+      status: string;
+      property_id: string;
+    }> = [];
 
-    const { error: unitsErr } = await serviceClient.from("building_units").insert(rows);
+    for (const u of units) {
+      const key = `${u.floor}-${u.position}`;
+      let lotPropertyId: string | undefined = existingPropertyMap.get(key);
+
+      if (lotPropertyId) {
+        // Lot existant — mettre à jour la property
+        await serviceClient
+          .from("properties")
+          .update({
+            type: u.type,
+            surface: u.surface,
+            nb_pieces: u.nb_pieces,
+            loyer_hc: u.loyer_hc,
+            charges_mensuelles: u.charges,
+            adresse_complete: `${property.adresse_complete ?? ""} - Lot ${u.position}, ${floorLabel(u.floor)}`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", lotPropertyId);
+      } else {
+        // Nouveau lot — créer la property indépendante
+        let uniqueCode: string;
+        let attempts = 0;
+        do {
+          uniqueCode = await generateCode();
+          const { data: existing } = await serviceClient
+            .from("properties")
+            .select("id")
+            .eq("unique_code", uniqueCode)
+            .maybeSingle();
+          if (!existing) break;
+          attempts++;
+        } while (attempts < 10);
+
+        const isMeuble = u.type === "studio" || u.type === "local_commercial";
+        const lotAddress = `${property.adresse_complete ?? ""} - Lot ${u.position}, ${floorLabel(u.floor)}`;
+
+        const { data: lotProperty, error: lotErr } = await serviceClient
+          .from("properties")
+          .insert({
+            owner_id: property.owner_id,
+            legal_entity_id: (property as any).legal_entity_id ?? null,
+            type: u.type,
+            etat: "published",
+            unique_code: uniqueCode,
+            adresse_complete: lotAddress,
+            code_postal: property.code_postal ?? "",
+            ville: property.ville ?? "",
+            departement: property.departement ?? "",
+            surface: u.surface,
+            nb_pieces: u.nb_pieces,
+            nb_chambres: 0,
+            ascenseur: has_ascenseur ?? false,
+            meuble: isMeuble,
+            loyer_hc: u.loyer_hc,
+            charges_mensuelles: u.charges,
+          })
+          .select("id")
+          .single();
+
+        if (lotErr || !lotProperty) {
+          console.error(`[building-units] Erreur création property lot ${key}:`, lotErr);
+          return NextResponse.json(
+            { error: `Erreur lors de la création du lot ${u.position} (${floorLabel(u.floor)})` },
+            { status: 500 }
+          );
+        }
+        lotPropertyId = lotProperty.id;
+      }
+
+      unitRows.push({
+        building_id: buildingId,
+        floor: u.floor,
+        position: u.position,
+        type: u.type,
+        surface: u.surface,
+        nb_pieces: u.nb_pieces,
+        template: (u.template?.toLowerCase() ?? null) as BuildingUnitTemplate | null,
+        loyer_hc: u.loyer_hc,
+        charges: u.charges,
+        depot_garantie: u.depot_garantie,
+        status: u.status ?? "vacant",
+        property_id: lotPropertyId!,
+      });
+    }
+
+    // ─── 5. Insérer les building_units avec property_id ───────────────
+    const { error: unitsErr } = await serviceClient.from("building_units").insert(unitRows);
     if (unitsErr) {
       console.error("[building-units] Erreur insertion lots:", unitsErr);
       return NextResponse.json({ error: "Erreur lors de l'enregistrement des lots" }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, building_id: buildingId, count: rows.length });
+    return NextResponse.json({
+      success: true,
+      building_id: buildingId,
+      count: unitRows.length,
+      lot_property_ids: unitRows.map((r) => r.property_id),
+    });
   } catch (e) {
     console.error("[building-units]", e);
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
