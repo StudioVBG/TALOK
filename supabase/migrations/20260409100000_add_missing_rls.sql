@@ -110,5 +110,5 @@ CREATE POLICY "webhook_deliveries_owner_access"
 
 CREATE POLICY "webhook_deliveries_write_service_only"
   ON api_webhook_deliveries FOR INSERT
-  USING (false);
+  WITH CHECK (false);
 -- Deliveries are created by the system (service role), users can only read their own

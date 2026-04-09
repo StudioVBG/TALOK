@@ -3653,7 +3653,7 @@ DO $dp$ BEGIN DROP POLICY IF EXISTS "webhook_deliveries_write_service_only" ON a
 DO $cp$ BEGIN
 CREATE POLICY "webhook_deliveries_write_service_only"
   ON api_webhook_deliveries FOR INSERT
-  USING (false);
+  WITH CHECK (false);
 EXCEPTION WHEN undefined_table THEN NULL;
 END $cp$;
 -- Deliveries are created by the system (service role), users can only read their own
