@@ -1,6 +1,7 @@
 import type { Metadata, ResolvingMetadata } from "next";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { BuildingDetailClient } from "./BuildingDetailClient";
 
 interface PageProps {
@@ -12,9 +13,9 @@ export async function generateMetadata(
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
+  const serviceClient = getServiceClient();
 
-  const { data: building } = await supabase
+  const { data: building } = await serviceClient
     .from("properties")
     .select("adresse_complete, ville")
     .eq("id", id)
@@ -44,7 +45,10 @@ export default async function BuildingDetailPage({ params }: PageProps) {
     redirect("/auth/signin");
   }
 
-  const { data: profile } = await supabase
+  // Service client pour bypasser RLS (évite récursion user_profile_id())
+  const serviceClient = getServiceClient();
+
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)
@@ -54,8 +58,8 @@ export default async function BuildingDetailPage({ params }: PageProps) {
     redirect("/dashboard");
   }
 
-  // Fetch building with units
-  const { data: building, error } = await supabase
+  // Fetch building with units — adminClient avec vérification manuelle owner_id
+  const { data: building, error } = await serviceClient
     .from("properties")
     .select(`
       id,
@@ -80,7 +84,7 @@ export default async function BuildingDetailPage({ params }: PageProps) {
   }
 
   // Fetch building metadata
-  const { data: buildingMeta } = await supabase
+  const { data: buildingMeta } = await serviceClient
     .from("buildings")
     .select("*")
     .eq("property_id", id)
@@ -88,7 +92,7 @@ export default async function BuildingDetailPage({ params }: PageProps) {
 
   // Fetch units via building_id (pas property_id qui pointe vers le lot individuel)
   const units = buildingMeta?.id
-    ? (await supabase
+    ? (await serviceClient
         .from("building_units")
         .select(`
           id,

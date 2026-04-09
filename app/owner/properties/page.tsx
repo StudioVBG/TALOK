@@ -213,17 +213,19 @@ export default function OwnerPropertiesPage() {
     return filtered;
   }, [propertiesWithStatus, propertyTab, moduleFilter, typeFilter, statusFilter, debouncedSearchQuery]);
 
+  // Quota global : toujours basé sur le nombre total de biens facturables (hors immeubles parents)
+  // Le quota doit être identique sur les 2 tabs
+  const globalBillableCount = usage?.properties?.used ?? properties.filter((p: any) => p.type !== "immeuble").length;
   const hasScopedView = Boolean(
     moduleFilter ||
     debouncedSearchQuery ||
     typeFilter !== "all" ||
     statusFilter !== "all" ||
-    propertyTab === "immeubles" ||
     activeEntityId !== null
   );
   const propertyQuotaSummary = buildPropertyQuotaSummary({
-    visibleCount: filteredProperties.length,
-    totalCount: usage?.properties?.used ?? properties.filter((p: any) => p.type !== "immeuble").length,
+    visibleCount: propertyTab === "immeubles" ? globalBillableCount : filteredProperties.length,
+    totalCount: globalBillableCount,
     limit: currentPlanConfig.limits.max_properties,
     hasScopedView,
   });
