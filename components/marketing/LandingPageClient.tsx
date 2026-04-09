@@ -158,7 +158,7 @@ export function LandingPageClient({ images }: Props) {
           ]}
           badgeText="Pour qui ?"
           title={<>Une solution adoptée<br />par chaque profil</>}
-          description="Particuliers, investisseurs, SCI ou agences — de nombreux propriétaires font confiance à TALOK pour gérer leurs locations sereinement."
+          description="Particuliers, investisseurs, professionnels, agences — ils sont nombreux à faire confiance à TALOK pour gérer leurs locations sereinement."
           ctaText="Découvrir les offres"
           ctaHref="/pricing"
         />
