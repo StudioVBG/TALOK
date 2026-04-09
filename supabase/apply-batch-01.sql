@@ -162,6 +162,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_sms_messages_updated_at ON sms_messages;
+DROP TRIGGER IF EXISTS trg_sms_messages_updated_at ON sms_messages;
 CREATE TRIGGER trg_sms_messages_updated_at
   BEFORE UPDATE ON sms_messages
   FOR EACH ROW
@@ -561,6 +562,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_update_property_furnished ON leases;
 DROP TRIGGER IF EXISTS trg_update_property_furnished ON leases;
 CREATE TRIGGER trg_update_property_furnished
   AFTER INSERT ON leases
@@ -3447,6 +3449,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_prevent_duplicate_property ON properties;
+DROP TRIGGER IF EXISTS trg_prevent_duplicate_property ON properties;
 CREATE TRIGGER trg_prevent_duplicate_property
   BEFORE INSERT ON properties
   FOR EACH ROW
@@ -3477,6 +3480,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_prevent_duplicate_payment ON payments;
 DROP TRIGGER IF EXISTS trg_prevent_duplicate_payment ON payments;
 CREATE TRIGGER trg_prevent_duplicate_payment
   BEFORE INSERT ON payments
@@ -3585,6 +3589,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_email_templates_updated_at ON email_templates;
+DROP TRIGGER IF EXISTS trg_email_templates_updated_at ON email_templates;
 CREATE TRIGGER trg_email_templates_updated_at
   BEFORE UPDATE ON email_templates
   FOR EACH ROW
@@ -3605,6 +3610,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS trg_email_template_version ON email_templates;
 DROP TRIGGER IF EXISTS trg_email_template_version ON email_templates;
 CREATE TRIGGER trg_email_template_version
   BEFORE UPDATE ON email_templates

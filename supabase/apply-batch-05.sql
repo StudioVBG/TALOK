@@ -435,6 +435,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_invoice_on_lease_fully_signed ON leases;
+DROP TRIGGER IF EXISTS trg_invoice_on_lease_fully_signed ON leases;
 CREATE TRIGGER trg_invoice_on_lease_fully_signed
   BEFORE UPDATE ON leases
   FOR EACH ROW
@@ -631,6 +632,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS trigger_notify_tenant_digicode_changed ON properties;
+DROP TRIGGER IF EXISTS trigger_notify_tenant_digicode_changed ON properties;
 CREATE TRIGGER trigger_notify_tenant_digicode_changed
   AFTER UPDATE ON properties
   FOR EACH ROW
@@ -724,6 +726,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_sync_entity_status ON legal_entities;
 DROP TRIGGER IF EXISTS trg_sync_entity_status ON legal_entities;
 CREATE TRIGGER trg_sync_entity_status
   BEFORE INSERT OR UPDATE ON legal_entities
@@ -1842,6 +1845,7 @@ $$ LANGUAGE plpgsql;
 
 -- Mettre à jour le trigger pour écouter aussi les UPDATE (soft-delete/restore)
 DROP TRIGGER IF EXISTS trg_update_subscription_properties ON properties;
+DROP TRIGGER IF EXISTS trg_update_subscription_properties ON properties;
 CREATE TRIGGER trg_update_subscription_properties
   AFTER INSERT OR UPDATE OR DELETE ON properties
   FOR EACH ROW EXECUTE FUNCTION update_subscription_properties_count();
@@ -2113,6 +2117,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_sync_subscription_plan_slug ON subscriptions;
+DROP TRIGGER IF EXISTS trg_sync_subscription_plan_slug ON subscriptions;
 CREATE TRIGGER trg_sync_subscription_plan_slug
   BEFORE INSERT OR UPDATE ON subscriptions
   FOR EACH ROW EXECUTE FUNCTION sync_subscription_plan_slug();
@@ -2321,6 +2326,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Recreer le trigger
+DROP TRIGGER IF EXISTS trg_create_owner_subscription ON profiles;
 DROP TRIGGER IF EXISTS trg_create_owner_subscription ON profiles;
 CREATE TRIGGER trg_create_owner_subscription
   AFTER INSERT OR UPDATE OF role ON profiles
@@ -2888,6 +2894,7 @@ EXCEPTION WHEN undefined_table THEN NULL;
 END $cp$;
 
 DROP TRIGGER IF EXISTS update_stripe_payouts_updated_at ON public.stripe_payouts;
+DROP TRIGGER IF EXISTS update_stripe_payouts_updated_at ON public.stripe_payouts;
 CREATE TRIGGER update_stripe_payouts_updated_at
   BEFORE UPDATE ON public.stripe_payouts
   FOR EACH ROW
@@ -3087,6 +3094,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_password_reset_requests_updated_at ON password_reset_requests;
 DROP TRIGGER IF EXISTS trg_password_reset_requests_updated_at ON password_reset_requests;
 CREATE TRIGGER trg_password_reset_requests_updated_at
   BEFORE UPDATE ON password_reset_requests
@@ -4342,6 +4350,7 @@ $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_update_punctuality_score ON invoices;
 
+DROP TRIGGER IF EXISTS trg_update_punctuality_score ON invoices;
 CREATE TRIGGER trg_update_punctuality_score
   AFTER INSERT OR UPDATE OF statut, date_paiement ON invoices
   FOR EACH ROW
@@ -4441,6 +4450,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Trigger sur la table edl (UPDATE du statut)
 -- ============================================================================
 DROP TRIGGER IF EXISTS trigger_notify_owner_edl_signed ON edl;
+DROP TRIGGER IF EXISTS trigger_notify_owner_edl_signed ON edl;
 CREATE TRIGGER trigger_notify_owner_edl_signed
     AFTER UPDATE OF status ON edl
     FOR EACH ROW
@@ -4478,6 +4488,7 @@ $$ LANGUAGE plpgsql;
 -- ============================================================================
 -- 3. Trigger on documents table
 -- ============================================================================
+DROP TRIGGER IF EXISTS trg_force_visible_tenant_on_generated ON documents;
 DROP TRIGGER IF EXISTS trg_force_visible_tenant_on_generated ON documents;
 CREATE TRIGGER trg_force_visible_tenant_on_generated
     BEFORE INSERT OR UPDATE ON documents

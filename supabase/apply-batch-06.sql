@@ -586,6 +586,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS trg_auto_entity_member ON legal_entities;
+DROP TRIGGER IF EXISTS trg_auto_entity_member ON legal_entities;
 CREATE TRIGGER trg_auto_entity_member
   AFTER INSERT ON legal_entities
   FOR EACH ROW
@@ -602,6 +603,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_entity_members_updated_at ON entity_members;
 CREATE TRIGGER trg_entity_members_updated_at
   BEFORE UPDATE ON entity_members
   FOR EACH ROW
@@ -1455,6 +1457,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_entry_balance ON accounting_entries;
+DROP TRIGGER IF EXISTS trg_entry_balance ON accounting_entries;
 CREATE TRIGGER trg_entry_balance
   BEFORE UPDATE ON accounting_entries
   FOR EACH ROW
@@ -1479,6 +1482,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_locked_entry ON accounting_entries;
 DROP TRIGGER IF EXISTS trg_locked_entry ON accounting_entries;
 CREATE TRIGGER trg_locked_entry
   BEFORE UPDATE ON accounting_entries
@@ -1518,6 +1522,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_audit_entries ON accounting_entries;
 DROP TRIGGER IF EXISTS trg_audit_entries ON accounting_entries;
 CREATE TRIGGER trg_audit_entries
   AFTER INSERT OR UPDATE ON accounting_entries
@@ -2065,6 +2070,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_expenses_updated_at ON expenses;
 CREATE TRIGGER update_expenses_updated_at
   BEFORE UPDATE ON expenses
   FOR EACH ROW
@@ -2264,6 +2270,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS charge_regularisations_on_insert ON public.charge_regularisations;
 CREATE TRIGGER charge_regularisations_on_insert
   INSTEAD OF INSERT ON public.charge_regularisations
   FOR EACH ROW EXECUTE FUNCTION charge_regularisations_insert_redirect();
@@ -2293,6 +2300,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS charge_regularisations_on_update ON public.charge_regularisations;
 CREATE TRIGGER charge_regularisations_on_update
   INSTEAD OF UPDATE ON public.charge_regularisations
   FOR EACH ROW EXECUTE FUNCTION charge_regularisations_update_redirect();
@@ -2305,6 +2313,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS charge_regularisations_on_delete ON public.charge_regularisations;
 CREATE TRIGGER charge_regularisations_on_delete
   INSTEAD OF DELETE ON public.charge_regularisations
   FOR EACH ROW EXECUTE FUNCTION charge_regularisations_delete_redirect();
@@ -3159,10 +3168,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_coloc_rooms_updated_at ON colocation_rooms;
 CREATE TRIGGER trg_coloc_rooms_updated_at
   BEFORE UPDATE ON colocation_rooms
   FOR EACH ROW EXECUTE FUNCTION update_colocation_updated_at();
 
+DROP TRIGGER IF EXISTS trg_coloc_members_updated_at ON colocation_members;
 CREATE TRIGGER trg_coloc_members_updated_at
   BEFORE UPDATE ON colocation_members
   FOR EACH ROW EXECUTE FUNCTION update_colocation_updated_at();
@@ -3188,6 +3199,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_coloc_solidarity_end ON colocation_members;
 CREATE TRIGGER trg_coloc_solidarity_end
   BEFORE INSERT OR UPDATE ON colocation_members
   FOR EACH ROW EXECUTE FUNCTION auto_solidarity_end_date();
@@ -3569,6 +3581,7 @@ END $cp$;
 
 -- updated_at trigger
 DROP TRIGGER IF EXISTS trg_providers_updated_at ON providers;
+DROP TRIGGER IF EXISTS trg_providers_updated_at ON providers;
 CREATE TRIGGER trg_providers_updated_at
   BEFORE UPDATE ON providers
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -3834,6 +3847,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_update_provider_rating_from_reviews ON provider_reviews;
+DROP TRIGGER IF EXISTS trg_update_provider_rating_from_reviews ON provider_reviews;
 CREATE TRIGGER trg_update_provider_rating_from_reviews
   AFTER INSERT OR UPDATE ON provider_reviews
   FOR EACH ROW EXECUTE FUNCTION update_provider_rating_from_reviews();
@@ -3870,6 +3884,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_update_provider_intervention_count ON work_orders;
+DROP TRIGGER IF EXISTS trg_update_provider_intervention_count ON work_orders;
 CREATE TRIGGER trg_update_provider_intervention_count
   AFTER INSERT OR UPDATE OF status, statut OR DELETE ON work_orders
   FOR EACH ROW EXECUTE FUNCTION update_provider_intervention_count();
@@ -3890,6 +3905,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_validate_provider_siret ON providers;
 DROP TRIGGER IF EXISTS trg_validate_provider_siret ON providers;
 CREATE TRIGGER trg_validate_provider_siret
   BEFORE INSERT OR UPDATE OF siret ON providers
@@ -4192,6 +4208,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_property_meters_updated_at ON property_meters;
 CREATE TRIGGER trg_property_meters_updated_at
   BEFORE UPDATE ON property_meters
   FOR EACH ROW EXECUTE FUNCTION update_property_meters_updated_at();

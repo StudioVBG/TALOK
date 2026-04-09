@@ -1471,6 +1471,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS validate_lease_before_insert ON public.leases;
+DROP TRIGGER IF EXISTS validate_lease_before_insert ON public.leases;
 CREATE TRIGGER validate_lease_before_insert
   BEFORE INSERT ON public.leases
   FOR EACH ROW
@@ -1512,6 +1513,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS trigger_auto_link_on_profile_update ON public.profiles;
 DROP TRIGGER IF EXISTS trigger_auto_link_on_profile_update ON public.profiles;
 CREATE TRIGGER trigger_auto_link_on_profile_update
   AFTER UPDATE OF email ON public.profiles
@@ -1918,6 +1920,7 @@ Ne bloque jamais la modification auth (EXCEPTION handler).';
 -- ============================================
 DROP TRIGGER IF EXISTS on_auth_user_email_changed ON auth.users;
 
+DROP TRIGGER IF EXISTS on_auth_user_email_changed ON auth.users;
 CREATE TRIGGER on_auth_user_email_changed
   AFTER UPDATE OF email ON auth.users
   FOR EACH ROW
@@ -2076,6 +2079,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS trg_update_tenant_total_points ON tenant_rewards;
 DROP TRIGGER IF EXISTS trg_update_tenant_total_points ON tenant_rewards;
 CREATE TRIGGER trg_update_tenant_total_points
   AFTER INSERT ON tenant_rewards
@@ -2986,6 +2990,7 @@ COMMENT ON FUNCTION public.auto_link_signer_on_insert() IS
 -- ============================================
 DROP TRIGGER IF EXISTS trigger_auto_link_signer_on_insert ON public.lease_signers;
 
+DROP TRIGGER IF EXISTS trigger_auto_link_signer_on_insert ON public.lease_signers;
 CREATE TRIGGER trigger_auto_link_signer_on_insert
   BEFORE INSERT ON public.lease_signers
   FOR EACH ROW
@@ -3218,6 +3223,7 @@ COMMENT ON FUNCTION public.auto_link_lease_signers_on_profile_updated() IS
 
 DROP TRIGGER IF EXISTS trigger_auto_link_lease_signers_on_update ON public.profiles;
 
+DROP TRIGGER IF EXISTS trigger_auto_link_lease_signers_on_update ON public.profiles;
 CREATE TRIGGER trigger_auto_link_lease_signers_on_update
   AFTER UPDATE ON public.profiles
   FOR EACH ROW
@@ -3640,6 +3646,7 @@ COMMENT ON FUNCTION public.auto_upgrade_draft_lease_on_signer() IS
 -- ============================================
 DROP TRIGGER IF EXISTS trigger_auto_upgrade_draft_on_signer ON public.lease_signers;
 
+DROP TRIGGER IF EXISTS trigger_auto_upgrade_draft_on_signer ON public.lease_signers;
 CREATE TRIGGER trigger_auto_upgrade_draft_on_signer
   AFTER INSERT ON public.lease_signers
   FOR EACH ROW
@@ -3872,6 +3879,7 @@ COMMENT ON FUNCTION public.sync_edl_signer_to_lease_signer() IS
 -- ============================================
 DROP TRIGGER IF EXISTS trigger_sync_edl_signer_to_lease_signer ON public.edl_signatures;
 
+DROP TRIGGER IF EXISTS trigger_sync_edl_signer_to_lease_signer ON public.edl_signatures;
 CREATE TRIGGER trigger_sync_edl_signer_to_lease_signer
   AFTER INSERT ON public.edl_signatures
   FOR EACH ROW

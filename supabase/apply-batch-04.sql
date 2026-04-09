@@ -563,6 +563,7 @@ COMMENT ON FUNCTION public.auto_fill_document_fk() IS
 -- ============================================
 DROP TRIGGER IF EXISTS trigger_auto_fill_document_fk ON public.documents;
 
+DROP TRIGGER IF EXISTS trigger_auto_fill_document_fk ON public.documents;
 CREATE TRIGGER trigger_auto_fill_document_fk
   BEFORE INSERT OR UPDATE ON public.documents
   FOR EACH ROW
@@ -852,6 +853,7 @@ COMMENT ON FUNCTION public.notify_owner_on_tenant_document() IS
 -- ============================================
 DROP TRIGGER IF EXISTS trigger_notify_owner_on_tenant_document ON public.documents;
 
+DROP TRIGGER IF EXISTS trigger_notify_owner_on_tenant_document ON public.documents;
 CREATE TRIGGER trigger_notify_owner_on_tenant_document
   AFTER INSERT ON public.documents
   FOR EACH ROW
@@ -1002,6 +1004,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_auto_set_property_entity ON properties;
+DROP TRIGGER IF EXISTS trg_auto_set_property_entity ON properties;
 CREATE TRIGGER trg_auto_set_property_entity
   BEFORE INSERT ON properties
   FOR EACH ROW
@@ -1033,6 +1036,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_auto_set_lease_entity ON leases;
+DROP TRIGGER IF EXISTS trg_auto_set_lease_entity ON leases;
 CREATE TRIGGER trg_auto_set_lease_entity
   BEFORE INSERT ON leases
   FOR EACH ROW
@@ -1054,6 +1058,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_auto_set_invoice_entity ON invoices;
 DROP TRIGGER IF EXISTS trg_auto_set_invoice_entity ON invoices;
 CREATE TRIGGER trg_auto_set_invoice_entity
   BEFORE INSERT ON invoices
@@ -1206,6 +1211,7 @@ CREATE INDEX IF NOT EXISTS idx_conversations_property_id ON conversations(proper
 CREATE INDEX IF NOT EXISTS idx_conversations_status ON conversations(status);
 CREATE INDEX IF NOT EXISTS idx_conversations_last_message_at ON conversations(last_message_at DESC NULLS LAST);
 
+DROP TRIGGER IF EXISTS update_conversations_updated_at ON conversations;
 DROP TRIGGER IF EXISTS update_conversations_updated_at ON conversations;
 CREATE TRIGGER update_conversations_updated_at
   BEFORE UPDATE ON conversations
@@ -2395,6 +2401,7 @@ END;
 $$;
 
 DROP TRIGGER IF EXISTS trg_notify_tenant_document_center ON documents;
+DROP TRIGGER IF EXISTS trg_notify_tenant_document_center ON documents;
 CREATE TRIGGER trg_notify_tenant_document_center
   AFTER INSERT ON documents
   FOR EACH ROW
@@ -2512,6 +2519,7 @@ EXCEPTION WHEN undefined_table THEN NULL;
 END $cp$;
 
 -- Trigger updated_at
+DROP TRIGGER IF EXISTS update_tpm_updated_at ON tenant_payment_methods;
 CREATE TRIGGER update_tpm_updated_at
   BEFORE UPDATE ON tenant_payment_methods
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -2531,6 +2539,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_enforce_single_default_pm ON tenant_payment_methods;
 CREATE TRIGGER trg_enforce_single_default_pm
   AFTER INSERT OR UPDATE OF is_default ON tenant_payment_methods
   FOR EACH ROW
@@ -2626,6 +2635,7 @@ CREATE POLICY "sepa_admin_all" ON sepa_mandates
 EXCEPTION WHEN undefined_table THEN NULL;
 END $cp$;
 
+DROP TRIGGER IF EXISTS update_sepa_mandates_updated_at ON sepa_mandates;
 CREATE TRIGGER update_sepa_mandates_updated_at
   BEFORE UPDATE ON sepa_mandates
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -2711,6 +2721,7 @@ CREATE POLICY "ps_admin_all" ON payment_schedules
 EXCEPTION WHEN undefined_table THEN NULL;
 END $cp$;
 
+DROP TRIGGER IF EXISTS update_ps_updated_at ON payment_schedules;
 CREATE TRIGGER update_ps_updated_at
   BEFORE UPDATE ON payment_schedules
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -2784,6 +2795,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_invoice_amount_remaining ON invoices;
 DROP TRIGGER IF EXISTS trg_invoice_amount_remaining ON invoices;
 CREATE TRIGGER trg_invoice_amount_remaining
   BEFORE INSERT OR UPDATE OF montant_total, amount_paid ON invoices
@@ -3161,6 +3173,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS trg_propagate_entity_changes ON legal_entities;
+DROP TRIGGER IF EXISTS trg_propagate_entity_changes ON legal_entities;
 CREATE TRIGGER trg_propagate_entity_changes
   AFTER UPDATE ON legal_entities
   FOR EACH ROW
@@ -3256,6 +3269,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
+DROP TRIGGER IF EXISTS trg_log_entity_changes ON legal_entities;
 DROP TRIGGER IF EXISTS trg_log_entity_changes ON legal_entities;
 CREATE TRIGGER trg_log_entity_changes
   AFTER INSERT OR UPDATE OR DELETE ON legal_entities
@@ -3727,6 +3741,7 @@ END;
 $$;
 
 -- Créer le trigger
+DROP TRIGGER IF EXISTS trg_sync_jour_paiement ON leases;
 DROP TRIGGER IF EXISTS trg_sync_jour_paiement ON leases;
 CREATE TRIGGER trg_sync_jour_paiement
   AFTER UPDATE OF jour_paiement ON leases
@@ -4355,6 +4370,7 @@ END;
 $$;
 
 -- Installer le trigger (BEFORE UPDATE pour pouvoir modifier NEW)
+DROP TRIGGER IF EXISTS trg_invoice_engine_on_lease_active ON leases;
 DROP TRIGGER IF EXISTS trg_invoice_engine_on_lease_active ON leases;
 CREATE TRIGGER trg_invoice_engine_on_lease_active
   BEFORE UPDATE ON leases

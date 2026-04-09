@@ -91,6 +91,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_subscription_addons_updated_at ON subscription_addons;
 CREATE TRIGGER trg_subscription_addons_updated_at
   BEFORE UPDATE ON subscription_addons
   FOR EACH ROW
@@ -702,6 +703,7 @@ EXCEPTION WHEN undefined_table THEN NULL;
 END $cp$;
 
 -- Auto-update timestamp trigger
+DROP TRIGGER IF EXISTS set_active_sessions_updated_at ON active_sessions;
 CREATE TRIGGER set_active_sessions_updated_at
   BEFORE UPDATE ON active_sessions
   FOR EACH ROW
@@ -877,6 +879,7 @@ CREATE INDEX IF NOT EXISTS idx_support_tickets_assigned_to ON support_tickets(as
 CREATE INDEX IF NOT EXISTS idx_support_tickets_created_at ON support_tickets(created_at DESC);
 
 -- Trigger updated_at
+DROP TRIGGER IF EXISTS update_support_tickets_updated_at ON support_tickets;
 CREATE TRIGGER update_support_tickets_updated_at
   BEFORE UPDATE ON support_tickets
   FOR EACH ROW
@@ -1083,6 +1086,7 @@ EXCEPTION WHEN undefined_table THEN NULL;
 END $cp$;
 
 -- Trigger updated_at
+DROP TRIGGER IF EXISTS update_property_listings_updated_at ON property_listings;
 CREATE TRIGGER update_property_listings_updated_at
   BEFORE UPDATE ON property_listings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -1151,6 +1155,7 @@ EXCEPTION WHEN undefined_table THEN NULL;
 END $cp$;
 
 -- Trigger updated_at
+DROP TRIGGER IF EXISTS update_applications_updated_at ON applications;
 CREATE TRIGGER update_applications_updated_at
   BEFORE UPDATE ON applications
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -1200,6 +1205,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS applications_calculate_completeness ON applications;
 CREATE TRIGGER applications_calculate_completeness
   BEFORE INSERT OR UPDATE OF documents, applicant_phone, message ON applications
   FOR EACH ROW EXECUTE FUNCTION calculate_application_completeness();
@@ -1462,14 +1468,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_charge_categories_updated ON charge_categories;
 CREATE TRIGGER trg_charge_categories_updated
   BEFORE UPDATE ON charge_categories
   FOR EACH ROW EXECUTE FUNCTION update_charges_updated_at();
 
+DROP TRIGGER IF EXISTS trg_charge_entries_updated ON charge_entries;
 CREATE TRIGGER trg_charge_entries_updated
   BEFORE UPDATE ON charge_entries
   FOR EACH ROW EXECUTE FUNCTION update_charges_updated_at();
 
+DROP TRIGGER IF EXISTS trg_lease_charge_reg_updated ON lease_charge_regularizations;
 CREATE TRIGGER trg_lease_charge_reg_updated
   BEFORE UPDATE ON lease_charge_regularizations
   FOR EACH ROW EXECUTE FUNCTION update_charges_updated_at();
@@ -1595,6 +1604,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_property_diagnostics_updated_at ON property_diagnostics;
 CREATE TRIGGER trg_property_diagnostics_updated_at
   BEFORE UPDATE ON property_diagnostics
   FOR EACH ROW EXECUTE FUNCTION update_property_diagnostics_updated_at();
@@ -1927,6 +1937,7 @@ END;
 $$ language 'plpgsql';
 
 DROP TRIGGER IF EXISTS update_guarantor_invitations_updated_at ON guarantor_invitations;
+DROP TRIGGER IF EXISTS update_guarantor_invitations_updated_at ON guarantor_invitations;
 CREATE TRIGGER update_guarantor_invitations_updated_at
   BEFORE UPDATE ON guarantor_invitations
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -2179,6 +2190,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_insurance_updated_at ON insurance_policies;
+DROP TRIGGER IF EXISTS trg_insurance_updated_at ON insurance_policies;
 CREATE TRIGGER trg_insurance_updated_at
   BEFORE UPDATE ON insurance_policies
   FOR EACH ROW
@@ -2348,6 +2360,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_lease_amendments_updated_at ON lease_amendments;
 CREATE TRIGGER trg_lease_amendments_updated_at
   BEFORE UPDATE ON lease_amendments
   FOR EACH ROW
@@ -2651,10 +2664,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_seasonal_listings_updated_at ON seasonal_listings;
 CREATE TRIGGER trg_seasonal_listings_updated_at
   BEFORE UPDATE ON seasonal_listings
   FOR EACH ROW EXECUTE FUNCTION update_seasonal_updated_at();
 
+DROP TRIGGER IF EXISTS trg_reservations_updated_at ON reservations;
 CREATE TRIGGER trg_reservations_updated_at
   BEFORE UPDATE ON reservations
   FOR EACH ROW EXECUTE FUNCTION update_seasonal_updated_at();
@@ -2801,6 +2816,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS trg_create_security_deposit ON leases;
 DROP TRIGGER IF EXISTS trg_create_security_deposit ON leases;
 CREATE TRIGGER trg_create_security_deposit
   AFTER UPDATE ON leases
@@ -2959,6 +2975,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trigger_update_tickets_updated_at ON tickets;
+DROP TRIGGER IF EXISTS trigger_update_tickets_updated_at ON tickets;
 CREATE TRIGGER trigger_update_tickets_updated_at
   BEFORE UPDATE ON tickets
   FOR EACH ROW
@@ -3060,6 +3077,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trigger_update_notif_event_prefs ON notification_event_preferences;
 DROP TRIGGER IF EXISTS trigger_update_notif_event_prefs ON notification_event_preferences;
 CREATE TRIGGER trigger_update_notif_event_prefs
   BEFORE UPDATE ON notification_event_preferences

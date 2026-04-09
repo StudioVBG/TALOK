@@ -2805,6 +2805,7 @@ $$;
 
 -- Le trigger peut déjà exister, on le recrée proprement
 DROP TRIGGER IF EXISTS trg_documents_search_vector ON documents;
+DROP TRIGGER IF EXISTS trg_documents_search_vector ON documents;
 CREATE TRIGGER trg_documents_search_vector
   BEFORE INSERT OR UPDATE OF title, type, original_filename, metadata
   ON documents
@@ -3040,6 +3041,7 @@ END;
 $$;
 
 -- Recréer le trigger
+DROP TRIGGER IF EXISTS trg_notify_tenant_document_center ON documents;
 DROP TRIGGER IF EXISTS trg_notify_tenant_document_center ON documents;
 CREATE TRIGGER trg_notify_tenant_document_center
   AFTER INSERT ON documents
@@ -3319,6 +3321,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- ============================================
 DROP TRIGGER IF EXISTS trigger_auto_link_lease_signers ON public.profiles;
 
+DROP TRIGGER IF EXISTS trigger_auto_link_lease_signers ON public.profiles;
 CREATE TRIGGER trigger_auto_link_lease_signers
   AFTER INSERT ON public.profiles
   FOR EACH ROW
