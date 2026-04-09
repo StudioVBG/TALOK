@@ -10,10 +10,12 @@ import RadialOrbitalTimeline from "@/components/ui/radial-orbital-timeline"
 import type { TimelineItem } from "@/components/ui/radial-orbital-timeline"
 import { ArgumentsSection } from "@/components/landing/ArgumentsSection"
 import { Features } from "@/components/marketing/sections/Features"
+import { PropertyTypes } from "@/components/marketing/sections/PropertyTypes"
+import { Pricing } from "@/components/marketing/sections/Pricing"
+import { CompetitorComparison } from "@/components/marketing/sections/CompetitorComparison"
 import { Testimonials } from "@/components/marketing/sections/Testimonials"
 import { AnimatedTestimonialGrid } from "@/components/ui/testimonial-2"
 import { OutreMer } from "@/components/marketing/sections/OutreMer"
-
 import { FAQ } from "@/components/marketing/sections/FAQ"
 import { FinalCTA, StickyMobileCTA } from "@/components/marketing/sections/FinalCTA"
 
@@ -182,6 +184,9 @@ export function LandingPageClient({ images }: Props) {
         </section>
 
         <ArgumentsSection images={images} />
+        <PropertyTypes />
+        <Pricing />
+        <CompetitorComparison />
         <Testimonials />
         <OutreMer />
         <FAQ />
