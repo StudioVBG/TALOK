@@ -2110,7 +2110,7 @@ DO $ac$ BEGIN ALTER TABLE insurance_policies ADD CONSTRAINT chk_insurance_amount
 -- 7. New indexes
 CREATE INDEX IF NOT EXISTS idx_insurance_profile ON insurance_policies(profile_id);
 CREATE INDEX IF NOT EXISTS idx_insurance_property ON insurance_policies(property_id) WHERE property_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_insurance_expiry_active ON insurance_policies(end_date) WHERE end_date > now();
+CREATE INDEX IF NOT EXISTS idx_insurance_expiry_active ON insurance_policies(end_date) WHERE end_date IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_insurance_type ON insurance_policies(insurance_type);
 
 -- 8. RLS (drop old policies from tenant_rls if they exist, add new multi-role ones)
