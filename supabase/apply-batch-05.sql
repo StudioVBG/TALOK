@@ -3549,88 +3549,88 @@ file_size_limit = 52428800  -- 50 Mo
 WHERE id = 'documents';
 
 
--- === [109/169] 20260326022700_migrate_tenant_documents.sql ===
--- Migration: Unifier tenant_documents dans la table documents
--- Les CNI et autres pieces d'identite locataire sont dans tenant_documents
--- mais invisibles dans le systeme unifie. Cette migration les copie.
-
-DO $$
-DECLARE
-  migrated_count INT := 0;
-BEGIN
-  -- Verifier que tenant_documents existe
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.tables
-    WHERE table_name = 'tenant_documents'
-  ) THEN
-    RAISE NOTICE 'Table tenant_documents absente, rien a migrer';
-    RETURN;
-  END IF;
-
-  -- Copier les documents qui ne sont pas deja dans documents (par storage_path)
-  INSERT INTO documents (
-    type, category, title, original_filename,
-    tenant_id, owner_id,
-    storage_path, file_size, mime_type,
-    uploaded_by, is_generated, ged_status,
-    visible_tenant, verification_status,
-    metadata, created_at, updated_at
-  )
-  SELECT
-    CASE
-      WHEN td.document_type ILIKE '%recto%' OR td.document_type = 'cni_recto' THEN 'cni_recto'
-      WHEN td.document_type ILIKE '%verso%' OR td.document_type = 'cni_verso' THEN 'cni_verso'
-      WHEN td.document_type = 'passeport' THEN 'passeport'
-      WHEN td.document_type = 'titre_sejour' THEN 'titre_sejour'
-      WHEN td.document_type ILIKE '%identit%' THEN 'piece_identite'
-      ELSE COALESCE(td.document_type, 'autre')
-    END AS type,
-    'identite' AS category,
-    CASE
-      WHEN td.document_type ILIKE '%recto%' OR td.document_type = 'cni_recto'
-        THEN 'Carte d''identite (recto)'
-      WHEN td.document_type ILIKE '%verso%' OR td.document_type = 'cni_verso'
-        THEN 'Carte d''identite (verso)'
-      WHEN td.document_type = 'passeport' THEN 'Passeport'
-      WHEN td.document_type = 'titre_sejour' THEN 'Titre de sejour'
-      ELSE COALESCE(td.file_name, 'Document identite')
-    END AS title,
-    td.file_name AS original_filename,
-    td.tenant_profile_id AS tenant_id,
-    NULL AS owner_id,
-    td.file_path AS storage_path,
-    td.file_size,
-    td.mime_type,
-    td.uploaded_by,
-    false AS is_generated,
-    'active' AS ged_status,
-    true AS visible_tenant,
-    CASE WHEN td.is_valid = true THEN 'verified' ELSE 'pending' END AS verification_status,
-    jsonb_build_object(
-      'migrated_from', 'tenant_documents',
-      'original_id', td.id,
-      'ocr_confidence', td.ocr_confidence,
-      'extracted_data', td.extracted_data
-    ) AS metadata,
-    td.created_at,
-    COALESCE(td.updated_at, td.created_at)
-  FROM tenant_documents td
-  WHERE NOT EXISTS (
-    SELECT 1 FROM documents d
-    WHERE d.storage_path = td.file_path
-  )
-  AND td.file_path IS NOT NULL
-  AND td.file_path != '';
-
-  GET DIAGNOSTICS migrated_count = ROW_COUNT;
-
-  RAISE NOTICE 'Migration tenant_documents: % documents copies vers documents', migrated_count;
-
-  -- Le trigger auto_fill_document_fk completera owner_id et property_id
-  -- via lease_signers si disponible
-END $$;
-
-
+-- SKIP: -- === [109/169] 20260326022700_migrate_tenant_documents.sql ===
+-- SKIP: -- Migration: Unifier tenant_documents dans la table documents
+-- SKIP: -- Les CNI et autres pieces d'identite locataire sont dans tenant_documents
+-- SKIP: -- mais invisibles dans le systeme unifie. Cette migration les copie.
+-- SKIP: 
+-- SKIP: DO $$
+-- SKIP: DECLARE
+-- SKIP:   migrated_count INT := 0;
+-- SKIP: BEGIN
+-- SKIP:   -- Verifier que tenant_documents existe
+-- SKIP:   IF NOT EXISTS (
+-- SKIP:     SELECT 1 FROM information_schema.tables
+-- SKIP:     WHERE table_name = 'tenant_documents'
+-- SKIP:   ) THEN
+-- SKIP:     RAISE NOTICE 'Table tenant_documents absente, rien a migrer';
+-- SKIP:     RETURN;
+-- SKIP:   END IF;
+-- SKIP: 
+-- SKIP:   -- Copier les documents qui ne sont pas deja dans documents (par storage_path)
+-- SKIP:   INSERT INTO documents (
+-- SKIP:     type, category, title, original_filename,
+-- SKIP:     tenant_id, owner_id,
+-- SKIP:     storage_path, file_size, mime_type,
+-- SKIP:     uploaded_by, is_generated, ged_status,
+-- SKIP:     visible_tenant, verification_status,
+-- SKIP:     metadata, created_at, updated_at
+-- SKIP:   )
+-- SKIP:   SELECT
+-- SKIP:     CASE
+-- SKIP:       WHEN td.document_type ILIKE '%recto%' OR td.document_type = 'cni_recto' THEN 'cni_recto'
+-- SKIP:       WHEN td.document_type ILIKE '%verso%' OR td.document_type = 'cni_verso' THEN 'cni_verso'
+-- SKIP:       WHEN td.document_type = 'passeport' THEN 'passeport'
+-- SKIP:       WHEN td.document_type = 'titre_sejour' THEN 'titre_sejour'
+-- SKIP:       WHEN td.document_type ILIKE '%identit%' THEN 'piece_identite'
+-- SKIP:       ELSE COALESCE(td.document_type, 'autre')
+-- SKIP:     END AS type,
+-- SKIP:     'identite' AS category,
+-- SKIP:     CASE
+-- SKIP:       WHEN td.document_type ILIKE '%recto%' OR td.document_type = 'cni_recto'
+-- SKIP:         THEN 'Carte d''identite (recto)'
+-- SKIP:       WHEN td.document_type ILIKE '%verso%' OR td.document_type = 'cni_verso'
+-- SKIP:         THEN 'Carte d''identite (verso)'
+-- SKIP:       WHEN td.document_type = 'passeport' THEN 'Passeport'
+-- SKIP:       WHEN td.document_type = 'titre_sejour' THEN 'Titre de sejour'
+-- SKIP:       ELSE COALESCE(td.file_name, 'Document identite')
+-- SKIP:     END AS title,
+-- SKIP:     td.file_name AS original_filename,
+-- SKIP:     td.tenant_profile_id AS tenant_id,
+-- SKIP:     NULL AS owner_id,
+-- SKIP:     td.file_path AS storage_path,
+-- SKIP:     td.file_size,
+-- SKIP:     td.mime_type,
+-- SKIP:     td.uploaded_by,
+-- SKIP:     false AS is_generated,
+-- SKIP:     'active' AS ged_status,
+-- SKIP:     true AS visible_tenant,
+-- SKIP:     CASE WHEN td.is_valid = true THEN 'verified' ELSE 'pending' END AS verification_status,
+-- SKIP:     jsonb_build_object(
+-- SKIP:       'migrated_from', 'tenant_documents',
+-- SKIP:       'original_id', td.id,
+-- SKIP:       'ocr_confidence', td.ocr_confidence,
+-- SKIP:       'extracted_data', td.extracted_data
+-- SKIP:     ) AS metadata,
+-- SKIP:     td.created_at,
+-- SKIP:     COALESCE(td.updated_at, td.created_at)
+-- SKIP:   FROM tenant_documents td
+-- SKIP:   WHERE NOT EXISTS (
+-- SKIP:     SELECT 1 FROM documents d
+-- SKIP:     WHERE d.storage_path = td.file_path
+-- SKIP:   )
+-- SKIP:   AND td.file_path IS NOT NULL
+-- SKIP:   AND td.file_path != '';
+-- SKIP: 
+-- SKIP:   GET DIAGNOSTICS migrated_count = ROW_COUNT;
+-- SKIP: 
+-- SKIP:   RAISE NOTICE 'Migration tenant_documents: % documents copies vers documents', migrated_count;
+-- SKIP: 
+-- SKIP:   -- Le trigger auto_fill_document_fk completera owner_id et property_id
+-- SKIP:   -- via lease_signers si disponible
+-- SKIP: END $$;
+-- SKIP: 
+-- SKIP: 
 -- === [110/169] 20260326022800_create_document_links.sql ===
 -- Table document_links: liens de partage temporaires
 -- Utilisee par POST /api/documents/[id]/download et /api/documents/[id]/copy-link

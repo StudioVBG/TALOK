@@ -1903,236 +1903,236 @@ EXCEPTION WHEN undefined_table THEN NULL;
 END $cp$;
 
 
--- === [56/169] 20260225000001_fix_furniture_vetusty_rls.sql ===
--- ============================================================================
--- P0-4: Correction RLS vétusté et mobilier
--- properties.owner_id et lease_signers.profile_id sont des profiles.id,
--- alors que auth.uid() renvoie auth.users.id. Il faut joindre profiles
--- et comparer pr.user_id = auth.uid().
--- ============================================================================
-
--- ----------------------------------------------------------------------------
--- 1. furniture_inventories
--- ----------------------------------------------------------------------------
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_inventories_owner_policy ON furniture_inventories; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_inventories_owner_policy ON furniture_inventories; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY furniture_inventories_owner_policy ON furniture_inventories
-  FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM leases l
-      JOIN properties p ON l.property_id = p.id
-      JOIN profiles pr ON pr.id = p.owner_id
-      WHERE l.id = furniture_inventories.lease_id
-      AND pr.user_id = auth.uid()
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_inventories_tenant_policy ON furniture_inventories; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_inventories_tenant_policy ON furniture_inventories; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY furniture_inventories_tenant_policy ON furniture_inventories
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM leases l
-      JOIN lease_signers ls ON ls.lease_id = l.id
-      JOIN profiles pr ON pr.id = ls.profile_id
-      WHERE l.id = furniture_inventories.lease_id
-      AND pr.user_id = auth.uid()
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
--- ----------------------------------------------------------------------------
--- 2. furniture_items
--- ----------------------------------------------------------------------------
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_items_owner_policy ON furniture_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_items_owner_policy ON furniture_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY furniture_items_owner_policy ON furniture_items
-  FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM furniture_inventories fi
-      JOIN leases l ON fi.lease_id = l.id
-      JOIN properties p ON l.property_id = p.id
-      JOIN profiles pr ON pr.id = p.owner_id
-      WHERE fi.id = furniture_items.inventory_id
-      AND pr.user_id = auth.uid()
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_items_tenant_policy ON furniture_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_items_tenant_policy ON furniture_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY furniture_items_tenant_policy ON furniture_items
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM furniture_inventories fi
-      JOIN leases l ON fi.lease_id = l.id
-      JOIN lease_signers ls ON ls.lease_id = l.id
-      JOIN profiles pr ON pr.id = ls.profile_id
-      WHERE fi.id = furniture_items.inventory_id
-      AND pr.user_id = auth.uid()
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
--- ----------------------------------------------------------------------------
--- 3. vetusty_reports
--- ----------------------------------------------------------------------------
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_select_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_select_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY "vetusty_reports_select_policy" ON vetusty_reports
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM leases l
-      JOIN properties p ON l.property_id = p.id
-      JOIN profiles pr_owner ON pr_owner.id = p.owner_id
-      WHERE l.id = vetusty_reports.lease_id
-      AND (
-        pr_owner.user_id = auth.uid()
-        OR EXISTS (
-          SELECT 1 FROM lease_signers ls
-          JOIN profiles pr ON pr.id = ls.profile_id
-          WHERE ls.lease_id = l.id
-          AND pr.user_id = auth.uid()
-        )
-      )
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_insert_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_insert_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY "vetusty_reports_insert_policy" ON vetusty_reports
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM leases l
-      JOIN properties p ON l.property_id = p.id
-      JOIN profiles pr ON pr.id = p.owner_id
-      WHERE l.id = vetusty_reports.lease_id
-      AND pr.user_id = auth.uid()
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_update_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_update_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY "vetusty_reports_update_policy" ON vetusty_reports
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM leases l
-      JOIN properties p ON l.property_id = p.id
-      JOIN profiles pr ON pr.id = p.owner_id
-      WHERE l.id = vetusty_reports.lease_id
-      AND pr.user_id = auth.uid()
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
--- ----------------------------------------------------------------------------
--- 4. vetusty_items
--- ----------------------------------------------------------------------------
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_select_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_select_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY "vetusty_items_select_policy" ON vetusty_items
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM vetusty_reports vr
-      JOIN leases l ON vr.lease_id = l.id
-      JOIN properties p ON l.property_id = p.id
-      JOIN profiles pr_owner ON pr_owner.id = p.owner_id
-      WHERE vr.id = vetusty_items.report_id
-      AND (
-        pr_owner.user_id = auth.uid()
-        OR EXISTS (
-          SELECT 1 FROM lease_signers ls
-          JOIN profiles pr ON pr.id = ls.profile_id
-          WHERE ls.lease_id = l.id
-          AND pr.user_id = auth.uid()
-        )
-      )
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_insert_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_insert_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY "vetusty_items_insert_policy" ON vetusty_items
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM vetusty_reports vr
-      JOIN leases l ON vr.lease_id = l.id
-      JOIN properties p ON l.property_id = p.id
-      JOIN profiles pr ON pr.id = p.owner_id
-      WHERE vr.id = vetusty_items.report_id
-      AND pr.user_id = auth.uid()
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_update_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_update_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY "vetusty_items_update_policy" ON vetusty_items
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM vetusty_reports vr
-      JOIN leases l ON vr.lease_id = l.id
-      JOIN properties p ON l.property_id = p.id
-      JOIN profiles pr ON pr.id = p.owner_id
-      WHERE vr.id = vetusty_items.report_id
-      AND pr.user_id = auth.uid()
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_delete_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_delete_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY "vetusty_items_delete_policy" ON vetusty_items
-  FOR DELETE USING (
-    EXISTS (
-      SELECT 1 FROM vetusty_reports vr
-      JOIN leases l ON vr.lease_id = l.id
-      JOIN properties p ON l.property_id = p.id
-      JOIN profiles pr ON pr.id = p.owner_id
-      WHERE vr.id = vetusty_items.report_id
-      AND pr.user_id = auth.uid()
-      AND vr.status = 'draft'
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
--- vetusty_grid_versions reste en lecture publique (USING (true)), pas de modification.
-
-
+-- SKIP: -- === [56/169] 20260225000001_fix_furniture_vetusty_rls.sql ===
+-- SKIP: -- ============================================================================
+-- SKIP: -- P0-4: Correction RLS vétusté et mobilier
+-- SKIP: -- properties.owner_id et lease_signers.profile_id sont des profiles.id,
+-- SKIP: -- alors que auth.uid() renvoie auth.users.id. Il faut joindre profiles
+-- SKIP: -- et comparer pr.user_id = auth.uid().
+-- SKIP: -- ============================================================================
+-- SKIP: 
+-- SKIP: -- ----------------------------------------------------------------------------
+-- SKIP: -- 1. furniture_inventories
+-- SKIP: -- ----------------------------------------------------------------------------
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_inventories_owner_policy ON furniture_inventories; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_inventories_owner_policy ON furniture_inventories; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY furniture_inventories_owner_policy ON furniture_inventories
+-- SKIP:   FOR ALL
+-- SKIP:   USING (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1 FROM leases l
+-- SKIP:       JOIN properties p ON l.property_id = p.id
+-- SKIP:       JOIN profiles pr ON pr.id = p.owner_id
+-- SKIP:       WHERE l.id = furniture_inventories.lease_id
+-- SKIP:       AND pr.user_id = auth.uid()
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_inventories_tenant_policy ON furniture_inventories; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_inventories_tenant_policy ON furniture_inventories; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY furniture_inventories_tenant_policy ON furniture_inventories
+-- SKIP:   FOR SELECT
+-- SKIP:   USING (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1 FROM leases l
+-- SKIP:       JOIN lease_signers ls ON ls.lease_id = l.id
+-- SKIP:       JOIN profiles pr ON pr.id = ls.profile_id
+-- SKIP:       WHERE l.id = furniture_inventories.lease_id
+-- SKIP:       AND pr.user_id = auth.uid()
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: -- ----------------------------------------------------------------------------
+-- SKIP: -- 2. furniture_items
+-- SKIP: -- ----------------------------------------------------------------------------
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_items_owner_policy ON furniture_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_items_owner_policy ON furniture_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY furniture_items_owner_policy ON furniture_items
+-- SKIP:   FOR ALL
+-- SKIP:   USING (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1 FROM furniture_inventories fi
+-- SKIP:       JOIN leases l ON fi.lease_id = l.id
+-- SKIP:       JOIN properties p ON l.property_id = p.id
+-- SKIP:       JOIN profiles pr ON pr.id = p.owner_id
+-- SKIP:       WHERE fi.id = furniture_items.inventory_id
+-- SKIP:       AND pr.user_id = auth.uid()
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_items_tenant_policy ON furniture_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_items_tenant_policy ON furniture_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY furniture_items_tenant_policy ON furniture_items
+-- SKIP:   FOR SELECT
+-- SKIP:   USING (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1 FROM furniture_inventories fi
+-- SKIP:       JOIN leases l ON fi.lease_id = l.id
+-- SKIP:       JOIN lease_signers ls ON ls.lease_id = l.id
+-- SKIP:       JOIN profiles pr ON pr.id = ls.profile_id
+-- SKIP:       WHERE fi.id = furniture_items.inventory_id
+-- SKIP:       AND pr.user_id = auth.uid()
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: -- ----------------------------------------------------------------------------
+-- SKIP: -- 3. vetusty_reports
+-- SKIP: -- ----------------------------------------------------------------------------
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_select_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_select_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "vetusty_reports_select_policy" ON vetusty_reports
+-- SKIP:   FOR SELECT USING (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1 FROM leases l
+-- SKIP:       JOIN properties p ON l.property_id = p.id
+-- SKIP:       JOIN profiles pr_owner ON pr_owner.id = p.owner_id
+-- SKIP:       WHERE l.id = vetusty_reports.lease_id
+-- SKIP:       AND (
+-- SKIP:         pr_owner.user_id = auth.uid()
+-- SKIP:         OR EXISTS (
+-- SKIP:           SELECT 1 FROM lease_signers ls
+-- SKIP:           JOIN profiles pr ON pr.id = ls.profile_id
+-- SKIP:           WHERE ls.lease_id = l.id
+-- SKIP:           AND pr.user_id = auth.uid()
+-- SKIP:         )
+-- SKIP:       )
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_insert_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_insert_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "vetusty_reports_insert_policy" ON vetusty_reports
+-- SKIP:   FOR INSERT WITH CHECK (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1 FROM leases l
+-- SKIP:       JOIN properties p ON l.property_id = p.id
+-- SKIP:       JOIN profiles pr ON pr.id = p.owner_id
+-- SKIP:       WHERE l.id = vetusty_reports.lease_id
+-- SKIP:       AND pr.user_id = auth.uid()
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_update_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_update_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "vetusty_reports_update_policy" ON vetusty_reports
+-- SKIP:   FOR UPDATE USING (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1 FROM leases l
+-- SKIP:       JOIN properties p ON l.property_id = p.id
+-- SKIP:       JOIN profiles pr ON pr.id = p.owner_id
+-- SKIP:       WHERE l.id = vetusty_reports.lease_id
+-- SKIP:       AND pr.user_id = auth.uid()
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: -- ----------------------------------------------------------------------------
+-- SKIP: -- 4. vetusty_items
+-- SKIP: -- ----------------------------------------------------------------------------
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_select_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_select_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "vetusty_items_select_policy" ON vetusty_items
+-- SKIP:   FOR SELECT USING (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1 FROM vetusty_reports vr
+-- SKIP:       JOIN leases l ON vr.lease_id = l.id
+-- SKIP:       JOIN properties p ON l.property_id = p.id
+-- SKIP:       JOIN profiles pr_owner ON pr_owner.id = p.owner_id
+-- SKIP:       WHERE vr.id = vetusty_items.report_id
+-- SKIP:       AND (
+-- SKIP:         pr_owner.user_id = auth.uid()
+-- SKIP:         OR EXISTS (
+-- SKIP:           SELECT 1 FROM lease_signers ls
+-- SKIP:           JOIN profiles pr ON pr.id = ls.profile_id
+-- SKIP:           WHERE ls.lease_id = l.id
+-- SKIP:           AND pr.user_id = auth.uid()
+-- SKIP:         )
+-- SKIP:       )
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_insert_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_insert_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "vetusty_items_insert_policy" ON vetusty_items
+-- SKIP:   FOR INSERT WITH CHECK (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1 FROM vetusty_reports vr
+-- SKIP:       JOIN leases l ON vr.lease_id = l.id
+-- SKIP:       JOIN properties p ON l.property_id = p.id
+-- SKIP:       JOIN profiles pr ON pr.id = p.owner_id
+-- SKIP:       WHERE vr.id = vetusty_items.report_id
+-- SKIP:       AND pr.user_id = auth.uid()
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_update_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_update_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "vetusty_items_update_policy" ON vetusty_items
+-- SKIP:   FOR UPDATE USING (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1 FROM vetusty_reports vr
+-- SKIP:       JOIN leases l ON vr.lease_id = l.id
+-- SKIP:       JOIN properties p ON l.property_id = p.id
+-- SKIP:       JOIN profiles pr ON pr.id = p.owner_id
+-- SKIP:       WHERE vr.id = vetusty_items.report_id
+-- SKIP:       AND pr.user_id = auth.uid()
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_delete_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_delete_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "vetusty_items_delete_policy" ON vetusty_items
+-- SKIP:   FOR DELETE USING (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1 FROM vetusty_reports vr
+-- SKIP:       JOIN leases l ON vr.lease_id = l.id
+-- SKIP:       JOIN properties p ON l.property_id = p.id
+-- SKIP:       JOIN profiles pr ON pr.id = p.owner_id
+-- SKIP:       WHERE vr.id = vetusty_items.report_id
+-- SKIP:       AND pr.user_id = auth.uid()
+-- SKIP:       AND vr.status = 'draft'
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: -- vetusty_grid_versions reste en lecture publique (USING (true)), pas de modification.
+-- SKIP: 
+-- SKIP: 
 -- === [57/169] 20260225100000_autolink_backfill_invoices_on_profile.sql ===
 -- =====================================================
 -- MIGRATION: Backfill invoices.tenant_id dans l'auto-link profil
