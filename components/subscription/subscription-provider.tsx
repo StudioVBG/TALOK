@@ -114,47 +114,32 @@ export function SubscriptionProvider({
         return;
       }
 
-      // Récupérer le profile_id d'abord (maybeSingle pour éviter 406 si profil absent)
-      let profile: { id: string } | null = null;
-      const { data: profileData, error: profileError } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+      // ============================================
+      // API-FIRST: Toutes les requêtes passent par les API routes
+      // qui utilisent le service-role (bypass RLS → zéro récursion 42P17)
+      // ============================================
 
-      if (profileError) {
-        // Si erreur de récursion RLS ou erreur 500, utiliser le cache React Query ou la route API en fallback
-        const isRlsError = profileError.code === '42P17' || profileError.message?.includes('infinite recursion') || profileError.message?.includes('500');
-        if (isRlsError) {
-          console.warn("[SubscriptionProvider] RLS recursion detected, using cache/API fallback");
-          // Essayer d'abord le cache React Query (évite un appel réseau)
-          const cached = queryClient.getQueryData<{ id: string }>(PROFILE_QUERY_KEY);
-          if (cached?.id) {
-            profile = { id: cached.id };
-          } else {
-            try {
-              const response = await fetch("/api/me/profile", { credentials: "include" });
-              if (response.ok) {
-                const apiProfile = await response.json();
-                profile = { id: apiProfile.id };
-                // Peupler le cache pour les autres consommateurs
-                queryClient.setQueryData(PROFILE_QUERY_KEY, apiProfile);
-              } else {
-                console.warn("[SubscriptionProvider] Profile API fallback returned", response.status);
-              }
-            } catch (apiError) {
-              console.warn("[SubscriptionProvider] Profile API fallback network error");
-            }
-          }
-        } else {
-          console.error("[SubscriptionProvider] Profile query error:", profileError.code, profileError.message);
-        }
+      // 1. Récupérer le profil via API (service-role, pas de RLS)
+      let profile: { id: string } | null = null;
+
+      // Essayer le cache React Query d'abord (évite un appel réseau)
+      const cached = queryClient.getQueryData<{ id: string }>(PROFILE_QUERY_KEY);
+      if (cached?.id) {
+        profile = { id: cached.id };
       } else {
-        profile = profileData;
+        try {
+          const profileRes = await fetch("/api/me/profile", { credentials: "include" });
+          if (profileRes.ok) {
+            const apiProfile = await profileRes.json();
+            profile = { id: apiProfile.id };
+            queryClient.setQueryData(PROFILE_QUERY_KEY, apiProfile);
+          }
+        } catch {
+          // Network error - continue without profile
+        }
       }
 
       if (!profile) {
-        // Pas de profil = pas d'abonnement
         setSubscription(null);
         setUsage(null);
         setUsagePlanSlug(null);
@@ -162,35 +147,16 @@ export function SubscriptionProvider({
         return;
       }
 
-      // Fetch subscription via owner_id (schéma existant)
+      // 2. Récupérer la subscription via API (service-role, pas de RLS)
       let sub: any = null;
-      const { data: subData, error: subError } = await supabase
-        .from("subscriptions")
-        .select("*")
-        .eq("owner_id", profile.id)
-        .maybeSingle();
-
-      if (subError) {
-        // Si erreur de récursion RLS sur subscriptions, utiliser l'API en fallback
-        if (subError.code === '42P17' || subError.message?.includes('infinite recursion') || subError.message?.includes('500')) {
-          console.warn("[SubscriptionProvider] RLS recursion on subscriptions, using API fallback");
-          try {
-            const response = await fetch("/api/subscriptions/current", { credentials: "include" });
-            if (response.ok) {
-              const apiData = await response.json();
-              sub = apiData.subscription;
-            } else {
-              // API fallback a aussi échoué - on continue avec sub = null (plan gratuit)
-              console.warn("[SubscriptionProvider] API fallback returned", response.status, "- defaulting to free plan");
-            }
-          } catch (apiError) {
-            console.warn("[SubscriptionProvider] API fallback network error - defaulting to free plan");
-          }
-        } else if (subError.code !== "PGRST116") {
-          console.error("[SubscriptionProvider] Error fetching subscription:", subError);
+      try {
+        const subRes = await fetch("/api/subscriptions/current", { credentials: "include" });
+        if (subRes.ok) {
+          const apiData = await subRes.json();
+          sub = apiData.subscription;
         }
-      } else {
-        sub = subData;
+      } catch {
+        // Network error - continue with sub = null (plan gratuit)
       }
 
       // Trial expiré ? Marquer côté client et fire-and-forget update BDD
@@ -203,7 +169,7 @@ export function SubscriptionProvider({
           .then(() => {});
       }
 
-      // Si subscription existe, récupérer le plan séparément
+      // Si subscription existe, construire SubscriptionWithPlan
       let subscriptionWithPlan: SubscriptionWithPlan | null = null;
       if (sub) {
         // Si le plan a déjà été résolu par l'API (join), l'utiliser directement
@@ -216,40 +182,6 @@ export function SubscriptionProvider({
             max_documents_gb: sub.plan.max_documents_gb,
           }
         } : null;
-
-        const planFields = "name, price_monthly, price_yearly, max_properties, max_leases, max_tenants, max_documents_gb, features, slug";
-        const toPlan = (data: any) => data ? {
-          ...data,
-          limits: {
-            max_properties: data.max_properties,
-            max_leases: data.max_leases,
-            max_tenants: data.max_tenants,
-            max_documents_gb: data.max_documents_gb,
-          }
-        } : null;
-
-        // 1. Essayer plan_slug d'abord (si plan pas déjà résolu par l'API)
-        if (!plan && sub.plan_slug) {
-          const { data } = await supabase
-            .from("subscription_plans")
-            .select(planFields)
-            .eq("slug", sub.plan_slug)
-            .maybeSingle();
-          plan = toPlan(data);
-        }
-
-        // 2. Fallback sur plan_id si plan_slug absent ou non trouvé
-        if (!plan && sub.plan_id) {
-          const { data } = await supabase
-            .from("subscription_plans")
-            .select(planFields)
-            .eq("id", sub.plan_id)
-            .maybeSingle();
-          plan = toPlan(data);
-          if (plan && !sub.plan_slug) {
-            console.warn(`[SubscriptionProvider] plan_slug manquant, résolu via plan_id: ${plan.slug}`);
-          }
-        }
 
         // Un client avec un abonnement actif ne doit jamais être traité comme gratuit
         const isEntitled = ["active", "trialing", "past_due"].includes(sub.status);
@@ -266,7 +198,7 @@ export function SubscriptionProvider({
 
       setSubscription(subscriptionWithPlan);
 
-      // Fetch usage from API (non-bloquant)
+      // 3. Fetch usage from API (non-bloquant)
       try {
         const usageRes = await fetch("/api/subscriptions/usage");
         if (usageRes.ok) {
