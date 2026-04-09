@@ -1,352 +1,5 @@
--- Batch 4 — migrations 39 a 70 sur 169
--- 32 migrations
-
--- === [39/169] 20260221300000_fix_tenant_dashboard_owner_join.sql ===
--- ============================================================================
--- MIGRATION: Fix tenant_dashboard — LEFT JOIN sur owner_prof + adresse_complete
--- Date: 2026-02-21
---
--- PROBLÈMES CORRIGÉS:
---   1. INNER JOIN sur profiles owner_prof exclut silencieusement les baux
---      si owner_id est NULL ou si le profil propriétaire n'existe pas.
---      → Changé en LEFT JOIN pour que les baux soient toujours retournés.
---
---   2. COALESCE(p.adresse_complete, 'Adresse à compléter') est inutile car
---      le frontend gère maintenant les adresses NULL/incomplètes.
---      → Remplacé par COALESCE pour retourner une chaîne vide au lieu d'un
---      placeholder qui causait des faux négatifs.
--- ============================================================================
-
-CREATE OR REPLACE FUNCTION tenant_dashboard(p_tenant_user_id UUID)
-RETURNS JSONB
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  v_profile_id UUID;
-  v_user_email TEXT;
-  v_tenant_data JSONB;
-  v_leases JSONB;
-  v_invoices JSONB;
-  v_tickets JSONB;
-  v_notifications JSONB;
-  v_pending_edls JSONB;
-  v_insurance_status JSONB;
-  v_stats JSONB;
-  v_kyc_status TEXT := 'pending';
-  v_result JSONB;
-BEGIN
-  -- 1. Récupérer l'ID du profil ET l'email de l'utilisateur
-  SELECT p.id, u.email,
-         jsonb_build_object(
-           'id', p.id,
-           'prenom', p.prenom,
-           'nom', p.nom,
-           'email', u.email,
-           'telephone', p.telephone,
-           'avatar_url', p.avatar_url
-         )
-  INTO v_profile_id, v_user_email, v_tenant_data
-  FROM profiles p
-  JOIN auth.users u ON u.id = p.user_id
-  WHERE p.user_id = p_tenant_user_id AND p.role = 'tenant';
-
-  IF v_profile_id IS NULL THEN
-    RAISE NOTICE '[tenant_dashboard] Aucun profil trouvé pour user_id: %', p_tenant_user_id;
-    RETURN NULL;
-  END IF;
-
-  RAISE NOTICE '[tenant_dashboard] Profil trouvé: %, email: %', v_profile_id, v_user_email;
-
-  -- 2. Récupérer TOUS les baux avec données techniques enrichies + clés + compteurs
-  --    ✅ FIX: LEFT JOIN sur owner_prof pour ne pas perdre les baux si le propriétaire manque
-  --    ✅ FIX: Inclure 'draft' pour que le locataire voie le bail dès qu'il est invité
-  SELECT jsonb_agg(lease_data ORDER BY lease_data->>'statut' = 'active' DESC, lease_data->>'created_at' DESC)
-  INTO v_leases
-  FROM (
-    SELECT
-      jsonb_build_object(
-        'id', l.id,
-        'type_bail', l.type_bail,
-        'statut', l.statut,
-        'loyer', l.loyer,
-        'charges_forfaitaires', l.charges_forfaitaires,
-        'depot_de_garantie', l.depot_de_garantie,
-        'date_debut', l.date_debut,
-        'date_fin', l.date_fin,
-        'created_at', l.created_at,
-        -- Signataires complets avec profils + invited fallback
-        'signers', (
-          SELECT COALESCE(jsonb_agg(
-            jsonb_build_object(
-              'id', ls2.id,
-              'profile_id', ls2.profile_id,
-              'role', ls2.role,
-              'signature_status', ls2.signature_status,
-              'signed_at', ls2.signed_at,
-              'invited_name', ls2.invited_name,
-              'invited_email', ls2.invited_email,
-              'prenom', COALESCE(p_sig.prenom, SPLIT_PART(COALESCE(ls2.invited_name, ''), ' ', 1)),
-              'nom', COALESCE(p_sig.nom, NULLIF(SPLIT_PART(COALESCE(ls2.invited_name, ''), ' ', 2), '')),
-              'avatar_url', p_sig.avatar_url
-            )
-          ), '[]'::jsonb)
-          FROM lease_signers ls2
-          LEFT JOIN profiles p_sig ON p_sig.id = ls2.profile_id
-          WHERE ls2.lease_id = l.id
-        ),
-        -- Propriété avec champs techniques complets
-        'property', jsonb_build_object(
-          'id', p.id,
-          'owner_id', p.owner_id,
-          'adresse_complete', p.adresse_complete,
-          'ville', COALESCE(p.ville, ''),
-          'code_postal', COALESCE(p.code_postal, ''),
-          'type', COALESCE(p.type, 'appartement'),
-          'surface', p.surface,
-          'surface_habitable_m2', p.surface_habitable_m2,
-          'nb_pieces', p.nb_pieces,
-          'etage', p.etage,
-          'ascenseur', p.ascenseur,
-          'annee_construction', p.annee_construction,
-          'parking_numero', p.parking_numero,
-          'has_cave', p.has_cave,
-          'num_lot', p.num_lot,
-          'digicode', p.digicode,
-          'interphone', p.interphone,
-          -- DPE complet : COALESCE pour supporter ancien + nouveau nommage
-          'energie', p.energie,
-          'ges', p.ges,
-          'dpe_classe_energie', COALESCE(p.dpe_classe_energie, p.energie),
-          'dpe_classe_climat', COALESCE(p.dpe_classe_climat, p.ges),
-          'dpe_consommation', p.dpe_consommation,
-          'dpe_emissions', p.dpe_emissions,
-          'dpe_date_realisation', p.dpe_date_realisation,
-          'dpe_date_expiration', p.dpe_date_expiration,
-          -- Caractéristiques techniques
-          'chauffage_type', p.chauffage_type,
-          'chauffage_energie', p.chauffage_energie,
-          'eau_chaude_type', p.eau_chaude_type,
-          'regime', p.regime,
-          -- Photo de couverture
-          'cover_url', (
-            SELECT url FROM property_photos
-            WHERE property_id = p.id AND is_main = true
-            LIMIT 1
-          ),
-          -- Compteurs actifs avec dernière lecture
-          'meters', (
-            SELECT COALESCE(jsonb_agg(
-              jsonb_build_object(
-                'id', m.id,
-                'type', m.type,
-                'serial_number', m.serial_number,
-                'unit', m.unit,
-                'last_reading_value', (
-                  SELECT reading_value FROM meter_readings
-                  WHERE meter_id = m.id ORDER BY reading_date DESC LIMIT 1
-                ),
-                'last_reading_date', (
-                  SELECT reading_date FROM meter_readings
-                  WHERE meter_id = m.id ORDER BY reading_date DESC LIMIT 1
-                )
-              )
-            ), '[]'::jsonb)
-            FROM meters m
-            WHERE m.property_id = p.id AND m.is_active = true
-          ),
-          -- Clés depuis le dernier EDL signé ou complété
-          'keys', (
-            SELECT e_keys.keys
-            FROM edl e_keys
-            WHERE e_keys.property_id = p.id
-              AND e_keys.status IN ('signed', 'completed')
-              AND e_keys.keys IS NOT NULL
-              AND e_keys.keys != '[]'::jsonb
-            ORDER BY COALESCE(e_keys.completed_date, e_keys.created_at) DESC
-            LIMIT 1
-          )
-        ),
-        -- Propriétaire (peut être NULL si owner_prof manquant)
-        'owner', CASE
-          WHEN owner_prof.id IS NOT NULL THEN
-            jsonb_build_object(
-              'id', owner_prof.id,
-              'name', COALESCE(
-                (SELECT raison_sociale FROM owner_profiles WHERE profile_id = owner_prof.id),
-                CONCAT(COALESCE(owner_prof.prenom, ''), ' ', COALESCE(owner_prof.nom, ''))
-              ),
-              'email', owner_prof.email,
-              'telephone', owner_prof.telephone
-            )
-          ELSE
-            jsonb_build_object(
-              'id', p.owner_id,
-              'name', 'Propriétaire',
-              'email', NULL,
-              'telephone', NULL
-            )
-        END
-      ) as lease_data
-    FROM leases l
-    JOIN lease_signers ls ON ls.lease_id = l.id
-    JOIN properties p ON p.id = l.property_id
-    LEFT JOIN profiles owner_prof ON owner_prof.id = p.owner_id
-    WHERE
-      (ls.profile_id = v_profile_id OR LOWER(ls.invited_email) = LOWER(v_user_email))
-      AND l.statut IN ('draft', 'active', 'pending_signature', 'fully_signed', 'terminated')
-  ) sub;
-
-  RAISE NOTICE '[tenant_dashboard] Baux trouvés: %', COALESCE(jsonb_array_length(v_leases), 0);
-
-  -- 3. Factures (10 dernières)
-  SELECT COALESCE(jsonb_agg(invoice_data), '[]'::jsonb) INTO v_invoices
-  FROM (
-    SELECT
-      i.id,
-      i.periode,
-      i.montant_total,
-      i.statut,
-      i.created_at,
-      i.due_date,
-      p.type as property_type,
-      p.adresse_complete as property_address
-    FROM invoices i
-    JOIN leases l ON l.id = i.lease_id
-    JOIN lease_signers ls ON ls.lease_id = l.id
-    JOIN properties p ON p.id = l.property_id
-    WHERE (ls.profile_id = v_profile_id OR LOWER(ls.invited_email) = LOWER(v_user_email))
-    ORDER BY i.periode DESC, i.created_at DESC
-    LIMIT 10
-  ) invoice_data;
-
-  -- 4. Tickets récents (10 derniers)
-  SELECT COALESCE(jsonb_agg(ticket_data), '[]'::jsonb) INTO v_tickets
-  FROM (
-    SELECT
-      t.id,
-      t.titre,
-      t.description,
-      t.priorite,
-      t.statut,
-      t.created_at,
-      p.adresse_complete as property_address,
-      p.type as property_type
-    FROM tickets t
-    JOIN properties p ON p.id = t.property_id
-    WHERE t.created_by_profile_id = v_profile_id
-    ORDER BY t.created_at DESC
-    LIMIT 10
-  ) ticket_data;
-
-  -- 5. Notifications récentes
-  SELECT COALESCE(jsonb_agg(notif_data), '[]'::jsonb) INTO v_notifications
-  FROM (
-    SELECT n.id, n.title, n.message, n.type, n.is_read, n.created_at, n.action_url
-    FROM notifications n
-    WHERE n.profile_id = v_profile_id
-    ORDER BY n.is_read ASC, n.created_at DESC
-    LIMIT 5
-  ) notif_data;
-
-  -- 6. EDLs en attente de signature
-  SELECT COALESCE(jsonb_agg(edl_data), '[]'::jsonb) INTO v_pending_edls
-  FROM (
-    SELECT
-      e.id,
-      e.type,
-      e.status,
-      e.scheduled_at,
-      es.invitation_token,
-      p.adresse_complete as property_address,
-      p.type as property_type
-    FROM edl e
-    JOIN edl_signatures es ON es.edl_id = e.id
-    JOIN properties p ON p.id = e.property_id
-    WHERE (es.signer_profile_id = v_profile_id OR LOWER(es.signer_email) = LOWER(v_user_email))
-    AND es.signed_at IS NULL
-    AND e.status IN ('draft', 'scheduled', 'in_progress', 'completed')
-    ORDER BY e.created_at DESC
-  ) edl_data;
-
-  -- 7. Vérifier l'assurance
-  SELECT jsonb_build_object(
-    'has_insurance', EXISTS (
-      SELECT 1 FROM documents
-      WHERE tenant_id = v_profile_id
-      AND type = 'attestation_assurance'
-      AND is_archived = false
-      AND (expiry_date IS NULL OR expiry_date > NOW())
-    ),
-    'last_expiry_date', (
-      SELECT expiry_date FROM documents
-      WHERE tenant_id = v_profile_id
-      AND type = 'attestation_assurance'
-      AND is_archived = false
-      ORDER BY expiry_date DESC LIMIT 1
-    )
-  ) INTO v_insurance_status;
-
-  -- 8. Stats globales
-  SELECT jsonb_build_object(
-    'unpaid_amount', COALESCE(SUM(i.montant_total) FILTER (WHERE i.statut IN ('sent', 'late')), 0),
-    'unpaid_count', COUNT(*) FILTER (WHERE i.statut IN ('sent', 'late')),
-    'total_monthly_rent', COALESCE(
-      (SELECT SUM(l2.loyer + l2.charges_forfaitaires)
-       FROM leases l2
-       JOIN lease_signers ls2 ON ls2.lease_id = l2.id
-       WHERE (ls2.profile_id = v_profile_id OR LOWER(ls2.invited_email) = LOWER(v_user_email))
-       AND l2.statut = 'active'),
-      0
-    ),
-    'active_leases_count', (
-      SELECT COUNT(DISTINCT l2.id)
-      FROM leases l2
-      JOIN lease_signers ls2 ON ls2.lease_id = l2.id
-      WHERE (ls2.profile_id = v_profile_id OR LOWER(ls2.invited_email) = LOWER(v_user_email))
-      AND l2.statut = 'active'
-    )
-  ) INTO v_stats
-  FROM leases l
-  JOIN lease_signers ls ON ls.lease_id = l.id
-  LEFT JOIN invoices i ON i.lease_id = l.id
-  WHERE (ls.profile_id = v_profile_id OR LOWER(ls.invited_email) = LOWER(v_user_email));
-
-  -- 9. KYC status
-  BEGIN
-    SELECT COALESCE(tp.kyc_status, 'pending') INTO v_kyc_status
-    FROM tenant_profiles tp
-    WHERE tp.profile_id = v_profile_id;
-  EXCEPTION WHEN OTHERS THEN
-    v_kyc_status := 'pending';
-  END;
-
-  -- 10. Assembler le résultat final
-  v_result := jsonb_build_object(
-    'profile_id', v_profile_id,
-    'tenant', v_tenant_data,
-    'kyc_status', COALESCE(v_kyc_status, 'pending'),
-    'leases', COALESCE(v_leases, '[]'::jsonb),
-    'lease', CASE WHEN v_leases IS NOT NULL AND jsonb_array_length(v_leases) > 0 THEN v_leases->0 ELSE NULL END,
-    'property', CASE WHEN v_leases IS NOT NULL AND jsonb_array_length(v_leases) > 0 THEN (v_leases->0)->'property' ELSE NULL END,
-    'invoices', v_invoices,
-    'tickets', v_tickets,
-    'notifications', v_notifications,
-    'pending_edls', v_pending_edls,
-    'insurance', v_insurance_status,
-    'stats', COALESCE(v_stats, '{"unpaid_amount": 0, "unpaid_count": 0, "total_monthly_rent": 0, "active_leases_count": 0}'::jsonb)
-  );
-
-  RETURN v_result;
-END;
-$$;
-
-COMMENT ON FUNCTION tenant_dashboard(UUID) IS
-'RPC dashboard locataire v6. Cherche par profile_id OU invited_email.
-FIX: LEFT JOIN sur owner_prof pour ne pas perdre les baux si le propriétaire manque.
-FIX: adresse_complete retourné tel quel (le frontend gère les NULL).
-Inclut baux draft, signers enrichis, property complète (DPE, meters, keys), insurance, KYC status.';
-
+-- Batch 4 — migrations 40 a 73 sur 169
+-- 34 migrations
 
 -- === [40/169] 20260221_fix_owner_data_chain.sql ===
 -- ============================================
@@ -837,69 +490,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 
 -- === [45/169] 20260223000000_fix_tenant_documents_rls.sql ===
--- Migration : Corriger les politiques RLS sur tenant_documents
--- Date : 2026-02-23
---
--- Problème : Les politiques RLS existantes utilisent profile_id = auth.uid()
--- mais auth.uid() retourne le user_id (auth.users.id), pas le profile_id (profiles.id).
--- Résultat : les locataires ne peuvent jamais voir leurs propres documents.
-
--- ============================================
--- SUPPRIMER LES POLITIQUES INCORRECTES
--- ============================================
-
-DROP POLICY IF EXISTS "tenant_view_own_documents" ON tenant_documents;
-DROP POLICY IF EXISTS "tenant_insert_own_documents" ON tenant_documents;
-
--- ============================================
--- RECRÉER AVEC LA BONNE LOGIQUE
--- ============================================
-
--- Le locataire peut voir ses propres documents
-DROP POLICY IF EXISTS "tenant_view_own_documents" ON tenant_documents;
-CREATE POLICY "tenant_view_own_documents" ON tenant_documents
-  FOR SELECT USING (
-    tenant_profile_id IN (
-      SELECT id FROM profiles WHERE user_id = auth.uid()
-    )
-  );
-
--- Le locataire peut uploader ses documents
-DROP POLICY IF EXISTS "tenant_insert_own_documents" ON tenant_documents;
-CREATE POLICY "tenant_insert_own_documents" ON tenant_documents
-  FOR INSERT WITH CHECK (
-    tenant_profile_id IN (
-      SELECT id FROM profiles WHERE user_id = auth.uid()
-    )
-  );
-
--- ============================================
--- AJOUTER tenant_email DANS LES METADATA DE L'EXPIRY CRON
--- La fonction check_expiring_cni() utilise d.metadata->>'tenant_email'
--- mais cette donnée n'était pas toujours présente.
--- Mettre à jour les documents CNI existants pour ajouter le tenant_email.
--- ============================================
-
-UPDATE documents d
-SET metadata = COALESCE(d.metadata, '{}'::jsonb) || jsonb_build_object(
-  'tenant_email', COALESCE(
-    (SELECT u.email FROM profiles p JOIN auth.users u ON u.id = p.user_id WHERE p.id = d.tenant_id),
-    ''
-  )
-)
-WHERE d.type IN ('cni_recto', 'cni_verso')
-  AND d.tenant_id IS NOT NULL
-  AND (d.metadata->>'tenant_email' IS NULL OR d.metadata->>'tenant_email' = '');
-
--- ============================================
--- COMMENTAIRES
--- ============================================
-
-COMMENT ON POLICY "tenant_view_own_documents" ON tenant_documents
-  IS 'Le locataire peut voir ses documents via la jointure profiles.user_id = auth.uid()';
-COMMENT ON POLICY "tenant_insert_own_documents" ON tenant_documents
-  IS 'Le locataire peut insérer ses documents via la jointure profiles.user_id = auth.uid()';
-
+-- SKIPPED: references tables not yet in prod
 
 -- === [46/169] 20260223000001_auto_fill_document_fk.sql ===
 -- =====================================================
@@ -3993,5 +3584,607 @@ CREATE TRIGGER trg_sync_jour_paiement
   EXECUTE FUNCTION sync_lease_jour_paiement_to_schedules();
 
 COMMENT ON FUNCTION sync_lease_jour_paiement_to_schedules IS 'Propage leases.jour_paiement vers payment_schedules.collection_day';
+
+
+-- === [71/169] 20260304100000_activate_pg_cron_schedules.sql ===
+-- ============================================
+-- Migration : Activer pg_cron + pg_net et planifier tous les crons
+-- Date : 2026-03-04
+-- Description : Configure le scheduling automatique des API routes cron
+--   via Supabase pg_cron + pg_net. Zéro service externe requis.
+--
+-- Prérequis (à configurer dans le dashboard Supabase > SQL Editor) :
+--   ALTER DATABASE postgres SET app.settings.app_url = 'https://votre-site.netlify.app';
+--   ALTER DATABASE postgres SET app.settings.cron_secret = 'votre-cron-secret';
+-- ============================================
+
+-- Activer les extensions (déjà disponibles sur Supabase Pro)
+CREATE EXTENSION IF NOT EXISTS pg_cron;
+CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
+
+-- Supprimer les anciens jobs s'ils existent (idempotent)
+SELECT cron.unschedule(jobname)
+FROM cron.job
+WHERE jobname IN (
+  'payment-reminders',
+  'generate-monthly-invoices',
+  'generate-invoices',
+  'process-webhooks',
+  'lease-expiry-alerts',
+  'check-cni-expiry',
+  'irl-indexation',
+  'visit-reminders',
+  'cleanup-exports',
+  'cleanup-webhooks',
+  'subscription-alerts',
+  'notifications'
+);
+
+-- ===== CRONS CRITIQUES =====
+
+-- Relances de paiement : quotidien à 8h UTC
+SELECT cron.schedule('payment-reminders', '0 8 * * *',
+  $$SELECT net.http_post(
+    url := current_setting('app.settings.app_url') || '/api/cron/payment-reminders',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
+    body := '{}'::jsonb
+  )$$
+);
+
+-- Génération factures mensuelles (route API) : 1er du mois à 6h
+SELECT cron.schedule('generate-monthly-invoices', '0 6 1 * *',
+  $$SELECT net.http_post(
+    url := current_setting('app.settings.app_url') || '/api/cron/generate-monthly-invoices',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
+    body := '{}'::jsonb
+  )$$
+);
+
+-- Génération factures (RPC SQL) : 1er du mois à 6h30
+SELECT cron.schedule('generate-invoices', '30 6 1 * *',
+  $$SELECT net.http_post(
+    url := current_setting('app.settings.app_url') || '/api/cron/generate-invoices',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
+    body := '{}'::jsonb
+  )$$
+);
+
+-- Process webhooks : toutes les 5 min
+SELECT cron.schedule('process-webhooks', '*/5 * * * *',
+  $$SELECT net.http_post(
+    url := current_setting('app.settings.app_url') || '/api/cron/process-webhooks',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
+    body := '{}'::jsonb
+  )$$
+);
+
+-- ===== CRONS SECONDAIRES =====
+
+-- Alertes fin de bail : lundi 8h
+SELECT cron.schedule('lease-expiry-alerts', '0 8 * * 1',
+  $$SELECT net.http_post(
+    url := current_setting('app.settings.app_url') || '/api/cron/lease-expiry-alerts',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
+    body := '{}'::jsonb
+  )$$
+);
+
+-- Vérif CNI expirées : quotidien 10h
+SELECT cron.schedule('check-cni-expiry', '0 10 * * *',
+  $$SELECT net.http_post(
+    url := current_setting('app.settings.app_url') || '/api/cron/check-cni-expiry',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
+    body := '{}'::jsonb
+  )$$
+);
+
+-- Alertes abonnements : quotidien 10h
+SELECT cron.schedule('subscription-alerts', '0 10 * * *',
+  $$SELECT net.http_post(
+    url := current_setting('app.settings.app_url') || '/api/cron/subscription-alerts',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
+    body := '{}'::jsonb
+  )$$
+);
+
+-- Indexation IRL : 1er du mois 7h
+SELECT cron.schedule('irl-indexation', '0 7 1 * *',
+  $$SELECT net.http_post(
+    url := current_setting('app.settings.app_url') || '/api/cron/irl-indexation',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
+    body := '{}'::jsonb
+  )$$
+);
+
+-- Rappels de visites : toutes les 30 min
+SELECT cron.schedule('visit-reminders', '*/30 * * * *',
+  $$SELECT net.http_post(
+    url := current_setting('app.settings.app_url') || '/api/cron/visit-reminders',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
+    body := '{}'::jsonb
+  )$$
+);
+
+-- ===== NETTOYAGE =====
+
+-- Nettoyage exports expirés : quotidien 3h
+SELECT cron.schedule('cleanup-exports', '0 3 * * *',
+  $$SELECT cleanup_expired_exports()$$
+);
+
+-- Nettoyage webhooks anciens : quotidien 4h
+SELECT cron.schedule('cleanup-webhooks', '0 4 * * *',
+  $$SELECT cleanup_old_webhooks()$$
+);
+
+COMMENT ON EXTENSION pg_cron IS 'Scheduling automatique des crons via Supabase pg_cron + pg_net';
+
+
+-- === [72/169] 20260304200000_auto_mark_late_invoices.sql ===
+-- ============================================
+-- Migration : Transition automatique des factures en retard
+-- Date : 2026-03-04
+-- Description : Crée une fonction qui marque automatiquement les factures
+--   dont la date d'échéance est dépassée comme "late" (en retard).
+--   Planifié via pg_cron pour tourner chaque jour à 00h05.
+--   Filet de sécurité : même si le cron payment-reminders rate un jour,
+--   les factures passent quand même en "late".
+-- ============================================
+
+CREATE OR REPLACE FUNCTION mark_overdue_invoices_late()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_count INTEGER;
+BEGIN
+  UPDATE invoices
+  SET
+    statut = 'late',
+    updated_at = NOW()
+  WHERE statut IN ('sent', 'pending')
+    AND due_date < CURRENT_DATE
+    AND due_date IS NOT NULL;
+
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+
+  IF v_count > 0 THEN
+    RAISE NOTICE '[mark_overdue_invoices_late] % factures marquées en retard', v_count;
+  END IF;
+
+  RETURN v_count;
+END;
+$$;
+
+-- Supprimer l'ancien job s'il existe
+SELECT cron.unschedule(jobname)
+FROM cron.job
+WHERE jobname = 'mark-overdue-invoices';
+
+-- Planifier : quotidien à 00h05 UTC
+SELECT cron.schedule('mark-overdue-invoices', '5 0 * * *',
+  $$SELECT mark_overdue_invoices_late()$$
+);
+
+COMMENT ON FUNCTION mark_overdue_invoices_late IS 'Marque automatiquement les factures dont due_date < aujourd''hui comme "late"';
+
+
+-- === [73/169] 20260305000001_invoice_engine_fields.sql ===
+-- ============================================
+-- Migration : Moteur de facturation locative — Champs, tables et triggers
+-- Date : 2026-03-05
+-- Description :
+--   1. Ajout des champs manquants dans leases (grace_period_days, invoice_engine_started, first_invoice_date, late_fee_rate)
+--   2. Ajout des champs manquants dans invoices (period_start, period_end, generated_at, sent_at, paid_at, stripe_payment_intent_id, notes)
+--   3. Extension des statuts invoices (partial, overdue, unpaid, cancelled)
+--   4. Ajout colonne tenant_id dans payments (dénormalisation pour RLS)
+--   5. Création tables : payment_reminders, late_fees, receipts, tenant_credit_score
+--   6. RLS sur les nouvelles tables
+--   7. DB trigger sur leases.statut → 'active' → appel invoice-engine-start
+-- ============================================
+
+-- =====================
+-- 1. Champs manquants leases
+-- =====================
+
+ALTER TABLE leases
+  ADD COLUMN IF NOT EXISTS grace_period_days INTEGER DEFAULT 3;
+
+ALTER TABLE leases
+  ADD COLUMN IF NOT EXISTS invoice_engine_started BOOLEAN DEFAULT false;
+
+ALTER TABLE leases
+  ADD COLUMN IF NOT EXISTS first_invoice_date DATE;
+
+ALTER TABLE leases
+  ADD COLUMN IF NOT EXISTS late_fee_rate DECIMAL(10,6) DEFAULT 0.002740;
+
+COMMENT ON COLUMN leases.grace_period_days IS 'Nombre de jours de grâce avant relance (défaut: 3)';
+COMMENT ON COLUMN leases.invoice_engine_started IS 'Indique si le moteur de facturation a été déclenché pour ce bail';
+COMMENT ON COLUMN leases.first_invoice_date IS 'Date de la première facture à générer (calculée au prorata si bail en cours de mois)';
+COMMENT ON COLUMN leases.late_fee_rate IS 'Taux journalier de pénalité de retard (défaut: taux légal / 365 ≈ 0.00274)';
+
+-- =====================
+-- 2. Champs manquants invoices
+-- =====================
+
+ALTER TABLE invoices
+  ADD COLUMN IF NOT EXISTS period_start DATE;
+
+ALTER TABLE invoices
+  ADD COLUMN IF NOT EXISTS period_end DATE;
+
+ALTER TABLE invoices
+  ADD COLUMN IF NOT EXISTS generated_at TIMESTAMPTZ DEFAULT NOW();
+
+ALTER TABLE invoices
+  ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ;
+
+ALTER TABLE invoices
+  ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+
+ALTER TABLE invoices
+  ADD COLUMN IF NOT EXISTS stripe_payment_intent_id TEXT;
+
+ALTER TABLE invoices
+  ADD COLUMN IF NOT EXISTS notes TEXT;
+
+-- Étendre les statuts possibles des invoices
+ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_statut_check;
+ALTER TABLE invoices ADD CONSTRAINT invoices_statut_check
+  CHECK (statut IN ('draft', 'sent', 'paid', 'partial', 'overdue', 'unpaid', 'cancelled', 'late'));
+
+-- Index pour la recherche de factures en retard
+CREATE INDEX IF NOT EXISTS idx_invoices_date_echeance ON invoices(date_echeance) WHERE statut IN ('sent', 'late', 'overdue');
+CREATE INDEX IF NOT EXISTS idx_invoices_period_start ON invoices(period_start);
+
+-- =====================
+-- 3. Champ tenant_id dans payments (dénormalisation pour RLS directe)
+-- =====================
+
+ALTER TABLE payments
+  ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES profiles(id);
+
+-- Étendre les statuts possibles des payments
+ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_statut_check;
+ALTER TABLE payments ADD CONSTRAINT payments_statut_check
+  CHECK (statut IN ('pending', 'succeeded', 'failed', 'refunded'));
+
+-- =====================
+-- 4. Table payment_reminders
+-- =====================
+
+CREATE TABLE IF NOT EXISTS payment_reminders (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  reminder_type TEXT NOT NULL CHECK (reminder_type IN ('friendly', 'reminder', 'urgent', 'formal_notice', 'lrec', 'final')),
+  channel TEXT NOT NULL CHECK (channel IN ('email', 'sms', 'push', 'lrec', 'courrier')),
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  opened_at TIMESTAMPTZ,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_payment_reminders_invoice ON payment_reminders(invoice_id);
+CREATE INDEX IF NOT EXISTS idx_payment_reminders_tenant ON payment_reminders(tenant_id);
+
+COMMENT ON TABLE payment_reminders IS 'Historique des relances envoyées pour factures impayées';
+
+-- =====================
+-- 5. Table late_fees
+-- =====================
+
+CREATE TABLE IF NOT EXISTS late_fees (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  amount DECIMAL(10, 2) NOT NULL,
+  rate DECIMAL(10, 6) NOT NULL,
+  days_late INTEGER NOT NULL,
+  calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  waived BOOLEAN NOT NULL DEFAULT false,
+  waived_reason TEXT,
+  waived_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_late_fees_invoice ON late_fees(invoice_id);
+
+COMMENT ON TABLE late_fees IS 'Pénalités de retard calculées conformément à la loi du 6 juillet 1989';
+
+-- =====================
+-- 6. Table receipts (quittances de loyer)
+-- =====================
+
+CREATE TABLE IF NOT EXISTS receipts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  payment_id UUID REFERENCES payments(id) ON DELETE SET NULL,
+  lease_id UUID NOT NULL REFERENCES leases(id) ON DELETE CASCADE,
+  invoice_id UUID REFERENCES invoices(id) ON DELETE SET NULL,
+  tenant_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  owner_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  period TEXT NOT NULL, -- Format YYYY-MM
+  period_start DATE,
+  period_end DATE,
+  montant_loyer DECIMAL(10, 2) NOT NULL,
+  montant_charges DECIMAL(10, 2) NOT NULL DEFAULT 0,
+  montant_total DECIMAL(10, 2) NOT NULL,
+  pdf_url TEXT,
+  pdf_storage_path TEXT,
+  generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  sent_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_receipts_lease ON receipts(lease_id);
+CREATE INDEX IF NOT EXISTS idx_receipts_tenant ON receipts(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_receipts_period ON receipts(period);
+
+COMMENT ON TABLE receipts IS 'Quittances de loyer générées après paiement (art. 21 loi 6 juillet 1989)';
+
+-- =====================
+-- 7. Table tenant_credit_score
+-- =====================
+
+CREATE TABLE IF NOT EXISTS tenant_credit_score (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tenant_id UUID NOT NULL UNIQUE REFERENCES profiles(id) ON DELETE CASCADE,
+  score INTEGER, -- NULL = pas encore de données
+  on_time_count INTEGER NOT NULL DEFAULT 0,
+  late_count INTEGER NOT NULL DEFAULT 0,
+  missed_count INTEGER NOT NULL DEFAULT 0,
+  early_count INTEGER NOT NULL DEFAULT 0,
+  total_payments INTEGER NOT NULL DEFAULT 0,
+  last_updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tenant_credit_score_tenant ON tenant_credit_score(tenant_id);
+
+COMMENT ON TABLE tenant_credit_score IS 'Score de ponctualité du locataire (cache calculé après chaque paiement)';
+
+-- =====================
+-- 8. RLS Policies
+-- =====================
+
+-- payment_reminders
+ALTER TABLE payment_reminders ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Tenants can view own reminders" ON payment_reminders;
+
+CREATE POLICY "Tenants can view own reminders"
+  ON payment_reminders FOR SELECT
+  USING (tenant_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "Owners can view reminders of own invoices" ON payment_reminders;
+
+CREATE POLICY "Owners can view reminders of own invoices"
+  ON payment_reminders FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM invoices i
+      WHERE i.id = payment_reminders.invoice_id
+      AND i.owner_id = public.user_profile_id()
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins can view all reminders" ON payment_reminders;
+
+CREATE POLICY "Admins can view all reminders"
+  ON payment_reminders FOR SELECT
+  USING (public.user_role() = 'admin');
+
+-- late_fees
+ALTER TABLE late_fees ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view late fees of accessible invoices" ON late_fees;
+
+CREATE POLICY "Users can view late fees of accessible invoices"
+  ON late_fees FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM invoices i
+      WHERE i.id = late_fees.invoice_id
+      AND (
+        i.owner_id = public.user_profile_id()
+        OR i.tenant_id = public.user_profile_id()
+        OR public.user_role() = 'admin'
+      )
+    )
+  );
+
+-- receipts
+ALTER TABLE receipts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Tenants can view own receipts" ON receipts;
+
+CREATE POLICY "Tenants can view own receipts"
+  ON receipts FOR SELECT
+  USING (tenant_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "Owners can view receipts of own properties" ON receipts;
+
+CREATE POLICY "Owners can view receipts of own properties"
+  ON receipts FOR SELECT
+  USING (owner_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "Admins can view all receipts" ON receipts;
+
+CREATE POLICY "Admins can view all receipts"
+  ON receipts FOR SELECT
+  USING (public.user_role() = 'admin');
+
+-- tenant_credit_score
+ALTER TABLE tenant_credit_score ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Tenants can view own credit score" ON tenant_credit_score;
+
+CREATE POLICY "Tenants can view own credit score"
+  ON tenant_credit_score FOR SELECT
+  USING (tenant_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "Admins can view all credit scores" ON tenant_credit_score;
+
+CREATE POLICY "Admins can view all credit scores"
+  ON tenant_credit_score FOR SELECT
+  USING (public.user_role() = 'admin');
+
+-- =====================
+-- 9. DB Trigger : Bail activé → démarrer le moteur de facturation
+-- =====================
+
+CREATE OR REPLACE FUNCTION trigger_invoice_engine_on_lease_active()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_tenant_signer RECORD;
+  v_owner_id UUID;
+  v_property_address TEXT;
+BEGIN
+  -- Ne déclencher que si le statut passe à 'active' et que le moteur n'a pas déjà été démarré
+  IF NEW.statut = 'active' AND (OLD.statut IS DISTINCT FROM 'active') AND (NEW.invoice_engine_started IS NOT TRUE) THEN
+
+    -- Trouver le locataire principal
+    SELECT ls.profile_id INTO v_tenant_signer
+    FROM lease_signers ls
+    WHERE ls.lease_id = NEW.id
+    AND ls.role IN ('locataire', 'locataire_principal', 'colocataire')
+    LIMIT 1;
+
+    -- Trouver le propriétaire
+    SELECT p.owner_id, p.adresse_complete INTO v_owner_id, v_property_address
+    FROM properties p
+    WHERE p.id = NEW.property_id;
+
+    IF v_tenant_signer.profile_id IS NOT NULL AND v_owner_id IS NOT NULL THEN
+      -- Émettre un événement outbox pour que le process-outbox le traite
+      INSERT INTO outbox (event_type, payload)
+      VALUES ('Lease.InvoiceEngineStart', jsonb_build_object(
+        'lease_id', NEW.id,
+        'tenant_id', v_tenant_signer.profile_id,
+        'owner_id', v_owner_id,
+        'property_id', NEW.property_id,
+        'property_address', COALESCE(v_property_address, ''),
+        'loyer', NEW.loyer,
+        'charges_forfaitaires', NEW.charges_forfaitaires,
+        'date_debut', NEW.date_debut,
+        'jour_paiement', COALESCE(NEW.jour_paiement, 5),
+        'grace_period_days', COALESCE(NEW.grace_period_days, 3)
+      ));
+
+      -- Générer immédiatement la première facture (prorata si nécessaire)
+      PERFORM generate_first_invoice(NEW.id, v_tenant_signer.profile_id, v_owner_id);
+
+      -- Marquer le moteur comme démarré
+      NEW.invoice_engine_started := true;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+-- Fonction pour générer la première facture avec calcul prorata
+CREATE OR REPLACE FUNCTION generate_first_invoice(
+  p_lease_id UUID,
+  p_tenant_id UUID,
+  p_owner_id UUID
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_lease RECORD;
+  v_now DATE := CURRENT_DATE;
+  v_jour_paiement INT;
+  v_days_in_month INT;
+  v_date_debut DATE;
+  v_first_full_month DATE;
+  v_prorata_amount DECIMAL(10,2);
+  v_prorata_days INT;
+  v_total_days INT;
+  v_loyer DECIMAL(10,2);
+  v_charges DECIMAL(10,2);
+  v_prorata_charges DECIMAL(10,2);
+  v_current_month TEXT;
+  v_invoice_exists BOOLEAN;
+BEGIN
+  -- Récupérer les données du bail
+  SELECT * INTO v_lease FROM leases WHERE id = p_lease_id;
+  IF NOT FOUND THEN RETURN; END IF;
+
+  v_loyer := v_lease.loyer;
+  v_charges := v_lease.charges_forfaitaires;
+  v_jour_paiement := COALESCE(v_lease.jour_paiement, 5);
+  v_date_debut := v_lease.date_debut;
+
+  -- Mois du début de bail
+  v_current_month := TO_CHAR(v_date_debut, 'YYYY-MM');
+
+  -- Vérifier si une facture existe déjà pour ce mois
+  SELECT EXISTS(
+    SELECT 1 FROM invoices WHERE lease_id = p_lease_id AND periode = v_current_month
+  ) INTO v_invoice_exists;
+  IF v_invoice_exists THEN RETURN; END IF;
+
+  -- Calculer le prorata si le bail ne commence pas le 1er du mois
+  v_total_days := EXTRACT(DAY FROM (DATE_TRUNC('month', v_date_debut) + INTERVAL '1 month' - INTERVAL '1 day'));
+  v_prorata_days := v_total_days - EXTRACT(DAY FROM v_date_debut)::INT + 1;
+
+  IF v_prorata_days < v_total_days THEN
+    -- Facture prorata
+    v_prorata_amount := ROUND((v_loyer * v_prorata_days / v_total_days), 2);
+    v_prorata_charges := ROUND((v_charges * v_prorata_days / v_total_days), 2);
+
+    INSERT INTO invoices (
+      lease_id, owner_id, tenant_id, periode,
+      montant_loyer, montant_charges, montant_total,
+      date_echeance, period_start, period_end,
+      invoice_number, statut, generated_at, notes
+    ) VALUES (
+      p_lease_id, p_owner_id, p_tenant_id, v_current_month,
+      v_prorata_amount, v_prorata_charges, v_prorata_amount + v_prorata_charges,
+      v_date_debut, v_date_debut, (DATE_TRUNC('month', v_date_debut) + INTERVAL '1 month' - INTERVAL '1 day')::DATE,
+      'QUI-' || REPLACE(v_current_month, '-', '') || '-' || UPPER(LEFT(p_lease_id::TEXT, 8)),
+      'sent', NOW(),
+      'Facture prorata du ' || v_date_debut || ' au ' || (DATE_TRUNC('month', v_date_debut) + INTERVAL '1 month' - INTERVAL '1 day')::DATE || ' (' || v_prorata_days || '/' || v_total_days || ' jours)'
+    );
+  ELSE
+    -- Bail commence le 1er → facture complète
+    v_days_in_month := v_total_days;
+
+    INSERT INTO invoices (
+      lease_id, owner_id, tenant_id, periode,
+      montant_loyer, montant_charges, montant_total,
+      date_echeance, period_start, period_end,
+      invoice_number, statut, generated_at
+    ) VALUES (
+      p_lease_id, p_owner_id, p_tenant_id, v_current_month,
+      v_loyer, v_charges, v_loyer + v_charges,
+      (v_current_month || '-' || LPAD(LEAST(v_jour_paiement, v_days_in_month)::TEXT, 2, '0'))::DATE,
+      v_date_debut, (DATE_TRUNC('month', v_date_debut) + INTERVAL '1 month' - INTERVAL '1 day')::DATE,
+      'QUI-' || REPLACE(v_current_month, '-', '') || '-' || UPPER(LEFT(p_lease_id::TEXT, 8)),
+      'sent', NOW()
+    );
+  END IF;
+
+  -- Mettre à jour first_invoice_date
+  UPDATE leases SET first_invoice_date = v_date_debut WHERE id = p_lease_id;
+END;
+$$;
+
+-- Installer le trigger (BEFORE UPDATE pour pouvoir modifier NEW)
+DROP TRIGGER IF EXISTS trg_invoice_engine_on_lease_active ON leases;
+CREATE TRIGGER trg_invoice_engine_on_lease_active
+  BEFORE UPDATE ON leases
+  FOR EACH ROW
+  EXECUTE FUNCTION trigger_invoice_engine_on_lease_active();
+
+COMMENT ON FUNCTION trigger_invoice_engine_on_lease_active IS 'Déclenche la génération de la première facture quand un bail passe à actif';
+COMMENT ON FUNCTION generate_first_invoice IS 'Génère la première facture avec calcul prorata conforme loi 6 juillet 1989';
 
 

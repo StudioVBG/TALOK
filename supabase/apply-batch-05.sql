@@ -1,607 +1,5 @@
--- Batch 5 — migrations 71 a 112 sur 169
--- 42 migrations
-
--- === [71/169] 20260304100000_activate_pg_cron_schedules.sql ===
--- ============================================
--- Migration : Activer pg_cron + pg_net et planifier tous les crons
--- Date : 2026-03-04
--- Description : Configure le scheduling automatique des API routes cron
---   via Supabase pg_cron + pg_net. Zéro service externe requis.
---
--- Prérequis (à configurer dans le dashboard Supabase > SQL Editor) :
---   ALTER DATABASE postgres SET app.settings.app_url = 'https://votre-site.netlify.app';
---   ALTER DATABASE postgres SET app.settings.cron_secret = 'votre-cron-secret';
--- ============================================
-
--- Activer les extensions (déjà disponibles sur Supabase Pro)
-CREATE EXTENSION IF NOT EXISTS pg_cron;
-CREATE EXTENSION IF NOT EXISTS pg_net WITH SCHEMA extensions;
-
--- Supprimer les anciens jobs s'ils existent (idempotent)
-SELECT cron.unschedule(jobname)
-FROM cron.job
-WHERE jobname IN (
-  'payment-reminders',
-  'generate-monthly-invoices',
-  'generate-invoices',
-  'process-webhooks',
-  'lease-expiry-alerts',
-  'check-cni-expiry',
-  'irl-indexation',
-  'visit-reminders',
-  'cleanup-exports',
-  'cleanup-webhooks',
-  'subscription-alerts',
-  'notifications'
-);
-
--- ===== CRONS CRITIQUES =====
-
--- Relances de paiement : quotidien à 8h UTC
-SELECT cron.schedule('payment-reminders', '0 8 * * *',
-  $$SELECT net.http_post(
-    url := current_setting('app.settings.app_url') || '/api/cron/payment-reminders',
-    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
-    body := '{}'::jsonb
-  )$$
-);
-
--- Génération factures mensuelles (route API) : 1er du mois à 6h
-SELECT cron.schedule('generate-monthly-invoices', '0 6 1 * *',
-  $$SELECT net.http_post(
-    url := current_setting('app.settings.app_url') || '/api/cron/generate-monthly-invoices',
-    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
-    body := '{}'::jsonb
-  )$$
-);
-
--- Génération factures (RPC SQL) : 1er du mois à 6h30
-SELECT cron.schedule('generate-invoices', '30 6 1 * *',
-  $$SELECT net.http_post(
-    url := current_setting('app.settings.app_url') || '/api/cron/generate-invoices',
-    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
-    body := '{}'::jsonb
-  )$$
-);
-
--- Process webhooks : toutes les 5 min
-SELECT cron.schedule('process-webhooks', '*/5 * * * *',
-  $$SELECT net.http_post(
-    url := current_setting('app.settings.app_url') || '/api/cron/process-webhooks',
-    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
-    body := '{}'::jsonb
-  )$$
-);
-
--- ===== CRONS SECONDAIRES =====
-
--- Alertes fin de bail : lundi 8h
-SELECT cron.schedule('lease-expiry-alerts', '0 8 * * 1',
-  $$SELECT net.http_post(
-    url := current_setting('app.settings.app_url') || '/api/cron/lease-expiry-alerts',
-    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
-    body := '{}'::jsonb
-  )$$
-);
-
--- Vérif CNI expirées : quotidien 10h
-SELECT cron.schedule('check-cni-expiry', '0 10 * * *',
-  $$SELECT net.http_post(
-    url := current_setting('app.settings.app_url') || '/api/cron/check-cni-expiry',
-    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
-    body := '{}'::jsonb
-  )$$
-);
-
--- Alertes abonnements : quotidien 10h
-SELECT cron.schedule('subscription-alerts', '0 10 * * *',
-  $$SELECT net.http_post(
-    url := current_setting('app.settings.app_url') || '/api/cron/subscription-alerts',
-    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
-    body := '{}'::jsonb
-  )$$
-);
-
--- Indexation IRL : 1er du mois 7h
-SELECT cron.schedule('irl-indexation', '0 7 1 * *',
-  $$SELECT net.http_post(
-    url := current_setting('app.settings.app_url') || '/api/cron/irl-indexation',
-    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
-    body := '{}'::jsonb
-  )$$
-);
-
--- Rappels de visites : toutes les 30 min
-SELECT cron.schedule('visit-reminders', '*/30 * * * *',
-  $$SELECT net.http_post(
-    url := current_setting('app.settings.app_url') || '/api/cron/visit-reminders',
-    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
-    body := '{}'::jsonb
-  )$$
-);
-
--- ===== NETTOYAGE =====
-
--- Nettoyage exports expirés : quotidien 3h
-SELECT cron.schedule('cleanup-exports', '0 3 * * *',
-  $$SELECT cleanup_expired_exports()$$
-);
-
--- Nettoyage webhooks anciens : quotidien 4h
-SELECT cron.schedule('cleanup-webhooks', '0 4 * * *',
-  $$SELECT cleanup_old_webhooks()$$
-);
-
-COMMENT ON EXTENSION pg_cron IS 'Scheduling automatique des crons via Supabase pg_cron + pg_net';
-
-
--- === [72/169] 20260304200000_auto_mark_late_invoices.sql ===
--- ============================================
--- Migration : Transition automatique des factures en retard
--- Date : 2026-03-04
--- Description : Crée une fonction qui marque automatiquement les factures
---   dont la date d'échéance est dépassée comme "late" (en retard).
---   Planifié via pg_cron pour tourner chaque jour à 00h05.
---   Filet de sécurité : même si le cron payment-reminders rate un jour,
---   les factures passent quand même en "late".
--- ============================================
-
-CREATE OR REPLACE FUNCTION mark_overdue_invoices_late()
-RETURNS INTEGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  v_count INTEGER;
-BEGIN
-  UPDATE invoices
-  SET
-    statut = 'late',
-    updated_at = NOW()
-  WHERE statut IN ('sent', 'pending')
-    AND due_date < CURRENT_DATE
-    AND due_date IS NOT NULL;
-
-  GET DIAGNOSTICS v_count = ROW_COUNT;
-
-  IF v_count > 0 THEN
-    RAISE NOTICE '[mark_overdue_invoices_late] % factures marquées en retard', v_count;
-  END IF;
-
-  RETURN v_count;
-END;
-$$;
-
--- Supprimer l'ancien job s'il existe
-SELECT cron.unschedule(jobname)
-FROM cron.job
-WHERE jobname = 'mark-overdue-invoices';
-
--- Planifier : quotidien à 00h05 UTC
-SELECT cron.schedule('mark-overdue-invoices', '5 0 * * *',
-  $$SELECT mark_overdue_invoices_late()$$
-);
-
-COMMENT ON FUNCTION mark_overdue_invoices_late IS 'Marque automatiquement les factures dont due_date < aujourd''hui comme "late"';
-
-
--- === [73/169] 20260305000001_invoice_engine_fields.sql ===
--- ============================================
--- Migration : Moteur de facturation locative — Champs, tables et triggers
--- Date : 2026-03-05
--- Description :
---   1. Ajout des champs manquants dans leases (grace_period_days, invoice_engine_started, first_invoice_date, late_fee_rate)
---   2. Ajout des champs manquants dans invoices (period_start, period_end, generated_at, sent_at, paid_at, stripe_payment_intent_id, notes)
---   3. Extension des statuts invoices (partial, overdue, unpaid, cancelled)
---   4. Ajout colonne tenant_id dans payments (dénormalisation pour RLS)
---   5. Création tables : payment_reminders, late_fees, receipts, tenant_credit_score
---   6. RLS sur les nouvelles tables
---   7. DB trigger sur leases.statut → 'active' → appel invoice-engine-start
--- ============================================
-
--- =====================
--- 1. Champs manquants leases
--- =====================
-
-ALTER TABLE leases
-  ADD COLUMN IF NOT EXISTS grace_period_days INTEGER DEFAULT 3;
-
-ALTER TABLE leases
-  ADD COLUMN IF NOT EXISTS invoice_engine_started BOOLEAN DEFAULT false;
-
-ALTER TABLE leases
-  ADD COLUMN IF NOT EXISTS first_invoice_date DATE;
-
-ALTER TABLE leases
-  ADD COLUMN IF NOT EXISTS late_fee_rate DECIMAL(10,6) DEFAULT 0.002740;
-
-COMMENT ON COLUMN leases.grace_period_days IS 'Nombre de jours de grâce avant relance (défaut: 3)';
-COMMENT ON COLUMN leases.invoice_engine_started IS 'Indique si le moteur de facturation a été déclenché pour ce bail';
-COMMENT ON COLUMN leases.first_invoice_date IS 'Date de la première facture à générer (calculée au prorata si bail en cours de mois)';
-COMMENT ON COLUMN leases.late_fee_rate IS 'Taux journalier de pénalité de retard (défaut: taux légal / 365 ≈ 0.00274)';
-
--- =====================
--- 2. Champs manquants invoices
--- =====================
-
-ALTER TABLE invoices
-  ADD COLUMN IF NOT EXISTS period_start DATE;
-
-ALTER TABLE invoices
-  ADD COLUMN IF NOT EXISTS period_end DATE;
-
-ALTER TABLE invoices
-  ADD COLUMN IF NOT EXISTS generated_at TIMESTAMPTZ DEFAULT NOW();
-
-ALTER TABLE invoices
-  ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ;
-
-ALTER TABLE invoices
-  ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
-
-ALTER TABLE invoices
-  ADD COLUMN IF NOT EXISTS stripe_payment_intent_id TEXT;
-
-ALTER TABLE invoices
-  ADD COLUMN IF NOT EXISTS notes TEXT;
-
--- Étendre les statuts possibles des invoices
-ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_statut_check;
-ALTER TABLE invoices ADD CONSTRAINT invoices_statut_check
-  CHECK (statut IN ('draft', 'sent', 'paid', 'partial', 'overdue', 'unpaid', 'cancelled', 'late'));
-
--- Index pour la recherche de factures en retard
-CREATE INDEX IF NOT EXISTS idx_invoices_date_echeance ON invoices(date_echeance) WHERE statut IN ('sent', 'late', 'overdue');
-CREATE INDEX IF NOT EXISTS idx_invoices_period_start ON invoices(period_start);
-
--- =====================
--- 3. Champ tenant_id dans payments (dénormalisation pour RLS directe)
--- =====================
-
-ALTER TABLE payments
-  ADD COLUMN IF NOT EXISTS tenant_id UUID REFERENCES profiles(id);
-
--- Étendre les statuts possibles des payments
-ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_statut_check;
-ALTER TABLE payments ADD CONSTRAINT payments_statut_check
-  CHECK (statut IN ('pending', 'succeeded', 'failed', 'refunded'));
-
--- =====================
--- 4. Table payment_reminders
--- =====================
-
-CREATE TABLE IF NOT EXISTS payment_reminders (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
-  tenant_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  reminder_type TEXT NOT NULL CHECK (reminder_type IN ('friendly', 'reminder', 'urgent', 'formal_notice', 'lrec', 'final')),
-  channel TEXT NOT NULL CHECK (channel IN ('email', 'sms', 'push', 'lrec', 'courrier')),
-  sent_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  opened_at TIMESTAMPTZ,
-  metadata JSONB DEFAULT '{}'::jsonb,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_payment_reminders_invoice ON payment_reminders(invoice_id);
-CREATE INDEX IF NOT EXISTS idx_payment_reminders_tenant ON payment_reminders(tenant_id);
-
-COMMENT ON TABLE payment_reminders IS 'Historique des relances envoyées pour factures impayées';
-
--- =====================
--- 5. Table late_fees
--- =====================
-
-CREATE TABLE IF NOT EXISTS late_fees (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
-  amount DECIMAL(10, 2) NOT NULL,
-  rate DECIMAL(10, 6) NOT NULL,
-  days_late INTEGER NOT NULL,
-  calculated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  waived BOOLEAN NOT NULL DEFAULT false,
-  waived_reason TEXT,
-  waived_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_late_fees_invoice ON late_fees(invoice_id);
-
-COMMENT ON TABLE late_fees IS 'Pénalités de retard calculées conformément à la loi du 6 juillet 1989';
-
--- =====================
--- 6. Table receipts (quittances de loyer)
--- =====================
-
-CREATE TABLE IF NOT EXISTS receipts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  payment_id UUID REFERENCES payments(id) ON DELETE SET NULL,
-  lease_id UUID NOT NULL REFERENCES leases(id) ON DELETE CASCADE,
-  invoice_id UUID REFERENCES invoices(id) ON DELETE SET NULL,
-  tenant_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  owner_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  period TEXT NOT NULL, -- Format YYYY-MM
-  period_start DATE,
-  period_end DATE,
-  montant_loyer DECIMAL(10, 2) NOT NULL,
-  montant_charges DECIMAL(10, 2) NOT NULL DEFAULT 0,
-  montant_total DECIMAL(10, 2) NOT NULL,
-  pdf_url TEXT,
-  pdf_storage_path TEXT,
-  generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  sent_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_receipts_lease ON receipts(lease_id);
-CREATE INDEX IF NOT EXISTS idx_receipts_tenant ON receipts(tenant_id);
-CREATE INDEX IF NOT EXISTS idx_receipts_period ON receipts(period);
-
-COMMENT ON TABLE receipts IS 'Quittances de loyer générées après paiement (art. 21 loi 6 juillet 1989)';
-
--- =====================
--- 7. Table tenant_credit_score
--- =====================
-
-CREATE TABLE IF NOT EXISTS tenant_credit_score (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tenant_id UUID NOT NULL UNIQUE REFERENCES profiles(id) ON DELETE CASCADE,
-  score INTEGER, -- NULL = pas encore de données
-  on_time_count INTEGER NOT NULL DEFAULT 0,
-  late_count INTEGER NOT NULL DEFAULT 0,
-  missed_count INTEGER NOT NULL DEFAULT 0,
-  early_count INTEGER NOT NULL DEFAULT 0,
-  total_payments INTEGER NOT NULL DEFAULT 0,
-  last_updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_tenant_credit_score_tenant ON tenant_credit_score(tenant_id);
-
-COMMENT ON TABLE tenant_credit_score IS 'Score de ponctualité du locataire (cache calculé après chaque paiement)';
-
--- =====================
--- 8. RLS Policies
--- =====================
-
--- payment_reminders
-ALTER TABLE payment_reminders ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Tenants can view own reminders" ON payment_reminders;
-
-CREATE POLICY "Tenants can view own reminders"
-  ON payment_reminders FOR SELECT
-  USING (tenant_id = public.user_profile_id());
-
-DROP POLICY IF EXISTS "Owners can view reminders of own invoices" ON payment_reminders;
-
-CREATE POLICY "Owners can view reminders of own invoices"
-  ON payment_reminders FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM invoices i
-      WHERE i.id = payment_reminders.invoice_id
-      AND i.owner_id = public.user_profile_id()
-    )
-  );
-
-DROP POLICY IF EXISTS "Admins can view all reminders" ON payment_reminders;
-
-CREATE POLICY "Admins can view all reminders"
-  ON payment_reminders FOR SELECT
-  USING (public.user_role() = 'admin');
-
--- late_fees
-ALTER TABLE late_fees ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Users can view late fees of accessible invoices" ON late_fees;
-
-CREATE POLICY "Users can view late fees of accessible invoices"
-  ON late_fees FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM invoices i
-      WHERE i.id = late_fees.invoice_id
-      AND (
-        i.owner_id = public.user_profile_id()
-        OR i.tenant_id = public.user_profile_id()
-        OR public.user_role() = 'admin'
-      )
-    )
-  );
-
--- receipts
-ALTER TABLE receipts ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Tenants can view own receipts" ON receipts;
-
-CREATE POLICY "Tenants can view own receipts"
-  ON receipts FOR SELECT
-  USING (tenant_id = public.user_profile_id());
-
-DROP POLICY IF EXISTS "Owners can view receipts of own properties" ON receipts;
-
-CREATE POLICY "Owners can view receipts of own properties"
-  ON receipts FOR SELECT
-  USING (owner_id = public.user_profile_id());
-
-DROP POLICY IF EXISTS "Admins can view all receipts" ON receipts;
-
-CREATE POLICY "Admins can view all receipts"
-  ON receipts FOR SELECT
-  USING (public.user_role() = 'admin');
-
--- tenant_credit_score
-ALTER TABLE tenant_credit_score ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Tenants can view own credit score" ON tenant_credit_score;
-
-CREATE POLICY "Tenants can view own credit score"
-  ON tenant_credit_score FOR SELECT
-  USING (tenant_id = public.user_profile_id());
-
-DROP POLICY IF EXISTS "Admins can view all credit scores" ON tenant_credit_score;
-
-CREATE POLICY "Admins can view all credit scores"
-  ON tenant_credit_score FOR SELECT
-  USING (public.user_role() = 'admin');
-
--- =====================
--- 9. DB Trigger : Bail activé → démarrer le moteur de facturation
--- =====================
-
-CREATE OR REPLACE FUNCTION trigger_invoice_engine_on_lease_active()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  v_tenant_signer RECORD;
-  v_owner_id UUID;
-  v_property_address TEXT;
-BEGIN
-  -- Ne déclencher que si le statut passe à 'active' et que le moteur n'a pas déjà été démarré
-  IF NEW.statut = 'active' AND (OLD.statut IS DISTINCT FROM 'active') AND (NEW.invoice_engine_started IS NOT TRUE) THEN
-
-    -- Trouver le locataire principal
-    SELECT ls.profile_id INTO v_tenant_signer
-    FROM lease_signers ls
-    WHERE ls.lease_id = NEW.id
-    AND ls.role IN ('locataire', 'locataire_principal', 'colocataire')
-    LIMIT 1;
-
-    -- Trouver le propriétaire
-    SELECT p.owner_id, p.adresse_complete INTO v_owner_id, v_property_address
-    FROM properties p
-    WHERE p.id = NEW.property_id;
-
-    IF v_tenant_signer.profile_id IS NOT NULL AND v_owner_id IS NOT NULL THEN
-      -- Émettre un événement outbox pour que le process-outbox le traite
-      INSERT INTO outbox (event_type, payload)
-      VALUES ('Lease.InvoiceEngineStart', jsonb_build_object(
-        'lease_id', NEW.id,
-        'tenant_id', v_tenant_signer.profile_id,
-        'owner_id', v_owner_id,
-        'property_id', NEW.property_id,
-        'property_address', COALESCE(v_property_address, ''),
-        'loyer', NEW.loyer,
-        'charges_forfaitaires', NEW.charges_forfaitaires,
-        'date_debut', NEW.date_debut,
-        'jour_paiement', COALESCE(NEW.jour_paiement, 5),
-        'grace_period_days', COALESCE(NEW.grace_period_days, 3)
-      ));
-
-      -- Générer immédiatement la première facture (prorata si nécessaire)
-      PERFORM generate_first_invoice(NEW.id, v_tenant_signer.profile_id, v_owner_id);
-
-      -- Marquer le moteur comme démarré
-      NEW.invoice_engine_started := true;
-    END IF;
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-
--- Fonction pour générer la première facture avec calcul prorata
-CREATE OR REPLACE FUNCTION generate_first_invoice(
-  p_lease_id UUID,
-  p_tenant_id UUID,
-  p_owner_id UUID
-)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  v_lease RECORD;
-  v_now DATE := CURRENT_DATE;
-  v_jour_paiement INT;
-  v_days_in_month INT;
-  v_date_debut DATE;
-  v_first_full_month DATE;
-  v_prorata_amount DECIMAL(10,2);
-  v_prorata_days INT;
-  v_total_days INT;
-  v_loyer DECIMAL(10,2);
-  v_charges DECIMAL(10,2);
-  v_prorata_charges DECIMAL(10,2);
-  v_current_month TEXT;
-  v_invoice_exists BOOLEAN;
-BEGIN
-  -- Récupérer les données du bail
-  SELECT * INTO v_lease FROM leases WHERE id = p_lease_id;
-  IF NOT FOUND THEN RETURN; END IF;
-
-  v_loyer := v_lease.loyer;
-  v_charges := v_lease.charges_forfaitaires;
-  v_jour_paiement := COALESCE(v_lease.jour_paiement, 5);
-  v_date_debut := v_lease.date_debut;
-
-  -- Mois du début de bail
-  v_current_month := TO_CHAR(v_date_debut, 'YYYY-MM');
-
-  -- Vérifier si une facture existe déjà pour ce mois
-  SELECT EXISTS(
-    SELECT 1 FROM invoices WHERE lease_id = p_lease_id AND periode = v_current_month
-  ) INTO v_invoice_exists;
-  IF v_invoice_exists THEN RETURN; END IF;
-
-  -- Calculer le prorata si le bail ne commence pas le 1er du mois
-  v_total_days := EXTRACT(DAY FROM (DATE_TRUNC('month', v_date_debut) + INTERVAL '1 month' - INTERVAL '1 day'));
-  v_prorata_days := v_total_days - EXTRACT(DAY FROM v_date_debut)::INT + 1;
-
-  IF v_prorata_days < v_total_days THEN
-    -- Facture prorata
-    v_prorata_amount := ROUND((v_loyer * v_prorata_days / v_total_days), 2);
-    v_prorata_charges := ROUND((v_charges * v_prorata_days / v_total_days), 2);
-
-    INSERT INTO invoices (
-      lease_id, owner_id, tenant_id, periode,
-      montant_loyer, montant_charges, montant_total,
-      date_echeance, period_start, period_end,
-      invoice_number, statut, generated_at, notes
-    ) VALUES (
-      p_lease_id, p_owner_id, p_tenant_id, v_current_month,
-      v_prorata_amount, v_prorata_charges, v_prorata_amount + v_prorata_charges,
-      v_date_debut, v_date_debut, (DATE_TRUNC('month', v_date_debut) + INTERVAL '1 month' - INTERVAL '1 day')::DATE,
-      'QUI-' || REPLACE(v_current_month, '-', '') || '-' || UPPER(LEFT(p_lease_id::TEXT, 8)),
-      'sent', NOW(),
-      'Facture prorata du ' || v_date_debut || ' au ' || (DATE_TRUNC('month', v_date_debut) + INTERVAL '1 month' - INTERVAL '1 day')::DATE || ' (' || v_prorata_days || '/' || v_total_days || ' jours)'
-    );
-  ELSE
-    -- Bail commence le 1er → facture complète
-    v_days_in_month := v_total_days;
-
-    INSERT INTO invoices (
-      lease_id, owner_id, tenant_id, periode,
-      montant_loyer, montant_charges, montant_total,
-      date_echeance, period_start, period_end,
-      invoice_number, statut, generated_at
-    ) VALUES (
-      p_lease_id, p_owner_id, p_tenant_id, v_current_month,
-      v_loyer, v_charges, v_loyer + v_charges,
-      (v_current_month || '-' || LPAD(LEAST(v_jour_paiement, v_days_in_month)::TEXT, 2, '0'))::DATE,
-      v_date_debut, (DATE_TRUNC('month', v_date_debut) + INTERVAL '1 month' - INTERVAL '1 day')::DATE,
-      'QUI-' || REPLACE(v_current_month, '-', '') || '-' || UPPER(LEFT(p_lease_id::TEXT, 8)),
-      'sent', NOW()
-    );
-  END IF;
-
-  -- Mettre à jour first_invoice_date
-  UPDATE leases SET first_invoice_date = v_date_debut WHERE id = p_lease_id;
-END;
-$$;
-
--- Installer le trigger (BEFORE UPDATE pour pouvoir modifier NEW)
-DROP TRIGGER IF EXISTS trg_invoice_engine_on_lease_active ON leases;
-CREATE TRIGGER trg_invoice_engine_on_lease_active
-  BEFORE UPDATE ON leases
-  FOR EACH ROW
-  EXECUTE FUNCTION trigger_invoice_engine_on_lease_active();
-
-COMMENT ON FUNCTION trigger_invoice_engine_on_lease_active IS 'Déclenche la génération de la première facture quand un bail passe à actif';
-COMMENT ON FUNCTION generate_first_invoice IS 'Génère la première facture avec calcul prorata conforme loi 6 juillet 1989';
-
+-- Batch 5 — migrations 74 a 127 sur 169
+-- 54 migrations
 
 -- === [74/169] 20260305000002_payment_crons.sql ===
 -- ============================================
@@ -4316,5 +3714,790 @@ COMMENT ON FUNCTION public.handle_new_user() IS
 Lit le role et les informations personnelles depuis les raw_user_meta_data.
 Supporte tous les roles: admin, owner, tenant, provider, guarantor, syndic, agency.
 Utilise ON CONFLICT pour gerer les cas ou le profil existe deja.';
+
+
+-- === [113/169] 20260327143000_add_site_config.sql ===
+-- Table de configuration du site vitrine
+CREATE TABLE IF NOT EXISTS site_config (
+  key TEXT PRIMARY KEY,
+  value TEXT,
+  label TEXT,           -- Label lisible pour l'admin
+  section TEXT,         -- Groupe dans l'UI admin
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS : lecture publique, écriture admin uniquement
+ALTER TABLE site_config ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public read" ON site_config;
+
+CREATE POLICY "Public read" ON site_config FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admin write" ON site_config;
+CREATE POLICY "Admin write" ON site_config FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.user_id = auth.uid()
+      AND profiles.role IN ('admin', 'platform_admin')
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.user_id = auth.uid()
+      AND profiles.role IN ('admin', 'platform_admin')
+    )
+  );
+
+-- Valeurs initiales (images Unsplash par défaut)
+INSERT INTO site_config (key, label, section, value) VALUES
+  -- Section "Arguments" (4 cartes)
+  ('landing_arg_time_img',
+   'Argument — Gagnez 3h (illustration)',
+   'Arguments',
+   'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=600&q=80'),
+
+  ('landing_arg_money_img',
+   'Argument — Économisez 2000€ (illustration)',
+   'Arguments',
+   'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=600&q=80'),
+
+  ('landing_arg_contract_img',
+   'Argument — Contrats 5 min (illustration)',
+   'Arguments',
+   'https://images.unsplash.com/photo-1586281380349-632531db7ed4?w=600&q=80'),
+
+  ('landing_arg_sleep_img',
+   'Argument — Dormez tranquille (illustration)',
+   'Arguments',
+   'https://images.unsplash.com/photo-1541480601022-2308c0f02487?w=600&q=80'),
+
+  -- Section "Profils"
+  ('landing_profile_owner_img',
+   'Profil — Propriétaire particulier',
+   'Profils',
+   'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=600&q=80'),
+
+  ('landing_profile_investor_img',
+   'Profil — Investisseur / SCI',
+   'Profils',
+   'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&q=80'),
+
+  ('landing_profile_agency_img',
+   'Profil — Agence / Gestionnaire',
+   'Profils',
+   'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&q=80'),
+
+  -- Section "Avant / Après"
+  ('landing_beforeafter_img',
+   'Avant/Après — Photo de fond',
+   'Avant-Après',
+   'https://images.unsplash.com/photo-1484154218962-a197022b5858?w=1200&q=80')
+
+ON CONFLICT (key) DO NOTHING;
+
+-- Bucket public pour les images landing
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('landing-images', 'landing-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Politique de lecture publique sur le bucket
+DROP POLICY IF EXISTS "Public read landing images" ON storage.objects;
+CREATE POLICY "Public read landing images"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'landing-images');
+
+-- Politique d'upload admin
+DROP POLICY IF EXISTS "Admin upload landing images" ON storage.objects;
+CREATE POLICY "Admin upload landing images"
+ON storage.objects FOR INSERT
+WITH CHECK (
+  bucket_id = 'landing-images'
+  AND EXISTS (
+    SELECT 1 FROM profiles
+    WHERE profiles.user_id = auth.uid()
+    AND profiles.role IN ('admin', 'platform_admin')
+  )
+);
+
+-- Politique de suppression admin
+DROP POLICY IF EXISTS "Admin delete landing images" ON storage.objects;
+CREATE POLICY "Admin delete landing images"
+ON storage.objects FOR DELETE
+USING (
+  bucket_id = 'landing-images'
+  AND EXISTS (
+    SELECT 1 FROM profiles
+    WHERE profiles.user_id = auth.uid()
+    AND profiles.role IN ('admin', 'platform_admin')
+  )
+);
+
+
+-- === [114/169] 20260327200000_fix_handle_new_user_restore_email.sql ===
+-- ============================================
+-- Migration: Corriger handle_new_user — restaurer email + EXCEPTION handler
+-- Date: 2026-03-27
+-- Description:
+--   La migration 20260326205416 a introduit une regression :
+--     1. La colonne `email` n'est plus inseree dans profiles (variable v_email supprimee)
+--     2. Le handler EXCEPTION WHEN OTHERS a ete supprime
+--   Cette migration restaure les deux, tout en conservant le support
+--   de tous les roles (admin, owner, tenant, provider, guarantor, syndic, agency).
+--   Elle backfill aussi les emails NULL crees par la migration cassee.
+-- ============================================
+
+-- A. RESTAURER handle_new_user() avec email + EXCEPTION handler
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_role TEXT;
+  v_prenom TEXT;
+  v_nom TEXT;
+  v_telephone TEXT;
+  v_email TEXT;
+BEGIN
+  -- Lire le role depuis les metadata, avec fallback sur 'tenant'
+  v_role := COALESCE(
+    NEW.raw_user_meta_data->>'role',
+    'tenant'
+  );
+
+  -- Valider le role (tous les roles supportes par la plateforme)
+  IF v_role NOT IN ('admin', 'owner', 'tenant', 'provider', 'guarantor', 'syndic', 'agency') THEN
+    v_role := 'tenant';
+  END IF;
+
+  -- Lire les autres donnees depuis les metadata
+  v_prenom := NEW.raw_user_meta_data->>'prenom';
+  v_nom := NEW.raw_user_meta_data->>'nom';
+  v_telephone := NEW.raw_user_meta_data->>'telephone';
+
+  -- Recuperer l'email depuis le champ auth.users.email
+  v_email := NEW.email;
+
+  -- Inserer le profil avec toutes les donnees, y compris l'email
+  INSERT INTO public.profiles (user_id, role, prenom, nom, telephone, email)
+  VALUES (NEW.id, v_role, v_prenom, v_nom, v_telephone, v_email)
+  ON CONFLICT (user_id) DO UPDATE SET
+    role = EXCLUDED.role,
+    prenom = COALESCE(EXCLUDED.prenom, profiles.prenom),
+    nom = COALESCE(EXCLUDED.nom, profiles.nom),
+    telephone = COALESCE(EXCLUDED.telephone, profiles.telephone),
+    email = COALESCE(EXCLUDED.email, profiles.email),
+    updated_at = NOW();
+
+  RETURN NEW;
+
+EXCEPTION WHEN OTHERS THEN
+  -- Ne jamais bloquer la creation d'un utilisateur auth
+  -- meme si l'insertion du profil echoue
+  RAISE WARNING '[handle_new_user] Erreur pour user_id=%, email=%: % (SQLSTATE=%)',
+    NEW.id, NEW.email, SQLERRM, SQLSTATE;
+  RETURN NEW;
+END;
+$$;
+
+COMMENT ON FUNCTION public.handle_new_user() IS
+'Cree automatiquement un profil lors de la creation d''un utilisateur auth.
+Lit le role et les informations personnelles depuis raw_user_meta_data.
+Inclut l''email depuis auth.users.email.
+Supporte tous les roles: admin, owner, tenant, provider, guarantor, syndic, agency.
+Utilise ON CONFLICT pour gerer les cas ou le profil existe deja.
+Ne bloque jamais la creation auth meme en cas d''erreur (EXCEPTION handler).';
+
+-- B. BACKFILL des emails NULL (crees par la migration 20260326205416 cassee)
+DO $$
+DECLARE
+  v_updated INTEGER;
+BEGIN
+  UPDATE public.profiles p
+  SET
+    email = u.email,
+    updated_at = NOW()
+  FROM auth.users u
+  WHERE p.user_id = u.id
+    AND (p.email IS NULL OR p.email = '')
+    AND u.email IS NOT NULL
+    AND u.email != '';
+
+  GET DIAGNOSTICS v_updated = ROW_COUNT;
+
+  IF v_updated > 0 THEN
+    RAISE NOTICE '[fix_handle_new_user] % profil(s) mis a jour avec l''email depuis auth.users', v_updated;
+  ELSE
+    RAISE NOTICE '[fix_handle_new_user] Tous les profils ont deja un email renseigne';
+  END IF;
+END $$;
+
+
+-- === [115/169] 20260328000000_fix_visible_tenant_documents.sql ===
+-- FIX 4: Ensure mandatory lease documents are visible to tenants
+-- Documents types contrat_bail, edl_entree, assurance_habitation
+-- must have visible_tenant = true so tenants can see them.
+
+UPDATE documents
+SET visible_tenant = true,
+    updated_at = now()
+WHERE type IN ('contrat_bail', 'edl_entree', 'assurance_habitation')
+  AND (visible_tenant IS NULL OR visible_tenant = false);
+
+
+-- === [116/169] 20260328042538_update_argument_images.sql ===
+-- Mise à jour des images par défaut des 4 cartes Arguments
+UPDATE site_config SET value = 'https://images.unsplash.com/photo-1556761175-4b46a572b786?w=600&q=80'
+WHERE key = 'landing_arg_time_img';
+
+UPDATE site_config SET value = 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=600&q=80'
+WHERE key = 'landing_arg_money_img';
+
+UPDATE site_config SET value = 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=600&q=80'
+WHERE key = 'landing_arg_contract_img';
+
+UPDATE site_config SET value = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=600&q=80'
+WHERE key = 'landing_arg_sleep_img';
+
+
+-- === [117/169] 20260328100000_create_site_content.sql ===
+-- ============================================
+-- Migration: site_content — CMS léger pour pages marketing
+-- Date: 2026-03-28
+-- Auteur: Claude
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS site_content (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+
+  -- Identification
+  page_slug TEXT NOT NULL,
+  section_key TEXT NOT NULL DEFAULT 'content_body',
+
+  -- Contenu
+  content_type TEXT NOT NULL DEFAULT 'markdown',
+  content TEXT NOT NULL,
+
+  -- Métadonnées
+  title TEXT,
+  meta_description TEXT,
+  last_updated_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_by UUID REFERENCES profiles(id),
+
+  -- Versioning
+  version INTEGER DEFAULT 1,
+  is_published BOOLEAN DEFAULT true,
+
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+
+  UNIQUE(page_slug, section_key, version)
+);
+
+-- RLS
+ALTER TABLE site_content ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "site_content_public_read" ON site_content;
+
+CREATE POLICY "site_content_public_read" ON site_content
+  FOR SELECT USING (is_published = true);
+
+DROP POLICY IF EXISTS "site_content_admin_all" ON site_content;
+
+CREATE POLICY "site_content_admin_all" ON site_content
+  FOR ALL TO authenticated
+  USING (public.user_role() = 'admin');
+
+-- Index pour les requêtes fréquentes
+CREATE INDEX idx_site_content_slug ON site_content(page_slug, section_key)
+  WHERE is_published = true;
+
+-- Commentaire
+COMMENT ON TABLE site_content IS 'CMS léger pour les pages marketing et légales de talok.fr';
+
+
+-- === [118/169] 20260328100000_fix_visible_tenant_documents.sql ===
+-- Migration: Ensure key lease documents are visible to tenants
+-- Fixes: Documents created before visible_tenant was properly set
+
+-- Set visible_tenant = true for all tenant-relevant document types
+UPDATE documents
+SET visible_tenant = true
+WHERE type IN ('bail', 'contrat_bail', 'EDL_entree', 'EDL_sortie', 'edl_entree', 'edl_sortie', 'quittance', 'attestation_remise_cles', 'assurance_habitation')
+  AND (visible_tenant IS NULL OR visible_tenant = false);
+
+-- Corriger les documents obligatoires du bail test da2eb9da
+UPDATE documents
+SET visible_tenant = true, updated_at = now()
+WHERE lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7'
+  AND type IN ('contrat_bail', 'edl_entree', 'assurance_habitation')
+  AND (visible_tenant IS NULL OR visible_tenant = false);
+
+-- Set default visible_tenant = true for new documents via column default
+ALTER TABLE documents ALTER COLUMN visible_tenant SET DEFAULT true;
+
+
+-- === [119/169] 20260329052631_fix_contrat_bail_visible_tenant.sql ===
+-- Migration: Rendre les documents de bail visibles aux locataires
+-- Contexte: Le route /seal ne définissait pas visible_tenant=true sur les documents de bail
+-- Impact: Les locataires ne voyaient pas leur bail dans /tenant/documents
+
+-- S'assurer que tous les documents bail liés à un lease ont visible_tenant=true
+UPDATE documents
+SET
+  visible_tenant = true,
+  title = CASE
+    WHEN title = 'Bail de location signé' THEN 'Contrat de bail signé'
+    ELSE title
+  END,
+  original_filename = COALESCE(
+    original_filename,
+    'bail_signe_' || lease_id::text || '.html'
+  ),
+  updated_at = now()
+WHERE
+  type = 'bail'
+  AND lease_id IS NOT NULL
+  AND (visible_tenant IS NULL OR visible_tenant = false);
+
+
+-- === [120/169] 20260329120000_add_agency_to_handle_new_user.sql ===
+-- ============================================
+-- Migration: Ajouter le rôle agency au trigger handle_new_user
+-- Date: 2026-03-29
+-- Description: Le rôle agency était absent de la liste des rôles valides
+--              dans le trigger, causant un fallback silencieux vers tenant.
+-- ============================================
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_role TEXT;
+  v_prenom TEXT;
+  v_nom TEXT;
+  v_telephone TEXT;
+BEGIN
+  -- Lire le rôle depuis les metadata, avec fallback sur 'tenant'
+  v_role := COALESCE(
+    NEW.raw_user_meta_data->>'role',
+    'tenant'
+  );
+
+  -- Valider le rôle (tous les rôles supportés par la plateforme)
+  IF v_role NOT IN ('admin', 'owner', 'tenant', 'provider', 'guarantor', 'syndic', 'agency') THEN
+    v_role := 'tenant';
+  END IF;
+
+  -- Lire les autres données depuis les metadata
+  v_prenom := NEW.raw_user_meta_data->>'prenom';
+  v_nom := NEW.raw_user_meta_data->>'nom';
+  v_telephone := NEW.raw_user_meta_data->>'telephone';
+
+  -- Insérer le profil avec toutes les données
+  INSERT INTO public.profiles (user_id, role, prenom, nom, telephone)
+  VALUES (NEW.id, v_role, v_prenom, v_nom, v_telephone)
+  ON CONFLICT (user_id) DO UPDATE SET
+    role = EXCLUDED.role,
+    prenom = COALESCE(EXCLUDED.prenom, profiles.prenom),
+    nom = COALESCE(EXCLUDED.nom, profiles.nom),
+    telephone = COALESCE(EXCLUDED.telephone, profiles.telephone),
+    updated_at = NOW();
+
+  RETURN NEW;
+END;
+$$;
+
+COMMENT ON FUNCTION public.handle_new_user() IS
+'Crée automatiquement un profil lors de la création d''un utilisateur.
+Lit le rôle et les informations personnelles depuis les raw_user_meta_data.
+Supporte tous les rôles: admin, owner, tenant, provider, guarantor, syndic, agency.
+Utilise ON CONFLICT pour gérer les cas où le profil existe déjà.';
+
+
+-- === [121/169] 20260329164841_fix_document_titles.sql ===
+-- Migration: Corriger les titres bruts/manquants des documents existants
+-- Remplace les titres NULL, screenshots, codes bruts et dates par des labels lisibles
+-- Source: talok-documents-sota section 8
+
+UPDATE documents SET
+  title = CASE
+    WHEN type = 'cni_recto' THEN 'Carte d''identité (Recto)'
+    WHEN type = 'cni_verso' THEN 'Carte d''identité (Verso)'
+    WHEN type = 'attestation_assurance' THEN 'Attestation d''assurance'
+    WHEN type = 'assurance_pno' THEN 'Assurance PNO'
+    WHEN type = 'bail' THEN 'Contrat de bail'
+    WHEN type = 'avenant' THEN 'Avenant au bail'
+    WHEN type = 'engagement_garant' THEN 'Engagement de caution'
+    WHEN type = 'bail_signe_locataire' THEN 'Bail signé (locataire)'
+    WHEN type = 'bail_signe_proprietaire' THEN 'Bail signé (propriétaire)'
+    WHEN type = 'piece_identite' THEN 'Pièce d''identité'
+    WHEN type = 'passeport' THEN 'Passeport'
+    WHEN type = 'titre_sejour' THEN 'Titre de séjour'
+    WHEN type = 'quittance' THEN 'Quittance de loyer'
+    WHEN type = 'facture' THEN 'Facture'
+    WHEN type = 'rib' THEN 'RIB'
+    WHEN type = 'avis_imposition' THEN 'Avis d''imposition'
+    WHEN type = 'bulletin_paie' THEN 'Bulletin de paie'
+    WHEN type = 'attestation_loyer' THEN 'Attestation de loyer'
+    WHEN type = 'justificatif_revenus' THEN 'Justificatif de revenus'
+    WHEN type = 'dpe' THEN 'Diagnostic de performance énergétique'
+    WHEN type = 'diagnostic_gaz' THEN 'Diagnostic gaz'
+    WHEN type = 'diagnostic_electricite' THEN 'Diagnostic électricité'
+    WHEN type = 'diagnostic_plomb' THEN 'Diagnostic plomb (CREP)'
+    WHEN type = 'diagnostic_amiante' THEN 'Diagnostic amiante'
+    WHEN type = 'diagnostic_termites' THEN 'Diagnostic termites'
+    WHEN type = 'erp' THEN 'État des risques (ERP)'
+    WHEN type = 'EDL_entree' THEN 'État des lieux d''entrée'
+    WHEN type = 'EDL_sortie' THEN 'État des lieux de sortie'
+    WHEN type = 'inventaire' THEN 'Inventaire mobilier'
+    WHEN type = 'taxe_fonciere' THEN 'Taxe foncière'
+    WHEN type = 'devis' THEN 'Devis'
+    WHEN type = 'rapport_intervention' THEN 'Rapport d''intervention'
+    ELSE COALESCE(title, 'Document')
+  END
+WHERE title IS NULL
+   OR title ~ '^Capture d.écran'
+   OR title ~ '^[A-Z_]+$'
+   OR title ~ '^\d{4}-\d{2}-\d{2}';
+
+
+-- === [122/169] 20260329170000_add_punctuality_score.sql ===
+-- Migration: Ajouter le score de ponctualité sur les baux
+-- Le score mesure le % de paiements reçus à temps (avant date_echeance)
+
+-- 1. Colonne sur leases
+ALTER TABLE leases
+  ADD COLUMN IF NOT EXISTS punctuality_score DECIMAL(5,2) DEFAULT NULL;
+
+COMMENT ON COLUMN leases.punctuality_score IS
+  'Score de ponctualité du locataire (0-100). NULL = pas encore de données. Mis à jour par trigger.';
+
+-- 2. Fonction de calcul
+CREATE OR REPLACE FUNCTION compute_punctuality_score(p_lease_id UUID)
+RETURNS DECIMAL(5,2) AS $$
+DECLARE
+  v_total INT;
+  v_on_time INT;
+BEGIN
+  -- Compter les factures payées ou en retard (exclure les brouillons et annulées)
+  SELECT COUNT(*) INTO v_total
+  FROM invoices
+  WHERE lease_id = p_lease_id
+    AND statut IN ('paid', 'late', 'overdue', 'unpaid');
+
+  IF v_total = 0 THEN
+    RETURN NULL;
+  END IF;
+
+  -- Compter les factures payées à temps :
+  -- date_paiement <= date_echeance OU statut = 'paid' sans retard
+  SELECT COUNT(*) INTO v_on_time
+  FROM invoices
+  WHERE lease_id = p_lease_id
+    AND statut = 'paid'
+    AND (
+      (date_paiement IS NOT NULL AND date_echeance IS NOT NULL AND date_paiement <= date_echeance)
+      OR date_echeance IS NULL
+    );
+
+  RETURN ROUND((v_on_time::DECIMAL / v_total) * 100, 2);
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+-- 3. Trigger pour recalculer à chaque changement de facture
+CREATE OR REPLACE FUNCTION trigger_update_punctuality_score()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_lease_id UUID;
+  v_score DECIMAL(5,2);
+BEGIN
+  -- Déterminer le lease_id concerné
+  v_lease_id := COALESCE(NEW.lease_id, OLD.lease_id);
+
+  IF v_lease_id IS NULL THEN
+    RETURN COALESCE(NEW, OLD);
+  END IF;
+
+  -- Recalculer le score
+  v_score := compute_punctuality_score(v_lease_id);
+
+  -- Mettre à jour le bail
+  UPDATE leases
+  SET punctuality_score = v_score
+  WHERE id = v_lease_id;
+
+  RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_update_punctuality_score ON invoices;
+
+CREATE TRIGGER trg_update_punctuality_score
+  AFTER INSERT OR UPDATE OF statut, date_paiement ON invoices
+  FOR EACH ROW
+  EXECUTE FUNCTION trigger_update_punctuality_score();
+
+-- 4. Calculer le score initial pour tous les baux existants
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN SELECT DISTINCT lease_id FROM invoices WHERE lease_id IS NOT NULL LOOP
+    UPDATE leases
+    SET punctuality_score = compute_punctuality_score(r.lease_id)
+    WHERE id = r.lease_id;
+  END LOOP;
+END;
+$$;
+
+
+-- === [123/169] 20260329180000_notify_owner_edl_signed.sql ===
+-- Migration: Notification propriétaire quand un EDL est signé par les deux parties
+-- Date: 2026-03-29
+-- Description: Ajoute un trigger qui notifie le propriétaire lorsqu'un EDL passe en statut "signed"
+
+-- ============================================================================
+-- Fonction de notification EDL signé → propriétaire
+-- ============================================================================
+CREATE OR REPLACE FUNCTION public.notify_owner_edl_signed()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_owner_id UUID;
+    v_property_address TEXT;
+    v_edl_type TEXT;
+    v_existing UUID;
+BEGIN
+    -- Seulement quand le statut passe à 'signed'
+    IF NEW.status = 'signed' AND (OLD.status IS DISTINCT FROM 'signed') THEN
+
+        -- Récupérer le type de l'EDL
+        v_edl_type := COALESCE(NEW.type, 'entree');
+
+        -- Récupérer le propriétaire et l'adresse via la propriété
+        SELECT p.owner_id, p.adresse_complete
+        INTO v_owner_id, v_property_address
+        FROM properties p
+        WHERE p.id = NEW.property_id;
+
+        IF v_owner_id IS NULL THEN
+            RETURN NEW;
+        END IF;
+
+        -- Déduplication : vérifier si une notification similaire existe dans la dernière heure
+        SELECT id INTO v_existing
+        FROM notifications
+        WHERE profile_id = v_owner_id
+          AND type = 'edl_signed'
+          AND related_id = NEW.id
+          AND created_at > NOW() - INTERVAL '1 hour'
+        LIMIT 1;
+
+        IF v_existing IS NOT NULL THEN
+            RETURN NEW;
+        END IF;
+
+        -- Créer la notification via la RPC
+        PERFORM create_notification(
+            v_owner_id,
+            'edl_signed',
+            CASE v_edl_type
+                WHEN 'entree' THEN 'État des lieux d''entrée signé'
+                WHEN 'sortie' THEN 'État des lieux de sortie signé'
+                ELSE 'État des lieux signé'
+            END,
+            'L''état des lieux ' ||
+            CASE v_edl_type
+                WHEN 'entree' THEN 'd''entrée'
+                WHEN 'sortie' THEN 'de sortie'
+                ELSE ''
+            END ||
+            ' pour ' || COALESCE(v_property_address, 'votre bien') ||
+            ' a été signé par toutes les parties.',
+            '/owner/edl/' || NEW.id,
+            NEW.id,
+            'edl'
+        );
+    END IF;
+
+    RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+    -- Ne pas bloquer la transaction si la notification échoue
+    RAISE WARNING '[notify_owner_edl_signed] Erreur: %', SQLERRM;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================================
+-- Trigger sur la table edl (UPDATE du statut)
+-- ============================================================================
+DROP TRIGGER IF EXISTS trigger_notify_owner_edl_signed ON edl;
+CREATE TRIGGER trigger_notify_owner_edl_signed
+    AFTER UPDATE OF status ON edl
+    FOR EACH ROW
+    WHEN (NEW.status = 'signed' AND OLD.status IS DISTINCT FROM 'signed')
+    EXECUTE FUNCTION public.notify_owner_edl_signed();
+
+
+-- === [124/169] 20260329190000_force_visible_tenant_generated_docs.sql ===
+-- Migration: Backfill visible_tenant for generated documents + trigger guard
+-- Date: 2026-03-29
+-- Description:
+--   1. Backfill: force visible_tenant = true on all existing generated documents
+--   2. Trigger: prevent any future INSERT/UPDATE from creating a generated doc with visible_tenant = false
+
+-- ============================================================================
+-- 1. Backfill existing generated documents
+-- ============================================================================
+UPDATE documents
+SET visible_tenant = true, updated_at = NOW()
+WHERE is_generated = true AND (visible_tenant = false OR visible_tenant IS NULL);
+
+-- ============================================================================
+-- 2. Trigger function: force visible_tenant on generated documents
+-- ============================================================================
+CREATE OR REPLACE FUNCTION public.force_visible_tenant_on_generated()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.is_generated = true THEN
+        NEW.visible_tenant := true;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- 3. Trigger on documents table
+-- ============================================================================
+DROP TRIGGER IF EXISTS trg_force_visible_tenant_on_generated ON documents;
+CREATE TRIGGER trg_force_visible_tenant_on_generated
+    BEFORE INSERT OR UPDATE ON documents
+    FOR EACH ROW
+    EXECUTE FUNCTION public.force_visible_tenant_on_generated();
+
+
+-- === [125/169] 20260330100000_add_lease_cancellation_columns.sql ===
+-- ============================================
+-- Migration : Ajout colonnes annulation de bail
+-- Date : 2026-03-30
+-- Contexte : Un bail signé mais jamais activé ne peut pas être annulé.
+--            Cette migration ajoute les colonnes nécessaires pour
+--            gérer le cycle de vie d'annulation.
+-- ============================================
+
+-- Étape 1 : Ajouter les colonnes d'annulation sur leases
+ALTER TABLE leases ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ;
+ALTER TABLE leases ADD COLUMN IF NOT EXISTS cancelled_by UUID REFERENCES auth.users(id);
+ALTER TABLE leases ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;
+ALTER TABLE leases ADD COLUMN IF NOT EXISTS cancellation_type TEXT;
+
+-- Étape 2 : Contrainte CHECK sur cancellation_type
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'leases_cancellation_type_check'
+  ) THEN
+    ALTER TABLE leases ADD CONSTRAINT leases_cancellation_type_check
+      CHECK (cancellation_type IS NULL OR cancellation_type IN (
+        'tenant_withdrawal',
+        'owner_withdrawal',
+        'mutual_agreement',
+        'never_activated',
+        'error',
+        'duplicate'
+      ));
+  END IF;
+END $$;
+
+-- Étape 3 : Vérifier que 'cancelled' est dans la contrainte CHECK sur statut
+-- La migration 20260215200001 l'a déjà ajouté, mais on vérifie par sécurité
+DO $$ BEGIN
+  -- Tenter d'insérer un bail cancelled pour vérifier la contrainte
+  -- Si ça échoue, on met à jour la contrainte
+  PERFORM 1;
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;
+
+-- Étape 4 : Index pour requêtes de nettoyage et reporting
+CREATE INDEX IF NOT EXISTS idx_leases_cancelled
+  ON leases(statut) WHERE statut = 'cancelled';
+
+CREATE INDEX IF NOT EXISTS idx_leases_cancelled_at
+  ON leases(cancelled_at) WHERE cancelled_at IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_leases_zombie_candidates
+  ON leases(statut, created_at)
+  WHERE statut IN ('pending_signature', 'partially_signed', 'fully_signed', 'draft', 'sent')
+    AND cancelled_at IS NULL;
+
+-- Étape 5 : RLS — les politiques existantes couvrent déjà leases
+-- Pas besoin de nouvelles politiques car l'annulation passe par UPDATE du statut
+
+-- Étape 6 : Commentaires
+COMMENT ON COLUMN leases.cancelled_at IS 'Date/heure de l''annulation du bail';
+COMMENT ON COLUMN leases.cancelled_by IS 'User ID de la personne ayant annulé le bail';
+COMMENT ON COLUMN leases.cancellation_reason IS 'Motif libre de l''annulation';
+COMMENT ON COLUMN leases.cancellation_type IS 'Type d''annulation : tenant_withdrawal, owner_withdrawal, mutual_agreement, never_activated, error, duplicate';
+
+
+-- === [126/169] 20260331000000_add_receipt_generated_to_invoices.sql ===
+-- Add receipt_generated flag to invoices table
+-- Tracks whether a quittance PDF has been generated for a paid invoice
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'invoices' AND column_name = 'receipt_generated'
+  ) THEN
+    ALTER TABLE invoices ADD COLUMN receipt_generated BOOLEAN DEFAULT FALSE;
+    COMMENT ON COLUMN invoices.receipt_generated IS 'TRUE when a quittance PDF has been generated and stored for this invoice';
+  END IF;
+END $$;
+
+-- Backfill: mark invoices that already have a quittance document
+UPDATE invoices
+SET receipt_generated = TRUE
+WHERE id IN (
+  SELECT DISTINCT (metadata->>'invoice_id')::uuid
+  FROM documents
+  WHERE type = 'quittance'
+    AND metadata->>'invoice_id' IS NOT NULL
+)
+AND receipt_generated IS NOT TRUE;
+
+
+-- === [127/169] 20260331100000_add_agricultural_property_types.sql ===
+-- ============================================
+-- Migration: Ajouter les types agricoles au CHECK constraint properties
+-- Alignement avec le skill SOTA 2026 (14 types)
+-- Ref: .cursor/skills/sota-property-system/SKILL.md §1
+-- ============================================
+
+ALTER TABLE properties
+  DROP CONSTRAINT IF EXISTS properties_type_check;
+
+ALTER TABLE properties
+  ADD CONSTRAINT properties_type_check
+  CHECK (type IN (
+    'appartement',
+    'maison',
+    'studio',
+    'colocation',
+    'saisonnier',
+    'parking',
+    'box',
+    'local_commercial',
+    'bureaux',
+    'entrepot',
+    'fonds_de_commerce',
+    'immeuble',
+    'terrain_agricole',
+    'exploitation_agricole'
+  ));
 
 

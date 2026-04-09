@@ -1,969 +1,5 @@
--- Batch 7 — migrations 149 a 167 sur 169
--- 19 migrations
-
--- === [149/169] 20260408120000_edl_sortie_workflow.sql ===
--- ============================================================================
--- MIGRATION: EDL Sortie Workflow — Pièces, Vétusté, Retenues, Comparaison
--- Date: 2026-04-08
--- Description:
---   - Table edl_rooms (pièces structurées avec cotation globale)
---   - Extension edl_items avec champs comparaison entrée/sortie
---   - Extension edl avec champs sortie (retenues, dépôt, lien entrée)
---   - Table vetuste_grid (grille de vétusté)
---   - Mise à jour contraintes condition (6 niveaux)
--- ============================================================================
-
--- ─── 1. Étendre la table edl pour le workflow sortie ────────────────────────
-
-DO $$
-BEGIN
-    -- Lien vers l'EDL d'entrée (pour EDL sortie)
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl' AND column_name = 'linked_entry_edl_id') THEN
-        ALTER TABLE edl ADD COLUMN linked_entry_edl_id UUID REFERENCES edl(id);
-    END IF;
-
-    -- Parties présentes
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl' AND column_name = 'owner_present') THEN
-        ALTER TABLE edl ADD COLUMN owner_present BOOLEAN DEFAULT true;
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl' AND column_name = 'owner_representative') THEN
-        ALTER TABLE edl ADD COLUMN owner_representative TEXT;
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl' AND column_name = 'tenant_profiles') THEN
-        ALTER TABLE edl ADD COLUMN tenant_profiles UUID[] DEFAULT '{}';
-    END IF;
-
-    -- Retenues sur dépôt (sortie uniquement)
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl' AND column_name = 'total_retenue_cents') THEN
-        ALTER TABLE edl ADD COLUMN total_retenue_cents INTEGER DEFAULT 0;
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl' AND column_name = 'retenue_details') THEN
-        ALTER TABLE edl ADD COLUMN retenue_details JSONB DEFAULT '[]'::jsonb;
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl' AND column_name = 'depot_garantie_cents') THEN
-        ALTER TABLE edl ADD COLUMN depot_garantie_cents INTEGER;
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl' AND column_name = 'montant_restitue_cents') THEN
-        ALTER TABLE edl ADD COLUMN montant_restitue_cents INTEGER;
-    END IF;
-END $$;
-
--- Index pour la jointure entrée→sortie
-CREATE INDEX IF NOT EXISTS idx_edl_linked_entry ON edl(linked_entry_edl_id);
-
--- ─── 2. Table edl_rooms (pièces structurées) ───────────────────────────────
-
-CREATE TABLE IF NOT EXISTS edl_rooms (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    edl_id UUID NOT NULL REFERENCES edl(id) ON DELETE CASCADE,
-
-    room_name TEXT NOT NULL,
-    room_type TEXT NOT NULL DEFAULT 'autre'
-        CHECK (room_type IN (
-            'entree','salon','sejour','cuisine','chambre','salle_de_bain',
-            'wc','couloir','buanderie','cave','parking','balcon','terrasse',
-            'jardin','garage','autre'
-        )),
-    sort_order INTEGER DEFAULT 0,
-
-    -- État global de la pièce
-    general_condition TEXT DEFAULT 'bon'
-        CHECK (general_condition IN ('neuf','tres_bon','bon','usage_normal','mauvais','tres_mauvais')),
-    observations TEXT,
-
-    created_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE edl_rooms ENABLE ROW LEVEL SECURITY;
-CREATE INDEX IF NOT EXISTS idx_edl_rooms_edl ON edl_rooms(edl_id);
-
--- RLS policies pour edl_rooms
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'edl_rooms' AND policyname = 'edl_rooms_select_policy') THEN
-        DROP POLICY IF EXISTS edl_rooms_select_policy ON edl_rooms;
-        CREATE POLICY edl_rooms_select_policy ON edl_rooms FOR SELECT USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'edl_rooms' AND policyname = 'edl_rooms_insert_policy') THEN
-        DROP POLICY IF EXISTS edl_rooms_insert_policy ON edl_rooms;
-        CREATE POLICY edl_rooms_insert_policy ON edl_rooms FOR INSERT WITH CHECK (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'edl_rooms' AND policyname = 'edl_rooms_update_policy') THEN
-        DROP POLICY IF EXISTS edl_rooms_update_policy ON edl_rooms;
-        CREATE POLICY edl_rooms_update_policy ON edl_rooms FOR UPDATE USING (true);
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'edl_rooms' AND policyname = 'edl_rooms_delete_policy') THEN
-        DROP POLICY IF EXISTS edl_rooms_delete_policy ON edl_rooms;
-        CREATE POLICY edl_rooms_delete_policy ON edl_rooms FOR DELETE USING (true);
-    END IF;
-END $$;
-
--- ─── 3. Étendre edl_items pour comparaison entrée/sortie ───────────────────
-
-DO $$
-BEGIN
-    -- Lien vers la pièce
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl_items' AND column_name = 'room_id') THEN
-        ALTER TABLE edl_items ADD COLUMN room_id UUID REFERENCES edl_rooms(id) ON DELETE CASCADE;
-    END IF;
-
-    -- Type d'élément normalisé
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl_items' AND column_name = 'element_type') THEN
-        ALTER TABLE edl_items ADD COLUMN element_type TEXT;
-    END IF;
-
-    -- Label personnalisé
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl_items' AND column_name = 'element_label') THEN
-        ALTER TABLE edl_items ADD COLUMN element_label TEXT;
-    END IF;
-
-    -- Ordre d'affichage
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl_items' AND column_name = 'sort_order') THEN
-        ALTER TABLE edl_items ADD COLUMN sort_order INTEGER DEFAULT 0;
-    END IF;
-
-    -- Photos JSONB
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl_items' AND column_name = 'photos') THEN
-        ALTER TABLE edl_items ADD COLUMN photos JSONB DEFAULT '[]'::jsonb;
-    END IF;
-
-    -- Champs comparaison entrée (remplis auto pour EDL sortie)
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl_items' AND column_name = 'entry_condition') THEN
-        ALTER TABLE edl_items ADD COLUMN entry_condition TEXT;
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl_items' AND column_name = 'entry_description') THEN
-        ALTER TABLE edl_items ADD COLUMN entry_description TEXT;
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl_items' AND column_name = 'entry_photos') THEN
-        ALTER TABLE edl_items ADD COLUMN entry_photos JSONB DEFAULT '[]'::jsonb;
-    END IF;
-
-    -- Dégradation notée
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl_items' AND column_name = 'degradation_noted') THEN
-        ALTER TABLE edl_items ADD COLUMN degradation_noted BOOLEAN DEFAULT false;
-    END IF;
-
-    -- Vétusté
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl_items' AND column_name = 'vetuste_applicable') THEN
-        ALTER TABLE edl_items ADD COLUMN vetuste_applicable BOOLEAN DEFAULT false;
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl_items' AND column_name = 'vetuste_coefficient') THEN
-        ALTER TABLE edl_items ADD COLUMN vetuste_coefficient NUMERIC(3,2);
-    END IF;
-
-    -- Retenue sur cet élément
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl_items' AND column_name = 'retenue_cents') THEN
-        ALTER TABLE edl_items ADD COLUMN retenue_cents INTEGER DEFAULT 0;
-    END IF;
-
-    -- Coût de réparation estimé
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'edl_items' AND column_name = 'cout_reparation_cents') THEN
-        ALTER TABLE edl_items ADD COLUMN cout_reparation_cents INTEGER DEFAULT 0;
-    END IF;
-END $$;
-
--- Mettre à jour la contrainte condition pour 6 niveaux
--- D'abord supprimer l'ancienne contrainte si elle existe
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1 FROM information_schema.constraint_column_usage
-        WHERE table_name = 'edl_items' AND column_name = 'condition'
-    ) THEN
-        ALTER TABLE edl_items DROP CONSTRAINT IF EXISTS edl_items_condition_check;
-    END IF;
-END $$;
-
-ALTER TABLE edl_items ADD CONSTRAINT edl_items_condition_check_v2
-    CHECK (condition IS NULL OR condition IN ('neuf','tres_bon','bon','usage_normal','moyen','mauvais','tres_mauvais'));
-
--- Index pour room_id
-CREATE INDEX IF NOT EXISTS idx_edl_items_room_id ON edl_items(room_id);
-CREATE INDEX IF NOT EXISTS idx_edl_items_element_type ON edl_items(element_type);
-
--- ─── 4. Table vetuste_grid (grille de vétusté) ─────────────────────────────
-
-CREATE TABLE IF NOT EXISTS vetuste_grid (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    element_type TEXT NOT NULL,
-    duree_vie_ans INTEGER NOT NULL,
-    taux_abattement_annuel NUMERIC(4,2),
-    valeur_residuelle_min NUMERIC(3,2) DEFAULT 0.10,
-    source TEXT DEFAULT 'talok',
-    notes TEXT
-);
-
--- Seed grille standard (idempotent)
-INSERT INTO vetuste_grid (element_type, duree_vie_ans, taux_abattement_annuel, notes)
-SELECT * FROM (VALUES
-    ('peinture',           7,  14.29::NUMERIC(4,2), 'Peinture murale standard'),
-    ('papier_peint',       7,  14.29, 'Revêtement mural'),
-    ('moquette',           7,  14.29, 'Revêtement sol textile'),
-    ('parquet',            15,  6.67, 'Parquet massif ou contrecollé'),
-    ('carrelage',          20,  5.00, 'Sol carrelé'),
-    ('lino',               10, 10.00, 'Revêtement sol PVC/lino'),
-    ('robinetterie',       10, 10.00, 'Robinets, mitigeurs'),
-    ('sanitaires',         15,  6.67, 'WC, lavabo, baignoire'),
-    ('volets',             15,  6.67, 'Volets roulants ou battants'),
-    ('porte_interieure',   15,  6.67, 'Portes intérieures'),
-    ('fenetre',            20,  5.00, 'Menuiseries extérieures'),
-    ('chaudiere',          15,  6.67, 'Chaudière/cumulus'),
-    ('electrique',         20,  5.00, 'Installation électrique'),
-    ('placards',           15,  6.67, 'Rangements intégrés')
-) AS v(element_type, duree_vie_ans, taux_abattement_annuel, notes)
-WHERE NOT EXISTS (SELECT 1 FROM vetuste_grid LIMIT 1);
-
--- ─── 5. Commentaires ───────────────────────────────────────────────────────
-
-COMMENT ON TABLE edl_rooms IS 'Pièces structurées pour l''état des lieux';
-COMMENT ON TABLE vetuste_grid IS 'Grille de vétusté pour calcul des retenues (décret 2016-382)';
-COMMENT ON COLUMN edl.linked_entry_edl_id IS 'EDL sortie: référence vers l''EDL d''entrée correspondant';
-COMMENT ON COLUMN edl.total_retenue_cents IS 'Montant total des retenues sur dépôt de garantie (en centimes)';
-COMMENT ON COLUMN edl.depot_garantie_cents IS 'Montant du dépôt de garantie du bail (en centimes)';
-COMMENT ON COLUMN edl.montant_restitue_cents IS 'Montant à restituer au locataire (dépôt − retenues, en centimes)';
-COMMENT ON COLUMN edl_items.entry_condition IS 'État de l''élément à l''entrée (rempli auto lors de l''EDL sortie)';
-COMMENT ON COLUMN edl_items.vetuste_coefficient IS 'Coefficient vétusté 0.00 à 1.00 (calculé auto)';
-COMMENT ON COLUMN edl_items.retenue_cents IS 'Retenue nette après vétusté (en centimes)';
-
-
--- === [150/169] 20260408120000_providers_module_sota.sql ===
--- =====================================================
--- MIGRATION: Module Prestataires SOTA 2026
--- Tables: providers, owner_providers
--- Alter: work_orders (extended state machine + fields)
--- Triggers: rating auto-update, updated_at
--- RLS: policies per role
--- =====================================================
-
--- =====================================================
--- 1. TABLE: providers (annuaire prestataires)
--- Standalone provider directory — not coupled to profiles
--- =====================================================
-
-CREATE TABLE IF NOT EXISTS providers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  profile_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
-
-  -- Identité
-  company_name TEXT NOT NULL,
-  siret TEXT,
-  contact_name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  phone TEXT NOT NULL,
-
-  -- Activité
-  trade_categories TEXT[] NOT NULL DEFAULT '{}',
-  description TEXT,
-
-  -- Localisation
-  address TEXT,
-  city TEXT,
-  postal_code TEXT,
-  department TEXT,
-  service_radius_km INTEGER DEFAULT 30,
-
-  -- Qualifications
-  certifications TEXT[] DEFAULT '{}',
-  insurance_number TEXT,
-  insurance_expiry DATE,
-  decennale_number TEXT,
-  decennale_expiry DATE,
-
-  -- Notation (auto-updated by trigger)
-  avg_rating NUMERIC(2,1) DEFAULT 0,
-  total_reviews INTEGER DEFAULT 0,
-  total_interventions INTEGER DEFAULT 0,
-
-  -- Disponibilité
-  is_available BOOLEAN DEFAULT true,
-  response_time_hours INTEGER DEFAULT 48,
-  emergency_available BOOLEAN DEFAULT false,
-
-  -- Relation avec proprio
-  added_by_owner_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
-  is_marketplace BOOLEAN DEFAULT false,
-  is_verified BOOLEAN DEFAULT false,
-
-  status TEXT DEFAULT 'active'
-    CHECK (status IN ('active', 'suspended', 'archived')),
-
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_providers_department ON providers(department);
-CREATE INDEX IF NOT EXISTS idx_providers_categories ON providers USING GIN(trade_categories);
-CREATE INDEX IF NOT EXISTS idx_providers_owner ON providers(added_by_owner_id);
-CREATE INDEX IF NOT EXISTS idx_providers_marketplace ON providers(is_marketplace) WHERE is_marketplace = true;
-CREATE INDEX IF NOT EXISTS idx_providers_email ON providers(email);
-CREATE INDEX IF NOT EXISTS idx_providers_status ON providers(status);
-
--- RLS
-ALTER TABLE providers ENABLE ROW LEVEL SECURITY;
-
--- Owners see their own providers + marketplace
-DROP POLICY IF EXISTS "Owners see own providers and marketplace" ON providers;
-DROP POLICY IF EXISTS "Owners see own providers and marketplace" ON providers;
-CREATE POLICY "Owners see own providers and marketplace"
-  ON providers FOR SELECT
-  USING (
-    added_by_owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
-    OR is_marketplace = true
-    OR profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
-  );
-
--- Owners can insert providers they add
-DROP POLICY IF EXISTS "Owners can add providers" ON providers;
-DROP POLICY IF EXISTS "Owners can add providers" ON providers;
-CREATE POLICY "Owners can add providers"
-  ON providers FOR INSERT
-  WITH CHECK (
-    added_by_owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid() AND role = 'owner')
-  );
-
--- Owners can update their own providers, providers can update themselves
-DROP POLICY IF EXISTS "Owners update own providers" ON providers;
-DROP POLICY IF EXISTS "Owners update own providers" ON providers;
-CREATE POLICY "Owners update own providers"
-  ON providers FOR UPDATE
-  USING (
-    added_by_owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
-    OR profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
-  )
-  WITH CHECK (
-    added_by_owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
-    OR profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
-  );
-
--- Admins full access
-DROP POLICY IF EXISTS "Admins full access providers" ON providers;
-DROP POLICY IF EXISTS "Admins full access providers" ON providers;
-CREATE POLICY "Admins full access providers"
-  ON providers FOR ALL
-  USING (EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND role = 'admin'));
-
--- updated_at trigger
-DROP TRIGGER IF EXISTS trg_providers_updated_at ON providers;
-CREATE TRIGGER trg_providers_updated_at
-  BEFORE UPDATE ON providers
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-COMMENT ON TABLE providers IS 'Annuaire prestataires (carnet personnel + marketplace)';
-
--- =====================================================
--- 2. TABLE: owner_providers (carnet d adresses)
--- =====================================================
-
-CREATE TABLE IF NOT EXISTS owner_providers (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  owner_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  provider_id UUID NOT NULL REFERENCES providers(id) ON DELETE CASCADE,
-  nickname TEXT,
-  notes TEXT,
-  is_favorite BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(owner_id, provider_id)
-);
-
--- Indexes
-CREATE INDEX IF NOT EXISTS idx_owner_providers_owner ON owner_providers(owner_id);
-CREATE INDEX IF NOT EXISTS idx_owner_providers_provider ON owner_providers(provider_id);
-
--- RLS
-ALTER TABLE owner_providers ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Owners manage own provider links" ON owner_providers;
-DROP POLICY IF EXISTS "Owners manage own provider links" ON owner_providers;
-CREATE POLICY "Owners manage own provider links"
-  ON owner_providers FOR ALL
-  USING (owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()))
-  WITH CHECK (owner_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
-
-COMMENT ON TABLE owner_providers IS 'Lien propriétaire ↔ prestataire (carnet d adresses personnel)';
-
--- =====================================================
--- 3. ALTER: work_orders — Extended state machine
--- Add new columns for the full ticket→devis→intervention→facture→paiement flow
--- =====================================================
-
--- Add new columns (idempotent with IF NOT EXISTS pattern via DO block)
-DO $$
-BEGIN
-  -- property_id
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'property_id') THEN
-    ALTER TABLE work_orders ADD COLUMN property_id UUID REFERENCES properties(id);
-  END IF;
-
-  -- owner_id
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'owner_id') THEN
-    ALTER TABLE work_orders ADD COLUMN owner_id UUID REFERENCES profiles(id);
-  END IF;
-
-  -- entity_id
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'entity_id') THEN
-    ALTER TABLE work_orders ADD COLUMN entity_id UUID REFERENCES legal_entities(id);
-  END IF;
-
-  -- lease_id
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'lease_id') THEN
-    ALTER TABLE work_orders ADD COLUMN lease_id UUID REFERENCES leases(id);
-  END IF;
-
-  -- title
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'title') THEN
-    ALTER TABLE work_orders ADD COLUMN title TEXT;
-  END IF;
-
-  -- description
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'description') THEN
-    ALTER TABLE work_orders ADD COLUMN description TEXT;
-  END IF;
-
-  -- category
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'category') THEN
-    ALTER TABLE work_orders ADD COLUMN category TEXT;
-  END IF;
-
-  -- urgency
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'urgency') THEN
-    ALTER TABLE work_orders ADD COLUMN urgency TEXT DEFAULT 'normal'
-      CHECK (urgency IN ('low', 'normal', 'urgent', 'emergency'));
-  END IF;
-
-  -- status (new extended state machine — coexists with legacy statut)
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'status') THEN
-    ALTER TABLE work_orders ADD COLUMN status TEXT DEFAULT 'draft'
-      CHECK (status IN (
-        'draft', 'quote_requested', 'quote_received', 'quote_approved',
-        'quote_rejected', 'scheduled', 'in_progress', 'completed',
-        'invoiced', 'paid', 'disputed', 'cancelled'
-      ));
-  END IF;
-
-  -- Quote dates & financials
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'requested_at') THEN
-    ALTER TABLE work_orders ADD COLUMN requested_at TIMESTAMPTZ DEFAULT now();
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'quote_received_at') THEN
-    ALTER TABLE work_orders ADD COLUMN quote_received_at TIMESTAMPTZ;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'approved_at') THEN
-    ALTER TABLE work_orders ADD COLUMN approved_at TIMESTAMPTZ;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'scheduled_date') THEN
-    ALTER TABLE work_orders ADD COLUMN scheduled_date DATE;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'scheduled_time_slot') THEN
-    ALTER TABLE work_orders ADD COLUMN scheduled_time_slot TEXT;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'started_at') THEN
-    ALTER TABLE work_orders ADD COLUMN started_at TIMESTAMPTZ;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'completed_at') THEN
-    ALTER TABLE work_orders ADD COLUMN completed_at TIMESTAMPTZ;
-  END IF;
-
-  -- Financials
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'quote_amount_cents') THEN
-    ALTER TABLE work_orders ADD COLUMN quote_amount_cents INTEGER;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'quote_document_id') THEN
-    ALTER TABLE work_orders ADD COLUMN quote_document_id UUID REFERENCES documents(id);
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'invoice_amount_cents') THEN
-    ALTER TABLE work_orders ADD COLUMN invoice_amount_cents INTEGER;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'invoice_document_id') THEN
-    ALTER TABLE work_orders ADD COLUMN invoice_document_id UUID REFERENCES documents(id);
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'payment_method') THEN
-    ALTER TABLE work_orders ADD COLUMN payment_method TEXT
-      CHECK (payment_method IN ('bank_transfer', 'check', 'cash', 'stripe'));
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'paid_at') THEN
-    ALTER TABLE work_orders ADD COLUMN paid_at TIMESTAMPTZ;
-  END IF;
-
-  -- Intervention report
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'intervention_report') THEN
-    ALTER TABLE work_orders ADD COLUMN intervention_report TEXT;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'intervention_photos') THEN
-    ALTER TABLE work_orders ADD COLUMN intervention_photos JSONB DEFAULT '[]';
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'tenant_signature_url') THEN
-    ALTER TABLE work_orders ADD COLUMN tenant_signature_url TEXT;
-  END IF;
-
-  -- Accounting link
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'accounting_entry_id') THEN
-    ALTER TABLE work_orders ADD COLUMN accounting_entry_id UUID;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'is_deductible') THEN
-    ALTER TABLE work_orders ADD COLUMN is_deductible BOOLEAN DEFAULT true;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'deductible_category') THEN
-    ALTER TABLE work_orders ADD COLUMN deductible_category TEXT;
-  END IF;
-
-  -- notes column (may already exist in some forks)
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'work_orders' AND column_name = 'notes') THEN
-    ALTER TABLE work_orders ADD COLUMN notes TEXT;
-  END IF;
-END $$;
-
--- Make ticket_id nullable (work orders can now be created standalone)
-ALTER TABLE work_orders ALTER COLUMN ticket_id DROP NOT NULL;
-
--- New indexes
-CREATE INDEX IF NOT EXISTS idx_work_orders_property ON work_orders(property_id);
-CREATE INDEX IF NOT EXISTS idx_work_orders_owner ON work_orders(owner_id);
-CREATE INDEX IF NOT EXISTS idx_work_orders_new_status ON work_orders(status);
-
--- Backfill: set status from legacy statut for existing rows
-UPDATE work_orders
-SET status = CASE
-  WHEN statut = 'assigned' THEN 'draft'
-  WHEN statut = 'scheduled' THEN 'scheduled'
-  WHEN statut = 'done' THEN 'completed'
-  WHEN statut = 'cancelled' THEN 'cancelled'
-  WHEN statut = 'in_progress' THEN 'in_progress'
-  ELSE 'draft'
-END
-WHERE status IS NULL;
-
--- Backfill: property_id from ticket if missing
-UPDATE work_orders wo
-SET property_id = t.property_id
-FROM tickets t
-WHERE wo.ticket_id = t.id
-  AND wo.property_id IS NULL
-  AND t.property_id IS NOT NULL;
-
--- Backfill: title from ticket titre
-UPDATE work_orders wo
-SET title = t.titre
-FROM tickets t
-WHERE wo.ticket_id = t.id
-  AND wo.title IS NULL;
-
--- Backfill: description from ticket description
-UPDATE work_orders wo
-SET description = t.description
-FROM tickets t
-WHERE wo.ticket_id = t.id
-  AND wo.description IS NULL;
-
--- =====================================================
--- 4. FUNCTION: Update provider rating from reviews
--- Uses the new providers table
--- =====================================================
-
-CREATE OR REPLACE FUNCTION update_provider_rating_from_reviews()
-RETURNS TRIGGER AS $$
-DECLARE
-  v_provider_id UUID;
-BEGIN
-  -- Find the provider linked to this provider_profile_id
-  SELECT p.id INTO v_provider_id
-  FROM providers p
-  WHERE p.profile_id = NEW.provider_profile_id
-  LIMIT 1;
-
-  IF v_provider_id IS NOT NULL THEN
-    UPDATE providers SET
-      avg_rating = COALESCE(
-        (SELECT ROUND(AVG(rating_overall)::NUMERIC, 1)
-         FROM provider_reviews
-         WHERE provider_profile_id = NEW.provider_profile_id AND is_published = true),
-        0
-      ),
-      total_reviews = (
-        SELECT COUNT(*)
-        FROM provider_reviews
-        WHERE provider_profile_id = NEW.provider_profile_id AND is_published = true
-      )
-    WHERE id = v_provider_id;
-  END IF;
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_update_provider_rating_from_reviews ON provider_reviews;
-CREATE TRIGGER trg_update_provider_rating_from_reviews
-  AFTER INSERT OR UPDATE ON provider_reviews
-  FOR EACH ROW EXECUTE FUNCTION update_provider_rating_from_reviews();
-
--- =====================================================
--- 5. FUNCTION: Update provider total_interventions
--- =====================================================
-
-CREATE OR REPLACE FUNCTION update_provider_intervention_count()
-RETURNS TRIGGER AS $$
-DECLARE
-  v_provider_record RECORD;
-BEGIN
-  -- Find the provider entry for this provider_id
-  -- provider_id on work_orders references profiles(id)
-  SELECT p.id INTO v_provider_record
-  FROM providers p
-  WHERE p.profile_id = COALESCE(NEW.provider_id, OLD.provider_id)
-  LIMIT 1;
-
-  IF v_provider_record.id IS NOT NULL THEN
-    UPDATE providers SET
-      total_interventions = (
-        SELECT COUNT(*)
-        FROM work_orders
-        WHERE provider_id = COALESCE(NEW.provider_id, OLD.provider_id)
-          AND (status IN ('completed', 'invoiced', 'paid') OR statut = 'done')
-      )
-    WHERE id = v_provider_record.id;
-  END IF;
-
-  RETURN COALESCE(NEW, OLD);
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_update_provider_intervention_count ON work_orders;
-CREATE TRIGGER trg_update_provider_intervention_count
-  AFTER INSERT OR UPDATE OF status, statut OR DELETE ON work_orders
-  FOR EACH ROW EXECUTE FUNCTION update_provider_intervention_count();
-
--- =====================================================
--- 6. FUNCTION: Validate SIRET (14 digits)
--- =====================================================
-
-CREATE OR REPLACE FUNCTION validate_provider_siret()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NEW.siret IS NOT NULL AND NEW.siret <> '' THEN
-    IF NEW.siret !~ '^\d{14}$' THEN
-      RAISE EXCEPTION 'SIRET invalide: doit contenir exactement 14 chiffres';
-    END IF;
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_validate_provider_siret ON providers;
-CREATE TRIGGER trg_validate_provider_siret
-  BEFORE INSERT OR UPDATE OF siret ON providers
-  FOR EACH ROW EXECUTE FUNCTION validate_provider_siret();
-
--- =====================================================
--- 7. COMMENTS
--- =====================================================
-
-COMMENT ON COLUMN providers.trade_categories IS 'plomberie, electricite, serrurerie, peinture, menuiserie, chauffage, climatisation, toiture, maconnerie, jardinage, nettoyage, demenagement, diagnostic, general';
-COMMENT ON COLUMN work_orders.status IS 'Extended state machine: draft→quote_requested→quote_received→quote_approved→scheduled→in_progress→completed→invoiced→paid';
-COMMENT ON COLUMN work_orders.urgency IS 'low, normal, urgent, emergency';
-
-
--- === [151/169] 20260408120000_smart_meters_connected.sql ===
--- Migration : Compteurs connectés — Enedis SGE, GRDF ADICT, alertes conso
--- Feature gate : Pro+ (connected_meters)
-
--- ============================================================
--- Table 1 : Compteurs liés à un bien (property_meters)
--- Complète la table "meters" existante (liée à lease_id)
--- property_meters est liée au bien, pas au bail
--- ============================================================
-CREATE TABLE IF NOT EXISTS property_meters (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
-
-  meter_type TEXT NOT NULL
-    CHECK (meter_type IN ('electricity', 'gas', 'water', 'heating', 'other')),
-  provider TEXT,                          -- 'enedis', 'grdf', 'veolia', 'manual'
-
-  -- Identifiant compteur
-  meter_reference TEXT NOT NULL,          -- PDL, PCE, ou numéro compteur eau
-  meter_serial TEXT,                      -- Numéro de série physique
-
-  -- Connexion API
-  is_connected BOOLEAN DEFAULT false,
-  connection_consent_at TIMESTAMPTZ,      -- Date consentement locataire
-  connection_consent_by UUID REFERENCES profiles(id),
-  oauth_token_encrypted TEXT,             -- Token chiffré
-  oauth_refresh_token_encrypted TEXT,
-  oauth_expires_at TIMESTAMPTZ,
-  last_sync_at TIMESTAMPTZ,
-  sync_status TEXT DEFAULT 'pending'
-    CHECK (sync_status IN ('pending', 'active', 'error', 'expired')),
-  sync_error_message TEXT,
-
-  -- Contrat
-  contract_holder TEXT,                   -- Nom titulaire contrat
-  contract_start_date DATE,
-  tariff_option TEXT,                     -- 'base', 'hc_hp', 'tempo'
-  subscribed_power_kva INTEGER,           -- Puissance souscrite (kVA)
-
-  -- Config alertes
-  alert_threshold_daily NUMERIC,          -- Seuil alerte conso journalière
-  alert_threshold_monthly NUMERIC,        -- Seuil mensuel
-
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(property_id, meter_type, meter_reference)
-);
-
-ALTER TABLE property_meters ENABLE ROW LEVEL SECURITY;
-CREATE INDEX IF NOT EXISTS idx_property_meters_property ON property_meters(property_id);
-CREATE INDEX IF NOT EXISTS idx_property_meters_sync ON property_meters(is_connected, sync_status);
-CREATE INDEX IF NOT EXISTS idx_property_meters_type ON property_meters(meter_type);
-
--- ============================================================
--- Table 2 : Relevés compteurs connectés
--- Étend le concept de meter_readings pour les compteurs connectés
--- ============================================================
-CREATE TABLE IF NOT EXISTS property_meter_readings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  meter_id UUID NOT NULL REFERENCES property_meters(id) ON DELETE CASCADE,
-  property_id UUID NOT NULL REFERENCES properties(id),
-
-  reading_date DATE NOT NULL,
-  value NUMERIC NOT NULL,                 -- kWh, m³, etc.
-  unit TEXT NOT NULL DEFAULT 'kWh'
-    CHECK (unit IN ('kWh', 'm3', 'litres')),
-
-  -- Source
-  source TEXT NOT NULL DEFAULT 'manual'
-    CHECK (source IN ('manual', 'enedis', 'grdf', 'veolia', 'import')),
-  recorded_by UUID REFERENCES profiles(id), -- NULL si auto
-
-  -- Photo (relevé manuel)
-  photo_document_id UUID REFERENCES documents(id),
-
-  -- Coût estimé
-  estimated_cost_cents INTEGER,           -- Coût estimé basé sur le tarif
-
-  -- Déduplication
-  external_id TEXT,                       -- ID unique côté fournisseur
-
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(meter_id, reading_date, source)
-);
-
-ALTER TABLE property_meter_readings ENABLE ROW LEVEL SECURITY;
-CREATE INDEX IF NOT EXISTS idx_pm_readings_meter_date ON property_meter_readings(meter_id, reading_date DESC);
-CREATE INDEX IF NOT EXISTS idx_pm_readings_property ON property_meter_readings(property_id);
-CREATE INDEX IF NOT EXISTS idx_pm_readings_source ON property_meter_readings(source);
-
--- ============================================================
--- Table 3 : Alertes consommation
--- ============================================================
-CREATE TABLE IF NOT EXISTS meter_alerts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  meter_id UUID NOT NULL REFERENCES property_meters(id) ON DELETE CASCADE,
-  property_id UUID NOT NULL REFERENCES properties(id),
-  alert_type TEXT NOT NULL
-    CHECK (alert_type IN ('overconsumption', 'no_reading', 'anomaly', 'contract_expiry')),
-  message TEXT NOT NULL,
-  severity TEXT DEFAULT 'warning' CHECK (severity IN ('info', 'warning', 'critical')),
-  data JSONB DEFAULT '{}',
-  acknowledged_at TIMESTAMPTZ,
-  acknowledged_by UUID REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE meter_alerts ENABLE ROW LEVEL SECURITY;
-CREATE INDEX IF NOT EXISTS idx_meter_alerts_meter ON meter_alerts(meter_id);
-CREATE INDEX IF NOT EXISTS idx_meter_alerts_property ON meter_alerts(property_id);
-CREATE INDEX IF NOT EXISTS idx_meter_alerts_type ON meter_alerts(alert_type);
-CREATE INDEX IF NOT EXISTS idx_meter_alerts_unacked ON meter_alerts(meter_id) WHERE acknowledged_at IS NULL;
-
--- ============================================================
--- RLS Policies
--- ============================================================
-
--- property_meters: propriétaire du bien peut tout faire
-DROP POLICY IF EXISTS "property_meters_owner_select" ON property_meters;
-CREATE POLICY "property_meters_owner_select" ON property_meters
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM properties p WHERE p.id = property_id AND p.owner_id = auth.uid()
-    )
-  );
-
-DROP POLICY IF EXISTS "property_meters_owner_insert" ON property_meters;
-
-CREATE POLICY "property_meters_owner_insert" ON property_meters
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM properties p WHERE p.id = property_id AND p.owner_id = auth.uid()
-    )
-  );
-
-DROP POLICY IF EXISTS "property_meters_owner_update" ON property_meters;
-
-CREATE POLICY "property_meters_owner_update" ON property_meters
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM properties p WHERE p.id = property_id AND p.owner_id = auth.uid()
-    )
-  );
-
-DROP POLICY IF EXISTS "property_meters_owner_delete" ON property_meters;
-
-CREATE POLICY "property_meters_owner_delete" ON property_meters
-  FOR DELETE USING (
-    EXISTS (
-      SELECT 1 FROM properties p WHERE p.id = property_id AND p.owner_id = auth.uid()
-    )
-  );
-
--- property_meters: locataire avec bail actif peut lire
-DROP POLICY IF EXISTS "property_meters_tenant_select" ON property_meters;
-CREATE POLICY "property_meters_tenant_select" ON property_meters
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM leases l
-      JOIN lease_signers ls ON ls.lease_id = l.id
-      WHERE l.property_id = property_meters.property_id
-        AND ls.profile_id = auth.uid()
-        AND l.status IN ('active', 'signed')
-    )
-  );
-
--- property_meter_readings: propriétaire
-DROP POLICY IF EXISTS "pm_readings_owner_select" ON property_meter_readings;
-CREATE POLICY "pm_readings_owner_select" ON property_meter_readings
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM properties p WHERE p.id = property_id AND p.owner_id = auth.uid()
-    )
-  );
-
-DROP POLICY IF EXISTS "pm_readings_owner_insert" ON property_meter_readings;
-
-CREATE POLICY "pm_readings_owner_insert" ON property_meter_readings
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM properties p WHERE p.id = property_id AND p.owner_id = auth.uid()
-    )
-  );
-
--- property_meter_readings: locataire avec bail actif
-DROP POLICY IF EXISTS "pm_readings_tenant_select" ON property_meter_readings;
-CREATE POLICY "pm_readings_tenant_select" ON property_meter_readings
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM leases l
-      JOIN lease_signers ls ON ls.lease_id = l.id
-      WHERE l.property_id = property_meter_readings.property_id
-        AND ls.profile_id = auth.uid()
-        AND l.status IN ('active', 'signed')
-    )
-  );
-
-DROP POLICY IF EXISTS "pm_readings_tenant_insert" ON property_meter_readings;
-
-CREATE POLICY "pm_readings_tenant_insert" ON property_meter_readings
-  FOR INSERT WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM leases l
-      JOIN lease_signers ls ON ls.lease_id = l.id
-      WHERE l.property_id = property_meter_readings.property_id
-        AND ls.profile_id = auth.uid()
-        AND l.status IN ('active', 'signed')
-    )
-  );
-
--- meter_alerts: propriétaire
-DROP POLICY IF EXISTS "meter_alerts_owner_select" ON meter_alerts;
-CREATE POLICY "meter_alerts_owner_select" ON meter_alerts
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM properties p WHERE p.id = property_id AND p.owner_id = auth.uid()
-    )
-  );
-
-DROP POLICY IF EXISTS "meter_alerts_owner_update" ON meter_alerts;
-
-CREATE POLICY "meter_alerts_owner_update" ON meter_alerts
-  FOR UPDATE USING (
-    EXISTS (
-      SELECT 1 FROM properties p WHERE p.id = property_id AND p.owner_id = auth.uid()
-    )
-  );
-
--- meter_alerts: locataire
-DROP POLICY IF EXISTS "meter_alerts_tenant_select" ON meter_alerts;
-CREATE POLICY "meter_alerts_tenant_select" ON meter_alerts
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM leases l
-      JOIN lease_signers ls ON ls.lease_id = l.id
-      WHERE l.property_id = meter_alerts.property_id
-        AND ls.profile_id = auth.uid()
-        AND l.status IN ('active', 'signed')
-    )
-  );
-
--- ============================================================
--- Trigger updated_at
--- ============================================================
-CREATE OR REPLACE FUNCTION update_property_meters_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_property_meters_updated_at
-  BEFORE UPDATE ON property_meters
-  FOR EACH ROW EXECUTE FUNCTION update_property_meters_updated_at();
-
--- ============================================================
--- Service role policies (for cron sync & OAuth callbacks)
--- ============================================================
-DROP POLICY IF EXISTS "property_meters_service_all" ON property_meters;
-CREATE POLICY "property_meters_service_all" ON property_meters
-  FOR ALL USING (
-    current_setting('role') = 'service_role'
-  );
-
-DROP POLICY IF EXISTS "pm_readings_service_all" ON property_meter_readings;
-
-CREATE POLICY "pm_readings_service_all" ON property_meter_readings
-  FOR ALL USING (
-    current_setting('role') = 'service_role'
-  );
-
-DROP POLICY IF EXISTS "meter_alerts_service_all" ON meter_alerts;
-
-CREATE POLICY "meter_alerts_service_all" ON meter_alerts
-  FOR ALL USING (
-    current_setting('role') = 'service_role'
-  );
-
+-- Batch 7 — migrations 152 a 169 sur 169
+-- 18 migrations
 
 -- === [152/169] 20260408120000_subscription_addons.sql ===
 -- ============================================================
@@ -3772,5 +2808,508 @@ CREATE TRIGGER trigger_update_notif_event_prefs
 COMMENT ON TABLE notification_event_preferences IS 'Per-event notification channel preferences for each user';
 
 SELECT 'Unified notification system migration complete' AS result;
+
+
+-- === [168/169] 20260408220000_payment_architecture_sota.sql ===
+-- =====================================================
+-- Migration: Payment Architecture SOTA 2026
+-- Date: 2026-04-08
+--
+-- 1. rent_payments table (Stripe Connect Express)
+-- 2. security_deposits table
+-- 3. Invoice state machine alignment (7 états)
+-- 4. RLS policies
+-- 5. Helper functions
+-- =====================================================
+
+-- =====================================================
+-- 1. RENT PAYMENTS — Stripe Connect Express
+-- Tracks the split between tenant payment, platform
+-- commission, and owner payout
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS rent_payments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  invoice_id UUID NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+  lease_id UUID NOT NULL REFERENCES leases(id) ON DELETE CASCADE,
+
+  -- Montants (tous en centimes)
+  amount_cents INTEGER NOT NULL,
+  commission_amount_cents INTEGER NOT NULL,
+  commission_rate NUMERIC(4,3) NOT NULL,
+  owner_amount_cents INTEGER NOT NULL,
+
+  -- Stripe Connect
+  stripe_payment_intent_id TEXT NOT NULL,
+  stripe_charge_id TEXT,
+  stripe_transfer_id TEXT,
+  payment_method TEXT DEFAULT 'sepa_debit'
+    CHECK (payment_method IN ('sepa_debit', 'card', 'bank_transfer')),
+
+  -- Statut
+  status TEXT DEFAULT 'pending'
+    CHECK (status IN ('pending', 'processing', 'succeeded', 'failed', 'refunded', 'disputed')),
+
+  -- Dates
+  initiated_at TIMESTAMPTZ DEFAULT now(),
+  succeeded_at TIMESTAMPTZ,
+  failed_at TIMESTAMPTZ,
+  failure_reason TEXT,
+
+  created_at TIMESTAMPTZ DEFAULT now(),
+
+  -- Prevent duplicate payments for same invoice
+  UNIQUE(invoice_id, stripe_payment_intent_id)
+);
+
+-- Indexes for common queries
+CREATE INDEX IF NOT EXISTS idx_rent_payments_invoice_id ON rent_payments(invoice_id);
+CREATE INDEX IF NOT EXISTS idx_rent_payments_lease_id ON rent_payments(lease_id);
+CREATE INDEX IF NOT EXISTS idx_rent_payments_status ON rent_payments(status);
+CREATE INDEX IF NOT EXISTS idx_rent_payments_stripe_pi ON rent_payments(stripe_payment_intent_id);
+CREATE INDEX IF NOT EXISTS idx_rent_payments_created_at ON rent_payments(created_at DESC);
+
+-- RLS
+ALTER TABLE rent_payments ENABLE ROW LEVEL SECURITY;
+
+-- Owner can view rent payments for their properties
+DROP POLICY IF EXISTS "Owner can view rent_payments" ON rent_payments;
+CREATE POLICY "Owner can view rent_payments" ON rent_payments
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM invoices i
+      JOIN properties p ON i.lease_id = (SELECT lease_id FROM leases WHERE id = rent_payments.lease_id LIMIT 1)
+      WHERE i.id = rent_payments.invoice_id
+        AND i.owner_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
+    )
+  );
+
+-- Tenant can view their own payments
+DROP POLICY IF EXISTS "Tenant can view own rent_payments" ON rent_payments;
+CREATE POLICY "Tenant can view own rent_payments" ON rent_payments
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM invoices i
+      WHERE i.id = rent_payments.invoice_id
+        AND i.tenant_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
+    )
+  );
+
+-- Admin full access
+DROP POLICY IF EXISTS "Admin can manage rent_payments" ON rent_payments;
+CREATE POLICY "Admin can manage rent_payments" ON rent_payments
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM profiles WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- Service role inserts (API routes use service role)
+-- No INSERT policy needed for normal users — only backend inserts
+
+
+-- =====================================================
+-- 2. SECURITY DEPOSITS — Dépôts de garantie
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS security_deposits (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lease_id UUID NOT NULL REFERENCES leases(id) ON DELETE CASCADE,
+  tenant_id UUID NOT NULL REFERENCES profiles(id),
+
+  amount_cents INTEGER NOT NULL,
+  paid_at TIMESTAMPTZ,
+  payment_method TEXT
+    CHECK (payment_method IS NULL OR payment_method IN ('sepa_debit', 'card', 'bank_transfer', 'check', 'cash')),
+
+  -- Restitution
+  restitution_amount_cents INTEGER,
+  retenue_cents INTEGER DEFAULT 0,
+  retenue_details JSONB DEFAULT '[]',
+  restitution_due_date DATE,
+  restituted_at TIMESTAMPTZ,
+  restitution_method TEXT
+    CHECK (restitution_method IS NULL OR restitution_method IN ('bank_transfer', 'check', 'sepa_credit')),
+
+  status TEXT DEFAULT 'pending'
+    CHECK (status IN ('pending', 'received', 'partially_returned', 'returned', 'disputed')),
+
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_security_deposits_lease_id ON security_deposits(lease_id);
+CREATE INDEX IF NOT EXISTS idx_security_deposits_tenant_id ON security_deposits(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_security_deposits_status ON security_deposits(status);
+
+-- Trigger updated_at
+CREATE OR REPLACE TRIGGER set_updated_at_security_deposits
+  BEFORE UPDATE ON security_deposits
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- RLS
+ALTER TABLE security_deposits ENABLE ROW LEVEL SECURITY;
+
+-- Owner can manage deposits for their properties
+DROP POLICY IF EXISTS "Owner can manage security_deposits" ON security_deposits;
+CREATE POLICY "Owner can manage security_deposits" ON security_deposits
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM leases l
+      JOIN properties p ON l.property_id = p.id
+      WHERE l.id = security_deposits.lease_id
+        AND p.owner_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
+    )
+  );
+
+-- Tenant can view their own deposits
+DROP POLICY IF EXISTS "Tenant can view own security_deposits" ON security_deposits;
+CREATE POLICY "Tenant can view own security_deposits" ON security_deposits
+  FOR SELECT USING (
+    tenant_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
+  );
+
+-- Admin full access
+DROP POLICY IF EXISTS "Admin can manage all security_deposits" ON security_deposits;
+CREATE POLICY "Admin can manage all security_deposits" ON security_deposits
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM profiles WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+
+-- =====================================================
+-- 3. INVOICE STATUS ALIGNMENT
+-- Add missing statuses to invoices CHECK constraint
+-- Spec states: draft, sent, pending, paid, receipt_generated,
+--              overdue, reminder_sent, collection, written_off
+-- =====================================================
+
+-- Add missing columns if they don't exist
+DO $$
+BEGIN
+  -- period_start / period_end for spec alignment
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'invoices' AND column_name = 'period_start') THEN
+    ALTER TABLE invoices ADD COLUMN period_start DATE;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'invoices' AND column_name = 'period_end') THEN
+    ALTER TABLE invoices ADD COLUMN period_end DATE;
+  END IF;
+
+  -- rent_amount_cents / charges_amount_cents / total_amount_cents
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'invoices' AND column_name = 'rent_amount_cents') THEN
+    ALTER TABLE invoices ADD COLUMN rent_amount_cents INTEGER;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'invoices' AND column_name = 'charges_amount_cents') THEN
+    ALTER TABLE invoices ADD COLUMN charges_amount_cents INTEGER DEFAULT 0;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'invoices' AND column_name = 'total_amount_cents') THEN
+    ALTER TABLE invoices ADD COLUMN total_amount_cents INTEGER;
+  END IF;
+
+  -- entity_id
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'invoices' AND column_name = 'entity_id') THEN
+    ALTER TABLE invoices ADD COLUMN entity_id UUID REFERENCES legal_entities(id);
+  END IF;
+
+  -- receipt_document_id
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'invoices' AND column_name = 'receipt_document_id') THEN
+    ALTER TABLE invoices ADD COLUMN receipt_document_id UUID REFERENCES documents(id);
+  END IF;
+
+  -- receipt_generated_at
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'invoices' AND column_name = 'receipt_generated_at') THEN
+    ALTER TABLE invoices ADD COLUMN receipt_generated_at TIMESTAMPTZ;
+  END IF;
+
+  -- last_reminder_at (alias for existing last_reminder_sent_at)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'invoices' AND column_name = 'last_reminder_at') THEN
+    ALTER TABLE invoices ADD COLUMN last_reminder_at TIMESTAMPTZ;
+  END IF;
+
+  -- metadata
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'invoices' AND column_name = 'metadata') THEN
+    ALTER TABLE invoices ADD COLUMN metadata JSONB DEFAULT '{}';
+  END IF;
+
+  -- paid_at
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'invoices' AND column_name = 'paid_at') THEN
+    ALTER TABLE invoices ADD COLUMN paid_at TIMESTAMPTZ;
+  END IF;
+
+  -- stripe_invoice_id
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'invoices' AND column_name = 'stripe_invoice_id') THEN
+    ALTER TABLE invoices ADD COLUMN stripe_invoice_id TEXT;
+  END IF;
+END $$;
+
+-- Backfill cents columns from existing euro columns
+UPDATE invoices
+SET
+  rent_amount_cents = COALESCE(ROUND(montant_loyer * 100)::INTEGER, 0),
+  charges_amount_cents = COALESCE(ROUND(montant_charges * 100)::INTEGER, 0),
+  total_amount_cents = COALESCE(ROUND(montant_total * 100)::INTEGER, 0)
+WHERE rent_amount_cents IS NULL AND montant_loyer IS NOT NULL;
+
+-- Backfill period_start/period_end from periode (format: YYYY-MM)
+UPDATE invoices
+SET
+  period_start = (periode || '-01')::DATE,
+  period_end = ((periode || '-01')::DATE + INTERVAL '1 month' - INTERVAL '1 day')::DATE
+WHERE period_start IS NULL AND periode IS NOT NULL;
+
+
+-- =====================================================
+-- 4. HELPER FUNCTION: Transition invoice status
+-- Validates the state machine transitions
+-- =====================================================
+
+CREATE OR REPLACE FUNCTION transition_invoice_status(
+  p_invoice_id UUID,
+  p_new_status TEXT,
+  p_metadata JSONB DEFAULT '{}'
+) RETURNS BOOLEAN AS $$
+DECLARE
+  v_current_status TEXT;
+  v_allowed BOOLEAN := FALSE;
+BEGIN
+  SELECT statut INTO v_current_status
+  FROM invoices
+  WHERE id = p_invoice_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Invoice % not found', p_invoice_id;
+  END IF;
+
+  -- Validate transitions
+  v_allowed := CASE
+    WHEN v_current_status = 'draft' AND p_new_status = 'sent' THEN TRUE
+    WHEN v_current_status = 'sent' AND p_new_status IN ('pending', 'paid', 'overdue') THEN TRUE
+    WHEN v_current_status = 'pending' AND p_new_status IN ('paid', 'overdue') THEN TRUE
+    WHEN v_current_status = 'paid' AND p_new_status = 'receipt_generated' THEN TRUE
+    WHEN v_current_status = 'overdue' AND p_new_status IN ('paid', 'reminder_sent') THEN TRUE
+    WHEN v_current_status = 'reminder_sent' AND p_new_status IN ('paid', 'collection') THEN TRUE
+    WHEN v_current_status = 'collection' AND p_new_status IN ('paid', 'written_off') THEN TRUE
+    -- Legacy status compatibility
+    WHEN v_current_status = 'late' AND p_new_status IN ('paid', 'overdue', 'reminder_sent') THEN TRUE
+    WHEN v_current_status = 'unpaid' AND p_new_status IN ('paid', 'overdue') THEN TRUE
+    ELSE FALSE
+  END;
+
+  IF NOT v_allowed THEN
+    RAISE EXCEPTION 'Invalid transition: % -> %', v_current_status, p_new_status;
+  END IF;
+
+  UPDATE invoices
+  SET
+    statut = p_new_status,
+    paid_at = CASE WHEN p_new_status = 'paid' THEN now() ELSE paid_at END,
+    receipt_generated_at = CASE WHEN p_new_status = 'receipt_generated' THEN now() ELSE receipt_generated_at END,
+    last_reminder_at = CASE WHEN p_new_status = 'reminder_sent' THEN now() ELSE last_reminder_at END,
+    metadata = COALESCE(metadata, '{}'::JSONB) || p_metadata,
+    updated_at = now()
+  WHERE id = p_invoice_id;
+
+  RETURN TRUE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- =====================================================
+-- 5. HELPER: Get owner Connect account for a property
+-- =====================================================
+
+CREATE OR REPLACE FUNCTION get_owner_connect_account_for_invoice(p_invoice_id UUID)
+RETURNS TABLE(
+  stripe_account_id TEXT,
+  charges_enabled BOOLEAN,
+  owner_id UUID
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    sca.stripe_account_id,
+    sca.charges_enabled,
+    i.owner_id
+  FROM invoices i
+  JOIN profiles p ON i.owner_id = p.id
+  LEFT JOIN stripe_connect_accounts sca ON sca.owner_id = p.id AND sca.status = 'active'
+  WHERE i.id = p_invoice_id
+  LIMIT 1;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- =====================================================
+-- 6. PERFORMANCE INDEXES
+-- =====================================================
+
+-- Fast lookups for overdue invoices (cron)
+CREATE INDEX IF NOT EXISTS idx_invoices_overdue_check
+  ON invoices(due_date, statut)
+  WHERE statut IN ('sent', 'pending', 'overdue', 'late');
+
+-- Fast lookups for receipt generation
+CREATE INDEX IF NOT EXISTS idx_invoices_receipt_pending
+  ON invoices(id)
+  WHERE statut = 'paid' AND receipt_generated IS NOT TRUE;
+
+
+-- === [169/169] 20260409100000_add_missing_rls.sql ===
+-- ==========================================================
+-- Migration: Add missing RLS to 8 unprotected tables
+-- Date: 2026-04-09
+-- Context: Audit express identified 8 tables without RLS
+-- ==========================================================
+
+-- ──────────────────────────────────────────────
+-- 1. tenants (system multi-tenant table, no user column)
+-- Admin-only access via service role
+-- ──────────────────────────────────────────────
+ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "tenants_admin_only" ON tenants;
+
+CREATE POLICY "tenants_admin_only"
+  ON tenants FOR ALL
+  USING (false);
+-- Service role bypasses RLS; app code uses service client for admin ops
+
+-- ──────────────────────────────────────────────
+-- 2. two_factor_sessions (security-critical, has user_id)
+-- ──────────────────────────────────────────────
+ALTER TABLE two_factor_sessions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "users_own_2fa_sessions" ON two_factor_sessions;
+
+CREATE POLICY "users_own_2fa_sessions"
+  ON two_factor_sessions FOR ALL
+  USING (auth.uid() = user_id);
+
+-- ──────────────────────────────────────────────
+-- 3. lease_templates (system-wide templates, read-only for users)
+-- ──────────────────────────────────────────────
+ALTER TABLE lease_templates ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "lease_templates_read_authenticated" ON lease_templates;
+
+CREATE POLICY "lease_templates_read_authenticated"
+  ON lease_templates FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "lease_templates_write_admin_only" ON lease_templates;
+
+CREATE POLICY "lease_templates_write_admin_only"
+  ON lease_templates FOR ALL
+  USING (false);
+-- Admin writes via service role
+
+-- ──────────────────────────────────────────────
+-- 4. idempotency_keys (API utility, no user column)
+-- ──────────────────────────────────────────────
+ALTER TABLE idempotency_keys ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "idempotency_keys_service_only" ON idempotency_keys;
+
+CREATE POLICY "idempotency_keys_service_only"
+  ON idempotency_keys FOR ALL
+  USING (false);
+-- Only accessed via service role in API middleware
+
+-- ──────────────────────────────────────────────
+-- 5. repair_cost_grid (reference table, read-only)
+-- ──────────────────────────────────────────────
+ALTER TABLE repair_cost_grid ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "repair_cost_grid_read_authenticated" ON repair_cost_grid;
+
+CREATE POLICY "repair_cost_grid_read_authenticated"
+  ON repair_cost_grid FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "repair_cost_grid_write_admin_only" ON repair_cost_grid;
+
+CREATE POLICY "repair_cost_grid_write_admin_only"
+  ON repair_cost_grid FOR ALL
+  USING (false);
+-- Admin writes via service role
+
+-- ──────────────────────────────────────────────
+-- 6. vetuste_grid (reference table for depreciation, read-only)
+-- ──────────────────────────────────────────────
+ALTER TABLE vetuste_grid ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "vetuste_grid_read_authenticated" ON vetuste_grid;
+
+CREATE POLICY "vetuste_grid_read_authenticated"
+  ON vetuste_grid FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "vetuste_grid_write_admin_only" ON vetuste_grid;
+
+CREATE POLICY "vetuste_grid_write_admin_only"
+  ON vetuste_grid FOR ALL
+  USING (false);
+
+-- ──────────────────────────────────────────────
+-- 7. vetusty_grid (variant of vetuste_grid, read-only)
+-- ──────────────────────────────────────────────
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vetusty_grid') THEN
+    ALTER TABLE vetusty_grid ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
+
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vetusty_grid') THEN
+    EXECUTE 'CREATE POLICY "vetusty_grid_read_authenticated" ON vetusty_grid FOR SELECT USING (auth.role() = ''authenticated'')';
+    EXECUTE 'CREATE POLICY "vetusty_grid_write_admin_only" ON vetusty_grid FOR ALL USING (false)';
+  END IF;
+END $$;
+
+-- ──────────────────────────────────────────────
+-- 8. api_webhook_deliveries (indirect user link via webhook_id)
+-- ──────────────────────────────────────────────
+ALTER TABLE api_webhook_deliveries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "webhook_deliveries_owner_access" ON api_webhook_deliveries;
+
+CREATE POLICY "webhook_deliveries_owner_access"
+  ON api_webhook_deliveries FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM api_webhooks w
+      WHERE w.id = api_webhook_deliveries.webhook_id
+        AND w.profile_id IN (
+          SELECT id FROM profiles WHERE user_id = auth.uid()
+        )
+    )
+  );
+
+DROP POLICY IF EXISTS "webhook_deliveries_write_service_only" ON api_webhook_deliveries;
+
+CREATE POLICY "webhook_deliveries_write_service_only"
+  ON api_webhook_deliveries FOR INSERT
+  USING (false);
+-- Deliveries are created by the system (service role), users can only read their own
 
 

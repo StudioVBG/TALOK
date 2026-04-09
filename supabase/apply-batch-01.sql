@@ -6,11 +6,7 @@ CREATE OR REPLACE FUNCTION auto_verify_tenant_on_signup()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.kyc_status IS NULL OR NEW.kyc_status = 'pending' THEN
-    IF EXISTS (
-      SELECT 1 FROM invitations i
-      WHERE LOWER(i.email) = LOWER((SELECT email FROM auth.users WHERE id = (SELECT user_id FROM profiles WHERE id = NEW.profile_id)))
-      AND i.used_at IS NOT NULL
-    ) THEN
+    IF EXISTS (SELECT 1 FROM invitations i WHERE LOWER(i.email) = LOWER((SELECT email FROM auth.users WHERE id = (SELECT user_id FROM profiles WHERE id = NEW.profile_id))) AND i.used_at IS NOT NULL) THEN
       NEW.kyc_status := 'verified';
     END IF;
   END IF;
