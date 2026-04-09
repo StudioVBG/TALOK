@@ -702,7 +702,8 @@ Détail : {{dashboard_url}}
 
 L''équipe Talok',
 '[{"key": "prenom", "label": "Prénom", "example": "Thomas"}, {"key": "mois", "label": "Mois", "example": "février"}, {"key": "annee", "label": "Année", "example": "2026"}, {"key": "nb_biens", "label": "Nombre de biens", "example": "3"}, {"key": "loyers_recus", "label": "Loyers encaissés", "example": "2550"}, {"key": "loyers_attendus", "label": "Loyers attendus", "example": "2550"}, {"key": "nb_incidents_ouverts", "label": "Incidents ouverts", "example": "1"}, {"key": "nb_interventions", "label": "Interventions du mois", "example": "2"}, {"key": "taux_occupation", "label": "Taux d''occupation", "example": "100"}, {"key": "dashboard_url", "label": "Lien dashboard", "example": "https://talok.fr/owner/dashboard"}]'::jsonb,
-0);
+0)
+ON CONFLICT (slug) DO NOTHING;
 
 
 -- === [10/169] 20260212200000_audit_v3_comprehensive_integrity.sql ===
