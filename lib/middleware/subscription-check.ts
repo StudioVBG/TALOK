@@ -63,16 +63,7 @@ export async function withSubscriptionLimit(
         plan:subscription_plans(*)
       `)
       .eq("owner_id", ownerId)
-      .single();
-
-    // Déterminer le plan slug et les limites
-    // Priorité: plan_slug > plan.slug (jointure) > fallback gratuit
-    const resolvedSlug = subscription?.plan_slug || (subscription?.plan as any)?.slug;
-    if (!subscription?.plan_slug && resolvedSlug) {
-      console.warn(`[subscription-check] plan_slug NULL pour owner_id=${ownerId}, résolu depuis plan.slug="${resolvedSlug}"`);
-    }
-    const planSlug: PlanSlug = (resolvedSlug || "gratuit") as PlanSlug;
-    const planConfig = PLANS[planSlug] || PLANS.gratuit;
+      .maybeSingle();
 
     if (subError || !subscription) {
       // Pas de subscription en BDD = plan gratuit
@@ -155,6 +146,15 @@ export async function withSubscriptionLimit(
           : `Limite de ${max} ${getLimitLabel(limitType)} atteinte pour le forfait gratuit. Passez à un forfait supérieur.`,
       };
     }
+
+    // Déterminer le plan slug et les limites
+    // Priorité: plan_slug > plan.slug (jointure) > fallback gratuit
+    const resolvedSlug = subscription.plan_slug || (subscription.plan as any)?.slug;
+    if (!subscription.plan_slug && resolvedSlug) {
+      console.warn(`[subscription-check] plan_slug NULL pour owner_id=${ownerId}, résolu depuis plan.slug="${resolvedSlug}"`);
+    }
+    const planSlug: PlanSlug = (resolvedSlug || "gratuit") as PlanSlug;
+    const planConfig = PLANS[planSlug] || PLANS.gratuit;
 
     // Vérifier que le statut de la subscription permet l'usage
     if (!isSubscriptionStatusEntitled(subscription.status)) {
@@ -290,14 +290,15 @@ export async function withSubscriptionLimit(
     };
   } catch (error) {
     console.error("[subscription-check] Error:", error);
-    // En cas d'erreur, on bloque par sécurité
+    // En cas d'erreur technique, on autorise pour ne pas bloquer l'utilisateur
+    // Le backend vérifiera à nouveau lors de la prochaine action
     return {
-      allowed: false,
+      allowed: true,
       current: 0,
-      max: 0,
-      remaining: 0,
+      max: -1,
+      remaining: -1,
       plan: "unknown",
-      message: "Erreur lors de la vérification de l'abonnement.",
+      message: undefined,
     };
   }
 }
@@ -320,7 +321,7 @@ export async function withFeatureAccess(
         plan:subscription_plans(*)
       `)
       .eq("owner_id", ownerId)
-      .single();
+      .maybeSingle();
 
     if (error || !subscription) {
       const requiredPlan = getRequiredPlanForFeature(feature);
