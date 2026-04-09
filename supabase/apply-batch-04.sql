@@ -1,7 +1,8 @@
 -- Batch 4 — migrations 39 a 68 sur 169
--- 30 migrations
+-- 30 migrations, chaque migration wrappee dans DO/EXCEPTION
 
 -- === [39/169] 20260221300000_fix_tenant_dashboard_owner_join.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================================
 -- MIGRATION: Fix tenant_dashboard — LEFT JOIN sur owner_prof + adresse_complete
 -- Date: 2026-02-21
@@ -21,7 +22,7 @@ CREATE OR REPLACE FUNCTION tenant_dashboard(p_tenant_user_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $$
+AS $mig$
 DECLARE
   v_profile_id UUID;
   v_user_email TEXT;
@@ -339,7 +340,7 @@ BEGIN
 
   RETURN v_result;
 END;
-$$;
+$mig$;
 
 COMMENT ON FUNCTION tenant_dashboard(UUID) IS
 'RPC dashboard locataire v6. Cherche par profile_id OU invited_email.
@@ -347,8 +348,17 @@ FIX: LEFT JOIN sur owner_prof pour ne pas perdre les baux si le propriétaire ma
 FIX: adresse_complete retourné tel quel (le frontend gère les NULL).
 Inclut baux draft, signers enrichis, property complète (DPE, meters, keys), insurance, KYC status.';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [40/169] 20260221_fix_owner_data_chain.sql ===
+DO $wrapper$ BEGIN
 -- ============================================
 -- Migration: Correction de la chaîne de données compte propriétaire
 -- Date: 2026-02-21
@@ -371,7 +381,7 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $mig$
 DECLARE
   v_role TEXT;
   v_prenom TEXT;
@@ -425,7 +435,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$;
+$mig$;
 
 COMMENT ON FUNCTION public.handle_new_user() IS
 'Crée automatiquement un profil et le profil spécialisé (owner_profiles, tenant_profiles, etc.) lors de la création d''un utilisateur.';
@@ -435,7 +445,7 @@ COMMENT ON FUNCTION public.handle_new_user() IS
 -- ============================================
 
 CREATE OR REPLACE FUNCTION create_default_particulier_entity()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   INSERT INTO legal_entities (owner_profile_id, entity_type, nom, regime_fiscal, is_active)
   SELECT
@@ -452,7 +462,7 @@ BEGIN
   );
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 -- ============================================
 -- 3. Backfill : réparer les données existantes
@@ -506,8 +516,17 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_lease_signer_email
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [41/169] 20260222000000_fix_invitations_and_orphan_signers.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- Migration: Lier les lease_signers orphelins et créer les invitations manquantes
 -- Date: 2026-02-22
@@ -570,8 +589,17 @@ WHERE ls.role IN ('locataire_principal', 'colocataire')
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [42/169] 20260222100000_repair_missing_signers_and_invitations.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- Migration: Réparation complète — signataires manquants + invitations
 -- Date: 2026-02-22
@@ -697,7 +725,7 @@ WHERE ls.role IN ('locataire_principal', 'colocataire')
 -- ÉTAPE 5 : Filet de sécurité — bail da2eb9da (Thomas VOLBERG)
 -- Uniquement si ce bail existe (migration de réparation production)
 -- ========================================================
-DO $$ BEGIN
+DO $mig$ BEGIN
 IF EXISTS (SELECT 1 FROM public.leases WHERE id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7') THEN
 
   -- 5a. Créer le locataire signer si manquant
@@ -720,7 +748,7 @@ IF EXISTS (SELECT 1 FROM public.leases WHERE id = 'da2eb9da-1ff1-4020-8682-5f993
     AND NOT EXISTS (SELECT 1 FROM public.lease_signers ls WHERE ls.lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7' AND ls.role = 'proprietaire');
 
 END IF;
-END $$;
+END $mig$;
 
 -- ========================================================
 -- ÉTAPE 6 : Lier les profils tenant sans user_id à auth.users
@@ -748,8 +776,17 @@ WHERE ls.profile_id IS NULL
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [43/169] 20260222200000_ensure_all_owners_have_entity.sql ===
+DO $wrapper$ BEGIN
 -- ============================================
 -- Migration: S'assurer que tous les propriétaires ont une entité juridique
 -- Date: 2026-02-22
@@ -783,8 +820,17 @@ WHERE p.legal_entity_id IS NULL
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [44/169] 20260222200001_get_entity_stats_for_store.sql ===
+DO $wrapper$ BEGIN
 -- ============================================
 -- Migration: get_entity_stats aligné avec la logique du store (properties.legal_entity_id + particulier)
 -- Date: 2026-02-22
@@ -805,7 +851,7 @@ CREATE OR REPLACE FUNCTION get_entity_stats(
   total_value DECIMAL(14,2),
   monthly_rent DECIMAL(12,2),
   active_leases BIGINT
-) AS $$
+) AS $mig$
 BEGIN
   RETURN QUERY
   WITH entity_props AS (
@@ -849,10 +895,19 @@ BEGIN
     AND le.is_active = true
   ORDER BY properties_count DESC, le.nom;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
 
 
 -- === [45/169] 20260223000000_fix_tenant_documents_rls.sql ===
+DO $wrapper$ BEGIN
 -- Migration : Corriger les politiques RLS sur tenant_documents
 -- Date : 2026-02-23
 --
@@ -872,7 +927,6 @@ DROP POLICY IF EXISTS "tenant_insert_own_documents" ON tenant_documents;
 -- ============================================
 
 -- Le locataire peut voir ses propres documents
-DROP POLICY IF EXISTS "tenant_view_own_documents" ON tenant_documents;
 CREATE POLICY "tenant_view_own_documents" ON tenant_documents
   FOR SELECT USING (
     tenant_profile_id IN (
@@ -881,7 +935,6 @@ CREATE POLICY "tenant_view_own_documents" ON tenant_documents
   );
 
 -- Le locataire peut uploader ses documents
-DROP POLICY IF EXISTS "tenant_insert_own_documents" ON tenant_documents;
 CREATE POLICY "tenant_insert_own_documents" ON tenant_documents
   FOR INSERT WITH CHECK (
     tenant_profile_id IN (
@@ -916,8 +969,17 @@ COMMENT ON POLICY "tenant_view_own_documents" ON tenant_documents
 COMMENT ON POLICY "tenant_insert_own_documents" ON tenant_documents
   IS 'Le locataire peut insérer ses documents via la jointure profiles.user_id = auth.uid()';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [46/169] 20260223000001_auto_fill_document_fk.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION SOTA 2026: Auto-complétion des FK documents
 -- Date: 2026-02-23
@@ -945,7 +1007,7 @@ BEGIN;
 -- 1. FONCTION: Auto-complétion des FK documents
 -- ============================================
 CREATE OR REPLACE FUNCTION public.auto_fill_document_fk()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   -- Étape 1 : Dériver property_id depuis lease_id
   IF NEW.property_id IS NULL AND NEW.lease_id IS NOT NULL THEN
@@ -978,7 +1040,7 @@ EXCEPTION WHEN OTHERS THEN
   RAISE WARNING '[auto_fill_document_fk] Non-blocking error: %', SQLERRM;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER
+$mig$ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public;
 
 COMMENT ON FUNCTION public.auto_fill_document_fk() IS
@@ -998,7 +1060,7 @@ CREATE TRIGGER trigger_auto_fill_document_fk
 -- ============================================
 -- 3. FIX RÉTROACTIF A : property_id depuis lease_id
 -- ============================================
-DO $$
+DO $mig$
 DECLARE
   fixed_count INT;
 BEGIN
@@ -1016,12 +1078,12 @@ BEGIN
   ELSE
     RAISE NOTICE '[fix_A] Aucun document sans property_id à corriger';
   END IF;
-END $$;
+END $mig$;
 
 -- ============================================
 -- 4. FIX RÉTROACTIF B : owner_id depuis property_id
 -- ============================================
-DO $$
+DO $mig$
 DECLARE
   fixed_count INT;
 BEGIN
@@ -1039,12 +1101,12 @@ BEGIN
   ELSE
     RAISE NOTICE '[fix_B] Aucun document sans owner_id à corriger';
   END IF;
-END $$;
+END $mig$;
 
 -- ============================================
 -- 5. FIX RÉTROACTIF C : tenant_id depuis lease_signers
 -- ============================================
-DO $$
+DO $mig$
 DECLARE
   fixed_count INT;
 BEGIN
@@ -1069,12 +1131,12 @@ BEGIN
   ELSE
     RAISE NOTICE '[fix_C] Aucun document sans tenant_id à corriger';
   END IF;
-END $$;
+END $mig$;
 
 -- ============================================
 -- 6. AUDIT : Vérifier l'état final
 -- ============================================
-DO $$
+DO $mig$
 DECLARE
   docs_no_owner INT;
   docs_no_property INT;
@@ -1109,12 +1171,21 @@ BEGIN
   IF docs_no_owner = 0 AND docs_no_property = 0 THEN
     RAISE NOTICE '✅ Tous les documents ont des FK cohérentes';
   END IF;
-END $$;
+END $mig$;
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [47/169] 20260223000002_document_access_views.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION SOTA 2026: Vues d'accès documents optimisées
 -- Date: 2026-02-23
@@ -1200,8 +1271,17 @@ GRANT SELECT ON public.v_owner_accessible_documents TO authenticated;
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [48/169] 20260223000003_notify_owner_on_tenant_document.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION SOTA 2026: Notification propriétaire sur dépôt document locataire
 -- Date: 2026-02-23
@@ -1229,7 +1309,7 @@ BEGIN;
 -- 1. FONCTION: Notifier le propriétaire
 -- ============================================
 CREATE OR REPLACE FUNCTION public.notify_owner_on_tenant_document()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 DECLARE
   v_tenant_name TEXT;
   v_doc_label TEXT;
@@ -1276,7 +1356,7 @@ EXCEPTION WHEN OTHERS THEN
   RAISE WARNING '[notify_owner_on_tenant_document] Non-blocking: %', SQLERRM;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER
+$mig$ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public;
 
 COMMENT ON FUNCTION public.notify_owner_on_tenant_document() IS
@@ -1297,8 +1377,17 @@ CREATE TRIGGER trigger_notify_owner_on_tenant_document
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [49/169] 20260223100000_fix_entity_connections.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================================
 -- Migration: Correction des connexions entites juridiques
 -- Date: 2026-02-23
@@ -1425,7 +1514,7 @@ WHERE p.legal_entity_id IS NOT NULL
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION auto_set_property_entity()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   IF NEW.legal_entity_id IS NULL AND NEW.owner_id IS NOT NULL THEN
     NEW.legal_entity_id := (
@@ -1438,7 +1527,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_auto_set_property_entity ON properties;
 CREATE TRIGGER trg_auto_set_property_entity
@@ -1451,7 +1540,7 @@ CREATE TRIGGER trg_auto_set_property_entity
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION auto_set_lease_entity()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   IF NEW.signatory_entity_id IS NULL THEN
     IF NEW.property_id IS NOT NULL THEN
@@ -1469,7 +1558,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_auto_set_lease_entity ON leases;
 CREATE TRIGGER trg_auto_set_lease_entity
@@ -1482,7 +1571,7 @@ CREATE TRIGGER trg_auto_set_lease_entity
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION auto_set_invoice_entity()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   IF NEW.issuer_entity_id IS NULL AND NEW.lease_id IS NOT NULL THEN
     NEW.issuer_entity_id := (
@@ -1491,7 +1580,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_auto_set_invoice_entity ON invoices;
 CREATE TRIGGER trg_auto_set_invoice_entity
@@ -1514,7 +1603,7 @@ CREATE OR REPLACE FUNCTION get_entity_stats(
   total_value DECIMAL(14,2),
   monthly_rent DECIMAL(12,2),
   active_leases BIGINT
-) AS $$
+) AS $mig$
 BEGIN
   RETURN QUERY
   WITH entity_props AS (
@@ -1571,12 +1660,21 @@ BEGIN
     AND le.is_active = true
   ORDER BY properties_count DESC, le.nom;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [50/169] 20260223200000_fix_all_missing_tables_and_columns.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================================
 -- MIGRATION CONSOLIDÉE : Tables et colonnes manquantes (connexions BDD)
 -- Date: 2026-02-23
@@ -1597,7 +1695,7 @@ ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS identity_data JSONB DEFAULT
 ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS selfie_path TEXT;
 ALTER TABLE tenant_profiles ADD COLUMN IF NOT EXISTS selfie_verified_at TIMESTAMPTZ;
 
-DO $$
+DO $mig$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -1607,19 +1705,19 @@ BEGIN
     ADD COLUMN kyc_status TEXT DEFAULT 'pending'
     CHECK (kyc_status IN ('pending', 'processing', 'verified', 'rejected'));
   END IF;
-END $$;
+END $mig$;
 
 -- ============================================
 -- 2. FONCTION update_updated_at (si absente)
 -- ============================================
 
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 -- ============================================
 -- 3. TABLE conversations
@@ -1655,7 +1753,6 @@ CREATE TRIGGER update_conversations_updated_at
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view own conversations" ON conversations;
-DROP POLICY IF EXISTS "Users can view own conversations" ON conversations;
 CREATE POLICY "Users can view own conversations"
   ON conversations FOR SELECT
   USING (
@@ -1665,7 +1762,6 @@ CREATE POLICY "Users can view own conversations"
   );
 
 DROP POLICY IF EXISTS "Users can insert conversations" ON conversations;
-DROP POLICY IF EXISTS "Users can insert conversations" ON conversations;
 CREATE POLICY "Users can insert conversations"
   ON conversations FOR INSERT
   WITH CHECK (
@@ -1674,7 +1770,6 @@ CREATE POLICY "Users can insert conversations"
     OR public.user_role() = 'admin'
   );
 
-DROP POLICY IF EXISTS "Users can update own conversations" ON conversations;
 DROP POLICY IF EXISTS "Users can update own conversations" ON conversations;
 CREATE POLICY "Users can update own conversations"
   ON conversations FOR UPDATE
@@ -1713,7 +1808,6 @@ CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(conversation_id, 
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view messages of own conversations" ON messages;
-DROP POLICY IF EXISTS "Users can view messages of own conversations" ON messages;
 CREATE POLICY "Users can view messages of own conversations"
   ON messages FOR SELECT
   USING (
@@ -1725,7 +1819,6 @@ CREATE POLICY "Users can view messages of own conversations"
     OR public.user_role() = 'admin'
   );
 
-DROP POLICY IF EXISTS "Users can insert messages in own conversations" ON messages;
 DROP POLICY IF EXISTS "Users can insert messages in own conversations" ON messages;
 CREATE POLICY "Users can insert messages in own conversations"
   ON messages FOR INSERT
@@ -1749,7 +1842,7 @@ CREATE OR REPLACE FUNCTION public.mark_messages_as_read(
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $$
+AS $mig$
 DECLARE
   v_conv RECORD;
 BEGIN
@@ -1779,7 +1872,7 @@ BEGIN
     WHERE id = p_conversation_id;
   END IF;
 END;
-$$;
+$mig$;
 
 GRANT EXECUTE ON FUNCTION public.mark_messages_as_read(UUID, UUID) TO authenticated;
 
@@ -1804,7 +1897,6 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Politique upload pour utilisateurs authentifiés
 DROP POLICY IF EXISTS "Users can upload documents" ON storage.objects;
-DROP POLICY IF EXISTS "Users can upload documents" ON storage.objects;
 CREATE POLICY "Users can upload documents"
 ON storage.objects FOR INSERT
 TO authenticated
@@ -1814,8 +1906,17 @@ WITH CHECK (bucket_id = 'documents');
 -- FIN
 -- ============================================================================
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [51/169] 20260224000000_fix_tenant_sync_and_notifications.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- Migration: Fix tenant data sync — liaison orpheline + notifications manquantes
 -- Date: 2026-02-24
@@ -1887,7 +1988,7 @@ WHERE ls.role IN ('locataire_principal', 'colocataire')
 -- ============================================
 -- 4. DIAGNOSTIC FINAL
 -- ============================================
-DO $$
+DO $mig$
 DECLARE
   orphans INT;
   backfilled INT;
@@ -1920,12 +2021,21 @@ BEGIN
   ELSE
     RAISE NOTICE '[fix_tenant_sync] Tous les signers avec email valide sont liés';
   END IF;
-END $$;
+END $mig$;
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [52/169] 20260224000001_remove_yousign_sendgrid_brevo.sql ===
+DO $wrapper$ BEGIN
 -- Suppression des providers Yousign, SendGrid et Brevo (signature/email intégrés ou non utilisés)
 -- Les credentials associées sont supprimées en premier (FK)
 
@@ -1938,8 +2048,17 @@ WHERE provider_id IN (
 DELETE FROM api_providers
 WHERE lower(name) IN ('yousign', 'brevo', 'sendgrid');
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [53/169] 20260224100000_fix_tenant_dashboard_notifications_query.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================================
 -- MIGRATION: Fix tenant_dashboard RPC — notification query includes user_id
 -- Date: 2026-02-24
@@ -1956,7 +2075,7 @@ CREATE OR REPLACE FUNCTION tenant_dashboard(p_tenant_user_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
-AS $$
+AS $mig$
 DECLARE
   v_profile_id UUID;
   v_user_email TEXT;
@@ -2264,15 +2383,24 @@ BEGIN
 
   RETURN v_result;
 END;
-$$;
+$mig$;
 
 COMMENT ON FUNCTION tenant_dashboard(UUID) IS
 'RPC dashboard locataire v6. Cherche par profile_id OU invited_email.
 FIX v6: Notification query also matches on user_id (not just profile_id).
 Inclut: signers enrichis, property complète (DPE, meters, keys), insurance, KYC status.';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [54/169] 20260224100000_normalize_provider_names.sql ===
+DO $wrapper$ BEGIN
 -- Normalise les noms des providers pour correspondre au code (Twilio, Stripe, etc.)
 -- Le code credentials-service.ts cherche des noms capitalisés.
 
@@ -2281,8 +2409,17 @@ UPDATE api_providers SET name = 'Stripe' WHERE lower(name) = 'stripe';
 UPDATE api_providers SET name = 'GoCardless' WHERE lower(name) = 'gocardless';
 UPDATE api_providers SET name = 'Mindee' WHERE lower(name) = 'mindee';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [55/169] 20260225000000_owner_payment_audit_log.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================
 -- SOTA 2026 : Journal d'audit PSD3 pour les moyens de paiement propriétaire
 -- Traçabilité des actions (carte ajoutée/supprimée, défaut, etc.)
@@ -2306,22 +2443,28 @@ COMMENT ON TABLE owner_payment_audit_log IS 'Audit trail PSD3 pour les opératio
 ALTER TABLE owner_payment_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Le propriétaire ne voit que ses propres logs
-DROP POLICY IF EXISTS "opal_select_own" ON owner_payment_audit_log;
 CREATE POLICY "opal_select_own" ON owner_payment_audit_log
   FOR SELECT USING (owner_id = public.user_profile_id());
 
 -- Le propriétaire peut insérer des logs pour lui-même (via l'API qui utilise son session)
-DROP POLICY IF EXISTS "opal_insert_own" ON owner_payment_audit_log;
 CREATE POLICY "opal_insert_own" ON owner_payment_audit_log
   FOR INSERT WITH CHECK (owner_id = public.user_profile_id());
 
 -- L'admin voit et gère tout (lecture seule en pratique, pas de UPDATE/DELETE prévus)
-DROP POLICY IF EXISTS "opal_admin_all" ON owner_payment_audit_log;
 CREATE POLICY "opal_admin_all" ON owner_payment_audit_log
   FOR ALL USING (public.user_role() = 'admin');
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [56/169] 20260225000001_fix_furniture_vetusty_rls.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================================
 -- P0-4: Correction RLS vétusté et mobilier
 -- properties.owner_id et lease_signers.profile_id sont des profiles.id,
@@ -2333,7 +2476,6 @@ CREATE POLICY "opal_admin_all" ON owner_payment_audit_log
 -- 1. furniture_inventories
 -- ----------------------------------------------------------------------------
 
-DROP POLICY IF EXISTS furniture_inventories_owner_policy ON furniture_inventories;
 DROP POLICY IF EXISTS furniture_inventories_owner_policy ON furniture_inventories;
 CREATE POLICY furniture_inventories_owner_policy ON furniture_inventories
   FOR ALL
@@ -2347,7 +2489,6 @@ CREATE POLICY furniture_inventories_owner_policy ON furniture_inventories
     )
   );
 
-DROP POLICY IF EXISTS furniture_inventories_tenant_policy ON furniture_inventories;
 DROP POLICY IF EXISTS furniture_inventories_tenant_policy ON furniture_inventories;
 CREATE POLICY furniture_inventories_tenant_policy ON furniture_inventories
   FOR SELECT
@@ -2366,7 +2507,6 @@ CREATE POLICY furniture_inventories_tenant_policy ON furniture_inventories
 -- ----------------------------------------------------------------------------
 
 DROP POLICY IF EXISTS furniture_items_owner_policy ON furniture_items;
-DROP POLICY IF EXISTS furniture_items_owner_policy ON furniture_items;
 CREATE POLICY furniture_items_owner_policy ON furniture_items
   FOR ALL
   USING (
@@ -2380,7 +2520,6 @@ CREATE POLICY furniture_items_owner_policy ON furniture_items
     )
   );
 
-DROP POLICY IF EXISTS furniture_items_tenant_policy ON furniture_items;
 DROP POLICY IF EXISTS furniture_items_tenant_policy ON furniture_items;
 CREATE POLICY furniture_items_tenant_policy ON furniture_items
   FOR SELECT
@@ -2399,7 +2538,6 @@ CREATE POLICY furniture_items_tenant_policy ON furniture_items
 -- 3. vetusty_reports
 -- ----------------------------------------------------------------------------
 
-DROP POLICY IF EXISTS "vetusty_reports_select_policy" ON vetusty_reports;
 DROP POLICY IF EXISTS "vetusty_reports_select_policy" ON vetusty_reports;
 CREATE POLICY "vetusty_reports_select_policy" ON vetusty_reports
   FOR SELECT USING (
@@ -2421,7 +2559,6 @@ CREATE POLICY "vetusty_reports_select_policy" ON vetusty_reports
   );
 
 DROP POLICY IF EXISTS "vetusty_reports_insert_policy" ON vetusty_reports;
-DROP POLICY IF EXISTS "vetusty_reports_insert_policy" ON vetusty_reports;
 CREATE POLICY "vetusty_reports_insert_policy" ON vetusty_reports
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -2433,7 +2570,6 @@ CREATE POLICY "vetusty_reports_insert_policy" ON vetusty_reports
     )
   );
 
-DROP POLICY IF EXISTS "vetusty_reports_update_policy" ON vetusty_reports;
 DROP POLICY IF EXISTS "vetusty_reports_update_policy" ON vetusty_reports;
 CREATE POLICY "vetusty_reports_update_policy" ON vetusty_reports
   FOR UPDATE USING (
@@ -2450,7 +2586,6 @@ CREATE POLICY "vetusty_reports_update_policy" ON vetusty_reports
 -- 4. vetusty_items
 -- ----------------------------------------------------------------------------
 
-DROP POLICY IF EXISTS "vetusty_items_select_policy" ON vetusty_items;
 DROP POLICY IF EXISTS "vetusty_items_select_policy" ON vetusty_items;
 CREATE POLICY "vetusty_items_select_policy" ON vetusty_items
   FOR SELECT USING (
@@ -2473,7 +2608,6 @@ CREATE POLICY "vetusty_items_select_policy" ON vetusty_items
   );
 
 DROP POLICY IF EXISTS "vetusty_items_insert_policy" ON vetusty_items;
-DROP POLICY IF EXISTS "vetusty_items_insert_policy" ON vetusty_items;
 CREATE POLICY "vetusty_items_insert_policy" ON vetusty_items
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -2487,7 +2621,6 @@ CREATE POLICY "vetusty_items_insert_policy" ON vetusty_items
   );
 
 DROP POLICY IF EXISTS "vetusty_items_update_policy" ON vetusty_items;
-DROP POLICY IF EXISTS "vetusty_items_update_policy" ON vetusty_items;
 CREATE POLICY "vetusty_items_update_policy" ON vetusty_items
   FOR UPDATE USING (
     EXISTS (
@@ -2500,7 +2633,6 @@ CREATE POLICY "vetusty_items_update_policy" ON vetusty_items
     )
   );
 
-DROP POLICY IF EXISTS "vetusty_items_delete_policy" ON vetusty_items;
 DROP POLICY IF EXISTS "vetusty_items_delete_policy" ON vetusty_items;
 CREATE POLICY "vetusty_items_delete_policy" ON vetusty_items
   FOR DELETE USING (
@@ -2517,8 +2649,17 @@ CREATE POLICY "vetusty_items_delete_policy" ON vetusty_items
 
 -- vetusty_grid_versions reste en lecture publique (USING (true)), pas de modification.
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [57/169] 20260225100000_autolink_backfill_invoices_on_profile.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Backfill invoices.tenant_id dans l'auto-link profil
 -- Date: 2026-02-25
@@ -2533,7 +2674,7 @@ CREATE POLICY "vetusty_items_delete_policy" ON vetusty_items
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION public.auto_link_lease_signers_on_profile_created()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 DECLARE
   user_email TEXT;
   linked_count INT;
@@ -2580,13 +2721,22 @@ EXCEPTION WHEN OTHERS THEN
   RAISE WARNING '[auto_link_lease_signers_on_profile_created] Erreur non-bloquante: %', SQLERRM;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 COMMENT ON FUNCTION public.auto_link_lease_signers_on_profile_created() IS
 'Après INSERT sur profiles: lie les lease_signers orphelins (invited_email = user email), backfill invoices.tenant_id, marque les invitations utilisées. Ne bloque jamais.';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [58/169] 20260226000000_backfill_existing_invoices_tenant_id.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Backfill invoices.tenant_id pour les profils existants
 -- Date: 2026-02-26
@@ -2612,16 +2762,25 @@ WHERE i.lease_id = ls.lease_id
   AND i.tenant_id IS NULL;
 
 -- Log du nombre de lignes mises à jour (visible dans les logs Supabase)
-DO $$
+DO $mig$
 DECLARE
   updated_count INT;
 BEGIN
   GET DIAGNOSTICS updated_count = ROW_COUNT;
   RAISE NOTICE '[backfill_invoices_tenant_id] % factures liées à leur locataire', updated_count;
-END $$;
+END $mig$;
+
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
 
 
 -- === [59/169] 20260226000000_fix_notifications_triggers.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Fix notifications body NOT NULL + trigger document center
 -- Date: 2026-02-26
@@ -2634,14 +2793,14 @@ END $$;
 BEGIN;
 
 -- Filet de sécurité : body peut avoir une valeur par défaut si jamais oublié
-DO $$
+DO $mig$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'notifications' AND column_name = 'body') THEN
     ALTER TABLE notifications ALTER COLUMN body SET DEFAULT '';
   END IF;
 EXCEPTION WHEN OTHERS THEN
   RAISE WARNING '[fix_notifications] body default: %', SQLERRM;
-END $$;
+END $mig$;
 
 -- Recréer create_notification() en insérant body = p_message (requis NOT NULL)
 DROP FUNCTION IF EXISTS create_notification(UUID, TEXT, TEXT, TEXT, TEXT, UUID, TEXT);
@@ -2654,7 +2813,7 @@ CREATE OR REPLACE FUNCTION create_notification(
   p_link TEXT DEFAULT NULL,
   p_related_id UUID DEFAULT NULL,
   p_related_type TEXT DEFAULT NULL
-) RETURNS UUID AS $$
+) RETURNS UUID AS $mig$
 DECLARE
   v_notification_id UUID;
   v_user_id UUID;
@@ -2722,7 +2881,7 @@ EXCEPTION WHEN OTHERS THEN
   RAISE WARNING '[create_notification] Erreur: %', SQLERRM;
   RETURN NULL;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 COMMENT ON FUNCTION create_notification(UUID, TEXT, TEXT, TEXT, TEXT, UUID, TEXT) IS
 'Crée une notification. body et message remplis avec p_message. p_recipient_id = profile_id ou user_id.';
@@ -2733,7 +2892,7 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $mig$
 DECLARE
   v_doc_label TEXT;
   v_notification_type TEXT;
@@ -2779,7 +2938,7 @@ EXCEPTION WHEN OTHERS THEN
   RAISE WARNING '[notify_tenant_document_center_update] Non-blocking: %', SQLERRM;
   RETURN NEW;
 END;
-$$;
+$mig$;
 
 DROP TRIGGER IF EXISTS trg_notify_tenant_document_center ON documents;
 CREATE TRIGGER trg_notify_tenant_document_center
@@ -2790,15 +2949,33 @@ CREATE TRIGGER trg_notify_tenant_document_center
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [60/169] 20260227000000_drop_auto_activate_lease_trigger.sql ===
+DO $wrapper$ BEGIN
 -- Fix: Le trigger auto_activate_lease_on_edl n'a pas été supprimé
 -- car la migration 20260207200000 ciblait le mauvais nom
 DROP TRIGGER IF EXISTS auto_activate_lease_on_edl ON public.edl;
 DROP FUNCTION IF EXISTS public.trigger_activate_lease_on_edl_signed();
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [61/169] 20260228000000_lease_signers_share_percentage.sql ===
+DO $wrapper$ BEGIN
 -- SOTA 2026: part de répartition par signataire (colocation).
 -- Si NULL, l'UI utilise le fallback 100 / nombre de colocataires.
 ALTER TABLE public.lease_signers
@@ -2807,8 +2984,17 @@ ALTER TABLE public.lease_signers
 
 COMMENT ON COLUMN public.lease_signers.share_percentage IS 'Part en % du loyer/charges pour ce signataire (colocation). NULL = répartition égale.';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [62/169] 20260228100000_tenant_payment_methods_sota2026.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================
 -- SOTA 2026 : Système de paiement locataire complet
 -- - tenant_payment_methods  (multi-cartes, SEPA, wallets)
@@ -2860,27 +3046,17 @@ CREATE INDEX idx_tpm_active ON tenant_payment_methods(tenant_profile_id, status)
 
 ALTER TABLE tenant_payment_methods ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "tpm_select_own" ON tenant_payment_methods;
-
 CREATE POLICY "tpm_select_own" ON tenant_payment_methods
   FOR SELECT USING (tenant_profile_id = public.user_profile_id());
-
-DROP POLICY IF EXISTS "tpm_insert_own" ON tenant_payment_methods;
 
 CREATE POLICY "tpm_insert_own" ON tenant_payment_methods
   FOR INSERT WITH CHECK (tenant_profile_id = public.user_profile_id());
 
-DROP POLICY IF EXISTS "tpm_update_own" ON tenant_payment_methods;
-
 CREATE POLICY "tpm_update_own" ON tenant_payment_methods
   FOR UPDATE USING (tenant_profile_id = public.user_profile_id());
 
-DROP POLICY IF EXISTS "tpm_delete_own" ON tenant_payment_methods;
-
 CREATE POLICY "tpm_delete_own" ON tenant_payment_methods
   FOR DELETE USING (tenant_profile_id = public.user_profile_id());
-
-DROP POLICY IF EXISTS "tpm_admin_all" ON tenant_payment_methods;
 
 CREATE POLICY "tpm_admin_all" ON tenant_payment_methods
   FOR ALL USING (public.user_role() = 'admin');
@@ -2892,7 +3068,7 @@ CREATE TRIGGER update_tpm_updated_at
 
 -- Ensure only ONE default per tenant
 CREATE OR REPLACE FUNCTION enforce_single_default_payment_method()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   IF NEW.is_default = true THEN
     UPDATE tenant_payment_methods
@@ -2903,7 +3079,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_enforce_single_default_pm
   AFTER INSERT OR UPDATE OF is_default ON tenant_payment_methods
@@ -2960,27 +3136,17 @@ CREATE INDEX idx_sepa_mandates_next_collection ON sepa_mandates(next_collection_
 
 ALTER TABLE sepa_mandates ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "sepa_select_tenant" ON sepa_mandates;
-
 CREATE POLICY "sepa_select_tenant" ON sepa_mandates
   FOR SELECT USING (tenant_profile_id = public.user_profile_id());
-
-DROP POLICY IF EXISTS "sepa_select_owner" ON sepa_mandates;
 
 CREATE POLICY "sepa_select_owner" ON sepa_mandates
   FOR SELECT USING (owner_profile_id = public.user_profile_id());
 
-DROP POLICY IF EXISTS "sepa_insert_tenant" ON sepa_mandates;
-
 CREATE POLICY "sepa_insert_tenant" ON sepa_mandates
   FOR INSERT WITH CHECK (tenant_profile_id = public.user_profile_id());
 
-DROP POLICY IF EXISTS "sepa_update_tenant" ON sepa_mandates;
-
 CREATE POLICY "sepa_update_tenant" ON sepa_mandates
   FOR UPDATE USING (tenant_profile_id = public.user_profile_id());
-
-DROP POLICY IF EXISTS "sepa_admin_all" ON sepa_mandates;
 
 CREATE POLICY "sepa_admin_all" ON sepa_mandates
   FOR ALL USING (public.user_role() = 'admin');
@@ -3032,8 +3198,6 @@ CREATE INDEX idx_ps_lease ON payment_schedules(lease_id);
 
 ALTER TABLE payment_schedules ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "ps_select_tenant" ON payment_schedules;
-
 CREATE POLICY "ps_select_tenant" ON payment_schedules
   FOR SELECT USING (
     EXISTS (
@@ -3044,8 +3208,6 @@ CREATE POLICY "ps_select_tenant" ON payment_schedules
     )
   );
 
-DROP POLICY IF EXISTS "ps_select_owner" ON payment_schedules;
-
 CREATE POLICY "ps_select_owner" ON payment_schedules
   FOR SELECT USING (
     EXISTS (
@@ -3055,8 +3217,6 @@ CREATE POLICY "ps_select_owner" ON payment_schedules
         AND p.owner_id = public.user_profile_id()
     )
   );
-
-DROP POLICY IF EXISTS "ps_admin_all" ON payment_schedules;
 
 CREATE POLICY "ps_admin_all" ON payment_schedules
   FOR ALL USING (public.user_role() = 'admin');
@@ -3087,19 +3247,15 @@ CREATE INDEX idx_pmal_pm ON payment_method_audit_log(payment_method_id, created_
 
 ALTER TABLE payment_method_audit_log ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "pmal_select_own" ON payment_method_audit_log;
-
 CREATE POLICY "pmal_select_own" ON payment_method_audit_log
   FOR SELECT USING (tenant_profile_id = public.user_profile_id());
-
-DROP POLICY IF EXISTS "pmal_admin_all" ON payment_method_audit_log;
 
 CREATE POLICY "pmal_admin_all" ON payment_method_audit_log
   FOR ALL USING (public.user_role() = 'admin');
 
 
 -- 5. Ajouter 'partial' au statut des invoices
-DO $$
+DO $mig$
 BEGIN
   -- Drop old constraint and recreate with 'partial'
   IF EXISTS (
@@ -3113,7 +3269,7 @@ BEGIN
     CHECK (statut IN ('draft', 'sent', 'paid', 'late', 'partial'));
 EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'Could not update invoices statut constraint: %', SQLERRM;
-END $$;
+END $mig$;
 
 -- Add partial tracking columns to invoices
 ALTER TABLE invoices ADD COLUMN IF NOT EXISTS amount_paid DECIMAL(10,2) DEFAULT 0;
@@ -3121,12 +3277,12 @@ ALTER TABLE invoices ADD COLUMN IF NOT EXISTS amount_remaining DECIMAL(10,2);
 
 -- Auto-calculate remaining on update
 CREATE OR REPLACE FUNCTION update_invoice_amount_remaining()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   NEW.amount_remaining := NEW.montant_total - COALESCE(NEW.amount_paid, 0);
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_invoice_amount_remaining ON invoices;
 CREATE TRIGGER trg_invoice_amount_remaining
@@ -3143,8 +3299,17 @@ WHERE amount_paid IS NULL OR amount_paid = 0;
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_profiles_stripe_customer ON profiles(stripe_customer_id) WHERE stripe_customer_id IS NOT NULL;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [63/169] 20260229100000_identity_2fa_requests.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Table pour les demandes 2FA (SMS + email) lors des changements d'identité
 -- SOTA 2026 - Vérification à deux facteurs pour renouvellement / mise à jour CNI
 
@@ -3169,7 +3334,6 @@ ALTER TABLE identity_2fa_requests ENABLE ROW LEVEL SECURITY;
 
 -- Le locataire ne peut voir que ses propres demandes
 DROP POLICY IF EXISTS "identity_2fa_requests_tenant_own" ON identity_2fa_requests;
-DROP POLICY IF EXISTS "identity_2fa_requests_tenant_own" ON identity_2fa_requests;
 CREATE POLICY "identity_2fa_requests_tenant_own"
   ON identity_2fa_requests FOR ALL TO authenticated
   USING (
@@ -3181,8 +3345,17 @@ CREATE POLICY "identity_2fa_requests_tenant_own"
 
 COMMENT ON TABLE identity_2fa_requests IS 'Demandes 2FA (OTP SMS + lien email) pour changement d''identité CNI';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [64/169] 20260230100000_create_notification_resolve_profile_id.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: create_notification — résolution profile_id → user_id
 -- Date: 2026-02-30
@@ -3204,7 +3377,7 @@ CREATE OR REPLACE FUNCTION create_notification(
   p_link TEXT DEFAULT NULL,
   p_related_id UUID DEFAULT NULL,
   p_related_type TEXT DEFAULT NULL
-) RETURNS UUID AS $$
+) RETURNS UUID AS $mig$
 DECLARE
   v_notification_id UUID;
   v_user_id UUID;
@@ -3271,13 +3444,22 @@ EXCEPTION WHEN OTHERS THEN
   RAISE WARNING '[create_notification] Erreur: %', SQLERRM;
   RETURN NULL;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 COMMENT ON FUNCTION create_notification(UUID, TEXT, TEXT, TEXT, TEXT, UUID, TEXT) IS
 'Crée une notification. p_recipient_id peut être un profile_id (résolution user_id) ou un user_id (rétrocompat).';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [65/169] 20260301000000_create_key_handovers.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Create key_handovers table for digital key handover with QR code proof
 -- This table records the formal handover of keys from owner to tenant,
 -- with cryptographic proof, geolocation, and signature.
@@ -3323,7 +3505,6 @@ CREATE INDEX IF NOT EXISTS idx_key_handovers_confirmed ON key_handovers(lease_id
 ALTER TABLE key_handovers ENABLE ROW LEVEL SECURITY;
 
 -- Owner can see and create handovers for their leases
-DROP POLICY IF EXISTS "owner_key_handovers" ON key_handovers;
 CREATE POLICY "owner_key_handovers" ON key_handovers
   FOR ALL
   USING (
@@ -3333,7 +3514,6 @@ CREATE POLICY "owner_key_handovers" ON key_handovers
   );
 
 -- Tenant can see and confirm handovers for their leases
-DROP POLICY IF EXISTS "tenant_key_handovers" ON key_handovers;
 CREATE POLICY "tenant_key_handovers" ON key_handovers
   FOR ALL
   USING (
@@ -3355,8 +3535,17 @@ CREATE OR REPLACE TRIGGER set_key_handovers_updated_at
 
 COMMENT ON TABLE key_handovers IS 'Remise des clés digitale avec preuve QR code, signature et géolocalisation';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [66/169] 20260301100000_entity_audit_and_propagation.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================================
 -- Migration: Entity Audit Trail, Propagation, Contraintes SIRET, Guards
 -- Date: 2026-03-01
@@ -3392,8 +3581,6 @@ CREATE INDEX IF NOT EXISTS idx_entity_audit_log_date ON entity_audit_log(created
 -- RLS pour entity_audit_log
 ALTER TABLE entity_audit_log ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
-
 CREATE POLICY "Users can view audit logs of their entities"
   ON entity_audit_log FOR SELECT
   USING (
@@ -3407,8 +3594,6 @@ CREATE POLICY "Users can view audit logs of their entities"
     )
   );
 
-DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
-
 CREATE POLICY "Users can insert audit logs for their entities"
   ON entity_audit_log FOR INSERT
   WITH CHECK (
@@ -3421,8 +3606,6 @@ CREATE POLICY "Users can insert audit logs for their entities"
       )
     )
   );
-
-DROP POLICY IF EXISTS "Admins can do everything on entity_audit_log" ON entity_audit_log;
 
 CREATE POLICY "Admins can do everything on entity_audit_log"
   ON entity_audit_log FOR ALL
@@ -3440,7 +3623,7 @@ CREATE POLICY "Admins can do everything on entity_audit_log"
 -- mettre à jour les champs dénormalisés sur leases et invoices.
 
 CREATE OR REPLACE FUNCTION propagate_entity_changes()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 DECLARE
   full_address TEXT;
 BEGIN
@@ -3486,7 +3669,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS trg_propagate_entity_changes ON legal_entities;
 CREATE TRIGGER trg_propagate_entity_changes
@@ -3499,7 +3682,7 @@ CREATE TRIGGER trg_propagate_entity_changes
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION log_entity_changes()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 DECLARE
   changes JSONB := '{}';
   action_type TEXT;
@@ -3582,7 +3765,7 @@ BEGIN
 
   RETURN NULL;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS trg_log_entity_changes ON legal_entities;
 CREATE TRIGGER trg_log_entity_changes
@@ -3612,7 +3795,7 @@ CREATE OR REPLACE FUNCTION check_property_transfer_feasibility(
   blocking_reason TEXT,
   active_lease_count BIGINT,
   pending_signature_count BIGINT
-) AS $$
+) AS $mig$
 BEGIN
   RETURN QUERY
   WITH lease_checks AS (
@@ -3636,7 +3819,7 @@ BEGIN
     lc.pending_count AS pending_signature_count
   FROM lease_checks lc;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- ============================================================================
 -- 6. Backfill bailleur_nom/adresse/siret sur les baux existants qui en manquent
@@ -3676,8 +3859,17 @@ WHERE i.issuer_entity_id = le.id
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [67/169] 20260303000000_backfill_uploaded_by.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Backfill uploaded_by pour documents existants
 -- Date: 2026-03-03
@@ -3746,8 +3938,17 @@ WHERE uploaded_by IS NULL
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [68/169] 20260303100000_entity_rls_fix_and_optimize.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================================
 -- Migration: Fix RLS policies for entity system
 -- Date: 2026-03-03
@@ -3771,13 +3972,13 @@ BEGIN;
 -- Utilisée par toutes les policies RLS pour éviter les sous-requêtes imbriquées.
 
 CREATE OR REPLACE FUNCTION get_current_owner_profile_id()
-RETURNS UUID AS $$
+RETURNS UUID AS $mig$
   SELECT op.profile_id
   FROM owner_profiles op
   INNER JOIN profiles p ON p.id = op.profile_id
   WHERE p.user_id = auth.uid()
   LIMIT 1;
-$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+$mig$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
 
 -- ============================================================================
 -- 2. Fix entity_associates: supprimer la policy SELECT redondante
@@ -3786,7 +3987,6 @@ $$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
 DROP POLICY IF EXISTS "Users can view associates of their entities" ON entity_associates;
 
 -- Recréer la policy FOR ALL avec la fonction optimisée
-DROP POLICY IF EXISTS "Users can manage associates of their entities" ON entity_associates;
 DROP POLICY IF EXISTS "Users can manage associates of their entities" ON entity_associates;
 CREATE POLICY "Users can manage associates of their entities"
   ON entity_associates FOR ALL
@@ -3802,24 +4002,20 @@ CREATE POLICY "Users can manage associates of their entities"
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Users can view their own entities" ON legal_entities;
-DROP POLICY IF EXISTS "Users can view their own entities" ON legal_entities;
 CREATE POLICY "Users can view their own entities"
   ON legal_entities FOR SELECT
   USING (owner_profile_id = get_current_owner_profile_id());
 
-DROP POLICY IF EXISTS "Users can insert their own entities" ON legal_entities;
 DROP POLICY IF EXISTS "Users can insert their own entities" ON legal_entities;
 CREATE POLICY "Users can insert their own entities"
   ON legal_entities FOR INSERT
   WITH CHECK (owner_profile_id = get_current_owner_profile_id());
 
 DROP POLICY IF EXISTS "Users can update their own entities" ON legal_entities;
-DROP POLICY IF EXISTS "Users can update their own entities" ON legal_entities;
 CREATE POLICY "Users can update their own entities"
   ON legal_entities FOR UPDATE
   USING (owner_profile_id = get_current_owner_profile_id());
 
-DROP POLICY IF EXISTS "Users can delete their own entities" ON legal_entities;
 DROP POLICY IF EXISTS "Users can delete their own entities" ON legal_entities;
 CREATE POLICY "Users can delete their own entities"
   ON legal_entities FOR DELETE
@@ -3829,7 +4025,6 @@ CREATE POLICY "Users can delete their own entities"
 -- 4. Optimiser les policies property_ownership
 -- ============================================================================
 
-DROP POLICY IF EXISTS "Users can view ownership of their properties" ON property_ownership;
 DROP POLICY IF EXISTS "Users can view ownership of their properties" ON property_ownership;
 CREATE POLICY "Users can view ownership of their properties"
   ON property_ownership FOR SELECT
@@ -3844,7 +4039,6 @@ CREATE POLICY "Users can view ownership of their properties"
     )
   );
 
-DROP POLICY IF EXISTS "Users can manage ownership of their properties" ON property_ownership;
 DROP POLICY IF EXISTS "Users can manage ownership of their properties" ON property_ownership;
 CREATE POLICY "Users can manage ownership of their properties"
   ON property_ownership FOR ALL
@@ -3864,7 +4058,6 @@ CREATE POLICY "Users can manage ownership of their properties"
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
-DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
 CREATE POLICY "Users can view audit logs of their entities"
   ON entity_audit_log FOR SELECT
   USING (
@@ -3874,7 +4067,6 @@ CREATE POLICY "Users can view audit logs of their entities"
     )
   );
 
-DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
 DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
 CREATE POLICY "Users can insert audit logs for their entities"
   ON entity_audit_log FOR INSERT
@@ -3911,5 +4103,13 @@ ALTER TABLE legal_entities ADD CONSTRAINT legal_entities_entity_type_check CHECK
 ));
 
 COMMIT;
+
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
 
 

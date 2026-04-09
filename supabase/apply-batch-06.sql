@@ -1,12 +1,155 @@
--- Batch 6 — migrations 109 a 147 sur 169
--- 39 migrations
+-- Batch 6 — migrations 106 a 147 sur 169
+-- 42 migrations, chaque migration wrappee dans DO/EXCEPTION
+
+-- === [106/169] 20260323000000_fix_document_visibility_and_dedup.sql ===
+DO $wrapper$ BEGIN
+-- Migration: Fix document visibility RLS + add deduplication constraint
+-- 1) RLS: tenant_id match must also respect visible_tenant
+-- 2) Unique partial index to prevent duplicate quittances per payment
+-- 3) Unique partial index to prevent duplicate attestations per handover
+
+-- ============================================================
+-- 1. Fix RLS: tenant with tenant_id = user MUST still respect visible_tenant
+-- Previously: tenant_id = user_profile_id() bypassed visible_tenant = false
+-- ============================================================
+
+DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
+
+CREATE POLICY "Tenants can read visible lease documents"
+  ON documents FOR SELECT
+  USING (
+    -- Tenant direct match: must respect visible_tenant
+    (
+      tenant_id = public.user_profile_id()
+      AND visible_tenant IS NOT FALSE
+    )
+    -- Tenant via lease signer: must respect visible_tenant
+    OR (
+      visible_tenant = true
+      AND lease_id IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM lease_signers ls
+        JOIN profiles p ON p.id = ls.profile_id
+        WHERE ls.lease_id = documents.lease_id
+          AND p.id = public.user_profile_id()
+          AND ls.role IN ('locataire_principal', 'locataire', 'colocataire')
+      )
+    )
+    -- Owner direct match
+    OR owner_id = public.user_profile_id()
+    -- Owner via property
+    OR (
+      property_id IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM properties p
+        WHERE p.id = documents.property_id
+          AND p.owner_id = public.user_profile_id()
+      )
+    )
+    -- Admin
+    OR public.user_role() = 'admin'
+  );
+
+-- ============================================================
+-- 2. Unique partial index: one quittance per payment_id
+-- Prevents race-condition duplicates in receipt generation
+-- ============================================================
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_unique_quittance_payment
+  ON documents ((metadata->>'payment_id'))
+  WHERE type = 'quittance'
+    AND metadata->>'payment_id' IS NOT NULL;
+
+-- ============================================================
+-- 3. Unique partial index: one attestation per handover_id
+-- Prevents duplicate key handover attestations
+-- ============================================================
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_unique_attestation_handover
+  ON documents ((metadata->>'handover_id'))
+  WHERE type = 'attestation_remise_cles'
+    AND metadata->>'handover_id' IS NOT NULL;
+
+-- ============================================================
+-- 4. Index for document-access helper: lookup by storage_path
+-- Used by the unified access check when path doesn't match known patterns
+-- ============================================================
+
+CREATE INDEX IF NOT EXISTS idx_documents_storage_path
+  ON documents (storage_path)
+  WHERE storage_path IS NOT NULL;
+
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
+
+-- === [107/169] 20260324100000_prevent_duplicate_payments.sql ===
+DO $wrapper$ BEGIN
+-- ============================================
+-- Migration : Anti-doublon paiements
+-- Date : 2026-03-24
+-- Description :
+--   1. Contrainte UNIQUE partielle sur payments : un seul paiement pending par facture
+--   2. Empêche la race condition qui a causé le double paiement sur bail da2eb9da
+-- ============================================
+
+-- Un seul paiement 'pending' par facture à la fois
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_one_pending_per_invoice
+  ON payments (invoice_id)
+  WHERE statut = 'pending';
+
+COMMENT ON INDEX idx_payments_one_pending_per_invoice
+  IS 'Empêche plusieurs paiements pending simultanés sur la même facture (anti-doublon)';
+
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
+
+-- === [108/169] 20260326022619_fix_documents_bucket_mime.sql ===
+DO $wrapper$ BEGIN
+-- Fix: Aligner les MIME types du bucket storage avec lib/documents/constants.ts
+-- Bug: Word/Excel etaient acceptes par le code mais rejetes par le bucket
+
+UPDATE storage.buckets
+SET allowed_mime_types = ARRAY[
+  'application/pdf',
+  'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.oasis.opendocument.text',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain', 'text/csv'
+]::text[],
+file_size_limit = 52428800  -- 50 Mo
+WHERE id = 'documents';
+
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [109/169] 20260326022700_migrate_tenant_documents.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Unifier tenant_documents dans la table documents
 -- Les CNI et autres pieces d'identite locataire sont dans tenant_documents
 -- mais invisibles dans le systeme unifie. Cette migration les copie.
 
-DO $$
+DO $mig$
 DECLARE
   migrated_count INT := 0;
 BEGIN
@@ -80,10 +223,19 @@ BEGIN
 
   -- Le trigger auto_fill_document_fk completera owner_id et property_id
   -- via lease_signers si disponible
-END $$;
+END $mig$;
+
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
 
 
 -- === [110/169] 20260326022800_create_document_links.sql ===
+DO $wrapper$ BEGIN
 -- Table document_links: liens de partage temporaires
 -- Utilisee par POST /api/documents/[id]/download et /api/documents/[id]/copy-link
 
@@ -106,8 +258,6 @@ CREATE INDEX IF NOT EXISTS idx_document_links_expires_at ON document_links(expir
 -- RLS
 ALTER TABLE document_links ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can view own document links" ON document_links;
-
 CREATE POLICY "Users can view own document links" ON document_links
   FOR SELECT TO authenticated
   USING (
@@ -120,20 +270,25 @@ CREATE POLICY "Users can view own document links" ON document_links
     )
   );
 
-DROP POLICY IF EXISTS "Users can create document links" ON document_links;
-
 CREATE POLICY "Users can create document links" ON document_links
   FOR INSERT TO authenticated
   WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Service role full access document_links" ON document_links;
 
 CREATE POLICY "Service role full access document_links" ON document_links
   FOR ALL TO service_role
   USING (true) WITH CHECK (true);
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [111/169] 20260326023000_fix_document_titles.sql ===
+DO $wrapper$ BEGIN
 -- Fix document titles for existing records with NULL, screenshot names, or raw technical names
 -- Uses TYPE_TO_LABEL mapping from lib/documents/constants.ts as source of truth
 
@@ -185,8 +340,17 @@ WHERE title IS NULL
    OR title ~ '^Capture d.cran'
    OR title ~ '^[A-Z_]+$';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [112/169] 20260326205416_add_agency_role_to_handle_new_user.sql ===
+DO $wrapper$ BEGIN
 -- ============================================
 -- Migration: Ajouter agency au trigger handle_new_user
 -- Date: 2026-03-26
@@ -199,7 +363,7 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $mig$
 DECLARE
   v_role TEXT;
   v_prenom TEXT;
@@ -234,7 +398,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$;
+$mig$;
 
 COMMENT ON FUNCTION public.handle_new_user() IS
 'Cree automatiquement un profil lors de la creation d''un utilisateur.
@@ -242,8 +406,17 @@ Lit le role et les informations personnelles depuis les raw_user_meta_data.
 Supporte tous les roles: admin, owner, tenant, provider, guarantor, syndic, agency.
 Utilise ON CONFLICT pour gerer les cas ou le profil existe deja.';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [113/169] 20260327143000_add_site_config.sql ===
+DO $wrapper$ BEGIN
 -- Table de configuration du site vitrine
 CREATE TABLE IF NOT EXISTS site_config (
   key TEXT PRIMARY KEY,
@@ -256,10 +429,7 @@ CREATE TABLE IF NOT EXISTS site_config (
 -- RLS : lecture publique, écriture admin uniquement
 ALTER TABLE site_config ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Public read" ON site_config;
-
 CREATE POLICY "Public read" ON site_config FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Admin write" ON site_config;
 CREATE POLICY "Admin write" ON site_config FOR ALL
   USING (
     EXISTS (
@@ -329,13 +499,11 @@ VALUES ('landing-images', 'landing-images', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Politique de lecture publique sur le bucket
-DROP POLICY IF EXISTS "Public read landing images" ON storage.objects;
 CREATE POLICY "Public read landing images"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'landing-images');
 
 -- Politique d'upload admin
-DROP POLICY IF EXISTS "Admin upload landing images" ON storage.objects;
 CREATE POLICY "Admin upload landing images"
 ON storage.objects FOR INSERT
 WITH CHECK (
@@ -348,7 +516,6 @@ WITH CHECK (
 );
 
 -- Politique de suppression admin
-DROP POLICY IF EXISTS "Admin delete landing images" ON storage.objects;
 CREATE POLICY "Admin delete landing images"
 ON storage.objects FOR DELETE
 USING (
@@ -360,8 +527,17 @@ USING (
   )
 );
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [114/169] 20260327200000_fix_handle_new_user_restore_email.sql ===
+DO $wrapper$ BEGIN
 -- ============================================
 -- Migration: Corriger handle_new_user — restaurer email + EXCEPTION handler
 -- Date: 2026-03-27
@@ -380,7 +556,7 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $mig$
 DECLARE
   v_role TEXT;
   v_prenom TEXT;
@@ -427,7 +603,7 @@ EXCEPTION WHEN OTHERS THEN
     NEW.id, NEW.email, SQLERRM, SQLSTATE;
   RETURN NEW;
 END;
-$$;
+$mig$;
 
 COMMENT ON FUNCTION public.handle_new_user() IS
 'Cree automatiquement un profil lors de la creation d''un utilisateur auth.
@@ -438,7 +614,7 @@ Utilise ON CONFLICT pour gerer les cas ou le profil existe deja.
 Ne bloque jamais la creation auth meme en cas d''erreur (EXCEPTION handler).';
 
 -- B. BACKFILL des emails NULL (crees par la migration 20260326205416 cassee)
-DO $$
+DO $mig$
 DECLARE
   v_updated INTEGER;
 BEGIN
@@ -459,10 +635,19 @@ BEGIN
   ELSE
     RAISE NOTICE '[fix_handle_new_user] Tous les profils ont deja un email renseigne';
   END IF;
-END $$;
+END $mig$;
+
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
 
 
 -- === [115/169] 20260328000000_fix_visible_tenant_documents.sql ===
+DO $wrapper$ BEGIN
 -- FIX 4: Ensure mandatory lease documents are visible to tenants
 -- Documents types contrat_bail, edl_entree, assurance_habitation
 -- must have visible_tenant = true so tenants can see them.
@@ -473,8 +658,17 @@ SET visible_tenant = true,
 WHERE type IN ('contrat_bail', 'edl_entree', 'assurance_habitation')
   AND (visible_tenant IS NULL OR visible_tenant = false);
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [116/169] 20260328042538_update_argument_images.sql ===
+DO $wrapper$ BEGIN
 -- Mise à jour des images par défaut des 4 cartes Arguments
 UPDATE site_config SET value = 'https://images.unsplash.com/photo-1556761175-4b46a572b786?w=600&q=80'
 WHERE key = 'landing_arg_time_img';
@@ -488,8 +682,17 @@ WHERE key = 'landing_arg_contract_img';
 UPDATE site_config SET value = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=600&q=80'
 WHERE key = 'landing_arg_sleep_img';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [117/169] 20260328100000_create_site_content.sql ===
+DO $wrapper$ BEGIN
 -- ============================================
 -- Migration: site_content — CMS léger pour pages marketing
 -- Date: 2026-03-28
@@ -525,12 +728,8 @@ CREATE TABLE IF NOT EXISTS site_content (
 -- RLS
 ALTER TABLE site_content ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "site_content_public_read" ON site_content;
-
 CREATE POLICY "site_content_public_read" ON site_content
   FOR SELECT USING (is_published = true);
-
-DROP POLICY IF EXISTS "site_content_admin_all" ON site_content;
 
 CREATE POLICY "site_content_admin_all" ON site_content
   FOR ALL TO authenticated
@@ -543,8 +742,17 @@ CREATE INDEX idx_site_content_slug ON site_content(page_slug, section_key)
 -- Commentaire
 COMMENT ON TABLE site_content IS 'CMS léger pour les pages marketing et légales de talok.fr';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [118/169] 20260328100000_fix_visible_tenant_documents.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Ensure key lease documents are visible to tenants
 -- Fixes: Documents created before visible_tenant was properly set
 
@@ -564,8 +772,17 @@ WHERE lease_id = 'da2eb9da-1ff1-4020-8682-5f993aa6fde7'
 -- Set default visible_tenant = true for new documents via column default
 ALTER TABLE documents ALTER COLUMN visible_tenant SET DEFAULT true;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [119/169] 20260329052631_fix_contrat_bail_visible_tenant.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Rendre les documents de bail visibles aux locataires
 -- Contexte: Le route /seal ne définissait pas visible_tenant=true sur les documents de bail
 -- Impact: Les locataires ne voyaient pas leur bail dans /tenant/documents
@@ -588,8 +805,17 @@ WHERE
   AND lease_id IS NOT NULL
   AND (visible_tenant IS NULL OR visible_tenant = false);
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [120/169] 20260329120000_add_agency_to_handle_new_user.sql ===
+DO $wrapper$ BEGIN
 -- ============================================
 -- Migration: Ajouter le rôle agency au trigger handle_new_user
 -- Date: 2026-03-29
@@ -602,7 +828,7 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $mig$
 DECLARE
   v_role TEXT;
   v_prenom TEXT;
@@ -637,7 +863,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$;
+$mig$;
 
 COMMENT ON FUNCTION public.handle_new_user() IS
 'Crée automatiquement un profil lors de la création d''un utilisateur.
@@ -645,8 +871,17 @@ Lit le rôle et les informations personnelles depuis les raw_user_meta_data.
 Supporte tous les rôles: admin, owner, tenant, provider, guarantor, syndic, agency.
 Utilise ON CONFLICT pour gérer les cas où le profil existe déjà.';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [121/169] 20260329164841_fix_document_titles.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Corriger les titres bruts/manquants des documents existants
 -- Remplace les titres NULL, screenshots, codes bruts et dates par des labels lisibles
 -- Source: talok-documents-sota section 8
@@ -692,8 +927,17 @@ WHERE title IS NULL
    OR title ~ '^[A-Z_]+$'
    OR title ~ '^\d{4}-\d{2}-\d{2}';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [122/169] 20260329170000_add_punctuality_score.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Ajouter le score de ponctualité sur les baux
 -- Le score mesure le % de paiements reçus à temps (avant date_echeance)
 
@@ -706,7 +950,7 @@ COMMENT ON COLUMN leases.punctuality_score IS
 
 -- 2. Fonction de calcul
 CREATE OR REPLACE FUNCTION compute_punctuality_score(p_lease_id UUID)
-RETURNS DECIMAL(5,2) AS $$
+RETURNS DECIMAL(5,2) AS $mig$
 DECLARE
   v_total INT;
   v_on_time INT;
@@ -734,11 +978,11 @@ BEGIN
 
   RETURN ROUND((v_on_time::DECIMAL / v_total) * 100, 2);
 END;
-$$ LANGUAGE plpgsql STABLE;
+$mig$ LANGUAGE plpgsql STABLE;
 
 -- 3. Trigger pour recalculer à chaque changement de facture
 CREATE OR REPLACE FUNCTION trigger_update_punctuality_score()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 DECLARE
   v_lease_id UUID;
   v_score DECIMAL(5,2);
@@ -760,7 +1004,7 @@ BEGIN
 
   RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_update_punctuality_score ON invoices;
 
@@ -770,7 +1014,7 @@ CREATE TRIGGER trg_update_punctuality_score
   EXECUTE FUNCTION trigger_update_punctuality_score();
 
 -- 4. Calculer le score initial pour tous les baux existants
-DO $$
+DO $mig$
 DECLARE
   r RECORD;
 BEGIN
@@ -780,10 +1024,19 @@ BEGIN
     WHERE id = r.lease_id;
   END LOOP;
 END;
-$$;
+$mig$;
+
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
 
 
 -- === [123/169] 20260329180000_notify_owner_edl_signed.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Notification propriétaire quand un EDL est signé par les deux parties
 -- Date: 2026-03-29
 -- Description: Ajoute un trigger qui notifie le propriétaire lorsqu'un EDL passe en statut "signed"
@@ -792,7 +1045,7 @@ $$;
 -- Fonction de notification EDL signé → propriétaire
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.notify_owner_edl_signed()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 DECLARE
     v_owner_id UUID;
     v_property_address TEXT;
@@ -857,7 +1110,7 @@ EXCEPTION WHEN OTHERS THEN
     RAISE WARNING '[notify_owner_edl_signed] Erreur: %', SQLERRM;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================================
 -- Trigger sur la table edl (UPDATE du statut)
@@ -869,8 +1122,17 @@ CREATE TRIGGER trigger_notify_owner_edl_signed
     WHEN (NEW.status = 'signed' AND OLD.status IS DISTINCT FROM 'signed')
     EXECUTE FUNCTION public.notify_owner_edl_signed();
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [124/169] 20260329190000_force_visible_tenant_generated_docs.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Backfill visible_tenant for generated documents + trigger guard
 -- Date: 2026-03-29
 -- Description:
@@ -888,14 +1150,14 @@ WHERE is_generated = true AND (visible_tenant = false OR visible_tenant IS NULL)
 -- 2. Trigger function: force visible_tenant on generated documents
 -- ============================================================================
 CREATE OR REPLACE FUNCTION public.force_visible_tenant_on_generated()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
     IF NEW.is_generated = true THEN
         NEW.visible_tenant := true;
     END IF;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 -- ============================================================================
 -- 3. Trigger on documents table
@@ -906,8 +1168,17 @@ CREATE TRIGGER trg_force_visible_tenant_on_generated
     FOR EACH ROW
     EXECUTE FUNCTION public.force_visible_tenant_on_generated();
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [125/169] 20260330100000_add_lease_cancellation_columns.sql ===
+DO $wrapper$ BEGIN
 -- ============================================
 -- Migration : Ajout colonnes annulation de bail
 -- Date : 2026-03-30
@@ -923,7 +1194,7 @@ ALTER TABLE leases ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;
 ALTER TABLE leases ADD COLUMN IF NOT EXISTS cancellation_type TEXT;
 
 -- Étape 2 : Contrainte CHECK sur cancellation_type
-DO $$ BEGIN
+DO $mig$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'leases_cancellation_type_check'
   ) THEN
@@ -937,17 +1208,17 @@ DO $$ BEGIN
         'duplicate'
       ));
   END IF;
-END $$;
+END $mig$;
 
 -- Étape 3 : Vérifier que 'cancelled' est dans la contrainte CHECK sur statut
 -- La migration 20260215200001 l'a déjà ajouté, mais on vérifie par sécurité
-DO $$ BEGIN
+DO $mig$ BEGIN
   -- Tenter d'insérer un bail cancelled pour vérifier la contrainte
   -- Si ça échoue, on met à jour la contrainte
   PERFORM 1;
 EXCEPTION WHEN OTHERS THEN
   NULL;
-END $$;
+END $mig$;
 
 -- Étape 4 : Index pour requêtes de nettoyage et reporting
 CREATE INDEX IF NOT EXISTS idx_leases_cancelled
@@ -970,12 +1241,21 @@ COMMENT ON COLUMN leases.cancelled_by IS 'User ID de la personne ayant annulé l
 COMMENT ON COLUMN leases.cancellation_reason IS 'Motif libre de l''annulation';
 COMMENT ON COLUMN leases.cancellation_type IS 'Type d''annulation : tenant_withdrawal, owner_withdrawal, mutual_agreement, never_activated, error, duplicate';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [126/169] 20260331000000_add_receipt_generated_to_invoices.sql ===
+DO $wrapper$ BEGIN
 -- Add receipt_generated flag to invoices table
 -- Tracks whether a quittance PDF has been generated for a paid invoice
 
-DO $$
+DO $mig$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns
@@ -984,7 +1264,7 @@ BEGIN
     ALTER TABLE invoices ADD COLUMN receipt_generated BOOLEAN DEFAULT FALSE;
     COMMENT ON COLUMN invoices.receipt_generated IS 'TRUE when a quittance PDF has been generated and stored for this invoice';
   END IF;
-END $$;
+END $mig$;
 
 -- Backfill: mark invoices that already have a quittance document
 UPDATE invoices
@@ -997,8 +1277,17 @@ WHERE id IN (
 )
 AND receipt_generated IS NOT TRUE;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [127/169] 20260331100000_add_agricultural_property_types.sql ===
+DO $wrapper$ BEGIN
 -- ============================================
 -- Migration: Ajouter les types agricoles au CHECK constraint properties
 -- Alignement avec le skill SOTA 2026 (14 types)
@@ -1027,8 +1316,17 @@ ALTER TABLE properties
     'exploitation_agricole'
   ));
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [128/169] 20260331100000_fix_document_titles_bruts.sql ===
+DO $wrapper$ BEGIN
 -- B7: Corriger les titres bruts des anciens documents
 -- Remplacer les noms de fichiers (ex: "Capture_d_ecran_2024-03-15.png")
 -- par des titres lisibles selon le type de document
@@ -1064,8 +1362,17 @@ WHERE (
 )
 AND type IS NOT NULL;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [129/169] 20260331120000_add_signed_pdf_generated_to_leases.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Ajouter colonne signed_pdf_generated à la table leases
 -- Permet de tracker quels baux ont déjà un PDF signé généré
 
@@ -1087,8 +1394,17 @@ CREATE INDEX IF NOT EXISTS idx_leases_signed_pdf_generated
 ON leases (signed_pdf_generated)
 WHERE signed_pdf_generated = FALSE;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [130/169] 20260331130000_key_handovers_add_cancelled_notes.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Améliorer la table key_handovers
 -- Ajoute cancelled_at (annulation soft) et notes (commentaires propriétaire)
 
@@ -1105,14 +1421,23 @@ WHERE confirmed_at IS NULL AND cancelled_at IS NULL;
 COMMENT ON COLUMN key_handovers.cancelled_at IS 'Date d''annulation de la remise par le propriétaire (soft delete)';
 COMMENT ON COLUMN key_handovers.notes IS 'Notes libres du propriétaire sur la remise des clés';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [131/169] 20260401000000_add_identity_status_onboarding_step.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Ajout identity_status et onboarding_step sur profiles
 -- Ces colonnes alimentent le middleware identity-gate qui contrôle
 -- l'accès aux routes protégées selon le niveau de vérification.
 
 -- Enum pour le statut d'identité
-DO $$ BEGIN
+DO $mig$ BEGIN
   CREATE TYPE identity_status_enum AS ENUM (
     'unverified',
     'phone_verified',
@@ -1122,10 +1447,10 @@ DO $$ BEGIN
     'identity_rejected'
   );
 EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+END $mig$;
 
 -- Enum pour l'étape d'onboarding
-DO $$ BEGIN
+DO $mig$ BEGIN
   CREATE TYPE onboarding_step_enum AS ENUM (
     'account_created',
     'phone_pending',
@@ -1137,7 +1462,7 @@ DO $$ BEGIN
     'complete'
   );
 EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+END $mig$;
 
 -- Ajout des colonnes sur profiles
 ALTER TABLE profiles
@@ -1154,8 +1479,17 @@ CREATE INDEX IF NOT EXISTS idx_profiles_onboarding_step ON profiles (onboarding_
 COMMENT ON COLUMN profiles.identity_status IS 'Niveau de vérification d''identité — utilisé par le middleware identity-gate';
 COMMENT ON COLUMN profiles.onboarding_step IS 'Étape courante du parcours d''onboarding';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [132/169] 20260401000001_add_initial_payment_confirmed_to_leases.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Ajouter initial_payment_confirmed sur leases
 -- Permet au webhook Stripe de marquer le paiement initial comme confirmé
 -- et d'éviter la désynchronisation entre l'UI et l'API key-handover.
@@ -1183,8 +1517,17 @@ CREATE INDEX IF NOT EXISTS idx_leases_initial_payment_pending
   ON leases (id)
   WHERE initial_payment_confirmed = false;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [133/169] 20260401000001_backfill_identity_status.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Backfill identity_status pour les profils existants
 -- Protège les utilisateurs existants avant activation du middleware identity-gate.
 -- Ordre d'exécution important : les requêtes les plus spécifiques d'abord.
@@ -1263,8 +1606,17 @@ UPDATE profiles SET
 WHERE identity_status = 'unverified'
 AND created_at < NOW() - INTERVAL '1 day';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [134/169] 20260404100000_rls_push_subscriptions.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Activer RLS sur push_subscriptions
 -- Date: 2026-04-04
@@ -1283,7 +1635,6 @@ ALTER TABLE IF EXISTS push_subscriptions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "push_subs_own_access" ON push_subscriptions;
 
 -- Policy : chaque utilisateur ne peut accéder qu'à ses propres subscriptions
-DROP POLICY IF EXISTS "push_subs_own_access" ON push_subscriptions;
 CREATE POLICY "push_subs_own_access" ON push_subscriptions
   FOR ALL TO authenticated
   USING (user_id = auth.uid())
@@ -1292,8 +1643,17 @@ CREATE POLICY "push_subs_own_access" ON push_subscriptions
 COMMENT ON POLICY "push_subs_own_access" ON push_subscriptions IS
   'Sécurité: un utilisateur ne peut voir/modifier que ses propres abonnements push.';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [135/169] 20260404100100_fix_tenant_docs_view_visible_tenant.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Ajouter filtre visible_tenant à la vue v_tenant_accessible_documents
 -- Date: 2026-04-04
@@ -1344,8 +1704,17 @@ WHERE
 COMMENT ON VIEW public.v_tenant_accessible_documents IS
   'SOTA 2026: Vue unifiée des documents accessibles par le locataire. Filtre visible_tenant=true sauf pour les documents uploadés par le tenant lui-même.';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [136/169] 20260404100200_fix_ticket_messages_rls_lease_signers.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Fix ticket_messages RLS — utiliser lease_signers au lieu de roommates
 -- Date: 2026-04-04
@@ -1359,8 +1728,6 @@ COMMENT ON VIEW public.v_tenant_accessible_documents IS
 -- =====================================================
 
 -- SELECT policy
-DROP POLICY IF EXISTS "Ticket messages same lease select" ON ticket_messages;
-
 DROP POLICY IF EXISTS "Ticket messages same lease select" ON ticket_messages;
 
 CREATE POLICY "Ticket messages same lease select"
@@ -1398,8 +1765,6 @@ CREATE POLICY "Ticket messages same lease select"
 -- INSERT policy
 DROP POLICY IF EXISTS "Ticket messages same lease insert" ON ticket_messages;
 
-DROP POLICY IF EXISTS "Ticket messages same lease insert" ON ticket_messages;
-
 CREATE POLICY "Ticket messages same lease insert"
   ON ticket_messages FOR INSERT
   WITH CHECK (
@@ -1429,8 +1794,17 @@ CREATE POLICY "Ticket messages same lease insert"
     )
   );
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [137/169] 20260406200000_create_entities_view_and_members.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Create entities view + entity_members table
 -- Date: 2026-04-07
@@ -1503,13 +1877,11 @@ CREATE INDEX idx_entity_members_profile ON entity_members(profile_id) WHERE prof
 ALTER TABLE entity_members ENABLE ROW LEVEL SECURITY;
 
 -- Policy: un utilisateur voit ses propres memberships
-DROP POLICY IF EXISTS "entity_members_own_access" ON entity_members;
 CREATE POLICY "entity_members_own_access" ON entity_members
   FOR SELECT TO authenticated
   USING (user_id = auth.uid());
 
 -- Policy: un admin d'une entite peut gerer ses membres
-DROP POLICY IF EXISTS "entity_members_admin_manage" ON entity_members;
 CREATE POLICY "entity_members_admin_manage" ON entity_members
   FOR ALL TO authenticated
   USING (
@@ -1576,7 +1948,7 @@ ON CONFLICT (entity_id, user_id) DO NOTHING;
 -- quand une nouvelle legal_entity est creee
 -- =====================================================
 CREATE OR REPLACE FUNCTION fn_auto_entity_member()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 DECLARE
   v_user_id UUID;
 BEGIN
@@ -1592,7 +1964,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS trg_auto_entity_member ON legal_entities;
 CREATE TRIGGER trg_auto_entity_member
@@ -1604,20 +1976,29 @@ CREATE TRIGGER trg_auto_entity_member
 -- 6. Updated_at trigger pour entity_members
 -- =====================================================
 CREATE OR REPLACE FUNCTION fn_entity_members_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trg_entity_members_updated_at
   BEFORE UPDATE ON entity_members
   FOR EACH ROW
   EXECUTE FUNCTION fn_entity_members_updated_at();
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [138/169] 20260406210000_accounting_complete.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Module Comptabilite complet
 -- Date: 2026-04-06
@@ -1648,8 +2029,6 @@ CREATE INDEX idx_exercises_entity ON accounting_exercises(entity_id);
 CREATE INDEX idx_exercises_status ON accounting_exercises(entity_id, status);
 
 ALTER TABLE accounting_exercises ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "exercises_entity_access" ON accounting_exercises;
 
 CREATE POLICY "exercises_entity_access" ON accounting_exercises
   FOR ALL TO authenticated
@@ -1691,8 +2070,6 @@ CREATE INDEX idx_coa_class ON chart_of_accounts(entity_id, account_class);
 
 ALTER TABLE chart_of_accounts ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "coa_entity_access" ON chart_of_accounts;
-
 CREATE POLICY "coa_entity_access" ON chart_of_accounts
   FOR ALL TO authenticated
   USING (
@@ -1722,8 +2099,6 @@ CREATE TABLE IF NOT EXISTS accounting_journals (
 );
 
 ALTER TABLE accounting_journals ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "journals_entity_access" ON accounting_journals;
 
 CREATE POLICY "journals_entity_access" ON accounting_journals
   FOR ALL TO authenticated
@@ -1768,8 +2143,6 @@ CREATE INDEX idx_entries_date ON accounting_entries(entity_id, entry_date);
 
 ALTER TABLE accounting_entries ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "entries_entity_access" ON accounting_entries;
-
 CREATE POLICY "entries_entity_access" ON accounting_entries
   FOR ALL TO authenticated
   USING (
@@ -1807,8 +2180,6 @@ CREATE INDEX idx_entry_lines_account ON accounting_entry_lines(account_number);
 CREATE INDEX idx_entry_lines_lettrage ON accounting_entry_lines(lettrage) WHERE lettrage IS NOT NULL;
 
 ALTER TABLE accounting_entry_lines ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "entry_lines_via_entry" ON accounting_entry_lines;
 
 CREATE POLICY "entry_lines_via_entry" ON accounting_entry_lines
   FOR ALL TO authenticated
@@ -1855,8 +2226,6 @@ CREATE TABLE IF NOT EXISTS bank_connections (
 CREATE INDEX idx_bank_conn_entity ON bank_connections(entity_id);
 
 ALTER TABLE bank_connections ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "bank_conn_entity_access" ON bank_connections;
 
 CREATE POLICY "bank_conn_entity_access" ON bank_connections
   FOR ALL TO authenticated
@@ -1905,8 +2274,6 @@ CREATE INDEX idx_bank_tx_matched ON bank_transactions(matched_entry_id) WHERE ma
 
 ALTER TABLE bank_transactions ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "bank_tx_via_connection" ON bank_transactions;
-
 CREATE POLICY "bank_tx_via_connection" ON bank_transactions
   FOR ALL TO authenticated
   USING (
@@ -1954,8 +2321,6 @@ CREATE INDEX idx_doc_analyses_status ON document_analyses(processing_status);
 
 ALTER TABLE document_analyses ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "doc_analyses_entity_access" ON document_analyses;
-
 CREATE POLICY "doc_analyses_entity_access" ON document_analyses
   FOR ALL TO authenticated
   USING (
@@ -1994,8 +2359,6 @@ CREATE INDEX idx_amort_sched_entity ON amortization_schedules(entity_id);
 
 ALTER TABLE amortization_schedules ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "amort_sched_entity_access" ON amortization_schedules;
-
 CREATE POLICY "amort_sched_entity_access" ON amortization_schedules
   FOR ALL TO authenticated
   USING (
@@ -2025,8 +2388,6 @@ CREATE TABLE IF NOT EXISTS amortization_lines (
 );
 
 ALTER TABLE amortization_lines ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "amort_lines_via_schedule" ON amortization_lines;
 
 CREATE POLICY "amort_lines_via_schedule" ON amortization_lines
   FOR ALL TO authenticated
@@ -2070,8 +2431,6 @@ CREATE INDEX idx_deficit_entity ON deficit_tracking(entity_id);
 
 ALTER TABLE deficit_tracking ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "deficit_entity_access" ON deficit_tracking;
-
 CREATE POLICY "deficit_entity_access" ON deficit_tracking
   FOR ALL TO authenticated
   USING (
@@ -2108,8 +2467,6 @@ CREATE TABLE IF NOT EXISTS charge_regularizations (
 
 ALTER TABLE charge_regularizations ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "charge_reg_entity_access" ON charge_regularizations;
-
 CREATE POLICY "charge_reg_entity_access" ON charge_regularizations
   FOR ALL TO authenticated
   USING (
@@ -2144,8 +2501,6 @@ CREATE INDEX idx_ec_access_entity ON ec_access(entity_id);
 
 ALTER TABLE ec_access ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "ec_access_owner" ON ec_access;
-
 CREATE POLICY "ec_access_owner" ON ec_access
   FOR ALL TO authenticated
   USING (
@@ -2177,8 +2532,6 @@ CREATE TABLE IF NOT EXISTS ec_annotations (
 
 ALTER TABLE ec_annotations ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "ec_annotations_access" ON ec_annotations;
-
 CREATE POLICY "ec_annotations_access" ON ec_annotations
   FOR ALL TO authenticated
   USING (
@@ -2208,8 +2561,6 @@ CREATE TABLE IF NOT EXISTS copro_budgets (
 );
 
 ALTER TABLE copro_budgets ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "copro_budgets_entity_access" ON copro_budgets;
 
 CREATE POLICY "copro_budgets_entity_access" ON copro_budgets
   FOR ALL TO authenticated
@@ -2246,8 +2597,6 @@ CREATE TABLE IF NOT EXISTS copro_fund_calls (
 
 ALTER TABLE copro_fund_calls ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "copro_fund_calls_entity_access" ON copro_fund_calls;
-
 CREATE POLICY "copro_fund_calls_entity_access" ON copro_fund_calls
   FOR ALL TO authenticated
   USING (
@@ -2276,8 +2625,6 @@ CREATE TABLE IF NOT EXISTS mandant_accounts (
 );
 
 ALTER TABLE mandant_accounts ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "mandant_accounts_entity_access" ON mandant_accounts;
 
 CREATE POLICY "mandant_accounts_entity_access" ON mandant_accounts
   FOR ALL TO authenticated
@@ -2312,8 +2659,6 @@ CREATE TABLE IF NOT EXISTS crg_reports (
 );
 
 ALTER TABLE crg_reports ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "crg_reports_entity_access" ON crg_reports;
 
 CREATE POLICY "crg_reports_entity_access" ON crg_reports
   FOR ALL TO authenticated
@@ -2350,8 +2695,6 @@ CREATE INDEX idx_audit_date ON accounting_audit_log(created_at);
 
 ALTER TABLE accounting_audit_log ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "audit_log_entity_access" ON accounting_audit_log;
-
 CREATE POLICY "audit_log_entity_access" ON accounting_audit_log
   FOR SELECT TO authenticated
   USING (
@@ -2361,7 +2704,6 @@ CREATE POLICY "audit_log_entity_access" ON accounting_audit_log
   );
 
 -- Audit log is insert-only for the system, read-only for users
-DROP POLICY IF EXISTS "audit_log_system_insert" ON accounting_audit_log;
 CREATE POLICY "audit_log_system_insert" ON accounting_audit_log
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -2376,7 +2718,7 @@ CREATE POLICY "audit_log_system_insert" ON accounting_audit_log
 
 -- Trigger: Verify entry balance (sum debit = sum credit) before validation
 CREATE OR REPLACE FUNCTION fn_check_entry_balance()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 DECLARE
   total_debit INTEGER;
   total_credit INTEGER;
@@ -2401,7 +2743,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_entry_balance ON accounting_entries;
 CREATE TRIGGER trg_entry_balance
@@ -2411,7 +2753,7 @@ CREATE TRIGGER trg_entry_balance
 
 -- Trigger: Prevent modification of locked/validated entries (intangibilite)
 CREATE OR REPLACE FUNCTION fn_locked_entry_guard()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   IF OLD.is_locked = true THEN
     -- Allow only reversal_of to be set on locked entries
@@ -2426,7 +2768,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_locked_entry ON accounting_entries;
 CREATE TRIGGER trg_locked_entry
@@ -2436,7 +2778,7 @@ CREATE TRIGGER trg_locked_entry
 
 -- Trigger: Auto audit log on entry changes
 CREATE OR REPLACE FUNCTION fn_audit_entry_changes()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   IF TG_OP = 'INSERT' THEN
     INSERT INTO accounting_audit_log (entity_id, actor_id, actor_type, action, target_type, target_id, details)
@@ -2465,7 +2807,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 DROP TRIGGER IF EXISTS trg_audit_entries ON accounting_entries;
 CREATE TRIGGER trg_audit_entries
@@ -2475,14 +2817,14 @@ CREATE TRIGGER trg_audit_entries
 
 -- Trigger: updated_at auto-update
 CREATE OR REPLACE FUNCTION fn_accounting_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
-DO $$
+DO $mig$
 DECLARE
   tbl TEXT;
 BEGIN
@@ -2501,7 +2843,7 @@ BEGIN
     );
   END LOOP;
 END;
-$$;
+$mig$;
 
 -- =====================================================
 -- HELPER: Generate next entry number
@@ -2511,7 +2853,7 @@ CREATE OR REPLACE FUNCTION fn_next_entry_number(
   p_exercise_id UUID,
   p_journal_code TEXT
 )
-RETURNS TEXT AS $$
+RETURNS TEXT AS $mig$
 DECLARE
   next_seq INTEGER;
   year_part TEXT;
@@ -2530,7 +2872,7 @@ BEGIN
 
   RETURN p_journal_code || '-' || year_part || '-' || LPAD(next_seq::TEXT, 6, '0');
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 COMMENT ON TABLE accounting_exercises IS 'Exercices comptables par entite (SCI, copro, agence)';
 COMMENT ON TABLE chart_of_accounts IS 'Plan comptable PCG/copro/custom par entite';
@@ -2538,53 +2880,71 @@ COMMENT ON TABLE accounting_entries IS 'Ecritures comptables double-entry avec i
 COMMENT ON TABLE bank_transactions IS 'Transactions bancaires importees pour rapprochement';
 COMMENT ON TABLE accounting_audit_log IS 'Journal audit comptable (insertion seule, lecture utilisateur)';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [139/169] 20260407110000_audit_fixes_rls_indexes.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Audit fixes — missing indexes, CHECK constraints, and RLS
 -- Idempotent: safe to run multiple times
 
 -- 1. Missing index on sepa_mandates.owner_profile_id (skip if table missing)
-DO $$ BEGIN
+DO $mig$ BEGIN
   CREATE INDEX IF NOT EXISTS idx_sepa_mandates_owner ON sepa_mandates(owner_profile_id);
 EXCEPTION WHEN OTHERS THEN NULL;
-END $$;
+END $mig$;
 
 -- 2. CHECK constraints on status columns (skip if table does not exist)
-DO $$ BEGIN
+DO $mig$ BEGIN
   ALTER TABLE reconciliation_matches ADD CONSTRAINT chk_reconciliation_matches_status CHECK (status IN ('pending','matched','disputed','resolved'));
 EXCEPTION WHEN OTHERS THEN NULL;
-END $$;
+END $mig$;
 
-DO $$ BEGIN
+DO $mig$ BEGIN
   ALTER TABLE payment_schedules ADD CONSTRAINT chk_payment_schedules_status CHECK (status IN ('pending','active','paused','completed','cancelled'));
 EXCEPTION WHEN OTHERS THEN NULL;
-END $$;
+END $mig$;
 
-DO $$ BEGIN
+DO $mig$ BEGIN
   ALTER TABLE receipt_stubs ADD CONSTRAINT chk_receipt_stubs_status CHECK (status IN ('signed','cancelled','archived'));
 EXCEPTION WHEN OTHERS THEN NULL;
-END $$;
+END $mig$;
 
-DO $$ BEGIN
+DO $mig$ BEGIN
   ALTER TABLE subscriptions ADD CONSTRAINT chk_subscriptions_status CHECK (status IN ('trialing','active','past_due','canceled','incomplete','paused'));
 EXCEPTION WHEN OTHERS THEN NULL;
-END $$;
+END $mig$;
 
-DO $$ BEGIN
+DO $mig$ BEGIN
   ALTER TABLE visit_slots ADD CONSTRAINT chk_visit_slots_status CHECK (status IN ('available','booked','cancelled','completed'));
 EXCEPTION WHEN OTHERS THEN NULL;
-END $$;
+END $mig$;
 
-DO $$ BEGIN
+DO $mig$ BEGIN
   ALTER TABLE visit_bookings ADD CONSTRAINT chk_visit_bookings_status CHECK (status IN ('pending','confirmed','cancelled','no_show','completed'));
 EXCEPTION WHEN OTHERS THEN NULL;
-END $$;
+END $mig$;
 
 -- 3. Enable RLS on lease_notices (idempotent — ENABLE is a no-op if already on)
 ALTER TABLE IF EXISTS lease_notices ENABLE ROW LEVEL SECURITY;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [140/169] 20260407120000_accounting_reconcile_schemas.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Reconcile accounting schemas
 -- Date: 2026-04-07
@@ -2646,7 +3006,7 @@ SET
 WHERE entry_number IS NULL AND ecriture_num IS NOT NULL;
 
 -- Add the unique constraint for new entry numbering (if not exists)
-DO $$
+DO $mig$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'entry_number_unique'
@@ -2663,7 +3023,7 @@ BEGIN
         ADD CONSTRAINT entry_number_unique UNIQUE (entity_id, exercise_id, entry_number);
     END IF;
   END IF;
-END $$;
+END $mig$;
 
 -- =====================================================
 -- 3. Extend mandant_accounts with entity support
@@ -2703,7 +3063,6 @@ CREATE INDEX IF NOT EXISTS idx_entry_lines_lettrage ON accounting_entry_lines(le
 ALTER TABLE accounting_entry_lines ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "entry_lines_via_entry" ON accounting_entry_lines;
-DROP POLICY IF EXISTS "entry_lines_via_entry" ON accounting_entry_lines;
 CREATE POLICY "entry_lines_via_entry" ON accounting_entry_lines
   FOR ALL TO authenticated
   USING (
@@ -2730,7 +3089,6 @@ CREATE POLICY "entry_lines_via_entry" ON accounting_entry_lines
 
 -- accounting_entries: add entity-based policy
 DROP POLICY IF EXISTS "entries_entity_access" ON public.accounting_entries;
-DROP POLICY IF EXISTS "entries_entity_access" ON public.accounting_entries;
 CREATE POLICY "entries_entity_access" ON public.accounting_entries
   FOR ALL TO authenticated
   USING (
@@ -2747,7 +3105,6 @@ CREATE POLICY "entries_entity_access" ON public.accounting_entries
   );
 
 -- mandant_accounts: add entity-based policy
-DROP POLICY IF EXISTS "mandant_entity_access" ON public.mandant_accounts;
 DROP POLICY IF EXISTS "mandant_entity_access" ON public.mandant_accounts;
 CREATE POLICY "mandant_entity_access" ON public.mandant_accounts
   FOR ALL TO authenticated
@@ -2774,8 +3131,17 @@ COMMENT ON TABLE public.accounting_journals IS 'Journaux comptables — extended
 COMMENT ON TABLE public.accounting_entries IS 'Ecritures comptables — extended with double-entry header fields and entity support';
 COMMENT ON TABLE public.mandant_accounts IS 'Comptes mandants — extended with entity support';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [141/169] 20260407130000_ocr_category_rules.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: OCR Category Rules + document_analyses extensions
 -- Date: 2026-04-07
@@ -2802,8 +3168,6 @@ CREATE INDEX IF NOT EXISTS idx_ocr_rules_match ON ocr_category_rules(match_type,
 
 ALTER TABLE ocr_category_rules ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "ocr_rules_entity_access" ON ocr_category_rules;
-
 CREATE POLICY "ocr_rules_entity_access" ON ocr_category_rules
   FOR ALL TO authenticated
   USING (entity_id IN (SELECT entity_id FROM entity_members WHERE user_id = auth.uid()))
@@ -2815,8 +3179,17 @@ ALTER TABLE document_analyses ADD COLUMN IF NOT EXISTS raw_ocr_text TEXT;
 ALTER TABLE document_analyses ADD COLUMN IF NOT EXISTS processing_time_ms INTEGER;
 ALTER TABLE document_analyses ADD COLUMN IF NOT EXISTS suggested_entry JSONB;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [142/169] 20260408042218_create_expenses_table.sql ===
+DO $wrapper$ BEGIN
 -- Migration: Table expenses (dépenses/travaux propriétaire)
 -- Date: 2026-04-08
 -- RLS via chaîne : legal_entities.owner_profile_id → owner_profiles.profile_id
@@ -2915,7 +3288,6 @@ ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 -- Supporte à la fois :
 --   - Dépenses rattachées à une entité (legal_entity_id IS NOT NULL)
 --   - Dépenses en direct (owner_profile_id = profile courant)
-DROP POLICY IF EXISTS "Owners can view own expenses" ON expenses;
 CREATE POLICY "Owners can view own expenses" ON expenses
   FOR SELECT TO authenticated
   USING (
@@ -2927,8 +3299,6 @@ CREATE POLICY "Owners can view own expenses" ON expenses
     OR public.user_role() = 'admin'
   );
 
-DROP POLICY IF EXISTS "Owners can insert own expenses" ON expenses;
-
 CREATE POLICY "Owners can insert own expenses" ON expenses
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -2938,8 +3308,6 @@ CREATE POLICY "Owners can insert own expenses" ON expenses
       WHERE le.owner_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
     )
   );
-
-DROP POLICY IF EXISTS "Owners can update own expenses" ON expenses;
 
 CREATE POLICY "Owners can update own expenses" ON expenses
   FOR UPDATE TO authenticated
@@ -2958,8 +3326,6 @@ CREATE POLICY "Owners can update own expenses" ON expenses
     )
   );
 
-DROP POLICY IF EXISTS "Owners can delete own expenses" ON expenses;
-
 CREATE POLICY "Owners can delete own expenses" ON expenses
   FOR DELETE TO authenticated
   USING (
@@ -2969,8 +3335,6 @@ CREATE POLICY "Owners can delete own expenses" ON expenses
       WHERE le.owner_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
     )
   );
-
-DROP POLICY IF EXISTS "Admins full access on expenses" ON expenses;
 
 CREATE POLICY "Admins full access on expenses" ON expenses
   FOR ALL TO authenticated
@@ -2982,12 +3346,12 @@ CREATE POLICY "Admins full access on expenses" ON expenses
 -- ============================================
 
 CREATE OR REPLACE FUNCTION update_expenses_updated_at()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 CREATE TRIGGER update_expenses_updated_at
   BEFORE UPDATE ON expenses
@@ -2996,8 +3360,17 @@ CREATE TRIGGER update_expenses_updated_at
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [143/169] 20260408044152_reconcile_charge_regularisations_and_backfill_entry_lines.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Réconciliation finale des schémas comptables
 -- Date: 2026-04-08
@@ -3157,7 +3530,7 @@ COMMENT ON VIEW public.charge_regularisations IS
 --     redirigent vers charge_regularizations (compatibilité code legacy)
 
 CREATE OR REPLACE FUNCTION charge_regularisations_insert_redirect()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   INSERT INTO public.charge_regularizations (
     id, lease_id, property_id, tenant_id, annee,
@@ -3190,14 +3563,14 @@ BEGIN
   RETURNING id INTO NEW.id;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 CREATE TRIGGER charge_regularisations_on_insert
   INSTEAD OF INSERT ON public.charge_regularisations
   FOR EACH ROW EXECUTE FUNCTION charge_regularisations_insert_redirect();
 
 CREATE OR REPLACE FUNCTION charge_regularisations_update_redirect()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   UPDATE public.charge_regularizations SET
     lease_id = NEW.lease_id,
@@ -3219,19 +3592,19 @@ BEGIN
   WHERE id = OLD.id;
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 CREATE TRIGGER charge_regularisations_on_update
   INSTEAD OF UPDATE ON public.charge_regularisations
   FOR EACH ROW EXECUTE FUNCTION charge_regularisations_update_redirect();
 
 CREATE OR REPLACE FUNCTION charge_regularisations_delete_redirect()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   DELETE FROM public.charge_regularizations WHERE id = OLD.id;
   RETURN OLD;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
 CREATE TRIGGER charge_regularisations_on_delete
   INSTEAD OF DELETE ON public.charge_regularisations
@@ -3305,8 +3678,17 @@ WHERE
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [144/169] 20260408100000_copro_lots.sql ===
+DO $wrapper$ BEGIN
 -- Sprint 5: Copropriété lots + fund call lines
 -- Tables for syndic copropriété module
 
@@ -3328,7 +3710,6 @@ CREATE TABLE IF NOT EXISTS copro_lots (
 );
 CREATE INDEX idx_copro_lots_entity ON copro_lots(copro_entity_id);
 ALTER TABLE copro_lots ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "copro_lots_entity_access" ON copro_lots;
 CREATE POLICY "copro_lots_entity_access" ON copro_lots FOR ALL TO authenticated
   USING (copro_entity_id IN (SELECT entity_id FROM entity_members WHERE user_id = auth.uid()))
   WITH CHECK (copro_entity_id IN (SELECT entity_id FROM entity_members WHERE user_id = auth.uid()));
@@ -3368,12 +3749,20 @@ CREATE TABLE IF NOT EXISTS copro_fund_call_lines (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE copro_fund_call_lines ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "copro_fund_call_lines_access" ON copro_fund_call_lines;
 CREATE POLICY "copro_fund_call_lines_access" ON copro_fund_call_lines FOR ALL TO authenticated
   USING (call_id IN (SELECT id FROM copro_fund_calls WHERE entity_id IN (SELECT entity_id FROM entity_members WHERE user_id = auth.uid())));
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [145/169] 20260408100000_create_push_subscriptions.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Create push_subscriptions table
 -- Date: 2026-04-08
@@ -3424,7 +3813,6 @@ CREATE INDEX IF NOT EXISTS idx_push_subscriptions_device_type
 ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "push_subs_own_access" ON push_subscriptions;
-DROP POLICY IF EXISTS "push_subs_own_access" ON push_subscriptions;
 CREATE POLICY "push_subs_own_access" ON push_subscriptions
   FOR ALL TO authenticated
   USING (user_id = auth.uid())
@@ -3432,8 +3820,17 @@ CREATE POLICY "push_subs_own_access" ON push_subscriptions
 
 COMMENT ON TABLE push_subscriptions IS 'Tokens push : Web Push (VAPID) et FCM natif (iOS/Android)';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [146/169] 20260408110000_agency_hoguet.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================================
 -- Sprint 6: Agency Hoguet compliance columns
 --
@@ -3456,8 +3853,17 @@ COMMENT ON COLUMN legal_entities.carte_g_expiry IS 'Date expiration de la carte 
 COMMENT ON COLUMN legal_entities.caisse_garantie IS 'Nom de la caisse de garantie financiere';
 COMMENT ON COLUMN legal_entities.caisse_garantie_numero IS 'Numero adhesion a la caisse de garantie';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [147/169] 20260408120000_api_keys_webhooks.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================================
 -- Migration: API Keys, API Logs, API Webhooks
 -- Feature: REST API pour développeurs tiers (Pro+/Enterprise)
@@ -3489,21 +3895,14 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
 CREATE INDEX IF NOT EXISTS idx_api_keys_profile ON api_keys(profile_id);
 
 -- RLS: Owner can only see/manage their own API keys
-DROP POLICY IF EXISTS "api_keys_select_own" ON api_keys;
 CREATE POLICY "api_keys_select_own" ON api_keys
   FOR SELECT USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
-
-DROP POLICY IF EXISTS "api_keys_insert_own" ON api_keys;
 
 CREATE POLICY "api_keys_insert_own" ON api_keys
   FOR INSERT WITH CHECK (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
-DROP POLICY IF EXISTS "api_keys_update_own" ON api_keys;
-
 CREATE POLICY "api_keys_update_own" ON api_keys
   FOR UPDATE USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
-
-DROP POLICY IF EXISTS "api_keys_delete_own" ON api_keys;
 
 CREATE POLICY "api_keys_delete_own" ON api_keys
   FOR DELETE USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
@@ -3532,7 +3931,6 @@ CREATE INDEX IF NOT EXISTS idx_api_logs_key ON api_logs(api_key_id, created_at D
 CREATE INDEX IF NOT EXISTS idx_api_logs_created ON api_logs(created_at DESC);
 
 -- RLS: Owner can see logs for their own API keys
-DROP POLICY IF EXISTS "api_logs_select_own" ON api_logs;
 CREATE POLICY "api_logs_select_own" ON api_logs
   FOR SELECT USING (
     api_key_id IN (
@@ -3568,21 +3966,14 @@ CREATE INDEX IF NOT EXISTS idx_api_webhooks_profile ON api_webhooks(profile_id);
 CREATE INDEX IF NOT EXISTS idx_api_webhooks_events ON api_webhooks USING GIN(events);
 
 -- RLS: Owner can only see/manage their own webhooks
-DROP POLICY IF EXISTS "api_webhooks_select_own" ON api_webhooks;
 CREATE POLICY "api_webhooks_select_own" ON api_webhooks
   FOR SELECT USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
-
-DROP POLICY IF EXISTS "api_webhooks_insert_own" ON api_webhooks;
 
 CREATE POLICY "api_webhooks_insert_own" ON api_webhooks
   FOR INSERT WITH CHECK (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
-DROP POLICY IF EXISTS "api_webhooks_update_own" ON api_webhooks;
-
 CREATE POLICY "api_webhooks_update_own" ON api_webhooks
   FOR UPDATE USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
-
-DROP POLICY IF EXISTS "api_webhooks_delete_own" ON api_webhooks;
 
 CREATE POLICY "api_webhooks_delete_own" ON api_webhooks
   FOR DELETE USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
@@ -3609,14 +4000,14 @@ CREATE INDEX IF NOT EXISTS idx_webhook_deliveries_webhook ON api_webhook_deliver
 -- 5. Triggers updated_at
 -- ============================================================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 BEGIN
   NEW.updated_at = now();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$mig$ LANGUAGE plpgsql;
 
-DO $$
+DO $mig$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'set_api_keys_updated_at') THEN
     CREATE TRIGGER set_api_keys_updated_at
@@ -3629,6 +4020,14 @@ BEGIN
       BEFORE UPDATE ON api_webhooks
       FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
   END IF;
-END $$;
+END $mig$;
+
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
 
 

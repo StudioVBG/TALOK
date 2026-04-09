@@ -1,7 +1,8 @@
 -- Batch 2 — migrations 9 a 21 sur 169
--- 13 migrations
+-- 13 migrations, chaque migration wrappee dans DO/EXCEPTION
 
 -- === [9/169] 20260212100002_email_templates_seed.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================
 -- Seed data: 31 email templates
 -- ============================================================
@@ -705,8 +706,17 @@ L''équipe Talok',
 0)
 ON CONFLICT (slug) DO NOTHING;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [10/169] 20260212200000_audit_v3_comprehensive_integrity.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================================
 -- AUDIT D'INTÉGRITÉ V3 — VÉRIFICATIONS ÉTENDUES & QUALITÉ DES DONNÉES
 -- Date: 2026-02-12
@@ -735,7 +745,7 @@ RETURNS TABLE(
   severity TEXT,
   description TEXT,
   sample_ids TEXT
-) AS $$
+) AS $mig$
 BEGIN
 
   -- Sessions sans participants
@@ -824,7 +834,7 @@ BEGIN
     AND NOT EXISTS (SELECT 1 FROM profiles p WHERE p.id = sp.profile_id);
 
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION audit_signature_integrity() IS
   'Vérifie l''intégrité du système de signatures (sessions, participants, preuves eIDAS).';
@@ -842,7 +852,7 @@ RETURNS TABLE(
   severity TEXT,
   description TEXT,
   sample_ids TEXT
-) AS $$
+) AS $mig$
 BEGIN
 
   -- Organisations sans owner
@@ -928,7 +938,7 @@ BEGIN
     AND cd.ssl_expires_at < NOW();
 
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION audit_organization_integrity() IS
   'Vérifie l''intégrité du système multi-tenant et white-label.';
@@ -946,7 +956,7 @@ RETURNS TABLE(
   severity TEXT,
   description TEXT,
   sample_ids TEXT
-) AS $$
+) AS $mig$
 BEGIN
 
   -- Fonds de commerce sans owner
@@ -1042,7 +1052,7 @@ BEGIN
     AND lgr.date_echeance < CURRENT_DATE - INTERVAL '90 days';
 
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION audit_commercial_integrity() IS
   'Vérifie l''intégrité des fonds de commerce et contrats de location-gérance.';
@@ -1059,7 +1069,7 @@ RETURNS TABLE(
   issue_count BIGINT,
   severity TEXT,
   description TEXT
-) AS $$
+) AS $mig$
 BEGIN
 
   -- ── PROFILS ──────────────────────────────────────────────────────────
@@ -1300,7 +1310,7 @@ BEGIN
   ) sub;
 
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION audit_data_quality() IS
   'Vérifie la qualité et la cohérence métier des données (champs manquants, incohérences).';
@@ -1318,7 +1328,7 @@ RETURNS TABLE(
   issue_count BIGINT,
   severity TEXT,
   description TEXT
-) AS $$
+) AS $mig$
 BEGIN
 
   -- Orphelins (V1)
@@ -1357,7 +1367,7 @@ BEGIN
   WHERE adq.issue_count > 0;
 
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION audit_full_report() IS
   'Rapport d''audit complet combinant toutes les vérifications (orphelins, doublons, signatures, orga, commercial, qualité).';
@@ -1374,7 +1384,7 @@ RETURNS TABLE(
   low_issues INTEGER,
   health_score NUMERIC(5,2),
   grade TEXT
-) AS $$
+) AS $mig$
 DECLARE
   v_total INTEGER := 0;
   v_passed INTEGER := 0;
@@ -1428,7 +1438,7 @@ BEGIN
   END;
   RETURN NEXT;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION audit_health_score() IS
   'Retourne un score de santé global de la base (0-100) avec une note A+ à F.';
@@ -1437,7 +1447,7 @@ COMMENT ON FUNCTION audit_health_score() IS
 -- ============================================================================
 -- LOGS DE MIGRATION
 -- ============================================================================
-DO $$
+DO $mig$
 BEGIN
   RAISE NOTICE '══════════════════════════════════════════════════════════════';
   RAISE NOTICE '  AUDIT V3 — Vérifications étendues installées';
@@ -1459,10 +1469,19 @@ BEGIN
   RAISE NOTICE '    SELECT * FROM audit_full_report();';
   RAISE NOTICE '    SELECT * FROM audit_health_score();';
   RAISE NOTICE '══════════════════════════════════════════════════════════════';
-END $$;
+END $mig$;
+
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
 
 
 -- === [11/169] 20260213000000_fix_profiles_rls_recursion_v2.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Correction définitive de la récursion RLS sur profiles (v2)
 -- Date: 2026-02-13
@@ -1481,7 +1500,7 @@ END $$;
 ALTER TABLE profiles DISABLE ROW LEVEL SECURITY;
 
 -- 2. SUPPRIMER TOUTES LES ANCIENNES POLITIQUES SUR profiles
-DO $$
+DO $mig$
 DECLARE
   pol RECORD;
 BEGIN
@@ -1492,7 +1511,7 @@ BEGIN
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS %I ON profiles', pol.policyname);
   END LOOP;
-END $$;
+END $mig$;
 
 -- 3. CRÉER/REMPLACER LES FONCTIONS HELPER (SECURITY DEFINER = bypass RLS)
 CREATE OR REPLACE FUNCTION public.is_admin()
@@ -1501,14 +1520,14 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public
-AS $$
+AS $mig$
   SELECT EXISTS (
     SELECT 1 FROM profiles
     WHERE user_id = auth.uid()
     AND role = 'admin'
     LIMIT 1
   );
-$$;
+$mig$;
 
 CREATE OR REPLACE FUNCTION public.get_my_role()
 RETURNS TEXT
@@ -1516,12 +1535,12 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public
-AS $$
+AS $mig$
   SELECT COALESCE(
     (SELECT role FROM profiles WHERE user_id = auth.uid() LIMIT 1),
     'anonymous'
   );
-$$;
+$mig$;
 
 CREATE OR REPLACE FUNCTION public.get_my_profile_id()
 RETURNS UUID
@@ -1529,9 +1548,9 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public
-AS $$
+AS $mig$
   SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1;
-$$;
+$mig$;
 
 CREATE OR REPLACE FUNCTION public.user_profile_id()
 RETURNS UUID
@@ -1539,9 +1558,9 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public
-AS $$
+AS $mig$
   SELECT public.get_my_profile_id();
-$$;
+$mig$;
 
 CREATE OR REPLACE FUNCTION public.user_role()
 RETURNS TEXT
@@ -1549,9 +1568,9 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public
-AS $$
+AS $mig$
   SELECT public.get_my_role();
-$$;
+$mig$;
 
 -- Versions avec paramètre (pour usage admin)
 CREATE OR REPLACE FUNCTION public.user_profile_id(p_user_id UUID)
@@ -1560,9 +1579,9 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public
-AS $$
+AS $mig$
   SELECT id FROM profiles WHERE user_id = p_user_id LIMIT 1;
-$$;
+$mig$;
 
 CREATE OR REPLACE FUNCTION public.user_role(p_user_id UUID)
 RETURNS TEXT
@@ -1570,9 +1589,9 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public
-AS $$
+AS $mig$
   SELECT COALESCE(role, 'anonymous') FROM profiles WHERE user_id = p_user_id LIMIT 1;
-$$;
+$mig$;
 
 -- 4. RÉACTIVER RLS
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -1581,7 +1600,6 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 -- Politique principale : chaque utilisateur peut voir/modifier son propre profil
 -- Utilise auth.uid() directement, aucune sous-requête vers profiles
-DROP POLICY IF EXISTS "profiles_own_access" ON profiles;
 CREATE POLICY "profiles_own_access" ON profiles
 FOR ALL TO authenticated
 USING (user_id = auth.uid())
@@ -1589,14 +1607,12 @@ WITH CHECK (user_id = auth.uid());
 
 -- Politique admin : les admins peuvent voir tous les profils
 -- is_admin() est SECURITY DEFINER donc bypasse les RLS
-DROP POLICY IF EXISTS "profiles_admin_read" ON profiles;
 CREATE POLICY "profiles_admin_read" ON profiles
 FOR SELECT TO authenticated
 USING (public.is_admin());
 
 -- Politique propriétaire : peut voir les profils de ses locataires
 -- get_my_profile_id() est SECURITY DEFINER donc bypasse les RLS
-DROP POLICY IF EXISTS "profiles_owner_read_tenants" ON profiles;
 CREATE POLICY "profiles_owner_read_tenants" ON profiles
 FOR SELECT TO authenticated
 USING (
@@ -1633,8 +1649,17 @@ GRANT EXECUTE ON FUNCTION public.user_role() TO anon;
 -- Le service_role bypass RLS par défaut dans Supabase.
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [12/169] 20260213100000_fix_rls_all_tables_recursion.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Correction globale de la récursion RLS
 -- Date: 2026-02-13
@@ -1661,13 +1686,11 @@ DROP POLICY IF EXISTS "Owners can view their subscription" ON subscriptions;
 DROP POLICY IF EXISTS "Admins can view all subscriptions" ON subscriptions;
 
 -- Propriétaire voit son abonnement (utilise get_my_profile_id au lieu de sous-requête)
-DROP POLICY IF EXISTS "Owners can view their subscription" ON subscriptions;
 CREATE POLICY "Owners can view their subscription" ON subscriptions
   FOR SELECT TO authenticated
   USING (owner_id = public.get_my_profile_id());
 
 -- Admins voient tout (utilise is_admin qui est SECURITY DEFINER)
-DROP POLICY IF EXISTS "Admins can view all subscriptions" ON subscriptions;
 CREATE POLICY "Admins can view all subscriptions" ON subscriptions
   FOR ALL TO authenticated
   USING (public.is_admin());
@@ -1675,8 +1698,7 @@ CREATE POLICY "Admins can view all subscriptions" ON subscriptions
 -- ============================================
 -- 2. CORRIGER subscription_invoices (si la table existe)
 -- ============================================
-DO $$ BEGIN
-  DROP POLICY IF EXISTS "Owners can view their invoices" ON subscription_invoices;
+DO $mig$ BEGIN
   DROP POLICY IF EXISTS "Owners can view their invoices" ON subscription_invoices;
   CREATE POLICY "Owners can view their invoices" ON subscription_invoices
     FOR SELECT TO authenticated
@@ -1688,13 +1710,12 @@ DO $$ BEGIN
     );
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'subscription_invoices does not exist yet, skipping';
-END $$;
+END $mig$;
 
 -- ============================================
 -- 3. CORRIGER subscription_usage (si la table existe)
 -- ============================================
-DO $$ BEGIN
-  DROP POLICY IF EXISTS "Owners can view their usage" ON subscription_usage;
+DO $mig$ BEGIN
   DROP POLICY IF EXISTS "Owners can view their usage" ON subscription_usage;
   CREATE POLICY "Owners can view their usage" ON subscription_usage
     FOR SELECT TO authenticated
@@ -1706,13 +1727,13 @@ DO $$ BEGIN
     );
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'subscription_usage does not exist yet, skipping';
-END $$;
+END $mig$;
 
 -- ============================================
 -- 4. CORRIGER notifications
 -- ============================================
 -- Supprimer TOUTES les anciennes politiques de notifications pour repartir proprement
-DO $$
+DO $mig$
 DECLARE
   pol RECORD;
 BEGIN
@@ -1723,13 +1744,12 @@ BEGIN
   LOOP
     EXECUTE format('DROP POLICY IF EXISTS %I ON notifications', pol.policyname);
   END LOOP;
-END $$;
+END $mig$;
 
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- Lecture : l'utilisateur voit ses propres notifications
 -- Utilise auth.uid() directement et get_my_profile_id() pour recipient_id/profile_id
-DROP POLICY IF EXISTS "notifications_select_own" ON notifications;
 CREATE POLICY "notifications_select_own" ON notifications
   FOR SELECT TO authenticated
   USING (
@@ -1739,7 +1759,6 @@ CREATE POLICY "notifications_select_own" ON notifications
   );
 
 -- Mise à jour : l'utilisateur peut modifier ses propres notifications
-DROP POLICY IF EXISTS "notifications_update_own" ON notifications;
 CREATE POLICY "notifications_update_own" ON notifications
   FOR UPDATE TO authenticated
   USING (
@@ -1749,7 +1768,6 @@ CREATE POLICY "notifications_update_own" ON notifications
   );
 
 -- Suppression : l'utilisateur peut supprimer ses propres notifications
-DROP POLICY IF EXISTS "notifications_delete_own" ON notifications;
 CREATE POLICY "notifications_delete_own" ON notifications
   FOR DELETE TO authenticated
   USING (
@@ -1759,7 +1777,6 @@ CREATE POLICY "notifications_delete_own" ON notifications
   );
 
 -- Insertion : le système peut insérer des notifications
-DROP POLICY IF EXISTS "notifications_insert_system" ON notifications;
 CREATE POLICY "notifications_insert_system" ON notifications
   FOR INSERT
   WITH CHECK (true);
@@ -1772,15 +1789,24 @@ CREATE POLICY "notifications_insert_system" ON notifications
 -- en cascade depuis profiles, mais pour la robustesse on les corrige aussi.
 
 -- Cette requête est un diagnostic, elle n'échouera pas si les tables n'existent pas
-DO $$
+DO $mig$
 BEGIN
   RAISE NOTICE '=== Migration RLS globale appliquée avec succès ===';
   RAISE NOTICE 'Tables corrigées: profiles, subscriptions, subscription_invoices, subscription_usage, notifications';
   RAISE NOTICE 'Méthode: get_my_profile_id() SECURITY DEFINER au lieu de sous-requêtes directes';
-END $$;
+END $mig$;
+
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
 
 
 -- === [13/169] 20260215100000_signature_security_audit_fixes.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================================
 -- MIGRATION: Corrections audit sécurité signatures (2026-02-15)
 -- ============================================================================
@@ -1801,7 +1827,7 @@ BEGIN;
 -- On ne supprime pas immédiatement pour éviter les erreurs d'application
 -- pendant le déploiement. La colonne sera supprimée dans une migration future.
 
-DO $$
+DO $mig$
 BEGIN
   -- Vérifier si la colonne existe avant de la renommer
   IF EXISTS (
@@ -1821,7 +1847,7 @@ BEGIN
   ELSE
     RAISE NOTICE 'Colonne lease_signers.signature_image déjà absente ou renommée';
   END IF;
-END $$;
+END $mig$;
 
 -- ============================================================================
 -- P0-4: S'assurer que les statuts de bail incluent tous ceux utilisés par le code
@@ -1831,7 +1857,7 @@ END $$;
 -- 
 -- Vérifier et mettre à jour la contrainte CHECK si nécessaire
 
-DO $$
+DO $mig$
 DECLARE
   v_constraint_name TEXT;
 BEGIN
@@ -1863,7 +1889,7 @@ BEGIN
   );
   
   RAISE NOTICE 'Contrainte CHECK sur leases.statut mise à jour avec tous les statuts SSOT 2026';
-END $$;
+END $mig$;
 
 -- ============================================================================
 -- P2-6: Ajouter un champ template_version aux lease_signers pour traçabilité
@@ -1897,8 +1923,17 @@ WHERE invited_email IS NOT NULL;
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [14/169] 20260215200000_fix_rls_properties_tenant_pre_active.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================================
 -- P0-E1: Fix RLS properties pour locataires avant bail "active"
 -- ============================================================================
@@ -1915,7 +1950,6 @@ COMMIT;
 DROP POLICY IF EXISTS "Tenants can view properties with active leases" ON properties;
 
 -- 2. Créer la nouvelle policy élargie
-DROP POLICY IF EXISTS "Tenants can view linked properties" ON properties;
 CREATE POLICY "Tenants can view linked properties"
   ON properties
   FOR SELECT
@@ -1939,8 +1973,17 @@ COMMENT ON POLICY "Tenants can view linked properties" ON properties IS
   'P0-E1: Locataires voient les propriétés liées à leurs baux (sauf draft/cancelled). '
   'Remplace l''ancienne policy qui exigeait statut=active uniquement.';
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [15/169] 20260215200001_add_notice_given_lease_status.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================================
 -- MIGRATION CORRECTIVE: Harmonisation complète des statuts de bail
 -- Date: 2026-02-15
@@ -1962,7 +2005,7 @@ COMMENT ON POLICY "Tenants can view linked properties" ON properties IS
 --   active → amended → active (avenant)
 -- ============================================================================
 
-DO $$
+DO $mig$
 BEGIN
   -- Supprimer toute contrainte CHECK existante sur statut
   BEGIN
@@ -2003,7 +2046,7 @@ BEGIN
     );
 
   RAISE NOTICE '[MIGRATION] CHECK constraint leases_statut_check harmonisée — 12 statuts';
-END $$;
+END $mig$;
 
 -- Mettre à jour le commentaire de colonne
 COMMENT ON COLUMN leases.statut IS 'Statut du bail: draft, sent, pending_signature, partially_signed, pending_owner_signature, fully_signed, active, notice_given, amended, terminated, archived, cancelled';
@@ -2013,8 +2056,17 @@ DROP INDEX IF EXISTS idx_leases_pending_action;
 CREATE INDEX IF NOT EXISTS idx_leases_pending_action ON leases(statut) 
   WHERE statut IN ('pending_signature', 'partially_signed', 'pending_owner_signature', 'fully_signed', 'sent');
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [16/169] 20260215200002_fix_rls_tenant_access_beyond_active.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================================
 -- MIGRATION CORRECTIVE: Élargir les RLS units/charges/tickets pour les locataires
 -- Date: 2026-02-15
@@ -2030,8 +2082,6 @@ CREATE INDEX IF NOT EXISTS idx_leases_pending_action ON leases(statut)
 -- ============================================
 -- 1. UNITS — Policy tenant trop restrictive
 -- ============================================
-DROP POLICY IF EXISTS "Users can view units of accessible properties" ON units;
-
 DROP POLICY IF EXISTS "Users can view units of accessible properties" ON units;
 
 CREATE POLICY "Users can view units of accessible properties"
@@ -2066,8 +2116,6 @@ CREATE POLICY "Users can view units of accessible properties"
 -- 2. CHARGES — Policy tenant trop restrictive
 -- ============================================
 DROP POLICY IF EXISTS "Tenants can view charges of properties with active leases" ON charges;
-
-DROP POLICY IF EXISTS "Tenants can view charges of linked properties" ON charges;
 
 CREATE POLICY "Tenants can view charges of linked properties"
   ON charges
@@ -2104,8 +2152,6 @@ CREATE POLICY "Tenants can view charges of linked properties"
 -- 3a. Policy SELECT
 DROP POLICY IF EXISTS "Users can view tickets of accessible properties" ON tickets;
 DROP POLICY IF EXISTS "tickets_select_policy" ON tickets;
-
-DROP POLICY IF EXISTS "Users can view tickets of accessible properties" ON tickets;
 
 CREATE POLICY "Users can view tickets of accessible properties"
   ON tickets
@@ -2149,8 +2195,6 @@ CREATE POLICY "Users can view tickets of accessible properties"
 DROP POLICY IF EXISTS "Users can create tickets for accessible properties" ON tickets;
 DROP POLICY IF EXISTS "tickets_insert_policy" ON tickets;
 
-DROP POLICY IF EXISTS "Users can create tickets for accessible properties" ON tickets;
-
 CREATE POLICY "Users can create tickets for accessible properties"
   ON tickets
   FOR INSERT
@@ -2182,13 +2226,22 @@ CREATE POLICY "Users can create tickets for accessible properties"
 -- ============================================
 -- Log
 -- ============================================
-DO $$
+DO $mig$
 BEGIN
   RAISE NOTICE '[MIGRATION] RLS units/charges/tickets élargies au-delà de active';
-END $$;
+END $mig$;
+
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
 
 
 -- === [17/169] 20260215200003_fix_copro_fk_on_delete.sql ===
+DO $wrapper$ BEGIN
 -- ============================================================================
 -- MIGRATION CORRECTIVE: Ajouter ON DELETE aux FK copropriété
 -- Date: 2026-02-15
@@ -2204,7 +2257,7 @@ END $$;
 -- ============================================================================
 
 -- 1. copro_units.owner_profile_id
-DO $$
+DO $mig$
 BEGIN
   -- Trouver et supprimer la contrainte FK existante
   IF EXISTS (
@@ -2224,14 +2277,14 @@ BEGIN
   END IF;
 EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'copro_units.owner_profile_id FK not found, skipping drop';
-END $$;
+END $mig$;
 
 ALTER TABLE copro_units
   ADD CONSTRAINT copro_units_owner_profile_id_fkey
   FOREIGN KEY (owner_profile_id) REFERENCES profiles(id) ON DELETE SET NULL;
 
 -- 2. copro_units.property_id
-DO $$
+DO $mig$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.table_constraints
@@ -2250,14 +2303,14 @@ BEGIN
   END IF;
 EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'copro_units.property_id FK not found, skipping drop';
-END $$;
+END $mig$;
 
 ALTER TABLE copro_units
   ADD CONSTRAINT copro_units_property_id_fkey
   FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE SET NULL;
 
 -- 3. sites.syndic_profile_id
-DO $$
+DO $mig$
 BEGIN
   IF EXISTS (
     SELECT 1 FROM information_schema.table_constraints
@@ -2276,20 +2329,29 @@ BEGIN
   END IF;
 EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'sites.syndic_profile_id FK not found, skipping drop';
-END $$;
+END $mig$;
 
 ALTER TABLE sites
   ADD CONSTRAINT sites_syndic_profile_id_fkey
   FOREIGN KEY (syndic_profile_id) REFERENCES profiles(id) ON DELETE SET NULL;
 
 -- Log
-DO $$
+DO $mig$
 BEGIN
   RAISE NOTICE '[MIGRATION] FK ON DELETE SET NULL ajoutées pour copro_units et sites';
-END $$;
+END $mig$;
+
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
 
 
 -- === [18/169] 20260216000000_tenant_document_center.sql ===
+DO $wrapper$ BEGIN
 -- =============================================================================
 -- Migration : Tenant Document Center
 -- Date      : 2026-02-16
@@ -2479,7 +2541,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $mig$
 DECLARE
   v_profile_id UUID;
   v_result JSONB;
@@ -2596,7 +2658,7 @@ BEGIN
 
   RETURN v_result;
 END;
-$$;
+$mig$;
 
 COMMENT ON FUNCTION public.tenant_document_center IS
   'Endpoint unique pour le Document Center locataire. Retourne : pending_actions, key_documents (4 slots), documents (tous, dédoublonnés), stats.';
@@ -2623,7 +2685,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $mig$
 DECLARE
   v_profile_id UUID;
   v_result JSONB;
@@ -2703,7 +2765,7 @@ BEGIN
 
   RETURN COALESCE(v_result, jsonb_build_object('documents', '[]'::jsonb, 'total', 0));
 END;
-$$;
+$mig$;
 
 COMMENT ON FUNCTION public.tenant_documents_search IS
   'Recherche full-text dans les documents du locataire avec filtres (type, période) et tri. Utilisé par la zone "Tous les documents" du Document Center.';
@@ -2718,13 +2780,12 @@ GRANT EXECUTE ON FUNCTION public.tenant_documents_search TO authenticated;
 -- =============================================================================
 
 -- S'assurer que les lease_signers sont accessibles pour les vues
-DO $$
+DO $mig$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
     WHERE tablename = 'lease_signers' AND policyname = 'lease_signers_tenant_view_for_doc_center'
   ) THEN
-    DROP POLICY IF EXISTS "lease_signers_tenant_view_for_doc_center" ON lease_signers;
     CREATE POLICY "lease_signers_tenant_view_for_doc_center"
       ON lease_signers
       FOR SELECT
@@ -2733,7 +2794,7 @@ BEGIN
         profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
       );
   END IF;
-END $$;
+END $mig$;
 
 
 -- =============================================================================
@@ -2744,7 +2805,7 @@ END $$;
 CREATE OR REPLACE FUNCTION update_document_search_vector()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-AS $$
+AS $mig$
 BEGIN
   NEW.search_vector := 
     setweight(to_tsvector('french', COALESCE(NEW.title, '')), 'A') ||
@@ -2753,7 +2814,7 @@ BEGIN
     setweight(to_tsvector('french', COALESCE(NEW.metadata->>'description', '')), 'D');
   RETURN NEW;
 END;
-$$;
+$mig$;
 
 -- Le trigger peut déjà exister, on le recrée proprement
 DROP TRIGGER IF EXISTS trg_documents_search_vector ON documents;
@@ -2809,8 +2870,17 @@ COMMIT;
 --   DROP INDEX IF EXISTS idx_documents_lease_type_date;
 -- =============================================================================
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [19/169] 20260216000001_document_center_notifications.sql ===
+DO $wrapper$ BEGIN
 -- =============================================================================
 -- Migration : Document Center — Notifications & URL updates
 -- Date      : 2026-02-16
@@ -2828,7 +2898,7 @@ BEGIN;
 --    (table email_templates si elle existe)
 -- =============================================================================
 
-DO $$
+DO $mig$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'email_templates') THEN
     -- Remplacer /tenant/receipts par /tenant/documents?type=quittance
@@ -2849,7 +2919,7 @@ BEGIN
   ELSE
     RAISE NOTICE 'email_templates table does not exist, skipping';
   END IF;
-END $$;
+END $mig$;
 
 
 -- =============================================================================
@@ -2857,7 +2927,7 @@ END $$;
 --    (table notifications si elle existe)
 -- =============================================================================
 
-DO $$
+DO $mig$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'notifications') THEN
     -- Mettre à jour les metadata.action_url des notifications non lues
@@ -2883,7 +2953,7 @@ BEGIN
   ELSE
     RAISE NOTICE 'notifications table does not exist, skipping';
   END IF;
-END $$;
+END $mig$;
 
 
 -- =============================================================================
@@ -2901,7 +2971,7 @@ LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $mig$
 DECLARE
   v_types TEXT[];
   v_exists BOOLEAN;
@@ -2924,7 +2994,7 @@ BEGIN
 
   RETURN v_exists;
 END;
-$$;
+$mig$;
 
 COMMENT ON FUNCTION public.tenant_has_key_document IS
   'Vérifie si un locataire possède un document clé (bail, quittance, edl, assurance). Utilisé par le Document Center et les triggers.';
@@ -2942,7 +3012,7 @@ RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $mig$
 DECLARE
   v_doc_label TEXT;
   v_notification_type TEXT;
@@ -2994,7 +3064,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$;
+$mig$;
 
 -- Recréer le trigger
 DROP TRIGGER IF EXISTS trg_notify_tenant_document_center ON documents;
@@ -3014,7 +3084,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
-AS $$
+AS $mig$
 DECLARE
   v_profile_id UUID;
   v_result JSONB;
@@ -3048,7 +3118,7 @@ BEGIN
 
   RETURN COALESCE(v_result, '{}'::jsonb);
 END;
-$$;
+$mig$;
 
 COMMENT ON FUNCTION public.tenant_document_stats IS
   'Statistiques du coffre-fort documentaire du locataire : total, par type, récents, flags de complétude.';
@@ -3066,8 +3136,17 @@ COMMIT;
 --   DROP TRIGGER IF EXISTS trg_notify_tenant_document_center ON documents;
 -- =============================================================================
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [20/169] 20260216100000_security_audit_rls_fixes.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Correctifs sécurité P0 — Audit BIC2026
 -- Date: 2026-02-16
@@ -3096,7 +3175,7 @@ DROP POLICY IF EXISTS "authenticated_users_update_leases" ON leases;
 DROP POLICY IF EXISTS "authenticated_users_delete_leases" ON leases;
 
 -- Vérifier que les bonnes policies existent
-DO $$
+DO $mig$
 DECLARE
   policy_count INT;
 BEGIN
@@ -3110,7 +3189,7 @@ BEGIN
   END IF;
 
   RAISE NOTICE 'leases: % policies RLS actives après nettoyage', policy_count;
-END $$;
+END $mig$;
 
 -- ============================================
 -- 2. NOTIFICATIONS: Restreindre l'INSERT
@@ -3123,7 +3202,6 @@ DROP POLICY IF EXISTS "notifications_insert_system" ON notifications;
 -- Le service_role bypass RLS par défaut, donc cette policy est pour les
 -- appels authentifiés qui insèrent des notifications pour eux-mêmes.
 -- Les Edge Functions (service_role) ne sont pas affectées par cette restriction.
-DROP POLICY IF EXISTS "notifications_insert_own_or_service" ON notifications;
 CREATE POLICY "notifications_insert_own_or_service" ON notifications
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -3139,14 +3217,13 @@ CREATE POLICY "notifications_insert_own_or_service" ON notifications
 -- Avant: WITH CHECK(true) → tout authentifié peut insérer des logs d'audit
 -- Après: Seuls les utilisateurs authentifiés peuvent insérer leurs propres logs
 
-DO $$
+DO $mig$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'document_ged_audit_log' AND schemaname = 'public') THEN
     EXECUTE 'DROP POLICY IF EXISTS "System can insert audit logs" ON document_ged_audit_log';
 
     -- Restreindre aux logs créés par l'utilisateur authentifié
     EXECUTE '
-      DROP POLICY IF EXISTS "audit_log_insert_own" ON document_ged_audit_log;
       CREATE POLICY "audit_log_insert_own" ON document_ged_audit_log
         FOR INSERT TO authenticated
         WITH CHECK (
@@ -3159,7 +3236,7 @@ BEGIN
   ELSE
     RAISE NOTICE 'document_ged_audit_log: table non existante, skip';
   END IF;
-END $$;
+END $mig$;
 
 -- ============================================
 -- 4. PROFESSIONAL_ORDERS: Restreindre le SELECT
@@ -3167,14 +3244,13 @@ END $$;
 -- Avant: USING(TRUE) → tout authentifié voit toutes les commandes
 -- Après: ownership check
 
-DO $$
+DO $mig$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'professional_orders' AND schemaname = 'public') THEN
     EXECUTE 'DROP POLICY IF EXISTS "professional_orders_select_policy" ON professional_orders';
 
     -- professional_orders is a read-only reference table, keep open read
     EXECUTE '
-      DROP POLICY IF EXISTS "professional_orders_select_scoped" ON professional_orders;
       CREATE POLICY "professional_orders_select_scoped" ON professional_orders
         FOR SELECT TO authenticated
         USING (TRUE)
@@ -3184,12 +3260,12 @@ BEGIN
   ELSE
     RAISE NOTICE 'professional_orders: table non existante, skip';
   END IF;
-END $$;
+END $mig$;
 
 -- ============================================
 -- 5. VÉRIFICATION FINALE
 -- ============================================
-DO $$
+DO $mig$
 DECLARE
   dangerous_count INT;
 BEGIN
@@ -3208,12 +3284,21 @@ BEGIN
   ELSE
     RAISE NOTICE 'OK: Aucune policy USING(true) dangereuse sur les tables critiques';
   END IF;
-END $$;
+END $mig$;
 
 COMMIT;
 
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
+
 
 -- === [21/169] 20260216200000_auto_link_lease_signers_trigger.sql ===
+DO $wrapper$ BEGIN
 -- =====================================================
 -- MIGRATION: Auto-link lease_signers + fix profil orphelin
 -- Date: 2026-02-16
@@ -3233,7 +3318,7 @@ BEGIN;
 -- 1. FONCTION: Auto-link lease_signers au moment de la création d'un profil
 -- ============================================
 CREATE OR REPLACE FUNCTION public.auto_link_lease_signers_on_profile_created()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER AS $mig$
 DECLARE
   user_email TEXT;
   linked_count INT;
@@ -3269,7 +3354,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$mig$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================
 -- 2. TRIGGER: Exécuter auto-link après chaque INSERT sur profiles
@@ -3284,7 +3369,7 @@ CREATE TRIGGER trigger_auto_link_lease_signers
 -- ============================================
 -- 3. FIX IMMÉDIAT: Créer le profil manquant pour l'utilisateur signalé
 -- ============================================
-DO $$
+DO $mig$
 DECLARE
   target_user_id UUID := '6337af52-2fb7-41d7-b620-d9ddd689d294';
   user_email TEXT;
@@ -3317,13 +3402,13 @@ BEGIN
     new_profile_id, target_user_id, user_email, user_role;
 
   -- Le trigger auto_link_lease_signers se chargera de lier les lease_signers
-END $$;
+END $mig$;
 
 -- ============================================
 -- 4. FIX RÉTROACTIF: Lier tous les lease_signers orphelins existants
 -- ============================================
 -- Pour tous les profils existants dont l'email matche un lease_signer orphelin
-DO $$
+DO $mig$
 DECLARE
   linked_total INT := 0;
   rec RECORD;
@@ -3352,12 +3437,12 @@ BEGIN
   ELSE
     RAISE NOTICE '[rétro-link] Aucun lease_signer orphelin trouvé — tout est déjà lié';
   END IF;
-END $$;
+END $mig$;
 
 -- ============================================
 -- 5. VÉRIFICATION: Compter les lease_signers encore orphelins
 -- ============================================
-DO $$
+DO $mig$
 DECLARE
   orphan_count INT;
 BEGIN
@@ -3371,8 +3456,16 @@ BEGIN
   ELSE
     RAISE NOTICE '✅ Aucun lease_signer orphelin — tous les comptes sont liés';
   END IF;
-END $$;
+END $mig$;
 
 COMMIT;
+
+EXCEPTION WHEN undefined_table THEN
+  RAISE NOTICE 'Skipped: table does not exist yet';
+WHEN undefined_column THEN
+  RAISE NOTICE 'Skipped: column does not exist yet';
+WHEN duplicate_object THEN
+  RAISE NOTICE 'Skipped: object already exists';
+END $wrapper$;
 
 
