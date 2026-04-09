@@ -3119,190 +3119,190 @@ CREATE TRIGGER trg_password_reset_requests_updated_at
 ALTER TABLE password_reset_requests ENABLE ROW LEVEL SECURITY;
 
 
--- === [102/169] 20260318020000_buildings_rls_sota2026.sql ===
--- ============================================
--- Migration : RLS SOTA 2026 pour buildings & building_units
--- Remplace auth.uid() par user_profile_id() / user_role()
--- Ajoute policies admin et tenant
--- ============================================
-
--- 1. DROP anciennes policies buildings
--- ============================================
-DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can view their buildings" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can create buildings" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can update their buildings" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can delete their buildings" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-
--- 2. DROP anciennes policies building_units
--- ============================================
-DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can view their building units" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can create building units" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can update their building units" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can delete their building units" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-
--- 3. Nouvelles policies buildings (owner)
--- ============================================
-DO $dp$ BEGIN DROP POLICY IF EXISTS "buildings_owner_select" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY "buildings_owner_select" ON buildings
-  FOR SELECT TO authenticated
-  USING (owner_id = public.user_profile_id());
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS "buildings_owner_insert" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-
-DO $cp$ BEGIN
-CREATE POLICY "buildings_owner_insert" ON buildings
-  FOR INSERT TO authenticated
-  WITH CHECK (owner_id = public.user_profile_id());
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS "buildings_owner_update" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-
-DO $cp$ BEGIN
-CREATE POLICY "buildings_owner_update" ON buildings
-  FOR UPDATE TO authenticated
-  USING (owner_id = public.user_profile_id());
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS "buildings_owner_delete" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-
-DO $cp$ BEGIN
-CREATE POLICY "buildings_owner_delete" ON buildings
-  FOR DELETE TO authenticated
-  USING (owner_id = public.user_profile_id());
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
--- 4. Policies buildings (admin)
--- ============================================
-DO $dp$ BEGIN DROP POLICY IF EXISTS "buildings_admin_all" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY "buildings_admin_all" ON buildings
-  FOR ALL TO authenticated
-  USING (public.user_role() = 'admin');
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
--- 5. Policies buildings (tenant via bail actif)
--- ============================================
-DO $dp$ BEGIN DROP POLICY IF EXISTS "buildings_tenant_select" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY "buildings_tenant_select" ON buildings
-  FOR SELECT TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM building_units bu
-      JOIN leases l ON l.id = bu.current_lease_id
-      JOIN lease_signers ls ON ls.lease_id = l.id
-      WHERE bu.building_id = buildings.id
-        AND ls.profile_id = public.user_profile_id()
-        AND l.statut = 'active'
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
--- 6. Nouvelles policies building_units (owner)
--- ============================================
-DO $dp$ BEGIN DROP POLICY IF EXISTS "building_units_owner_select" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY "building_units_owner_select" ON building_units
-  FOR SELECT TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM buildings b
-      WHERE b.id = building_units.building_id
-        AND b.owner_id = public.user_profile_id()
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS "building_units_owner_insert" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-
-DO $cp$ BEGIN
-CREATE POLICY "building_units_owner_insert" ON building_units
-  FOR INSERT TO authenticated
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM buildings b
-      WHERE b.id = building_units.building_id
-        AND b.owner_id = public.user_profile_id()
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS "building_units_owner_update" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-
-DO $cp$ BEGIN
-CREATE POLICY "building_units_owner_update" ON building_units
-  FOR UPDATE TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM buildings b
-      WHERE b.id = building_units.building_id
-        AND b.owner_id = public.user_profile_id()
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
-DO $dp$ BEGIN DROP POLICY IF EXISTS "building_units_owner_delete" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-
-DO $cp$ BEGIN
-CREATE POLICY "building_units_owner_delete" ON building_units
-  FOR DELETE TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM buildings b
-      WHERE b.id = building_units.building_id
-        AND b.owner_id = public.user_profile_id()
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
--- 7. Policies building_units (admin)
--- ============================================
-DO $dp$ BEGIN DROP POLICY IF EXISTS "building_units_admin_all" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY "building_units_admin_all" ON building_units
-  FOR ALL TO authenticated
-  USING (public.user_role() = 'admin');
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
--- 8. Policies building_units (tenant via bail actif)
--- ============================================
-DO $dp$ BEGIN DROP POLICY IF EXISTS "building_units_tenant_select" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
-DO $cp$ BEGIN
-CREATE POLICY "building_units_tenant_select" ON building_units
-  FOR SELECT TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM leases l
-      JOIN lease_signers ls ON ls.lease_id = l.id
-      WHERE l.id = building_units.current_lease_id
-        AND ls.profile_id = public.user_profile_id()
-        AND l.statut = 'active'
-    )
-  );
-EXCEPTION WHEN undefined_table THEN NULL;
-END $cp$;
-
--- 9. Ajout property_id sur building_units si manquant
--- ============================================
-ALTER TABLE building_units ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE SET NULL;
-CREATE INDEX IF NOT EXISTS idx_building_units_property ON building_units(property_id);
-
-
+-- SKIP: -- === [102/169] 20260318020000_buildings_rls_sota2026.sql ===
+-- SKIP: -- ============================================
+-- SKIP: -- Migration : RLS SOTA 2026 pour buildings & building_units
+-- SKIP: -- Remplace auth.uid() par user_profile_id() / user_role()
+-- SKIP: -- Ajoute policies admin et tenant
+-- SKIP: -- ============================================
+-- SKIP: 
+-- SKIP: -- 1. DROP anciennes policies buildings
+-- SKIP: -- ============================================
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can view their buildings" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can create buildings" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can update their buildings" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can delete their buildings" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: 
+-- SKIP: -- 2. DROP anciennes policies building_units
+-- SKIP: -- ============================================
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can view their building units" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can create building units" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can update their building units" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can delete their building units" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: 
+-- SKIP: -- 3. Nouvelles policies buildings (owner)
+-- SKIP: -- ============================================
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "buildings_owner_select" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "buildings_owner_select" ON buildings
+-- SKIP:   FOR SELECT TO authenticated
+-- SKIP:   USING (owner_id = public.user_profile_id());
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "buildings_owner_insert" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: 
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "buildings_owner_insert" ON buildings
+-- SKIP:   FOR INSERT TO authenticated
+-- SKIP:   WITH CHECK (owner_id = public.user_profile_id());
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "buildings_owner_update" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: 
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "buildings_owner_update" ON buildings
+-- SKIP:   FOR UPDATE TO authenticated
+-- SKIP:   USING (owner_id = public.user_profile_id());
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "buildings_owner_delete" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: 
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "buildings_owner_delete" ON buildings
+-- SKIP:   FOR DELETE TO authenticated
+-- SKIP:   USING (owner_id = public.user_profile_id());
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: -- 4. Policies buildings (admin)
+-- SKIP: -- ============================================
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "buildings_admin_all" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "buildings_admin_all" ON buildings
+-- SKIP:   FOR ALL TO authenticated
+-- SKIP:   USING (public.user_role() = 'admin');
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: -- 5. Policies buildings (tenant via bail actif)
+-- SKIP: -- ============================================
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "buildings_tenant_select" ON buildings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "buildings_tenant_select" ON buildings
+-- SKIP:   FOR SELECT TO authenticated
+-- SKIP:   USING (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1
+-- SKIP:       FROM building_units bu
+-- SKIP:       JOIN leases l ON l.id = bu.current_lease_id
+-- SKIP:       JOIN lease_signers ls ON ls.lease_id = l.id
+-- SKIP:       WHERE bu.building_id = buildings.id
+-- SKIP:         AND ls.profile_id = public.user_profile_id()
+-- SKIP:         AND l.statut = 'active'
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: -- 6. Nouvelles policies building_units (owner)
+-- SKIP: -- ============================================
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "building_units_owner_select" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "building_units_owner_select" ON building_units
+-- SKIP:   FOR SELECT TO authenticated
+-- SKIP:   USING (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1 FROM buildings b
+-- SKIP:       WHERE b.id = building_units.building_id
+-- SKIP:         AND b.owner_id = public.user_profile_id()
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "building_units_owner_insert" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: 
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "building_units_owner_insert" ON building_units
+-- SKIP:   FOR INSERT TO authenticated
+-- SKIP:   WITH CHECK (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1 FROM buildings b
+-- SKIP:       WHERE b.id = building_units.building_id
+-- SKIP:         AND b.owner_id = public.user_profile_id()
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "building_units_owner_update" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: 
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "building_units_owner_update" ON building_units
+-- SKIP:   FOR UPDATE TO authenticated
+-- SKIP:   USING (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1 FROM buildings b
+-- SKIP:       WHERE b.id = building_units.building_id
+-- SKIP:         AND b.owner_id = public.user_profile_id()
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "building_units_owner_delete" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: 
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "building_units_owner_delete" ON building_units
+-- SKIP:   FOR DELETE TO authenticated
+-- SKIP:   USING (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1 FROM buildings b
+-- SKIP:       WHERE b.id = building_units.building_id
+-- SKIP:         AND b.owner_id = public.user_profile_id()
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: -- 7. Policies building_units (admin)
+-- SKIP: -- ============================================
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "building_units_admin_all" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "building_units_admin_all" ON building_units
+-- SKIP:   FOR ALL TO authenticated
+-- SKIP:   USING (public.user_role() = 'admin');
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: -- 8. Policies building_units (tenant via bail actif)
+-- SKIP: -- ============================================
+-- SKIP: DO $dp$ BEGIN DROP POLICY IF EXISTS "building_units_tenant_select" ON building_units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+-- SKIP: DO $cp$ BEGIN
+-- SKIP: CREATE POLICY "building_units_tenant_select" ON building_units
+-- SKIP:   FOR SELECT TO authenticated
+-- SKIP:   USING (
+-- SKIP:     EXISTS (
+-- SKIP:       SELECT 1
+-- SKIP:       FROM leases l
+-- SKIP:       JOIN lease_signers ls ON ls.lease_id = l.id
+-- SKIP:       WHERE l.id = building_units.current_lease_id
+-- SKIP:         AND ls.profile_id = public.user_profile_id()
+-- SKIP:         AND l.statut = 'active'
+-- SKIP:     )
+-- SKIP:   );
+-- SKIP: EXCEPTION WHEN undefined_table THEN NULL;
+-- SKIP: END $cp$;
+-- SKIP: 
+-- SKIP: -- 9. Ajout property_id sur building_units si manquant
+-- SKIP: -- ============================================
+-- SKIP: ALTER TABLE building_units ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE SET NULL;
+-- SKIP: CREATE INDEX IF NOT EXISTS idx_building_units_property ON building_units(property_id);
+-- SKIP: 
+-- SKIP: 
 -- === [103/169] 20260320100000_fix_owner_id_mismatch_and_rls.sql ===
 -- ============================================================================
 -- Migration: Fix owner_id mismatch on properties table
