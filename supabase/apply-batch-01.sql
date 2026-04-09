@@ -174,7 +174,8 @@ CREATE TRIGGER trg_sms_messages_updated_at
 ALTER TABLE sms_messages ENABLE ROW LEVEL SECURITY;
 
 -- Admins can see all SMS
-DROP POLICY IF EXISTS sms_messages_admin_all ON sms_messages;
+DO $dp$ BEGIN DROP POLICY IF EXISTS sms_messages_admin_all ON sms_messages; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY sms_messages_admin_all ON sms_messages
   FOR ALL
   USING (
@@ -183,9 +184,12 @@ CREATE POLICY sms_messages_admin_all ON sms_messages
       WHERE p.user_id = auth.uid() AND p.role = 'admin'
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- Owners can see SMS they sent (via their profile)
-DROP POLICY IF EXISTS sms_messages_owner_select ON sms_messages;
+DO $dp$ BEGIN DROP POLICY IF EXISTS sms_messages_owner_select ON sms_messages; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY sms_messages_owner_select ON sms_messages
   FOR SELECT
   USING (
@@ -196,13 +200,18 @@ CREATE POLICY sms_messages_owner_select ON sms_messages
         AND p.id = sms_messages.profile_id
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- Service role inserts (API routes use service role client, bypasses RLS)
 -- No explicit INSERT policy needed for service role, but add one for completeness
-DROP POLICY IF EXISTS sms_messages_service_insert ON sms_messages;
+DO $dp$ BEGIN DROP POLICY IF EXISTS sms_messages_service_insert ON sms_messages; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY sms_messages_service_insert ON sms_messages
   FOR INSERT
   WITH CHECK (true);
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 
 -- === [3/169] 20260211000000_p2_unique_constraint_and_gdpr_rpc.sql ===
@@ -2201,32 +2210,41 @@ CREATE TABLE IF NOT EXISTS guarantor_profiles (
 -- RLS pour guarantor_profiles
 ALTER TABLE guarantor_profiles ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "guarantor_profiles_select_own" ON guarantor_profiles;
-DROP POLICY IF EXISTS "guarantor_profiles_select_own" ON guarantor_profiles;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "guarantor_profiles_select_own" ON guarantor_profiles; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "guarantor_profiles_select_own" ON guarantor_profiles; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "guarantor_profiles_select_own" ON guarantor_profiles
   FOR SELECT USING (
     profile_id IN (
       SELECT id FROM profiles WHERE user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "guarantor_profiles_insert_own" ON guarantor_profiles;
-DROP POLICY IF EXISTS "guarantor_profiles_insert_own" ON guarantor_profiles;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "guarantor_profiles_insert_own" ON guarantor_profiles; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "guarantor_profiles_insert_own" ON guarantor_profiles; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "guarantor_profiles_insert_own" ON guarantor_profiles
   FOR INSERT WITH CHECK (
     profile_id IN (
       SELECT id FROM profiles WHERE user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "guarantor_profiles_update_own" ON guarantor_profiles;
-DROP POLICY IF EXISTS "guarantor_profiles_update_own" ON guarantor_profiles;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "guarantor_profiles_update_own" ON guarantor_profiles; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "guarantor_profiles_update_own" ON guarantor_profiles; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "guarantor_profiles_update_own" ON guarantor_profiles
   FOR UPDATE USING (
     profile_id IN (
       SELECT id FROM profiles WHERE user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- 4. Créer la table user_consents pour la conformité RGPD
 CREATE TABLE IF NOT EXISTS user_consents (
@@ -2252,20 +2270,29 @@ CREATE INDEX IF NOT EXISTS idx_user_consents_user_id ON user_consents(user_id);
 -- RLS pour user_consents
 ALTER TABLE user_consents ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "user_consents_select_own" ON user_consents;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "user_consents_select_own" ON user_consents; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "user_consents_select_own" ON user_consents
   FOR SELECT USING (user_id = auth.uid());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "user_consents_insert_own" ON user_consents;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "user_consents_insert_own" ON user_consents; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "user_consents_insert_own" ON user_consents
   FOR INSERT WITH CHECK (user_id = auth.uid());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "user_consents_update_own" ON user_consents;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "user_consents_update_own" ON user_consents; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "user_consents_update_own" ON user_consents
   FOR UPDATE USING (user_id = auth.uid());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- 5. Ajouter un CHECK constraint sur telephone (format E.164)
 -- Le format E.164 commence par + suivi de 1 à 15 chiffres
@@ -3593,7 +3620,8 @@ ALTER TABLE email_template_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_logs ENABLE ROW LEVEL SECURITY;
 
 -- email_templates: lecture pour les admins, écriture pour les admins
-DROP POLICY IF EXISTS "email_templates_admin_read" ON email_templates;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "email_templates_admin_read" ON email_templates; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "email_templates_admin_read" ON email_templates
   FOR SELECT TO authenticated
   USING (
@@ -3603,9 +3631,12 @@ CREATE POLICY "email_templates_admin_read" ON email_templates
       AND profiles.role = 'admin'
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "email_templates_admin_write" ON email_templates;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "email_templates_admin_write" ON email_templates; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "email_templates_admin_write" ON email_templates
   FOR ALL TO authenticated
   USING (
@@ -3622,15 +3653,21 @@ CREATE POLICY "email_templates_admin_write" ON email_templates
       AND profiles.role = 'admin'
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- email_templates: lecture pour le service role (envoi d'emails)
-DROP POLICY IF EXISTS "email_templates_service_read" ON email_templates;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "email_templates_service_read" ON email_templates; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "email_templates_service_read" ON email_templates
   FOR SELECT TO service_role
   USING (true);
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- email_template_versions: lecture pour les admins
-DROP POLICY IF EXISTS "email_template_versions_admin_read" ON email_template_versions;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "email_template_versions_admin_read" ON email_template_versions; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "email_template_versions_admin_read" ON email_template_versions
   FOR SELECT TO authenticated
   USING (
@@ -3640,9 +3677,12 @@ CREATE POLICY "email_template_versions_admin_read" ON email_template_versions
       AND profiles.role = 'admin'
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- email_logs: lecture pour les admins
-DROP POLICY IF EXISTS "email_logs_admin_read" ON email_logs;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "email_logs_admin_read" ON email_logs; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "email_logs_admin_read" ON email_logs
   FOR SELECT TO authenticated
   USING (
@@ -3652,11 +3692,16 @@ CREATE POLICY "email_logs_admin_read" ON email_logs
       AND profiles.role = 'admin'
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- email_logs: insertion pour service role
-DROP POLICY IF EXISTS "email_logs_service_insert" ON email_logs;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "email_logs_service_insert" ON email_logs; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "email_logs_service_insert" ON email_logs
   FOR INSERT TO service_role
   WITH CHECK (true);
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 

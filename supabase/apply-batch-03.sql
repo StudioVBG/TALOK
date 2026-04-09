@@ -194,15 +194,18 @@ END $$;
 -- les futures modifications de profiles_own_access.
 
 -- Supprimer si elle existe deja (idempotent)
-DROP POLICY IF EXISTS "profiles_insert_own" ON profiles;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "profiles_insert_own" ON profiles; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
 -- Permettre a un utilisateur authentifie de creer son propre profil
 -- (couvre le cas ou le trigger handle_new_user echoue et que le
 --  client tente un INSERT direct ou via l'API)
-DROP POLICY IF EXISTS "profiles_insert_own" ON profiles;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "profiles_insert_own" ON profiles; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "profiles_insert_own" ON profiles
   FOR INSERT TO authenticated
   WITH CHECK (user_id = auth.uid());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ============================================
 -- E. VERIFICATION FINALE
@@ -2024,30 +2027,39 @@ CREATE INDEX IF NOT EXISTS idx_tenant_rewards_profile
 
 ALTER TABLE tenant_rewards ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "tenant_rewards_select_own" ON tenant_rewards;
-DROP POLICY IF EXISTS "tenant_rewards_select_own" ON tenant_rewards;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "tenant_rewards_select_own" ON tenant_rewards; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "tenant_rewards_select_own" ON tenant_rewards; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "tenant_rewards_select_own" ON tenant_rewards
   FOR SELECT USING (
     profile_id IN (
       SELECT id FROM profiles WHERE user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "tenant_rewards_insert_own" ON tenant_rewards;
-DROP POLICY IF EXISTS "tenant_rewards_insert_own" ON tenant_rewards;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "tenant_rewards_insert_own" ON tenant_rewards; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "tenant_rewards_insert_own" ON tenant_rewards; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "tenant_rewards_insert_own" ON tenant_rewards
   FOR INSERT WITH CHECK (
     profile_id IN (
       SELECT id FROM profiles WHERE user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "tenant_rewards_admin" ON tenant_rewards;
-DROP POLICY IF EXISTS "tenant_rewards_admin" ON tenant_rewards;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "tenant_rewards_admin" ON tenant_rewards; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "tenant_rewards_admin" ON tenant_rewards; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "tenant_rewards_admin" ON tenant_rewards
   FOR ALL USING (
     public.user_role() = 'admin'
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- Colonne total_points sur tenant_profiles
 ALTER TABLE tenant_profiles
@@ -2090,8 +2102,9 @@ CREATE INDEX IF NOT EXISTS idx_invoice_reminders_invoice
 
 ALTER TABLE invoice_reminders ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "invoice_reminders_select_owner" ON invoice_reminders;
-DROP POLICY IF EXISTS "invoice_reminders_select_owner" ON invoice_reminders;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "invoice_reminders_select_owner" ON invoice_reminders; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "invoice_reminders_select_owner" ON invoice_reminders; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "invoice_reminders_select_owner" ON invoice_reminders
   FOR SELECT USING (
     EXISTS (
@@ -2102,9 +2115,12 @@ CREATE POLICY "invoice_reminders_select_owner" ON invoice_reminders
         )
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "invoice_reminders_insert_owner" ON invoice_reminders;
-DROP POLICY IF EXISTS "invoice_reminders_insert_owner" ON invoice_reminders;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "invoice_reminders_insert_owner" ON invoice_reminders; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "invoice_reminders_insert_owner" ON invoice_reminders; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "invoice_reminders_insert_owner" ON invoice_reminders
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -2115,13 +2131,18 @@ CREATE POLICY "invoice_reminders_insert_owner" ON invoice_reminders
         )
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "invoice_reminders_admin" ON invoice_reminders;
-DROP POLICY IF EXISTS "invoice_reminders_admin" ON invoice_reminders;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "invoice_reminders_admin" ON invoice_reminders; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "invoice_reminders_admin" ON invoice_reminders; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "invoice_reminders_admin" ON invoice_reminders
   FOR ALL USING (
     public.user_role() = 'admin'
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- =====================================================
 -- 3. WEBHOOK LOGS
@@ -2149,18 +2170,24 @@ CREATE INDEX IF NOT EXISTS idx_webhook_logs_status
 ALTER TABLE webhook_logs ENABLE ROW LEVEL SECURITY;
 
 -- Seuls les admins et le service_role lisent les webhook logs
-DROP POLICY IF EXISTS "webhook_logs_admin" ON webhook_logs;
-DROP POLICY IF EXISTS "webhook_logs_admin" ON webhook_logs;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "webhook_logs_admin" ON webhook_logs; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "webhook_logs_admin" ON webhook_logs; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "webhook_logs_admin" ON webhook_logs
   FOR ALL USING (
     public.user_role() = 'admin'
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- Permettre l'insertion depuis les API routes (service_role)
-DROP POLICY IF EXISTS "webhook_logs_service_insert" ON webhook_logs;
-DROP POLICY IF EXISTS "webhook_logs_service_insert" ON webhook_logs;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "webhook_logs_service_insert" ON webhook_logs; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "webhook_logs_service_insert" ON webhook_logs; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "webhook_logs_service_insert" ON webhook_logs
   FOR INSERT WITH CHECK (true);
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- =====================================================
 -- 4. AI CONVERSATIONS (analytics)
@@ -2187,30 +2214,39 @@ CREATE INDEX IF NOT EXISTS idx_ai_conversations_model
 
 ALTER TABLE ai_conversations ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "ai_conversations_select_own" ON ai_conversations;
-DROP POLICY IF EXISTS "ai_conversations_select_own" ON ai_conversations;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "ai_conversations_select_own" ON ai_conversations; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "ai_conversations_select_own" ON ai_conversations; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "ai_conversations_select_own" ON ai_conversations
   FOR SELECT USING (
     profile_id IN (
       SELECT id FROM profiles WHERE user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "ai_conversations_insert_own" ON ai_conversations;
-DROP POLICY IF EXISTS "ai_conversations_insert_own" ON ai_conversations;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "ai_conversations_insert_own" ON ai_conversations; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "ai_conversations_insert_own" ON ai_conversations; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "ai_conversations_insert_own" ON ai_conversations
   FOR INSERT WITH CHECK (
     profile_id IN (
       SELECT id FROM profiles WHERE user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "ai_conversations_admin" ON ai_conversations;
-DROP POLICY IF EXISTS "ai_conversations_admin" ON ai_conversations;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "ai_conversations_admin" ON ai_conversations; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "ai_conversations_admin" ON ai_conversations; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "ai_conversations_admin" ON ai_conversations
   FOR ALL USING (
     public.user_role() = 'admin'
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- =====================================================
 -- 5. EXTENSION PGVECTOR + TABLES RAG
@@ -2349,36 +2385,57 @@ ALTER TABLE legal_embeddings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE platform_knowledge ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_context_embeddings ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "legal_embeddings_select_authenticated" ON legal_embeddings;
-DROP POLICY IF EXISTS "legal_embeddings_select_authenticated" ON legal_embeddings;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "legal_embeddings_select_authenticated" ON legal_embeddings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "legal_embeddings_select_authenticated" ON legal_embeddings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "legal_embeddings_select_authenticated" ON legal_embeddings
   FOR SELECT USING (auth.uid() IS NOT NULL);
-DROP POLICY IF EXISTS "legal_embeddings_admin_manage" ON legal_embeddings;
-DROP POLICY IF EXISTS "legal_embeddings_admin_manage" ON legal_embeddings;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "legal_embeddings_admin_manage" ON legal_embeddings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "legal_embeddings_admin_manage" ON legal_embeddings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "legal_embeddings_admin_manage" ON legal_embeddings
   FOR ALL USING (public.user_role() = 'admin');
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "platform_knowledge_select_authenticated" ON platform_knowledge;
-DROP POLICY IF EXISTS "platform_knowledge_select_authenticated" ON platform_knowledge;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "platform_knowledge_select_authenticated" ON platform_knowledge; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "platform_knowledge_select_authenticated" ON platform_knowledge; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "platform_knowledge_select_authenticated" ON platform_knowledge
   FOR SELECT USING (auth.uid() IS NOT NULL AND is_published = true);
-DROP POLICY IF EXISTS "platform_knowledge_admin_manage" ON platform_knowledge;
-DROP POLICY IF EXISTS "platform_knowledge_admin_manage" ON platform_knowledge;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "platform_knowledge_admin_manage" ON platform_knowledge; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "platform_knowledge_admin_manage" ON platform_knowledge; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "platform_knowledge_admin_manage" ON platform_knowledge
   FOR ALL USING (public.user_role() = 'admin');
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "user_context_select_own" ON user_context_embeddings;
-DROP POLICY IF EXISTS "user_context_select_own" ON user_context_embeddings;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "user_context_select_own" ON user_context_embeddings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "user_context_select_own" ON user_context_embeddings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "user_context_select_own" ON user_context_embeddings
   FOR SELECT USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
-DROP POLICY IF EXISTS "user_context_manage_own" ON user_context_embeddings;
-DROP POLICY IF EXISTS "user_context_manage_own" ON user_context_embeddings;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "user_context_manage_own" ON user_context_embeddings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "user_context_manage_own" ON user_context_embeddings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "user_context_manage_own" ON user_context_embeddings
   FOR ALL USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
-DROP POLICY IF EXISTS "user_context_admin" ON user_context_embeddings;
-DROP POLICY IF EXISTS "user_context_admin" ON user_context_embeddings;
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "user_context_admin" ON user_context_embeddings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "user_context_admin" ON user_context_embeddings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "user_context_admin" ON user_context_embeddings
   FOR ALL USING (public.user_role() = 'admin');
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- Fonctions RAG (uniquement si pgvector)
 DO $$ BEGIN
@@ -2680,7 +2737,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- peuvent insérer (pas les utilisateurs authentifiés directement)
 -- =====================================================
 
-DROP POLICY IF EXISTS "System can insert notifications" ON notifications;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "System can insert notifications" ON notifications; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
 -- Les triggers SECURITY DEFINER bypassent RLS, donc aucune politique
 -- INSERT permissive n'est nécessaire pour eux. On ne crée PAS de
@@ -3177,10 +3234,11 @@ CREATE TRIGGER trigger_auto_link_lease_signers_on_update
 -- Il doit pouvoir SELECT et UPDATE sa ligne pour signer.
 -- =====================================================
 
-DROP POLICY IF EXISTS "EDL signatures creator update" ON edl_signatures;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "EDL signatures creator update" ON edl_signatures; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
-DROP POLICY IF EXISTS "EDL signatures update" ON edl_signatures;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "EDL signatures update" ON edl_signatures; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "EDL signatures update"
   ON edl_signatures FOR UPDATE
   USING (
@@ -3195,9 +3253,14 @@ CREATE POLICY "EDL signatures update"
     OR (signer_email IS NOT NULL AND LOWER(TRIM(signer_email)) = LOWER(TRIM((SELECT email FROM auth.users WHERE id = auth.uid()))))
     OR edl_id IN (SELECT id FROM edl WHERE created_by = auth.uid())
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
+DO $cm$ BEGIN
 COMMENT ON POLICY "EDL signatures update" ON edl_signatures IS
 'SOTA 2026: Permet au signataire (uid, profile_id, ou email invité) et au créateur EDL de mettre à jour.';
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cm$;
 
 
 -- === [36/169] 20260221100000_fix_tenant_dashboard_draft_visibility.sql ===

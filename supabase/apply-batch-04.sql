@@ -1213,8 +1213,9 @@ CREATE TRIGGER update_conversations_updated_at
 
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can view own conversations" ON conversations;
-DROP POLICY IF EXISTS "Users can view own conversations" ON conversations;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view own conversations" ON conversations; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view own conversations" ON conversations; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Users can view own conversations"
   ON conversations FOR SELECT
   USING (
@@ -1222,9 +1223,12 @@ CREATE POLICY "Users can view own conversations"
     OR tenant_profile_id = public.user_profile_id()
     OR public.user_role() = 'admin'
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "Users can insert conversations" ON conversations;
-DROP POLICY IF EXISTS "Users can insert conversations" ON conversations;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can insert conversations" ON conversations; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can insert conversations" ON conversations; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Users can insert conversations"
   ON conversations FOR INSERT
   WITH CHECK (
@@ -1232,9 +1236,12 @@ CREATE POLICY "Users can insert conversations"
     OR tenant_profile_id = public.user_profile_id()
     OR public.user_role() = 'admin'
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "Users can update own conversations" ON conversations;
-DROP POLICY IF EXISTS "Users can update own conversations" ON conversations;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can update own conversations" ON conversations; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can update own conversations" ON conversations; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Users can update own conversations"
   ON conversations FOR UPDATE
   USING (
@@ -1242,6 +1249,8 @@ CREATE POLICY "Users can update own conversations"
     OR tenant_profile_id = public.user_profile_id()
     OR public.user_role() = 'admin'
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ============================================
 -- 4. TABLE messages
@@ -1271,8 +1280,9 @@ CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(conversation_id, 
 
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can view messages of own conversations" ON messages;
-DROP POLICY IF EXISTS "Users can view messages of own conversations" ON messages;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view messages of own conversations" ON messages; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view messages of own conversations" ON messages; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Users can view messages of own conversations"
   ON messages FOR SELECT
   USING (
@@ -1283,9 +1293,12 @@ CREATE POLICY "Users can view messages of own conversations"
     )
     OR public.user_role() = 'admin'
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "Users can insert messages in own conversations" ON messages;
-DROP POLICY IF EXISTS "Users can insert messages in own conversations" ON messages;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can insert messages in own conversations" ON messages; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can insert messages in own conversations" ON messages; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Users can insert messages in own conversations"
   ON messages FOR INSERT
   WITH CHECK (
@@ -1296,6 +1309,8 @@ CREATE POLICY "Users can insert messages in own conversations"
       AND (c.owner_profile_id = public.user_profile_id() OR c.tenant_profile_id = public.user_profile_id())
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ============================================
 -- 5. FONCTION RPC mark_messages_as_read
@@ -1362,12 +1377,15 @@ VALUES ('documents', 'documents', false)
 ON CONFLICT (id) DO NOTHING;
 
 -- Politique upload pour utilisateurs authentifiés
-DROP POLICY IF EXISTS "Users can upload documents" ON storage.objects;
-DROP POLICY IF EXISTS "Users can upload documents" ON storage.objects;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can upload documents" ON storage.objects; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can upload documents" ON storage.objects; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Users can upload documents"
 ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (bucket_id = 'documents');
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ============================================
 -- FIN
@@ -1861,19 +1879,28 @@ COMMENT ON TABLE owner_payment_audit_log IS 'Audit trail PSD3 pour les opératio
 ALTER TABLE owner_payment_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Le propriétaire ne voit que ses propres logs
-DROP POLICY IF EXISTS "opal_select_own" ON owner_payment_audit_log;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "opal_select_own" ON owner_payment_audit_log; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "opal_select_own" ON owner_payment_audit_log
   FOR SELECT USING (owner_id = public.user_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- Le propriétaire peut insérer des logs pour lui-même (via l'API qui utilise son session)
-DROP POLICY IF EXISTS "opal_insert_own" ON owner_payment_audit_log;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "opal_insert_own" ON owner_payment_audit_log; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "opal_insert_own" ON owner_payment_audit_log
   FOR INSERT WITH CHECK (owner_id = public.user_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- L'admin voit et gère tout (lecture seule en pratique, pas de UPDATE/DELETE prévus)
-DROP POLICY IF EXISTS "opal_admin_all" ON owner_payment_audit_log;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "opal_admin_all" ON owner_payment_audit_log; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "opal_admin_all" ON owner_payment_audit_log
   FOR ALL USING (public.user_role() = 'admin');
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 
 -- === [56/169] 20260225000001_fix_furniture_vetusty_rls.sql ===
@@ -1888,8 +1915,9 @@ CREATE POLICY "opal_admin_all" ON owner_payment_audit_log
 -- 1. furniture_inventories
 -- ----------------------------------------------------------------------------
 
-DROP POLICY IF EXISTS furniture_inventories_owner_policy ON furniture_inventories;
-DROP POLICY IF EXISTS furniture_inventories_owner_policy ON furniture_inventories;
+DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_inventories_owner_policy ON furniture_inventories; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_inventories_owner_policy ON furniture_inventories; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY furniture_inventories_owner_policy ON furniture_inventories
   FOR ALL
   USING (
@@ -1901,9 +1929,12 @@ CREATE POLICY furniture_inventories_owner_policy ON furniture_inventories
       AND pr.user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS furniture_inventories_tenant_policy ON furniture_inventories;
-DROP POLICY IF EXISTS furniture_inventories_tenant_policy ON furniture_inventories;
+DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_inventories_tenant_policy ON furniture_inventories; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_inventories_tenant_policy ON furniture_inventories; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY furniture_inventories_tenant_policy ON furniture_inventories
   FOR SELECT
   USING (
@@ -1915,13 +1946,16 @@ CREATE POLICY furniture_inventories_tenant_policy ON furniture_inventories
       AND pr.user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ----------------------------------------------------------------------------
 -- 2. furniture_items
 -- ----------------------------------------------------------------------------
 
-DROP POLICY IF EXISTS furniture_items_owner_policy ON furniture_items;
-DROP POLICY IF EXISTS furniture_items_owner_policy ON furniture_items;
+DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_items_owner_policy ON furniture_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_items_owner_policy ON furniture_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY furniture_items_owner_policy ON furniture_items
   FOR ALL
   USING (
@@ -1934,9 +1968,12 @@ CREATE POLICY furniture_items_owner_policy ON furniture_items
       AND pr.user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS furniture_items_tenant_policy ON furniture_items;
-DROP POLICY IF EXISTS furniture_items_tenant_policy ON furniture_items;
+DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_items_tenant_policy ON furniture_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS furniture_items_tenant_policy ON furniture_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY furniture_items_tenant_policy ON furniture_items
   FOR SELECT
   USING (
@@ -1949,13 +1986,16 @@ CREATE POLICY furniture_items_tenant_policy ON furniture_items
       AND pr.user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ----------------------------------------------------------------------------
 -- 3. vetusty_reports
 -- ----------------------------------------------------------------------------
 
-DROP POLICY IF EXISTS "vetusty_reports_select_policy" ON vetusty_reports;
-DROP POLICY IF EXISTS "vetusty_reports_select_policy" ON vetusty_reports;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_select_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_select_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "vetusty_reports_select_policy" ON vetusty_reports
   FOR SELECT USING (
     EXISTS (
@@ -1974,9 +2014,12 @@ CREATE POLICY "vetusty_reports_select_policy" ON vetusty_reports
       )
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "vetusty_reports_insert_policy" ON vetusty_reports;
-DROP POLICY IF EXISTS "vetusty_reports_insert_policy" ON vetusty_reports;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_insert_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_insert_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "vetusty_reports_insert_policy" ON vetusty_reports
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -1987,9 +2030,12 @@ CREATE POLICY "vetusty_reports_insert_policy" ON vetusty_reports
       AND pr.user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "vetusty_reports_update_policy" ON vetusty_reports;
-DROP POLICY IF EXISTS "vetusty_reports_update_policy" ON vetusty_reports;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_update_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_reports_update_policy" ON vetusty_reports; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "vetusty_reports_update_policy" ON vetusty_reports
   FOR UPDATE USING (
     EXISTS (
@@ -2000,13 +2046,16 @@ CREATE POLICY "vetusty_reports_update_policy" ON vetusty_reports
       AND pr.user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ----------------------------------------------------------------------------
 -- 4. vetusty_items
 -- ----------------------------------------------------------------------------
 
-DROP POLICY IF EXISTS "vetusty_items_select_policy" ON vetusty_items;
-DROP POLICY IF EXISTS "vetusty_items_select_policy" ON vetusty_items;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_select_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_select_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "vetusty_items_select_policy" ON vetusty_items
   FOR SELECT USING (
     EXISTS (
@@ -2026,9 +2075,12 @@ CREATE POLICY "vetusty_items_select_policy" ON vetusty_items
       )
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "vetusty_items_insert_policy" ON vetusty_items;
-DROP POLICY IF EXISTS "vetusty_items_insert_policy" ON vetusty_items;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_insert_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_insert_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "vetusty_items_insert_policy" ON vetusty_items
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -2040,9 +2092,12 @@ CREATE POLICY "vetusty_items_insert_policy" ON vetusty_items
       AND pr.user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "vetusty_items_update_policy" ON vetusty_items;
-DROP POLICY IF EXISTS "vetusty_items_update_policy" ON vetusty_items;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_update_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_update_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "vetusty_items_update_policy" ON vetusty_items
   FOR UPDATE USING (
     EXISTS (
@@ -2054,9 +2109,12 @@ CREATE POLICY "vetusty_items_update_policy" ON vetusty_items
       AND pr.user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "vetusty_items_delete_policy" ON vetusty_items;
-DROP POLICY IF EXISTS "vetusty_items_delete_policy" ON vetusty_items;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_delete_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "vetusty_items_delete_policy" ON vetusty_items; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "vetusty_items_delete_policy" ON vetusty_items
   FOR DELETE USING (
     EXISTS (
@@ -2069,6 +2127,8 @@ CREATE POLICY "vetusty_items_delete_policy" ON vetusty_items
       AND vr.status = 'draft'
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- vetusty_grid_versions reste en lecture publique (USING (true)), pas de modification.
 
@@ -2411,30 +2471,45 @@ CREATE INDEX IF NOT EXISTS idx_tpm_active ON tenant_payment_methods(tenant_profi
 
 ALTER TABLE tenant_payment_methods ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "tpm_select_own" ON tenant_payment_methods;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "tpm_select_own" ON tenant_payment_methods; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "tpm_select_own" ON tenant_payment_methods
   FOR SELECT USING (tenant_profile_id = public.user_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "tpm_insert_own" ON tenant_payment_methods;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "tpm_insert_own" ON tenant_payment_methods; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "tpm_insert_own" ON tenant_payment_methods
   FOR INSERT WITH CHECK (tenant_profile_id = public.user_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "tpm_update_own" ON tenant_payment_methods;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "tpm_update_own" ON tenant_payment_methods; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "tpm_update_own" ON tenant_payment_methods
   FOR UPDATE USING (tenant_profile_id = public.user_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "tpm_delete_own" ON tenant_payment_methods;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "tpm_delete_own" ON tenant_payment_methods; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "tpm_delete_own" ON tenant_payment_methods
   FOR DELETE USING (tenant_profile_id = public.user_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "tpm_admin_all" ON tenant_payment_methods;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "tpm_admin_all" ON tenant_payment_methods; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "tpm_admin_all" ON tenant_payment_methods
   FOR ALL USING (public.user_role() = 'admin');
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- Trigger updated_at
 CREATE TRIGGER update_tpm_updated_at
@@ -2511,30 +2586,45 @@ CREATE INDEX IF NOT EXISTS idx_sepa_mandates_next_collection ON sepa_mandates(ne
 
 ALTER TABLE sepa_mandates ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "sepa_select_tenant" ON sepa_mandates;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "sepa_select_tenant" ON sepa_mandates; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "sepa_select_tenant" ON sepa_mandates
   FOR SELECT USING (tenant_profile_id = public.user_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "sepa_select_owner" ON sepa_mandates;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "sepa_select_owner" ON sepa_mandates; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "sepa_select_owner" ON sepa_mandates
   FOR SELECT USING (owner_profile_id = public.user_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "sepa_insert_tenant" ON sepa_mandates;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "sepa_insert_tenant" ON sepa_mandates; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "sepa_insert_tenant" ON sepa_mandates
   FOR INSERT WITH CHECK (tenant_profile_id = public.user_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "sepa_update_tenant" ON sepa_mandates;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "sepa_update_tenant" ON sepa_mandates; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "sepa_update_tenant" ON sepa_mandates
   FOR UPDATE USING (tenant_profile_id = public.user_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "sepa_admin_all" ON sepa_mandates;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "sepa_admin_all" ON sepa_mandates; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "sepa_admin_all" ON sepa_mandates
   FOR ALL USING (public.user_role() = 'admin');
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 CREATE TRIGGER update_sepa_mandates_updated_at
   BEFORE UPDATE ON sepa_mandates
@@ -2583,8 +2673,9 @@ CREATE INDEX IF NOT EXISTS idx_ps_lease ON payment_schedules(lease_id);
 
 ALTER TABLE payment_schedules ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "ps_select_tenant" ON payment_schedules;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "ps_select_tenant" ON payment_schedules; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "ps_select_tenant" ON payment_schedules
   FOR SELECT USING (
     EXISTS (
@@ -2594,9 +2685,12 @@ CREATE POLICY "ps_select_tenant" ON payment_schedules
         AND ls.profile_id = public.user_profile_id()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "ps_select_owner" ON payment_schedules;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "ps_select_owner" ON payment_schedules; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "ps_select_owner" ON payment_schedules
   FOR SELECT USING (
     EXISTS (
@@ -2606,11 +2700,16 @@ CREATE POLICY "ps_select_owner" ON payment_schedules
         AND p.owner_id = public.user_profile_id()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "ps_admin_all" ON payment_schedules;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "ps_admin_all" ON payment_schedules; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "ps_admin_all" ON payment_schedules
   FOR ALL USING (public.user_role() = 'admin');
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 CREATE TRIGGER update_ps_updated_at
   BEFORE UPDATE ON payment_schedules
@@ -2638,15 +2737,21 @@ CREATE INDEX IF NOT EXISTS idx_pmal_pm ON payment_method_audit_log(payment_metho
 
 ALTER TABLE payment_method_audit_log ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "pmal_select_own" ON payment_method_audit_log;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "pmal_select_own" ON payment_method_audit_log; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "pmal_select_own" ON payment_method_audit_log
   FOR SELECT USING (tenant_profile_id = public.user_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "pmal_admin_all" ON payment_method_audit_log;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "pmal_admin_all" ON payment_method_audit_log; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "pmal_admin_all" ON payment_method_audit_log
   FOR ALL USING (public.user_role() = 'admin');
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 
 -- 5. Ajouter 'partial' au statut des invoices
@@ -2719,8 +2824,9 @@ CREATE INDEX IF NOT EXISTS idx_identity_2fa_requests_expires_at ON identity_2fa_
 ALTER TABLE identity_2fa_requests ENABLE ROW LEVEL SECURITY;
 
 -- Le locataire ne peut voir que ses propres demandes
-DROP POLICY IF EXISTS "identity_2fa_requests_tenant_own" ON identity_2fa_requests;
-DROP POLICY IF EXISTS "identity_2fa_requests_tenant_own" ON identity_2fa_requests;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "identity_2fa_requests_tenant_own" ON identity_2fa_requests; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "identity_2fa_requests_tenant_own" ON identity_2fa_requests; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "identity_2fa_requests_tenant_own"
   ON identity_2fa_requests FOR ALL TO authenticated
   USING (
@@ -2729,6 +2835,8 @@ CREATE POLICY "identity_2fa_requests_tenant_own"
   WITH CHECK (
     profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 COMMENT ON TABLE identity_2fa_requests IS 'Demandes 2FA (OTP SMS + lien email) pour changement d''identité CNI';
 
@@ -2874,7 +2982,8 @@ CREATE INDEX IF NOT EXISTS idx_key_handovers_confirmed ON key_handovers(lease_id
 ALTER TABLE key_handovers ENABLE ROW LEVEL SECURITY;
 
 -- Owner can see and create handovers for their leases
-DROP POLICY IF EXISTS "owner_key_handovers" ON key_handovers;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "owner_key_handovers" ON key_handovers; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "owner_key_handovers" ON key_handovers
   FOR ALL
   USING (
@@ -2882,9 +2991,12 @@ CREATE POLICY "owner_key_handovers" ON key_handovers
       SELECT id FROM profiles WHERE user_id = auth.uid()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- Tenant can see and confirm handovers for their leases
-DROP POLICY IF EXISTS "tenant_key_handovers" ON key_handovers;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "tenant_key_handovers" ON key_handovers; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "tenant_key_handovers" ON key_handovers
   FOR ALL
   USING (
@@ -2897,6 +3009,8 @@ CREATE POLICY "tenant_key_handovers" ON key_handovers
       WHERE profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- Updated at trigger
 CREATE OR REPLACE TRIGGER set_key_handovers_updated_at
@@ -2941,8 +3055,9 @@ CREATE INDEX IF NOT EXISTS idx_entity_audit_log_date ON entity_audit_log(created
 -- RLS pour entity_audit_log
 ALTER TABLE entity_audit_log ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Users can view audit logs of their entities"
   ON entity_audit_log FOR SELECT
   USING (
@@ -2955,9 +3070,12 @@ CREATE POLICY "Users can view audit logs of their entities"
       )
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Users can insert audit logs for their entities"
   ON entity_audit_log FOR INSERT
   WITH CHECK (
@@ -2970,9 +3088,12 @@ CREATE POLICY "Users can insert audit logs for their entities"
       )
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "Admins can do everything on entity_audit_log" ON entity_audit_log;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Admins can do everything on entity_audit_log" ON entity_audit_log; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Admins can do everything on entity_audit_log"
   ON entity_audit_log FOR ALL
   USING (
@@ -2981,6 +3102,8 @@ CREATE POLICY "Admins can do everything on entity_audit_log"
       WHERE user_id = auth.uid() AND role = 'admin'
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ============================================================================
 -- 2. TRIGGER: Propager les modifications d'entité aux tables dénormalisées
@@ -3324,11 +3447,12 @@ $$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
 -- 2. Fix entity_associates: supprimer la policy SELECT redondante
 -- ============================================================================
 
-DROP POLICY IF EXISTS "Users can view associates of their entities" ON entity_associates;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view associates of their entities" ON entity_associates; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
 -- Recréer la policy FOR ALL avec la fonction optimisée
-DROP POLICY IF EXISTS "Users can manage associates of their entities" ON entity_associates;
-DROP POLICY IF EXISTS "Users can manage associates of their entities" ON entity_associates;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can manage associates of their entities" ON entity_associates; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can manage associates of their entities" ON entity_associates; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Users can manage associates of their entities"
   ON entity_associates FOR ALL
   USING (
@@ -3337,41 +3461,56 @@ CREATE POLICY "Users can manage associates of their entities"
       WHERE owner_profile_id = get_current_owner_profile_id()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ============================================================================
 -- 3. Optimiser les policies legal_entities
 -- ============================================================================
 
-DROP POLICY IF EXISTS "Users can view their own entities" ON legal_entities;
-DROP POLICY IF EXISTS "Users can view their own entities" ON legal_entities;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view their own entities" ON legal_entities; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view their own entities" ON legal_entities; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Users can view their own entities"
   ON legal_entities FOR SELECT
   USING (owner_profile_id = get_current_owner_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "Users can insert their own entities" ON legal_entities;
-DROP POLICY IF EXISTS "Users can insert their own entities" ON legal_entities;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can insert their own entities" ON legal_entities; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can insert their own entities" ON legal_entities; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Users can insert their own entities"
   ON legal_entities FOR INSERT
   WITH CHECK (owner_profile_id = get_current_owner_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "Users can update their own entities" ON legal_entities;
-DROP POLICY IF EXISTS "Users can update their own entities" ON legal_entities;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can update their own entities" ON legal_entities; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can update their own entities" ON legal_entities; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Users can update their own entities"
   ON legal_entities FOR UPDATE
   USING (owner_profile_id = get_current_owner_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "Users can delete their own entities" ON legal_entities;
-DROP POLICY IF EXISTS "Users can delete their own entities" ON legal_entities;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can delete their own entities" ON legal_entities; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can delete their own entities" ON legal_entities; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Users can delete their own entities"
   ON legal_entities FOR DELETE
   USING (owner_profile_id = get_current_owner_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ============================================================================
 -- 4. Optimiser les policies property_ownership
 -- ============================================================================
 
-DROP POLICY IF EXISTS "Users can view ownership of their properties" ON property_ownership;
-DROP POLICY IF EXISTS "Users can view ownership of their properties" ON property_ownership;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view ownership of their properties" ON property_ownership; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view ownership of their properties" ON property_ownership; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Users can view ownership of their properties"
   ON property_ownership FOR SELECT
   USING (
@@ -3384,9 +3523,12 @@ CREATE POLICY "Users can view ownership of their properties"
       WHERE owner_profile_id = get_current_owner_profile_id()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "Users can manage ownership of their properties" ON property_ownership;
-DROP POLICY IF EXISTS "Users can manage ownership of their properties" ON property_ownership;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can manage ownership of their properties" ON property_ownership; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can manage ownership of their properties" ON property_ownership; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Users can manage ownership of their properties"
   ON property_ownership FOR ALL
   USING (
@@ -3399,13 +3541,16 @@ CREATE POLICY "Users can manage ownership of their properties"
       WHERE owner_profile_id = get_current_owner_profile_id()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ============================================================================
 -- 5. Optimiser les policies entity_audit_log
 -- ============================================================================
 
-DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
-DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Users can view audit logs of their entities"
   ON entity_audit_log FOR SELECT
   USING (
@@ -3414,9 +3559,12 @@ CREATE POLICY "Users can view audit logs of their entities"
       WHERE owner_profile_id = get_current_owner_profile_id()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
-DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Users can insert audit logs for their entities"
   ON entity_audit_log FOR INSERT
   WITH CHECK (
@@ -3425,6 +3573,8 @@ CREATE POLICY "Users can insert audit logs for their entities"
       WHERE owner_profile_id = get_current_owner_profile_id()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ============================================================================
 -- 6. Ajouter les types micro_entrepreneur et association
@@ -3951,14 +4101,18 @@ COMMENT ON TABLE tenant_credit_score IS 'Score de ponctualité du locataire (cac
 -- payment_reminders
 ALTER TABLE payment_reminders ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Tenants can view own reminders" ON payment_reminders;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Tenants can view own reminders" ON payment_reminders; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Tenants can view own reminders"
   ON payment_reminders FOR SELECT
   USING (tenant_id = public.user_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "Owners can view reminders of own invoices" ON payment_reminders;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can view reminders of own invoices" ON payment_reminders; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Owners can view reminders of own invoices"
   ON payment_reminders FOR SELECT
   USING (
@@ -3968,18 +4122,24 @@ CREATE POLICY "Owners can view reminders of own invoices"
       AND i.owner_id = public.user_profile_id()
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "Admins can view all reminders" ON payment_reminders;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Admins can view all reminders" ON payment_reminders; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Admins can view all reminders"
   ON payment_reminders FOR SELECT
   USING (public.user_role() = 'admin');
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- late_fees
 ALTER TABLE late_fees ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can view late fees of accessible invoices" ON late_fees;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view late fees of accessible invoices" ON late_fees; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Users can view late fees of accessible invoices"
   ON late_fees FOR SELECT
   USING (
@@ -3993,42 +4153,59 @@ CREATE POLICY "Users can view late fees of accessible invoices"
       )
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- receipts
 ALTER TABLE receipts ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Tenants can view own receipts" ON receipts;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Tenants can view own receipts" ON receipts; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Tenants can view own receipts"
   ON receipts FOR SELECT
   USING (tenant_id = public.user_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "Owners can view receipts of own properties" ON receipts;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can view receipts of own properties" ON receipts; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Owners can view receipts of own properties"
   ON receipts FOR SELECT
   USING (owner_id = public.user_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "Admins can view all receipts" ON receipts;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Admins can view all receipts" ON receipts; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Admins can view all receipts"
   ON receipts FOR SELECT
   USING (public.user_role() = 'admin');
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- tenant_credit_score
 ALTER TABLE tenant_credit_score ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Tenants can view own credit score" ON tenant_credit_score;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Tenants can view own credit score" ON tenant_credit_score; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Tenants can view own credit score"
   ON tenant_credit_score FOR SELECT
   USING (tenant_id = public.user_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
-DROP POLICY IF EXISTS "Admins can view all credit scores" ON tenant_credit_score;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Admins can view all credit scores" ON tenant_credit_score; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Admins can view all credit scores"
   ON tenant_credit_score FOR SELECT
   USING (public.user_role() = 'admin');
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- =====================
 -- 9. DB Trigger : Bail activé → démarrer le moteur de facturation

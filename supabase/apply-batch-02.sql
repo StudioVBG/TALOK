@@ -1581,22 +1581,29 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 -- Politique principale : chaque utilisateur peut voir/modifier son propre profil
 -- Utilise auth.uid() directement, aucune sous-requête vers profiles
-DROP POLICY IF EXISTS "profiles_own_access" ON profiles;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "profiles_own_access" ON profiles; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "profiles_own_access" ON profiles
 FOR ALL TO authenticated
 USING (user_id = auth.uid())
 WITH CHECK (user_id = auth.uid());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- Politique admin : les admins peuvent voir tous les profils
 -- is_admin() est SECURITY DEFINER donc bypasse les RLS
-DROP POLICY IF EXISTS "profiles_admin_read" ON profiles;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "profiles_admin_read" ON profiles; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "profiles_admin_read" ON profiles
 FOR SELECT TO authenticated
 USING (public.is_admin());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- Politique propriétaire : peut voir les profils de ses locataires
 -- get_my_profile_id() est SECURITY DEFINER donc bypasse les RLS
-DROP POLICY IF EXISTS "profiles_owner_read_tenants" ON profiles;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "profiles_owner_read_tenants" ON profiles; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "profiles_owner_read_tenants" ON profiles
 FOR SELECT TO authenticated
 USING (
@@ -1609,6 +1616,8 @@ USING (
     AND p.owner_id = public.get_my_profile_id()
   )
 );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- 6. ACCORDER LES PERMISSIONS SUR LES FONCTIONS
 GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
@@ -1657,27 +1666,34 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 -- ============================================
 -- 1. CORRIGER subscriptions
 -- ============================================
-DROP POLICY IF EXISTS "Owners can view their subscription" ON subscriptions;
-DROP POLICY IF EXISTS "Admins can view all subscriptions" ON subscriptions;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can view their subscription" ON subscriptions; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Admins can view all subscriptions" ON subscriptions; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
 -- Propriétaire voit son abonnement (utilise get_my_profile_id au lieu de sous-requête)
-DROP POLICY IF EXISTS "Owners can view their subscription" ON subscriptions;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can view their subscription" ON subscriptions; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Owners can view their subscription" ON subscriptions
   FOR SELECT TO authenticated
   USING (owner_id = public.get_my_profile_id());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- Admins voient tout (utilise is_admin qui est SECURITY DEFINER)
-DROP POLICY IF EXISTS "Admins can view all subscriptions" ON subscriptions;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Admins can view all subscriptions" ON subscriptions; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Admins can view all subscriptions" ON subscriptions
   FOR ALL TO authenticated
   USING (public.is_admin());
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ============================================
 -- 2. CORRIGER subscription_invoices (si la table existe)
 -- ============================================
 DO $$ BEGIN
-  DROP POLICY IF EXISTS "Owners can view their invoices" ON subscription_invoices;
-  DROP POLICY IF EXISTS "Owners can view their invoices" ON subscription_invoices;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can view their invoices" ON subscription_invoices; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can view their invoices" ON subscription_invoices; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
   CREATE POLICY "Owners can view their invoices" ON subscription_invoices
     FOR SELECT TO authenticated
     USING (
@@ -1686,6 +1702,8 @@ DO $$ BEGIN
         WHERE owner_id = public.get_my_profile_id()
       )
     );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'subscription_invoices does not exist yet, skipping';
 END $$;
@@ -1694,8 +1712,9 @@ END $$;
 -- 3. CORRIGER subscription_usage (si la table existe)
 -- ============================================
 DO $$ BEGIN
-  DROP POLICY IF EXISTS "Owners can view their usage" ON subscription_usage;
-  DROP POLICY IF EXISTS "Owners can view their usage" ON subscription_usage;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can view their usage" ON subscription_usage; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Owners can view their usage" ON subscription_usage; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
   CREATE POLICY "Owners can view their usage" ON subscription_usage
     FOR SELECT TO authenticated
     USING (
@@ -1704,6 +1723,8 @@ DO $$ BEGIN
         WHERE owner_id = public.get_my_profile_id()
       )
     );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'subscription_usage does not exist yet, skipping';
 END $$;
@@ -1729,7 +1750,8 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- Lecture : l'utilisateur voit ses propres notifications
 -- Utilise auth.uid() directement et get_my_profile_id() pour recipient_id/profile_id
-DROP POLICY IF EXISTS "notifications_select_own" ON notifications;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "notifications_select_own" ON notifications; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "notifications_select_own" ON notifications
   FOR SELECT TO authenticated
   USING (
@@ -1737,9 +1759,12 @@ CREATE POLICY "notifications_select_own" ON notifications
     OR recipient_id = public.get_my_profile_id()
     OR profile_id = public.get_my_profile_id()
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- Mise à jour : l'utilisateur peut modifier ses propres notifications
-DROP POLICY IF EXISTS "notifications_update_own" ON notifications;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "notifications_update_own" ON notifications; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "notifications_update_own" ON notifications
   FOR UPDATE TO authenticated
   USING (
@@ -1747,9 +1772,12 @@ CREATE POLICY "notifications_update_own" ON notifications
     OR recipient_id = public.get_my_profile_id()
     OR profile_id = public.get_my_profile_id()
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- Suppression : l'utilisateur peut supprimer ses propres notifications
-DROP POLICY IF EXISTS "notifications_delete_own" ON notifications;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "notifications_delete_own" ON notifications; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "notifications_delete_own" ON notifications
   FOR DELETE TO authenticated
   USING (
@@ -1757,12 +1785,17 @@ CREATE POLICY "notifications_delete_own" ON notifications
     OR recipient_id = public.get_my_profile_id()
     OR profile_id = public.get_my_profile_id()
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- Insertion : le système peut insérer des notifications
-DROP POLICY IF EXISTS "notifications_insert_system" ON notifications;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "notifications_insert_system" ON notifications; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "notifications_insert_system" ON notifications
   FOR INSERT
   WITH CHECK (true);
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ============================================
 -- 5. VÉRIFICATION : lister les politiques restantes avec sous-requête profiles
@@ -1908,10 +1941,11 @@ WHERE invited_email IS NOT NULL;
 -- ============================================================================
 
 -- 1. Supprimer l'ancienne policy restrictive
-DROP POLICY IF EXISTS "Tenants can view properties with active leases" ON properties;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Tenants can view properties with active leases" ON properties; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
 -- 2. Créer la nouvelle policy élargie
-DROP POLICY IF EXISTS "Tenants can view linked properties" ON properties;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Tenants can view linked properties" ON properties; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "Tenants can view linked properties"
   ON properties
   FOR SELECT
@@ -1927,13 +1961,18 @@ CREATE POLICY "Tenants can view linked properties"
         AND l.statut NOT IN ('draft', 'cancelled')
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- 3. Vérification : s'assurer que les autres policies existantes ne sont pas impactées
 -- (les policies owner et admin restent inchangées)
 
+DO $cm$ BEGIN
 COMMENT ON POLICY "Tenants can view linked properties" ON properties IS
   'P0-E1: Locataires voient les propriétés liées à leurs baux (sauf draft/cancelled). '
   'Remplace l''ancienne policy qui exigeait statut=active uniquement.';
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cm$;
 
 
 -- === [15/169] 20260215200001_add_notice_given_lease_status.sql ===
@@ -2026,10 +2065,11 @@ CREATE INDEX IF NOT EXISTS idx_leases_pending_action ON leases(statut)
 -- ============================================
 -- 1. UNITS — Policy tenant trop restrictive
 -- ============================================
-DROP POLICY IF EXISTS "Users can view units of accessible properties" ON units;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view units of accessible properties" ON units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
-DROP POLICY IF EXISTS "Users can view units of accessible properties" ON units;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view units of accessible properties" ON units; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Users can view units of accessible properties"
   ON units
   FOR SELECT
@@ -2057,14 +2097,17 @@ CREATE POLICY "Users can view units of accessible properties"
         AND role = 'admin'
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ============================================
 -- 2. CHARGES — Policy tenant trop restrictive
 -- ============================================
-DROP POLICY IF EXISTS "Tenants can view charges of properties with active leases" ON charges;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Tenants can view charges of properties with active leases" ON charges; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
-DROP POLICY IF EXISTS "Tenants can view charges of linked properties" ON charges;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Tenants can view charges of linked properties" ON charges; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Tenants can view charges of linked properties"
   ON charges
   FOR SELECT
@@ -2092,17 +2135,20 @@ CREATE POLICY "Tenants can view charges of linked properties"
         AND role = 'admin'
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ============================================
 -- 3. TICKETS — Policies tenant trop restrictives
 -- ============================================
 
 -- 3a. Policy SELECT
-DROP POLICY IF EXISTS "Users can view tickets of accessible properties" ON tickets;
-DROP POLICY IF EXISTS "tickets_select_policy" ON tickets;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view tickets of accessible properties" ON tickets; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "tickets_select_policy" ON tickets; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
-DROP POLICY IF EXISTS "Users can view tickets of accessible properties" ON tickets;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view tickets of accessible properties" ON tickets; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Users can view tickets of accessible properties"
   ON tickets
   FOR SELECT
@@ -2140,13 +2186,16 @@ CREATE POLICY "Users can view tickets of accessible properties"
         AND role = 'admin'
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- 3b. Policy INSERT
-DROP POLICY IF EXISTS "Users can create tickets for accessible properties" ON tickets;
-DROP POLICY IF EXISTS "tickets_insert_policy" ON tickets;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can create tickets for accessible properties" ON tickets; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "tickets_insert_policy" ON tickets; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
-DROP POLICY IF EXISTS "Users can create tickets for accessible properties" ON tickets;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can create tickets for accessible properties" ON tickets; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
+DO $cp$ BEGIN
 CREATE POLICY "Users can create tickets for accessible properties"
   ON tickets
   FOR INSERT
@@ -2174,6 +2223,8 @@ CREATE POLICY "Users can create tickets for accessible properties"
         AND role = 'admin'
     )
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ============================================
 -- Log
@@ -2718,7 +2769,8 @@ BEGIN
     SELECT 1 FROM pg_policies
     WHERE tablename = 'lease_signers' AND policyname = 'lease_signers_tenant_view_for_doc_center'
   ) THEN
-    DROP POLICY IF EXISTS "lease_signers_tenant_view_for_doc_center" ON lease_signers;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "lease_signers_tenant_view_for_doc_center" ON lease_signers; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
     CREATE POLICY "lease_signers_tenant_view_for_doc_center"
       ON lease_signers
       FOR SELECT
@@ -2726,6 +2778,8 @@ BEGIN
       USING (
         profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
       );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
   END IF;
 END $$;
 
@@ -3074,10 +3128,10 @@ GRANT EXECUTE ON FUNCTION public.tenant_document_stats TO authenticated;
 -- Les bonnes policies (leases_admin_all, leases_owner_all, leases_tenant_select)
 -- ont été créées dans 20251228230000_definitive_rls_fix.sql
 
-DROP POLICY IF EXISTS "authenticated_users_view_leases" ON leases;
-DROP POLICY IF EXISTS "authenticated_users_insert_leases" ON leases;
-DROP POLICY IF EXISTS "authenticated_users_update_leases" ON leases;
-DROP POLICY IF EXISTS "authenticated_users_delete_leases" ON leases;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "authenticated_users_view_leases" ON leases; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "authenticated_users_insert_leases" ON leases; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "authenticated_users_update_leases" ON leases; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "authenticated_users_delete_leases" ON leases; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
 -- Vérifier que les bonnes policies existent
 DO $$
@@ -3102,12 +3156,13 @@ END $$;
 -- Avant: WITH CHECK(true) → tout authentifié peut insérer pour n'importe qui
 -- Après: Seul le service_role ou l'utilisateur peut insérer ses propres notifs
 
-DROP POLICY IF EXISTS "notifications_insert_system" ON notifications;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "notifications_insert_system" ON notifications; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
 -- Le service_role bypass RLS par défaut, donc cette policy est pour les
 -- appels authentifiés qui insèrent des notifications pour eux-mêmes.
 -- Les Edge Functions (service_role) ne sont pas affectées par cette restriction.
-DROP POLICY IF EXISTS "notifications_insert_own_or_service" ON notifications;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "notifications_insert_own_or_service" ON notifications; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
 CREATE POLICY "notifications_insert_own_or_service" ON notifications
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -3116,6 +3171,8 @@ CREATE POLICY "notifications_insert_own_or_service" ON notifications
     OR recipient_id = public.get_my_profile_id()
     OR profile_id = public.get_my_profile_id()
   );
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
 -- ============================================
 -- 3. DOCUMENT_GED_AUDIT_LOG: Restreindre l'INSERT
@@ -3130,7 +3187,8 @@ BEGIN
 
     -- Restreindre aux logs créés par l'utilisateur authentifié
     EXECUTE '
-      DROP POLICY IF EXISTS "audit_log_insert_own" ON document_ged_audit_log;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "audit_log_insert_own" ON document_ged_audit_log; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
       CREATE POLICY "audit_log_insert_own" ON document_ged_audit_log
         FOR INSERT TO authenticated
         WITH CHECK (
@@ -3138,6 +3196,8 @@ BEGIN
           OR performed_by IS NULL
         )
     ';
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
     RAISE NOTICE 'document_ged_audit_log: policy INSERT corrigée';
   ELSE
@@ -3158,11 +3218,14 @@ BEGIN
 
     -- professional_orders is a read-only reference table, keep open read
     EXECUTE '
-      DROP POLICY IF EXISTS "professional_orders_select_scoped" ON professional_orders;
+DO $dp$ BEGIN DROP POLICY IF EXISTS "professional_orders_select_scoped" ON professional_orders; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
+DO $cp$ BEGIN
       CREATE POLICY "professional_orders_select_scoped" ON professional_orders
         FOR SELECT TO authenticated
         USING (TRUE)
     ';
+EXCEPTION WHEN undefined_table THEN NULL;
+END $cp$;
 
     RAISE NOTICE 'professional_orders: policy SELECT recréée (reference table, read-only)';
   ELSE
