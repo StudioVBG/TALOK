@@ -4095,7 +4095,7 @@ CREATE POLICY "property_meters_tenant_select" ON property_meters
       JOIN lease_signers ls ON ls.lease_id = l.id
       WHERE l.property_id = property_meters.property_id
         AND ls.profile_id = auth.uid()
-        AND l.status IN ('active', 'signed')
+        AND l.statut IN ('active', 'signed')
     )
   );
 EXCEPTION WHEN undefined_table THEN NULL;
@@ -4135,7 +4135,7 @@ CREATE POLICY "pm_readings_tenant_select" ON property_meter_readings
       JOIN lease_signers ls ON ls.lease_id = l.id
       WHERE l.property_id = property_meter_readings.property_id
         AND ls.profile_id = auth.uid()
-        AND l.status IN ('active', 'signed')
+        AND l.statut IN ('active', 'signed')
     )
   );
 EXCEPTION WHEN undefined_table THEN NULL;
@@ -4151,7 +4151,7 @@ CREATE POLICY "pm_readings_tenant_insert" ON property_meter_readings
       JOIN lease_signers ls ON ls.lease_id = l.id
       WHERE l.property_id = property_meter_readings.property_id
         AND ls.profile_id = auth.uid()
-        AND l.status IN ('active', 'signed')
+        AND l.statut IN ('active', 'signed')
     )
   );
 EXCEPTION WHEN undefined_table THEN NULL;
@@ -4191,7 +4191,7 @@ CREATE POLICY "meter_alerts_tenant_select" ON meter_alerts
       JOIN lease_signers ls ON ls.lease_id = l.id
       WHERE l.property_id = meter_alerts.property_id
         AND ls.profile_id = auth.uid()
-        AND l.status IN ('active', 'signed')
+        AND l.statut IN ('active', 'signed')
     )
   );
 EXCEPTION WHEN undefined_table THEN NULL;
