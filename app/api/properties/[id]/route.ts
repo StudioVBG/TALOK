@@ -310,6 +310,17 @@ export async function PATCH(
 
     const updates: Record<string, unknown> = { ...validated, updated_at: new Date().toISOString() };
 
+    // Strip les champs buildings — ils appartiennent à la table buildings,
+    // pas properties. Le wizard les garde dans le store et les persiste
+    // via POST /api/properties/[id]/building-units au publish.
+    const BUILDING_ONLY_FIELDS = [
+      'building_floors', 'building_units',
+      'has_ascenseur', 'has_gardien', 'has_interphone', 'has_digicode', 'has_local_velo',
+    ];
+    for (const field of BUILDING_ONLY_FIELDS) {
+      delete updates[field];
+    }
+
     // Empêcher la suppression d'un digicode existant (seulement modification autorisée)
     if ('digicode' in updates && (updates.digicode === null || updates.digicode === '')) {
       const { data: currentProp } = await serviceClient
