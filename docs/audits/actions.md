@@ -61,20 +61,14 @@
 
 ## P2 — Amélioration (1 mois)
 
-### Agent TALO (module le plus en retard)
-- [ ] Créer routes /api/talo/chat (streaming avec Vercel AI SDK)
-- [ ] Créer routes /api/talo/conversations (CRUD)
-- [ ] Créer routes /api/talo/fiscal/simulate + optimize
-- [ ] Créer routes /api/talo/classify + extract
-- [ ] Créer routes /api/talo/scoring + scoring/compare
-- [ ] Créer pages app/owner/talo/ (chat, scoring, fiscal)
-- [ ] Créer composants TaloChatInterface, TaloMessageBubble, TaloInput
-- [ ] Créer composants ScoringLauncher, ScoringResultCard, ScoringComparison
+### Agent TALO (architecture multi-agent existe, pages dédiées manquantes)
+- [ ] Créer pages app/owner/talo/ (chat dédié, scoring, fiscal)
+- [ ] Créer routes /api/talo/fiscal/simulate + optimize (simulation fiscale IA)
+- [ ] Créer routes /api/talo/classify + extract (classification documents dédiée)
+- [ ] Créer composants TaloChatInterface dédié (vs command palette existant)
+- [ ] Créer composants ScoringComparison (comparaison côte à côte)
 - [ ] Créer composants FiscalSimulator, FiscalRecommendation
-- [ ] Définir TALO_SYSTEM_PROMPT + SCORING_SYSTEM_PROMPT
-- [ ] Implémenter LangGraph tools (get_property_info, get_lease_info, etc.)
-- [ ] Ajouter vérification hasAITalo sur toutes les routes TALO
-- [ ] Implémenter quotas (500 messages/mois Pro, illimité Enterprise)
+- [ ] Vérifier quotas messages/mois dans assistant_usage_stats
 
 ### Colocation
 - [ ] Implémenter clause de solidarité 6 mois max

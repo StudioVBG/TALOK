@@ -27,26 +27,26 @@
 | 2 | Paiements | 8/8 | 15+/15 | 8/8 | 6/6 | ✅ | 8/10 | ⚠️ Partiel |
 | 3 | Documents | 5/5 | 12/12 | 4/4 | 5/5 | ✅ | 9/10 | ✅ Complet |
 | 4 | Biens | 3/3 | 20+/10 | 6/6 | 15+/10 | ✅ | 9/10 | ✅ Complet |
-| 5 | EDL | 8/6 | 15+/10 | 8/8 | 10/8 | ⚠️ | 8/10 | ⚠️ Partiel |
-| 6 | Colocation | 5/5 | 12/10 | 9/8 | 12/10 | ⚠️ | 7/10 | ⚠️ Partiel |
-| 7 | Charges | 5/4 | 10/8 | 3/3 | 1/3 | ⚠️ | 7/10 | ⚠️ Partiel |
-| 8 | Candidatures | 3/3 | 10/8 | 5/5 | 7/7 | ⚠️ | 7/10 | ⚠️ Partiel |
-| 9 | Prestataires | 6/4 | 20+/10 | 12/10 | 3/5 | ⚠️ | 7/10 | ⚠️ Partiel |
-| 10 | Syndic | 4/4 | 10/8 | 20/10 | 2/5 | ⚠️ | 6/10 | ⚠️ Partiel |
-| 11 | Garant | 4/4 | 8/6 | 6/5 | 2/3 | ✅ | 7/10 | ⚠️ Partiel |
-| 12 | Agence/White-label | 5/4 | 12/8 | 20/10 | 2/5 | ⚠️ | 6/10 | ⚠️ Partiel |
-| 13 | Notifications | 4/4 | 10/8 | 3/3 | 3/3 | ✅ | 7/10 | ⚠️ Partiel |
+| 5 | EDL | 13/6 | 15+/10 | 9/8 | 10/8 | ⚠️ | 8/10 | ⚠️ Partiel |
+| 6 | Colocation | 5/5 | 12/10 | 12/8 | 12/10 | ⚠️ | 7/10 | ⚠️ Partiel |
+| 7 | Charges | 4/4 | 11/8 | 5/3 | 3/3 | ⚠️ partiel | 8/10 | ✅ Complet |
+| 8 | Candidatures | 3/3 | 13+/8 | 5/5 | 8/7 | ⚠️ | 9/10 | ✅ Complet |
+| 9 | Prestataires | 4/4 | 22+/10 | 40+/10 | 5/5 | ⚠️ | 9/10 | ✅ Complet |
+| 10 | Syndic | 4/4 | 10+/8 | 47/10 | 4/5 | ✅ PlanGate | 8/10 | ✅ Complet |
+| 11 | Garant | 4/4 | 9+/6 | 8/5 | 5/3 | ⚠️ | 8/10 | ⚠️ Partiel |
+| 12 | Agence/White-label | 4/4 | 13+/8 | 57/10 | 5/5 | ⚠️ | 9/10 | ✅ Complet |
+| 13 | Notifications | 7/4 | 10/8 | 3/3 | 5/3 | ✅ | 7/10 | ⚠️ Partiel |
 | 14 | Auth & RBAC | 6/5 | 15/10 | 8/8 | 3/3 | ✅ | 8/10 | ⚠️ Partiel |
-| 15 | Onboarding | 4/4 | 3/3 | 15/10 | 3/3 | ✅ | 7/10 | ⚠️ Partiel |
+| 15 | Onboarding | 5/4 | 3/3 | 15/10 | 3/3 | ✅ | 7/10 | ⚠️ Partiel |
 | 16 | Comptabilité | 15/15 | 50+/20 | 12/10 | 4/5 | ✅ | 9/10 | ✅ Complet |
 | 17 | Add-ons | 1/1 | 5/5 | 2/2 | 6/6 | ✅ | 8/10 | ⚠️ Partiel |
 | 18 | Stripe Abonnement | 3/3 | 20/15 | 3/3 | 3/3 | ✅ | 8/10 | ⚠️ Partiel |
-| 19 | Saisonnier | 5/5 | 10/8 | 5/5 | 3/3 | ⚠️ | 7/10 | ⚠️ Partiel |
-| 20 | Compteurs | 3/3 | 10/8 | 5/4 | 2/3 | ⚠️ | 7/10 | ⚠️ Partiel |
-| 21 | Agent TALO | 3/4 | 5/10 | 0/4 | 0/10 | ❌ | 3/10 | ❌ Absent |
-| 22 | API REST | 4/4 | 30+/15 | 4/4 | 2/2 | ✅ | 8/10 | ⚠️ Partiel |
-| 23 | Diagnostics | 2/2 | 5/4 | 4/3 | 7/5 | ⚠️ | 7/10 | ⚠️ Partiel |
-| 24 | Assurances | 1/1 | 4/3 | 2/2 | 4/3 | ⚠️ | 6/10 | ⚠️ Partiel |
+| 19 | Saisonnier | 7/5 | 13+/8 | 6/5 | 12/3 | ⚠️ | 9/10 | ✅ Complet |
+| 20 | Compteurs | 4/3 | 17+/8 | 5/4 | 5/3 | ✅ connected_meters | 9/10 | ✅ Complet |
+| 21 | Agent TALO | 5/4 | 11/10 | 0/4 | 10+/10 | ✅ hasAITalo | 8/10 | ⚠️ Partiel |
+| 22 | API REST | 4/4 | 44/15 | 4/4 | 3/2 | ✅ hasAPI | 10/10 | ✅ Complet |
+| 23 | Diagnostics | 3/2 | 5/4 | 5/3 | 9/5 | ⚠️ | 9/10 | ✅ Complet |
+| 24 | Assurances | 1/1 | 4/3 | 4/2 | 5/3 | ⚠️ | 8/10 | ⚠️ Partiel |
 | 25 | RGPD | 3/3 | 4/4 | 3/3 | 1/2 | ✅ | 7/10 | ⚠️ Partiel |
 | 26 | Admin | 2/2 | 50+/20 | 35/15 | 2/3 | ✅ | 8/10 | ⚠️ Partiel |
 | 27 | Landing | 0/0 | 1/1 | 25+/15 | 5/5 | N/A | 8/10 | ⚠️ Partiel |
@@ -740,42 +740,53 @@
 
 ## Module 19 : SAISONNIER
 
-### A. Tables
+### A. Tables (7)
 | Table | Existe ? |
 |-------|---------|
 | seasonal_listings | ✅ |
 | seasonal_rates | ✅ |
 | seasonal_blocked_dates | ✅ |
-| reservations | ✅ |
+| reservations | ✅ (avec EXCLUDE constraint anti-chevauchement) |
 | taxe_sejour_communes | ✅ |
 | declarations_taxe_sejour | ✅ |
 | tarifs_plafonds_taxe_sejour | ✅ |
 
-### B. Routes
+### B. Routes (13+)
 - /api/seasonal/listings/* (CRUD, calendar, rates, block)
-- /api/seasonal/sync/airbnb, /api/seasonal/sync/booking
+- /api/seasonal/sync/airbnb (iCal import fonctionnel)
+- /api/seasonal/sync/booking (iCal import)
 - /api/reservations/* (CRUD, cancel, check-in, check-out)
 - /api/cron/seasonal-cleaning
 
-### C. Pages
-- app/owner/seasonal/page.tsx, calendar, listings/[id], reservations/*
+### C. Pages (6)
+- app/owner/seasonal/page.tsx (dashboard), calendar, listings/[id], reservations/*
 
-### Score : 7/10
-### Verdict : ⚠️ Partiel
+### D. Composants (12)
+- SeasonalCalendar, TouristTaxCalculator, ReservationCard, CheckInForm, CheckOutForm
+- BlockDatesModal, RateEditor, NightlyRateDisplay, BookingSourceBadge, SyncStatusBadge
+- CleaningScheduler, GuestCard
+
+### E. Taxe séjour : ✅ RPC SQL calculate_taxe_sejour() + auto-calculée sur iCal import
+### F. iCal sync : ✅ Airbnb + Booking, VEVENT parser complet, déduplication
+
+### Score : 9/10
+### Verdict : ✅ Complet
 
 ---
 
 ## Module 20 : COMPTEURS
 
-### A. Tables : ✅ property_meters, property_meter_readings, meter_readings, meter_alerts
-### B. OAuth Enedis/GRDF : ✅ Routes callback /api/oauth/enedis + grdf
-### C. Cron sync : ✅ /api/cron/meters-sync
-### D. Pages : ✅ app/owner/properties/[id]/meters/* + app/tenant/meters/
-### E. Connect/disconnect : ✅ /api/property-meters/[id]/connect + disconnect
-### F. OCR photo : ✅ /api/meters/[id]/photo-ocr
+### A. Tables (4) : ✅ property_meters, property_meter_readings, meter_alerts + legacy meters/meter_readings
+### B. OAuth Enedis/GRDF : ✅ Routes callback complètes avec token exchange, refresh, sync initiale 30j
+### C. Cron sync : ✅ /api/cron/meters-sync (refresh tokens expirés, fetch 7j, check alertes)
+### D. Routes (17+) : property-meters/*, meters/*, properties/[id]/meters/*, oauth/enedis + grdf
+### E. Pages (5) : app/owner/properties/[id]/meters/* (list, add, detail, connect) + app/tenant/meters/
+### F. Services : PropertyMetersService, charges-regularization.ts, meter-notifications.service.ts
+### G. Relevé tenant : ✅ addManualReading() + analyzePhoto() (OCR)
+### H. Feature gating : ✅ connected_meters (Pro+)
 
-### Score : 7/10
-### Verdict : ⚠️ Partiel
+### Score : 9/10
+### Verdict : ✅ Complet
 
 ---
 
@@ -784,44 +795,65 @@
 ### A. Tables
 | Table attendue (skill) | Table réelle | Existe ? |
 |------------------------|-------------|---------|
-| talo_conversations | ai_conversations | ✅ (nom différent) |
-| talo_messages | assistant_messages + assistant_threads | ✅ (nom différent) |
+| talo_conversations | ai_conversations + assistant_threads | ✅ (noms différents) |
+| talo_messages | assistant_messages | ✅ (nom différent) |
 | tenant_scorings | solvability_scores | ✅ (nom différent) |
 | talo_usage | assistant_usage_stats | ✅ (nom différent) |
 
-### B. Routes
+### B. Routes (11 routes IA existantes)
 | Route attendue (skill) | Route réelle | Existe ? |
 |------------------------|-------------|---------|
-| /api/talo/chat | /api/assistant/stream | ✅ (nom différent) |
-| /api/talo/conversations | /api/assistant/threads | ✅ (nom différent) |
+| /api/talo/chat | /api/assistant/stream | ✅ (streaming avec RAG) |
+| /api/talo/conversations | /api/assistant/threads | ✅ |
 | /api/talo/scoring | /api/applications/[id]/score | ✅ |
 | /api/talo/fiscal | ❌ | ❌ ABSENT |
 | /api/talo/classify | ❌ | ❌ ABSENT |
+| — | /api/assistant (non-streaming) | ✅ |
+| — | /api/chat | ✅ |
+| — | /api/unified-chat/conversations/* | ✅ (4 routes) |
+| — | /api/unified-chat/unread-count | ✅ |
 
-### C. Pages UI
+### C. Architecture multi-agent (features/assistant/)
+| Composant | Existe ? | Détail |
+|-----------|---------|--------|
+| Multi-agent graph | ✅ | ai/multi-agent-graph.ts (LangGraph-style) |
+| Multi-agent assistant | ✅ | ai/multi-agent-assistant.ts |
+| Supervisor agent | ✅ | supervisor.agent.ts |
+| Finance agent | ✅ | finance.agent.ts |
+| Property agent | ✅ | property.agent.ts |
+| Ticket agent | ✅ | ticket.agent.ts |
+| Legal agent | ✅ | legal.agent.ts |
+| RAG node | ✅ | ai/nodes/rag-node.ts |
+| Action tools | ✅ | action-tools.ts |
+| Admin tools | ✅ | admin-tools.ts |
+| Provider tools | ✅ | provider-tools.ts |
+| Tenant tools | ✅ | tenant-tools.ts |
+| Search tools | ✅ | search-tools.ts |
+
+### D. Stack IA
+- ✅ Vercel AI SDK installé + streamText + useChat
+- ✅ OpenAI GPT-4o-mini / GPT-4o
+- ✅ LangChain + LangGraph installés
+- ✅ Tesseract.js pour OCR
+- ✅ System prompts : 4 prompts role-based (owner/tenant/provider/admin)
+- ✅ RAG pipeline : ragPipeline.enrichSystemPrompt()
+- ✅ Feature gate : hasAITalo dans plan-limits.ts
+
+### E. Pages UI dédiées TALO
 | Page attendue | Existe ? |
 |--------------|---------|
-| app/owner/talo/ | ❌ ABSENT |
+| app/owner/talo/ | ❌ ABSENT (accès via composants globaux) |
 | app/owner/talo/scoring | ❌ ABSENT |
 | app/owner/talo/fiscal | ❌ ABSENT |
 
-### D. Stack IA
-- ✅ Vercel AI SDK installé (streamText usage trouvé)
-- ✅ OpenAI package installé
-- ✅ LangChain + LangGraph installés
-- ✅ Tesseract.js pour OCR
-- ✅ OCR_EXTRACTION_SYSTEM_PROMPT défini
+### F. Composants IA globaux
+- ✅ components/ai/tom-onboarding.tsx
+- ✅ components/ai/tom-ticket-creator.tsx
+- ✅ components/ai/ai-command-palette.tsx
 
-### E. Ce qui manque vs skill :
-- ❌ Pages dédiées TALO (chat, scoring, fiscal)
-- ❌ Routes /api/talo/* (utilise /api/assistant/* à la place)
-- ❌ System prompts TALO_SYSTEM_PROMPT, SCORING_SYSTEM_PROMPT
-- ❌ LangGraph tools (get_property_info, etc.)
-- ❌ Composants TaloChatInterface, TaloMessageBubble, etc.
-- ❌ Feature gate hasAITalo non vérifié
-
-### Score : 3/10
-### Verdict : ❌ Absent (infrastructure IA existe mais agent TALO non construit)
+### Score : 8/10
+### Verdict : ⚠️ Partiel
+### Note : L'architecture IA est BIEN PLUS avancée que le skill ne le suggère (multi-agent avec superviseur, RAG, 5 agents spécialisés, tools). Les noms diffèrent du skill (assistant/* vs talo/*). Seules manquent les pages dédiées /owner/talo/ et les routes fiscales.
 
 ---
 
@@ -833,52 +865,59 @@
 | api_keys | ✅ |
 | api_webhooks | ✅ |
 | api_webhook_deliveries | ✅ |
-| api_usage_logs | ✅ |
+| api_logs | ✅ (api_logs, pas api_usage_logs) |
 | api_usage_events | ✅ |
 
-### B. Routes /api/v1/* (30+)
-- /api/v1/auth/login, /api/v1/auth/register
-- /api/v1/properties/*, /api/v1/leases/*, /api/v1/tenants/*
-- /api/v1/documents/*, /api/v1/invoices/*, /api/v1/payments/*
-- /api/v1/applications/*, /api/v1/listings/*
-- /api/v1/tickets/*, /api/v1/api-keys/*, /api/v1/webhooks/*
-- /api/v1/accounting/balance, entries, fec
+### B. Routes /api/v1/* (44 fichiers route)
+- Auth : /api/v1/auth/login, register
+- Properties : CRUD + invitations (7 routes)
+- Leases : GET + signature-sessions + rent-invoices
+- Tenants : CRUD (4 routes)
+- Payments : webhook + list + invoice payments
+- Documents : CRUD (3 routes)
+- Accounting : balance, entries, fec
+- Applications : CRUD + accept/reject/score/compare (7 routes)
+- Listings : CRUD + publish + applications (6 routes)
+- Tickets : CRUD + close/resolve/assign/reopen/create-work-order/comments/kpis (10 routes)
+- API Keys : CRUD (3 routes)
+- Webhooks : CRUD + test (5 routes)
 
-### C. Pages
-- app/owner/settings/api/page.tsx
-- app/owner/settings/api/keys/[id]
-- app/owner/settings/api/docs
-- app/owner/settings/api/webhooks
+### C. Auth par API key : ✅ lib/api/api-key-auth.ts (Bearer tlk_live_xxx, SHA-256, scope/permissions)
+### D. Rate limiting : ✅ In-memory per-hour-bucket + headers X-RateLimit-* + configurable par clé
+### E. Webhook system : ✅ HMAC-SHA256 signing, retry backoff, delivery logging, 19 event types
+### F. Pages (4) : api dashboard, key detail, docs (listing tous endpoints), webhooks management
+### G. Feature gating : ✅ hasAPI dans plan-limits.ts
 
-### D. Auth par API key : ✅ (dans les routes v1)
-
-### Score : 8/10
-### Verdict : ⚠️ Partiel
+### Score : 10/10
+### Verdict : ✅ Complet
 
 ---
 
 ## Module 23 : DIAGNOSTICS
 
-### A. Tables : ✅ property_diagnostics, diagnostics_termites, rent_control_zones
-### B. Routes : ✅ /api/diagnostics/* (CRUD, check-required, expiring)
-### C. Rent control : ✅ /api/rent-control/check
-### D. Pages : ✅ app/owner/diagnostics/, app/owner/properties/[id]/diagnostics/*
-### E. Composants (7) : DiagnosticCard, DiagnosticsList, ExpiryAlert, DPERatingBadge, RentControlChecker, RequiredDiagnosticsChecker, dpe-request-form/upload-form
+### A. Tables (3) : ✅ property_diagnostics (9 types: dpe/amiante/plomb/gaz/electricite/termites/erp/surface_boutin/bruit), diagnostics_termites (DOM-TOM), rent_control_zones (seeded Paris/Lyon/Lille/Bordeaux/Montpellier 2026 Q1)
+### B. Routes (5) : diagnostics/* CRUD + check-required + expiring + rent-control/check
+### C. Pages (5) : owner/diagnostics/, owner/properties/[id]/diagnostics/ (dashboard + dpe/request + dpe/upload)
+### D. Composants (9) : DiagnosticCard, DiagnosticsList, DiagnosticFormDialog, ExpiryAlert, DPERatingBadge, DPEStatusCard, RentControlChecker, RequiredDiagnosticsChecker, dpe-request-form
+### E. DDT checklist dans bail : ✅ RequiredDiagnosticsChecker intégré dans LeaseWizard.tsx (ligne 1107)
+### F. Alertes expiration : ✅ Classification urgency (expired/urgent/warning) avec days_until_expiry
 
-### Score : 7/10
-### Verdict : ⚠️ Partiel
+### Score : 9/10
+### Verdict : ✅ Complet
 
 ---
 
 ## Module 24 : ASSURANCES
 
-### A. Table insurance_policies : ✅
-### B. Alertes expiration : ✅ /api/insurance/check-expiring
-### C. Routes : ✅ /api/insurance/* (CRUD, upload, check-expiring)
-### D. Pages : ✅ app/owner/insurance/, app/tenant/insurance/
-### E. Composants (4) : insurance-card, insurance-form, expiry-badge, insurance-reminder
+### A. Table insurance_policies : ✅ Multi-rôle (PNO, multirisques, RC pro, décennale, GLI, garantie financière), is_verified, reminder_sent_30j/7j
+### B. Alertes expiration : ✅ /api/insurance/check-expiring (cron J-30 + J-7 email Resend)
+### C. Routes (4) : /api/insurance/* (CRUD, upload, check-expiring)
+### D. Pages (4) : app/owner/insurance/ (OwnerInsuranceClient), app/tenant/insurance/ (TenantInsuranceClient)
+### E. Composants (5) : insurance-card (attestation jointe), insurance-form, expiry-badge, insurance-reminder + service
+### F. Vue SQL : insurance_expiring_soon avec expiry_status classification
+### G. Vérification attestation : ⚠️ Colonnes is_verified/verified_at existent mais pas de cycle annuel automatisé
 
-### Score : 6/10
+### Score : 8/10
 ### Verdict : ⚠️ Partiel
 
 ---
@@ -1112,9 +1151,9 @@
 
 ### État global
 
-- **Modules complets (score >= 8/10) :** 12/30 (Baux, Paiements, Documents, Biens, Charges, Candidatures, Prestataires, Syndic, Comptabilité, Add-ons, Stripe, Admin)
-- **Modules partiels (score 5-7) :** 17/30
-- **Modules absents (score 0-4) :** 1/30 (Agent TALO)
+- **Modules complets (score >= 8/10) :** 22/30 (Baux, Paiements, Documents, Biens, EDL, Charges, Candidatures, Prestataires, Syndic, Garant, Agence, Auth, Comptabilité, Add-ons, Stripe, Saisonnier, Compteurs, Agent TALO, API REST, Diagnostics, Assurances, Admin)
+- **Modules partiels (score 5-7) :** 8/30 (Colocation, Notifications, Onboarding, Landing, Mobile, Tickets, RGPD, Droits locataire)
+- **Modules absents (score 0-4) :** 0/30
 
 ### Statistiques clés
 
@@ -1130,39 +1169,39 @@
 
 ### Top 5 priorités
 
-1. **Feature Gating** — 17/23 flags non vérifiés côté API : tout utilisateur authentifié peut accéder à des features payantes. **Effort : 3-5 jours**
+1. **Feature Gating** — Plusieurs flags non vérifiés côté API (hasWorkOrders, hasEdlDigital, hasProvidersManagement). Les routes sont accessibles sans vérification du plan. **Effort : 3-5 jours**
 2. **RLS sur tenants + two_factor_sessions** — Données sensibles accessibles sans policy. **Effort : 0,5 jour**
 3. **Prix DB incohérents** — subscription_plans contient 19.90€ au lieu de 35€/69€. **Effort : 0,5 jour**
-4. **Agent TALO** — Infrastructure IA existe mais pages/routes/composants dédiés absents. **Effort : 5-10 jours**
-5. **Bugs critiques connus** — Tickets infini, invoices crash, dashboard 0, agency signup. **Effort : 2-3 jours**
+4. **Bugs critiques connus** — Tickets infini, invoices crash, dashboard 0, agency signup. **Effort : 2-3 jours**
+5. **Pages dédiées Agent TALO** — Architecture multi-agent complète mais pas de pages /owner/talo/* ni routes /api/talo/fiscal/*. **Effort : 3-5 jours**
 
 ### Tables manquantes (à créer)
 | Table | Module | Priorité |
 |-------|--------|----------|
-| talo_conversations (dédiée) | Agent TALO | P2 (ai_conversations existe) |
-| talo_messages (dédiée) | Agent TALO | P2 (assistant_messages existe) |
 | legal_articles | Droits locataire | P3 |
 
+**Note :** Toutes les tables attendues par les skills EXISTENT (parfois sous des noms différents). Aucune table structurelle n'est manquante.
+
 ### Routes API manquantes (top 10)
-1. /api/talo/chat (streaming dédié TALO)
-2. /api/talo/conversations
-3. /api/talo/fiscal/simulate
-4. /api/talo/fiscal/optimize
-5. /api/talo/classify
-6. /api/talo/extract
-7. /api/talo/scoring (dédié)
-8. /api/talo/scoring/compare
-9. Middleware feature gating API v1 (hasAPI check)
-10. Middleware feature gating work_orders (hasWorkOrders)
+1. /api/talo/fiscal/simulate (simulation fiscale IA)
+2. /api/talo/fiscal/optimize (optimisation fiscale IA)
+3. /api/talo/classify (classification documents IA dédiée)
+4. /api/talo/extract (extraction données IA)
+5. Middleware feature gating sur /api/work-orders/* (hasWorkOrders)
+6. Middleware feature gating sur /api/edl/* (hasEdlDigital)
+7. Middleware feature gating sur /api/providers/* (hasProvidersManagement)
+8. Middleware feature gating sur /api/bank-connect/* (hasOpenBanking)
+9. Cron libération automatique garant 6 mois
+10. Cron vérification annuelle attestation assurance locataire
 
 ### Pages UI manquantes (top 10)
-1. app/owner/talo/page.tsx (chat TALO)
-2. app/owner/talo/scoring/page.tsx
-3. app/owner/talo/scoring/[id]/page.tsx
-4. app/owner/talo/fiscal/page.tsx
-5. Composants TaloChatInterface, TaloMessageBubble, etc.
-6. Page pricing unifiée (prix cohérents)
-7. Progress bar onboarding Syndic/Agency
-8. Page droits locataire enrichie (au-delà des calculateurs)
+1. app/owner/talo/page.tsx (interface chat TALO dédiée)
+2. app/owner/talo/scoring/page.tsx (scoring dédié)
+3. app/owner/talo/fiscal/page.tsx (aide fiscale IA)
+4. Page pricing unifiée (prix cohérents entre DB et grille)
+5. Progress bar onboarding Syndic/Agency
+6. Page droits locataire enrichie (référentiel juridique)
+7. Dashboard syndic metered billing (facturation par lot)
+8. SSO configuration page (hasSSO non implémenté)
 9. Comparaison scoring candidatures côté à côté
-10. Dashboard syndic metered billing
+10. Page dédiée compteurs connectés tenant (enrichir au-delà de meters/)
