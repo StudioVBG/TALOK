@@ -25,7 +25,16 @@ export type GuarantorSituationPro =
   | "chef_entreprise"
   | "autre";
 
-export type CautionType = "simple" | "solidaire";
+export type CautionType = "simple" | "solidaire" | "visale";
+
+export type GuarantorInvitationStatus = "pending" | "accepted" | "declined" | "expired";
+
+export type LiberationReason =
+  | "fin_bail"
+  | "remplacement_locataire"
+  | "depart_colocataire_6mois"
+  | "accord_parties"
+  | "autre";
 
 export type EngagementStatus =
   | "pending_signature"
@@ -95,6 +104,7 @@ export interface GuarantorEngagement {
   montant_garanti: number | null;
   duree_engagement_mois: number | null;
   status: EngagementStatus;
+  visale_number: string | null;
   signature_request_id: string | null;
   signed_at: string | null;
   document_id: string | null;
@@ -103,6 +113,31 @@ export interface GuarantorEngagement {
   called_reason: string | null;
   released_at: string | null;
   released_reason: string | null;
+  liberated_at: string | null;
+  liberation_reason: LiberationReason | null;
+  invitation_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GuarantorInvitation {
+  id: string;
+  lease_id: string;
+  tenant_profile_id: string;
+  invited_by: string;
+  guarantor_name: string;
+  guarantor_email: string;
+  guarantor_phone: string | null;
+  guarantor_type: CautionType;
+  relationship: string | null;
+  invitation_token: string;
+  status: GuarantorInvitationStatus;
+  sent_at: string | null;
+  accepted_at: string | null;
+  declined_at: string | null;
+  declined_reason: string | null;
+  expires_at: string | null;
+  guarantor_profile_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -273,6 +308,22 @@ export const GUARANTOR_SITUATION_LABELS: Record<GuarantorSituationPro, string> =
 export const CAUTION_TYPE_LABELS: Record<CautionType, string> = {
   simple: "Caution simple",
   solidaire: "Caution solidaire",
+  visale: "Garantie Visale",
+};
+
+export const LIBERATION_REASON_LABELS: Record<LiberationReason, string> = {
+  fin_bail: "Fin du bail",
+  remplacement_locataire: "Remplacement du locataire",
+  depart_colocataire_6mois: "Départ du colocataire (6 mois)",
+  accord_parties: "Accord entre les parties",
+  autre: "Autre motif",
+};
+
+export const INVITATION_STATUS_LABELS: Record<GuarantorInvitationStatus, string> = {
+  pending: "En attente",
+  accepted: "Acceptée",
+  declined: "Refusée",
+  expired: "Expirée",
 };
 
 export const ENGAGEMENT_STATUS_LABELS: Record<EngagementStatus, string> = {
