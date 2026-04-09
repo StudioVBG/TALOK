@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS subscription_addons (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE subscription_addons ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE subscription_addons ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- RLS : les utilisateurs ne voient que leurs propres add-ons
 DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view their own addons" ON subscription_addons; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS sms_usage (
   UNIQUE(profile_id, month)
 );
 
-ALTER TABLE sms_usage ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE sms_usage ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view their own sms usage" ON sms_usage; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -252,7 +252,7 @@ CREATE TABLE IF NOT EXISTS whitelabel_configs (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE whitelabel_configs ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE whitelabel_configs ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- Unique domain index
 CREATE UNIQUE INDEX IF NOT EXISTS idx_wl_domain
@@ -339,7 +339,7 @@ CREATE TABLE IF NOT EXISTS agency_mandates (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE agency_mandates ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE agency_mandates ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- Sequential mandate numbering per agency
 CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_mandates_number
@@ -424,7 +424,7 @@ CREATE TABLE IF NOT EXISTS agency_crg (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE agency_crg ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE agency_crg ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- Prevent duplicate CRG for same mandate/period
 CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_crg_mandate_period
@@ -509,7 +509,7 @@ CREATE TABLE IF NOT EXISTS agency_mandant_accounts (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE agency_mandant_accounts ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE agency_mandant_accounts ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- One account per mandate
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mandant_accounts_mandate
@@ -680,7 +680,7 @@ CREATE INDEX IF NOT EXISTS idx_active_sessions_last_active ON active_sessions(la
 CREATE INDEX IF NOT EXISTS idx_active_sessions_not_revoked ON active_sessions(profile_id) WHERE revoked_at IS NULL;
 
 -- Enable RLS
-ALTER TABLE active_sessions ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE active_sessions ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- RLS Policies: Users can only see and manage their own sessions
 DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view own sessions" ON active_sessions; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
@@ -905,9 +905,9 @@ CREATE TRIGGER update_support_tickets_updated_at
 -- 4. RLS POLICIES
 -- ============================================
 
-ALTER TABLE admin_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY;
-ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE admin_logs ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
+DO $rls$ BEGIN ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- admin_logs: lecture/écriture pour admins uniquement
 DO $dp$ BEGIN DROP POLICY IF EXISTS "Admins can read admin_logs" ON admin_logs; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
@@ -1083,7 +1083,7 @@ CREATE INDEX IF NOT EXISTS idx_property_listings_published ON property_listings(
 CREATE INDEX IF NOT EXISTS idx_property_listings_token ON property_listings(public_url_token);
 
 -- RLS
-ALTER TABLE property_listings ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE property_listings ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- Owner peut tout faire sur ses annonces
 DO $dp$ BEGIN DROP POLICY IF EXISTS property_listings_owner_all ON property_listings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
@@ -1144,7 +1144,7 @@ CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(status);
 CREATE INDEX IF NOT EXISTS idx_applications_email ON applications(applicant_email);
 
 -- RLS
-ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE applications ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- Owner peut voir les candidatures pour ses biens
 DO $dp$ BEGIN DROP POLICY IF EXISTS applications_owner_all ON applications; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
@@ -1275,7 +1275,7 @@ CREATE TABLE IF NOT EXISTS charge_categories (
 CREATE INDEX IF NOT EXISTS idx_charge_categories_property ON charge_categories(property_id);
 CREATE INDEX IF NOT EXISTS idx_charge_categories_category ON charge_categories(category);
 
-ALTER TABLE charge_categories ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE charge_categories ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "charge_categories_owner_access" ON charge_categories; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -1339,7 +1339,7 @@ CREATE INDEX IF NOT EXISTS idx_charge_entries_category ON charge_entries(categor
 CREATE INDEX IF NOT EXISTS idx_charge_entries_fiscal_year ON charge_entries(fiscal_year);
 CREATE INDEX IF NOT EXISTS idx_charge_entries_date ON charge_entries(date);
 
-ALTER TABLE charge_entries ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE charge_entries ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "charge_entries_owner_access" ON charge_entries; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -1413,7 +1413,7 @@ CREATE INDEX IF NOT EXISTS idx_lease_charge_reg_property ON lease_charge_regular
 CREATE INDEX IF NOT EXISTS idx_lease_charge_reg_year ON lease_charge_regularizations(fiscal_year);
 CREATE INDEX IF NOT EXISTS idx_lease_charge_reg_status ON lease_charge_regularizations(status);
 
-ALTER TABLE lease_charge_regularizations ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE lease_charge_regularizations ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- Owner full access
 DO $dp$ BEGIN DROP POLICY IF EXISTS "lease_charge_reg_owner_access" ON lease_charge_regularizations; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
@@ -1527,7 +1527,7 @@ CREATE TABLE IF NOT EXISTS property_diagnostics (
 );
 
 -- RLS
-ALTER TABLE property_diagnostics ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE property_diagnostics ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- Owners can manage diagnostics on their properties
 DO $dp$ BEGIN DROP POLICY IF EXISTS "property_diagnostics_owner_select" ON property_diagnostics; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
@@ -1642,7 +1642,7 @@ CREATE TABLE IF NOT EXISTS rent_control_zones (
 );
 
 -- RLS: read-only for all authenticated users
-ALTER TABLE rent_control_zones ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE rent_control_zones ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "rent_control_zones_read" ON rent_control_zones; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -1886,7 +1886,7 @@ ADD COLUMN IF NOT EXISTS consent_data_processing_at TIMESTAMPTZ;
 -- 4. RLS POLICIES POUR INVITATIONS
 -- ============================================
 
-ALTER TABLE guarantor_invitations ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE guarantor_invitations ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- Le propriétaire qui a invité peut voir/modifier ses invitations
 DO $dp$ BEGIN DROP POLICY IF EXISTS "guarantor_invitations_owner_select" ON guarantor_invitations; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
@@ -2114,7 +2114,7 @@ CREATE INDEX IF NOT EXISTS idx_insurance_expiry_active ON insurance_policies(end
 CREATE INDEX IF NOT EXISTS idx_insurance_type ON insurance_policies(insurance_type);
 
 -- 8. RLS (drop old policies from tenant_rls if they exist, add new multi-role ones)
-ALTER TABLE insurance_policies ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE insurance_policies ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- Drop old policies safely
 DO $dp$ BEGIN DROP POLICY IF EXISTS "Tenants can view own insurance policies" ON insurance_policies; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
@@ -2281,7 +2281,7 @@ CREATE TABLE IF NOT EXISTS lease_amendments (
 );
 
 -- 2. Enable RLS
-ALTER TABLE lease_amendments ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE lease_amendments ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- 3. RLS Policies
 
@@ -2412,7 +2412,7 @@ CREATE TABLE IF NOT EXISTS consent_records (
   version TEXT NOT NULL
 );
 
-ALTER TABLE consent_records ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE consent_records ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view own consent records" ON consent_records; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -2454,7 +2454,7 @@ CREATE TABLE IF NOT EXISTS data_requests (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE data_requests ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE data_requests ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view own data requests" ON data_requests; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -2527,7 +2527,7 @@ CREATE TABLE IF NOT EXISTS seasonal_listings (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE seasonal_listings ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE seasonal_listings ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "owners_manage_own_listings" ON seasonal_listings; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -2560,7 +2560,7 @@ CREATE TABLE IF NOT EXISTS seasonal_rates (
   CONSTRAINT valid_rate_dates CHECK (end_date > start_date)
 );
 
-ALTER TABLE seasonal_rates ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE seasonal_rates ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "owners_manage_rates" ON seasonal_rates; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -2618,7 +2618,7 @@ CREATE TABLE IF NOT EXISTS reservations (
   ) WHERE (status NOT IN ('cancelled','no_show'))
 );
 
-ALTER TABLE reservations ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE reservations ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "owners_manage_reservations" ON reservations; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -2652,7 +2652,7 @@ CREATE TABLE IF NOT EXISTS seasonal_blocked_dates (
   CONSTRAINT valid_blocked_dates CHECK (end_date >= start_date)
 );
 
-ALTER TABLE seasonal_blocked_dates ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE seasonal_blocked_dates ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "owners_manage_blocked" ON seasonal_blocked_dates; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -2749,7 +2749,7 @@ CREATE OR REPLACE TRIGGER set_updated_at_security_deposits
   EXECUTE FUNCTION update_updated_at_column();
 
 -- RLS
-ALTER TABLE security_deposits ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE security_deposits ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- Politique: Le propriétaire peut gérer les dépôts de ses baux
 DO $dp$ BEGIN DROP POLICY IF EXISTS "Owner manages security_deposits" ON security_deposits; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
@@ -2907,7 +2907,7 @@ CREATE TABLE IF NOT EXISTS ticket_comments (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE ticket_comments ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE ticket_comments ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 CREATE INDEX IF NOT EXISTS idx_ticket_comments_ticket_id ON ticket_comments(ticket_id);
 CREATE INDEX IF NOT EXISTS idx_ticket_comments_author_id ON ticket_comments(author_id);
 
@@ -3052,7 +3052,7 @@ CREATE TABLE IF NOT EXISTS notification_event_preferences (
 CREATE INDEX IF NOT EXISTS idx_notif_event_prefs_profile
   ON notification_event_preferences(profile_id);
 
-ALTER TABLE notification_event_preferences ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE notification_event_preferences ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view own event preferences" ON notification_event_preferences; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 DO $dp$ BEGIN DROP POLICY IF EXISTS "Users can view own event preferences" ON notification_event_preferences; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
@@ -3165,7 +3165,7 @@ CREATE INDEX IF NOT EXISTS idx_rent_payments_stripe_pi ON rent_payments(stripe_p
 CREATE INDEX IF NOT EXISTS idx_rent_payments_created_at ON rent_payments(created_at DESC);
 
 -- RLS
-ALTER TABLE rent_payments ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE rent_payments ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- Owner can view rent payments for their properties
 DO $dp$ BEGIN DROP POLICY IF EXISTS "Owner can view rent_payments" ON rent_payments; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
@@ -3254,7 +3254,7 @@ CREATE OR REPLACE TRIGGER set_updated_at_security_deposits
   EXECUTE FUNCTION update_updated_at_column();
 
 -- RLS
-ALTER TABLE security_deposits ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE security_deposits ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 -- Owner can manage deposits for their properties
 DO $dp$ BEGIN DROP POLICY IF EXISTS "Owner can manage security_deposits" ON security_deposits; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
@@ -3498,7 +3498,7 @@ CREATE INDEX IF NOT EXISTS idx_invoices_receipt_pending
 -- 1. tenants (system multi-tenant table, no user column)
 -- Admin-only access via service role
 -- ──────────────────────────────────────────────
-ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE tenants ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "tenants_admin_only" ON tenants; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -3513,7 +3513,7 @@ END $cp$;
 -- ──────────────────────────────────────────────
 -- 2. two_factor_sessions (security-critical, has user_id)
 -- ──────────────────────────────────────────────
-ALTER TABLE two_factor_sessions ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE two_factor_sessions ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "users_own_2fa_sessions" ON two_factor_sessions; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -3527,7 +3527,7 @@ END $cp$;
 -- ──────────────────────────────────────────────
 -- 3. lease_templates (system-wide templates, read-only for users)
 -- ──────────────────────────────────────────────
-ALTER TABLE lease_templates ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE lease_templates ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "lease_templates_read_authenticated" ON lease_templates; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -3551,7 +3551,7 @@ END $cp$;
 -- ──────────────────────────────────────────────
 -- 4. idempotency_keys (API utility, no user column)
 -- ──────────────────────────────────────────────
-ALTER TABLE idempotency_keys ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE idempotency_keys ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "idempotency_keys_service_only" ON idempotency_keys; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -3566,7 +3566,7 @@ END $cp$;
 -- ──────────────────────────────────────────────
 -- 5. repair_cost_grid (reference table, read-only)
 -- ──────────────────────────────────────────────
-ALTER TABLE repair_cost_grid ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE repair_cost_grid ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "repair_cost_grid_read_authenticated" ON repair_cost_grid; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -3590,7 +3590,7 @@ END $cp$;
 -- ──────────────────────────────────────────────
 -- 6. vetuste_grid (reference table for depreciation, read-only)
 -- ──────────────────────────────────────────────
-ALTER TABLE vetuste_grid ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE vetuste_grid ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "vetuste_grid_read_authenticated" ON vetuste_grid; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
@@ -3629,7 +3629,7 @@ END $$;
 -- ──────────────────────────────────────────────
 -- 8. api_webhook_deliveries (indirect user link via webhook_id)
 -- ──────────────────────────────────────────────
-ALTER TABLE api_webhook_deliveries ENABLE ROW LEVEL SECURITY;
+DO $rls$ BEGIN ALTER TABLE api_webhook_deliveries ENABLE ROW LEVEL SECURITY; EXCEPTION WHEN undefined_table THEN NULL; END $rls$;
 
 DO $dp$ BEGIN DROP POLICY IF EXISTS "webhook_deliveries_owner_access" ON api_webhook_deliveries; EXCEPTION WHEN undefined_table THEN NULL; END $dp$;
 
