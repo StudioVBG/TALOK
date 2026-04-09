@@ -359,10 +359,9 @@ export const propertySchema = z
   ]),
   sous_usage: z.string().optional().nullable(),
   adresse_complete: z.string().min(1, "L'adresse est requise"),
-  // ✅ SOTA 2026: Validation France métropolitaine + DOM-TOM
   code_postal: z.string().regex(
-    /^(0[1-9]|[1-8]\d|9[0-5]|2[AB]|97[1-6])\d{3}$/,
-    "Code postal invalide (France métro + DOM-TOM)"
+    /^(?:(?:0[1-9]|[1-8]\d|9[0-5]|2[AB])\d{3}|97[1-6]\d{2})$/,
+    "Code postal invalide (France métro + outre-mer)"
   ),
   ville: z.string().min(1, "La ville est requise"),
   departement: z.string().min(2, "Le département doit contenir au moins 2 caractères").max(3, "Le département doit contenir au maximum 3 caractères"),
@@ -466,10 +465,11 @@ export const propertyGeneralUpdateSchema = z
     ]).optional(),
     adresse_complete: z.string().min(1).optional(),
     complement_adresse: z.string().optional().nullable(),
-    // ✅ SOTA 2026: Validation France métropolitaine + DOM-TOM
+    // Validation France métropolitaine + DROM-COM
+    // Métro: 01000-95999 (5 digits), Corse: 2A/2B, DROM: 97100-97690 (5 digits)
     code_postal: z.string().regex(
-      /^(0[1-9]|[1-8]\d|9[0-5]|2[AB]|97[1-6])\d{3}$/,
-      "Code postal invalide (France métro + DOM-TOM)"
+      /^(?:(?:0[1-9]|[1-8]\d|9[0-5]|2[AB])\d{3}|97[1-6]\d{2})$/,
+      "Code postal invalide (France métro + outre-mer)"
     ).optional(),
     ville: z.string().min(1).optional(),
     departement: z.string().min(2).max(3).optional().nullable(),
@@ -1047,7 +1047,7 @@ export type CashReceiptInput = z.infer<typeof cashReceiptInputSchema>;
  */
 export const codePostalFranceSchema = z.string()
   .regex(
-    /^(0[1-9]|[1-8]\d|9[0-5]|2[AB]|97[1-6])\d{3}$/,
+    /^(?:(?:0[1-9]|[1-8]\d|9[0-5]|2[AB])\d{3}|97[1-6]\d{2})$/,
     "Code postal invalide (format: 5 chiffres, ex: 75001, 97100)"
   )
   .refine(
