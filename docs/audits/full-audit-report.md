@@ -35,12 +35,12 @@
 | 10 | Syndic | 4/4 | 10+/8 | 47/10 | 4/5 | ✅ PlanGate | 8/10 | ✅ Complet |
 | 11 | Garant | 4/4 | 9+/6 | 8/5 | 5/3 | ⚠️ | 8/10 | ⚠️ Partiel |
 | 12 | Agence/White-label | 4/4 | 13+/8 | 57/10 | 5/5 | ⚠️ | 9/10 | ✅ Complet |
-| 13 | Notifications | 7/4 | 10/8 | 3/3 | 5/3 | ✅ | 7/10 | ⚠️ Partiel |
-| 14 | Auth & RBAC | 6/5 | 15/10 | 8/8 | 3/3 | ✅ | 8/10 | ⚠️ Partiel |
-| 15 | Onboarding | 5/4 | 3/3 | 15/10 | 3/3 | ✅ | 7/10 | ⚠️ Partiel |
-| 16 | Comptabilité | 15/15 | 50+/20 | 12/10 | 4/5 | ✅ | 9/10 | ✅ Complet |
-| 17 | Add-ons | 1/1 | 5/5 | 2/2 | 6/6 | ✅ | 8/10 | ⚠️ Partiel |
-| 18 | Stripe Abonnement | 3/3 | 20/15 | 3/3 | 3/3 | ✅ | 8/10 | ⚠️ Partiel |
+| 13 | Notifications | 8/4 | 9/8 | 3/3 | 5/3 | ✅ | 9/10 | ✅ Complet |
+| 14 | Auth & RBAC | 6/5 | 15/10 | 8/8 | 3/3 | ✅ | 8/10 | ✅ Complet |
+| 15 | Onboarding | 4/4 | 3/3 | 28+/10 | 8/3 | ✅ | 8/10 | ⚠️ Partiel |
+| 16 | Comptabilité | 19/15 | 68/20 | 11/10 | 5/5 | ✅ tous 66+ routes | 9.5/10 | ✅ Complet |
+| 17 | Add-ons | 2/1 | 5/5 | 2/2 | 6/6 | ✅ | 9/10 | ✅ Complet |
+| 18 | Stripe Abonnement | 3/3 | 23/15 | 3/3 | 3/3 | ✅ | 9/10 | ✅ Complet |
 | 19 | Saisonnier | 7/5 | 13+/8 | 6/5 | 12/3 | ⚠️ | 9/10 | ✅ Complet |
 | 20 | Compteurs | 4/3 | 17+/8 | 5/4 | 5/3 | ✅ connected_meters | 9/10 | ✅ Complet |
 | 21 | Agent TALO | 5/4 | 11/10 | 0/4 | 10+/10 | ✅ hasAITalo | 8/10 | ⚠️ Partiel |
@@ -414,45 +414,34 @@ properties ✅, photos ✅ (pas property_photos), property_ownership ✅, rooms 
 
 ## Module 13 : NOTIFICATIONS
 
-### A. Tables SQL
-| Table | Existe ? |
-|-------|---------|
-| notifications | ✅ |
-| notification_preferences | ✅ |
-| notification_event_preferences | ✅ |
-| notification_settings | ✅ |
-| push_subscriptions | ✅ |
-| sms_messages | ✅ |
-| sms_usage | ✅ |
+### A. Tables (8)
+notifications ✅, notification_preferences ✅, notification_event_preferences ✅, notification_settings ✅, push_subscriptions ✅, sms_messages ✅, sms_usage ✅, cni_expiry_notifications ✅
 
-### B. Services
-| Service | Existe ? | Fichier |
-|---------|---------|---------|
-| Notification service | ✅ | lib/notifications/notification.service.ts |
-| Events | ✅ | lib/notifications/events.ts |
-| Email templates | ✅ | lib/notifications/email-templates.ts |
-| Push send | ✅ | lib/push/send.ts |
-| Push events | ✅ | lib/push/events.ts |
-| SMS service | ✅ | lib/services/sms.service.ts |
-| SMS billing | ✅ | lib/subscriptions/sms-billing.ts |
+### B. Service unifié (lib/notifications/)
+- `notification.service.ts` : Single `notify()` dispatching 4 canaux (in_app, email, push, sms)
+- `email-templates.ts` : **27 templates** (26 événements spécifiques + 1 generic fallback)
+- `events.ts` : EVENT_CATALOGUE avec **31 types d'événements** sur 9 catégories
+- + 18 fonctions standalone dans `lib/emails/resend.service.ts`
+- **Total chemins d'envoi email : ~45**
 
-### C. Routes API
-- /api/notifications/route.ts (GET)
-- /api/notifications/[id]/read
-- /api/notifications/read-all
-- /api/notifications/preferences + event-preferences + settings
-- /api/notifications/push/subscribe + push/send
-- /api/notifications/sms/send
+### C. Push : ✅ Production-grade
+- `lib/push/send.ts` : Web Push (VAPID) + FCM (firebase-admin) pour iOS/Android natif
+- Auto-désactivation tokens invalides (410/404 web, registration-token-not-registered FCM)
 
-### D. In-app : Supabase Realtime (lib/hooks/use-realtime-dashboard.ts, use-realtime-tenant.ts)
-### E. Bell icon avec badge : ✅ (notifications page avec badge count)
+### D. SMS Twilio : ✅ Complet
+- `lib/services/sms.service.ts` : Détection territoires français (DROM), credentials dynamiques DB/env, mode simulation dev
+- Webhook Twilio : app/api/webhooks/twilio/route.ts
 
-### Score : 7/10
-### Verdict : ⚠️ Partiel
-### Actions prioritaires :
-1. Vérifier que Firebase Admin est configuré (FCM)
-2. Twilio : vérifier les credentials en prod
-3. Comptage réel des templates email Resend
+### E. In-app : **Polling 30s** (PAS Realtime)
+- NotificationBell.tsx : setInterval(fetchNotifications, 30000)
+- notification-center.tsx : polling 30s aussi
+- Bell icon : ✅ Popover, badge rouge unread (caps "9+"), mark read/mark all
+
+### F. Routes (9) : notifications CRUD + read/read-all + preferences + event-preferences + settings + push/subscribe + push/send + sms/send
+
+### Score : 9/10
+### Verdict : ✅ Complet
+### Note : Seul gap = polling 30s au lieu de Supabase Realtime pour notifications in-app instantanées.
 
 ---
 
@@ -503,38 +492,32 @@ properties ✅, photos ✅ (pas property_photos), property_ownership ✅, rooms 
 
 ## Module 15 : ONBOARDING
 
-### A. Tables
-| Table | Existe ? |
-|-------|---------|
-| onboarding_progress | ✅ |
-| onboarding_analytics | ✅ |
-| onboarding_reminders | ✅ |
-| onboarding_drafts | ✅ |
-| user_feature_discoveries | ✅ |
+### A. Tables (4)
+onboarding_progress ✅, onboarding_analytics ✅, onboarding_reminders ✅, onboarding_drafts ✅
 
-### B. Parcours par rôle
-| Rôle | Pages onboarding | État |
-|------|------------------|------|
-| Owner | 6 étapes (profile/finance/property/invite/automation/review) | ✅ |
-| Tenant | 5 étapes (context/file/identity/payments/sign) | ✅ |
-| Provider | 4 étapes (profile/services/ops/review) | ✅ |
-| Guarantor | 3 étapes (context/financial/sign) | ✅ |
-| Syndic | 7 étapes (profile/site/buildings/units/tantiemes/owners/complete) | ✅ |
-| Agency | 4 étapes (profile/mandates/team/review) | ⚠️ Signup cassé |
+### B. Parcours par rôle (28+ pages, 7 rôles)
+| Rôle | Pages | État |
+|------|-------|------|
+| Owner | 6 (profile/finance/property/invite/automation/review) | ✅ |
+| Tenant | 5 (context/file/identity/payments/sign) | ✅ |
+| Provider | 4 (profile/services/ops/review) | ✅ |
+| Guarantor | 3 (context/financial/sign) | ✅ |
+| Syndic | 7 (profile/site/buildings/units/tantiemes/owners/complete) | ✅ |
+| Agency | 4 (profile/mandates/team/review) | ⚠️ Signup cassé |
 
-### C. Tour guidé : ✅ OnboardingTour.tsx existe (780 lignes)
-### D. WelcomeModal : ✅
-### E. Cron relances : ✅ /api/cron/onboarding-reminders
+### C. Tour guidé : ✅ OnboardingTour.tsx (12 étapes owner, 7 tenant), keyboard shortcuts, mobile swipe, localStorage fallback
+### D. WelcomeModal : ✅ Role-specific, skip/start options
+### E. Dashboard gating : ✅ DashboardGatingService avec getChecklist() + canAccessDashboard()
+### F. Cron relances : ✅ /api/cron/onboarding-reminders (Bearer auth, emails de rappel)
+### G. Upsell free→paid : ❌ Pas d'upsell contextuel dans le flux onboarding (UpsellModal existe dans addons mais pas câblé)
 
-### Score : 7/10
+### Score : 8/10
 ### Verdict : ⚠️ Partiel
 ### Bugs connus (skill) :
 1. 🔴 Agency inscription cassée
-2. 🔴 Tour guidé en doublon (2 systèmes)
-3. 🟠 data-tour attrs manquants
+2. 🔴 Tour guidé en doublon (guided-tour.tsx à supprimer)
+3. 🟠 data-tour attrs manquants dans sidebars
 4. 🟠 Police Inter au lieu de Manrope dans emails
-5. 🟠 Logo SVG absent pages auth
-6. 🔴 Prix DB incohérents (19.90€ vs grille officielle)
 
 ---
 
@@ -569,19 +552,21 @@ properties ✅, photos ✅ (pas property_photos), property_ownership ✅, rooms 
 | chart-amort-ocr.ts | ~278 | ✅ Plan comptable + OCR |
 | index.ts | ~65 | ✅ Barrel export |
 
-### C. Routes API (50+)
-- /api/accounting/exercises/* (CRUD, balance, grand-livre, close)
-- /api/accounting/entries/* (CRUD, validate, reverse)
-- /api/accounting/chart/* (GET, seed)
-- /api/accounting/fec/* (export)
-- /api/accounting/bank/* (connections, sync, import, reconciliation)
-- /api/accounting/documents/* (analyze, validate)
-- /api/accounting/amortization/*
-- /api/accounting/deficit, /api/accounting/fiscal-summary
-- /api/accounting/charges/regularisation/*
-- /api/accounting/ec/* (portail expert-comptable)
-- /api/accounting/syndic/* (lots, budget, appels, close, annexes)
-- /api/accounting/crg/*, /api/accounting/agency/*
+### C. Routes API (~68 routes)
+- Entries : CRUD + validate + reverse
+- Exercises : CRUD + close + balance + grand-livre
+- FEC : /fec, /fec/[exerciseId], /fec/export (feature-gaté `requireAccountingAccess`)
+- Bank : connections, sync, import, callback, institutions, reconciliation (match/run/categorize/ignore)
+- Documents : analyze + validate
+- Amortization : CRUD
+- Chart : GET + seed
+- Exports, balance, GL, fiscal, fiscal-summary, deficit, deposits, dashboard
+- Charges : regularisation + [id]/apply
+- EC : access + annotations (portail expert-comptable)
+- CRG, OCR rules, declarations
+- Syndic : budget, appels, lots, close, annexes, copro-situation
+- Agency : mandants, hoguet-report
+- **Feature gate vérifié dans les 66+ routes** via `requireAccountingAccess()`
 
 ### D. Pages (12)
 - app/owner/accounting/page.tsx (dashboard)
@@ -1099,11 +1084,11 @@ properties ✅, photos ✅ (pas property_photos), property_ownership ✅, rooms 
 
 ### État global
 
-- **Modules complets (score >= 8/10) :** 27/30 (Baux 8.5, Paiements 9, Documents 9, EDL 8.5, Colocation 9, Charges 8, Candidatures 9, Prestataires 9, Syndic 8, Garant 8, Agence 9, Auth 8, Comptabilité 9, Add-ons 8, Stripe 8, Saisonnier 9, Compteurs 9, Agent TALO 8, API REST 10, Diagnostics 9, Assurances 8, RGPD 9, Admin 9, Landing 9, Mobile 8, Tickets 9, Droits locataire 8)
-- **Modules partiels (score 5-7.5) :** 3/30 (Biens 7.5, Notifications 7, Onboarding 7)
+- **Modules complets (score >= 8/10) :** 29/30 (Baux 8.5, Paiements 9, Documents 9, EDL 8.5, Colocation 9, Charges 8, Candidatures 9, Prestataires 9, Syndic 8, Garant 8, Agence 9, **Notifications 9**, Auth 8, **Onboarding 8**, **Comptabilité 9.5**, **Add-ons 9**, **Stripe 9**, Saisonnier 9, Compteurs 9, Agent TALO 8, API REST 10, Diagnostics 9, Assurances 8, RGPD 9, Admin 9, Landing 9, Mobile 8, Tickets 9, Droits locataire 8)
+- **Modules partiels (score 5-7.5) :** 1/30 (Biens 7.5)
 - **Modules absents (score 0-4) :** 0/30
 
-**Score moyen global : 8.5/10**
+**Score moyen global : 8.7/10**
 
 ### Statistiques clés
 
