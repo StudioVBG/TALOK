@@ -3374,7 +3374,7 @@ WITH duplicates AS (
 )
 UPDATE properties
 SET deleted_at = NOW(),
-    deleted_by = 'system-dedup-migration'
+    deleted_by = NULL -- was 'system-dedup-migration' but column is UUID
 WHERE id IN (
   SELECT id FROM duplicates WHERE rn > 1
 );
