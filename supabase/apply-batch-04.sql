@@ -4008,6 +4008,10 @@ ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_statut_check;
 DO $ac$ BEGIN ALTER TABLE invoices ADD CONSTRAINT invoices_statut_check
   CHECK (statut IN ('draft', 'sent', 'paid', 'partial', 'overdue', 'unpaid', 'cancelled', 'late')); EXCEPTION WHEN duplicate_object THEN NULL; END $ac$;
 
+-- Ensure columns exist before creating indexes
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS date_echeance DATE;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS period_start DATE;
+
 -- Index pour la recherche de factures en retard
 CREATE INDEX IF NOT EXISTS idx_invoices_date_echeance ON invoices(date_echeance) WHERE statut IN ('sent', 'late', 'overdue');
 CREATE INDEX IF NOT EXISTS idx_invoices_period_start ON invoices(period_start);
