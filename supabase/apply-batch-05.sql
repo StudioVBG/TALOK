@@ -4597,7 +4597,7 @@ AND receipt_generated IS NOT TRUE;
 ALTER TABLE properties
   DROP CONSTRAINT IF EXISTS properties_type_check;
 
-ALTER TABLE properties
+DO $ac$ BEGIN ALTER TABLE properties
   ADD CONSTRAINT properties_type_check
   CHECK (type IN (
     'appartement',
@@ -4614,6 +4614,6 @@ ALTER TABLE properties
     'immeuble',
     'terrain_agricole',
     'exploitation_agricole'
-  ));
+  )); EXCEPTION WHEN duplicate_object THEN NULL; END $ac$;
 
 

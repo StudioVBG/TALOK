@@ -2641,9 +2641,9 @@ CREATE TRIGGER update_sepa_mandates_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Link tenant_payment_methods to sepa_mandates
-ALTER TABLE tenant_payment_methods
+DO $ac$ BEGIN ALTER TABLE tenant_payment_methods
   ADD CONSTRAINT fk_tpm_sepa_mandate
-  FOREIGN KEY (sepa_mandate_id) REFERENCES sepa_mandates(id) ON DELETE SET NULL;
+  FOREIGN KEY (sepa_mandate_id) REFERENCES sepa_mandates(id) ON DELETE SET NULL; EXCEPTION WHEN duplicate_object THEN NULL; END $ac$;
 
 
 -- 3. TABLE : payment_schedules (échéanciers de prélèvement)
@@ -3595,7 +3595,7 @@ END $cp$;
 -- ============================================================================
 
 ALTER TABLE legal_entities DROP CONSTRAINT IF EXISTS legal_entities_entity_type_check;
-ALTER TABLE legal_entities ADD CONSTRAINT legal_entities_entity_type_check CHECK (entity_type IN (
+DO $ac$ BEGIN ALTER TABLE legal_entities ADD CONSTRAINT legal_entities_entity_type_check CHECK (entity_type IN (
   'particulier',
   'sci_ir',
   'sci_is',
@@ -3613,7 +3613,7 @@ ALTER TABLE legal_entities ADD CONSTRAINT legal_entities_entity_type_check CHECK
   'holding',
   'micro_entrepreneur',
   'association'
-));
+)); EXCEPTION WHEN duplicate_object THEN NULL; END $ac$;
 
 
 -- === [69/169] 20260304000000_fix_invoice_generation_jour_paiement.sql ===
@@ -3997,8 +3997,8 @@ ALTER TABLE invoices
 
 -- Étendre les statuts possibles des invoices
 ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_statut_check;
-ALTER TABLE invoices ADD CONSTRAINT invoices_statut_check
-  CHECK (statut IN ('draft', 'sent', 'paid', 'partial', 'overdue', 'unpaid', 'cancelled', 'late'));
+DO $ac$ BEGIN ALTER TABLE invoices ADD CONSTRAINT invoices_statut_check
+  CHECK (statut IN ('draft', 'sent', 'paid', 'partial', 'overdue', 'unpaid', 'cancelled', 'late')); EXCEPTION WHEN duplicate_object THEN NULL; END $ac$;
 
 -- Index pour la recherche de factures en retard
 CREATE INDEX IF NOT EXISTS idx_invoices_date_echeance ON invoices(date_echeance) WHERE statut IN ('sent', 'late', 'overdue');
@@ -4013,8 +4013,8 @@ ALTER TABLE payments
 
 -- Étendre les statuts possibles des payments
 ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_statut_check;
-ALTER TABLE payments ADD CONSTRAINT payments_statut_check
-  CHECK (statut IN ('pending', 'succeeded', 'failed', 'refunded'));
+DO $ac$ BEGIN ALTER TABLE payments ADD CONSTRAINT payments_statut_check
+  CHECK (statut IN ('pending', 'succeeded', 'failed', 'refunded')); EXCEPTION WHEN duplicate_object THEN NULL; END $ac$;
 
 -- =====================
 -- 4. Table payment_reminders
