@@ -4010,7 +4010,7 @@ CREATE POLICY "site_content_admin_all" ON site_content
   USING (public.user_role() = 'admin');
 
 -- Index pour les requêtes fréquentes
-CREATE INDEX idx_site_content_slug ON site_content(page_slug, section_key)
+CREATE INDEX IF NOT EXISTS idx_site_content_slug ON site_content(page_slug, section_key)
   WHERE is_published = true;
 
 -- Commentaire
