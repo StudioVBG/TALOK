@@ -1,6 +1,23 @@
 -- Batch 1 — migrations 1 a 8 sur 169
 -- 8 migrations
 
+-- === [HOTFIX] Fix trigger auto_verify_tenant_on_signup referencing non-existent i.status ===
+CREATE OR REPLACE FUNCTION auto_verify_tenant_on_signup()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.kyc_status IS NULL OR NEW.kyc_status = 'pending' THEN
+    IF EXISTS (
+      SELECT 1 FROM invitations i
+      WHERE LOWER(i.email) = LOWER((SELECT email FROM auth.users WHERE id = (SELECT user_id FROM profiles WHERE id = NEW.profile_id)))
+      AND i.used_at IS NOT NULL
+    ) THEN
+      NEW.kyc_status := 'verified';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- === [1/169] 20260208100000_fix_data_storage_audit.sql ===
 -- Migration: Fix data storage issues found during route audit (2026-02-08)
 --

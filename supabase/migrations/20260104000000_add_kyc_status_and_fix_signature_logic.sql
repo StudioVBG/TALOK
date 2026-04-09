@@ -55,7 +55,7 @@ BEGIN
     IF EXISTS (
       SELECT 1 FROM invitations i
       WHERE LOWER(i.email) = LOWER((SELECT email FROM auth.users WHERE id = (SELECT user_id FROM profiles WHERE id = NEW.profile_id)))
-      AND i.status = 'accepted'
+      AND i.used_at IS NOT NULL
     ) THEN
       NEW.kyc_status := 'verified';
     END IF;
