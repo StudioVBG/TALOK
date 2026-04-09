@@ -1,6 +1,9 @@
 -- Batch 7 — migrations 152 a 169 sur 169
 -- 18 migrations
 
+-- HOTFIX: Ensure subscription_addons has profile_id (may exist from older schema without it)
+ALTER TABLE subscription_addons ADD COLUMN IF NOT EXISTS profile_id UUID REFERENCES profiles(id);
+
 -- === [152/169] 20260408120000_subscription_addons.sql ===
 -- ============================================================
 -- Migration: subscription_addons & sms_usage
