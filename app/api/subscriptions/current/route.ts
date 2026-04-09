@@ -30,8 +30,8 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    // Récupérer l'abonnement avec le plan
-    const { data: subscription, error: subError } = await supabase
+    // Récupérer l'abonnement avec le plan via service role (évite la récursion RLS 42P17 sur subscriptions)
+    const { data: subscription, error: subError } = await serviceClient
       .from("subscriptions")
       .select(`
         *,
@@ -48,13 +48,13 @@ export async function GET(request: Request) {
     let addonSubscriptions: any[] = [];
     if (subscription) {
       if (!subscription.plan && (subscription.plan_slug || subscription.plan_id)) {
-        const resolvedPlan = await resolvePlanIdentifiers(supabase as any, {
+        const resolvedPlan = await resolvePlanIdentifiers(serviceClient as any, {
           planSlug: (subscription as { plan_slug?: string | null }).plan_slug ?? null,
           planId: (subscription as { plan_id?: string | null }).plan_id ?? null,
         });
 
         if (resolvedPlan.id) {
-          const { data: planRow } = await supabase
+          const { data: planRow } = await serviceClient
             .from("subscription_plans")
             .select("*")
             .eq("id", resolvedPlan.id)
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
         }
       }
 
-      const { data: addons } = await supabase
+      const { data: addons } = await serviceClient
         .from("subscription_addon_subscriptions")
         .select(`
           *,

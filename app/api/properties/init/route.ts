@@ -53,15 +53,16 @@ export async function POST(request: Request) {
     if (rateLimitResponse) return rateLimitResponse;
 
     const supabase = await createClient();
-    
+
     // 1. Vérifier l'authentification
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
-    // 2. Récupérer le profil propriétaire
-    const { data: profile, error: profileError } = await supabase
+    // 2. Récupérer le profil propriétaire via service role (évite la récursion RLS 42P17 sur profiles)
+    const serviceClient = createServiceRoleClient();
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -121,8 +122,7 @@ export async function POST(request: Request) {
     // On utilise des valeurs par défaut sûres pour éviter les erreurs de contraintes
     const departement = getDepartementFromCP(cp);
     
-    // Utiliser le service role client pour l'insert (cohérent avec /api/properties)
-    const serviceClient = createServiceRoleClient();
+    // Réutiliser le service role client pour l'insert (cohérent avec /api/properties)
     const { data: defaultEntity } = await serviceClient
       .from("legal_entities")
       .select("id")
