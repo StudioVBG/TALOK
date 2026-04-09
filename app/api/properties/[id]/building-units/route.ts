@@ -50,6 +50,7 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let rawBody: unknown;
   try {
     const rateLimitResponse = applyRateLimit(request, "property");
     if (rateLimitResponse) return rateLimitResponse;
@@ -84,6 +85,7 @@ export async function POST(
     }
 
     const body = await request.json();
+    rawBody = body;
     const parsed = bodySchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
@@ -280,7 +282,9 @@ export async function POST(
       lot_property_ids: unitRows.map((r) => r.property_id),
     });
   } catch (e) {
-    console.error("[building-units]", e);
+    const errObj = e instanceof Error ? { message: e.message, stack: e.stack, name: e.name } : e;
+    console.error("[building-units] Full error:", JSON.stringify(errObj, null, 2));
+    console.error("[building-units] Payload received:", JSON.stringify(rawBody, null, 2));
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
 }
