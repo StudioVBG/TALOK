@@ -75,6 +75,7 @@ export async function POST(request: Request) {
     // 2b. Vérifier les limites d'abonnement
     const limitCheck = await withSubscriptionLimit(profile.id, "properties");
     if (!limitCheck.allowed) {
+      console.error(`[properties/init] SUBSCRIPTION_LIMIT: profile.id=${profile.id}, user.id=${user.id}, plan=${limitCheck.plan}, current=${limitCheck.current}, max=${limitCheck.max}`);
       return NextResponse.json({
         error: "SUBSCRIPTION_LIMIT",
         message: limitCheck.message,
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
           max: limitCheck.max,
           remaining: limitCheck.remaining,
           plan: limitCheck.plan,
+          debug_profile_id: profile.id,
         },
         upgrade_url: "/settings/billing",
       }, { status: 403 });
