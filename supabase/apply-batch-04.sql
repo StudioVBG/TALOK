@@ -3280,6 +3280,14 @@ CREATE TRIGGER trg_log_entity_changes
 -- 4. CONTRAINTE UNIQUE sur SIRET (actif uniquement)
 -- ============================================================================
 -- Un même SIRET ne peut être utilisé que par une seule entité active
+-- Nettoyer les SIRET dupliqués (garder le plus récent, nullifier les autres)
+UPDATE legal_entities SET siret = NULL
+WHERE id NOT IN (
+  SELECT DISTINCT ON (siret) id FROM legal_entities
+  WHERE siret IS NOT NULL AND is_active = true
+  ORDER BY siret, created_at DESC
+)
+AND siret IS NOT NULL AND is_active = true;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_legal_entities_siret_unique
   ON legal_entities (siret)
