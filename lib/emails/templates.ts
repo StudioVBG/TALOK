@@ -249,7 +249,7 @@ export function baseLayout(content: string, preheader?: string): string {
     <div class="card">
       <div class="header">
         <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr'}" class="logo">
-          🏠 Talok
+          <img src="https://talok.fr/images/talok-logo-horizontal.png" alt="TALOK" style="height: 40px; width: auto;" />
         </a>
       </div>
       ${content}

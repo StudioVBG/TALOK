@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Building2 } from "lucide-react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface TalokLogoProps {
@@ -15,9 +15,9 @@ interface TalokLogoProps {
 }
 
 const SIZE_MAP = {
-  sm: { icon: "h-6 w-6", text: "text-base", iconInner: "h-3.5 w-3.5" },
-  md: { icon: "h-8 w-8", text: "text-lg", iconInner: "h-5 w-5" },
-  lg: { icon: "h-10 w-10", text: "text-xl", iconInner: "h-6 w-6" },
+  sm: { img: "h-7 w-7", text: "text-base" },
+  md: { img: "h-9 w-9", text: "text-lg" },
+  lg: { img: "h-12 w-12", text: "text-xl" },
 };
 
 export function TalokLogo({ variant = "dark", size = "md", noLink = false, className }: TalokLogoProps) {
@@ -25,14 +25,13 @@ export function TalokLogo({ variant = "dark", size = "md", noLink = false, class
 
   const content = (
     <span className={cn("inline-flex items-center gap-2", className)}>
-      <span
-        className={cn(
-          "rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center",
-          s.icon
-        )}
-      >
-        <Building2 className={cn("text-white", s.iconInner)} />
-      </span>
+      <Image
+        src="/images/talok-icon.png"
+        alt="TALOK"
+        width={48}
+        height={48}
+        className={cn("object-contain rounded-lg", s.img)}
+      />
       <span
         className={cn(
           "font-bold tracking-tight",
@@ -40,7 +39,7 @@ export function TalokLogo({ variant = "dark", size = "md", noLink = false, class
           variant === "dark" ? "text-white" : "text-foreground"
         )}
       >
-        Talok
+        TALOK
       </span>
     </span>
   );

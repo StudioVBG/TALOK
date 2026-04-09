@@ -158,12 +158,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icons/icon-192x192.svg", type: "image/svg+xml" },
-      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/images/talok-icon.png", sizes: "192x192", type: "image/png" },
     ],
     apple: [
-      { url: "/icons/icon-152x152.svg", sizes: "152x152", type: "image/svg+xml" },
-      { url: "/icons/icon-192x192.svg", sizes: "192x192", type: "image/svg+xml" },
+      { url: "/images/talok-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
   manifest: "/manifest.json",

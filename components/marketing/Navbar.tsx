@@ -29,9 +29,12 @@ const solutionsLinks = [
 
 export function MarketingNavbar() {
   const { user } = useAuth()
+  const [mounted, setMounted] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
+
+  useEffect(() => setMounted(true), [])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -44,6 +47,8 @@ export function MarketingNavbar() {
     else document.body.style.overflow = ""
     return () => { document.body.style.overflow = "" }
   }, [mobileOpen])
+
+  const isLoggedIn = mounted && !!user
 
   return (
     <nav
@@ -89,7 +94,7 @@ export function MarketingNavbar() {
 
         {/* Desktop CTAs */}
         <div className="hidden items-center gap-3 lg:flex">
-          {user ? (
+          {isLoggedIn ? (
             <Link
               href="/dashboard"
               className="flex items-center gap-2 rounded-lg border border-[#2563EB]/30 px-4 py-2 text-sm font-medium text-[#2563EB] transition-colors hover:bg-[#2563EB]/5"
@@ -117,7 +122,7 @@ export function MarketingNavbar() {
 
         {/* Mobile: CTA + hamburger */}
         <div className="flex items-center gap-2 lg:hidden">
-          {user ? (
+          {isLoggedIn ? (
             <Link
               href="/dashboard"
               className="rounded-lg border border-[#2563EB]/30 px-3 py-1.5 text-xs font-medium text-[#2563EB]"
@@ -168,7 +173,7 @@ export function MarketingNavbar() {
                 <MobileLink href="/faq" onClick={() => setMobileOpen(false)}>FAQ</MobileLink>
               </div>
               <div className="border-t border-slate-100 pt-4">
-                {user ? (
+                {isLoggedIn ? (
                   <Link
                     href="/dashboard"
                     onClick={() => setMobileOpen(false)}

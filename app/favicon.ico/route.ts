@@ -4,24 +4,21 @@ import path from "path";
 
 export async function GET() {
   try {
-    // Lire le fichier icon.svg
-    const iconPath = path.join(process.cwd(), "app", "icon.svg");
-    const iconSvg = fs.readFileSync(iconPath, "utf-8");
+    const iconPath = path.join(process.cwd(), "public", "favicon-32.png");
+    const iconBuffer = fs.readFileSync(iconPath);
 
-    // Retourner le SVG avec le bon Content-Type
-    // Note: Certains navigateurs acceptent SVG comme favicon
-    return new NextResponse(iconSvg, {
+    return new NextResponse(iconBuffer, {
       headers: {
-        "Content-Type": "image/svg+xml",
+        "Content-Type": "image/png",
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });
-  } catch (error) {
-    // Si erreur, retourner un SVG minimal
-    const minimalSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#3B82F6"/></svg>`;
-    return new NextResponse(minimalSvg, {
+  } catch {
+    const iconPath = path.join(process.cwd(), "public", "images", "talok-icon.png");
+    const iconBuffer = fs.readFileSync(iconPath);
+    return new NextResponse(iconBuffer, {
       headers: {
-        "Content-Type": "image/svg+xml",
+        "Content-Type": "image/png",
       },
     });
   }

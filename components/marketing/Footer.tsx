@@ -50,11 +50,7 @@ export function MarketingFooter() {
           {/* Brand column */}
           <div className="lg:col-span-1">
             <Link href="/" className="mb-4 flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB]">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 21V9l9-7 9 7v12a1 1 0 01-1 1h-5v-7H9v7H4a1 1 0 01-1-1z" fill="white" />
-                </svg>
-              </div>
+              <img src="/images/talok-icon.png" alt="TALOK" className="h-8 w-8 rounded-lg object-contain" />
               <span className="text-lg font-bold text-white font-display">TALOK</span>
             </Link>
             <p className="text-sm leading-relaxed text-slate-400">
