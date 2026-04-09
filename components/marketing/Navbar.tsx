@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   FileText, CreditCard, ClipboardCheck, FolderOpen, Wrench, PieChart,
@@ -55,12 +56,14 @@ export function MarketingNavbar() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB]">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M3 21V9l9-7 9 7v12a1 1 0 01-1 1h-5v-7H9v7H4a1 1 0 01-1-1z" fill="white" />
-            </svg>
-          </div>
-          <span className="text-lg font-bold text-[#1B2A6B] font-display">TALOK</span>
+          <Image
+            src="/images/talok-logo-horizontal.png"
+            alt="TALOK"
+            width={160}
+            height={64}
+            className="h-14 w-auto"
+            priority
+          />
         </Link>
 
         {/* Desktop links */}

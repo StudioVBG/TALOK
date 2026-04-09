@@ -1090,7 +1090,7 @@ export function LeaseWizard({ properties, initialPropertyId }: LeaseWizardProps)
                     </div>
                   )}
 
-                  {/* P2-8: Encadrement des loyers + P2-5: DOM-TOM */}
+                  {/* P2-8: Encadrement des loyers + P2-5: DROM-COM */}
                   {selectedProperty && !isDpeBlocked && (
                     <div className="mt-6 space-y-3">
                       <RentControlAlert

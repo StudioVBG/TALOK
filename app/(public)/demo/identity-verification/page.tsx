@@ -19,7 +19,7 @@ export default function IdentityVerificationDemoPage() {
     });
     // En démo, revenir à l'écran d'intro après 3 secondes
     setTimeout(() => {
-      window.location.reload();
+      router.refresh();
     }, 3000);
   };
 

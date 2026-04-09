@@ -90,7 +90,10 @@ export function MarketingFooter() {
             © 2026 Talok · Né en Martinique 🇲🇶
           </p>
           <p className="mt-1">
-            Données hébergées en France · support@talok.fr
+            Données hébergées en France ·{" "}
+            <a href="mailto:support@talok.fr" className="hover:text-slate-300 transition-colors">
+              support@talok.fr
+            </a>
           </p>
         </div>
       </div>

@@ -34,13 +34,13 @@ const TESTIMONIALS = [
     highlight: "Support réactif",
   },
   {
-    quote: "Enfin un logiciel qui comprend nos réalités ! Le support répond à mes heures, les documents sont adaptés au DOM-TOM.",
+    quote: "Enfin un logiciel qui comprend nos réalités ! Le support répond à mes heures, les documents sont adaptés à l\u2019outre-mer.",
     author: "Corine D.",
     location: "Pointe-à-Pitre, Guadeloupe",
     role: "SCI familiale · 12 biens",
     avatar: "CD",
     rating: 5,
-    highlight: "Adapté aux DOM-TOM",
+    highlight: "Adapté à l\u2019outre-mer",
   },
   {
     quote: "Avant Talok, on passait des heures à s'envoyer des Excel entre associés. Maintenant, tout le monde a accès aux mêmes informations.",

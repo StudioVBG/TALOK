@@ -1201,6 +1201,50 @@ export async function POST(request: NextRequest) {
           );
 
         }
+
+        // Vérifier si cette invoice Stripe est aussi liée à une facture locative
+        // (cas SEPA récurrent / subscriptions liées à un bail)
+        const rentalInvoiceId = invoice.metadata?.invoice_id;
+        if (rentalInvoiceId) {
+          const paidAt = invoice.status_transitions?.paid_at
+            ? new Date(invoice.status_transitions.paid_at * 1000).toISOString()
+            : new Date().toISOString();
+
+          const paymentResult = await upsertPaymentAttempt(supabase, {
+            invoiceId: rentalInvoiceId,
+            amount: (invoice.amount_paid || 0) / 100,
+            method: "sepa_debit",
+            providerRef: invoice.id,
+            status: "succeeded",
+            paidAt,
+          });
+
+          if (paymentResult.paymentId) {
+            await supabase
+              .from("invoices")
+              .update({
+                stripe_invoice_id: invoice.id,
+                stripe_payment_intent_id: ((invoice as any).payment_intent as string) || null,
+              })
+              .eq("id", rentalInvoiceId);
+
+            const settlement = await syncInvoiceStatusFromPayments(
+              supabase as any,
+              rentalInvoiceId,
+              paidAt
+            );
+
+            if (settlement?.isSettled && paymentResult.newlySucceeded) {
+              await processReceiptGeneration(
+                supabase,
+                rentalInvoiceId,
+                paymentResult.paymentId,
+                (invoice.amount_paid || 0) / 100
+              );
+            }
+          }
+        }
+
         break;
       }
 

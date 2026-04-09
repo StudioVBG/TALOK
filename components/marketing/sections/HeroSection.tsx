@@ -22,10 +22,6 @@ const reassurances = [
 
 /* ─── Split Text component ─── */
 function SplitHeading() {
-  const line1 = ["TALOK", "—"]
-  const le = "LE"
-  const line2 = ["Logiciel", "de", "Gestion", "Locative"]
-
   return (
     <motion.h1
       variants={{ hidden: {}, visible: { transition: { staggerChildren: 0.06 } } }}
@@ -33,24 +29,23 @@ function SplitHeading() {
       animate="visible"
       className="mt-6 font-display text-[40px] font-extrabold leading-[1.08] tracking-tight text-[#1B2A6B] sm:text-[48px] md:text-[52px] lg:text-[56px]"
     >
-      {line1.map((word, i) => (
+      <motion.span
+        variants={blurWord(0)}
+        className="inline-block bg-gradient-to-r from-[#2563EB] via-[#60A5FA] to-[#2563EB] bg-[length:200%_auto] bg-clip-text text-transparent"
+        animate={{ backgroundPosition: ["0% center", "200% center"] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+      >
+        TALOK
+      </motion.span>
+      <br />
+      {["Le", "logiciel", "de"].map((word, i) => (
         <motion.span key={i} variants={blurWord(0)} className="mr-[0.3em] inline-block">
           {word}
         </motion.span>
       ))}
-      {/* Animated gradient "LE" */}
-      <motion.span
-        variants={blurWord(0)}
-        className="mr-[0.3em] inline-block bg-gradient-to-r from-[#2563EB] via-[#60A5FA] to-[#2563EB] bg-[length:200%_auto] bg-clip-text text-transparent"
-        style={{ fontSize: "1.2em" }}
-        animate={{ backgroundPosition: ["0% center", "200% center"] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-      >
-        {le}
-      </motion.span>
       <br className="hidden sm:block" />
-      {line2.map((word, i) => (
-        <motion.span key={i} variants={blurWord(0)} className="mr-[0.3em] inline-block">
+      {["Gestion", "Locative"].map((word, i) => (
+        <motion.span key={`l2-${i}`} variants={blurWord(0)} className="mr-[0.3em] inline-block">
           {word}
         </motion.span>
       ))}
@@ -113,13 +108,6 @@ export function HeroSection() {
             initial="hidden"
             animate="visible"
           >
-            {/* Badge */}
-            <motion.div variants={blurUp}>
-              <span className="inline-flex items-center gap-2 rounded-full bg-card px-4 py-1.5 text-sm font-medium text-[#1B2A6B] shadow-sm ring-1 ring-slate-100">
-                🇲🇶 Né en Martinique · Pour toute la France
-              </span>
-            </motion.div>
-
             {/* H1 — Split text with blur-in per word */}
             <SplitHeading />
 

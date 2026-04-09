@@ -154,7 +154,7 @@ export const TAUX_TVA = {
   SUPER_REDUIT: 0.021, // 2.1% - Taux super réduit
   EXONERE: 0,          // 0% - Exonéré
 
-  // DOM-TOM
+  // DROM-COM
   GUADELOUPE: 0.085,   // 8.5%
   MARTINIQUE: 0.085,   // 8.5%
   REUNION: 0.085,      // 8.5%

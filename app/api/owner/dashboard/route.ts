@@ -36,9 +36,8 @@ export async function GET(request: Request) {
 
     const ownerId = profile.id;
 
-    // Récupérer l'entityId depuis les query params pour filtrer par entité
-    const url = new URL(request.url);
-    const entityId = url.searchParams.get("entityId");
+    const { searchParams } = new URL(request.url);
+    const entityId = searchParams.get("entityId");
 
     // 1. Récupérer les propriétés (inclure type_bien pour support V3)
     // Utiliser serviceClient pour bypasser RLS — la sécurité est assurée par le filtre owner_id vérifié en amont
@@ -48,7 +47,6 @@ export async function GET(request: Request) {
       .eq("owner_id", ownerId)
       .is("deleted_at", null);
 
-    // Filtrer par entité si spécifié
     if (entityId && entityId !== "all") {
       if (entityId === "personal") {
         propertiesQuery = propertiesQuery.is("legal_entity_id", null);

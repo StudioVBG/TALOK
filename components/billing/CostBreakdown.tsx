@@ -96,7 +96,7 @@ export function CostBreakdown({
 
         {isDOM && (
           <CostLine
-            label={`Remise DOM-TOM -20% (${getTvaLabel(territoire)})`}
+            label={`Remise outre-mer -20% (${getTvaLabel(territoire)})`}
             amount={domDiscount}
             prefix="-"
             accent

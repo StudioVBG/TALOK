@@ -11,6 +11,16 @@ export default function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4">
       <div className="text-center max-w-md">
+        {/* Logo */}
+        <Link href="/" className="inline-flex items-center gap-2 mb-8">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB]">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M3 21V9l9-7 9 7v12a1 1 0 01-1 1h-5v-7H9v7H4a1 1 0 01-1-1z" fill="white" />
+            </svg>
+          </div>
+          <span className="text-lg font-bold text-slate-900 dark:text-white font-display">TALOK</span>
+        </Link>
+
         {/* 404 Illustration */}
         <div className="mb-8">
           <div className="relative">

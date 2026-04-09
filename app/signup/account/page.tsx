@@ -397,6 +397,7 @@ function AccountCreationContent() {
               <Label htmlFor="prenom">Prénom</Label>
               <Input
                 id="prenom"
+                autoComplete="given-name"
                 placeholder="Prénom"
                 value={draft.formData.prenom}
                 onChange={(e) => updateForm("prenom", e.target.value)}
@@ -409,6 +410,7 @@ function AccountCreationContent() {
               <Label htmlFor="nom">Nom</Label>
               <Input
                 id="nom"
+                autoComplete="family-name"
                 placeholder="Nom"
                 value={draft.formData.nom}
                 onChange={(e) => updateForm("nom", e.target.value)}
@@ -444,6 +446,7 @@ function AccountCreationContent() {
                   <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                   <Input
                     id="telephone"
+                    autoComplete="tel"
                     placeholder="0696614049"
                     value={draft.formData.telephone}
                     onChange={(e) => updateForm("telephone", e.target.value)}
@@ -476,6 +479,7 @@ function AccountCreationContent() {
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="vous@email.com"
                   value={draft.formData.email}
                   onChange={(e) => updateForm("email", e.target.value)}
@@ -531,6 +535,7 @@ function AccountCreationContent() {
                     <Lock className="absolute left-3 top-3 z-10 h-4 w-4 text-slate-400" />
                     <PasswordInput
                       id="password"
+                      autoComplete="new-password"
                       placeholder="Minimum 12 caractères"
                       value={draft.formData.password}
                       onChange={(e) => updateForm("password", e.target.value)}
@@ -548,6 +553,7 @@ function AccountCreationContent() {
                   <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
                   <PasswordInput
                     id="confirmPassword"
+                    autoComplete="new-password"
                     placeholder="Répétez le mot de passe"
                     value={draft.formData.confirmPassword}
                     onChange={(e) => updateForm("confirmPassword", e.target.value)}
