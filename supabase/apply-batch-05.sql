@@ -2330,8 +2330,8 @@ DROP TRIGGER IF EXISTS trg_create_owner_subscription ON profiles;
 DROP TRIGGER IF EXISTS trg_create_owner_subscription ON profiles;
 CREATE TRIGGER trg_create_owner_subscription
   AFTER INSERT OR UPDATE OF role ON profiles
-  WHEN (NEW.role = 'owner')
   FOR EACH ROW
+  WHEN (NEW.role = 'owner')
   EXECUTE FUNCTION create_owner_subscription();
 
 COMMENT ON FUNCTION create_owner_subscription() IS
