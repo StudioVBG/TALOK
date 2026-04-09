@@ -1,5 +1,5 @@
 -- Batch 5 — migrations 69 a 105 sur 169
--- 37 migrations, chaque migration wrappee dans DO/EXCEPTION
+-- 37 migrations
 
 -- === [69/169] 20260304000000_fix_invoice_generation_jour_paiement.sql ===
 DO $wrapper$ BEGIN
@@ -1526,9 +1526,7 @@ DO $wrapper$ BEGIN
 --   2. Index partiel anti-doublons pour entités sans SIRET
 --   3. Fonction admin de déduplication des entités
 -- ============================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- 1. Ajout de la colonne `status`
 -- ============================================
@@ -1670,9 +1668,7 @@ BEGIN
   RETURN QUERY SELECT v_deleted, v_reassigned_props, v_reassigned_leases;
 END;
 $mig$;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -1743,9 +1739,7 @@ DO $wrapper$ BEGIN
 --   - Crée les abonnements manquants pour les propriétaires orphelins
 --   - Met à jour has_subscription_feature() pour les features non-booléennes
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- =====================================================
 -- ÉTAPE 1: UPSERT des 8 plans avec features complètes
 -- Source de vérité : lib/subscriptions/plans.ts
@@ -2547,9 +2541,7 @@ BEGIN
   RETURN NEW;
 END;
 $mig$ LANGUAGE plpgsql SECURITY DEFINER;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -2568,9 +2560,7 @@ DO $wrapper$ BEGIN
 --   - Corrige display_order du plan Gratuit (-1 → 0)
 --   - Réordonne tous les plans avec des valeurs séquentielles
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 UPDATE subscription_plans SET display_order = 0, updated_at = NOW() WHERE slug = 'gratuit';
 UPDATE subscription_plans SET display_order = 1, updated_at = NOW() WHERE slug = 'starter';
 UPDATE subscription_plans SET display_order = 2, updated_at = NOW() WHERE slug = 'confort';
@@ -2580,9 +2570,7 @@ UPDATE subscription_plans SET display_order = 5, updated_at = NOW() WHERE slug =
 UPDATE subscription_plans SET display_order = 6, updated_at = NOW() WHERE slug = 'enterprise_l';
 UPDATE subscription_plans SET display_order = 7, updated_at = NOW() WHERE slug = 'enterprise_xl';
 UPDATE subscription_plans SET display_order = 99, updated_at = NOW() WHERE slug = 'enterprise';
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3439,9 +3427,7 @@ END $wrapper$;
 DO $wrapper$ BEGIN
 -- Migration: corriger la RLS Stripe Connect avec profiles.id
 -- Date: 2026-03-14
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 ALTER TABLE stripe_connect_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stripe_transfers ENABLE ROW LEVEL SECURITY;
 
@@ -3500,9 +3486,7 @@ CREATE POLICY "Service role full access transfers" ON stripe_transfers
   FOR ALL
   USING (auth.jwt() ->> 'role' = 'service_role')
   WITH CHECK (auth.jwt() ->> 'role' = 'service_role');
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3521,9 +3505,7 @@ DO $wrapper$ BEGIN
 -- 1. Empêcher les activations implicites depuis les signataires ou l'EDL
 -- 2. Faire de la facture initiale une étape explicite après fully_signed
 -- 3. Préserver le dépôt de garantie dans le total de la facture initiale
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ---------------------------------------------------------------------------
 -- 1. Neutraliser les activations SQL implicites legacy
 -- ---------------------------------------------------------------------------
@@ -3717,9 +3699,7 @@ BEGIN
   );
 END;
 $mig$;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3892,8 +3872,7 @@ END $wrapper$;
 
 -- === [99/169] 20260315090000_market_standard_subscription_alignment.sql ===
 DO $wrapper$ BEGIN
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 ALTER TABLE subscriptions
   ADD COLUMN IF NOT EXISTS selected_plan_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS selected_plan_source TEXT,
@@ -3971,9 +3950,7 @@ WHERE subscriptions.owner_id = property_counts.owner_id;
 UPDATE subscriptions
 SET properties_count = 0
 WHERE properties_count IS NULL;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3991,9 +3968,7 @@ DO $wrapper$ BEGIN
 -- Objectif  : Éviter les exemples legacy /auth/reset?token=... qui ne
 --             correspondent plus au flux actuel /auth/callback -> /auth/reset-password
 -- =============================================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 DO $mig$
 BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'email_templates') THEN
@@ -4012,9 +3987,7 @@ BEGIN
     RAISE NOTICE 'email_templates table does not exist, skipping';
   END IF;
 END $mig$;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -4031,9 +4004,7 @@ DO $wrapper$ BEGIN
 -- Objectif  : Introduire une couche applicative one-time au-dessus du recovery
 --             Supabase pour sécuriser le changement de mot de passe.
 -- =============================================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 CREATE TABLE IF NOT EXISTS password_reset_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -4076,9 +4047,7 @@ CREATE TRIGGER trg_password_reset_requests_updated_at
   EXECUTE FUNCTION set_password_reset_requests_updated_at();
 
 ALTER TABLE password_reset_requests ENABLE ROW LEVEL SECURITY;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN

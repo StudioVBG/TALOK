@@ -1,5 +1,5 @@
 -- Batch 2 — migrations 9 a 21 sur 169
--- 13 migrations, chaque migration wrappee dans DO/EXCEPTION
+-- 13 migrations
 
 -- === [9/169] 20260212100002_email_templates_seed.sql ===
 DO $wrapper$ BEGIN
@@ -1818,9 +1818,7 @@ DO $wrapper$ BEGIN
 --
 -- IMPORTANT: Migration NON-DESTRUCTIVE (soft delete avec renommage)
 -- ============================================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================================================
 -- P1-3: Renommer signature_image → _signature_image_deprecated
 -- ============================================================================
@@ -1920,9 +1918,7 @@ WHERE signature_status = 'signed';
 CREATE INDEX IF NOT EXISTS idx_lease_signers_invited_email 
 ON lease_signers(invited_email) 
 WHERE invited_email IS NOT NULL;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -2364,9 +2360,7 @@ DO $wrapper$ BEGIN
 --   4. Index composite optimisé pour les requêtes du Document Center
 --   5. RPC tenant_documents_search() — recherche full-text améliorée
 -- =============================================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- =============================================================================
 -- 1. INDEX COMPOSITE pour les requêtes Document Center
 --    Optimise : SELECT * FROM documents WHERE tenant_id = ? ORDER BY created_at DESC
@@ -2837,10 +2831,7 @@ SET search_vector =
   setweight(to_tsvector('french', COALESCE(original_filename, '')), 'C') ||
   setweight(to_tsvector('french', COALESCE(metadata->>'description', '')), 'D')
 WHERE search_vector IS NULL;
-
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 -- =============================================================================
 -- Notes de migration :
 --
@@ -2890,9 +2881,7 @@ DO $wrapper$ BEGIN
 --             qui référençaient /tenant/receipts ou /tenant/signatures
 --             pour pointer vers /tenant/documents (Document Center unifié).
 -- =============================================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- =============================================================================
 -- 1. Mettre à jour les templates d'email qui contiennent les anciennes routes
 --    (table email_templates si elle existe)
@@ -3124,10 +3113,7 @@ COMMENT ON FUNCTION public.tenant_document_stats IS
   'Statistiques du coffre-fort documentaire du locataire : total, par type, récents, flags de complétude.';
 
 GRANT EXECUTE ON FUNCTION public.tenant_document_stats TO authenticated;
-
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 -- =============================================================================
 -- Rollback :
 --   DROP FUNCTION IF EXISTS public.tenant_has_key_document;
@@ -3159,9 +3145,7 @@ DO $wrapper$ BEGIN
 -- 3. Table `document_ged_audit_log`: policy INSERT trop permissive
 -- 4. Table `professional_orders`: policy SELECT trop permissive
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- 1. LEASES: Supprimer les policies permissives résiduelles
 -- ============================================
@@ -3285,9 +3269,7 @@ BEGIN
     RAISE NOTICE 'OK: Aucune policy USING(true) dangereuse sur les tables critiques';
   END IF;
 END $mig$;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3311,9 +3293,7 @@ DO $wrapper$ BEGIN
 -- 3. Fix immédiat: créer le profil manquant pour user 6337af52-...
 -- 4. Fix rétroactif: lier tous les lease_signers orphelins existants
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- 1. FONCTION: Auto-link lease_signers au moment de la création d'un profil
 -- ============================================
@@ -3457,9 +3437,7 @@ BEGIN
     RAISE NOTICE '✅ Aucun lease_signer orphelin — tous les comptes sont liés';
   END IF;
 END $mig$;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN

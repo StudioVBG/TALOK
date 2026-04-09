@@ -1,5 +1,5 @@
 -- Batch 6 — migrations 106 a 147 sur 169
--- 42 migrations, chaque migration wrappee dans DO/EXCEPTION
+-- 42 migrations
 
 -- === [106/169] 20260323000000_fix_document_visibility_and_dedup.sql ===
 DO $wrapper$ BEGIN
@@ -3194,9 +3194,7 @@ DO $wrapper$ BEGIN
 -- Date: 2026-04-08
 -- RLS via chaîne : legal_entities.owner_profile_id → owner_profiles.profile_id
 -- Compatible multi-entités (legal_entity_id) + particulier (owner_profile_id direct)
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- TABLE: expenses
 -- ============================================
@@ -3357,9 +3355,7 @@ CREATE TRIGGER update_expenses_updated_at
   BEFORE UPDATE ON expenses
   FOR EACH ROW
   EXECUTE FUNCTION update_expenses_updated_at();
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3385,9 +3381,7 @@ DO $wrapper$ BEGIN
 --
 -- Idempotent : chaque opération vérifie l'état avant d'agir.
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- =====================================================
 -- PARTIE 1 : charge_regularisations → charge_regularizations
 -- =====================================================
@@ -3675,9 +3669,7 @@ WHERE
 --   WHERE (debit > 0 OR credit > 0) AND NOT EXISTS (
 --     SELECT 1 FROM accounting_entry_lines WHERE entry_id = accounting_entries.id
 --   );
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN

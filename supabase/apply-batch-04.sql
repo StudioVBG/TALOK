@@ -1,5 +1,5 @@
 -- Batch 4 — migrations 39 a 68 sur 169
--- 30 migrations, chaque migration wrappee dans DO/EXCEPTION
+-- 30 migrations
 
 -- === [39/169] 20260221300000_fix_tenant_dashboard_owner_join.sql ===
 DO $wrapper$ BEGIN
@@ -369,9 +369,7 @@ DO $wrapper$ BEGIN
 --   4. Index unique sur lease_signers pour éviter doublons (lease_id, invited_email) quand profile_id IS NULL
 -- Idempotent: peut être exécutée plusieurs fois sans effet secondaire.
 -- ============================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- 1. Corriger handle_new_user() : créer les profils spécialisés
 -- ============================================
@@ -513,9 +511,7 @@ WHERE p.legal_entity_id IS NULL
 CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_lease_signer_email
   ON lease_signers (lease_id, invited_email)
   WHERE profile_id IS NULL AND invited_email IS NOT NULL;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -539,9 +535,7 @@ DO $wrapper$ BEGIN
 --    locataire (locataire_principal, colocataire) qui n'a pas déjà une invitation
 --    valide (non utilisée) pour ce bail et cet email.
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- 1. Lier les lease_signers orphelins : profile_id NULL + invited_email matche auth.users
 UPDATE public.lease_signers ls
 SET profile_id = p.id
@@ -586,9 +580,7 @@ WHERE ls.role IN ('locataire_principal', 'colocataire')
       AND i.used_at IS NULL
       AND i.expires_at > NOW()
   );
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -615,9 +607,7 @@ DO $wrapper$ BEGIN
 -- 4. Lie les lease_signers orphelins (profile_id NULL) dont l'email matche un compte
 -- 5. Crée les invitations manquantes pour les signataires sans invitation valide
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ========================================================
 -- ÉTAPE 1 : Créer les signataires PROPRIETAIRE manquants
 -- Pour tout bail en fully_signed/active/terminated sans signataire propriétaire
@@ -773,9 +763,7 @@ WHERE ls.profile_id IS NULL
   AND ls.invited_email IS NOT NULL
   AND TRIM(ls.invited_email) != ''
   AND LOWER(TRIM(u.email)) = LOWER(TRIM(ls.invited_email));
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -795,9 +783,7 @@ DO $wrapper$ BEGIN
 --   qui n'en a pas, puis lie les propriétés orphelines à l'entité par défaut.
 -- Idempotent: peut être exécutée plusieurs fois sans effet secondaire.
 -- ============================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- Créer legal_entities manquantes pour les propriétaires
 INSERT INTO legal_entities (owner_profile_id, entity_type, nom, regime_fiscal, is_active)
 SELECT op.profile_id, 'particulier',
@@ -817,9 +803,7 @@ SET legal_entity_id = (
 WHERE p.legal_entity_id IS NULL
   AND p.deleted_at IS NULL
   AND EXISTS (SELECT 1 FROM legal_entities le WHERE le.owner_profile_id = p.owner_id);
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -1000,9 +984,7 @@ DO $wrapper$ BEGIN
 --   - SECURITY DEFINER pour accéder aux tables liées sans RLS
 --   - Additive : ne supprime ni ne modifie aucun trigger existant
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- 1. FONCTION: Auto-complétion des FK documents
 -- ============================================
@@ -1172,9 +1154,7 @@ BEGIN
     RAISE NOTICE '✅ Tous les documents ont des FK cohérentes';
   END IF;
 END $mig$;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -1207,9 +1187,7 @@ DO $wrapper$ BEGIN
 --   - Additives : aucun impact sur INSERT/UPDATE/DELETE des documents
 --   - RLS hérité de la table documents (les vues ne contournent pas RLS)
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- 1. VUE LOCATAIRE : Documents accessibles
 -- ============================================
@@ -1268,9 +1246,7 @@ COMMENT ON VIEW public.v_owner_accessible_documents IS
 -- ============================================
 GRANT SELECT ON public.v_tenant_accessible_documents TO authenticated;
 GRANT SELECT ON public.v_owner_accessible_documents TO authenticated;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -1302,9 +1278,7 @@ DO $wrapper$ BEGIN
 --   - WHEN clause pour filtrer au niveau trigger (pas de surcoût)
 --   - Utilise create_notification() existante
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- 1. FONCTION: Notifier le propriétaire
 -- ============================================
@@ -1374,9 +1348,7 @@ CREATE TRIGGER trigger_notify_owner_on_tenant_document
         AND NEW.uploaded_by IS NOT NULL
         AND NEW.tenant_id = NEW.uploaded_by)
   EXECUTE FUNCTION public.notify_owner_on_tenant_document();
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -1400,9 +1372,7 @@ DO $wrapper$ BEGIN
 --   6. Corriger get_entity_stats avec total_value et monthly_rent reels
 -- Idempotent: peut etre executee plusieurs fois sans effet secondaire.
 -- ============================================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================================================
 -- 1. BACKFILL : properties.legal_entity_id (re-passe pour les nouvelles)
 -- ============================================================================
@@ -1661,9 +1631,7 @@ BEGIN
   ORDER BY properties_count DESC, le.nom;
 END;
 $mig$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -1931,9 +1899,7 @@ DO $wrapper$ BEGIN
 -- 3. Backfill notifications pour locataires avec bail actif sans notification
 -- 4. Diagnostic final
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- 1. ORPHAN LINKING: lease_signers avec profile_id NULL
 -- ============================================
@@ -2022,9 +1988,7 @@ BEGIN
     RAISE NOTICE '[fix_tenant_sync] Tous les signers avec email valide sont liés';
   END IF;
 END $mig$;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -2789,9 +2753,7 @@ DO $wrapper$ BEGIN
 --        -> échec de l'INSERT document. On utilise create_notification() à la place.
 -- BUG 2: create_notification() n'insérait pas body (NOT NULL) -> échec silencieux.
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- Filet de sécurité : body peut avoir une valeur par défaut si jamais oublié
 DO $mig$
 BEGIN
@@ -2946,9 +2908,7 @@ CREATE TRIGGER trg_notify_tenant_document_center
   FOR EACH ROW
   WHEN (NEW.tenant_id IS NOT NULL)
   EXECUTE FUNCTION notify_tenant_document_center_update();
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3556,9 +3516,7 @@ DO $wrapper$ BEGIN
 --   4. Vérification bail actif avant transfert de bien (RPC)
 -- Idempotent: peut être exécutée plusieurs fois sans effet secondaire.
 -- ============================================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================================================
 -- 1. TABLE: entity_audit_log (historique des modifications)
 -- ============================================================================
@@ -3856,9 +3814,7 @@ SET
 FROM legal_entities le
 WHERE i.issuer_entity_id = le.id
   AND (i.issuer_nom IS NULL OR i.issuer_adresse IS NULL OR i.issuer_siret IS NULL);
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3892,9 +3848,7 @@ DO $wrapper$ BEGIN
 --   - Ne touche pas aux documents déjà renseignés
 --   - Non-bloquant : si aucune ligne à MAJ, pas d'effet
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- 1. Documents typiquement uploadés par le locataire
 UPDATE public.documents
 SET uploaded_by = tenant_id
@@ -3935,9 +3889,7 @@ SET uploaded_by = tenant_id
 WHERE uploaded_by IS NULL
   AND tenant_id IS NOT NULL
   AND owner_id IS NOT NULL;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3962,9 +3914,7 @@ DO $wrapper$ BEGIN
 --   5. Remplace les policies property_ownership par des versions optimisées
 -- Idempotent: peut être exécutée plusieurs fois sans effet secondaire.
 -- ============================================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================================================
 -- 1. Fonction helper: get_current_owner_profile_id()
 -- ============================================================================
@@ -4101,9 +4051,7 @@ ALTER TABLE legal_entities ADD CONSTRAINT legal_entities_entity_type_check CHECK
   'micro_entrepreneur',
   'association'
 ));
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN

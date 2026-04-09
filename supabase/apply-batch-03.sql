@@ -1,5 +1,5 @@
 -- Batch 3 — migrations 22 a 38 sur 169
--- 17 migrations, chaque migration wrappee dans DO/EXCEPTION
+-- 17 migrations
 
 -- === [22/169] 20260216300000_fix_auth_profile_sync.sql ===
 DO $wrapper$ BEGIN
@@ -25,9 +25,7 @@ DO $wrapper$ BEGIN
 --   C. Backfill les emails NULL dans les profils existants
 --   D. Assurer qu'une policy INSERT RLS existe sur profiles
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- A. MISE A JOUR DE handle_new_user()
 -- ============================================
@@ -347,9 +345,7 @@ GRANT EXECUTE ON FUNCTION public.check_orphan_profiles() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_desync_emails() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_trigger_exists(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_insert_policy_exists(TEXT) TO authenticated;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -369,9 +365,7 @@ DO $wrapper$ BEGIN
 -- des EXISTS avec 3 niveaux de jointure. Ces index accélèrent
 -- les lookups les plus fréquents.
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- 1. LEASE_SIGNERS: Index composite pour lookup par profile_id + lease_id
 -- Utilisé par quasi toutes les policies RLS inter-comptes
@@ -468,9 +462,7 @@ BEGIN
 
   RAISE NOTICE '✅ % index de performance créés/vérifiés', idx_count;
 END $mig$;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -825,9 +817,7 @@ DO $wrapper$ BEGIN
 -- Description: S'assure que les contraintes uniques critiques sont bien appliquées.
 --              Idempotent : ne fait rien si elles existent déjà.
 --              Nettoie les doublons existants avant de créer les contraintes.
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- =============================================
 -- 1. INVOICES: unique (lease_id, periode)
 -- =============================================
@@ -958,9 +948,7 @@ BEGIN
     RAISE NOTICE 'Index uq_documents_storage_path already exists, skipping';
   END IF;
 END $mig$;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -1009,9 +997,7 @@ DO $wrapper$ BEGIN
 --   H. Ajouter les FK manquantes (si safe)
 --   I. Rapport final
 -- ============================================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- A. TABLE D'AUDIT _repair_log
 -- ============================================
@@ -1810,9 +1796,7 @@ BEGIN
     'chaines_completes', v_chaines_completes
   ));
 END $mig$;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -1936,9 +1920,7 @@ DO $wrapper$ BEGIN
 --   et mettre a jour le profil sans restrictions.
 --   SET search_path = public pour eviter les injections de schema.
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- A. FONCTION DE SYNCHRONISATION EMAIL
 -- ============================================
@@ -2050,9 +2032,7 @@ BEGIN
   RAISE NOTICE '  Emails desynchronises restants     : %', v_desync_count;
   RAISE NOTICE '========================================';
 END $mig$;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -2081,9 +2061,7 @@ DO $wrapper$ BEGIN
 --      match_user_context)
 --   7. RLS sur toutes les nouvelles tables
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- =====================================================
 -- 1. TENANT REWARDS
 -- =====================================================
@@ -2520,9 +2498,7 @@ COMMENT ON TABLE ai_conversations IS 'Historique analytique des conversations av
 COMMENT ON TABLE legal_embeddings IS 'Embeddings vectoriels des documents juridiques pour RAG';
 COMMENT ON TABLE platform_knowledge IS 'Base de connaissances plateforme avec embeddings pour RAG';
 COMMENT ON TABLE user_context_embeddings IS 'Embeddings du contexte utilisateur pour recherche personnalisee RAG';
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -2548,9 +2524,7 @@ DO $wrapper$ BEGIN
 -- Enrichir la fonction auto_link_lease_signers_on_profile_created()
 -- pour créer une notification in-app pour chaque propriétaire concerné.
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 CREATE OR REPLACE FUNCTION public.auto_link_lease_signers_on_profile_created()
 RETURNS TRIGGER AS $mig$
 DECLARE
@@ -2633,9 +2607,7 @@ BEGIN
   RETURN NEW;
 END;
 $mig$ LANGUAGE plpgsql SECURITY DEFINER;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -2658,9 +2630,7 @@ DO $wrapper$ BEGIN
 --   P1-2: Supprimer la politique RLS trop permissive "System can insert notifications"
 --   P2-1: Ajouter déduplication aux triggers de notification
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- =====================================================
 -- P0-1: Supprimer le trigger OBSOLÈTE on_profile_created_auto_link
 -- Ce trigger (case-sensitive, sans notifications, sans invitations)
@@ -2968,9 +2938,7 @@ $mig$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Note: trigger_notify_ticket_created (INSERT only) n'a pas besoin de
 -- déduplication car un INSERT ne peut se produire qu'une fois.
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -2997,9 +2965,7 @@ DO $wrapper$ BEGIN
 --   3. Fix rétroactif — lier les orphelins existants
 --   4. Vérification finale
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- 1. FONCTION: Auto-link à l'INSERT du signer
 -- ============================================
@@ -3111,9 +3077,7 @@ BEGIN
     RAISE NOTICE '✅ Tous les signers avec email valide sont liés ou n''ont pas encore de compte';
   END IF;
 END $mig$;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3135,9 +3099,7 @@ DO $wrapper$ BEGIN
 --   2. Index LOWER(invited_email) si absent (IF NOT EXISTS)
 --   3. RPC audit_account_connections() — diagnostic réutilisable
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- 1. FIX RÉTROACTIF: Lier les orphelins existants
 -- (Idempotent: ne fait rien si déjà liés)
@@ -3233,9 +3195,7 @@ $mig$;
 
 COMMENT ON FUNCTION public.audit_account_connections() IS
 'Audit connexion comptes: retourne orphan_signers_count, linkable_orphans_count, invitations_not_used_count. Ref: docs/AUDIT_CONNEXION_COMPTES.md';
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3255,9 +3215,7 @@ DO $wrapper$ BEGIN
 -- lier les lease_signers orphelins dont invited_email matche l'email du user.
 -- Réutilise la même logique que l'INSERT (auth.users.email -> lease_signers.invited_email).
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 CREATE OR REPLACE FUNCTION public.auto_link_lease_signers_on_profile_updated()
 RETURNS TRIGGER AS $mig$
 DECLARE
@@ -3297,9 +3255,7 @@ CREATE TRIGGER trigger_auto_link_lease_signers_on_update
   AFTER UPDATE ON public.profiles
   FOR EACH ROW
   EXECUTE FUNCTION public.auto_link_lease_signers_on_profile_updated();
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3319,9 +3275,7 @@ DO $wrapper$ BEGIN
 -- signer_user = NULL, signer_profile_id = NULL, signer_email = son email.
 -- Il doit pouvoir SELECT et UPDATE sa ligne pour signer.
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 DROP POLICY IF EXISTS "EDL signatures creator update" ON edl_signatures;
 
 CREATE POLICY "EDL signatures update"
@@ -3341,9 +3295,7 @@ CREATE POLICY "EDL signatures update"
 
 COMMENT ON POLICY "EDL signatures update" ON edl_signatures IS
 'SOTA 2026: Permet au signataire (uid, profile_id, ou email invité) et au créateur EDL de mettre à jour.';
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3710,9 +3662,7 @@ DO $wrapper$ BEGIN
 --   4. Fix rétroactif C: créer les lease_signers manquants depuis edl_signatures
 --   5. Audit: vérifier qu'aucun bail ne reste à demi connecté
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- 1. FONCTION: Auto-upgrade draft → pending_signature
 -- ============================================
@@ -3891,9 +3841,7 @@ BEGIN
     RAISE WARNING '⚠️  % baux draft ont encore un locataire — vérifier manuellement', draft_with_tenant;
   END IF;
 END $mig$;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3919,9 +3867,7 @@ DO $wrapper$ BEGIN
 --   un lease_signers si aucun signer tenant n'existe pour le bail associé.
 --   Ne bloque jamais l'INSERT original (exception handler).
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- 1. FONCTION: Sync edl_signature → lease_signer
 -- ============================================
@@ -3991,9 +3937,7 @@ CREATE TRIGGER trigger_sync_edl_signer_to_lease_signer
   AFTER INSERT ON public.edl_signatures
   FOR EACH ROW
   EXECUTE FUNCTION public.sync_edl_signer_to_lease_signer();
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN

@@ -1,5 +1,5 @@
 -- Batch 8 — migrations 167 a 169 sur 169
--- 3 migrations, chaque migration wrappee dans DO/EXCEPTION
+-- 3 migrations
 
 -- === [167/169] 20260408200000_unified_notification_system.sql ===
 DO $wrapper$ BEGIN
@@ -116,9 +116,7 @@ DO $wrapper$ BEGIN
 -- 4. RLS policies
 -- 5. Helper functions
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- =====================================================
 -- 1. RENT PAYMENTS — Stripe Connect Express
 -- Tracks the split between tenant payment, platform
@@ -463,10 +461,7 @@ CREATE INDEX IF NOT EXISTS idx_invoices_overdue_check
 CREATE INDEX IF NOT EXISTS idx_invoices_receipt_pending
   ON invoices(id)
   WHERE statut = 'paid' AND receipt_generated IS NOT TRUE;
-
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN

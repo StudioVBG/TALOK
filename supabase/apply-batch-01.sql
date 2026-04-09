@@ -1,5 +1,5 @@
 -- Batch 1 — migrations 1 a 8 sur 169
--- 8 migrations, chaque migration wrappee dans DO/EXCEPTION
+-- 8 migrations
 
 -- === [HOTFIX] Fix trigger auto_verify_tenant_on_signup ===
 CREATE OR REPLACE FUNCTION auto_verify_tenant_on_signup()
@@ -230,9 +230,7 @@ DO $wrapper$ BEGIN
 -- Migration P2: Contrainte UNIQUE partielle + RPC GDPR transactionnelle
 -- Date: 2026-02-11
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- 1. CONTRAINTE UNIQUE PARTIELLE SUR DOCUMENTS
 -- ============================================
@@ -504,9 +502,7 @@ $mig$ LANGUAGE plpgsql SECURITY DEFINER;
 
 COMMENT ON FUNCTION cleanup_orphan_documents IS
   'Nettoie les enregistrements orphelins en une transaction. Retourne les storage_path à supprimer côté Storage.';
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN

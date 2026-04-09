@@ -1,5 +1,5 @@
 -- Batch 7 — migrations 148 a 166 sur 169
--- 19 migrations, chaque migration wrappee dans DO/EXCEPTION
+-- 19 migrations
 
 -- === [148/169] 20260408120000_colocation_module.sql ===
 DO $wrapper$ BEGIN
@@ -2869,9 +2869,7 @@ DO $wrapper$ BEGIN
 --   - Enterprise S: 249€/mois (24900 centimes)
 --   Idempotent — safe to run multiple times.
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 UPDATE subscription_plans SET price_monthly = 0, price_yearly = 0
 WHERE slug = 'gratuit' AND price_monthly != 0;
 
@@ -2886,9 +2884,7 @@ WHERE slug = 'pro' AND price_monthly != 6900;
 
 UPDATE subscription_plans SET price_monthly = 24900, price_yearly = 249000
 WHERE slug = 'enterprise_s' AND price_monthly != 24900;
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -2912,9 +2908,7 @@ DO $wrapper$ BEGIN
 --   6. Créer la fonction RPC guarantor_dashboard
 --   7. Ajouter les RLS policies manquantes
 -- ============================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- ============================================
 -- 1. TABLE D'INVITATIONS GARANT
 -- ============================================
@@ -3221,9 +3215,7 @@ END;
 $mig$;
 
 COMMENT ON FUNCTION guarantor_dashboard IS 'Retourne les données du dashboard garant (engagements, incidents, stats)';
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3240,9 +3232,7 @@ DO $wrapper$ BEGIN
 -- From tenant-only to multi-role (PNO, multirisques, RC Pro, decennale, GLI, garantie financiere)
 -- Original table: 20240101000009_tenant_advanced.sql
 -- =============================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- 1. Add new columns to existing table
 ALTER TABLE insurance_policies
   ADD COLUMN IF NOT EXISTS profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -3396,9 +3386,7 @@ FROM insurance_policies ip
 JOIN profiles p ON ip.profile_id = p.id
 LEFT JOIN properties prop ON ip.property_id = prop.id
 WHERE ip.end_date <= CURRENT_DATE + INTERVAL '30 days';
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
@@ -3822,9 +3810,7 @@ DO $wrapper$ BEGIN
 -- Date: 2026-04-08
 -- Spec: talok-paiements — Section 7
 -- =====================================================
-
-BEGIN;
-
+-- (BEGIN removed for DO wrapper compatibility)
 -- Table principale : un enregistrement par dépôt de garantie par bail
 CREATE TABLE IF NOT EXISTS security_deposits (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -3952,9 +3938,7 @@ CREATE TRIGGER trg_create_security_deposit
   AFTER UPDATE ON leases
   FOR EACH ROW
   EXECUTE FUNCTION create_security_deposit_on_lease_activation();
-
-COMMIT;
-
+-- (COMMIT removed for DO wrapper compatibility)
 EXCEPTION WHEN undefined_table THEN
   RAISE NOTICE 'Skipped: table does not exist yet';
 WHEN undefined_column THEN
