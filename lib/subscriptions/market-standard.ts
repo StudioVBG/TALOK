@@ -156,7 +156,8 @@ export async function getLiveOwnerUsage(
     .from("properties")
     .select("id", { count: "exact", head: true })
     .eq("owner_id", ownerId)
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .neq("type", "immeuble");
 
   const { data: ownerProperties } = await serviceClient
     .from("properties")

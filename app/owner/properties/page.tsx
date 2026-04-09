@@ -176,6 +176,9 @@ export default function OwnerPropertiesPage() {
     // SOTA 2026 — Filtre par onglet Biens/Immeubles
     if (propertyTab === "immeubles") {
       filtered = filtered.filter((p: any) => p.type === "immeuble");
+    } else {
+      // Tab "Mes biens" : exclure les immeubles parents et les lots (enfants)
+      filtered = filtered.filter((p: any) => p.type !== "immeuble" && !p.parent_property_id);
     }
 
     if (moduleFilter) {
@@ -220,7 +223,7 @@ export default function OwnerPropertiesPage() {
   );
   const propertyQuotaSummary = buildPropertyQuotaSummary({
     visibleCount: filteredProperties.length,
-    totalCount: usage?.properties?.used ?? properties.length,
+    totalCount: usage?.properties?.used ?? properties.filter((p: any) => p.type !== "immeuble").length,
     limit: currentPlanConfig.limits.max_properties,
     hasScopedView,
   });
@@ -281,6 +284,7 @@ export default function OwnerPropertiesPage() {
       parking: "Parking",
       box: "Box / Garage",
       fonds_de_commerce: "Fonds de commerce",
+      immeuble: "Immeuble",
     };
     return labels[type] || type;
   };
@@ -291,35 +295,53 @@ export default function OwnerPropertiesPage() {
   // Générer les badges adaptés au type de bien
   const getBadgesForProperty = (property: any) => {
     const badges = [];
-    
+
+    // Immeuble parent : afficher des stats agrégées depuis les lots
+    if (property.type === "immeuble") {
+      const lots = propertiesWithStatus.filter((p: any) => p.parent_property_id === property.id);
+      const nbLots = lots.length;
+      const nbOccupes = lots.filter((l: any) => l.status === "loue").length;
+      const totalSurface = lots.reduce((acc: number, l: any) => acc + (Number(l.surface) || 0), 0);
+      const totalRent = lots.reduce((acc: number, l: any) => acc + (Number(l.monthlyRent) || 0), 0);
+
+      badges.push({ label: `${nbLots} lot${nbLots > 1 ? "s" : ""}`, variant: "secondary" as const });
+      badges.push({ label: `${nbOccupes} occupé${nbOccupes > 1 ? "s" : ""}`, variant: "secondary" as const });
+      if (totalSurface > 0) {
+        badges.push({ label: `${totalSurface} m²`, variant: "secondary" as const });
+      }
+      badges.push({ label: formatCurrency(totalRent), variant: "default" as const });
+
+      return badges;
+    }
+
     // Surface (toujours affichée)
-    badges.push({ 
-      label: `${property.surface || "?"} m²`, 
+    badges.push({
+      label: `${property.surface || "?"} m²`,
       variant: "secondary" as const
     });
-    
+
     // Pièces : seulement pour les biens d'habitation
     if (!TYPES_WITHOUT_ROOMS.includes(property.type)) {
-      badges.push({ 
-        label: `${property.nb_pieces || "?"} pièces`, 
+      badges.push({
+        label: `${property.nb_pieces || "?"} pièces`,
         variant: "secondary" as const
       });
     } else if (property.type === "parking" || property.type === "box") {
       // Pour parking/box : afficher le numéro si disponible
       if (property.parking_numero) {
-        badges.push({ 
-          label: `N°${property.parking_numero}`, 
+        badges.push({
+          label: `N°${property.parking_numero}`,
           variant: "secondary" as const
         });
       }
     }
-    
+
     // Loyer (toujours affiché)
-    badges.push({ 
-      label: formatCurrency(property.monthlyRent), 
+    badges.push({
+      label: formatCurrency(property.monthlyRent),
       variant: "default" as const
     });
-    
+
     return badges;
   };
 

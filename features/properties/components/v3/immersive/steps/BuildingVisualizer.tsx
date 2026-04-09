@@ -70,7 +70,7 @@ export function BuildingVisualizer({
       </div>
 
       {/* Visualisation isométrique */}
-      <div className="flex-1 flex flex-col-reverse items-center justify-center gap-1 py-4 overflow-y-auto">
+      <div className="flex-1 flex flex-col items-center justify-center gap-1 py-4 overflow-y-auto">
         
         {/* Toit */}
         <motion.div 
@@ -82,7 +82,7 @@ export function BuildingVisualizer({
           <div className="h-5 bg-gradient-to-b from-slate-500 to-slate-600 rounded-t-lg transform skew-x-[-3deg] shadow-xl border-t border-slate-400/30" />
         </motion.div>
 
-        {/* Étages (du haut vers le bas, mais rendu inversé car flex-col-reverse) */}
+        {/* Étages (du haut vers le bas) */}
         {Array.from({ length: floors }, (_, i) => floors - 1 - i).map((floor, idx) => {
           const floorUnits = units.filter(u => u.floor === floor);
           const isSelected = selectedFloor === floor;
