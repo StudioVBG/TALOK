@@ -153,14 +153,19 @@ destinée au marché français (métropole + France d'outre-mer).
 
 ## 6. Grille tarifaire
 
-| Plan | Prix HT/mois | Annuel | Biens | Users | Signatures/mois | Stockage |
-|------|-------------|--------|-------|-------|----------------|----------|
-| Gratuit | 0€ | — | 2 | 1 | 0 | 500 Mo |
-| Confort ⭐ | 24,90€ | 249€/an | 10 | 3 | 5 | 15 Go |
-| Pro | 59,90€ | 599€/an | 50 | ∞ | ∞ | 200 Go |
-| Enterprise | Sur devis | — | ∞ | ∞ | ∞ | ∞ |
+| Plan | Prix HT/mois | Annuel (-20%) | Biens | Users | Signatures/mois | Stockage |
+|------|-------------|---------------|-------|-------|----------------|----------|
+| Gratuit | 0€ | — | 1 | 1 | 0 | 100 Mo |
+| Starter | 9€ | 90€/an | 3 | 1 | 0 | 1 Go |
+| Confort ⭐ | 35€ | 336€/an | 10 | 2 | 2 | 5 Go |
+| Pro | 69€ | 662€/an | 50 | 5 | 10 | 30 Go |
+| Enterprise S | 249€ | 2 390€/an | 100 | ∞ | 25 | 50 Go |
+| Enterprise M | 349€ | 3 350€/an | 200 | ∞ | 40 | 100 Go |
+| Enterprise L | 499€ | 4 790€/an | 500 | ∞ | 60 | 200 Go |
+| Enterprise XL | 799€ | 7 670€/an | ∞ | ∞ | ∞ | ∞ |
 
-Annuel = -17% | **Plan Starter supprimé**
+1er mois offert sur Starter/Confort/Pro (trial_days: 30).
+Source de vérité : `lib/subscriptions/plans.ts` — NE JAMAIS MODIFIER ce fichier.
 
 ---
 
@@ -236,18 +241,18 @@ TALOK/
 
 ---
 
-## 10. Ce qui différencie Talok (état réel)
+## 10. Ce qui différencie Talok (état réel — audit avril 2026)
 
-1. ✅ Courte + longue durée dans la même app
-2. ⏳ Syndic intégré (backend codé, UI à construire)
-3. ⏳ Colocation avancée (skill créé, code à construire)
-4. ⏳ Mise en relation prestataires (skill créé, code à construire)
-5. ⏳ IA intégrée — scoring GPT-4, OCR (OCR codé, agent TALO à construire)
-6. ⏳ App mobile iOS/Android (Capacitor configuré, build à faire)
-7. ❌ White-label pour agences (pas commencé)
-8. ❌ Compteurs connectés Enedis/GRDF/Veolia (pas commencé)
-9. ✅ Comptabilité avec export FEC (5 sprints codés, déploiement en attente)
-10. ❌ "Mes droits de locataire" (pas commencé)
+1. ✅ Courte + longue durée dans la même app (saisonnier 9/10)
+2. ✅ Syndic intégré (47 pages, comptabilité copro, extranet — 8/10)
+3. ✅ Colocation avancée (5 tables, solidarité 6 mois, SEPA individuel — 9/10)
+4. ✅ Mise en relation prestataires (40+ pages portail, 12 statuts work order — 9/10)
+5. ✅ IA intégrée — multi-agent LangGraph, 5 agents spécialisés, RAG, scoring (8/10)
+6. ⚠️ App mobile iOS/Android (Capacitor configuré, 16 plugins, PWA, deep links — placeholders prod à remplacer)
+7. ✅ White-label agences (57 pages, theming CSS dynamique, custom domain — 9/10)
+8. ✅ Compteurs connectés Enedis/GRDF (OAuth complet, cron sync, OCR photos — 9/10)
+9. ✅ Comptabilité avec export FEC (19 tables, 68 routes, feature gate partout — 9.5/10)
+10. ✅ "Mes droits de locataire" (3 calculateurs, RAG juridique, protocoles — 8/10)
 11. ✅ Né en France d'outre-mer — seule solution native Antilles
 12. ✅ DROM-COM natif — TVA, codes postaux, spécificités locales
 

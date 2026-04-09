@@ -59,11 +59,11 @@ const FAQ_CATEGORIES = [
     items: [
       {
         question: "Combien coûte Talok ?",
-        answer: "Gratuit (2 biens), Confort à 24,90 €/mois (10 biens, 5 signatures, collecte de loyers), Pro à 59,90 €/mois (50 biens, signatures illimitées, agent IA). Réduction de 17 % sur l'abonnement annuel : 249 €/an (Confort) ou 599 €/an (Pro). TVA en sus selon votre localisation.",
+        answer: "Gratuit (1 bien), Starter à 9 €/mois (3 biens), Confort à 35 €/mois (10 biens, 2 signatures incluses, collecte de loyers), Pro à 69 €/mois (50 biens, 10 signatures, agent IA). Réduction de 20 % sur l'abonnement annuel : 336 €/an (Confort) ou 662 €/an (Pro). Premier mois offert sur tous les plans payants. TVA en sus selon votre localisation.",
       },
       {
         question: "Y a-t-il des frais cachés ?",
-        answer: "Non, aucun frais caché. Le prix affiché est le prix hors taxes. Une commission est prélevée uniquement si vous utilisez la collecte automatique de loyers : 2,5 % (Confort) ou 1,5 % (Pro) sur chaque loyer collecté. La TVA s'applique selon votre territoire.",
+        answer: "Non, aucun frais caché. Le prix affiché est le prix hors taxes. Des frais de paiement s'appliquent uniquement si vous utilisez la collecte automatique de loyers : 2,2 % par carte bancaire ou 0,50 € par prélèvement SEPA. La TVA s'applique selon votre territoire.",
       },
       {
         question: "Puis-je changer de forfait à tout moment ?",
@@ -71,7 +71,7 @@ const FAQ_CATEGORIES = [
       },
       {
         question: "Comment fonctionne la réduction annuelle ?",
-        answer: "L'abonnement annuel offre -17 % par rapport au mensuel. Par exemple, le plan Confort passe de 298,80 € (12 × 24,90 €) à 249 €/an, soit une économie de près de 50 €.",
+        answer: "L'abonnement annuel offre -20 % par rapport au mensuel. Par exemple, le plan Confort passe de 420 € (12 × 35 €) à 336 €/an, soit une économie de 84 €.",
       },
     ],
   },
@@ -80,11 +80,11 @@ const FAQ_CATEGORIES = [
     items: [
       {
         question: "Comment fonctionne la collecte automatique des loyers ?",
-        answer: "À partir du plan Confort, vos locataires paient par prélèvement automatique. Le loyer est prélevé à la date choisie, une quittance est générée automatiquement, et le montant net (après commission) est reversé sur votre compte sous 5 à 7 jours ouvrés.",
+        answer: "À partir du plan Starter, vos locataires paient par prélèvement automatique. Le loyer est prélevé à la date choisie, une quittance est générée automatiquement, et le montant net (après frais de paiement) est reversé sur votre compte sous 5 à 7 jours ouvrés.",
       },
       {
         question: "Quels sont les frais sur les loyers collectés ?",
-        answer: "La commission est de 2,5 % (plan Confort) ou 1,5 % (plan Pro et Enterprise) du montant du loyer collecté. Par exemple, sur un loyer de 700 €, la commission est de 17,50 € (Confort) ou 10,50 € (Pro).",
+        answer: "Les frais de paiement sont de 2,2 % par carte bancaire ou 0,50 € par prélèvement SEPA (1,9 % CB et 0,40 € SEPA pour les plans Enterprise). Par exemple, sur un loyer de 700 € par SEPA, les frais sont de 0,50 €.",
       },
       {
         question: "Le locataire doit-il créer un compte ?",

@@ -25,7 +25,7 @@ description: >
 | 6 | Progress bar absente pour Syndic + Agency | 🟠 À corriger | components/onboarding/onboarding-shell.tsx |
 | 7 | Page legacy /auth/reset-password encore présente | 🟡 À nettoyer | app/auth/reset-password/page.tsx |
 | 8 | Charte : indigo au lieu de blue-600 pages auth | 🟠 À corriger | app/signup/ + app/auth/ |
-| 9 | Prix DB incohérents (19.90€/49.90€ vs grille officielle) | 🔴 À corriger | subscription_plans table |
+| 9 | Prix DB incohérents (19.90€/49.90€ vs grille officielle) | ✅ Corrigé | Migration 20260408130000_fix_subscription_plan_prices.sql |
 | 10 | Tom AI onboarding owner à vérifier | 🟡 À vérifier | app/owner/onboarding/profile |
 
 ---
@@ -443,13 +443,8 @@ Grille officielle Talok (source : skill talok-context) :
 | Pro | 69€ | 50 | 10 | 30 GB |
 | Enterprise S | 249€ | 100 | 25 | 50 GB |
 
-**La DB indique actuellement Starter 19.90€ et Pro 49.90€ — incohérent.**
-Corriger via migration SQL :
-```sql
-UPDATE subscription_plans SET price_monthly = 9.00 WHERE plan_name = 'starter';
-UPDATE subscription_plans SET price_monthly = 35.00 WHERE plan_name = 'confort';
-UPDATE subscription_plans SET price_monthly = 69.00 WHERE plan_name = 'pro';
-```
+**Bug corrigé** par migration `20260408130000_fix_subscription_plan_prices.sql` (idempotente).
+Vérifier que cette migration est bien appliquée en prod.
 
 ---
 
