@@ -9,13 +9,13 @@ import { withSecurity } from "@/lib/api/with-security";
 
 /**
  * GET /api/deposits — List security deposits
- * Filterable by lease_id, status
+ * Filterable by lease_id, status, with pagination
  */
 export async function GET(request: Request) {
   try {
-    const { user, error, supabase } = await getAuthenticatedUser(request);
+    const { user, error } = await getAuthenticatedUser(request);
 
-    if (error || !user || !supabase) {
+    if (error || !user) {
       return NextResponse.json(
         { error: "Non authentifié" },
         { status: 401 }
@@ -37,25 +37,42 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const leaseId = url.searchParams.get("lease_id");
     const status = url.searchParams.get("status");
+    const page = parseInt(url.searchParams.get("page") || "1");
+    const limit = Math.min(parseInt(url.searchParams.get("limit") || "50"), 200);
+    const offset = (page - 1) * limit;
 
     let query = serviceClient
       .from("security_deposits")
-      .select(`
+      .select(
+        `
         *,
         lease:leases(
           id,
+          type_bail,
+          date_debut,
+          date_fin,
+          loyer,
+          statut,
           property:properties(
             id,
             adresse_complete,
+            owner_id,
             ville
           )
+        ),
+        tenant:profiles!security_deposits_tenant_id_fkey(
+          id,
+          prenom,
+          nom,
+          email
         )
-      `)
+      `,
+        { count: "exact" }
+      )
       .order("created_at", { ascending: false });
 
     // RBAC
     if (typedProfile.role === "owner") {
-      // Only deposits for owner's properties (via lease → property)
       query = query.in(
         "lease_id",
         serviceClient
@@ -72,7 +89,7 @@ export async function GET(request: Request) {
     } else if (typedProfile.role === "tenant") {
       query = query.eq("tenant_id", typedProfile.id);
     } else if (typedProfile.role !== "admin") {
-      return NextResponse.json({ deposits: [] });
+      return NextResponse.json({ deposits: [], pagination: { page: 1, limit, total: 0 } });
     }
 
     // Filters
@@ -83,7 +100,9 @@ export async function GET(request: Request) {
       query = query.eq("status", status);
     }
 
-    const { data, error: queryError } = await query;
+    // Pagination
+    const { data, error: queryError, count } = await query
+      .range(offset, offset + limit - 1);
 
     if (queryError) {
       console.error("[GET /api/deposits] Query error:", queryError);
@@ -93,7 +112,14 @@ export async function GET(request: Request) {
       );
     }
 
-    return NextResponse.json({ deposits: data || [] });
+    return NextResponse.json({
+      deposits: data || [],
+      pagination: {
+        page,
+        limit,
+        total: count || 0,
+      },
+    });
   } catch (err: unknown) {
     console.error("[GET /api/deposits] Error:", err);
     return NextResponse.json(
