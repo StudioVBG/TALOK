@@ -216,6 +216,8 @@ BEGIN
       FOR EACH ROW
       EXECUTE FUNCTION notify_provider_on_work_order();
   END IF;
+EXCEPTION WHEN undefined_column OR undefined_table THEN
+  RAISE NOTICE 'Skipped: tickets.provider_id does not exist yet';
 END;
 $$;
 
