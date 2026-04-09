@@ -14,7 +14,7 @@ import { createLogger } from "@/lib/logging/structured-logger";
 const createBuildingSchema = z.object({
   name: z.string().min(1, "Le nom est requis").max(100, "Le nom est trop long"),
   adresse_complete: z.string().min(1, "L'adresse est requise"),
-  code_postal: z.string().regex(/^(0[1-9]|[1-8]\d|9[0-5]|97[1-6])\d{3}$/, "Code postal invalide"),
+  code_postal: z.string().regex(/^(?:(?:0[1-9]|[1-8]\d|9[0-5])\d{3}|97[1-6]\d{2})$/, "Code postal invalide"),
   ville: z.string().min(1, "La ville est requise"),
   departement: z.string().optional(),
   floors: z.number().int().min(1, "Minimum 1 étage").max(50, "Maximum 50 étages"),

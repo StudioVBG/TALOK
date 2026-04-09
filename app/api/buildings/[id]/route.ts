@@ -12,7 +12,7 @@ import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 const updateBuildingSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   adresse_complete: z.string().min(1).optional(),
-  code_postal: z.string().regex(/^(0[1-9]|[1-8]\d|9[0-5]|97[1-6])\d{3}$/).optional(),
+  code_postal: z.string().regex(/^(?:(?:0[1-9]|[1-8]\d|9[0-5])\d{3}|97[1-6]\d{2})$/).optional(),
   ville: z.string().min(1).optional(),
   departement: z.string().optional(),
   floors: z.number().int().min(1).max(50).optional(),
