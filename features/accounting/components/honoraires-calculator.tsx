@@ -127,7 +127,7 @@ export function HonorairesCalculator({
 
             {codePostal.startsWith("97") && (
               <p className="mt-3 text-xs text-muted-foreground">
-                * Taux TVA réduit applicable pour les DOM-TOM
+                * Taux TVA réduit applicable pour l&apos;outre-mer
               </p>
             )}
           </div>

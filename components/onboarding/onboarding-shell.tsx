@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Clock, ChevronRight, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TalokLogo } from "@/components/marketing/TalokLogo";
 
 // Types
 interface Step {
@@ -150,6 +151,11 @@ export function OnboardingShell({
       </div>
 
       <div className="relative mx-auto flex max-w-5xl flex-col gap-8 px-4 pb-20 pt-12">
+        {/* Logo */}
+        <div className="flex justify-center">
+          <TalokLogo variant="dark" size="md" />
+        </div>
+
         {/* Step indicator / Progress bar */}
         {showProgress && (
           <motion.div

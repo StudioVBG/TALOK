@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ticketSchema } from "@/lib/validations";
+import { safeDateFormat } from "@/lib/helpers/safe-date";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -298,7 +299,7 @@ export default function NewOwnerTicketPage() {
                       <SelectItem value="__none__">Aucun</SelectItem>
                       {leases.map((lease) => (
                         <SelectItem key={lease.id} value={lease.id}>
-                          Bail du {new Date(lease.date_debut).toLocaleDateString("fr-FR")}
+                          Bail du {safeDateFormat(lease.date_debut)}
                           {lease.statut === "active" ? " (actif)" : ""}
                         </SelectItem>
                       ))}

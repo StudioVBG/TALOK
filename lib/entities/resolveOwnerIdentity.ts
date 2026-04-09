@@ -81,7 +81,7 @@ export interface OwnerIdentity {
   // Facturation
   billingAddress: string | null;
 
-  // DOM-TOM
+  // DROM-COM
   isDomTom: boolean;
   tvaRate: number;
 
@@ -103,7 +103,7 @@ export interface ResolveOwnerParams {
 // ============================================
 
 /**
- * Détermine le taux de TVA selon le code postal (DOM-TOM aware)
+ * Détermine le taux de TVA selon le code postal (DROM-COM aware)
  */
 export function getTvaRate(postalCode: string | null | undefined): number {
   if (!postalCode) return 20;
@@ -117,7 +117,7 @@ export function getTvaRate(postalCode: string | null | undefined): number {
 }
 
 /**
- * Vérifie si un code postal est dans les DOM-TOM
+ * Vérifie si un code postal est dans les DROM-COM
  */
 export function isDomTomPostalCode(
   postalCode: string | null | undefined

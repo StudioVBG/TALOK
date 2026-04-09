@@ -47,7 +47,9 @@ function formatCurrency(amount: number): string {
 }
 
 function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString("fr-FR", {
+  const d = date ? new Date(date) : null;
+  if (!d || isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("fr-FR", {
     day: "numeric",
     month: "long",
     year: "numeric",

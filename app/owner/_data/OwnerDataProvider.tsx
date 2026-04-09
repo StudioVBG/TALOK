@@ -8,11 +8,11 @@
 
 "use client";
 
-import { createContext, useContext, ReactNode, useState, useCallback, useEffect } from "react";
-import { useEntityStore } from "@/stores/useEntityStore";
+import { createContext, useContext, ReactNode, useState, useCallback, useEffect, useRef } from "react";
 import type { PropertiesWithStats } from "./fetchProperties";
 import type { OwnerDashboardData } from "./fetchDashboard";
 import type { LeaseRow } from "@/lib/supabase/typed-client";
+import { useEntityStore } from "@/stores/useEntityStore";
 
 /**
  * Données détaillées retournées par /api/owner/dashboard
@@ -127,12 +127,13 @@ export function OwnerDataProvider({
   const [isRefetching, setIsRefetching] = useState(false);
   const [error, setError] = useState<string | null>(initialError);
   const activeEntityId = useEntityStore((s) => s.activeEntityId);
+  const prevEntityId = useRef(activeEntityId);
 
   // Charger les données détaillées de l'API au montage
-  const fetchApiData = useCallback(async () => {
+  const fetchApiData = useCallback(async (entityId?: string | null) => {
     try {
       const params = new URLSearchParams();
-      if (activeEntityId) params.set("entityId", activeEntityId);
+      if (entityId) params.set("entityId", entityId);
       const url = `/api/owner/dashboard${params.toString() ? `?${params}` : ""}`;
       const res = await fetch(url, {
         method: "GET",
@@ -155,18 +156,26 @@ export function OwnerDataProvider({
   // Chargement initial des données API
   useEffect(() => {
     setIsLoadingApi(true);
-    fetchApiData().finally(() => setIsLoadingApi(false));
-  }, [fetchApiData]);
+    fetchApiData(activeEntityId).finally(() => setIsLoadingApi(false));
+  }, [fetchApiData, activeEntityId]);
+
+  // Re-fetch quand l'entité active change (après le montage initial)
+  useEffect(() => {
+    if (prevEntityId.current !== activeEntityId) {
+      prevEntityId.current = activeEntityId;
+      fetchApiData(activeEntityId);
+    }
+  }, [activeEntityId, fetchApiData]);
 
   // Rafraîchir toutes les données
   const refetch = useCallback(async () => {
     setIsRefetching(true);
     try {
-      await fetchApiData();
+      await fetchApiData(activeEntityId);
     } finally {
       setIsRefetching(false);
     }
-  }, [fetchApiData]);
+  }, [fetchApiData, activeEntityId]);
 
   return (
     <OwnerDataContext.Provider

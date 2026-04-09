@@ -100,7 +100,7 @@ interface LocalBusinessSchemaProps {
 export function OrganizationSchema({
   name = "Talok",
   url = "https://talok.fr",
-  logo = "https://talok.fr/logo.png",
+  logo = "https://talok.fr/images/talok-icon.png",
   description = "Plateforme SaaS de gestion locative n°1 en France et DROM. Open Banking, Scoring IA, signatures électroniques et portail locataire.",
   email = "support@talok.fr",
   foundingDate = "2024",
@@ -367,7 +367,7 @@ export function ArticleSchema({
       name: "Talok",
       logo: {
         "@type": "ImageObject",
-        url: "https://talok.fr/logo.png",
+        url: "https://talok.fr/images/talok-icon.png",
       },
     },
     mainEntityOfPage: {

@@ -79,7 +79,7 @@ const INITIAL_DRAFT: AccountDraft = {
 
 export default function AccountCreationPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-950"><Loader2 className="h-8 w-8 animate-spin text-indigo-400" /></div>}>
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-950"><Loader2 className="h-8 w-8 animate-spin text-blue-400" /></div>}>
       <AccountCreationContent />
     </Suspense>
   );
@@ -397,6 +397,7 @@ function AccountCreationContent() {
               <Label htmlFor="prenom">Prénom</Label>
               <Input
                 id="prenom"
+                autoComplete="given-name"
                 placeholder="Prénom"
                 value={draft.formData.prenom}
                 onChange={(e) => updateForm("prenom", e.target.value)}
@@ -409,6 +410,7 @@ function AccountCreationContent() {
               <Label htmlFor="nom">Nom</Label>
               <Input
                 id="nom"
+                autoComplete="family-name"
                 placeholder="Nom"
                 value={draft.formData.nom}
                 onChange={(e) => updateForm("nom", e.target.value)}
@@ -444,6 +446,7 @@ function AccountCreationContent() {
                   <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                   <Input
                     id="telephone"
+                    autoComplete="tel"
                     placeholder="0696614049"
                     value={draft.formData.telephone}
                     onChange={(e) => updateForm("telephone", e.target.value)}
@@ -476,6 +479,7 @@ function AccountCreationContent() {
                 <Input
                   id="email"
                   type="email"
+                  autoComplete="email"
                   placeholder="vous@email.com"
                   value={draft.formData.email}
                   onChange={(e) => updateForm("email", e.target.value)}
@@ -531,6 +535,7 @@ function AccountCreationContent() {
                     <Lock className="absolute left-3 top-3 z-10 h-4 w-4 text-slate-400" />
                     <PasswordInput
                       id="password"
+                      autoComplete="new-password"
                       placeholder="Minimum 12 caractères"
                       value={draft.formData.password}
                       onChange={(e) => updateForm("password", e.target.value)}
@@ -548,6 +553,7 @@ function AccountCreationContent() {
                   <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
                   <PasswordInput
                     id="confirmPassword"
+                    autoComplete="new-password"
                     placeholder="Répétez le mot de passe"
                     value={draft.formData.confirmPassword}
                     onChange={(e) => updateForm("confirmPassword", e.target.value)}
@@ -558,7 +564,7 @@ function AccountCreationContent() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-xl border border-indigo-300/30 bg-indigo-500/10 p-4 text-sm text-indigo-100">
+              <div className="rounded-xl border border-blue-300/30 bg-blue-500/10 p-4 text-sm text-blue-100">
                 <p className="font-medium text-white">Connexion sans mot de passe</p>
                 <p className="text-white/75">Un lien magique sera envoyé à votre email pour valider votre compte.</p>
               </div>
@@ -579,7 +585,7 @@ function AccountCreationContent() {
           <div className="grid gap-4 lg:grid-cols-2">
             <div className={cn("rounded-xl border p-4 space-y-2", draft.consents.terms_accepted && "border-emerald-400/70")}>
               <div className="flex items-start gap-3">
-                <FileText className="mt-0.5 h-5 w-5 text-indigo-200" />
+                <FileText className="mt-0.5 h-5 w-5 text-blue-200" />
                 <div>
                   <Label htmlFor="terms" className="cursor-pointer font-semibold">
                     J’accepte les{" "}
@@ -604,7 +610,7 @@ function AccountCreationContent() {
 
             <div className={cn("rounded-xl border p-4 space-y-2", draft.consents.privacy_accepted && "border-emerald-400/70")}>
               <div className="flex items-start gap-3">
-                <Shield className="mt-0.5 h-5 w-5 text-indigo-200" />
+                <Shield className="mt-0.5 h-5 w-5 text-blue-200" />
                 <div>
                   <Label htmlFor="privacy" className="cursor-pointer font-semibold">
                     J’accepte la{" "}
@@ -630,7 +636,7 @@ function AccountCreationContent() {
 
           <div className="rounded-xl border border-white/15 p-4">
             <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-slate-200">
-              <Cookie className="h-4 w-4 text-indigo-200" />
+              <Cookie className="h-4 w-4 text-blue-200" />
               Préférences cookies
             </div>
             <div className="grid gap-4 pt-3 md:grid-cols-3">

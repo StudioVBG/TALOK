@@ -819,7 +819,12 @@ export const ticketSchema = z.object({
   lease_id: z.string().uuid().optional().nullable(),
   titre: z.string().min(1, "Le titre est requis"),
   description: z.string().min(1, "La description est requise"),
-  priorite: z.enum(["basse", "normale", "haute"]),
+  category: z.enum([
+    "plomberie", "electricite", "serrurerie", "chauffage", "humidite",
+    "nuisibles", "bruit", "parties_communes", "equipement", "autre",
+  ]).optional().nullable(),
+  priorite: z.enum(["low", "normal", "urgent", "emergency", "basse", "normale", "haute", "urgente"]),
+  photos: z.array(z.string()).optional(),
 });
 
 // Validation des ordres de travail
@@ -1219,3 +1224,57 @@ export type {
   DerogtoireHistoryEntry,
 } from "./commercial-lease";
 
+// ==========================================
+// CHARGES LOCATIVES (décret 87-713)
+// ==========================================
+
+export const chargeCategoryCreateSchema = z.object({
+  property_id: z.string().uuid(),
+  category: z.enum([
+    "ascenseurs",
+    "eau_chauffage",
+    "installations_individuelles",
+    "parties_communes",
+    "espaces_exterieurs",
+    "taxes_redevances",
+  ]),
+  label: z.string().min(1, "Le libellé est requis").max(200),
+  is_recoverable: z.boolean().default(true),
+  annual_budget_cents: z.number().int().min(0).default(0),
+});
+
+export const chargeCategoryUpdateSchema = z.object({
+  label: z.string().min(1).max(200).optional(),
+  is_recoverable: z.boolean().optional(),
+  annual_budget_cents: z.number().int().min(0).optional(),
+});
+
+export const chargeEntryCreateSchema = z.object({
+  property_id: z.string().uuid(),
+  category_id: z.string().uuid(),
+  label: z.string().min(1, "Le libellé est requis").max(500),
+  amount_cents: z.number().int().positive("Le montant doit être positif"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format de date invalide (AAAA-MM-JJ)"),
+  is_recoverable: z.boolean().default(true),
+  justificatif_document_id: z.string().uuid().nullable().optional(),
+  fiscal_year: z.number().int().min(2020).max(2050),
+});
+
+export const chargeEntryUpdateSchema = z.object({
+  label: z.string().min(1).max(500).optional(),
+  amount_cents: z.number().int().positive().optional(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  is_recoverable: z.boolean().optional(),
+  justificatif_document_id: z.string().uuid().nullable().optional(),
+  category_id: z.string().uuid().optional(),
+});
+
+export const regularizationCalculateSchema = z.object({
+  lease_id: z.string().uuid(),
+  property_id: z.string().uuid(),
+  fiscal_year: z.number().int().min(2020).max(2050),
+});
+
+export const regularizationContestSchema = z.object({
+  contest_reason: z.string().min(10, "Veuillez détailler votre contestation (min 10 caractères)").max(2000),
+});

@@ -11,6 +11,12 @@ export default function NotFound() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-4">
       <div className="text-center max-w-md">
+        {/* Logo */}
+        <Link href="/" className="inline-flex items-center gap-2 mb-8">
+          <img src="/images/talok-icon.png" alt="TALOK" className="h-8 w-8 rounded-lg object-contain" />
+          <span className="text-lg font-bold text-slate-900 dark:text-white font-display">TALOK</span>
+        </Link>
+
         {/* 404 Illustration */}
         <div className="mb-8">
           <div className="relative">

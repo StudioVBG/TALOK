@@ -190,7 +190,7 @@ export function EntityDetailClient({
                 )}
                 {isDom && (
                   <Badge variant="outline" className="text-xs">
-                    DOM-TOM · TVA {getTvaRate(postalCode)}%
+                    Outre-mer · TVA {getTvaRate(postalCode)}%
                   </Badge>
                 )}
               </div>

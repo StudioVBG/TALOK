@@ -15,7 +15,6 @@
  */
 
 import Link from "next/link";
-import { Building2 } from "lucide-react";
 
 interface PublicFooterProps {
   /** Variante de style (dark pour homepage, light pour autres pages) */
@@ -70,15 +69,11 @@ export function PublicFooter({
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Logo */}
             <div className="flex items-center gap-2">
-              <div
-                className={`flex h-8 w-8 items-center justify-center rounded-lg ${isDark ? "bg-gradient-to-br from-indigo-500 to-cyan-500" : "bg-primary"}`}
-              >
-                <Building2 className="h-4 w-4 text-white" />
-              </div>
+              <img src="/images/talok-icon.png" alt="TALOK" className="h-8 w-8 rounded-lg object-contain" />
               <span
                 className={`font-bold ${isDark ? "text-white" : "text-slate-900"}`}
               >
-                Talok
+                TALOK
               </span>
             </div>
 
@@ -137,15 +132,11 @@ export function PublicFooter({
           {/* Brand Column */}
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-xl ${isDark ? "bg-gradient-to-br from-indigo-500 to-cyan-500" : "bg-primary"}`}
-              >
-                <Building2 className="h-5 w-5 text-white" />
-              </div>
+              <img src="/images/talok-icon.png" alt="TALOK" className="h-10 w-10 rounded-xl object-contain" />
               <span
                 className={`text-xl font-bold ${isDark ? "text-white" : "text-slate-900"}`}
               >
-                Talok
+                TALOK
               </span>
             </div>
             <p
@@ -204,7 +195,7 @@ export function PublicFooter({
             <span
               className={`text-xs ${isDark ? "text-slate-600" : "text-slate-400"}`}
             >
-              +10 000 propriétaires nous font confiance
+              De nombreux propriétaires nous font confiance
             </span>
           </div>
         </div>

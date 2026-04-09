@@ -249,7 +249,7 @@ export function baseLayout(content: string, preheader?: string): string {
     <div class="card">
       <div class="header">
         <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr'}" class="logo">
-          🏠 Talok
+          <img src="https://talok.fr/images/talok-logo-horizontal.png" alt="TALOK" style="height: 40px; width: auto;" />
         </a>
       </div>
       ${content}
@@ -2006,6 +2006,133 @@ export const emailTemplates = {
     `, `Vous êtes garant pour ${escapeHtml(data.tenantName)}`),
   }),
 
+  guarantorInvitation: (data: {
+    guarantorName: string;
+    ownerName: string;
+    tenantName: string;
+    propertyAddress: string;
+    rentAmount: number;
+    chargesAmount: number;
+    cautionType: string;
+    inviteUrl: string;
+  }) => {
+    const cautionLabels: Record<string, string> = {
+      simple: "Caution simple",
+      solidaire: "Caution solidaire",
+      visale: "Garantie Visale",
+    };
+    return {
+      subject: `Invitation : devenez garant pour ${data.tenantName} sur Talok`,
+      html: baseLayout(`
+        <div class="content">
+          <h1>Vous êtes invité(e) à devenir garant</h1>
+          <p>Bonjour ${escapeHtml(data.guarantorName)},</p>
+          <p><strong>${escapeHtml(data.ownerName)}</strong> vous invite à vous porter caution pour <strong>${escapeHtml(data.tenantName)}</strong> dans le cadre d'un bail locatif.</p>
+
+          <div class="highlight-box">
+            <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Bien concerné</p>
+            <p style="font-weight: 600; color: ${COLORS.gray[900]};">${escapeHtml(data.propertyAddress)}</p>
+            <div style="display: flex; gap: 24px; margin-top: 12px;">
+              <div>
+                <p style="color: ${COLORS.gray[500]}; font-size: 13px; margin-bottom: 2px;">Loyer</p>
+                <p style="font-weight: 600; color: ${COLORS.gray[900]};">${data.rentAmount.toLocaleString('fr-FR')} €</p>
+              </div>
+              <div>
+                <p style="color: ${COLORS.gray[500]}; font-size: 13px; margin-bottom: 2px;">Charges</p>
+                <p style="font-weight: 600; color: ${COLORS.gray[900]};">${data.chargesAmount.toLocaleString('fr-FR')} €</p>
+              </div>
+              <div>
+                <p style="color: ${COLORS.gray[500]}; font-size: 13px; margin-bottom: 2px;">Type</p>
+                <p style="font-weight: 600; color: ${COLORS.gray[900]};">${cautionLabels[data.cautionType] || data.cautionType}</p>
+              </div>
+            </div>
+          </div>
+
+          <p>Pour accepter cette invitation, créez votre compte garant sur Talok :</p>
+
+          <div style="text-align: center;">
+            <a href="${data.inviteUrl}" class="button">Créer mon compte garant</a>
+          </div>
+
+          <p style="font-size: 13px; color: ${COLORS.gray[500]}; margin-top: 24px;">
+            Cette invitation expire dans 30 jours. Si vous ne souhaitez pas vous porter garant, vous pouvez ignorer cet email.
+          </p>
+        </div>
+      `, `Invitation garant pour ${escapeHtml(data.tenantName)} sur Talok`),
+    };
+  },
+
+  guarantorEngagementSigned: (data: {
+    ownerName: string;
+    guarantorName: string;
+    tenantName: string;
+    propertyAddress: string;
+    cautionType: string;
+  }) => {
+    const cautionLabels: Record<string, string> = {
+      caution_simple: "Caution simple",
+      caution_solidaire: "Caution solidaire",
+      visale: "Garantie Visale",
+    };
+    return {
+      subject: `Acte de caution signé par ${data.guarantorName}`,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span class="badge badge-success">ACTE SIGNÉ</span>
+          </div>
+          <h1>L'acte de cautionnement a été signé</h1>
+          <p>Bonjour ${escapeHtml(data.ownerName)},</p>
+          <p><strong>${escapeHtml(data.guarantorName)}</strong> a signé l'acte de cautionnement (${cautionLabels[data.cautionType] || data.cautionType}) pour <strong>${escapeHtml(data.tenantName)}</strong>.</p>
+
+          <div class="highlight-box">
+            <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Bien concerné</p>
+            <p style="font-weight: 600; color: ${COLORS.gray[900]};">${escapeHtml(data.propertyAddress)}</p>
+          </div>
+
+          <p>Le garant est désormais actif sur ce bail. Vous pouvez consulter les détails depuis votre espace propriétaire.</p>
+        </div>
+      `, `Acte de caution signé pour ${escapeHtml(data.tenantName)}`),
+    };
+  },
+
+  guarantorLiberated: (data: {
+    guarantorName: string;
+    tenantName: string;
+    propertyAddress: string;
+    reason: string;
+  }) => {
+    const reasonLabels: Record<string, string> = {
+      fin_bail: "fin du bail",
+      remplacement_locataire: "remplacement du locataire",
+      depart_colocataire_6mois: "départ du colocataire cautionné (après 6 mois)",
+      accord_parties: "accord entre les parties",
+      autre: "autre motif",
+    };
+    return {
+      subject: `Libération de votre engagement de caution`,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span class="badge badge-info">LIBÉRATION</span>
+          </div>
+          <h1>Vous êtes libéré(e) de votre engagement</h1>
+          <p>Bonjour ${escapeHtml(data.guarantorName)},</p>
+          <p>Votre engagement de cautionnement pour <strong>${escapeHtml(data.tenantName)}</strong> a été clôturé.</p>
+
+          <div class="highlight-box">
+            <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Bien concerné</p>
+            <p style="font-weight: 600; color: ${COLORS.gray[900]};">${escapeHtml(data.propertyAddress)}</p>
+            <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-top: 12px; margin-bottom: 4px;">Motif</p>
+            <p style="font-weight: 600; color: ${COLORS.gray[900]};">${reasonLabels[data.reason] || data.reason}</p>
+          </div>
+
+          <p>Vous n'êtes plus tenu(e) aux obligations de cette caution. Si vous avez des questions, contactez le propriétaire ou notre support.</p>
+        </div>
+      `, `Libération de votre caution pour ${escapeHtml(data.tenantName)}`),
+    };
+  },
+
   providerInvite: (data: {
     providerName: string;
     email: string;
@@ -2063,6 +2190,42 @@ export const emailTemplates = {
         </div>
       </div>
     `, `Demande de devis pour ${escapeHtml(data.propertyAddress)}`),
+  }),
+
+  /**
+   * Confirmation de suppression de compte (RGPD Article 17)
+   */
+  accountDeletionConfirmation: (data: {
+    userName: string;
+  }) => ({
+    subject: 'Votre compte Talok a été supprimé',
+    html: baseLayout(`
+      <div class="content">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span style="font-size: 48px;">👋</span>
+        </div>
+
+        <h1>Compte supprimé</h1>
+        <p>Bonjour ${escapeHtml(data.userName)},</p>
+        <p>Conformément à votre demande et au droit à l'effacement (Article 17 du RGPD), votre compte Talok a été supprimé.</p>
+
+        <div class="highlight-box">
+          <p style="font-weight: 600; color: ${COLORS.gray[900]};">Ce qui a été fait :</p>
+          <ul style="color: ${COLORS.gray[700]}; font-size: 14px; margin-top: 8px;">
+            <li>Vos données personnelles ont été anonymisées</li>
+            <li>Vos photos et documents d'identité ont été supprimés</li>
+            <li>Toutes vos sessions ont été fermées</li>
+          </ul>
+          <p style="color: ${COLORS.gray[500]}; font-size: 13px; margin-top: 12px;">
+            Les factures et quittances sont conservées 10 ans (obligation légale comptable).
+          </p>
+        </div>
+
+        <p style="font-size: 13px; color: ${COLORS.gray[500]}; margin-top: 24px;">
+          Pour toute question, contactez notre DPO : <a href="mailto:dpo@talok.fr" style="color: ${COLORS.primary};">dpo@talok.fr</a>
+        </p>
+      </div>
+    `, 'Votre compte Talok a été supprimé conformément au RGPD'),
   }),
 };
 

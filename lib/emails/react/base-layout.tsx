@@ -67,7 +67,13 @@ export function TalokEmailLayout({ preheader, children }: TalokEmailLayoutProps)
           {/* Header avec logo */}
           <Section style={styles.header}>
             <Link href="https://talok.fr" style={styles.logoLink}>
-              <Text style={styles.logoText}>TALOK</Text>
+              <Img
+                src="https://talok.fr/images/talok-logo-horizontal.png"
+                alt="TALOK"
+                width={140}
+                height={56}
+                style={{ height: "40px", width: "auto" }}
+              />
             </Link>
           </Section>
 

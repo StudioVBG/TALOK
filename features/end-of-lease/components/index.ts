@@ -47,7 +47,7 @@ export type {
 export { WearGrid, WEAR_CATEGORIES, calculateWearPercentage, calculateTenantResponsibility, calculateAmountDue } from "./wear-grid";
 export type { WearItem, WearGridData, WearCategory, DamageType } from "./wear-grid";
 
-// === Diagnostics DOM-TOM (Arrêtés préfectoraux) ===
+// === Diagnostics DROM-COM (Arrêtés préfectoraux) ===
 export { DomtomDiagnostics } from "./domtom-diagnostics";
 export type { TermitesDiagnostic, RisquesNaturelsDomtom, DomtomDiagnosticsData } from "./domtom-diagnostics";
 

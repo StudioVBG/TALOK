@@ -1,21 +1,26 @@
 import { apiClient } from "@/lib/api-client";
-import { ticketSchema } from "@/lib/validations";
-import type { Ticket, TicketStatus, TicketPriority } from "@/lib/types";
+import type { Ticket, TicketStatus, TicketPriority, TicketCategory, TicketComment } from "@/lib/types";
 
 export interface CreateTicketData {
   property_id: string;
   lease_id?: string | null;
   titre: string;
   description: string;
+  category?: TicketCategory | null;
   priorite: TicketPriority;
+  photos?: string[];
 }
 
-export interface UpdateTicketData extends Partial<CreateTicketData> {
-  statut?: TicketStatus;
+export interface UpdateTicketData {
+  titre?: string;
+  description?: string;
+  category?: TicketCategory | null;
+  priorite?: TicketPriority;
+  resolution_notes?: string;
+  satisfaction_rating?: number;
 }
 
 export class TicketsService {
-
   async getTickets(): Promise<Ticket[]> {
     const response = await apiClient.get<{ tickets: Ticket[] }>("/tickets");
     return response.tickets;
@@ -31,63 +36,93 @@ export class TicketsService {
     return tickets.filter((t) => t.property_id === propertyId);
   }
 
-  async getTicketsByOwner(ownerId: string): Promise<Ticket[]> {
+  async getTicketsByOwner(): Promise<Ticket[]> {
     try {
-      // L'API /api/tickets filtre déjà correctement les tickets pour les propriétaires
-      // Elle retourne les tickets des propriétés du propriétaire
-      const tickets = await this.getTickets();
-      
-      // Double vérification côté client (l'API devrait déjà avoir filtré)
-      return tickets.filter((t) => {
-        // Les tickets retournés par l'API sont déjà filtrés pour le propriétaire
-        return true;
-      });
+      return await this.getTickets();
     } catch (error) {
-      // En cas d'erreur, retourner un tableau vide plutôt que de faire planter l'application
       console.error("[TicketsService] Error fetching owner tickets:", error);
       return [];
     }
   }
 
-  async getTicketsByTenant(tenantId: string): Promise<Ticket[]> {
+  async getTicketsByTenant(): Promise<Ticket[]> {
     try {
-      // L'API /api/tickets filtre déjà correctement les tickets pour les locataires
-      // Elle retourne les tickets créés par le locataire ET les tickets liés à ses baux
-      const tickets = await this.getTickets();
-      
-      // Filtrer pour s'assurer qu'on ne retourne que les tickets du locataire
-      // (double vérification côté client)
-      const tenantTickets = tickets.filter((t) => {
-        // Tickets créés par le locataire
-        if (t.created_by_profile_id === tenantId) return true;
-        
-        // Les tickets liés aux baux du locataire sont déjà filtrés par l'API
-        // On peut simplement retourner tous les tickets retournés par l'API
-        return true;
-      });
-      
-      return tenantTickets;
+      return await this.getTickets();
     } catch (error) {
-      // En cas d'erreur, retourner un tableau vide plutôt que de faire planter l'application
       console.error("[TicketsService] Error fetching tenant tickets:", error);
       return [];
     }
   }
 
   async createTicket(data: CreateTicketData): Promise<Ticket> {
-    const validatedData = ticketSchema.parse(data);
-    const response = await apiClient.post<{ ticket: Ticket }>("/tickets", validatedData);
+    const response = await apiClient.post<{ ticket: Ticket }>("/tickets", data);
     return response.ticket;
   }
 
   async updateTicket(id: string, data: UpdateTicketData): Promise<Ticket> {
-    const validatedData = ticketSchema.partial().parse(data);
-    const response = await apiClient.put<{ ticket: Ticket }>(`/tickets/${id}`, validatedData);
+    const response = await apiClient.patch<{ ticket: Ticket }>(`/tickets/${id}`, data);
     return response.ticket;
   }
 
-  async changeTicketStatus(id: string, status: TicketStatus): Promise<Ticket> {
-    return await this.updateTicket(id, { statut: status });
+  async assignTicket(id: string, providerId: string): Promise<Ticket> {
+    const response = await apiClient.post<{ ticket: Ticket }>(`/tickets/${id}/assign`, {
+      provider_id: providerId,
+    });
+    return response.ticket;
+  }
+
+  async resolveTicket(id: string, notes?: string): Promise<Ticket> {
+    const response = await apiClient.post<{ ticket: Ticket }>(`/tickets/${id}/resolve`, {
+      resolution_notes: notes,
+    });
+    return response.ticket;
+  }
+
+  async closeTicket(id: string, satisfactionRating?: number): Promise<Ticket> {
+    const response = await apiClient.post<{ ticket: Ticket }>(`/tickets/${id}/close`, {
+      satisfaction_rating: satisfactionRating,
+    });
+    return response.ticket;
+  }
+
+  async reopenTicket(id: string): Promise<Ticket> {
+    const response = await apiClient.post<{ ticket: Ticket }>(`/tickets/${id}/reopen`, {});
+    return response.ticket;
+  }
+
+  async getComments(ticketId: string): Promise<TicketComment[]> {
+    const response = await apiClient.get<{ comments: TicketComment[] }>(
+      `/tickets/${ticketId}/comments`
+    );
+    return response.comments;
+  }
+
+  async addComment(
+    ticketId: string,
+    content: string,
+    isInternal?: boolean
+  ): Promise<TicketComment> {
+    const response = await apiClient.post<{ comment: TicketComment }>(
+      `/tickets/${ticketId}/comments`,
+      { content, is_internal: isInternal || false }
+    );
+    return response.comment;
+  }
+
+  async createWorkOrder(
+    ticketId: string,
+    data: { provider_id: string; date_intervention_prevue?: string; cout_estime?: number }
+  ) {
+    const response = await apiClient.post<{ work_order: any }>(
+      `/tickets/${ticketId}/create-work-order`,
+      data
+    );
+    return response.work_order;
+  }
+
+  async getKPIs() {
+    const response = await apiClient.get<{ kpis: any }>("/tickets/kpis");
+    return response.kpis;
   }
 
   async deleteTicket(id: string): Promise<void> {
@@ -96,4 +131,3 @@ export class TicketsService {
 }
 
 export const ticketsService = new TicketsService();
-

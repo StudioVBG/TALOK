@@ -820,6 +820,23 @@ export async function sendKeyHandoverConfirmedNotification(data: {
   });
 }
 
+/**
+ * Confirmation de suppression de compte (RGPD Article 17)
+ */
+export async function sendAccountDeletionConfirmation(
+  email: string,
+  userName: string
+): Promise<EmailResult> {
+  const template = emailTemplates.accountDeletionConfirmation({ userName });
+
+  return sendEmail({
+    to: email,
+    subject: template.subject,
+    html: template.html,
+    tags: [{ name: 'type', value: 'account_deletion' }],
+  });
+}
+
 // Export du service
 export const emailService = {
   send: sendEmail,
@@ -842,5 +859,7 @@ export const emailService = {
   // Key Handover
   sendKeyHandoverScanRequest,
   sendKeyHandoverConfirmedNotification,
+  // RGPD
+  sendAccountDeletionConfirmation,
 };
 

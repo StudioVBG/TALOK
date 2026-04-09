@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { Check } from 'lucide-react'
+import { motion } from 'framer-motion'
 
 export interface FeatureCardData {
   id: string;
@@ -77,6 +78,27 @@ export const FEATURE_CARDS: FeatureCardData[] = [
   },
 ];
 
+const cardVariants = {
+  hidden: (isRight: boolean) => ({
+    opacity: 0,
+    x: isRight ? 60 : -60,
+  }),
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] },
+  },
+}
+
+const bulletVariants = {
+  hidden: { opacity: 0, x: -12 },
+  visible: (i: number) => ({
+    opacity: 1,
+    x: 0,
+    transition: { delay: 0.3 + i * 0.08, duration: 0.4 },
+  }),
+}
+
 interface FeatureCardProps {
   feature: FeatureCardData;
   imageSrc: string;
@@ -86,206 +108,81 @@ export function FeatureCard({ feature, imageSrc }: FeatureCardProps) {
   const isRight = feature.imagePosition === "right";
 
   return (
-    /*
-     * STRUCTURE CRITIQUE — 3 niveaux d'overflow :
-     * [Section]  → overflow: visible (défaut)
-     * [Carte]    → overflow: visible  ← LE FIX (sinon la photo est clippée)
-     * [Photo div intérieure] → overflow: hidden  (pour clipper l'image)
-     */
-    <div
-      className="relative py-16 px-4 md:px-8 flex justify-center"
-      style={{ overflow: "visible" }}
+    <motion.div
+      custom={isRight}
+      variants={cardVariants}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.3 }}
+      className="py-8 md:py-12"
     >
       <div
-        className="relative w-full max-w-4xl bg-white dark:bg-card shadow-2xl"
-        style={{
-          borderRadius: "24px",
-          overflow: "visible",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-        }}
+        className={`flex flex-col items-center gap-8 md:gap-12 ${
+          isRight ? "md:flex-row-reverse" : "md:flex-row"
+        }`}
       >
-        <div className="w-full flex flex-col md:flex-row items-center">
-          <div
-            className="w-full flex items-center"
-            style={{ flexDirection: isRight ? "row-reverse" : "row" }}
-          >
-            {/* ===== PHOTO DESKTOP — déborde hors de la carte ===== */}
-            <div
-              className="flex-shrink-0 hidden md:block"
-              style={{
-                position: "relative",
-                width: "260px",
-                height: "300px",
-                marginTop: "-32px",
-                marginBottom: "-32px",
-                ...(isRight
-                  ? { marginRight: "-28px" }
-                  : { marginLeft: "-28px" }),
-                zIndex: 10,
-              }}
-            >
-              <div
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: "18px",
-                  overflow: "hidden",
-                  border: "4px solid white",
-                  boxShadow: "0 16px 48px rgba(0,0,0,0.22)",
-                  transform: isRight ? "rotate(3deg)" : "rotate(-3deg)",
-                }}
-              >
-                <Image
-                  src={imageSrc}
-                  alt={feature.imageAlt}
-                  fill
-                  className="object-cover object-top"
-                  loading="lazy"
-                  sizes="260px"
-                />
-              </div>
-            </div>
-
-            {/* ===== PHOTO MOBILE — déborde par le haut ===== */}
-            <div
-              className="block md:hidden flex-shrink-0 self-start"
-              style={{
-                position: "relative",
-                width: "180px",
-                height: "200px",
-                marginTop: "-28px",
-                marginLeft: "auto",
-                marginRight: "auto",
-                zIndex: 10,
-              }}
-            >
-              <div
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: "14px",
-                  overflow: "hidden",
-                  border: "3px solid white",
-                  boxShadow: "0 12px 32px rgba(0,0,0,0.20)",
-                  transform: "rotate(-2deg)",
-                }}
-              >
-                <Image
-                  src={imageSrc}
-                  alt={feature.imageAlt}
-                  fill
-                  className="object-cover object-top"
-                  loading="lazy"
-                  sizes="180px"
-                />
-              </div>
-            </div>
-
-            {/* ===== CONTENU ===== */}
-            <div
-              className="flex-1"
-              style={{
-                padding: isRight
-                  ? "40px 40px 40px 28px"
-                  : "40px 28px 40px 40px",
-              }}
-            >
-              {/* Badge */}
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  background: "#DCFCE7",
-                  color: "#15803D",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  padding: "4px 12px",
-                  borderRadius: "20px",
-                  marginBottom: "12px",
-                  fontFamily: "Manrope, sans-serif",
-                }}
-              >
-                <Check size={12} strokeWidth={3} />
-                {feature.badge}
-              </div>
-
-              {/* Titre */}
-              <h2
-                style={{
-                  fontFamily: "Manrope, sans-serif",
-                  fontWeight: 800,
-                  fontSize: "clamp(18px, 2.2vw, 24px)",
-                  color: "#1B2A6B",
-                  marginBottom: "20px",
-                  lineHeight: 1.25,
-                }}
-                className="dark:!text-white"
-              >
-                {feature.title}
-              </h2>
-
-              {/* Bullets */}
-              <ul style={{ listStyle: "none", marginBottom: "16px" }}>
-                {feature.bullets.map((bullet, i) => (
-                  <li
-                    key={i}
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: "10px",
-                      marginBottom: "10px",
-                      fontFamily: "Manrope, sans-serif",
-                      fontSize: "14px",
-                      lineHeight: 1.6,
-                      color: "#475569",
-                    }}
-                    className="dark:!text-slate-400"
-                  >
-                    <span
-                      style={{
-                        flexShrink: 0,
-                        width: "18px",
-                        height: "18px",
-                        background: "#22C55E",
-                        borderRadius: "4px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        marginTop: "2px",
-                      }}
-                    >
-                      <Check size={11} color="white" strokeWidth={3.5} />
-                    </span>
-                    {bullet}
-                  </li>
-                ))}
-              </ul>
-
-              {/* Highlight stat */}
-              {feature.highlight && (
-                <div
-                  style={{
-                    background: "#EFF6FF",
-                    borderLeft: "3px solid #2563EB",
-                    borderRadius: "0 8px 8px 0",
-                    padding: "10px 14px",
-                    fontFamily: "Manrope, sans-serif",
-                    fontSize: "13px",
-                    color: "#1E40AF",
-                    lineHeight: 1.6,
-                  }}
-                  className="dark:!bg-blue-900/30 dark:!text-blue-200"
-                >
-                  {feature.highlight}
-                </div>
-              )}
-            </div>
+        {/* Image */}
+        <motion.div
+          className="w-full md:w-[45%] flex-shrink-0"
+          whileHover={{ scale: 1.02 }}
+          transition={{ type: "spring", stiffness: 300 }}
+        >
+          <div className="relative aspect-[4/3] overflow-hidden rounded-2xl shadow-lg">
+            <Image
+              src={imageSrc}
+              alt={feature.imageAlt}
+              fill
+              className="object-cover"
+              loading="lazy"
+              sizes="(max-width: 768px) 100vw, 45vw"
+            />
+            <div className="absolute inset-0 rounded-2xl ring-1 ring-inset ring-black/5" />
           </div>
+        </motion.div>
+
+        {/* Content */}
+        <div className="flex-1 space-y-5">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-xs font-bold text-green-700 dark:bg-green-900/30 dark:text-green-300">
+            <Check size={12} strokeWidth={3} />
+            {feature.badge}
+          </div>
+
+          <h3 className="text-2xl md:text-3xl font-extrabold text-[#1B2A6B] leading-tight dark:text-white">
+            {feature.title}
+          </h3>
+
+          <ul className="space-y-3">
+            {feature.bullets.map((bullet, i) => (
+              <motion.li
+                key={i}
+                custom={i}
+                variants={bulletVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                className="flex items-start gap-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400"
+              >
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded bg-green-500 text-white">
+                  <Check size={12} strokeWidth={3.5} />
+                </span>
+                {bullet}
+              </motion.li>
+            ))}
+          </ul>
+
+          {feature.highlight && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.5, duration: 0.4 }}
+              className="rounded-lg border-l-[3px] border-[#2563EB] bg-blue-50 px-4 py-3 text-[13px] leading-relaxed text-blue-800 dark:bg-blue-900/20 dark:text-blue-200"
+            >
+              {feature.highlight}
+            </motion.div>
+          )}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

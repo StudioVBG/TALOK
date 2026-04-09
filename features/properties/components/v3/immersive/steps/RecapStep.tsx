@@ -169,7 +169,7 @@ export function RecapStep() {
     const allValid = requiredValid === requiredTotal;
     const score = requiredTotal > 0 ? Math.round((requiredValid / requiredTotal) * 100) : 100;
 
-    // Messages d'alerte spécifiques DOM-TOM
+    // Messages d'alerte spécifiques DROM-COM
     const dromWarnings: string[] = [];
     if (isDromLocation && HABITATION_TYPES.includes(propertyType)) {
       if (!formData.dpe_classe_energie || formData.dpe_classe_energie === "NC") {
@@ -377,14 +377,14 @@ export function RecapStep() {
           )}
         </div>
         
-        {/* SOTA 2026: Alerte DOM-TOM si applicable */}
+        {/* SOTA 2026: Alerte DROM-COM si applicable */}
         {validation.isDromLocation && validation.dromWarnings.length > 0 && (
           <div className="mt-6 p-4 rounded-xl border border-blue-300 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-800">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold text-blue-800 dark:text-blue-200">
-                  Réglementation DOM-TOM
+                  Réglementation outre-mer
                 </p>
                 <ul className="mt-1 space-y-1">
                   {validation.dromWarnings.map((warning, i) => (

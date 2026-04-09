@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Page Solution: DOM-TOM (Différenciateur majeur)
+ * Page Solution: France d'outre-mer (Différenciateur majeur)
  *
- * USP: Seul logiciel né aux Antilles, conçu pour les réalités DOM-TOM
+ * USP: Seul logiciel né aux Antilles, conçu pour les réalités DROM-COM
  * SEO: Cible "gestion locative martinique", "location guadeloupe"
  */
 
@@ -149,7 +149,7 @@ export default function DomTomPage() {
         </div>
       </section>
 
-      {/* Why DOM-TOM specific */}
+      {/* Why outre-mer specific */}
       <section className="py-20">
         <div className="container mx-auto px-4">
           <motion.div

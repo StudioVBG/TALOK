@@ -1,5 +1,5 @@
 /**
- * Types Diagnostics DOM-TOM - GAP-009/010/011 SOTA 2026
+ * Types Diagnostics DROM-COM - GAP-009/010/011 SOTA 2026
  *
  * Spécificités réglementaires des départements et régions d'outre-mer:
  * - 971: Guadeloupe

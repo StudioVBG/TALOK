@@ -1086,7 +1086,7 @@ export function MonForfaitTab() {
             <div className="text-xs text-muted-foreground space-y-2">
               <p>
                 Tous les prix sont affichés hors taxes (HT). TVA applicable : {TVA_RATE}% (France métropolitaine).
-                Taux réduits DOM-TOM : Martinique/Guadeloupe/Réunion 8,5%, Guyane/Mayotte 0%.
+                Taux réduits outre-mer : Martinique/Guadeloupe/Réunion 8,5%, Guyane/Mayotte 0%.
               </p>
               <p>
                 Conformément à l&apos;Art. L221-18 du Code de la Consommation, vous disposez d&apos;un droit de rétractation de 14 jours.

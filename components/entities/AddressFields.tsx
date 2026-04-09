@@ -1,10 +1,10 @@
 "use client";
 
 /**
- * AddressFields — Champs d'adresse DOM-TOM aware
+ * AddressFields — Champs d'adresse DROM-COM aware
  *
  * Composant réutilisable qui détecte automatiquement les codes postaux
- * DOM-TOM et affiche un badge d'information TVA.
+ * DROM-COM et affiche un badge d'information TVA.
  */
 
 import { Label } from "@/components/ui/label";
@@ -104,13 +104,13 @@ export function AddressFields({
         )}
       </div>
 
-      {/* DOM-TOM banner */}
+      {/* DROM-COM banner */}
       {isDom && (
         <div className="flex items-center gap-2 p-3 rounded-lg bg-blue-50 border border-blue-200 dark:bg-blue-950/30 dark:border-blue-800/50">
           <Info className="h-4 w-4 text-blue-600 shrink-0" />
           <div className="flex-1 text-sm">
             <span className="font-medium text-blue-800 dark:text-blue-200">
-              DOM-TOM détecté
+              Territoire d&apos;outre-mer détecté
             </span>
             <span className="text-blue-600 dark:text-blue-400 ml-1">
               — TVA applicable : {tvaRate}%

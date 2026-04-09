@@ -41,7 +41,7 @@ export default function AgencyReviewOnboardingPage() {
     <div className="mx-auto max-w-2xl px-4 pb-16">
       <Card>
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+          <div className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center">
             <CheckCircle2 className="h-8 w-8 text-white" />
           </div>
           <CardTitle className="text-2xl">Tout est pret !</CardTitle>

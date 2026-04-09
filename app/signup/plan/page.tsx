@@ -47,7 +47,7 @@ const SIGNUP_PLANS: PlanSlug[] = ["gratuit", "starter", "confort", "pro"];
 
 export default function SignupPlanPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-950"><Loader2 className="h-8 w-8 animate-spin text-indigo-400" /></div>}>
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center bg-slate-950"><Loader2 className="h-8 w-8 animate-spin text-blue-400" /></div>}>
       <SignupPlanContent />
     </Suspense>
   );
@@ -246,16 +246,16 @@ function SignupPlanContent() {
                 className={cn(
                   "relative rounded-xl border-2 p-4 cursor-pointer transition-all",
                   isSelected
-                    ? "border-violet-500 bg-violet-500/10"
+                    ? "border-blue-500 bg-blue-500/10"
                     : plan.is_popular
-                    ? "border-violet-500/50 bg-slate-800/50"
+                    ? "border-blue-500/50 bg-slate-800/50"
                     : "border-slate-700/50 bg-slate-800/30 hover:border-slate-600"
                 )}
               >
                 {/* Badge populaire */}
                 {plan.is_popular && (
                   <div className="absolute -top-2.5 right-4">
-                    <Badge className="bg-gradient-to-r from-violet-500 to-indigo-500 text-white border-0 text-xs">
+                    <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 text-xs">
                       ⭐ Recommandé
                     </Badge>
                   </div>
@@ -267,7 +267,7 @@ function SignupPlanContent() {
                     <div className={cn(
                       "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all",
                       isSelected
-                        ? "border-violet-500 bg-violet-500"
+                        ? "border-blue-500 bg-blue-500"
                         : "border-slate-500"
                     )}>
                       {isSelected && <Check className="w-3 h-3 text-white" />}
@@ -277,7 +277,7 @@ function SignupPlanContent() {
                     <div className={cn(
                       "w-10 h-10 rounded-lg flex items-center justify-center",
                       isSelected
-                        ? `bg-gradient-to-br ${plan.gradient || "from-violet-500 to-indigo-600"} text-white`
+                        ? `bg-gradient-to-br ${plan.gradient || "from-blue-500 to-blue-600"} text-white`
                         : "bg-slate-700/50 text-slate-400"
                     )}>
                       {PLAN_ICONS[slug]}
@@ -359,7 +359,7 @@ function SignupPlanContent() {
         <Button
           onClick={handleSelectPlan}
           disabled={loading || !selectedPlan}
-          className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white py-6 text-base"
+          className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white py-6 text-base"
           size="lg"
         >
           {loading ? (

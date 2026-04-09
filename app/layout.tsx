@@ -85,6 +85,7 @@ import { AIProvider } from "@/components/providers/ai-provider";
 import { CapacitorProvider } from "@/components/providers/capacitor-provider";
 import { MotionProvider } from "@/components/providers/motion-provider";
 import { AccessibilityProvider } from "@/components/providers/accessibility-provider";
+import { CookieBanner } from "@/components/rgpd/CookieBanner";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -158,12 +159,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icons/icon-192x192.svg", type: "image/svg+xml" },
-      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { url: "/images/talok-icon.png", sizes: "192x192", type: "image/png" },
     ],
     apple: [
-      { url: "/icons/icon-152x152.svg", sizes: "152x152", type: "image/svg+xml" },
-      { url: "/icons/icon-192x192.svg", sizes: "192x192", type: "image/svg+xml" },
+      { url: "/images/talok-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
   manifest: "/manifest.json",
@@ -269,6 +270,7 @@ export default function RootLayout({
                       <Navbar />
                       <main id="main-content" className="flex-1" tabIndex={-1}>{children}</main>
                       <Toaster />
+                      <CookieBanner />
                       <LocalStorageMigration />
                       <AccessibilityProvider />
                     </div>
