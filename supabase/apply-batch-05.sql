@@ -1,547 +1,5 @@
--- Batch 5 — migrations 66 a 97 sur 169
--- 32 migrations
-
--- === [66/169] 20260301100000_entity_audit_and_propagation.sql ===
--- ============================================================================
--- Migration: Entity Audit Trail, Propagation, Contraintes SIRET, Guards
--- Date: 2026-03-01
--- Description:
---   1. Table entity_audit_log (historique des modifications)
---   2. Trigger propagation: UPDATE legal_entities → leases/invoices dénormalisés
---   3. Contrainte UNIQUE sur SIRET (actif uniquement)
---   4. Vérification bail actif avant transfert de bien (RPC)
--- Idempotent: peut être exécutée plusieurs fois sans effet secondaire.
--- ============================================================================
-
-BEGIN;
-
--- ============================================================================
--- 1. TABLE: entity_audit_log (historique des modifications)
--- ============================================================================
-
-CREATE TABLE IF NOT EXISTS entity_audit_log (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
-  action TEXT NOT NULL CHECK (action IN ('create', 'update', 'delete', 'deactivate', 'reactivate')),
-  changed_fields JSONB,           -- {"nom": {"old": "SCI A", "new": "SCI B"}}
-  changed_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
-  ip_address TEXT,
-  user_agent TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_entity_audit_log_entity ON entity_audit_log(entity_id);
-CREATE INDEX IF NOT EXISTS idx_entity_audit_log_action ON entity_audit_log(action);
-CREATE INDEX IF NOT EXISTS idx_entity_audit_log_date ON entity_audit_log(created_at);
-
--- RLS pour entity_audit_log
-ALTER TABLE entity_audit_log ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view audit logs of their entities"
-  ON entity_audit_log FOR SELECT
-  USING (
-    entity_id IN (
-      SELECT id FROM legal_entities WHERE owner_profile_id IN (
-        SELECT profile_id FROM owner_profiles
-        WHERE profile_id IN (
-          SELECT id FROM profiles WHERE user_id = auth.uid()
-        )
-      )
-    )
-  );
-
-CREATE POLICY "Users can insert audit logs for their entities"
-  ON entity_audit_log FOR INSERT
-  WITH CHECK (
-    entity_id IN (
-      SELECT id FROM legal_entities WHERE owner_profile_id IN (
-        SELECT profile_id FROM owner_profiles
-        WHERE profile_id IN (
-          SELECT id FROM profiles WHERE user_id = auth.uid()
-        )
-      )
-    )
-  );
-
-CREATE POLICY "Admins can do everything on entity_audit_log"
-  ON entity_audit_log FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE user_id = auth.uid() AND role = 'admin'
-    )
-  );
-
--- ============================================================================
--- 2. TRIGGER: Propager les modifications d'entité aux tables dénormalisées
--- ============================================================================
--- Quand nom/adresse/siret changent sur legal_entities,
--- mettre à jour les champs dénormalisés sur leases et invoices.
-
-CREATE OR REPLACE FUNCTION propagate_entity_changes()
-RETURNS TRIGGER AS $$
-DECLARE
-  full_address TEXT;
-BEGIN
-  -- Construire l'adresse complète
-  full_address := COALESCE(NEW.adresse_siege, '');
-  IF NEW.code_postal_siege IS NOT NULL OR NEW.ville_siege IS NOT NULL THEN
-    full_address := full_address || ', ' || COALESCE(NEW.code_postal_siege, '') || ' ' || COALESCE(NEW.ville_siege, '');
-  END IF;
-
-  -- Propager vers leases si nom, adresse ou siret a changé
-  IF (OLD.nom IS DISTINCT FROM NEW.nom)
-     OR (OLD.adresse_siege IS DISTINCT FROM NEW.adresse_siege)
-     OR (OLD.code_postal_siege IS DISTINCT FROM NEW.code_postal_siege)
-     OR (OLD.ville_siege IS DISTINCT FROM NEW.ville_siege)
-     OR (OLD.siret IS DISTINCT FROM NEW.siret) THEN
-
-    UPDATE leases SET
-      bailleur_nom = CASE WHEN OLD.nom IS DISTINCT FROM NEW.nom THEN NEW.nom ELSE bailleur_nom END,
-      bailleur_adresse = CASE
-        WHEN (OLD.adresse_siege IS DISTINCT FROM NEW.adresse_siege)
-             OR (OLD.code_postal_siege IS DISTINCT FROM NEW.code_postal_siege)
-             OR (OLD.ville_siege IS DISTINCT FROM NEW.ville_siege)
-        THEN full_address
-        ELSE bailleur_adresse
-      END,
-      bailleur_siret = CASE WHEN OLD.siret IS DISTINCT FROM NEW.siret THEN NEW.siret ELSE bailleur_siret END
-    WHERE signatory_entity_id = NEW.id;
-
-    -- Propager vers invoices
-    UPDATE invoices SET
-      issuer_nom = CASE WHEN OLD.nom IS DISTINCT FROM NEW.nom THEN NEW.nom ELSE issuer_nom END,
-      issuer_adresse = CASE
-        WHEN (OLD.adresse_siege IS DISTINCT FROM NEW.adresse_siege)
-             OR (OLD.code_postal_siege IS DISTINCT FROM NEW.code_postal_siege)
-             OR (OLD.ville_siege IS DISTINCT FROM NEW.ville_siege)
-        THEN full_address
-        ELSE issuer_adresse
-      END,
-      issuer_siret = CASE WHEN OLD.siret IS DISTINCT FROM NEW.siret THEN NEW.siret ELSE issuer_siret END,
-      issuer_tva = CASE WHEN OLD.numero_tva IS DISTINCT FROM NEW.numero_tva THEN NEW.numero_tva ELSE issuer_tva END
-    WHERE issuer_entity_id = NEW.id;
-  END IF;
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-DROP TRIGGER IF EXISTS trg_propagate_entity_changes ON legal_entities;
-CREATE TRIGGER trg_propagate_entity_changes
-  AFTER UPDATE ON legal_entities
-  FOR EACH ROW
-  EXECUTE FUNCTION propagate_entity_changes();
-
--- ============================================================================
--- 3. TRIGGER: Audit trail automatique sur modifications d'entité
--- ============================================================================
-
-CREATE OR REPLACE FUNCTION log_entity_changes()
-RETURNS TRIGGER AS $$
-DECLARE
-  changes JSONB := '{}';
-  action_type TEXT;
-  user_profile_id UUID;
-BEGIN
-  -- Déterminer l'ID du profil qui fait la modification
-  SELECT id INTO user_profile_id FROM profiles WHERE user_id = auth.uid() LIMIT 1;
-
-  IF TG_OP = 'INSERT' THEN
-    action_type := 'create';
-    changes := jsonb_build_object(
-      'entity_type', NEW.entity_type,
-      'nom', NEW.nom,
-      'regime_fiscal', NEW.regime_fiscal
-    );
-
-    INSERT INTO entity_audit_log (entity_id, action, changed_fields, changed_by)
-    VALUES (NEW.id, action_type, changes, user_profile_id);
-
-    RETURN NEW;
-  END IF;
-
-  IF TG_OP = 'UPDATE' THEN
-    -- Détecter les champs modifiés
-    IF OLD.nom IS DISTINCT FROM NEW.nom THEN
-      changes := changes || jsonb_build_object('nom', jsonb_build_object('old', OLD.nom, 'new', NEW.nom));
-    END IF;
-    IF OLD.entity_type IS DISTINCT FROM NEW.entity_type THEN
-      changes := changes || jsonb_build_object('entity_type', jsonb_build_object('old', OLD.entity_type, 'new', NEW.entity_type));
-    END IF;
-    IF OLD.forme_juridique IS DISTINCT FROM NEW.forme_juridique THEN
-      changes := changes || jsonb_build_object('forme_juridique', jsonb_build_object('old', OLD.forme_juridique, 'new', NEW.forme_juridique));
-    END IF;
-    IF OLD.regime_fiscal IS DISTINCT FROM NEW.regime_fiscal THEN
-      changes := changes || jsonb_build_object('regime_fiscal', jsonb_build_object('old', OLD.regime_fiscal, 'new', NEW.regime_fiscal));
-    END IF;
-    IF OLD.siret IS DISTINCT FROM NEW.siret THEN
-      changes := changes || jsonb_build_object('siret', jsonb_build_object('old', OLD.siret, 'new', NEW.siret));
-    END IF;
-    IF OLD.adresse_siege IS DISTINCT FROM NEW.adresse_siege THEN
-      changes := changes || jsonb_build_object('adresse_siege', jsonb_build_object('old', OLD.adresse_siege, 'new', NEW.adresse_siege));
-    END IF;
-    IF OLD.code_postal_siege IS DISTINCT FROM NEW.code_postal_siege THEN
-      changes := changes || jsonb_build_object('code_postal_siege', jsonb_build_object('old', OLD.code_postal_siege, 'new', NEW.code_postal_siege));
-    END IF;
-    IF OLD.ville_siege IS DISTINCT FROM NEW.ville_siege THEN
-      changes := changes || jsonb_build_object('ville_siege', jsonb_build_object('old', OLD.ville_siege, 'new', NEW.ville_siege));
-    END IF;
-    IF OLD.capital_social IS DISTINCT FROM NEW.capital_social THEN
-      changes := changes || jsonb_build_object('capital_social', jsonb_build_object('old', OLD.capital_social, 'new', NEW.capital_social));
-    END IF;
-    IF OLD.iban IS DISTINCT FROM NEW.iban THEN
-      changes := changes || jsonb_build_object('iban', jsonb_build_object('old', 'MASKED', 'new', 'MASKED'));
-    END IF;
-    IF OLD.is_active IS DISTINCT FROM NEW.is_active THEN
-      action_type := CASE WHEN NEW.is_active THEN 'reactivate' ELSE 'deactivate' END;
-      changes := changes || jsonb_build_object('is_active', jsonb_build_object('old', OLD.is_active, 'new', NEW.is_active));
-    ELSE
-      action_type := 'update';
-    END IF;
-
-    -- Ne loguer que s'il y a des changements
-    IF changes != '{}' THEN
-      INSERT INTO entity_audit_log (entity_id, action, changed_fields, changed_by)
-      VALUES (NEW.id, action_type, changes, user_profile_id);
-    END IF;
-
-    RETURN NEW;
-  END IF;
-
-  IF TG_OP = 'DELETE' THEN
-    action_type := 'delete';
-    changes := jsonb_build_object('nom', OLD.nom, 'entity_type', OLD.entity_type);
-
-    INSERT INTO entity_audit_log (entity_id, action, changed_fields, changed_by)
-    VALUES (OLD.id, action_type, changes, user_profile_id);
-
-    RETURN OLD;
-  END IF;
-
-  RETURN NULL;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-DROP TRIGGER IF EXISTS trg_log_entity_changes ON legal_entities;
-CREATE TRIGGER trg_log_entity_changes
-  AFTER INSERT OR UPDATE OR DELETE ON legal_entities
-  FOR EACH ROW
-  EXECUTE FUNCTION log_entity_changes();
-
--- ============================================================================
--- 4. CONTRAINTE UNIQUE sur SIRET (actif uniquement)
--- ============================================================================
--- Un même SIRET ne peut être utilisé que par une seule entité active
-
-CREATE UNIQUE INDEX IF NOT EXISTS idx_legal_entities_siret_unique
-  ON legal_entities (siret)
-  WHERE siret IS NOT NULL AND is_active = true;
-
--- ============================================================================
--- 5. RPC: Vérifier si un transfert de bien est possible (bail actif ?)
--- ============================================================================
-
-CREATE OR REPLACE FUNCTION check_property_transfer_feasibility(
-  p_property_id UUID,
-  p_from_entity_id UUID,
-  p_to_entity_id UUID
-) RETURNS TABLE (
-  can_transfer BOOLEAN,
-  blocking_reason TEXT,
-  active_lease_count BIGINT,
-  pending_signature_count BIGINT
-) AS $$
-BEGIN
-  RETURN QUERY
-  WITH lease_checks AS (
-    SELECT
-      COUNT(*) FILTER (WHERE l.statut = 'active') AS active_count,
-      COUNT(*) FILTER (WHERE l.statut IN ('pending_signature', 'fully_signed')) AS pending_count
-    FROM leases l
-    WHERE l.property_id = p_property_id
-      AND l.signatory_entity_id = p_from_entity_id
-  )
-  SELECT
-    (lc.active_count = 0 AND lc.pending_count = 0) AS can_transfer,
-    CASE
-      WHEN lc.pending_count > 0 THEN
-        'Transfert impossible : ' || lc.pending_count || ' bail(aux) en cours de signature. Finalisez ou annulez les signatures avant de transférer.'
-      WHEN lc.active_count > 0 THEN
-        'Transfert avec bail(aux) actif(s) : ' || lc.active_count || ' bail(aux) devront être mis à jour avec la nouvelle entité signataire.'
-      ELSE NULL
-    END AS blocking_reason,
-    lc.active_count AS active_lease_count,
-    lc.pending_count AS pending_signature_count
-  FROM lease_checks lc;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
--- ============================================================================
--- 6. Backfill bailleur_nom/adresse/siret sur les baux existants qui en manquent
--- ============================================================================
-
-UPDATE leases l
-SET
-  bailleur_nom = COALESCE(l.bailleur_nom, le.nom),
-  bailleur_adresse = COALESCE(l.bailleur_adresse,
-    COALESCE(le.adresse_siege, '') ||
-    CASE WHEN le.code_postal_siege IS NOT NULL OR le.ville_siege IS NOT NULL
-      THEN ', ' || COALESCE(le.code_postal_siege, '') || ' ' || COALESCE(le.ville_siege, '')
-      ELSE ''
-    END
-  ),
-  bailleur_siret = COALESCE(l.bailleur_siret, le.siret)
-FROM legal_entities le
-WHERE l.signatory_entity_id = le.id
-  AND (l.bailleur_nom IS NULL OR l.bailleur_adresse IS NULL OR l.bailleur_siret IS NULL);
-
--- Même chose pour invoices
-UPDATE invoices i
-SET
-  issuer_nom = COALESCE(i.issuer_nom, le.nom),
-  issuer_adresse = COALESCE(i.issuer_adresse,
-    COALESCE(le.adresse_siege, '') ||
-    CASE WHEN le.code_postal_siege IS NOT NULL OR le.ville_siege IS NOT NULL
-      THEN ', ' || COALESCE(le.code_postal_siege, '') || ' ' || COALESCE(le.ville_siege, '')
-      ELSE ''
-    END
-  ),
-  issuer_siret = COALESCE(i.issuer_siret, le.siret),
-  issuer_tva = COALESCE(i.issuer_tva, le.numero_tva)
-FROM legal_entities le
-WHERE i.issuer_entity_id = le.id
-  AND (i.issuer_nom IS NULL OR i.issuer_adresse IS NULL OR i.issuer_siret IS NULL);
-
-COMMIT;
-
-
--- === [67/169] 20260303000000_backfill_uploaded_by.sql ===
--- =====================================================
--- MIGRATION: Backfill uploaded_by pour documents existants
--- Date: 2026-03-03
---
--- PROBLÈME:
---   - /api/documents/upload ne renseignait pas uploaded_by
---   - /api/documents/upload-batch ne le faisait que pour les galeries
---   => Les documents existants n'ont pas uploaded_by, ce qui empêche
---      la détection de source inter-compte (locataire vs propriétaire).
---
--- FIX:
---   Backfill uploaded_by en se basant sur le type de document et les FK.
---   Heuristique :
---     1. Types locataire (assurance, CNI, etc.) → uploaded_by = tenant_id
---     2. Types propriétaire (bail, quittance, etc.) → uploaded_by = owner_id
---     3. Documents avec owner_id seul (sans tenant) → uploaded_by = owner_id
---
--- SÉCURITÉ:
---   - UPDATE conditionnel (WHERE uploaded_by IS NULL)
---   - Ne touche pas aux documents déjà renseignés
---   - Non-bloquant : si aucune ligne à MAJ, pas d'effet
--- =====================================================
-
-BEGIN;
-
--- 1. Documents typiquement uploadés par le locataire
-UPDATE public.documents
-SET uploaded_by = tenant_id
-WHERE uploaded_by IS NULL
-  AND tenant_id IS NOT NULL
-  AND type IN (
-    'attestation_assurance', 'cni_recto', 'cni_verso', 'piece_identite',
-    'passeport', 'justificatif_revenus', 'avis_imposition', 'bulletin_paie',
-    'rib', 'titre_sejour', 'cni', 'justificatif_domicile'
-  );
-
--- 2. Documents typiquement générés/uploadés par le propriétaire
-UPDATE public.documents
-SET uploaded_by = owner_id
-WHERE uploaded_by IS NULL
-  AND owner_id IS NOT NULL
-  AND type IN (
-    'bail', 'quittance', 'avenant', 'appel_loyer', 'releve_charges',
-    'dpe', 'erp', 'crep', 'amiante', 'electricite', 'gaz',
-    'diagnostic', 'diagnostic_gaz', 'diagnostic_electricite',
-    'diagnostic_plomb', 'diagnostic_amiante', 'diagnostic_termites',
-    'diagnostic_performance', 'reglement_copro', 'notice_information',
-    'EDL_entree', 'EDL_sortie', 'edl', 'edl_entree', 'edl_sortie',
-    'assurance_pno', 'facture', 'contrat', 'engagement_garant'
-  );
-
--- 3. Restant : documents owner sans tenant → attribuer au propriétaire
-UPDATE public.documents
-SET uploaded_by = owner_id
-WHERE uploaded_by IS NULL
-  AND owner_id IS NOT NULL
-  AND tenant_id IS NULL;
-
--- 4. Restant : documents avec tenant et owner mais type inconnu → attribuer au tenant
---    (hypothèse : si un tenant est lié, c'est probablement lui qui a uploadé)
-UPDATE public.documents
-SET uploaded_by = tenant_id
-WHERE uploaded_by IS NULL
-  AND tenant_id IS NOT NULL
-  AND owner_id IS NOT NULL;
-
-COMMIT;
-
-
--- === [68/169] 20260303100000_entity_rls_fix_and_optimize.sql ===
--- ============================================================================
--- Migration: Fix RLS policies for entity system
--- Date: 2026-03-03
--- Description:
---   1. Supprime la policy SELECT redondante sur entity_associates
---      (la policy FOR ALL couvre déjà SELECT)
---   2. Crée une fonction helper get_current_owner_profile_id()
---      pour optimiser les sous-requêtes RLS (3 niveaux → 1 appel)
---   3. Remplace les policies legal_entities par des versions optimisées
---   4. Remplace les policies entity_associates par une version optimisée
---   5. Remplace les policies property_ownership par des versions optimisées
--- Idempotent: peut être exécutée plusieurs fois sans effet secondaire.
--- ============================================================================
-
-BEGIN;
-
--- ============================================================================
--- 1. Fonction helper: get_current_owner_profile_id()
--- ============================================================================
--- Retourne le profile_id du propriétaire connecté (ou NULL si non-propriétaire).
--- Utilisée par toutes les policies RLS pour éviter les sous-requêtes imbriquées.
-
-CREATE OR REPLACE FUNCTION get_current_owner_profile_id()
-RETURNS UUID AS $$
-  SELECT op.profile_id
-  FROM owner_profiles op
-  INNER JOIN profiles p ON p.id = op.profile_id
-  WHERE p.user_id = auth.uid()
-  LIMIT 1;
-$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
-
--- ============================================================================
--- 2. Fix entity_associates: supprimer la policy SELECT redondante
--- ============================================================================
-
-DROP POLICY IF EXISTS "Users can view associates of their entities" ON entity_associates;
-
--- Recréer la policy FOR ALL avec la fonction optimisée
-DROP POLICY IF EXISTS "Users can manage associates of their entities" ON entity_associates;
-CREATE POLICY "Users can manage associates of their entities"
-  ON entity_associates FOR ALL
-  USING (
-    legal_entity_id IN (
-      SELECT id FROM legal_entities
-      WHERE owner_profile_id = get_current_owner_profile_id()
-    )
-  );
-
--- ============================================================================
--- 3. Optimiser les policies legal_entities
--- ============================================================================
-
-DROP POLICY IF EXISTS "Users can view their own entities" ON legal_entities;
-CREATE POLICY "Users can view their own entities"
-  ON legal_entities FOR SELECT
-  USING (owner_profile_id = get_current_owner_profile_id());
-
-DROP POLICY IF EXISTS "Users can insert their own entities" ON legal_entities;
-CREATE POLICY "Users can insert their own entities"
-  ON legal_entities FOR INSERT
-  WITH CHECK (owner_profile_id = get_current_owner_profile_id());
-
-DROP POLICY IF EXISTS "Users can update their own entities" ON legal_entities;
-CREATE POLICY "Users can update their own entities"
-  ON legal_entities FOR UPDATE
-  USING (owner_profile_id = get_current_owner_profile_id());
-
-DROP POLICY IF EXISTS "Users can delete their own entities" ON legal_entities;
-CREATE POLICY "Users can delete their own entities"
-  ON legal_entities FOR DELETE
-  USING (owner_profile_id = get_current_owner_profile_id());
-
--- ============================================================================
--- 4. Optimiser les policies property_ownership
--- ============================================================================
-
-DROP POLICY IF EXISTS "Users can view ownership of their properties" ON property_ownership;
-CREATE POLICY "Users can view ownership of their properties"
-  ON property_ownership FOR SELECT
-  USING (
-    property_id IN (
-      SELECT id FROM properties
-      WHERE owner_id = get_current_owner_profile_id()
-    )
-    OR legal_entity_id IN (
-      SELECT id FROM legal_entities
-      WHERE owner_profile_id = get_current_owner_profile_id()
-    )
-  );
-
-DROP POLICY IF EXISTS "Users can manage ownership of their properties" ON property_ownership;
-CREATE POLICY "Users can manage ownership of their properties"
-  ON property_ownership FOR ALL
-  USING (
-    property_id IN (
-      SELECT id FROM properties
-      WHERE owner_id = get_current_owner_profile_id()
-    )
-    OR legal_entity_id IN (
-      SELECT id FROM legal_entities
-      WHERE owner_profile_id = get_current_owner_profile_id()
-    )
-  );
-
--- ============================================================================
--- 5. Optimiser les policies entity_audit_log
--- ============================================================================
-
-DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
-CREATE POLICY "Users can view audit logs of their entities"
-  ON entity_audit_log FOR SELECT
-  USING (
-    entity_id IN (
-      SELECT id FROM legal_entities
-      WHERE owner_profile_id = get_current_owner_profile_id()
-    )
-  );
-
-DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
-CREATE POLICY "Users can insert audit logs for their entities"
-  ON entity_audit_log FOR INSERT
-  WITH CHECK (
-    entity_id IN (
-      SELECT id FROM legal_entities
-      WHERE owner_profile_id = get_current_owner_profile_id()
-    )
-  );
-
--- ============================================================================
--- 6. Ajouter les types micro_entrepreneur et association
--- ============================================================================
-
-ALTER TABLE legal_entities DROP CONSTRAINT IF EXISTS legal_entities_entity_type_check;
-ALTER TABLE legal_entities ADD CONSTRAINT legal_entities_entity_type_check CHECK (entity_type IN (
-  'particulier',
-  'sci_ir',
-  'sci_is',
-  'sci_construction_vente',
-  'sarl',
-  'sarl_famille',
-  'eurl',
-  'sas',
-  'sasu',
-  'sa',
-  'snc',
-  'indivision',
-  'demembrement_usufruit',
-  'demembrement_nue_propriete',
-  'holding',
-  'micro_entrepreneur',
-  'association'
-));
-
-COMMIT;
-
+-- Batch 5 — migrations 69 a 108 sur 169
+-- 40 migrations
 
 -- === [69/169] 20260304000000_fix_invoice_generation_jour_paiement.sql ===
 -- ============================================
@@ -1042,9 +500,13 @@ COMMENT ON TABLE tenant_credit_score IS 'Score de ponctualité du locataire (cac
 -- payment_reminders
 ALTER TABLE payment_reminders ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Tenants can view own reminders" ON payment_reminders;
+
 CREATE POLICY "Tenants can view own reminders"
   ON payment_reminders FOR SELECT
   USING (tenant_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "Owners can view reminders of own invoices" ON payment_reminders;
 
 CREATE POLICY "Owners can view reminders of own invoices"
   ON payment_reminders FOR SELECT
@@ -1056,12 +518,16 @@ CREATE POLICY "Owners can view reminders of own invoices"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can view all reminders" ON payment_reminders;
+
 CREATE POLICY "Admins can view all reminders"
   ON payment_reminders FOR SELECT
   USING (public.user_role() = 'admin');
 
 -- late_fees
 ALTER TABLE late_fees ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view late fees of accessible invoices" ON late_fees;
 
 CREATE POLICY "Users can view late fees of accessible invoices"
   ON late_fees FOR SELECT
@@ -1080,13 +546,19 @@ CREATE POLICY "Users can view late fees of accessible invoices"
 -- receipts
 ALTER TABLE receipts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Tenants can view own receipts" ON receipts;
+
 CREATE POLICY "Tenants can view own receipts"
   ON receipts FOR SELECT
   USING (tenant_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "Owners can view receipts of own properties" ON receipts;
+
 CREATE POLICY "Owners can view receipts of own properties"
   ON receipts FOR SELECT
   USING (owner_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "Admins can view all receipts" ON receipts;
 
 CREATE POLICY "Admins can view all receipts"
   ON receipts FOR SELECT
@@ -1095,9 +567,13 @@ CREATE POLICY "Admins can view all receipts"
 -- tenant_credit_score
 ALTER TABLE tenant_credit_score ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Tenants can view own credit score" ON tenant_credit_score;
+
 CREATE POLICY "Tenants can view own credit score"
   ON tenant_credit_score FOR SELECT
   USING (tenant_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "Admins can view all credit scores" ON tenant_credit_score;
 
 CREATE POLICY "Admins can view all credit scores"
   ON tenant_credit_score FOR SELECT
@@ -1492,6 +968,7 @@ CREATE INDEX IF NOT EXISTS idx_documents_lease_visible_tenant
 
 -- RLS policy: tenants can only see documents marked as visible_tenant = true
 -- (Updates existing tenant read policy to add visible_tenant check)
+DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
 DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
 CREATE POLICY "Tenants can read visible lease documents"
   ON documents FOR SELECT
@@ -2094,6 +1571,7 @@ COMMIT;
 -- Needed for message edit/delete feature
 
 -- Policy for UPDATE: users can only update their own messages in their conversations
+DROP POLICY IF EXISTS "Users can update own messages" ON messages;
 DROP POLICY IF EXISTS "Users can update own messages" ON messages;
 CREATE POLICY "Users can update own messages"
   ON messages FOR UPDATE
@@ -3200,11 +2678,13 @@ CREATE INDEX IF NOT EXISTS idx_fc_sessions_expires_at ON franceconnect_sessions(
 ALTER TABLE franceconnect_sessions ENABLE ROW LEVEL SECURITY;
 
 -- Les utilisateurs ne peuvent voir que leurs propres sessions
+DROP POLICY IF EXISTS "Users can view own FC sessions" ON franceconnect_sessions;
 CREATE POLICY "Users can view own FC sessions"
   ON franceconnect_sessions FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Seul le service role peut insérer/modifier (via l'API route)
+DROP POLICY IF EXISTS "Service role can manage FC sessions" ON franceconnect_sessions;
 CREATE POLICY "Service role can manage FC sessions"
   ON franceconnect_sessions FOR ALL
   USING (auth.role() = 'service_role');
@@ -3747,6 +3227,8 @@ DROP POLICY IF EXISTS "Owners can view own connect account" ON stripe_connect_ac
 DROP POLICY IF EXISTS "Owners can create own connect account" ON stripe_connect_accounts;
 DROP POLICY IF EXISTS "Service role full access connect" ON stripe_connect_accounts;
 
+DROP POLICY IF EXISTS "Owners can view own connect account" ON stripe_connect_accounts;
+
 CREATE POLICY "Owners can view own connect account" ON stripe_connect_accounts
   FOR SELECT
   USING (
@@ -3754,12 +3236,16 @@ CREATE POLICY "Owners can view own connect account" ON stripe_connect_accounts
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Owners can create own connect account" ON stripe_connect_accounts;
+
 CREATE POLICY "Owners can create own connect account" ON stripe_connect_accounts
   FOR INSERT
   WITH CHECK (
     profile_id = public.user_profile_id()
     OR public.user_role() = 'admin'
   );
+
+DROP POLICY IF EXISTS "Owners can update own connect account" ON stripe_connect_accounts;
 
 CREATE POLICY "Owners can update own connect account" ON stripe_connect_accounts
   FOR UPDATE
@@ -3772,6 +3258,8 @@ CREATE POLICY "Owners can update own connect account" ON stripe_connect_accounts
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Service role full access connect" ON stripe_connect_accounts;
+
 CREATE POLICY "Service role full access connect" ON stripe_connect_accounts
   FOR ALL
   USING (auth.jwt() ->> 'role' = 'service_role')
@@ -3779,6 +3267,8 @@ CREATE POLICY "Service role full access connect" ON stripe_connect_accounts
 
 DROP POLICY IF EXISTS "Owners can view own transfers" ON stripe_transfers;
 DROP POLICY IF EXISTS "Service role full access transfers" ON stripe_transfers;
+
+DROP POLICY IF EXISTS "Owners can view own transfers" ON stripe_transfers;
 
 CREATE POLICY "Owners can view own transfers" ON stripe_transfers
   FOR SELECT
@@ -3793,6 +3283,8 @@ CREATE POLICY "Owners can view own transfers" ON stripe_transfers
         )
     )
   );
+
+DROP POLICY IF EXISTS "Service role full access transfers" ON stripe_transfers;
 
 CREATE POLICY "Service role full access transfers" ON stripe_transfers
   FOR ALL
@@ -4008,5 +3500,744 @@ END;
 $$;
 
 COMMIT;
+
+
+-- === [98/169] 20260314030000_payments_production_hardening.sql ===
+-- Migration: hardening production paiements
+-- Objectifs:
+-- 1. Neutraliser les derniers chemins legacy qui activent un bail implicitement
+-- 2. Renforcer l'idempotence des reversements Stripe Connect
+-- 3. Distinguer transfert Connect et payout bancaire reel
+-- 4. Backfiller les marqueurs de facture initiale et les liens SEPA sur les donnees existantes
+
+-- -----------------------------------------------------------------------------
+-- Flux bail / signatures / EDL
+-- -----------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public.sync_signature_session_to_entity()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.status = 'done' AND OLD.status != 'done' THEN
+    IF NEW.entity_type = 'lease' THEN
+      UPDATE leases
+      SET
+        statut = CASE
+          WHEN NEW.document_type = 'bail' THEN 'fully_signed'
+          ELSE statut
+        END,
+        signature_completed_at = NOW(),
+        updated_at = NOW()
+      WHERE id = NEW.entity_id;
+
+    ELSIF NEW.entity_type = 'edl' THEN
+      UPDATE edl
+      SET
+        status = 'signed',
+        updated_at = NOW()
+      WHERE id = NEW.entity_id;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS auto_activate_lease_on_edl ON public.edl;
+DROP TRIGGER IF EXISTS tr_check_activate_lease ON public.lease_signers;
+DROP TRIGGER IF EXISTS trg_invoice_on_lease_fully_signed ON public.leases;
+DROP TRIGGER IF EXISTS trg_invoice_engine_on_lease_active ON public.leases;
+
+-- -----------------------------------------------------------------------------
+-- Reversements Stripe Connect / payouts
+-- -----------------------------------------------------------------------------
+
+ALTER TABLE public.stripe_transfers
+  ADD COLUMN IF NOT EXISTS stripe_source_transaction_id TEXT,
+  ADD COLUMN IF NOT EXISTS stripe_destination_payment_id TEXT,
+  ADD COLUMN IF NOT EXISTS payout_id UUID;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_stripe_transfers_unique_payment
+  ON public.stripe_transfers(payment_id)
+  WHERE payment_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_stripe_transfers_unique_invoice_transfer
+  ON public.stripe_transfers(invoice_id, stripe_transfer_id);
+
+CREATE TABLE IF NOT EXISTS public.stripe_payouts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  connect_account_id UUID NOT NULL REFERENCES public.stripe_connect_accounts(id) ON DELETE CASCADE,
+  stripe_payout_id TEXT NOT NULL UNIQUE,
+  stripe_balance_transaction_id TEXT,
+  amount INTEGER NOT NULL,
+  currency TEXT NOT NULL DEFAULT 'eur',
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'paid', 'failed', 'canceled', 'in_transit')),
+  arrival_date TIMESTAMPTZ,
+  paid_at TIMESTAMPTZ,
+  failure_code TEXT,
+  failure_message TEXT,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_stripe_payouts_connect_account
+  ON public.stripe_payouts(connect_account_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_stripe_payouts_status
+  ON public.stripe_payouts(status, created_at DESC);
+
+ALTER TABLE public.stripe_payouts ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Owners can view own payouts" ON public.stripe_payouts;
+DROP POLICY IF EXISTS "Owners can view own payouts" ON public.stripe_payouts;
+CREATE POLICY "Owners can view own payouts" ON public.stripe_payouts
+  FOR SELECT USING (
+    connect_account_id IN (
+      SELECT sca.id
+      FROM public.stripe_connect_accounts sca
+      WHERE sca.profile_id = public.user_profile_id()
+    )
+    OR public.user_role() = 'admin'
+  );
+
+DROP POLICY IF EXISTS "Service role full access payouts" ON public.stripe_payouts;
+DROP POLICY IF EXISTS "Service role full access payouts" ON public.stripe_payouts;
+CREATE POLICY "Service role full access payouts" ON public.stripe_payouts
+  FOR ALL USING (auth.jwt() ->> 'role' = 'service_role')
+  WITH CHECK (auth.jwt() ->> 'role' = 'service_role');
+
+DROP TRIGGER IF EXISTS update_stripe_payouts_updated_at ON public.stripe_payouts;
+CREATE TRIGGER update_stripe_payouts_updated_at
+  BEFORE UPDATE ON public.stripe_payouts
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_updated_at_column();
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'stripe_transfers'
+      AND column_name = 'payout_id'
+  ) THEN
+    BEGIN
+      ALTER TABLE public.stripe_transfers
+        ADD CONSTRAINT fk_stripe_transfers_payout
+        FOREIGN KEY (payout_id) REFERENCES public.stripe_payouts(id) ON DELETE SET NULL;
+    EXCEPTION
+      WHEN duplicate_object THEN NULL;
+    END;
+  END IF;
+END $$;
+
+-- -----------------------------------------------------------------------------
+-- Backfills securises et idempotents
+-- -----------------------------------------------------------------------------
+
+UPDATE public.invoices
+SET type = 'initial_invoice'
+WHERE COALESCE(metadata->>'type', '') = 'initial_invoice'
+  AND COALESCE(type, '') <> 'initial_invoice';
+
+UPDATE public.invoices
+SET metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object('type', 'initial_invoice')
+WHERE type = 'initial_invoice'
+  AND COALESCE(metadata->>'type', '') <> 'initial_invoice';
+
+UPDATE public.tenant_payment_methods tpm
+SET sepa_mandate_id = sm.id,
+    updated_at = NOW()
+FROM public.sepa_mandates sm
+WHERE tpm.type = 'sepa_debit'
+  AND tpm.sepa_mandate_id IS NULL
+  AND tpm.tenant_profile_id = sm.tenant_profile_id
+  AND tpm.stripe_payment_method_id = sm.stripe_payment_method_id;
+
+
+-- === [99/169] 20260315090000_market_standard_subscription_alignment.sql ===
+BEGIN;
+
+ALTER TABLE subscriptions
+  ADD COLUMN IF NOT EXISTS selected_plan_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS selected_plan_source TEXT,
+  ADD COLUMN IF NOT EXISTS scheduled_plan_id UUID REFERENCES subscription_plans(id),
+  ADD COLUMN IF NOT EXISTS scheduled_plan_slug TEXT,
+  ADD COLUMN IF NOT EXISTS scheduled_plan_effective_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS stripe_subscription_schedule_id TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_subscriptions_selected_plan_at
+  ON subscriptions(selected_plan_at);
+
+CREATE INDEX IF NOT EXISTS idx_subscriptions_scheduled_plan_effective_at
+  ON subscriptions(scheduled_plan_effective_at)
+  WHERE scheduled_plan_effective_at IS NOT NULL;
+
+UPDATE subscriptions s
+SET plan_id = sp.id
+FROM subscription_plans sp
+WHERE s.plan_id IS NULL
+  AND s.plan_slug IS NOT NULL
+  AND sp.slug = s.plan_slug;
+
+UPDATE subscriptions s
+SET plan_slug = sp.slug
+FROM subscription_plans sp
+WHERE s.plan_slug IS NULL
+  AND s.plan_id IS NOT NULL
+  AND sp.id = s.plan_id;
+
+UPDATE subscriptions
+SET status = 'paused'
+WHERE status = 'suspended';
+
+UPDATE subscriptions
+SET selected_plan_at = COALESCE(current_period_start, updated_at, created_at),
+    selected_plan_source = CASE
+      WHEN stripe_subscription_id IS NOT NULL THEN COALESCE(selected_plan_source, 'backfill_stripe')
+      ELSE COALESCE(selected_plan_source, 'backfill_local')
+    END
+WHERE selected_plan_at IS NULL
+   OR selected_plan_source IS NULL;
+
+UPDATE subscriptions
+SET scheduled_plan_id = NULL,
+    scheduled_plan_slug = NULL,
+    scheduled_plan_effective_at = NULL,
+    stripe_subscription_schedule_id = NULL
+WHERE scheduled_plan_effective_at IS NOT NULL
+  AND scheduled_plan_effective_at < NOW() - INTERVAL '7 days';
+
+UPDATE subscriptions s
+SET scheduled_plan_id = sp.id
+FROM subscription_plans sp
+WHERE s.scheduled_plan_id IS NULL
+  AND s.scheduled_plan_slug IS NOT NULL
+  AND sp.slug = s.scheduled_plan_slug;
+
+UPDATE subscriptions s
+SET scheduled_plan_slug = sp.slug
+FROM subscription_plans sp
+WHERE s.scheduled_plan_slug IS NULL
+  AND s.scheduled_plan_id IS NOT NULL
+  AND sp.id = s.scheduled_plan_id;
+
+UPDATE subscriptions
+SET properties_count = property_counts.count_value
+FROM (
+  SELECT owner_id, COUNT(*)::INT AS count_value
+  FROM properties
+  WHERE deleted_at IS NULL
+  GROUP BY owner_id
+) AS property_counts
+WHERE subscriptions.owner_id = property_counts.owner_id;
+
+UPDATE subscriptions
+SET properties_count = 0
+WHERE properties_count IS NULL;
+
+COMMIT;
+
+
+-- === [100/169] 20260318000000_fix_auth_reset_template_examples.sql ===
+-- =============================================================================
+-- Migration : Align auth reset template examples with live recovery flow
+-- Date      : 2026-03-18
+-- Objectif  : Éviter les exemples legacy /auth/reset?token=... qui ne
+--             correspondent plus au flux actuel /auth/callback -> /auth/reset-password
+-- =============================================================================
+
+BEGIN;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'email_templates') THEN
+    UPDATE email_templates
+    SET available_variables = REPLACE(
+          available_variables::text,
+          'https://talok.fr/auth/reset?token=...',
+          'https://talok.fr/auth/callback?next=/auth/reset-password&code=...'
+        )::jsonb,
+        updated_at = NOW()
+    WHERE slug = 'auth_reset_password'
+      AND available_variables::text LIKE '%https://talok.fr/auth/reset?token=...%';
+
+    RAISE NOTICE 'email_templates auth_reset_password example updated to callback/reset-password flow';
+  ELSE
+    RAISE NOTICE 'email_templates table does not exist, skipping';
+  END IF;
+END $$;
+
+COMMIT;
+
+
+-- === [101/169] 20260318010000_password_reset_requests.sql ===
+-- =============================================================================
+-- Migration : Password reset requests SOTA 2026
+-- Objectif  : Introduire une couche applicative one-time au-dessus du recovery
+--             Supabase pour sécuriser le changement de mot de passe.
+-- =============================================================================
+
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS password_reset_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  email_hash TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'completed', 'expired', 'revoked')),
+  requested_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at TIMESTAMPTZ,
+  requested_ip INET,
+  requested_user_agent TEXT,
+  completed_ip INET,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_requests_user_status
+  ON password_reset_requests(user_id, status);
+
+CREATE INDEX IF NOT EXISTS idx_password_reset_requests_expires_at
+  ON password_reset_requests(expires_at);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_password_reset_requests_single_pending
+  ON password_reset_requests(user_id)
+  WHERE status = 'pending';
+
+CREATE OR REPLACE FUNCTION set_password_reset_requests_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_password_reset_requests_updated_at ON password_reset_requests;
+CREATE TRIGGER trg_password_reset_requests_updated_at
+  BEFORE UPDATE ON password_reset_requests
+  FOR EACH ROW
+  EXECUTE FUNCTION set_password_reset_requests_updated_at();
+
+ALTER TABLE password_reset_requests ENABLE ROW LEVEL SECURITY;
+
+COMMIT;
+
+
+-- === [102/169] 20260318020000_buildings_rls_sota2026.sql ===
+-- ============================================
+-- Migration : RLS SOTA 2026 pour buildings & building_units
+-- Remplace auth.uid() par user_profile_id() / user_role()
+-- Ajoute policies admin et tenant
+-- ============================================
+
+-- 1. DROP anciennes policies buildings
+-- ============================================
+DROP POLICY IF EXISTS "Owners can view their buildings" ON buildings;
+DROP POLICY IF EXISTS "Owners can create buildings" ON buildings;
+DROP POLICY IF EXISTS "Owners can update their buildings" ON buildings;
+DROP POLICY IF EXISTS "Owners can delete their buildings" ON buildings;
+
+-- 2. DROP anciennes policies building_units
+-- ============================================
+DROP POLICY IF EXISTS "Owners can view their building units" ON building_units;
+DROP POLICY IF EXISTS "Owners can create building units" ON building_units;
+DROP POLICY IF EXISTS "Owners can update their building units" ON building_units;
+DROP POLICY IF EXISTS "Owners can delete their building units" ON building_units;
+
+-- 3. Nouvelles policies buildings (owner)
+-- ============================================
+DROP POLICY IF EXISTS "buildings_owner_select" ON buildings;
+CREATE POLICY "buildings_owner_select" ON buildings
+  FOR SELECT TO authenticated
+  USING (owner_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "buildings_owner_insert" ON buildings;
+
+CREATE POLICY "buildings_owner_insert" ON buildings
+  FOR INSERT TO authenticated
+  WITH CHECK (owner_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "buildings_owner_update" ON buildings;
+
+CREATE POLICY "buildings_owner_update" ON buildings
+  FOR UPDATE TO authenticated
+  USING (owner_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "buildings_owner_delete" ON buildings;
+
+CREATE POLICY "buildings_owner_delete" ON buildings
+  FOR DELETE TO authenticated
+  USING (owner_id = public.user_profile_id());
+
+-- 4. Policies buildings (admin)
+-- ============================================
+DROP POLICY IF EXISTS "buildings_admin_all" ON buildings;
+CREATE POLICY "buildings_admin_all" ON buildings
+  FOR ALL TO authenticated
+  USING (public.user_role() = 'admin');
+
+-- 5. Policies buildings (tenant via bail actif)
+-- ============================================
+DROP POLICY IF EXISTS "buildings_tenant_select" ON buildings;
+CREATE POLICY "buildings_tenant_select" ON buildings
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM building_units bu
+      JOIN leases l ON l.id = bu.current_lease_id
+      JOIN lease_signers ls ON ls.lease_id = l.id
+      WHERE bu.building_id = buildings.id
+        AND ls.profile_id = public.user_profile_id()
+        AND l.statut = 'active'
+    )
+  );
+
+-- 6. Nouvelles policies building_units (owner)
+-- ============================================
+DROP POLICY IF EXISTS "building_units_owner_select" ON building_units;
+CREATE POLICY "building_units_owner_select" ON building_units
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM buildings b
+      WHERE b.id = building_units.building_id
+        AND b.owner_id = public.user_profile_id()
+    )
+  );
+
+DROP POLICY IF EXISTS "building_units_owner_insert" ON building_units;
+
+CREATE POLICY "building_units_owner_insert" ON building_units
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM buildings b
+      WHERE b.id = building_units.building_id
+        AND b.owner_id = public.user_profile_id()
+    )
+  );
+
+DROP POLICY IF EXISTS "building_units_owner_update" ON building_units;
+
+CREATE POLICY "building_units_owner_update" ON building_units
+  FOR UPDATE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM buildings b
+      WHERE b.id = building_units.building_id
+        AND b.owner_id = public.user_profile_id()
+    )
+  );
+
+DROP POLICY IF EXISTS "building_units_owner_delete" ON building_units;
+
+CREATE POLICY "building_units_owner_delete" ON building_units
+  FOR DELETE TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM buildings b
+      WHERE b.id = building_units.building_id
+        AND b.owner_id = public.user_profile_id()
+    )
+  );
+
+-- 7. Policies building_units (admin)
+-- ============================================
+DROP POLICY IF EXISTS "building_units_admin_all" ON building_units;
+CREATE POLICY "building_units_admin_all" ON building_units
+  FOR ALL TO authenticated
+  USING (public.user_role() = 'admin');
+
+-- 8. Policies building_units (tenant via bail actif)
+-- ============================================
+DROP POLICY IF EXISTS "building_units_tenant_select" ON building_units;
+CREATE POLICY "building_units_tenant_select" ON building_units
+  FOR SELECT TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM leases l
+      JOIN lease_signers ls ON ls.lease_id = l.id
+      WHERE l.id = building_units.current_lease_id
+        AND ls.profile_id = public.user_profile_id()
+        AND l.statut = 'active'
+    )
+  );
+
+-- 9. Ajout property_id sur building_units si manquant
+-- ============================================
+ALTER TABLE building_units ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_building_units_property ON building_units(property_id);
+
+
+-- === [103/169] 20260320100000_fix_owner_id_mismatch_and_rls.sql ===
+-- ============================================================================
+-- Migration: Fix owner_id mismatch on properties table
+-- Date: 2026-03-20
+--
+-- Problème: Certaines propriétés ont owner_id = profiles.user_id (UUID auth)
+-- au lieu de owner_id = profiles.id (UUID profil). Cela casse les politiques
+-- RLS qui utilisent public.user_profile_id() pour comparer avec owner_id.
+--
+-- Cette migration:
+-- 1. Corrige les owner_id incorrects (user_id → profiles.id)
+-- 2. S'assure que la fonction user_profile_id() est SECURITY DEFINER et STABLE
+-- 3. Supprime les doublons éventuels de propriétés
+-- ============================================================================
+
+-- ============================================================================
+-- 1. Corriger les owner_id qui pointent vers user_id au lieu de profiles.id
+-- ============================================================================
+
+-- Diagnostic d'abord (visible dans les logs)
+DO $$
+DECLARE
+  mismatch_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO mismatch_count
+  FROM properties pr
+  INNER JOIN profiles p ON pr.owner_id = p.user_id
+  WHERE p.role = 'owner'
+    AND p.id != pr.owner_id
+    AND pr.deleted_at IS NULL;
+
+  RAISE NOTICE 'Propriétés avec owner_id mismatch (user_id au lieu de profiles.id): %', mismatch_count;
+END $$;
+
+-- Correction: remplacer owner_id = user_id par owner_id = profiles.id
+UPDATE properties pr
+SET owner_id = p.id,
+    updated_at = NOW()
+FROM profiles p
+WHERE pr.owner_id = p.user_id
+  AND p.role = 'owner'
+  AND p.id != pr.owner_id;
+
+-- ============================================================================
+-- 2. S'assurer que user_profile_id() fonctionne correctement
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION public.user_profile_id()
+RETURNS UUID AS $$
+  SELECT id FROM public.profiles WHERE user_id = auth.uid() LIMIT 1;
+$$ LANGUAGE sql SECURITY DEFINER STABLE SET search_path = public;
+
+-- ============================================================================
+-- 3. Vérifier et supprimer les doublons de propriétés
+--    (même adresse, même owner_id, même type = doublon probable)
+-- ============================================================================
+
+-- Marquer les doublons comme supprimés (soft delete) en gardant le plus récent
+WITH duplicates AS (
+  SELECT id,
+    ROW_NUMBER() OVER (
+      PARTITION BY owner_id, adresse_complete, type, ville, code_postal
+      ORDER BY created_at DESC
+    ) as rn
+  FROM properties
+  WHERE deleted_at IS NULL
+    AND adresse_complete IS NOT NULL
+    AND adresse_complete != ''
+)
+UPDATE properties
+SET deleted_at = NOW(),
+    deleted_by = 'system-dedup-migration'
+WHERE id IN (
+  SELECT id FROM duplicates WHERE rn > 1
+);
+
+-- Log du nombre de doublons supprimés
+DO $$
+DECLARE
+  dedup_count INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO dedup_count
+  FROM properties
+  WHERE deleted_by = 'system-dedup-migration'
+    AND deleted_at >= NOW() - INTERVAL '1 minute';
+
+  RAISE NOTICE 'Propriétés doublons soft-deleted: %', dedup_count;
+END $$;
+
+-- ============================================================================
+-- 4. Vérification finale
+-- ============================================================================
+
+DO $$
+DECLARE
+  remaining_mismatch INTEGER;
+  total_active INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO remaining_mismatch
+  FROM properties pr
+  INNER JOIN profiles p ON pr.owner_id = p.user_id
+  WHERE p.role = 'owner'
+    AND p.id != pr.owner_id
+    AND pr.deleted_at IS NULL;
+
+  SELECT COUNT(*) INTO total_active
+  FROM properties
+  WHERE deleted_at IS NULL;
+
+  RAISE NOTICE 'Vérification: % propriétés actives, % mismatches restants', total_active, remaining_mismatch;
+END $$;
+
+
+-- === [104/169] 20260321000000_drop_invoice_trigger_sota2026.sql ===
+-- SOTA 2026: Supprimer le trigger SQL redondant pour la facture initiale.
+-- Le service TS ensureInitialInvoiceForLease() (appele par handleLeaseFullySigned)
+-- est desormais le seul chemin de creation de la facture initiale.
+-- Ce trigger creait un doublon et rendait le flux confus.
+
+DROP TRIGGER IF EXISTS trg_invoice_on_lease_fully_signed ON leases;
+
+-- Supprimer egalement la fonction associee si elle existe
+DROP FUNCTION IF EXISTS fn_generate_initial_invoice_on_fully_signed() CASCADE;
+
+
+-- === [105/169] 20260321100000_fix_cron_post_refactoring_sota2026.sql ===
+-- ============================================
+-- Migration corrective : SOTA 2026 post-refactoring
+-- Date : 2026-03-21
+-- Description :
+--   1. Supprime le job generate-monthly-invoices (route supprimee en P3)
+--   2. Ajoute le job process-outbox pour le processeur outbox asynchrone
+-- ============================================
+
+-- 1. Supprimer le job pointant vers la route supprimee
+SELECT cron.unschedule(jobname)
+FROM cron.job
+WHERE jobname = 'generate-monthly-invoices';
+
+-- 2. Ajouter le processeur outbox (toutes les 5 minutes)
+SELECT cron.schedule('process-outbox', '*/5 * * * *',
+  $$SELECT net.http_post(
+    url := current_setting('app.settings.app_url') || '/api/cron/process-outbox',
+    headers := jsonb_build_object('Authorization', 'Bearer ' || current_setting('app.settings.cron_secret')),
+    body := '{}'::jsonb
+  )$$
+);
+
+
+-- === [106/169] 20260323000000_fix_document_visibility_and_dedup.sql ===
+-- Migration: Fix document visibility RLS + add deduplication constraint
+-- 1) RLS: tenant_id match must also respect visible_tenant
+-- 2) Unique partial index to prevent duplicate quittances per payment
+-- 3) Unique partial index to prevent duplicate attestations per handover
+
+-- ============================================================
+-- 1. Fix RLS: tenant with tenant_id = user MUST still respect visible_tenant
+-- Previously: tenant_id = user_profile_id() bypassed visible_tenant = false
+-- ============================================================
+
+DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
+
+DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
+
+CREATE POLICY "Tenants can read visible lease documents"
+  ON documents FOR SELECT
+  USING (
+    -- Tenant direct match: must respect visible_tenant
+    (
+      tenant_id = public.user_profile_id()
+      AND visible_tenant IS NOT FALSE
+    )
+    -- Tenant via lease signer: must respect visible_tenant
+    OR (
+      visible_tenant = true
+      AND lease_id IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM lease_signers ls
+        JOIN profiles p ON p.id = ls.profile_id
+        WHERE ls.lease_id = documents.lease_id
+          AND p.id = public.user_profile_id()
+          AND ls.role IN ('locataire_principal', 'locataire', 'colocataire')
+      )
+    )
+    -- Owner direct match
+    OR owner_id = public.user_profile_id()
+    -- Owner via property
+    OR (
+      property_id IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM properties p
+        WHERE p.id = documents.property_id
+          AND p.owner_id = public.user_profile_id()
+      )
+    )
+    -- Admin
+    OR public.user_role() = 'admin'
+  );
+
+-- ============================================================
+-- 2. Unique partial index: one quittance per payment_id
+-- Prevents race-condition duplicates in receipt generation
+-- ============================================================
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_unique_quittance_payment
+  ON documents ((metadata->>'payment_id'))
+  WHERE type = 'quittance'
+    AND metadata->>'payment_id' IS NOT NULL;
+
+-- ============================================================
+-- 3. Unique partial index: one attestation per handover_id
+-- Prevents duplicate key handover attestations
+-- ============================================================
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_documents_unique_attestation_handover
+  ON documents ((metadata->>'handover_id'))
+  WHERE type = 'attestation_remise_cles'
+    AND metadata->>'handover_id' IS NOT NULL;
+
+-- ============================================================
+-- 4. Index for document-access helper: lookup by storage_path
+-- Used by the unified access check when path doesn't match known patterns
+-- ============================================================
+
+CREATE INDEX IF NOT EXISTS idx_documents_storage_path
+  ON documents (storage_path)
+  WHERE storage_path IS NOT NULL;
+
+
+-- === [107/169] 20260324100000_prevent_duplicate_payments.sql ===
+-- ============================================
+-- Migration : Anti-doublon paiements
+-- Date : 2026-03-24
+-- Description :
+--   1. Contrainte UNIQUE partielle sur payments : un seul paiement pending par facture
+--   2. Empêche la race condition qui a causé le double paiement sur bail da2eb9da
+-- ============================================
+
+-- Un seul paiement 'pending' par facture à la fois
+CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_one_pending_per_invoice
+  ON payments (invoice_id)
+  WHERE statut = 'pending';
+
+COMMENT ON INDEX idx_payments_one_pending_per_invoice
+  IS 'Empêche plusieurs paiements pending simultanés sur la même facture (anti-doublon)';
+
+
+-- === [108/169] 20260326022619_fix_documents_bucket_mime.sql ===
+-- Fix: Aligner les MIME types du bucket storage avec lib/documents/constants.ts
+-- Bug: Word/Excel etaient acceptes par le code mais rejetes par le bucket
+
+UPDATE storage.buckets
+SET allowed_mime_types = ARRAY[
+  'application/pdf',
+  'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.oasis.opendocument.text',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain', 'text/csv'
+]::text[],
+file_size_limit = 52428800  -- 50 Mo
+WHERE id = 'documents';
 
 

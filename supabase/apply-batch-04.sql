@@ -1,294 +1,5 @@
--- Batch 4 — migrations 37 a 65 sur 169
--- 29 migrations
-
--- === [37/169] 20260221100001_auto_upgrade_draft_on_tenant_signer.sql ===
--- =====================================================
--- MIGRATION: Auto-upgrade baux draft + fix rétroactif complet
--- Date: 2026-02-21
---
--- PROBLÈMES CORRIGÉS:
---   1. Trigger: quand un signataire locataire est ajouté à un bail 'draft',
---      passer automatiquement le bail en 'pending_signature'
---   2. Fix rétroactif A: re-lier les lease_signers orphelins (invited_email match)
---   3. Fix rétroactif B: upgrader les baux draft qui ont déjà un locataire
---   4. Fix rétroactif C: créer les lease_signers manquants depuis edl_signatures
---   5. Audit: vérifier qu'aucun bail ne reste à demi connecté
--- =====================================================
-
-BEGIN;
-
--- ============================================
--- 1. FONCTION: Auto-upgrade draft → pending_signature
--- ============================================
-CREATE OR REPLACE FUNCTION public.auto_upgrade_draft_lease_on_signer()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Quand un signataire locataire est ajouté, upgrader le bail draft
-  IF NEW.role IN ('locataire_principal', 'colocataire', 'tenant', 'locataire') THEN
-    UPDATE public.leases
-    SET statut = 'pending_signature', updated_at = NOW()
-    WHERE id = NEW.lease_id
-      AND statut = 'draft';
-  END IF;
-  RETURN NEW;
-EXCEPTION WHEN OTHERS THEN
-  -- Ne jamais bloquer l'INSERT du signer
-  RAISE WARNING '[auto_upgrade_draft] Erreur non-bloquante: %', SQLERRM;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-COMMENT ON FUNCTION public.auto_upgrade_draft_lease_on_signer() IS
-'SOTA 2026: Quand un signataire locataire est ajouté à un bail draft, passe le bail en pending_signature automatiquement.';
-
--- ============================================
--- 2. TRIGGER: Exécuter après chaque INSERT sur lease_signers
--- ============================================
-DROP TRIGGER IF EXISTS trigger_auto_upgrade_draft_on_signer ON public.lease_signers;
-
-CREATE TRIGGER trigger_auto_upgrade_draft_on_signer
-  AFTER INSERT ON public.lease_signers
-  FOR EACH ROW
-  EXECUTE FUNCTION public.auto_upgrade_draft_lease_on_signer();
-
--- ============================================
--- 3. FIX RÉTROACTIF A: Re-lier les lease_signers orphelins
---    (invited_email correspond à un compte existant mais profile_id est NULL)
--- ============================================
-DO $$
-DECLARE
-  linked_total INT := 0;
-BEGIN
-  UPDATE public.lease_signers ls
-  SET profile_id = p.id
-  FROM auth.users u
-  JOIN public.profiles p ON p.user_id = u.id
-  WHERE LOWER(TRIM(u.email)) = LOWER(TRIM(ls.invited_email))
-    AND ls.profile_id IS NULL
-    AND ls.invited_email IS NOT NULL
-    AND TRIM(ls.invited_email) != ''
-    AND ls.invited_email NOT LIKE '%@a-definir%'
-    AND ls.invited_email NOT LIKE '%@placeholder%';
-
-  GET DIAGNOSTICS linked_total = ROW_COUNT;
-
-  IF linked_total > 0 THEN
-    RAISE NOTICE '[fix_A] % lease_signers orphelins re-liés à un profil existant', linked_total;
-  ELSE
-    RAISE NOTICE '[fix_A] Aucun lease_signer orphelin à re-lier';
-  END IF;
-END $$;
-
--- ============================================
--- 4. FIX RÉTROACTIF B: Upgrader les baux draft qui ont un locataire
--- ============================================
-DO $$
-DECLARE
-  upgraded_count INT := 0;
-BEGIN
-  UPDATE public.leases
-  SET statut = 'pending_signature', updated_at = NOW()
-  WHERE statut = 'draft'
-  AND EXISTS (
-    SELECT 1 FROM public.lease_signers ls
-    WHERE ls.lease_id = leases.id
-    AND ls.role IN ('locataire_principal', 'colocataire', 'tenant', 'locataire')
-  );
-
-  GET DIAGNOSTICS upgraded_count = ROW_COUNT;
-
-  IF upgraded_count > 0 THEN
-    RAISE NOTICE '[fix_B] % baux draft upgradés en pending_signature', upgraded_count;
-  ELSE
-    RAISE NOTICE '[fix_B] Aucun bail draft avec locataire à upgrader';
-  END IF;
-END $$;
-
--- ============================================
--- 5. FIX RÉTROACTIF C: Créer les lease_signers manquants
---    depuis les edl_signatures (EDL a un locataire mais le bail n'a pas le signer)
--- ============================================
-DO $$
-DECLARE
-  created_count INT := 0;
-BEGIN
-  INSERT INTO public.lease_signers (lease_id, profile_id, role, signature_status, invited_email, invited_name)
-  SELECT DISTINCT ON (e.lease_id)
-    e.lease_id,
-    es.signer_profile_id,
-    'locataire_principal',
-    'pending',
-    es.signer_email,
-    es.signer_name
-  FROM public.edl e
-  JOIN public.edl_signatures es ON es.edl_id = e.id
-  WHERE es.signer_role IN ('tenant', 'locataire', 'locataire_principal')
-    AND e.lease_id IS NOT NULL
-    -- Le bail n'a pas déjà un signer locataire
-    AND NOT EXISTS (
-      SELECT 1 FROM public.lease_signers ls
-      WHERE ls.lease_id = e.lease_id
-      AND ls.role IN ('locataire_principal', 'colocataire', 'tenant', 'locataire')
-    )
-    -- Le signer a au moins un profil ou un email valide
-    AND (
-      es.signer_profile_id IS NOT NULL
-      OR (es.signer_email IS NOT NULL AND TRIM(es.signer_email) != '' AND es.signer_email NOT LIKE '%@a-definir%')
-    )
-  ORDER BY e.lease_id, e.created_at DESC;
-
-  GET DIAGNOSTICS created_count = ROW_COUNT;
-
-  IF created_count > 0 THEN
-    RAISE NOTICE '[fix_C] % lease_signers créés depuis edl_signatures', created_count;
-  ELSE
-    RAISE NOTICE '[fix_C] Aucun lease_signer manquant à créer depuis les EDL';
-  END IF;
-END $$;
-
--- ============================================
--- 6. AUDIT: Vérifier l'état final
--- ============================================
-DO $$
-DECLARE
-  orphan_signers INT;
-  draft_with_tenant INT;
-  leases_without_tenant INT;
-BEGIN
-  -- Signataires orphelins restants (profile_id NULL, email valide, pas placeholder)
-  SELECT count(*)::INT INTO orphan_signers
-  FROM public.lease_signers
-  WHERE profile_id IS NULL
-    AND invited_email IS NOT NULL
-    AND TRIM(invited_email) != ''
-    AND invited_email NOT LIKE '%@a-definir%'
-    AND invited_email NOT LIKE '%@placeholder%';
-
-  -- Baux draft avec un locataire (ne devrait plus en avoir)
-  SELECT count(*)::INT INTO draft_with_tenant
-  FROM public.leases l
-  WHERE l.statut = 'draft'
-  AND EXISTS (
-    SELECT 1 FROM public.lease_signers ls
-    WHERE ls.lease_id = l.id
-    AND ls.role IN ('locataire_principal', 'colocataire', 'tenant', 'locataire')
-  );
-
-  -- Baux non-draft sans signataire locataire
-  SELECT count(*)::INT INTO leases_without_tenant
-  FROM public.leases l
-  WHERE l.statut NOT IN ('draft', 'terminated', 'cancelled', 'archived')
-  AND NOT EXISTS (
-    SELECT 1 FROM public.lease_signers ls
-    WHERE ls.lease_id = l.id
-    AND ls.role IN ('locataire_principal', 'colocataire', 'tenant', 'locataire')
-  );
-
-  RAISE NOTICE '=== AUDIT RÉSULTAT ===';
-  RAISE NOTICE 'Signataires orphelins (email sans compte): %', orphan_signers;
-  RAISE NOTICE 'Baux draft avec locataire (devrait être 0): %', draft_with_tenant;
-  RAISE NOTICE 'Baux actifs sans locataire: %', leases_without_tenant;
-
-  IF draft_with_tenant = 0 THEN
-    RAISE NOTICE '✅ Aucun bail draft à demi connecté';
-  ELSE
-    RAISE WARNING '⚠️  % baux draft ont encore un locataire — vérifier manuellement', draft_with_tenant;
-  END IF;
-END $$;
-
-COMMIT;
-
-
--- === [38/169] 20260221200000_sync_edl_signer_to_lease_signer.sql ===
--- =====================================================
--- MIGRATION: Sync edl_signatures → lease_signers (défense en profondeur)
--- Date: 2026-02-21
---
--- PROBLÈME CORRIGÉ:
---   Quand une edl_signature tenant est créée pour un EDL lié à un bail,
---   il se peut qu'aucun lease_signers correspondant n'existe (ex: bail
---   créé en mode "manual draft"). Le locataire ne voit alors pas le bail
---   sur son dashboard car la RPC tenant_dashboard passe par lease_signers.
---
--- FIX: Trigger AFTER INSERT sur edl_signatures qui crée automatiquement
---   un lease_signers si aucun signer tenant n'existe pour le bail associé.
---   Ne bloque jamais l'INSERT original (exception handler).
--- =====================================================
-
-BEGIN;
-
--- ============================================
--- 1. FONCTION: Sync edl_signature → lease_signer
--- ============================================
-CREATE OR REPLACE FUNCTION public.sync_edl_signer_to_lease_signer()
-RETURNS TRIGGER AS $$
-DECLARE
-  v_lease_id UUID;
-  v_exists BOOLEAN;
-BEGIN
-  -- Uniquement pour les rôles tenant
-  IF NEW.signer_role NOT IN ('tenant', 'locataire', 'locataire_principal') THEN
-    RETURN NEW;
-  END IF;
-
-  -- Doit avoir au moins un email ou un profile_id
-  IF NEW.signer_profile_id IS NULL AND (NEW.signer_email IS NULL OR TRIM(NEW.signer_email) = '') THEN
-    RETURN NEW;
-  END IF;
-
-  -- Ignorer les emails placeholder
-  IF NEW.signer_email IS NOT NULL AND (
-    NEW.signer_email LIKE '%@a-definir%' OR
-    NEW.signer_email LIKE '%@placeholder%'
-  ) THEN
-    RETURN NEW;
-  END IF;
-
-  -- Récupérer le lease_id depuis l'EDL
-  SELECT lease_id INTO v_lease_id
-  FROM public.edl
-  WHERE id = NEW.edl_id;
-
-  IF v_lease_id IS NULL THEN
-    RETURN NEW;
-  END IF;
-
-  -- Vérifier si un signer tenant existe déjà pour ce bail
-  SELECT EXISTS (
-    SELECT 1 FROM public.lease_signers
-    WHERE lease_id = v_lease_id
-    AND role IN ('locataire_principal', 'locataire', 'tenant', 'colocataire')
-  ) INTO v_exists;
-
-  IF NOT v_exists THEN
-    INSERT INTO public.lease_signers (lease_id, profile_id, invited_email, invited_name, role, signature_status)
-    VALUES (v_lease_id, NEW.signer_profile_id, NEW.signer_email, NEW.signer_name, 'locataire_principal', 'pending');
-    RAISE NOTICE '[sync_edl_signer] Created lease_signer for lease % from edl_signature %', v_lease_id, NEW.id;
-  END IF;
-
-  RETURN NEW;
-EXCEPTION WHEN OTHERS THEN
-  -- Ne jamais bloquer l'INSERT de edl_signatures
-  RAISE WARNING '[sync_edl_signer] Error (non-blocking): %', SQLERRM;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-COMMENT ON FUNCTION public.sync_edl_signer_to_lease_signer() IS
-'SOTA 2026: Quand une edl_signature tenant est créée, vérifie que le bail associé a un lease_signer locataire. Sinon, en crée un. Ne bloque jamais l''INSERT.';
-
--- ============================================
--- 2. TRIGGER: Exécuter après chaque INSERT sur edl_signatures
--- ============================================
-DROP TRIGGER IF EXISTS trigger_sync_edl_signer_to_lease_signer ON public.edl_signatures;
-
-CREATE TRIGGER trigger_sync_edl_signer_to_lease_signer
-  AFTER INSERT ON public.edl_signatures
-  FOR EACH ROW
-  EXECUTE FUNCTION public.sync_edl_signer_to_lease_signer();
-
-COMMIT;
-
+-- Batch 4 — migrations 39 a 68 sur 169
+-- 30 migrations
 
 -- === [39/169] 20260221300000_fix_tenant_dashboard_owner_join.sql ===
 -- ============================================================================
@@ -1161,6 +872,7 @@ DROP POLICY IF EXISTS "tenant_insert_own_documents" ON tenant_documents;
 -- ============================================
 
 -- Le locataire peut voir ses propres documents
+DROP POLICY IF EXISTS "tenant_view_own_documents" ON tenant_documents;
 CREATE POLICY "tenant_view_own_documents" ON tenant_documents
   FOR SELECT USING (
     tenant_profile_id IN (
@@ -1169,6 +881,7 @@ CREATE POLICY "tenant_view_own_documents" ON tenant_documents
   );
 
 -- Le locataire peut uploader ses documents
+DROP POLICY IF EXISTS "tenant_insert_own_documents" ON tenant_documents;
 CREATE POLICY "tenant_insert_own_documents" ON tenant_documents
   FOR INSERT WITH CHECK (
     tenant_profile_id IN (
@@ -1942,6 +1655,7 @@ CREATE TRIGGER update_conversations_updated_at
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view own conversations" ON conversations;
+DROP POLICY IF EXISTS "Users can view own conversations" ON conversations;
 CREATE POLICY "Users can view own conversations"
   ON conversations FOR SELECT
   USING (
@@ -1951,6 +1665,7 @@ CREATE POLICY "Users can view own conversations"
   );
 
 DROP POLICY IF EXISTS "Users can insert conversations" ON conversations;
+DROP POLICY IF EXISTS "Users can insert conversations" ON conversations;
 CREATE POLICY "Users can insert conversations"
   ON conversations FOR INSERT
   WITH CHECK (
@@ -1959,6 +1674,7 @@ CREATE POLICY "Users can insert conversations"
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Users can update own conversations" ON conversations;
 DROP POLICY IF EXISTS "Users can update own conversations" ON conversations;
 CREATE POLICY "Users can update own conversations"
   ON conversations FOR UPDATE
@@ -1997,6 +1713,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(conversation_id, 
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view messages of own conversations" ON messages;
+DROP POLICY IF EXISTS "Users can view messages of own conversations" ON messages;
 CREATE POLICY "Users can view messages of own conversations"
   ON messages FOR SELECT
   USING (
@@ -2008,6 +1725,7 @@ CREATE POLICY "Users can view messages of own conversations"
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Users can insert messages in own conversations" ON messages;
 DROP POLICY IF EXISTS "Users can insert messages in own conversations" ON messages;
 CREATE POLICY "Users can insert messages in own conversations"
   ON messages FOR INSERT
@@ -2085,6 +1803,7 @@ VALUES ('documents', 'documents', false)
 ON CONFLICT (id) DO NOTHING;
 
 -- Politique upload pour utilisateurs authentifiés
+DROP POLICY IF EXISTS "Users can upload documents" ON storage.objects;
 DROP POLICY IF EXISTS "Users can upload documents" ON storage.objects;
 CREATE POLICY "Users can upload documents"
 ON storage.objects FOR INSERT
@@ -2587,14 +2306,17 @@ COMMENT ON TABLE owner_payment_audit_log IS 'Audit trail PSD3 pour les opératio
 ALTER TABLE owner_payment_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Le propriétaire ne voit que ses propres logs
+DROP POLICY IF EXISTS "opal_select_own" ON owner_payment_audit_log;
 CREATE POLICY "opal_select_own" ON owner_payment_audit_log
   FOR SELECT USING (owner_id = public.user_profile_id());
 
 -- Le propriétaire peut insérer des logs pour lui-même (via l'API qui utilise son session)
+DROP POLICY IF EXISTS "opal_insert_own" ON owner_payment_audit_log;
 CREATE POLICY "opal_insert_own" ON owner_payment_audit_log
   FOR INSERT WITH CHECK (owner_id = public.user_profile_id());
 
 -- L'admin voit et gère tout (lecture seule en pratique, pas de UPDATE/DELETE prévus)
+DROP POLICY IF EXISTS "opal_admin_all" ON owner_payment_audit_log;
 CREATE POLICY "opal_admin_all" ON owner_payment_audit_log
   FOR ALL USING (public.user_role() = 'admin');
 
@@ -2612,6 +2334,7 @@ CREATE POLICY "opal_admin_all" ON owner_payment_audit_log
 -- ----------------------------------------------------------------------------
 
 DROP POLICY IF EXISTS furniture_inventories_owner_policy ON furniture_inventories;
+DROP POLICY IF EXISTS furniture_inventories_owner_policy ON furniture_inventories;
 CREATE POLICY furniture_inventories_owner_policy ON furniture_inventories
   FOR ALL
   USING (
@@ -2624,6 +2347,7 @@ CREATE POLICY furniture_inventories_owner_policy ON furniture_inventories
     )
   );
 
+DROP POLICY IF EXISTS furniture_inventories_tenant_policy ON furniture_inventories;
 DROP POLICY IF EXISTS furniture_inventories_tenant_policy ON furniture_inventories;
 CREATE POLICY furniture_inventories_tenant_policy ON furniture_inventories
   FOR SELECT
@@ -2642,6 +2366,7 @@ CREATE POLICY furniture_inventories_tenant_policy ON furniture_inventories
 -- ----------------------------------------------------------------------------
 
 DROP POLICY IF EXISTS furniture_items_owner_policy ON furniture_items;
+DROP POLICY IF EXISTS furniture_items_owner_policy ON furniture_items;
 CREATE POLICY furniture_items_owner_policy ON furniture_items
   FOR ALL
   USING (
@@ -2655,6 +2380,7 @@ CREATE POLICY furniture_items_owner_policy ON furniture_items
     )
   );
 
+DROP POLICY IF EXISTS furniture_items_tenant_policy ON furniture_items;
 DROP POLICY IF EXISTS furniture_items_tenant_policy ON furniture_items;
 CREATE POLICY furniture_items_tenant_policy ON furniture_items
   FOR SELECT
@@ -2673,6 +2399,7 @@ CREATE POLICY furniture_items_tenant_policy ON furniture_items
 -- 3. vetusty_reports
 -- ----------------------------------------------------------------------------
 
+DROP POLICY IF EXISTS "vetusty_reports_select_policy" ON vetusty_reports;
 DROP POLICY IF EXISTS "vetusty_reports_select_policy" ON vetusty_reports;
 CREATE POLICY "vetusty_reports_select_policy" ON vetusty_reports
   FOR SELECT USING (
@@ -2694,6 +2421,7 @@ CREATE POLICY "vetusty_reports_select_policy" ON vetusty_reports
   );
 
 DROP POLICY IF EXISTS "vetusty_reports_insert_policy" ON vetusty_reports;
+DROP POLICY IF EXISTS "vetusty_reports_insert_policy" ON vetusty_reports;
 CREATE POLICY "vetusty_reports_insert_policy" ON vetusty_reports
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -2705,6 +2433,7 @@ CREATE POLICY "vetusty_reports_insert_policy" ON vetusty_reports
     )
   );
 
+DROP POLICY IF EXISTS "vetusty_reports_update_policy" ON vetusty_reports;
 DROP POLICY IF EXISTS "vetusty_reports_update_policy" ON vetusty_reports;
 CREATE POLICY "vetusty_reports_update_policy" ON vetusty_reports
   FOR UPDATE USING (
@@ -2721,6 +2450,7 @@ CREATE POLICY "vetusty_reports_update_policy" ON vetusty_reports
 -- 4. vetusty_items
 -- ----------------------------------------------------------------------------
 
+DROP POLICY IF EXISTS "vetusty_items_select_policy" ON vetusty_items;
 DROP POLICY IF EXISTS "vetusty_items_select_policy" ON vetusty_items;
 CREATE POLICY "vetusty_items_select_policy" ON vetusty_items
   FOR SELECT USING (
@@ -2743,6 +2473,7 @@ CREATE POLICY "vetusty_items_select_policy" ON vetusty_items
   );
 
 DROP POLICY IF EXISTS "vetusty_items_insert_policy" ON vetusty_items;
+DROP POLICY IF EXISTS "vetusty_items_insert_policy" ON vetusty_items;
 CREATE POLICY "vetusty_items_insert_policy" ON vetusty_items
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -2756,6 +2487,7 @@ CREATE POLICY "vetusty_items_insert_policy" ON vetusty_items
   );
 
 DROP POLICY IF EXISTS "vetusty_items_update_policy" ON vetusty_items;
+DROP POLICY IF EXISTS "vetusty_items_update_policy" ON vetusty_items;
 CREATE POLICY "vetusty_items_update_policy" ON vetusty_items
   FOR UPDATE USING (
     EXISTS (
@@ -2768,6 +2500,7 @@ CREATE POLICY "vetusty_items_update_policy" ON vetusty_items
     )
   );
 
+DROP POLICY IF EXISTS "vetusty_items_delete_policy" ON vetusty_items;
 DROP POLICY IF EXISTS "vetusty_items_delete_policy" ON vetusty_items;
 CREATE POLICY "vetusty_items_delete_policy" ON vetusty_items
   FOR DELETE USING (
@@ -3127,17 +2860,27 @@ CREATE INDEX idx_tpm_active ON tenant_payment_methods(tenant_profile_id, status)
 
 ALTER TABLE tenant_payment_methods ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "tpm_select_own" ON tenant_payment_methods;
+
 CREATE POLICY "tpm_select_own" ON tenant_payment_methods
   FOR SELECT USING (tenant_profile_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "tpm_insert_own" ON tenant_payment_methods;
 
 CREATE POLICY "tpm_insert_own" ON tenant_payment_methods
   FOR INSERT WITH CHECK (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "tpm_update_own" ON tenant_payment_methods;
+
 CREATE POLICY "tpm_update_own" ON tenant_payment_methods
   FOR UPDATE USING (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "tpm_delete_own" ON tenant_payment_methods;
+
 CREATE POLICY "tpm_delete_own" ON tenant_payment_methods
   FOR DELETE USING (tenant_profile_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "tpm_admin_all" ON tenant_payment_methods;
 
 CREATE POLICY "tpm_admin_all" ON tenant_payment_methods
   FOR ALL USING (public.user_role() = 'admin');
@@ -3217,17 +2960,27 @@ CREATE INDEX idx_sepa_mandates_next_collection ON sepa_mandates(next_collection_
 
 ALTER TABLE sepa_mandates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "sepa_select_tenant" ON sepa_mandates;
+
 CREATE POLICY "sepa_select_tenant" ON sepa_mandates
   FOR SELECT USING (tenant_profile_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "sepa_select_owner" ON sepa_mandates;
 
 CREATE POLICY "sepa_select_owner" ON sepa_mandates
   FOR SELECT USING (owner_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "sepa_insert_tenant" ON sepa_mandates;
+
 CREATE POLICY "sepa_insert_tenant" ON sepa_mandates
   FOR INSERT WITH CHECK (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "sepa_update_tenant" ON sepa_mandates;
+
 CREATE POLICY "sepa_update_tenant" ON sepa_mandates
   FOR UPDATE USING (tenant_profile_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "sepa_admin_all" ON sepa_mandates;
 
 CREATE POLICY "sepa_admin_all" ON sepa_mandates
   FOR ALL USING (public.user_role() = 'admin');
@@ -3279,6 +3032,8 @@ CREATE INDEX idx_ps_lease ON payment_schedules(lease_id);
 
 ALTER TABLE payment_schedules ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "ps_select_tenant" ON payment_schedules;
+
 CREATE POLICY "ps_select_tenant" ON payment_schedules
   FOR SELECT USING (
     EXISTS (
@@ -3289,6 +3044,8 @@ CREATE POLICY "ps_select_tenant" ON payment_schedules
     )
   );
 
+DROP POLICY IF EXISTS "ps_select_owner" ON payment_schedules;
+
 CREATE POLICY "ps_select_owner" ON payment_schedules
   FOR SELECT USING (
     EXISTS (
@@ -3298,6 +3055,8 @@ CREATE POLICY "ps_select_owner" ON payment_schedules
         AND p.owner_id = public.user_profile_id()
     )
   );
+
+DROP POLICY IF EXISTS "ps_admin_all" ON payment_schedules;
 
 CREATE POLICY "ps_admin_all" ON payment_schedules
   FOR ALL USING (public.user_role() = 'admin');
@@ -3328,8 +3087,12 @@ CREATE INDEX idx_pmal_pm ON payment_method_audit_log(payment_method_id, created_
 
 ALTER TABLE payment_method_audit_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "pmal_select_own" ON payment_method_audit_log;
+
 CREATE POLICY "pmal_select_own" ON payment_method_audit_log
   FOR SELECT USING (tenant_profile_id = public.user_profile_id());
+
+DROP POLICY IF EXISTS "pmal_admin_all" ON payment_method_audit_log;
 
 CREATE POLICY "pmal_admin_all" ON payment_method_audit_log
   FOR ALL USING (public.user_role() = 'admin');
@@ -3405,6 +3168,7 @@ CREATE INDEX IF NOT EXISTS idx_identity_2fa_requests_expires_at ON identity_2fa_
 ALTER TABLE identity_2fa_requests ENABLE ROW LEVEL SECURITY;
 
 -- Le locataire ne peut voir que ses propres demandes
+DROP POLICY IF EXISTS "identity_2fa_requests_tenant_own" ON identity_2fa_requests;
 DROP POLICY IF EXISTS "identity_2fa_requests_tenant_own" ON identity_2fa_requests;
 CREATE POLICY "identity_2fa_requests_tenant_own"
   ON identity_2fa_requests FOR ALL TO authenticated
@@ -3559,6 +3323,7 @@ CREATE INDEX IF NOT EXISTS idx_key_handovers_confirmed ON key_handovers(lease_id
 ALTER TABLE key_handovers ENABLE ROW LEVEL SECURITY;
 
 -- Owner can see and create handovers for their leases
+DROP POLICY IF EXISTS "owner_key_handovers" ON key_handovers;
 CREATE POLICY "owner_key_handovers" ON key_handovers
   FOR ALL
   USING (
@@ -3568,6 +3333,7 @@ CREATE POLICY "owner_key_handovers" ON key_handovers
   );
 
 -- Tenant can see and confirm handovers for their leases
+DROP POLICY IF EXISTS "tenant_key_handovers" ON key_handovers;
 CREATE POLICY "tenant_key_handovers" ON key_handovers
   FOR ALL
   USING (
@@ -3588,5 +3354,562 @@ CREATE OR REPLACE TRIGGER set_key_handovers_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 
 COMMENT ON TABLE key_handovers IS 'Remise des clés digitale avec preuve QR code, signature et géolocalisation';
+
+
+-- === [66/169] 20260301100000_entity_audit_and_propagation.sql ===
+-- ============================================================================
+-- Migration: Entity Audit Trail, Propagation, Contraintes SIRET, Guards
+-- Date: 2026-03-01
+-- Description:
+--   1. Table entity_audit_log (historique des modifications)
+--   2. Trigger propagation: UPDATE legal_entities → leases/invoices dénormalisés
+--   3. Contrainte UNIQUE sur SIRET (actif uniquement)
+--   4. Vérification bail actif avant transfert de bien (RPC)
+-- Idempotent: peut être exécutée plusieurs fois sans effet secondaire.
+-- ============================================================================
+
+BEGIN;
+
+-- ============================================================================
+-- 1. TABLE: entity_audit_log (historique des modifications)
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS entity_audit_log (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
+  action TEXT NOT NULL CHECK (action IN ('create', 'update', 'delete', 'deactivate', 'reactivate')),
+  changed_fields JSONB,           -- {"nom": {"old": "SCI A", "new": "SCI B"}}
+  changed_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  ip_address TEXT,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_entity_audit_log_entity ON entity_audit_log(entity_id);
+CREATE INDEX IF NOT EXISTS idx_entity_audit_log_action ON entity_audit_log(action);
+CREATE INDEX IF NOT EXISTS idx_entity_audit_log_date ON entity_audit_log(created_at);
+
+-- RLS pour entity_audit_log
+ALTER TABLE entity_audit_log ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
+
+CREATE POLICY "Users can view audit logs of their entities"
+  ON entity_audit_log FOR SELECT
+  USING (
+    entity_id IN (
+      SELECT id FROM legal_entities WHERE owner_profile_id IN (
+        SELECT profile_id FROM owner_profiles
+        WHERE profile_id IN (
+          SELECT id FROM profiles WHERE user_id = auth.uid()
+        )
+      )
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
+
+CREATE POLICY "Users can insert audit logs for their entities"
+  ON entity_audit_log FOR INSERT
+  WITH CHECK (
+    entity_id IN (
+      SELECT id FROM legal_entities WHERE owner_profile_id IN (
+        SELECT profile_id FROM owner_profiles
+        WHERE profile_id IN (
+          SELECT id FROM profiles WHERE user_id = auth.uid()
+        )
+      )
+    )
+  );
+
+DROP POLICY IF EXISTS "Admins can do everything on entity_audit_log" ON entity_audit_log;
+
+CREATE POLICY "Admins can do everything on entity_audit_log"
+  ON entity_audit_log FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE user_id = auth.uid() AND role = 'admin'
+    )
+  );
+
+-- ============================================================================
+-- 2. TRIGGER: Propager les modifications d'entité aux tables dénormalisées
+-- ============================================================================
+-- Quand nom/adresse/siret changent sur legal_entities,
+-- mettre à jour les champs dénormalisés sur leases et invoices.
+
+CREATE OR REPLACE FUNCTION propagate_entity_changes()
+RETURNS TRIGGER AS $$
+DECLARE
+  full_address TEXT;
+BEGIN
+  -- Construire l'adresse complète
+  full_address := COALESCE(NEW.adresse_siege, '');
+  IF NEW.code_postal_siege IS NOT NULL OR NEW.ville_siege IS NOT NULL THEN
+    full_address := full_address || ', ' || COALESCE(NEW.code_postal_siege, '') || ' ' || COALESCE(NEW.ville_siege, '');
+  END IF;
+
+  -- Propager vers leases si nom, adresse ou siret a changé
+  IF (OLD.nom IS DISTINCT FROM NEW.nom)
+     OR (OLD.adresse_siege IS DISTINCT FROM NEW.adresse_siege)
+     OR (OLD.code_postal_siege IS DISTINCT FROM NEW.code_postal_siege)
+     OR (OLD.ville_siege IS DISTINCT FROM NEW.ville_siege)
+     OR (OLD.siret IS DISTINCT FROM NEW.siret) THEN
+
+    UPDATE leases SET
+      bailleur_nom = CASE WHEN OLD.nom IS DISTINCT FROM NEW.nom THEN NEW.nom ELSE bailleur_nom END,
+      bailleur_adresse = CASE
+        WHEN (OLD.adresse_siege IS DISTINCT FROM NEW.adresse_siege)
+             OR (OLD.code_postal_siege IS DISTINCT FROM NEW.code_postal_siege)
+             OR (OLD.ville_siege IS DISTINCT FROM NEW.ville_siege)
+        THEN full_address
+        ELSE bailleur_adresse
+      END,
+      bailleur_siret = CASE WHEN OLD.siret IS DISTINCT FROM NEW.siret THEN NEW.siret ELSE bailleur_siret END
+    WHERE signatory_entity_id = NEW.id;
+
+    -- Propager vers invoices
+    UPDATE invoices SET
+      issuer_nom = CASE WHEN OLD.nom IS DISTINCT FROM NEW.nom THEN NEW.nom ELSE issuer_nom END,
+      issuer_adresse = CASE
+        WHEN (OLD.adresse_siege IS DISTINCT FROM NEW.adresse_siege)
+             OR (OLD.code_postal_siege IS DISTINCT FROM NEW.code_postal_siege)
+             OR (OLD.ville_siege IS DISTINCT FROM NEW.ville_siege)
+        THEN full_address
+        ELSE issuer_adresse
+      END,
+      issuer_siret = CASE WHEN OLD.siret IS DISTINCT FROM NEW.siret THEN NEW.siret ELSE issuer_siret END,
+      issuer_tva = CASE WHEN OLD.numero_tva IS DISTINCT FROM NEW.numero_tva THEN NEW.numero_tva ELSE issuer_tva END
+    WHERE issuer_entity_id = NEW.id;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS trg_propagate_entity_changes ON legal_entities;
+CREATE TRIGGER trg_propagate_entity_changes
+  AFTER UPDATE ON legal_entities
+  FOR EACH ROW
+  EXECUTE FUNCTION propagate_entity_changes();
+
+-- ============================================================================
+-- 3. TRIGGER: Audit trail automatique sur modifications d'entité
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION log_entity_changes()
+RETURNS TRIGGER AS $$
+DECLARE
+  changes JSONB := '{}';
+  action_type TEXT;
+  user_profile_id UUID;
+BEGIN
+  -- Déterminer l'ID du profil qui fait la modification
+  SELECT id INTO user_profile_id FROM profiles WHERE user_id = auth.uid() LIMIT 1;
+
+  IF TG_OP = 'INSERT' THEN
+    action_type := 'create';
+    changes := jsonb_build_object(
+      'entity_type', NEW.entity_type,
+      'nom', NEW.nom,
+      'regime_fiscal', NEW.regime_fiscal
+    );
+
+    INSERT INTO entity_audit_log (entity_id, action, changed_fields, changed_by)
+    VALUES (NEW.id, action_type, changes, user_profile_id);
+
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'UPDATE' THEN
+    -- Détecter les champs modifiés
+    IF OLD.nom IS DISTINCT FROM NEW.nom THEN
+      changes := changes || jsonb_build_object('nom', jsonb_build_object('old', OLD.nom, 'new', NEW.nom));
+    END IF;
+    IF OLD.entity_type IS DISTINCT FROM NEW.entity_type THEN
+      changes := changes || jsonb_build_object('entity_type', jsonb_build_object('old', OLD.entity_type, 'new', NEW.entity_type));
+    END IF;
+    IF OLD.forme_juridique IS DISTINCT FROM NEW.forme_juridique THEN
+      changes := changes || jsonb_build_object('forme_juridique', jsonb_build_object('old', OLD.forme_juridique, 'new', NEW.forme_juridique));
+    END IF;
+    IF OLD.regime_fiscal IS DISTINCT FROM NEW.regime_fiscal THEN
+      changes := changes || jsonb_build_object('regime_fiscal', jsonb_build_object('old', OLD.regime_fiscal, 'new', NEW.regime_fiscal));
+    END IF;
+    IF OLD.siret IS DISTINCT FROM NEW.siret THEN
+      changes := changes || jsonb_build_object('siret', jsonb_build_object('old', OLD.siret, 'new', NEW.siret));
+    END IF;
+    IF OLD.adresse_siege IS DISTINCT FROM NEW.adresse_siege THEN
+      changes := changes || jsonb_build_object('adresse_siege', jsonb_build_object('old', OLD.adresse_siege, 'new', NEW.adresse_siege));
+    END IF;
+    IF OLD.code_postal_siege IS DISTINCT FROM NEW.code_postal_siege THEN
+      changes := changes || jsonb_build_object('code_postal_siege', jsonb_build_object('old', OLD.code_postal_siege, 'new', NEW.code_postal_siege));
+    END IF;
+    IF OLD.ville_siege IS DISTINCT FROM NEW.ville_siege THEN
+      changes := changes || jsonb_build_object('ville_siege', jsonb_build_object('old', OLD.ville_siege, 'new', NEW.ville_siege));
+    END IF;
+    IF OLD.capital_social IS DISTINCT FROM NEW.capital_social THEN
+      changes := changes || jsonb_build_object('capital_social', jsonb_build_object('old', OLD.capital_social, 'new', NEW.capital_social));
+    END IF;
+    IF OLD.iban IS DISTINCT FROM NEW.iban THEN
+      changes := changes || jsonb_build_object('iban', jsonb_build_object('old', 'MASKED', 'new', 'MASKED'));
+    END IF;
+    IF OLD.is_active IS DISTINCT FROM NEW.is_active THEN
+      action_type := CASE WHEN NEW.is_active THEN 'reactivate' ELSE 'deactivate' END;
+      changes := changes || jsonb_build_object('is_active', jsonb_build_object('old', OLD.is_active, 'new', NEW.is_active));
+    ELSE
+      action_type := 'update';
+    END IF;
+
+    -- Ne loguer que s'il y a des changements
+    IF changes != '{}' THEN
+      INSERT INTO entity_audit_log (entity_id, action, changed_fields, changed_by)
+      VALUES (NEW.id, action_type, changes, user_profile_id);
+    END IF;
+
+    RETURN NEW;
+  END IF;
+
+  IF TG_OP = 'DELETE' THEN
+    action_type := 'delete';
+    changes := jsonb_build_object('nom', OLD.nom, 'entity_type', OLD.entity_type);
+
+    INSERT INTO entity_audit_log (entity_id, action, changed_fields, changed_by)
+    VALUES (OLD.id, action_type, changes, user_profile_id);
+
+    RETURN OLD;
+  END IF;
+
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+DROP TRIGGER IF EXISTS trg_log_entity_changes ON legal_entities;
+CREATE TRIGGER trg_log_entity_changes
+  AFTER INSERT OR UPDATE OR DELETE ON legal_entities
+  FOR EACH ROW
+  EXECUTE FUNCTION log_entity_changes();
+
+-- ============================================================================
+-- 4. CONTRAINTE UNIQUE sur SIRET (actif uniquement)
+-- ============================================================================
+-- Un même SIRET ne peut être utilisé que par une seule entité active
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_legal_entities_siret_unique
+  ON legal_entities (siret)
+  WHERE siret IS NOT NULL AND is_active = true;
+
+-- ============================================================================
+-- 5. RPC: Vérifier si un transfert de bien est possible (bail actif ?)
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION check_property_transfer_feasibility(
+  p_property_id UUID,
+  p_from_entity_id UUID,
+  p_to_entity_id UUID
+) RETURNS TABLE (
+  can_transfer BOOLEAN,
+  blocking_reason TEXT,
+  active_lease_count BIGINT,
+  pending_signature_count BIGINT
+) AS $$
+BEGIN
+  RETURN QUERY
+  WITH lease_checks AS (
+    SELECT
+      COUNT(*) FILTER (WHERE l.statut = 'active') AS active_count,
+      COUNT(*) FILTER (WHERE l.statut IN ('pending_signature', 'fully_signed')) AS pending_count
+    FROM leases l
+    WHERE l.property_id = p_property_id
+      AND l.signatory_entity_id = p_from_entity_id
+  )
+  SELECT
+    (lc.active_count = 0 AND lc.pending_count = 0) AS can_transfer,
+    CASE
+      WHEN lc.pending_count > 0 THEN
+        'Transfert impossible : ' || lc.pending_count || ' bail(aux) en cours de signature. Finalisez ou annulez les signatures avant de transférer.'
+      WHEN lc.active_count > 0 THEN
+        'Transfert avec bail(aux) actif(s) : ' || lc.active_count || ' bail(aux) devront être mis à jour avec la nouvelle entité signataire.'
+      ELSE NULL
+    END AS blocking_reason,
+    lc.active_count AS active_lease_count,
+    lc.pending_count AS pending_signature_count
+  FROM lease_checks lc;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+
+-- ============================================================================
+-- 6. Backfill bailleur_nom/adresse/siret sur les baux existants qui en manquent
+-- ============================================================================
+
+UPDATE leases l
+SET
+  bailleur_nom = COALESCE(l.bailleur_nom, le.nom),
+  bailleur_adresse = COALESCE(l.bailleur_adresse,
+    COALESCE(le.adresse_siege, '') ||
+    CASE WHEN le.code_postal_siege IS NOT NULL OR le.ville_siege IS NOT NULL
+      THEN ', ' || COALESCE(le.code_postal_siege, '') || ' ' || COALESCE(le.ville_siege, '')
+      ELSE ''
+    END
+  ),
+  bailleur_siret = COALESCE(l.bailleur_siret, le.siret)
+FROM legal_entities le
+WHERE l.signatory_entity_id = le.id
+  AND (l.bailleur_nom IS NULL OR l.bailleur_adresse IS NULL OR l.bailleur_siret IS NULL);
+
+-- Même chose pour invoices
+UPDATE invoices i
+SET
+  issuer_nom = COALESCE(i.issuer_nom, le.nom),
+  issuer_adresse = COALESCE(i.issuer_adresse,
+    COALESCE(le.adresse_siege, '') ||
+    CASE WHEN le.code_postal_siege IS NOT NULL OR le.ville_siege IS NOT NULL
+      THEN ', ' || COALESCE(le.code_postal_siege, '') || ' ' || COALESCE(le.ville_siege, '')
+      ELSE ''
+    END
+  ),
+  issuer_siret = COALESCE(i.issuer_siret, le.siret),
+  issuer_tva = COALESCE(i.issuer_tva, le.numero_tva)
+FROM legal_entities le
+WHERE i.issuer_entity_id = le.id
+  AND (i.issuer_nom IS NULL OR i.issuer_adresse IS NULL OR i.issuer_siret IS NULL);
+
+COMMIT;
+
+
+-- === [67/169] 20260303000000_backfill_uploaded_by.sql ===
+-- =====================================================
+-- MIGRATION: Backfill uploaded_by pour documents existants
+-- Date: 2026-03-03
+--
+-- PROBLÈME:
+--   - /api/documents/upload ne renseignait pas uploaded_by
+--   - /api/documents/upload-batch ne le faisait que pour les galeries
+--   => Les documents existants n'ont pas uploaded_by, ce qui empêche
+--      la détection de source inter-compte (locataire vs propriétaire).
+--
+-- FIX:
+--   Backfill uploaded_by en se basant sur le type de document et les FK.
+--   Heuristique :
+--     1. Types locataire (assurance, CNI, etc.) → uploaded_by = tenant_id
+--     2. Types propriétaire (bail, quittance, etc.) → uploaded_by = owner_id
+--     3. Documents avec owner_id seul (sans tenant) → uploaded_by = owner_id
+--
+-- SÉCURITÉ:
+--   - UPDATE conditionnel (WHERE uploaded_by IS NULL)
+--   - Ne touche pas aux documents déjà renseignés
+--   - Non-bloquant : si aucune ligne à MAJ, pas d'effet
+-- =====================================================
+
+BEGIN;
+
+-- 1. Documents typiquement uploadés par le locataire
+UPDATE public.documents
+SET uploaded_by = tenant_id
+WHERE uploaded_by IS NULL
+  AND tenant_id IS NOT NULL
+  AND type IN (
+    'attestation_assurance', 'cni_recto', 'cni_verso', 'piece_identite',
+    'passeport', 'justificatif_revenus', 'avis_imposition', 'bulletin_paie',
+    'rib', 'titre_sejour', 'cni', 'justificatif_domicile'
+  );
+
+-- 2. Documents typiquement générés/uploadés par le propriétaire
+UPDATE public.documents
+SET uploaded_by = owner_id
+WHERE uploaded_by IS NULL
+  AND owner_id IS NOT NULL
+  AND type IN (
+    'bail', 'quittance', 'avenant', 'appel_loyer', 'releve_charges',
+    'dpe', 'erp', 'crep', 'amiante', 'electricite', 'gaz',
+    'diagnostic', 'diagnostic_gaz', 'diagnostic_electricite',
+    'diagnostic_plomb', 'diagnostic_amiante', 'diagnostic_termites',
+    'diagnostic_performance', 'reglement_copro', 'notice_information',
+    'EDL_entree', 'EDL_sortie', 'edl', 'edl_entree', 'edl_sortie',
+    'assurance_pno', 'facture', 'contrat', 'engagement_garant'
+  );
+
+-- 3. Restant : documents owner sans tenant → attribuer au propriétaire
+UPDATE public.documents
+SET uploaded_by = owner_id
+WHERE uploaded_by IS NULL
+  AND owner_id IS NOT NULL
+  AND tenant_id IS NULL;
+
+-- 4. Restant : documents avec tenant et owner mais type inconnu → attribuer au tenant
+--    (hypothèse : si un tenant est lié, c'est probablement lui qui a uploadé)
+UPDATE public.documents
+SET uploaded_by = tenant_id
+WHERE uploaded_by IS NULL
+  AND tenant_id IS NOT NULL
+  AND owner_id IS NOT NULL;
+
+COMMIT;
+
+
+-- === [68/169] 20260303100000_entity_rls_fix_and_optimize.sql ===
+-- ============================================================================
+-- Migration: Fix RLS policies for entity system
+-- Date: 2026-03-03
+-- Description:
+--   1. Supprime la policy SELECT redondante sur entity_associates
+--      (la policy FOR ALL couvre déjà SELECT)
+--   2. Crée une fonction helper get_current_owner_profile_id()
+--      pour optimiser les sous-requêtes RLS (3 niveaux → 1 appel)
+--   3. Remplace les policies legal_entities par des versions optimisées
+--   4. Remplace les policies entity_associates par une version optimisée
+--   5. Remplace les policies property_ownership par des versions optimisées
+-- Idempotent: peut être exécutée plusieurs fois sans effet secondaire.
+-- ============================================================================
+
+BEGIN;
+
+-- ============================================================================
+-- 1. Fonction helper: get_current_owner_profile_id()
+-- ============================================================================
+-- Retourne le profile_id du propriétaire connecté (ou NULL si non-propriétaire).
+-- Utilisée par toutes les policies RLS pour éviter les sous-requêtes imbriquées.
+
+CREATE OR REPLACE FUNCTION get_current_owner_profile_id()
+RETURNS UUID AS $$
+  SELECT op.profile_id
+  FROM owner_profiles op
+  INNER JOIN profiles p ON p.id = op.profile_id
+  WHERE p.user_id = auth.uid()
+  LIMIT 1;
+$$ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public;
+
+-- ============================================================================
+-- 2. Fix entity_associates: supprimer la policy SELECT redondante
+-- ============================================================================
+
+DROP POLICY IF EXISTS "Users can view associates of their entities" ON entity_associates;
+
+-- Recréer la policy FOR ALL avec la fonction optimisée
+DROP POLICY IF EXISTS "Users can manage associates of their entities" ON entity_associates;
+DROP POLICY IF EXISTS "Users can manage associates of their entities" ON entity_associates;
+CREATE POLICY "Users can manage associates of their entities"
+  ON entity_associates FOR ALL
+  USING (
+    legal_entity_id IN (
+      SELECT id FROM legal_entities
+      WHERE owner_profile_id = get_current_owner_profile_id()
+    )
+  );
+
+-- ============================================================================
+-- 3. Optimiser les policies legal_entities
+-- ============================================================================
+
+DROP POLICY IF EXISTS "Users can view their own entities" ON legal_entities;
+DROP POLICY IF EXISTS "Users can view their own entities" ON legal_entities;
+CREATE POLICY "Users can view their own entities"
+  ON legal_entities FOR SELECT
+  USING (owner_profile_id = get_current_owner_profile_id());
+
+DROP POLICY IF EXISTS "Users can insert their own entities" ON legal_entities;
+DROP POLICY IF EXISTS "Users can insert their own entities" ON legal_entities;
+CREATE POLICY "Users can insert their own entities"
+  ON legal_entities FOR INSERT
+  WITH CHECK (owner_profile_id = get_current_owner_profile_id());
+
+DROP POLICY IF EXISTS "Users can update their own entities" ON legal_entities;
+DROP POLICY IF EXISTS "Users can update their own entities" ON legal_entities;
+CREATE POLICY "Users can update their own entities"
+  ON legal_entities FOR UPDATE
+  USING (owner_profile_id = get_current_owner_profile_id());
+
+DROP POLICY IF EXISTS "Users can delete their own entities" ON legal_entities;
+DROP POLICY IF EXISTS "Users can delete their own entities" ON legal_entities;
+CREATE POLICY "Users can delete their own entities"
+  ON legal_entities FOR DELETE
+  USING (owner_profile_id = get_current_owner_profile_id());
+
+-- ============================================================================
+-- 4. Optimiser les policies property_ownership
+-- ============================================================================
+
+DROP POLICY IF EXISTS "Users can view ownership of their properties" ON property_ownership;
+DROP POLICY IF EXISTS "Users can view ownership of their properties" ON property_ownership;
+CREATE POLICY "Users can view ownership of their properties"
+  ON property_ownership FOR SELECT
+  USING (
+    property_id IN (
+      SELECT id FROM properties
+      WHERE owner_id = get_current_owner_profile_id()
+    )
+    OR legal_entity_id IN (
+      SELECT id FROM legal_entities
+      WHERE owner_profile_id = get_current_owner_profile_id()
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can manage ownership of their properties" ON property_ownership;
+DROP POLICY IF EXISTS "Users can manage ownership of their properties" ON property_ownership;
+CREATE POLICY "Users can manage ownership of their properties"
+  ON property_ownership FOR ALL
+  USING (
+    property_id IN (
+      SELECT id FROM properties
+      WHERE owner_id = get_current_owner_profile_id()
+    )
+    OR legal_entity_id IN (
+      SELECT id FROM legal_entities
+      WHERE owner_profile_id = get_current_owner_profile_id()
+    )
+  );
+
+-- ============================================================================
+-- 5. Optimiser les policies entity_audit_log
+-- ============================================================================
+
+DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
+DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
+CREATE POLICY "Users can view audit logs of their entities"
+  ON entity_audit_log FOR SELECT
+  USING (
+    entity_id IN (
+      SELECT id FROM legal_entities
+      WHERE owner_profile_id = get_current_owner_profile_id()
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
+DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
+CREATE POLICY "Users can insert audit logs for their entities"
+  ON entity_audit_log FOR INSERT
+  WITH CHECK (
+    entity_id IN (
+      SELECT id FROM legal_entities
+      WHERE owner_profile_id = get_current_owner_profile_id()
+    )
+  );
+
+-- ============================================================================
+-- 6. Ajouter les types micro_entrepreneur et association
+-- ============================================================================
+
+ALTER TABLE legal_entities DROP CONSTRAINT IF EXISTS legal_entities_entity_type_check;
+ALTER TABLE legal_entities ADD CONSTRAINT legal_entities_entity_type_check CHECK (entity_type IN (
+  'particulier',
+  'sci_ir',
+  'sci_is',
+  'sci_construction_vente',
+  'sarl',
+  'sarl_famille',
+  'eurl',
+  'sas',
+  'sasu',
+  'sa',
+  'snc',
+  'indivision',
+  'demembrement_usufruit',
+  'demembrement_nue_propriete',
+  'holding',
+  'micro_entrepreneur',
+  'association'
+));
+
+COMMIT;
 
 

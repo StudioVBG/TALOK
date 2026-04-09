@@ -1,551 +1,5 @@
--- Batch 8 — migrations 161 a 169 sur 169
--- 9 migrations
-
--- === [161/169] 20260408130000_insurance_policies.sql ===
--- =============================================
--- Migration: Evolve insurance_policies table
--- From tenant-only to multi-role (PNO, multirisques, RC Pro, decennale, GLI, garantie financiere)
--- Original table: 20240101000009_tenant_advanced.sql
--- =============================================
-
-BEGIN;
-
--- 1. Add new columns to existing table
-ALTER TABLE insurance_policies
-  ADD COLUMN IF NOT EXISTS profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  ADD COLUMN IF NOT EXISTS property_id UUID REFERENCES properties(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS insurance_type TEXT,
-  ADD COLUMN IF NOT EXISTS amount_covered_cents INTEGER,
-  ADD COLUMN IF NOT EXISTS document_id UUID REFERENCES documents(id) ON DELETE SET NULL,
-  ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false,
-  ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ,
-  ADD COLUMN IF NOT EXISTS reminder_sent_30j BOOLEAN DEFAULT false,
-  ADD COLUMN IF NOT EXISTS reminder_sent_7j BOOLEAN DEFAULT false;
-
--- 2. Migrate data: copy tenant_profile_id -> profile_id, coverage_type -> insurance_type
-UPDATE insurance_policies
-SET profile_id = tenant_profile_id
-WHERE profile_id IS NULL AND tenant_profile_id IS NOT NULL;
-
-UPDATE insurance_policies
-SET insurance_type = CASE
-  WHEN coverage_type = 'habitation' THEN 'multirisques'
-  WHEN coverage_type = 'responsabilite' THEN 'rc_pro'
-  WHEN coverage_type = 'comprehensive' THEN 'multirisques'
-  ELSE 'multirisques'
-END
-WHERE insurance_type IS NULL AND coverage_type IS NOT NULL;
-
--- 3. Make lease_id optional (was NOT NULL, now multi-role policies may not have a lease)
-ALTER TABLE insurance_policies ALTER COLUMN lease_id DROP NOT NULL;
-
--- 4. Make policy_number optional (was NOT NULL)
-ALTER TABLE insurance_policies ALTER COLUMN policy_number DROP NOT NULL;
-
--- 5. Add insurance_type CHECK constraint
-ALTER TABLE insurance_policies DROP CONSTRAINT IF EXISTS insurance_policies_coverage_type_check;
-ALTER TABLE insurance_policies ADD CONSTRAINT chk_insurance_type
-  CHECK (insurance_type IN ('pno', 'multirisques', 'rc_pro', 'decennale', 'garantie_financiere', 'gli'));
-
--- 6. Add business constraints
-ALTER TABLE insurance_policies ADD CONSTRAINT chk_insurance_dates
-  CHECK (end_date > start_date);
-ALTER TABLE insurance_policies ADD CONSTRAINT chk_insurance_amount_positive
-  CHECK (amount_covered_cents IS NULL OR amount_covered_cents > 0);
-
--- 7. New indexes
-CREATE INDEX IF NOT EXISTS idx_insurance_profile ON insurance_policies(profile_id);
-CREATE INDEX IF NOT EXISTS idx_insurance_property ON insurance_policies(property_id) WHERE property_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_insurance_expiry_active ON insurance_policies(end_date) WHERE end_date > now();
-CREATE INDEX IF NOT EXISTS idx_insurance_type ON insurance_policies(insurance_type);
-
--- 8. RLS (drop old policies from tenant_rls if they exist, add new multi-role ones)
-ALTER TABLE insurance_policies ENABLE ROW LEVEL SECURITY;
-
--- Drop old policies safely
-DROP POLICY IF EXISTS "Tenants can view own insurance policies" ON insurance_policies;
-DROP POLICY IF EXISTS "Tenants can insert own insurance policies" ON insurance_policies;
-DROP POLICY IF EXISTS "Tenants can update own insurance policies" ON insurance_policies;
-DROP POLICY IF EXISTS "Tenants can delete own insurance policies" ON insurance_policies;
-DROP POLICY IF EXISTS "Owners can view tenant insurance policies" ON insurance_policies;
-DROP POLICY IF EXISTS insurance_owner_select ON insurance_policies;
-DROP POLICY IF EXISTS insurance_owner_insert ON insurance_policies;
-DROP POLICY IF EXISTS insurance_owner_update ON insurance_policies;
-DROP POLICY IF EXISTS insurance_owner_delete ON insurance_policies;
-DROP POLICY IF EXISTS insurance_owner_view_tenants ON insurance_policies;
-
--- Users can manage their own policies
-CREATE POLICY insurance_self_select ON insurance_policies
-  FOR SELECT TO authenticated
-  USING (
-    profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
-    OR public.user_role() = 'admin'
-  );
-
-CREATE POLICY insurance_self_insert ON insurance_policies
-  FOR INSERT TO authenticated
-  WITH CHECK (
-    profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
-  );
-
-CREATE POLICY insurance_self_update ON insurance_policies
-  FOR UPDATE TO authenticated
-  USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
-
-CREATE POLICY insurance_self_delete ON insurance_policies
-  FOR DELETE TO authenticated
-  USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
-
--- Owners can view tenant insurance linked to their properties
-CREATE POLICY insurance_owner_view_tenants ON insurance_policies
-  FOR SELECT TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM leases l
-      JOIN properties p ON l.property_id = p.id
-      JOIN profiles prof ON p.owner_id = prof.id
-      WHERE l.id = insurance_policies.lease_id
-        AND prof.user_id = auth.uid()
-    )
-  );
-
--- Admin full access
-CREATE POLICY insurance_admin_all ON insurance_policies
-  FOR ALL TO authenticated
-  USING (public.user_role() = 'admin')
-  WITH CHECK (public.user_role() = 'admin');
-
--- 9. Trigger updated_at (idempotent)
-CREATE OR REPLACE FUNCTION update_insurance_policies_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_insurance_updated_at ON insurance_policies;
-CREATE TRIGGER trg_insurance_updated_at
-  BEFORE UPDATE ON insurance_policies
-  FOR EACH ROW
-  EXECUTE FUNCTION update_insurance_policies_updated_at();
-
--- 10. View: assurances expirant bientot
-CREATE OR REPLACE VIEW insurance_expiring_soon AS
-SELECT
-  ip.id,
-  ip.profile_id,
-  ip.property_id,
-  ip.lease_id,
-  ip.insurance_type,
-  ip.insurer_name,
-  ip.policy_number,
-  ip.start_date,
-  ip.end_date,
-  ip.amount_covered_cents,
-  ip.document_id,
-  ip.is_verified,
-  ip.reminder_sent_30j,
-  ip.reminder_sent_7j,
-  p.first_name,
-  p.last_name,
-  p.email,
-  p.role,
-  prop.adresse_complete AS property_address,
-  CASE
-    WHEN ip.end_date <= CURRENT_DATE THEN 'expired'
-    WHEN ip.end_date <= CURRENT_DATE + INTERVAL '7 days' THEN 'critical'
-    WHEN ip.end_date <= CURRENT_DATE + INTERVAL '30 days' THEN 'warning'
-    ELSE 'ok'
-  END AS expiry_status,
-  ip.end_date - CURRENT_DATE AS days_until_expiry
-FROM insurance_policies ip
-JOIN profiles p ON ip.profile_id = p.id
-LEFT JOIN properties prop ON ip.property_id = prop.id
-WHERE ip.end_date <= CURRENT_DATE + INTERVAL '30 days';
-
-COMMIT;
-
-
--- === [162/169] 20260408130000_lease_amendments_table.sql ===
--- ============================================================================
--- Lease Amendments (Avenants) — Table + RLS
---
--- Stores lease amendments (avenants) for active leases. Amendments track
--- rent revisions, roommate changes, charges adjustments, and other
--- contractual modifications. Each amendment references its parent lease
--- and optionally a signed document in the GED.
--- ============================================================================
-
--- 1. Create the lease_amendments table
-CREATE TABLE IF NOT EXISTS lease_amendments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  lease_id UUID NOT NULL REFERENCES leases(id) ON DELETE CASCADE,
-  amendment_type TEXT NOT NULL CHECK (amendment_type IN (
-    'loyer_revision',
-    'ajout_colocataire',
-    'retrait_colocataire',
-    'changement_charges',
-    'travaux',
-    'autre'
-  )),
-  description TEXT NOT NULL,
-  effective_date DATE NOT NULL,
-  old_values JSONB DEFAULT '{}'::jsonb,
-  new_values JSONB DEFAULT '{}'::jsonb,
-  document_id UUID REFERENCES documents(id) ON DELETE SET NULL,
-  signed_at TIMESTAMPTZ,
-  created_by UUID REFERENCES auth.users(id),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- 2. Enable RLS
-ALTER TABLE lease_amendments ENABLE ROW LEVEL SECURITY;
-
--- 3. RLS Policies
-
--- Owner can view amendments for their leases
-CREATE POLICY "owner_select_amendments"
-  ON lease_amendments
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM leases l
-      JOIN properties p ON p.id = l.property_id
-      JOIN profiles pr ON pr.id = p.owner_id
-      WHERE l.id = lease_amendments.lease_id
-        AND pr.user_id = auth.uid()
-    )
-  );
-
--- Tenant can view amendments for leases they signed
-CREATE POLICY "tenant_select_amendments"
-  ON lease_amendments
-  FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM lease_signers ls
-      JOIN profiles pr ON pr.id = ls.profile_id
-      WHERE ls.lease_id = lease_amendments.lease_id
-        AND pr.user_id = auth.uid()
-    )
-  );
-
--- Owner can create amendments for their leases
-CREATE POLICY "owner_insert_amendments"
-  ON lease_amendments
-  FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM leases l
-      JOIN properties p ON p.id = l.property_id
-      JOIN profiles pr ON pr.id = p.owner_id
-      WHERE l.id = lease_amendments.lease_id
-        AND pr.user_id = auth.uid()
-    )
-  );
-
--- Owner can update amendments for their leases (only unsigned ones)
-CREATE POLICY "owner_update_amendments"
-  ON lease_amendments
-  FOR UPDATE
-  USING (
-    signed_at IS NULL
-    AND EXISTS (
-      SELECT 1 FROM leases l
-      JOIN properties p ON p.id = l.property_id
-      JOIN profiles pr ON pr.id = p.owner_id
-      WHERE l.id = lease_amendments.lease_id
-        AND pr.user_id = auth.uid()
-    )
-  );
-
--- 4. Indexes
-CREATE INDEX IF NOT EXISTS idx_lease_amendments_lease_id
-  ON lease_amendments (lease_id);
-
-CREATE INDEX IF NOT EXISTS idx_lease_amendments_type
-  ON lease_amendments (amendment_type);
-
-CREATE INDEX IF NOT EXISTS idx_lease_amendments_effective_date
-  ON lease_amendments (effective_date);
-
--- 5. Auto-update updated_at
-CREATE OR REPLACE FUNCTION update_lease_amendments_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_lease_amendments_updated_at
-  BEFORE UPDATE ON lease_amendments
-  FOR EACH ROW
-  EXECUTE FUNCTION update_lease_amendments_updated_at();
-
--- 6. Comments
-COMMENT ON TABLE lease_amendments IS 'Avenants au bail — modifications contractuelles';
-COMMENT ON COLUMN lease_amendments.amendment_type IS 'Type: loyer_revision, ajout/retrait_colocataire, changement_charges, travaux, autre';
-COMMENT ON COLUMN lease_amendments.old_values IS 'Valeurs avant modification (JSONB)';
-COMMENT ON COLUMN lease_amendments.new_values IS 'Valeurs après modification (JSONB)';
-COMMENT ON COLUMN lease_amendments.signed_at IS 'Date de signature de l''avenant par toutes les parties';
-
-
--- === [163/169] 20260408130000_rgpd_consent_records_and_data_requests.sql ===
--- Migration RGPD : consent_records (historique granulaire) + data_requests (demandes export/suppression)
--- Complète la table user_consents existante avec un historique versionné
-
--- ============================================
--- 1. consent_records : historique granulaire des consentements
--- ============================================
-CREATE TABLE IF NOT EXISTS consent_records (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  consent_type TEXT NOT NULL CHECK (consent_type IN (
-    'cgu', 'privacy_policy', 'marketing', 'analytics',
-    'cookies_functional', 'cookies_analytics'
-  )),
-  granted BOOLEAN NOT NULL,
-  granted_at TIMESTAMPTZ DEFAULT now(),
-  revoked_at TIMESTAMPTZ,
-  ip_address INET,
-  user_agent TEXT,
-  version TEXT NOT NULL
-);
-
-ALTER TABLE consent_records ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own consent records"
-  ON consent_records FOR SELECT
-  USING (profile_id IN (
-    SELECT id FROM profiles WHERE user_id = auth.uid()
-  ));
-
-CREATE POLICY "Users can insert own consent records"
-  ON consent_records FOR INSERT
-  WITH CHECK (profile_id IN (
-    SELECT id FROM profiles WHERE user_id = auth.uid()
-  ));
-
-CREATE INDEX idx_consent_records_profile_id ON consent_records(profile_id);
-CREATE INDEX idx_consent_records_type ON consent_records(consent_type);
-
--- ============================================
--- 2. data_requests : demandes RGPD (export, suppression, rectification)
--- ============================================
-CREATE TABLE IF NOT EXISTS data_requests (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  request_type TEXT NOT NULL CHECK (request_type IN ('export', 'deletion', 'rectification')),
-  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'completed', 'rejected')),
-  reason TEXT,
-  completed_at TIMESTAMPTZ,
-  download_url TEXT,
-  expires_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE data_requests ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can view own data requests"
-  ON data_requests FOR SELECT
-  USING (profile_id IN (
-    SELECT id FROM profiles WHERE user_id = auth.uid()
-  ));
-
-CREATE POLICY "Users can insert own data requests"
-  ON data_requests FOR INSERT
-  WITH CHECK (profile_id IN (
-    SELECT id FROM profiles WHERE user_id = auth.uid()
-  ));
-
-CREATE POLICY "Users can update own pending data requests"
-  ON data_requests FOR UPDATE
-  USING (
-    profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid())
-    AND status = 'pending'
-  );
-
-CREATE INDEX idx_data_requests_profile_id ON data_requests(profile_id);
-CREATE INDEX idx_data_requests_status ON data_requests(status);
-
-
--- === [164/169] 20260408130000_seasonal_rental_module.sql ===
--- ============================================================
--- Migration: Location saisonnière (seasonal rental module)
--- Tables: seasonal_listings, seasonal_rates, reservations, seasonal_blocked_dates
--- ============================================================
-
--- Vérifier que l'extension btree_gist est disponible pour la contrainte EXCLUDE
-CREATE EXTENSION IF NOT EXISTS btree_gist;
-
--- ============================================================
--- 1. seasonal_listings — Annonces saisonnières
--- ============================================================
-CREATE TABLE IF NOT EXISTS seasonal_listings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  property_id UUID NOT NULL REFERENCES properties(id) ON DELETE CASCADE,
-  owner_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  description TEXT,
-  min_nights INTEGER DEFAULT 1 CHECK (min_nights >= 1),
-  max_nights INTEGER DEFAULT 90 CHECK (max_nights >= 1),
-  max_guests INTEGER DEFAULT 4 CHECK (max_guests >= 1),
-  check_in_time TEXT DEFAULT '15:00',
-  check_out_time TEXT DEFAULT '11:00',
-  house_rules TEXT,
-  amenities TEXT[] DEFAULT '{}',
-  cleaning_fee_cents INTEGER DEFAULT 0 CHECK (cleaning_fee_cents >= 0),
-  security_deposit_cents INTEGER DEFAULT 0 CHECK (security_deposit_cents >= 0),
-  tourist_tax_per_night_cents INTEGER DEFAULT 0 CHECK (tourist_tax_per_night_cents >= 0),
-  is_published BOOLEAN DEFAULT false,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
-ALTER TABLE seasonal_listings ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "owners_manage_own_listings" ON seasonal_listings
-  FOR ALL USING (owner_id IN (
-    SELECT id FROM profiles WHERE user_id = auth.uid()
-  ));
-
-CREATE INDEX idx_seasonal_listings_property ON seasonal_listings(property_id);
-CREATE INDEX idx_seasonal_listings_owner ON seasonal_listings(owner_id);
-CREATE INDEX idx_seasonal_listings_published ON seasonal_listings(is_published) WHERE is_published = true;
-
--- ============================================================
--- 2. seasonal_rates — Tarifs par saison
--- ============================================================
-CREATE TABLE IF NOT EXISTS seasonal_rates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  listing_id UUID NOT NULL REFERENCES seasonal_listings(id) ON DELETE CASCADE,
-  season_name TEXT NOT NULL CHECK (season_name IN ('haute', 'basse', 'moyenne', 'fetes')),
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  nightly_rate_cents INTEGER NOT NULL CHECK (nightly_rate_cents > 0),
-  weekly_rate_cents INTEGER CHECK (weekly_rate_cents > 0),
-  monthly_rate_cents INTEGER CHECK (monthly_rate_cents > 0),
-  min_nights_override INTEGER CHECK (min_nights_override >= 1),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  CONSTRAINT valid_rate_dates CHECK (end_date > start_date)
-);
-
-ALTER TABLE seasonal_rates ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "owners_manage_rates" ON seasonal_rates
-  FOR ALL USING (listing_id IN (
-    SELECT id FROM seasonal_listings WHERE owner_id IN (
-      SELECT id FROM profiles WHERE user_id = auth.uid()
-    )
-  ));
-
-CREATE INDEX idx_seasonal_rates_listing ON seasonal_rates(listing_id);
-CREATE INDEX idx_seasonal_rates_dates ON seasonal_rates(start_date, end_date);
-
--- ============================================================
--- 3. reservations — Réservations saisonnières
--- ============================================================
-CREATE TABLE IF NOT EXISTS reservations (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  listing_id UUID NOT NULL REFERENCES seasonal_listings(id) ON DELETE RESTRICT,
-  property_id UUID NOT NULL REFERENCES properties(id) ON DELETE RESTRICT,
-  guest_name TEXT NOT NULL,
-  guest_email TEXT NOT NULL,
-  guest_phone TEXT,
-  guest_count INTEGER DEFAULT 1 CHECK (guest_count >= 1),
-  check_in DATE NOT NULL,
-  check_out DATE NOT NULL,
-  nights INTEGER NOT NULL CHECK (nights >= 1),
-  nightly_rate_cents INTEGER NOT NULL CHECK (nightly_rate_cents > 0),
-  subtotal_cents INTEGER NOT NULL CHECK (subtotal_cents >= 0),
-  cleaning_fee_cents INTEGER DEFAULT 0 CHECK (cleaning_fee_cents >= 0),
-  tourist_tax_cents INTEGER DEFAULT 0 CHECK (tourist_tax_cents >= 0),
-  total_cents INTEGER NOT NULL CHECK (total_cents >= 0),
-  deposit_cents INTEGER DEFAULT 0 CHECK (deposit_cents >= 0),
-  source TEXT DEFAULT 'direct' CHECK (source IN ('direct','airbnb','booking','other')),
-  external_id TEXT,
-  status TEXT DEFAULT 'confirmed' CHECK (status IN (
-    'pending','confirmed','checked_in','checked_out','cancelled','no_show'
-  )),
-  check_in_at TIMESTAMPTZ,
-  check_out_at TIMESTAMPTZ,
-  cleaning_status TEXT DEFAULT 'pending' CHECK (cleaning_status IN ('pending','scheduled','done')),
-  cleaning_provider_id UUID REFERENCES providers(id),
-  notes TEXT,
-  stripe_payment_intent_id TEXT,
-  paid_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  CONSTRAINT valid_reservation_dates CHECK (check_out > check_in),
-  CONSTRAINT no_overlap EXCLUDE USING gist (
-    listing_id WITH =,
-    daterange(check_in, check_out) WITH &&
-  ) WHERE (status NOT IN ('cancelled','no_show'))
-);
-
-ALTER TABLE reservations ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "owners_manage_reservations" ON reservations
-  FOR ALL USING (listing_id IN (
-    SELECT id FROM seasonal_listings WHERE owner_id IN (
-      SELECT id FROM profiles WHERE user_id = auth.uid()
-    )
-  ));
-
-CREATE INDEX idx_reservations_listing ON reservations(listing_id);
-CREATE INDEX idx_reservations_property ON reservations(property_id);
-CREATE INDEX idx_reservations_dates ON reservations(check_in, check_out);
-CREATE INDEX idx_reservations_status ON reservations(status);
-CREATE INDEX idx_reservations_source ON reservations(source);
-CREATE INDEX idx_reservations_cleaning ON reservations(cleaning_status) WHERE cleaning_status != 'done';
-
--- ============================================================
--- 4. seasonal_blocked_dates — Dates bloquées
--- ============================================================
-CREATE TABLE IF NOT EXISTS seasonal_blocked_dates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  listing_id UUID NOT NULL REFERENCES seasonal_listings(id) ON DELETE CASCADE,
-  start_date DATE NOT NULL,
-  end_date DATE NOT NULL,
-  reason TEXT DEFAULT 'owner_block',
-  created_at TIMESTAMPTZ DEFAULT now(),
-  CONSTRAINT valid_blocked_dates CHECK (end_date >= start_date)
-);
-
-ALTER TABLE seasonal_blocked_dates ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "owners_manage_blocked" ON seasonal_blocked_dates
-  FOR ALL USING (listing_id IN (
-    SELECT id FROM seasonal_listings WHERE owner_id IN (
-      SELECT id FROM profiles WHERE user_id = auth.uid()
-    )
-  ));
-
-CREATE INDEX idx_blocked_dates_listing ON seasonal_blocked_dates(listing_id);
-CREATE INDEX idx_blocked_dates_range ON seasonal_blocked_dates(start_date, end_date);
-
--- ============================================================
--- 5. Triggers updated_at
--- ============================================================
-CREATE OR REPLACE FUNCTION update_seasonal_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-CREATE TRIGGER trg_seasonal_listings_updated_at
-  BEFORE UPDATE ON seasonal_listings
-  FOR EACH ROW EXECUTE FUNCTION update_seasonal_updated_at();
-
-CREATE TRIGGER trg_reservations_updated_at
-  BEFORE UPDATE ON reservations
-  FOR EACH ROW EXECUTE FUNCTION update_seasonal_updated_at();
-
+-- Batch 8 — migrations 165 a 169 sur 169
+-- 5 migrations
 
 -- === [165/169] 20260408130000_security_deposits.sql ===
 -- =====================================================
@@ -610,6 +64,7 @@ CREATE OR REPLACE TRIGGER set_updated_at_security_deposits
 ALTER TABLE security_deposits ENABLE ROW LEVEL SECURITY;
 
 -- Politique: Le propriétaire peut gérer les dépôts de ses baux
+DROP POLICY IF EXISTS "Owner manages security_deposits" ON security_deposits;
 CREATE POLICY "Owner manages security_deposits" ON security_deposits
   FOR ALL
   USING (
@@ -622,6 +77,7 @@ CREATE POLICY "Owner manages security_deposits" ON security_deposits
   );
 
 -- Politique: Le locataire peut voir son dépôt
+DROP POLICY IF EXISTS "Tenant views own security_deposit" ON security_deposits;
 CREATE POLICY "Tenant views own security_deposit" ON security_deposits
   FOR SELECT
   USING (
@@ -629,6 +85,7 @@ CREATE POLICY "Tenant views own security_deposit" ON security_deposits
   );
 
 -- Politique: Admin peut tout gérer
+DROP POLICY IF EXISTS "Admin manages all security_deposits" ON security_deposits;
 CREATE POLICY "Admin manages all security_deposits" ON security_deposits
   FOR ALL
   USING (
@@ -759,6 +216,7 @@ CREATE INDEX IF NOT EXISTS idx_ticket_comments_ticket_id ON ticket_comments(tick
 CREATE INDEX IF NOT EXISTS idx_ticket_comments_author_id ON ticket_comments(author_id);
 
 -- 9. RLS policies pour ticket_comments
+DROP POLICY IF EXISTS "ticket_comments_select_owner" ON ticket_comments;
 CREATE POLICY "ticket_comments_select_owner"
   ON ticket_comments FOR SELECT
   USING (
@@ -770,6 +228,8 @@ CREATE POLICY "ticket_comments_select_owner"
     )
   );
 
+DROP POLICY IF EXISTS "ticket_comments_select_creator" ON ticket_comments;
+
 CREATE POLICY "ticket_comments_select_creator"
   ON ticket_comments FOR SELECT
   USING (
@@ -779,6 +239,8 @@ CREATE POLICY "ticket_comments_select_creator"
         AND t.created_by_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
     )
   );
+
+DROP POLICY IF EXISTS "ticket_comments_select_assigned" ON ticket_comments;
 
 CREATE POLICY "ticket_comments_select_assigned"
   ON ticket_comments FOR SELECT
@@ -790,11 +252,15 @@ CREATE POLICY "ticket_comments_select_assigned"
     )
   );
 
+DROP POLICY IF EXISTS "ticket_comments_insert" ON ticket_comments;
+
 CREATE POLICY "ticket_comments_insert"
   ON ticket_comments FOR INSERT
   WITH CHECK (
     author_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
+
+DROP POLICY IF EXISTS "ticket_comments_select_admin" ON ticket_comments;
 
 CREATE POLICY "ticket_comments_select_admin"
   ON ticket_comments FOR SELECT
@@ -877,10 +343,12 @@ CREATE INDEX IF NOT EXISTS idx_notif_event_prefs_profile
 ALTER TABLE notification_event_preferences ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view own event preferences" ON notification_event_preferences;
+DROP POLICY IF EXISTS "Users can view own event preferences" ON notification_event_preferences;
 CREATE POLICY "Users can view own event preferences"
   ON notification_event_preferences FOR SELECT
   USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Users can manage own event preferences" ON notification_event_preferences;
 DROP POLICY IF EXISTS "Users can manage own event preferences" ON notification_event_preferences;
 CREATE POLICY "Users can manage own event preferences"
   ON notification_event_preferences FOR ALL
@@ -888,6 +356,7 @@ CREATE POLICY "Users can manage own event preferences"
   WITH CHECK (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
 -- Allow service role to insert
+DROP POLICY IF EXISTS "Service can manage event preferences" ON notification_event_preferences;
 DROP POLICY IF EXISTS "Service can manage event preferences" ON notification_event_preferences;
 CREATE POLICY "Service can manage event preferences"
   ON notification_event_preferences FOR ALL
@@ -979,6 +448,7 @@ CREATE INDEX IF NOT EXISTS idx_rent_payments_created_at ON rent_payments(created
 ALTER TABLE rent_payments ENABLE ROW LEVEL SECURITY;
 
 -- Owner can view rent payments for their properties
+DROP POLICY IF EXISTS "Owner can view rent_payments" ON rent_payments;
 CREATE POLICY "Owner can view rent_payments" ON rent_payments
   FOR SELECT USING (
     EXISTS (
@@ -990,6 +460,7 @@ CREATE POLICY "Owner can view rent_payments" ON rent_payments
   );
 
 -- Tenant can view their own payments
+DROP POLICY IF EXISTS "Tenant can view own rent_payments" ON rent_payments;
 CREATE POLICY "Tenant can view own rent_payments" ON rent_payments
   FOR SELECT USING (
     EXISTS (
@@ -1000,6 +471,7 @@ CREATE POLICY "Tenant can view own rent_payments" ON rent_payments
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS "Admin can manage rent_payments" ON rent_payments;
 CREATE POLICY "Admin can manage rent_payments" ON rent_payments
   FOR ALL USING (
     EXISTS (
@@ -1056,6 +528,7 @@ CREATE OR REPLACE TRIGGER set_updated_at_security_deposits
 ALTER TABLE security_deposits ENABLE ROW LEVEL SECURITY;
 
 -- Owner can manage deposits for their properties
+DROP POLICY IF EXISTS "Owner can manage security_deposits" ON security_deposits;
 CREATE POLICY "Owner can manage security_deposits" ON security_deposits
   FOR ALL USING (
     EXISTS (
@@ -1067,12 +540,14 @@ CREATE POLICY "Owner can manage security_deposits" ON security_deposits
   );
 
 -- Tenant can view their own deposits
+DROP POLICY IF EXISTS "Tenant can view own security_deposits" ON security_deposits;
 CREATE POLICY "Tenant can view own security_deposits" ON security_deposits
   FOR SELECT USING (
     tenant_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS "Admin can manage all security_deposits" ON security_deposits;
 CREATE POLICY "Admin can manage all security_deposits" ON security_deposits
   FOR ALL USING (
     EXISTS (
@@ -1290,6 +765,8 @@ COMMIT;
 -- ──────────────────────────────────────────────
 ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "tenants_admin_only" ON tenants;
+
 CREATE POLICY "tenants_admin_only"
   ON tenants FOR ALL
   USING (false);
@@ -1300,6 +777,8 @@ CREATE POLICY "tenants_admin_only"
 -- ──────────────────────────────────────────────
 ALTER TABLE two_factor_sessions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "users_own_2fa_sessions" ON two_factor_sessions;
+
 CREATE POLICY "users_own_2fa_sessions"
   ON two_factor_sessions FOR ALL
   USING (auth.uid() = user_id);
@@ -1309,9 +788,13 @@ CREATE POLICY "users_own_2fa_sessions"
 -- ──────────────────────────────────────────────
 ALTER TABLE lease_templates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "lease_templates_read_authenticated" ON lease_templates;
+
 CREATE POLICY "lease_templates_read_authenticated"
   ON lease_templates FOR SELECT
   USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "lease_templates_write_admin_only" ON lease_templates;
 
 CREATE POLICY "lease_templates_write_admin_only"
   ON lease_templates FOR ALL
@@ -1323,6 +806,8 @@ CREATE POLICY "lease_templates_write_admin_only"
 -- ──────────────────────────────────────────────
 ALTER TABLE idempotency_keys ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "idempotency_keys_service_only" ON idempotency_keys;
+
 CREATE POLICY "idempotency_keys_service_only"
   ON idempotency_keys FOR ALL
   USING (false);
@@ -1333,9 +818,13 @@ CREATE POLICY "idempotency_keys_service_only"
 -- ──────────────────────────────────────────────
 ALTER TABLE repair_cost_grid ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "repair_cost_grid_read_authenticated" ON repair_cost_grid;
+
 CREATE POLICY "repair_cost_grid_read_authenticated"
   ON repair_cost_grid FOR SELECT
   USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "repair_cost_grid_write_admin_only" ON repair_cost_grid;
 
 CREATE POLICY "repair_cost_grid_write_admin_only"
   ON repair_cost_grid FOR ALL
@@ -1347,9 +836,13 @@ CREATE POLICY "repair_cost_grid_write_admin_only"
 -- ──────────────────────────────────────────────
 ALTER TABLE vetuste_grid ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "vetuste_grid_read_authenticated" ON vetuste_grid;
+
 CREATE POLICY "vetuste_grid_read_authenticated"
   ON vetuste_grid FOR SELECT
   USING (auth.role() = 'authenticated');
+
+DROP POLICY IF EXISTS "vetuste_grid_write_admin_only" ON vetuste_grid;
 
 CREATE POLICY "vetuste_grid_write_admin_only"
   ON vetuste_grid FOR ALL
@@ -1376,6 +869,8 @@ END $$;
 -- ──────────────────────────────────────────────
 ALTER TABLE api_webhook_deliveries ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "webhook_deliveries_owner_access" ON api_webhook_deliveries;
+
 CREATE POLICY "webhook_deliveries_owner_access"
   ON api_webhook_deliveries FOR SELECT
   USING (
@@ -1387,6 +882,8 @@ CREATE POLICY "webhook_deliveries_owner_access"
         )
     )
   );
+
+DROP POLICY IF EXISTS "webhook_deliveries_write_service_only" ON api_webhook_deliveries;
 
 CREATE POLICY "webhook_deliveries_write_service_only"
   ON api_webhook_deliveries FOR INSERT

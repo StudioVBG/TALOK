@@ -1,168 +1,5 @@
--- Batch 2 — migrations 8 a 19 sur 169
--- 12 migrations
-
--- === [8/169] 20260212100001_email_template_system.sql ===
--- ============================================================
--- Email Template System
--- Tables: email_templates, email_template_versions, email_logs
--- ============================================================
-
--- Table des templates email éditables
-CREATE TABLE IF NOT EXISTS email_templates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  slug TEXT UNIQUE NOT NULL,
-  category TEXT NOT NULL,
-  name TEXT NOT NULL,
-  description TEXT,
-  subject TEXT NOT NULL,
-  body_html TEXT NOT NULL,
-  body_text TEXT NOT NULL,
-  available_variables JSONB NOT NULL DEFAULT '[]'::jsonb,
-  is_active BOOLEAN DEFAULT true,
-  send_delay_minutes INT DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- Index pour recherche rapide par slug et catégorie
-CREATE INDEX IF NOT EXISTS idx_email_templates_slug ON email_templates(slug);
-CREATE INDEX IF NOT EXISTS idx_email_templates_category ON email_templates(category);
-CREATE INDEX IF NOT EXISTS idx_email_templates_is_active ON email_templates(is_active);
-
--- Historique des modifications (audit trail)
-CREATE TABLE IF NOT EXISTS email_template_versions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  template_id UUID NOT NULL REFERENCES email_templates(id) ON DELETE CASCADE,
-  subject TEXT NOT NULL,
-  body_html TEXT NOT NULL,
-  body_text TEXT NOT NULL,
-  modified_by UUID REFERENCES auth.users(id),
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_email_template_versions_template ON email_template_versions(template_id);
-CREATE INDEX IF NOT EXISTS idx_email_template_versions_created ON email_template_versions(created_at DESC);
-
--- Logs d'envoi
-CREATE TABLE IF NOT EXISTS email_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  template_slug TEXT NOT NULL,
-  recipient_email TEXT NOT NULL,
-  variables_used JSONB,
-  status TEXT NOT NULL CHECK (status IN ('sent', 'failed', 'bounced')),
-  error_message TEXT,
-  sent_at TIMESTAMPTZ DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_email_logs_template ON email_logs(template_slug);
-CREATE INDEX IF NOT EXISTS idx_email_logs_recipient ON email_logs(recipient_email);
-CREATE INDEX IF NOT EXISTS idx_email_logs_status ON email_logs(status);
-CREATE INDEX IF NOT EXISTS idx_email_logs_sent_at ON email_logs(sent_at DESC);
-
--- Trigger pour updated_at automatique
-CREATE OR REPLACE FUNCTION update_email_template_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = now();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_email_templates_updated_at ON email_templates;
-CREATE TRIGGER trg_email_templates_updated_at
-  BEFORE UPDATE ON email_templates
-  FOR EACH ROW
-  EXECUTE FUNCTION update_email_template_updated_at();
-
--- Trigger pour versionner automatiquement les modifications
-CREATE OR REPLACE FUNCTION version_email_template()
-RETURNS TRIGGER AS $$
-BEGIN
-  -- Sauvegarder l'ancienne version si le contenu a changé
-  IF OLD.subject IS DISTINCT FROM NEW.subject
-     OR OLD.body_html IS DISTINCT FROM NEW.body_html
-     OR OLD.body_text IS DISTINCT FROM NEW.body_text THEN
-    INSERT INTO email_template_versions (template_id, subject, body_html, body_text, modified_by)
-    VALUES (OLD.id, OLD.subject, OLD.body_html, OLD.body_text, auth.uid());
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS trg_email_template_version ON email_templates;
-CREATE TRIGGER trg_email_template_version
-  BEFORE UPDATE ON email_templates
-  FOR EACH ROW
-  EXECUTE FUNCTION version_email_template();
-
--- ============================================================
--- RLS Policies
--- ============================================================
-
-ALTER TABLE email_templates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE email_template_versions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE email_logs ENABLE ROW LEVEL SECURITY;
-
--- email_templates: lecture pour les admins, écriture pour les admins
-CREATE POLICY "email_templates_admin_read" ON email_templates
-  FOR SELECT TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.user_id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-  );
-
-CREATE POLICY "email_templates_admin_write" ON email_templates
-  FOR ALL TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.user_id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.user_id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-  );
-
--- email_templates: lecture pour le service role (envoi d'emails)
-CREATE POLICY "email_templates_service_read" ON email_templates
-  FOR SELECT TO service_role
-  USING (true);
-
--- email_template_versions: lecture pour les admins
-CREATE POLICY "email_template_versions_admin_read" ON email_template_versions
-  FOR SELECT TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.user_id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-  );
-
--- email_logs: lecture pour les admins
-CREATE POLICY "email_logs_admin_read" ON email_logs
-  FOR SELECT TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM profiles
-      WHERE profiles.user_id = auth.uid()
-      AND profiles.role = 'admin'
-    )
-  );
-
--- email_logs: insertion pour service role
-CREATE POLICY "email_logs_service_insert" ON email_logs
-  FOR INSERT TO service_role
-  WITH CHECK (true);
-
+-- Batch 2 — migrations 9 a 21 sur 169
+-- 13 migrations
 
 -- === [9/169] 20260212100002_email_templates_seed.sql ===
 -- ============================================================
@@ -1743,6 +1580,7 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 -- Politique principale : chaque utilisateur peut voir/modifier son propre profil
 -- Utilise auth.uid() directement, aucune sous-requête vers profiles
+DROP POLICY IF EXISTS "profiles_own_access" ON profiles;
 CREATE POLICY "profiles_own_access" ON profiles
 FOR ALL TO authenticated
 USING (user_id = auth.uid())
@@ -1750,12 +1588,14 @@ WITH CHECK (user_id = auth.uid());
 
 -- Politique admin : les admins peuvent voir tous les profils
 -- is_admin() est SECURITY DEFINER donc bypasse les RLS
+DROP POLICY IF EXISTS "profiles_admin_read" ON profiles;
 CREATE POLICY "profiles_admin_read" ON profiles
 FOR SELECT TO authenticated
 USING (public.is_admin());
 
 -- Politique propriétaire : peut voir les profils de ses locataires
 -- get_my_profile_id() est SECURITY DEFINER donc bypasse les RLS
+DROP POLICY IF EXISTS "profiles_owner_read_tenants" ON profiles;
 CREATE POLICY "profiles_owner_read_tenants" ON profiles
 FOR SELECT TO authenticated
 USING (
@@ -1820,11 +1660,13 @@ DROP POLICY IF EXISTS "Owners can view their subscription" ON subscriptions;
 DROP POLICY IF EXISTS "Admins can view all subscriptions" ON subscriptions;
 
 -- Propriétaire voit son abonnement (utilise get_my_profile_id au lieu de sous-requête)
+DROP POLICY IF EXISTS "Owners can view their subscription" ON subscriptions;
 CREATE POLICY "Owners can view their subscription" ON subscriptions
   FOR SELECT TO authenticated
   USING (owner_id = public.get_my_profile_id());
 
 -- Admins voient tout (utilise is_admin qui est SECURITY DEFINER)
+DROP POLICY IF EXISTS "Admins can view all subscriptions" ON subscriptions;
 CREATE POLICY "Admins can view all subscriptions" ON subscriptions
   FOR ALL TO authenticated
   USING (public.is_admin());
@@ -1833,6 +1675,7 @@ CREATE POLICY "Admins can view all subscriptions" ON subscriptions
 -- 2. CORRIGER subscription_invoices (si la table existe)
 -- ============================================
 DO $$ BEGIN
+  DROP POLICY IF EXISTS "Owners can view their invoices" ON subscription_invoices;
   DROP POLICY IF EXISTS "Owners can view their invoices" ON subscription_invoices;
   CREATE POLICY "Owners can view their invoices" ON subscription_invoices
     FOR SELECT TO authenticated
@@ -1850,6 +1693,7 @@ END $$;
 -- 3. CORRIGER subscription_usage (si la table existe)
 -- ============================================
 DO $$ BEGIN
+  DROP POLICY IF EXISTS "Owners can view their usage" ON subscription_usage;
   DROP POLICY IF EXISTS "Owners can view their usage" ON subscription_usage;
   CREATE POLICY "Owners can view their usage" ON subscription_usage
     FOR SELECT TO authenticated
@@ -1884,6 +1728,7 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- Lecture : l'utilisateur voit ses propres notifications
 -- Utilise auth.uid() directement et get_my_profile_id() pour recipient_id/profile_id
+DROP POLICY IF EXISTS "notifications_select_own" ON notifications;
 CREATE POLICY "notifications_select_own" ON notifications
   FOR SELECT TO authenticated
   USING (
@@ -1893,6 +1738,7 @@ CREATE POLICY "notifications_select_own" ON notifications
   );
 
 -- Mise à jour : l'utilisateur peut modifier ses propres notifications
+DROP POLICY IF EXISTS "notifications_update_own" ON notifications;
 CREATE POLICY "notifications_update_own" ON notifications
   FOR UPDATE TO authenticated
   USING (
@@ -1902,6 +1748,7 @@ CREATE POLICY "notifications_update_own" ON notifications
   );
 
 -- Suppression : l'utilisateur peut supprimer ses propres notifications
+DROP POLICY IF EXISTS "notifications_delete_own" ON notifications;
 CREATE POLICY "notifications_delete_own" ON notifications
   FOR DELETE TO authenticated
   USING (
@@ -1911,6 +1758,7 @@ CREATE POLICY "notifications_delete_own" ON notifications
   );
 
 -- Insertion : le système peut insérer des notifications
+DROP POLICY IF EXISTS "notifications_insert_system" ON notifications;
 CREATE POLICY "notifications_insert_system" ON notifications
   FOR INSERT
   WITH CHECK (true);
@@ -2066,6 +1914,7 @@ COMMIT;
 DROP POLICY IF EXISTS "Tenants can view properties with active leases" ON properties;
 
 -- 2. Créer la nouvelle policy élargie
+DROP POLICY IF EXISTS "Tenants can view linked properties" ON properties;
 CREATE POLICY "Tenants can view linked properties"
   ON properties
   FOR SELECT
@@ -2182,6 +2031,8 @@ CREATE INDEX IF NOT EXISTS idx_leases_pending_action ON leases(statut)
 -- ============================================
 DROP POLICY IF EXISTS "Users can view units of accessible properties" ON units;
 
+DROP POLICY IF EXISTS "Users can view units of accessible properties" ON units;
+
 CREATE POLICY "Users can view units of accessible properties"
   ON units
   FOR SELECT
@@ -2214,6 +2065,8 @@ CREATE POLICY "Users can view units of accessible properties"
 -- 2. CHARGES — Policy tenant trop restrictive
 -- ============================================
 DROP POLICY IF EXISTS "Tenants can view charges of properties with active leases" ON charges;
+
+DROP POLICY IF EXISTS "Tenants can view charges of linked properties" ON charges;
 
 CREATE POLICY "Tenants can view charges of linked properties"
   ON charges
@@ -2250,6 +2103,8 @@ CREATE POLICY "Tenants can view charges of linked properties"
 -- 3a. Policy SELECT
 DROP POLICY IF EXISTS "Users can view tickets of accessible properties" ON tickets;
 DROP POLICY IF EXISTS "tickets_select_policy" ON tickets;
+
+DROP POLICY IF EXISTS "Users can view tickets of accessible properties" ON tickets;
 
 CREATE POLICY "Users can view tickets of accessible properties"
   ON tickets
@@ -2292,6 +2147,8 @@ CREATE POLICY "Users can view tickets of accessible properties"
 -- 3b. Policy INSERT
 DROP POLICY IF EXISTS "Users can create tickets for accessible properties" ON tickets;
 DROP POLICY IF EXISTS "tickets_insert_policy" ON tickets;
+
+DROP POLICY IF EXISTS "Users can create tickets for accessible properties" ON tickets;
 
 CREATE POLICY "Users can create tickets for accessible properties"
   ON tickets
@@ -2866,6 +2723,7 @@ BEGIN
     SELECT 1 FROM pg_policies
     WHERE tablename = 'lease_signers' AND policyname = 'lease_signers_tenant_view_for_doc_center'
   ) THEN
+    DROP POLICY IF EXISTS "lease_signers_tenant_view_for_doc_center" ON lease_signers;
     CREATE POLICY "lease_signers_tenant_view_for_doc_center"
       ON lease_signers
       FOR SELECT
@@ -3206,5 +3064,314 @@ COMMIT;
 --   DROP FUNCTION IF EXISTS notify_tenant_document_center_update() CASCADE;
 --   DROP TRIGGER IF EXISTS trg_notify_tenant_document_center ON documents;
 -- =============================================================================
+
+
+-- === [20/169] 20260216100000_security_audit_rls_fixes.sql ===
+-- =====================================================
+-- MIGRATION: Correctifs sécurité P0 — Audit BIC2026
+-- Date: 2026-02-16
+--
+-- PROBLÈMES CORRIGÉS:
+-- 1. Table `leases`: suppression des policies USING(true) résiduelles
+--    (créées par 20241130000004, normalement supprimées par 20251228230000
+--     mais cette migration assure la sécurité même en cas de re-application)
+-- 2. Table `notifications`: policy INSERT trop permissive (WITH CHECK(true))
+-- 3. Table `document_ged_audit_log`: policy INSERT trop permissive
+-- 4. Table `professional_orders`: policy SELECT trop permissive
+-- =====================================================
+
+BEGIN;
+
+-- ============================================
+-- 1. LEASES: Supprimer les policies permissives résiduelles
+-- ============================================
+-- Ces policies permettaient à tout utilisateur authentifié de lire/modifier tous les baux.
+-- Les bonnes policies (leases_admin_all, leases_owner_all, leases_tenant_select)
+-- ont été créées dans 20251228230000_definitive_rls_fix.sql
+
+DROP POLICY IF EXISTS "authenticated_users_view_leases" ON leases;
+DROP POLICY IF EXISTS "authenticated_users_insert_leases" ON leases;
+DROP POLICY IF EXISTS "authenticated_users_update_leases" ON leases;
+DROP POLICY IF EXISTS "authenticated_users_delete_leases" ON leases;
+
+-- Vérifier que les bonnes policies existent
+DO $$
+DECLARE
+  policy_count INT;
+BEGIN
+  SELECT count(*) INTO policy_count
+  FROM pg_policies
+  WHERE tablename = 'leases' AND schemaname = 'public';
+
+  IF policy_count = 0 THEN
+    RAISE EXCEPTION 'ERREUR CRITIQUE: Table leases n''a aucune policy RLS après nettoyage. '
+                     'Les policies sécurisées de 20251228230000 doivent être présentes.';
+  END IF;
+
+  RAISE NOTICE 'leases: % policies RLS actives après nettoyage', policy_count;
+END $$;
+
+-- ============================================
+-- 2. NOTIFICATIONS: Restreindre l'INSERT
+-- ============================================
+-- Avant: WITH CHECK(true) → tout authentifié peut insérer pour n'importe qui
+-- Après: Seul le service_role ou l'utilisateur peut insérer ses propres notifs
+
+DROP POLICY IF EXISTS "notifications_insert_system" ON notifications;
+
+-- Le service_role bypass RLS par défaut, donc cette policy est pour les
+-- appels authentifiés qui insèrent des notifications pour eux-mêmes.
+-- Les Edge Functions (service_role) ne sont pas affectées par cette restriction.
+DROP POLICY IF EXISTS "notifications_insert_own_or_service" ON notifications;
+CREATE POLICY "notifications_insert_own_or_service" ON notifications
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    -- L'utilisateur ne peut insérer que des notifications qui le concernent
+    user_id = auth.uid()
+    OR recipient_id = public.get_my_profile_id()
+    OR profile_id = public.get_my_profile_id()
+  );
+
+-- ============================================
+-- 3. DOCUMENT_GED_AUDIT_LOG: Restreindre l'INSERT
+-- ============================================
+-- Avant: WITH CHECK(true) → tout authentifié peut insérer des logs d'audit
+-- Après: Seuls les utilisateurs authentifiés peuvent insérer leurs propres logs
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'document_ged_audit_log' AND schemaname = 'public') THEN
+    EXECUTE 'DROP POLICY IF EXISTS "System can insert audit logs" ON document_ged_audit_log';
+
+    -- Restreindre aux logs créés par l'utilisateur authentifié
+    EXECUTE '
+      DROP POLICY IF EXISTS "audit_log_insert_own" ON document_ged_audit_log;
+      CREATE POLICY "audit_log_insert_own" ON document_ged_audit_log
+        FOR INSERT TO authenticated
+        WITH CHECK (
+          performed_by = auth.uid()
+          OR performed_by IS NULL
+        )
+    ';
+
+    RAISE NOTICE 'document_ged_audit_log: policy INSERT corrigée';
+  ELSE
+    RAISE NOTICE 'document_ged_audit_log: table non existante, skip';
+  END IF;
+END $$;
+
+-- ============================================
+-- 4. PROFESSIONAL_ORDERS: Restreindre le SELECT
+-- ============================================
+-- Avant: USING(TRUE) → tout authentifié voit toutes les commandes
+-- Après: ownership check
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'professional_orders' AND schemaname = 'public') THEN
+    EXECUTE 'DROP POLICY IF EXISTS "professional_orders_select_policy" ON professional_orders';
+
+    -- professional_orders is a read-only reference table, keep open read
+    EXECUTE '
+      DROP POLICY IF EXISTS "professional_orders_select_scoped" ON professional_orders;
+      CREATE POLICY "professional_orders_select_scoped" ON professional_orders
+        FOR SELECT TO authenticated
+        USING (TRUE)
+    ';
+
+    RAISE NOTICE 'professional_orders: policy SELECT recréée (reference table, read-only)';
+  ELSE
+    RAISE NOTICE 'professional_orders: table non existante, skip';
+  END IF;
+END $$;
+
+-- ============================================
+-- 5. VÉRIFICATION FINALE
+-- ============================================
+DO $$
+DECLARE
+  dangerous_count INT;
+BEGIN
+  -- Compter les policies qui ont encore USING(true) ou WITH CHECK(true)
+  -- sur les tables critiques (hors reference tables et service_role policies)
+  SELECT count(*) INTO dangerous_count
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND tablename IN ('leases', 'profiles', 'properties', 'invoices', 'payments', 'documents', 'tickets')
+    AND (qual = 'true' OR with_check = 'true')
+    AND policyname NOT LIKE '%service%'
+    AND policyname NOT LIKE '%admin%';
+
+  IF dangerous_count > 0 THEN
+    RAISE WARNING 'ATTENTION: % policies avec USING(true)/WITH CHECK(true) restantes sur les tables critiques', dangerous_count;
+  ELSE
+    RAISE NOTICE 'OK: Aucune policy USING(true) dangereuse sur les tables critiques';
+  END IF;
+END $$;
+
+COMMIT;
+
+
+-- === [21/169] 20260216200000_auto_link_lease_signers_trigger.sql ===
+-- =====================================================
+-- MIGRATION: Auto-link lease_signers + fix profil orphelin
+-- Date: 2026-02-16
+--
+-- PROBLÈMES CORRIGÉS:
+-- 1. Trigger DB: quand un profil est créé, lier automatiquement 
+--    les lease_signers orphelins (invited_email match, profile_id NULL)
+-- 2. Trigger DB: quand un profil est créé, marquer les invitations
+--    correspondantes comme utilisées
+-- 3. Fix immédiat: créer le profil manquant pour user 6337af52-...
+-- 4. Fix rétroactif: lier tous les lease_signers orphelins existants
+-- =====================================================
+
+BEGIN;
+
+-- ============================================
+-- 1. FONCTION: Auto-link lease_signers au moment de la création d'un profil
+-- ============================================
+CREATE OR REPLACE FUNCTION public.auto_link_lease_signers_on_profile_created()
+RETURNS TRIGGER AS $$
+DECLARE
+  user_email TEXT;
+  linked_count INT;
+BEGIN
+  -- Récupérer l'email de l'utilisateur auth
+  SELECT email INTO user_email
+  FROM auth.users
+  WHERE id = NEW.user_id;
+
+  IF user_email IS NULL OR user_email = '' THEN
+    RETURN NEW;
+  END IF;
+
+  -- Lier tous les lease_signers orphelins avec cet email
+  UPDATE public.lease_signers
+  SET profile_id = NEW.id
+  WHERE LOWER(invited_email) = LOWER(user_email)
+    AND profile_id IS NULL;
+
+  GET DIAGNOSTICS linked_count = ROW_COUNT;
+
+  IF linked_count > 0 THEN
+    RAISE NOTICE '[auto_link] % lease_signers liés au profil % (email: %)', 
+      linked_count, NEW.id, user_email;
+  END IF;
+
+  -- Marquer les invitations correspondantes comme utilisées
+  UPDATE public.invitations
+  SET used_by = NEW.id,
+      used_at = NOW()
+  WHERE LOWER(email) = LOWER(user_email)
+    AND used_at IS NULL;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================
+-- 2. TRIGGER: Exécuter auto-link après chaque INSERT sur profiles
+-- ============================================
+DROP TRIGGER IF EXISTS trigger_auto_link_lease_signers ON public.profiles;
+
+CREATE TRIGGER trigger_auto_link_lease_signers
+  AFTER INSERT ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.auto_link_lease_signers_on_profile_created();
+
+-- ============================================
+-- 3. FIX IMMÉDIAT: Créer le profil manquant pour l'utilisateur signalé
+-- ============================================
+DO $$
+DECLARE
+  target_user_id UUID := '6337af52-2fb7-41d7-b620-d9ddd689d294';
+  user_email TEXT;
+  user_role TEXT;
+  new_profile_id UUID;
+BEGIN
+  -- Vérifier si le user existe dans auth.users
+  SELECT email, COALESCE(raw_user_meta_data->>'role', 'tenant')
+  INTO user_email, user_role
+  FROM auth.users
+  WHERE id = target_user_id;
+
+  IF user_email IS NULL THEN
+    RAISE NOTICE 'User % non trouvé dans auth.users — skip', target_user_id;
+    RETURN;
+  END IF;
+
+  -- Vérifier si le profil existe déjà
+  IF EXISTS (SELECT 1 FROM public.profiles WHERE user_id = target_user_id) THEN
+    RAISE NOTICE 'Profil déjà existant pour user % — skip', target_user_id;
+    RETURN;
+  END IF;
+
+  -- Créer le profil manquant
+  INSERT INTO public.profiles (user_id, role, email)
+  VALUES (target_user_id, user_role, user_email)
+  RETURNING id INTO new_profile_id;
+
+  RAISE NOTICE 'Profil créé: id=%, user_id=%, email=%, role=%', 
+    new_profile_id, target_user_id, user_email, user_role;
+
+  -- Le trigger auto_link_lease_signers se chargera de lier les lease_signers
+END $$;
+
+-- ============================================
+-- 4. FIX RÉTROACTIF: Lier tous les lease_signers orphelins existants
+-- ============================================
+-- Pour tous les profils existants dont l'email matche un lease_signer orphelin
+DO $$
+DECLARE
+  linked_total INT := 0;
+  rec RECORD;
+BEGIN
+  FOR rec IN
+    SELECT p.id AS profile_id, u.email AS user_email
+    FROM public.profiles p
+    JOIN auth.users u ON u.id = p.user_id
+    WHERE u.email IS NOT NULL
+      AND EXISTS (
+        SELECT 1 FROM public.lease_signers ls
+        WHERE LOWER(ls.invited_email) = LOWER(u.email)
+          AND ls.profile_id IS NULL
+      )
+  LOOP
+    UPDATE public.lease_signers
+    SET profile_id = rec.profile_id
+    WHERE LOWER(invited_email) = LOWER(rec.user_email)
+      AND profile_id IS NULL;
+
+    linked_total := linked_total + 1;
+  END LOOP;
+
+  IF linked_total > 0 THEN
+    RAISE NOTICE '[rétro-link] % profils avec des lease_signers orphelins ont été liés', linked_total;
+  ELSE
+    RAISE NOTICE '[rétro-link] Aucun lease_signer orphelin trouvé — tout est déjà lié';
+  END IF;
+END $$;
+
+-- ============================================
+-- 5. VÉRIFICATION: Compter les lease_signers encore orphelins
+-- ============================================
+DO $$
+DECLARE
+  orphan_count INT;
+BEGIN
+  SELECT count(*) INTO orphan_count
+  FROM public.lease_signers
+  WHERE profile_id IS NULL
+    AND invited_email IS NOT NULL;
+
+  IF orphan_count > 0 THEN
+    RAISE WARNING '⚠️  % lease_signers orphelins restants (email sans compte correspondant)', orphan_count;
+  ELSE
+    RAISE NOTICE '✅ Aucun lease_signer orphelin — tous les comptes sont liés';
+  END IF;
+END $$;
+
+COMMIT;
 
 

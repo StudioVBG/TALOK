@@ -1,311 +1,5 @@
--- Batch 3 — migrations 20 a 36 sur 169
+-- Batch 3 — migrations 22 a 38 sur 169
 -- 17 migrations
-
--- === [20/169] 20260216100000_security_audit_rls_fixes.sql ===
--- =====================================================
--- MIGRATION: Correctifs sécurité P0 — Audit BIC2026
--- Date: 2026-02-16
---
--- PROBLÈMES CORRIGÉS:
--- 1. Table `leases`: suppression des policies USING(true) résiduelles
---    (créées par 20241130000004, normalement supprimées par 20251228230000
---     mais cette migration assure la sécurité même en cas de re-application)
--- 2. Table `notifications`: policy INSERT trop permissive (WITH CHECK(true))
--- 3. Table `document_ged_audit_log`: policy INSERT trop permissive
--- 4. Table `professional_orders`: policy SELECT trop permissive
--- =====================================================
-
-BEGIN;
-
--- ============================================
--- 1. LEASES: Supprimer les policies permissives résiduelles
--- ============================================
--- Ces policies permettaient à tout utilisateur authentifié de lire/modifier tous les baux.
--- Les bonnes policies (leases_admin_all, leases_owner_all, leases_tenant_select)
--- ont été créées dans 20251228230000_definitive_rls_fix.sql
-
-DROP POLICY IF EXISTS "authenticated_users_view_leases" ON leases;
-DROP POLICY IF EXISTS "authenticated_users_insert_leases" ON leases;
-DROP POLICY IF EXISTS "authenticated_users_update_leases" ON leases;
-DROP POLICY IF EXISTS "authenticated_users_delete_leases" ON leases;
-
--- Vérifier que les bonnes policies existent
-DO $$
-DECLARE
-  policy_count INT;
-BEGIN
-  SELECT count(*) INTO policy_count
-  FROM pg_policies
-  WHERE tablename = 'leases' AND schemaname = 'public';
-
-  IF policy_count = 0 THEN
-    RAISE EXCEPTION 'ERREUR CRITIQUE: Table leases n''a aucune policy RLS après nettoyage. '
-                     'Les policies sécurisées de 20251228230000 doivent être présentes.';
-  END IF;
-
-  RAISE NOTICE 'leases: % policies RLS actives après nettoyage', policy_count;
-END $$;
-
--- ============================================
--- 2. NOTIFICATIONS: Restreindre l'INSERT
--- ============================================
--- Avant: WITH CHECK(true) → tout authentifié peut insérer pour n'importe qui
--- Après: Seul le service_role ou l'utilisateur peut insérer ses propres notifs
-
-DROP POLICY IF EXISTS "notifications_insert_system" ON notifications;
-
--- Le service_role bypass RLS par défaut, donc cette policy est pour les
--- appels authentifiés qui insèrent des notifications pour eux-mêmes.
--- Les Edge Functions (service_role) ne sont pas affectées par cette restriction.
-CREATE POLICY "notifications_insert_own_or_service" ON notifications
-  FOR INSERT TO authenticated
-  WITH CHECK (
-    -- L'utilisateur ne peut insérer que des notifications qui le concernent
-    user_id = auth.uid()
-    OR recipient_id = public.get_my_profile_id()
-    OR profile_id = public.get_my_profile_id()
-  );
-
--- ============================================
--- 3. DOCUMENT_GED_AUDIT_LOG: Restreindre l'INSERT
--- ============================================
--- Avant: WITH CHECK(true) → tout authentifié peut insérer des logs d'audit
--- Après: Seuls les utilisateurs authentifiés peuvent insérer leurs propres logs
-
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'document_ged_audit_log' AND schemaname = 'public') THEN
-    EXECUTE 'DROP POLICY IF EXISTS "System can insert audit logs" ON document_ged_audit_log';
-
-    -- Restreindre aux logs créés par l'utilisateur authentifié
-    EXECUTE '
-      CREATE POLICY "audit_log_insert_own" ON document_ged_audit_log
-        FOR INSERT TO authenticated
-        WITH CHECK (
-          performed_by = auth.uid()
-          OR performed_by IS NULL
-        )
-    ';
-
-    RAISE NOTICE 'document_ged_audit_log: policy INSERT corrigée';
-  ELSE
-    RAISE NOTICE 'document_ged_audit_log: table non existante, skip';
-  END IF;
-END $$;
-
--- ============================================
--- 4. PROFESSIONAL_ORDERS: Restreindre le SELECT
--- ============================================
--- Avant: USING(TRUE) → tout authentifié voit toutes les commandes
--- Après: ownership check
-
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_tables WHERE tablename = 'professional_orders' AND schemaname = 'public') THEN
-    EXECUTE 'DROP POLICY IF EXISTS "professional_orders_select_policy" ON professional_orders';
-
-    -- professional_orders is a read-only reference table, keep open read
-    EXECUTE '
-      CREATE POLICY "professional_orders_select_scoped" ON professional_orders
-        FOR SELECT TO authenticated
-        USING (TRUE)
-    ';
-
-    RAISE NOTICE 'professional_orders: policy SELECT recréée (reference table, read-only)';
-  ELSE
-    RAISE NOTICE 'professional_orders: table non existante, skip';
-  END IF;
-END $$;
-
--- ============================================
--- 5. VÉRIFICATION FINALE
--- ============================================
-DO $$
-DECLARE
-  dangerous_count INT;
-BEGIN
-  -- Compter les policies qui ont encore USING(true) ou WITH CHECK(true)
-  -- sur les tables critiques (hors reference tables et service_role policies)
-  SELECT count(*) INTO dangerous_count
-  FROM pg_policies
-  WHERE schemaname = 'public'
-    AND tablename IN ('leases', 'profiles', 'properties', 'invoices', 'payments', 'documents', 'tickets')
-    AND (qual = 'true' OR with_check = 'true')
-    AND policyname NOT LIKE '%service%'
-    AND policyname NOT LIKE '%admin%';
-
-  IF dangerous_count > 0 THEN
-    RAISE WARNING 'ATTENTION: % policies avec USING(true)/WITH CHECK(true) restantes sur les tables critiques', dangerous_count;
-  ELSE
-    RAISE NOTICE 'OK: Aucune policy USING(true) dangereuse sur les tables critiques';
-  END IF;
-END $$;
-
-COMMIT;
-
-
--- === [21/169] 20260216200000_auto_link_lease_signers_trigger.sql ===
--- =====================================================
--- MIGRATION: Auto-link lease_signers + fix profil orphelin
--- Date: 2026-02-16
---
--- PROBLÈMES CORRIGÉS:
--- 1. Trigger DB: quand un profil est créé, lier automatiquement 
---    les lease_signers orphelins (invited_email match, profile_id NULL)
--- 2. Trigger DB: quand un profil est créé, marquer les invitations
---    correspondantes comme utilisées
--- 3. Fix immédiat: créer le profil manquant pour user 6337af52-...
--- 4. Fix rétroactif: lier tous les lease_signers orphelins existants
--- =====================================================
-
-BEGIN;
-
--- ============================================
--- 1. FONCTION: Auto-link lease_signers au moment de la création d'un profil
--- ============================================
-CREATE OR REPLACE FUNCTION public.auto_link_lease_signers_on_profile_created()
-RETURNS TRIGGER AS $$
-DECLARE
-  user_email TEXT;
-  linked_count INT;
-BEGIN
-  -- Récupérer l'email de l'utilisateur auth
-  SELECT email INTO user_email
-  FROM auth.users
-  WHERE id = NEW.user_id;
-
-  IF user_email IS NULL OR user_email = '' THEN
-    RETURN NEW;
-  END IF;
-
-  -- Lier tous les lease_signers orphelins avec cet email
-  UPDATE public.lease_signers
-  SET profile_id = NEW.id
-  WHERE LOWER(invited_email) = LOWER(user_email)
-    AND profile_id IS NULL;
-
-  GET DIAGNOSTICS linked_count = ROW_COUNT;
-
-  IF linked_count > 0 THEN
-    RAISE NOTICE '[auto_link] % lease_signers liés au profil % (email: %)', 
-      linked_count, NEW.id, user_email;
-  END IF;
-
-  -- Marquer les invitations correspondantes comme utilisées
-  UPDATE public.invitations
-  SET used_by = NEW.id,
-      used_at = NOW()
-  WHERE LOWER(email) = LOWER(user_email)
-    AND used_at IS NULL;
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- ============================================
--- 2. TRIGGER: Exécuter auto-link après chaque INSERT sur profiles
--- ============================================
-DROP TRIGGER IF EXISTS trigger_auto_link_lease_signers ON public.profiles;
-
-CREATE TRIGGER trigger_auto_link_lease_signers
-  AFTER INSERT ON public.profiles
-  FOR EACH ROW
-  EXECUTE FUNCTION public.auto_link_lease_signers_on_profile_created();
-
--- ============================================
--- 3. FIX IMMÉDIAT: Créer le profil manquant pour l'utilisateur signalé
--- ============================================
-DO $$
-DECLARE
-  target_user_id UUID := '6337af52-2fb7-41d7-b620-d9ddd689d294';
-  user_email TEXT;
-  user_role TEXT;
-  new_profile_id UUID;
-BEGIN
-  -- Vérifier si le user existe dans auth.users
-  SELECT email, COALESCE(raw_user_meta_data->>'role', 'tenant')
-  INTO user_email, user_role
-  FROM auth.users
-  WHERE id = target_user_id;
-
-  IF user_email IS NULL THEN
-    RAISE NOTICE 'User % non trouvé dans auth.users — skip', target_user_id;
-    RETURN;
-  END IF;
-
-  -- Vérifier si le profil existe déjà
-  IF EXISTS (SELECT 1 FROM public.profiles WHERE user_id = target_user_id) THEN
-    RAISE NOTICE 'Profil déjà existant pour user % — skip', target_user_id;
-    RETURN;
-  END IF;
-
-  -- Créer le profil manquant
-  INSERT INTO public.profiles (user_id, role, email)
-  VALUES (target_user_id, user_role, user_email)
-  RETURNING id INTO new_profile_id;
-
-  RAISE NOTICE 'Profil créé: id=%, user_id=%, email=%, role=%', 
-    new_profile_id, target_user_id, user_email, user_role;
-
-  -- Le trigger auto_link_lease_signers se chargera de lier les lease_signers
-END $$;
-
--- ============================================
--- 4. FIX RÉTROACTIF: Lier tous les lease_signers orphelins existants
--- ============================================
--- Pour tous les profils existants dont l'email matche un lease_signer orphelin
-DO $$
-DECLARE
-  linked_total INT := 0;
-  rec RECORD;
-BEGIN
-  FOR rec IN
-    SELECT p.id AS profile_id, u.email AS user_email
-    FROM public.profiles p
-    JOIN auth.users u ON u.id = p.user_id
-    WHERE u.email IS NOT NULL
-      AND EXISTS (
-        SELECT 1 FROM public.lease_signers ls
-        WHERE LOWER(ls.invited_email) = LOWER(u.email)
-          AND ls.profile_id IS NULL
-      )
-  LOOP
-    UPDATE public.lease_signers
-    SET profile_id = rec.profile_id
-    WHERE LOWER(invited_email) = LOWER(rec.user_email)
-      AND profile_id IS NULL;
-
-    linked_total := linked_total + 1;
-  END LOOP;
-
-  IF linked_total > 0 THEN
-    RAISE NOTICE '[rétro-link] % profils avec des lease_signers orphelins ont été liés', linked_total;
-  ELSE
-    RAISE NOTICE '[rétro-link] Aucun lease_signer orphelin trouvé — tout est déjà lié';
-  END IF;
-END $$;
-
--- ============================================
--- 5. VÉRIFICATION: Compter les lease_signers encore orphelins
--- ============================================
-DO $$
-DECLARE
-  orphan_count INT;
-BEGIN
-  SELECT count(*) INTO orphan_count
-  FROM public.lease_signers
-  WHERE profile_id IS NULL
-    AND invited_email IS NOT NULL;
-
-  IF orphan_count > 0 THEN
-    RAISE WARNING '⚠️  % lease_signers orphelins restants (email sans compte correspondant)', orphan_count;
-  ELSE
-    RAISE NOTICE '✅ Aucun lease_signer orphelin — tous les comptes sont liés';
-  END IF;
-END $$;
-
-COMMIT;
-
 
 -- === [22/169] 20260216300000_fix_auth_profile_sync.sql ===
 -- =====================================================
@@ -507,6 +201,7 @@ DROP POLICY IF EXISTS "profiles_insert_own" ON profiles;
 -- Permettre a un utilisateur authentifie de creer son propre profil
 -- (couvre le cas ou le trigger handle_new_user echoue et que le
 --  client tente un INSERT direct ou via l'API)
+DROP POLICY IF EXISTS "profiles_insert_own" ON profiles;
 CREATE POLICY "profiles_insert_own" ON profiles
   FOR INSERT TO authenticated
   WITH CHECK (user_id = auth.uid());
@@ -2352,6 +2047,7 @@ CREATE INDEX IF NOT EXISTS idx_tenant_rewards_profile
 ALTER TABLE tenant_rewards ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "tenant_rewards_select_own" ON tenant_rewards;
+DROP POLICY IF EXISTS "tenant_rewards_select_own" ON tenant_rewards;
 CREATE POLICY "tenant_rewards_select_own" ON tenant_rewards
   FOR SELECT USING (
     profile_id IN (
@@ -2360,6 +2056,7 @@ CREATE POLICY "tenant_rewards_select_own" ON tenant_rewards
   );
 
 DROP POLICY IF EXISTS "tenant_rewards_insert_own" ON tenant_rewards;
+DROP POLICY IF EXISTS "tenant_rewards_insert_own" ON tenant_rewards;
 CREATE POLICY "tenant_rewards_insert_own" ON tenant_rewards
   FOR INSERT WITH CHECK (
     profile_id IN (
@@ -2367,6 +2064,7 @@ CREATE POLICY "tenant_rewards_insert_own" ON tenant_rewards
     )
   );
 
+DROP POLICY IF EXISTS "tenant_rewards_admin" ON tenant_rewards;
 DROP POLICY IF EXISTS "tenant_rewards_admin" ON tenant_rewards;
 CREATE POLICY "tenant_rewards_admin" ON tenant_rewards
   FOR ALL USING (
@@ -2415,6 +2113,7 @@ CREATE INDEX IF NOT EXISTS idx_invoice_reminders_invoice
 ALTER TABLE invoice_reminders ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "invoice_reminders_select_owner" ON invoice_reminders;
+DROP POLICY IF EXISTS "invoice_reminders_select_owner" ON invoice_reminders;
 CREATE POLICY "invoice_reminders_select_owner" ON invoice_reminders
   FOR SELECT USING (
     EXISTS (
@@ -2427,6 +2126,7 @@ CREATE POLICY "invoice_reminders_select_owner" ON invoice_reminders
   );
 
 DROP POLICY IF EXISTS "invoice_reminders_insert_owner" ON invoice_reminders;
+DROP POLICY IF EXISTS "invoice_reminders_insert_owner" ON invoice_reminders;
 CREATE POLICY "invoice_reminders_insert_owner" ON invoice_reminders
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -2438,6 +2138,7 @@ CREATE POLICY "invoice_reminders_insert_owner" ON invoice_reminders
     )
   );
 
+DROP POLICY IF EXISTS "invoice_reminders_admin" ON invoice_reminders;
 DROP POLICY IF EXISTS "invoice_reminders_admin" ON invoice_reminders;
 CREATE POLICY "invoice_reminders_admin" ON invoice_reminders
   FOR ALL USING (
@@ -2471,12 +2172,14 @@ ALTER TABLE webhook_logs ENABLE ROW LEVEL SECURITY;
 
 -- Seuls les admins et le service_role lisent les webhook logs
 DROP POLICY IF EXISTS "webhook_logs_admin" ON webhook_logs;
+DROP POLICY IF EXISTS "webhook_logs_admin" ON webhook_logs;
 CREATE POLICY "webhook_logs_admin" ON webhook_logs
   FOR ALL USING (
     public.user_role() = 'admin'
   );
 
 -- Permettre l'insertion depuis les API routes (service_role)
+DROP POLICY IF EXISTS "webhook_logs_service_insert" ON webhook_logs;
 DROP POLICY IF EXISTS "webhook_logs_service_insert" ON webhook_logs;
 CREATE POLICY "webhook_logs_service_insert" ON webhook_logs
   FOR INSERT WITH CHECK (true);
@@ -2507,6 +2210,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_conversations_model
 ALTER TABLE ai_conversations ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "ai_conversations_select_own" ON ai_conversations;
+DROP POLICY IF EXISTS "ai_conversations_select_own" ON ai_conversations;
 CREATE POLICY "ai_conversations_select_own" ON ai_conversations
   FOR SELECT USING (
     profile_id IN (
@@ -2515,6 +2219,7 @@ CREATE POLICY "ai_conversations_select_own" ON ai_conversations
   );
 
 DROP POLICY IF EXISTS "ai_conversations_insert_own" ON ai_conversations;
+DROP POLICY IF EXISTS "ai_conversations_insert_own" ON ai_conversations;
 CREATE POLICY "ai_conversations_insert_own" ON ai_conversations
   FOR INSERT WITH CHECK (
     profile_id IN (
@@ -2522,6 +2227,7 @@ CREATE POLICY "ai_conversations_insert_own" ON ai_conversations
     )
   );
 
+DROP POLICY IF EXISTS "ai_conversations_admin" ON ai_conversations;
 DROP POLICY IF EXISTS "ai_conversations_admin" ON ai_conversations;
 CREATE POLICY "ai_conversations_admin" ON ai_conversations
   FOR ALL USING (
@@ -2666,25 +2372,32 @@ ALTER TABLE platform_knowledge ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_context_embeddings ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "legal_embeddings_select_authenticated" ON legal_embeddings;
+DROP POLICY IF EXISTS "legal_embeddings_select_authenticated" ON legal_embeddings;
 CREATE POLICY "legal_embeddings_select_authenticated" ON legal_embeddings
   FOR SELECT USING (auth.uid() IS NOT NULL);
+DROP POLICY IF EXISTS "legal_embeddings_admin_manage" ON legal_embeddings;
 DROP POLICY IF EXISTS "legal_embeddings_admin_manage" ON legal_embeddings;
 CREATE POLICY "legal_embeddings_admin_manage" ON legal_embeddings
   FOR ALL USING (public.user_role() = 'admin');
 
 DROP POLICY IF EXISTS "platform_knowledge_select_authenticated" ON platform_knowledge;
+DROP POLICY IF EXISTS "platform_knowledge_select_authenticated" ON platform_knowledge;
 CREATE POLICY "platform_knowledge_select_authenticated" ON platform_knowledge
   FOR SELECT USING (auth.uid() IS NOT NULL AND is_published = true);
+DROP POLICY IF EXISTS "platform_knowledge_admin_manage" ON platform_knowledge;
 DROP POLICY IF EXISTS "platform_knowledge_admin_manage" ON platform_knowledge;
 CREATE POLICY "platform_knowledge_admin_manage" ON platform_knowledge
   FOR ALL USING (public.user_role() = 'admin');
 
 DROP POLICY IF EXISTS "user_context_select_own" ON user_context_embeddings;
+DROP POLICY IF EXISTS "user_context_select_own" ON user_context_embeddings;
 CREATE POLICY "user_context_select_own" ON user_context_embeddings
   FOR SELECT USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
 DROP POLICY IF EXISTS "user_context_manage_own" ON user_context_embeddings;
+DROP POLICY IF EXISTS "user_context_manage_own" ON user_context_embeddings;
 CREATE POLICY "user_context_manage_own" ON user_context_embeddings
   FOR ALL USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+DROP POLICY IF EXISTS "user_context_admin" ON user_context_embeddings;
 DROP POLICY IF EXISTS "user_context_admin" ON user_context_embeddings;
 CREATE POLICY "user_context_admin" ON user_context_embeddings
   FOR ALL USING (public.user_role() = 'admin');
@@ -3512,6 +3225,8 @@ BEGIN;
 
 DROP POLICY IF EXISTS "EDL signatures creator update" ON edl_signatures;
 
+DROP POLICY IF EXISTS "EDL signatures update" ON edl_signatures;
+
 CREATE POLICY "EDL signatures update"
   ON edl_signatures FOR UPDATE
   USING (
@@ -3865,5 +3580,294 @@ COMMENT ON FUNCTION tenant_dashboard(UUID) IS
 'RPC dashboard locataire v5. Cherche par profile_id OU invited_email.
 FIX: Inclut les baux draft pour que le locataire voie son logement dès invitation.
 Inclut: signers enrichis, property complète (DPE, meters, keys), insurance, KYC status.';
+
+
+-- === [37/169] 20260221100001_auto_upgrade_draft_on_tenant_signer.sql ===
+-- =====================================================
+-- MIGRATION: Auto-upgrade baux draft + fix rétroactif complet
+-- Date: 2026-02-21
+--
+-- PROBLÈMES CORRIGÉS:
+--   1. Trigger: quand un signataire locataire est ajouté à un bail 'draft',
+--      passer automatiquement le bail en 'pending_signature'
+--   2. Fix rétroactif A: re-lier les lease_signers orphelins (invited_email match)
+--   3. Fix rétroactif B: upgrader les baux draft qui ont déjà un locataire
+--   4. Fix rétroactif C: créer les lease_signers manquants depuis edl_signatures
+--   5. Audit: vérifier qu'aucun bail ne reste à demi connecté
+-- =====================================================
+
+BEGIN;
+
+-- ============================================
+-- 1. FONCTION: Auto-upgrade draft → pending_signature
+-- ============================================
+CREATE OR REPLACE FUNCTION public.auto_upgrade_draft_lease_on_signer()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Quand un signataire locataire est ajouté, upgrader le bail draft
+  IF NEW.role IN ('locataire_principal', 'colocataire', 'tenant', 'locataire') THEN
+    UPDATE public.leases
+    SET statut = 'pending_signature', updated_at = NOW()
+    WHERE id = NEW.lease_id
+      AND statut = 'draft';
+  END IF;
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  -- Ne jamais bloquer l'INSERT du signer
+  RAISE WARNING '[auto_upgrade_draft] Erreur non-bloquante: %', SQLERRM;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+COMMENT ON FUNCTION public.auto_upgrade_draft_lease_on_signer() IS
+'SOTA 2026: Quand un signataire locataire est ajouté à un bail draft, passe le bail en pending_signature automatiquement.';
+
+-- ============================================
+-- 2. TRIGGER: Exécuter après chaque INSERT sur lease_signers
+-- ============================================
+DROP TRIGGER IF EXISTS trigger_auto_upgrade_draft_on_signer ON public.lease_signers;
+
+CREATE TRIGGER trigger_auto_upgrade_draft_on_signer
+  AFTER INSERT ON public.lease_signers
+  FOR EACH ROW
+  EXECUTE FUNCTION public.auto_upgrade_draft_lease_on_signer();
+
+-- ============================================
+-- 3. FIX RÉTROACTIF A: Re-lier les lease_signers orphelins
+--    (invited_email correspond à un compte existant mais profile_id est NULL)
+-- ============================================
+DO $$
+DECLARE
+  linked_total INT := 0;
+BEGIN
+  UPDATE public.lease_signers ls
+  SET profile_id = p.id
+  FROM auth.users u
+  JOIN public.profiles p ON p.user_id = u.id
+  WHERE LOWER(TRIM(u.email)) = LOWER(TRIM(ls.invited_email))
+    AND ls.profile_id IS NULL
+    AND ls.invited_email IS NOT NULL
+    AND TRIM(ls.invited_email) != ''
+    AND ls.invited_email NOT LIKE '%@a-definir%'
+    AND ls.invited_email NOT LIKE '%@placeholder%';
+
+  GET DIAGNOSTICS linked_total = ROW_COUNT;
+
+  IF linked_total > 0 THEN
+    RAISE NOTICE '[fix_A] % lease_signers orphelins re-liés à un profil existant', linked_total;
+  ELSE
+    RAISE NOTICE '[fix_A] Aucun lease_signer orphelin à re-lier';
+  END IF;
+END $$;
+
+-- ============================================
+-- 4. FIX RÉTROACTIF B: Upgrader les baux draft qui ont un locataire
+-- ============================================
+DO $$
+DECLARE
+  upgraded_count INT := 0;
+BEGIN
+  UPDATE public.leases
+  SET statut = 'pending_signature', updated_at = NOW()
+  WHERE statut = 'draft'
+  AND EXISTS (
+    SELECT 1 FROM public.lease_signers ls
+    WHERE ls.lease_id = leases.id
+    AND ls.role IN ('locataire_principal', 'colocataire', 'tenant', 'locataire')
+  );
+
+  GET DIAGNOSTICS upgraded_count = ROW_COUNT;
+
+  IF upgraded_count > 0 THEN
+    RAISE NOTICE '[fix_B] % baux draft upgradés en pending_signature', upgraded_count;
+  ELSE
+    RAISE NOTICE '[fix_B] Aucun bail draft avec locataire à upgrader';
+  END IF;
+END $$;
+
+-- ============================================
+-- 5. FIX RÉTROACTIF C: Créer les lease_signers manquants
+--    depuis les edl_signatures (EDL a un locataire mais le bail n'a pas le signer)
+-- ============================================
+DO $$
+DECLARE
+  created_count INT := 0;
+BEGIN
+  INSERT INTO public.lease_signers (lease_id, profile_id, role, signature_status, invited_email, invited_name)
+  SELECT DISTINCT ON (e.lease_id)
+    e.lease_id,
+    es.signer_profile_id,
+    'locataire_principal',
+    'pending',
+    es.signer_email,
+    es.signer_name
+  FROM public.edl e
+  JOIN public.edl_signatures es ON es.edl_id = e.id
+  WHERE es.signer_role IN ('tenant', 'locataire', 'locataire_principal')
+    AND e.lease_id IS NOT NULL
+    -- Le bail n'a pas déjà un signer locataire
+    AND NOT EXISTS (
+      SELECT 1 FROM public.lease_signers ls
+      WHERE ls.lease_id = e.lease_id
+      AND ls.role IN ('locataire_principal', 'colocataire', 'tenant', 'locataire')
+    )
+    -- Le signer a au moins un profil ou un email valide
+    AND (
+      es.signer_profile_id IS NOT NULL
+      OR (es.signer_email IS NOT NULL AND TRIM(es.signer_email) != '' AND es.signer_email NOT LIKE '%@a-definir%')
+    )
+  ORDER BY e.lease_id, e.created_at DESC;
+
+  GET DIAGNOSTICS created_count = ROW_COUNT;
+
+  IF created_count > 0 THEN
+    RAISE NOTICE '[fix_C] % lease_signers créés depuis edl_signatures', created_count;
+  ELSE
+    RAISE NOTICE '[fix_C] Aucun lease_signer manquant à créer depuis les EDL';
+  END IF;
+END $$;
+
+-- ============================================
+-- 6. AUDIT: Vérifier l'état final
+-- ============================================
+DO $$
+DECLARE
+  orphan_signers INT;
+  draft_with_tenant INT;
+  leases_without_tenant INT;
+BEGIN
+  -- Signataires orphelins restants (profile_id NULL, email valide, pas placeholder)
+  SELECT count(*)::INT INTO orphan_signers
+  FROM public.lease_signers
+  WHERE profile_id IS NULL
+    AND invited_email IS NOT NULL
+    AND TRIM(invited_email) != ''
+    AND invited_email NOT LIKE '%@a-definir%'
+    AND invited_email NOT LIKE '%@placeholder%';
+
+  -- Baux draft avec un locataire (ne devrait plus en avoir)
+  SELECT count(*)::INT INTO draft_with_tenant
+  FROM public.leases l
+  WHERE l.statut = 'draft'
+  AND EXISTS (
+    SELECT 1 FROM public.lease_signers ls
+    WHERE ls.lease_id = l.id
+    AND ls.role IN ('locataire_principal', 'colocataire', 'tenant', 'locataire')
+  );
+
+  -- Baux non-draft sans signataire locataire
+  SELECT count(*)::INT INTO leases_without_tenant
+  FROM public.leases l
+  WHERE l.statut NOT IN ('draft', 'terminated', 'cancelled', 'archived')
+  AND NOT EXISTS (
+    SELECT 1 FROM public.lease_signers ls
+    WHERE ls.lease_id = l.id
+    AND ls.role IN ('locataire_principal', 'colocataire', 'tenant', 'locataire')
+  );
+
+  RAISE NOTICE '=== AUDIT RÉSULTAT ===';
+  RAISE NOTICE 'Signataires orphelins (email sans compte): %', orphan_signers;
+  RAISE NOTICE 'Baux draft avec locataire (devrait être 0): %', draft_with_tenant;
+  RAISE NOTICE 'Baux actifs sans locataire: %', leases_without_tenant;
+
+  IF draft_with_tenant = 0 THEN
+    RAISE NOTICE '✅ Aucun bail draft à demi connecté';
+  ELSE
+    RAISE WARNING '⚠️  % baux draft ont encore un locataire — vérifier manuellement', draft_with_tenant;
+  END IF;
+END $$;
+
+COMMIT;
+
+
+-- === [38/169] 20260221200000_sync_edl_signer_to_lease_signer.sql ===
+-- =====================================================
+-- MIGRATION: Sync edl_signatures → lease_signers (défense en profondeur)
+-- Date: 2026-02-21
+--
+-- PROBLÈME CORRIGÉ:
+--   Quand une edl_signature tenant est créée pour un EDL lié à un bail,
+--   il se peut qu'aucun lease_signers correspondant n'existe (ex: bail
+--   créé en mode "manual draft"). Le locataire ne voit alors pas le bail
+--   sur son dashboard car la RPC tenant_dashboard passe par lease_signers.
+--
+-- FIX: Trigger AFTER INSERT sur edl_signatures qui crée automatiquement
+--   un lease_signers si aucun signer tenant n'existe pour le bail associé.
+--   Ne bloque jamais l'INSERT original (exception handler).
+-- =====================================================
+
+BEGIN;
+
+-- ============================================
+-- 1. FONCTION: Sync edl_signature → lease_signer
+-- ============================================
+CREATE OR REPLACE FUNCTION public.sync_edl_signer_to_lease_signer()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_lease_id UUID;
+  v_exists BOOLEAN;
+BEGIN
+  -- Uniquement pour les rôles tenant
+  IF NEW.signer_role NOT IN ('tenant', 'locataire', 'locataire_principal') THEN
+    RETURN NEW;
+  END IF;
+
+  -- Doit avoir au moins un email ou un profile_id
+  IF NEW.signer_profile_id IS NULL AND (NEW.signer_email IS NULL OR TRIM(NEW.signer_email) = '') THEN
+    RETURN NEW;
+  END IF;
+
+  -- Ignorer les emails placeholder
+  IF NEW.signer_email IS NOT NULL AND (
+    NEW.signer_email LIKE '%@a-definir%' OR
+    NEW.signer_email LIKE '%@placeholder%'
+  ) THEN
+    RETURN NEW;
+  END IF;
+
+  -- Récupérer le lease_id depuis l'EDL
+  SELECT lease_id INTO v_lease_id
+  FROM public.edl
+  WHERE id = NEW.edl_id;
+
+  IF v_lease_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  -- Vérifier si un signer tenant existe déjà pour ce bail
+  SELECT EXISTS (
+    SELECT 1 FROM public.lease_signers
+    WHERE lease_id = v_lease_id
+    AND role IN ('locataire_principal', 'locataire', 'tenant', 'colocataire')
+  ) INTO v_exists;
+
+  IF NOT v_exists THEN
+    INSERT INTO public.lease_signers (lease_id, profile_id, invited_email, invited_name, role, signature_status)
+    VALUES (v_lease_id, NEW.signer_profile_id, NEW.signer_email, NEW.signer_name, 'locataire_principal', 'pending');
+    RAISE NOTICE '[sync_edl_signer] Created lease_signer for lease % from edl_signature %', v_lease_id, NEW.id;
+  END IF;
+
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  -- Ne jamais bloquer l'INSERT de edl_signatures
+  RAISE WARNING '[sync_edl_signer] Error (non-blocking): %', SQLERRM;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+COMMENT ON FUNCTION public.sync_edl_signer_to_lease_signer() IS
+'SOTA 2026: Quand une edl_signature tenant est créée, vérifie que le bail associé a un lease_signer locataire. Sinon, en crée un. Ne bloque jamais l''INSERT.';
+
+-- ============================================
+-- 2. TRIGGER: Exécuter après chaque INSERT sur edl_signatures
+-- ============================================
+DROP TRIGGER IF EXISTS trigger_sync_edl_signer_to_lease_signer ON public.edl_signatures;
+
+CREATE TRIGGER trigger_sync_edl_signer_to_lease_signer
+  AFTER INSERT ON public.edl_signatures
+  FOR EACH ROW
+  EXECUTE FUNCTION public.sync_edl_signer_to_lease_signer();
+
+COMMIT;
 
 
