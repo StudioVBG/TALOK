@@ -138,7 +138,7 @@ class SubscriptionsService {
       .from("subscriptions")
       .select(`
         *,
-        plan:subscription_plans(*)
+        plan:subscription_plans!plan_id(*)
       `)
       .eq("owner_id", ownerId)
       .single();

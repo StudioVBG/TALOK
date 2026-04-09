@@ -60,7 +60,7 @@ export async function withSubscriptionLimit(
       .from("subscriptions")
       .select(`
         *,
-        plan:subscription_plans(*)
+        plan:subscription_plans!plan_id(*)
       `)
       .eq("owner_id", ownerId)
       .maybeSingle();
@@ -319,7 +319,7 @@ export async function withFeatureAccess(
       .from("subscriptions")
       .select(`
         *,
-        plan:subscription_plans(*)
+        plan:subscription_plans!plan_id(*)
       `)
       .eq("owner_id", ownerId)
       .maybeSingle();
