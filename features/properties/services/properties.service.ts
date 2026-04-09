@@ -315,6 +315,17 @@ export class PropertiesService {
     // Récupérer la propriété complète
     return this.getPropertyById(response.property.id);
   }
+
+  async getBuildingForProperty(propertyId: string): Promise<{ building: any; units: any[] } | null> {
+    try {
+      const response = await apiClient.get<{ building: any; units: any[] }>(
+        `/properties/${propertyId}/building`
+      );
+      return response;
+    } catch {
+      return null;
+    }
+  }
 }
 
 export const propertiesService = new PropertiesService();

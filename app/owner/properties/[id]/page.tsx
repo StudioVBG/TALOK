@@ -70,13 +70,17 @@ export default async function OwnerPropertyDetailPage({ params }: PageProps) {
     const details = await fetchPropertyDetails(id, profile.id);
 
     if (!details) {
-      // Propriété non trouvée ou n'appartenant pas à ce owner
       return (
         <div className="container mx-auto py-12 text-center">
            <h1 className="text-2xl font-bold mb-4">Propriété non trouvée</h1>
            <p className="text-muted-foreground">Ce bien n'existe pas ou vous n'avez pas les droits pour le voir.</p>
         </div>
       );
+    }
+
+    // Immeuble → rediriger vers le dashboard immeuble
+    if ((details as any).type === "immeuble") {
+      redirect(`/owner/buildings/${id}`);
     }
 
     return <PropertyDetailsClient details={details} propertyId={id} />;
