@@ -32,7 +32,7 @@ export async function GET(request: Request) {
       .from("subscriptions")
       .select(`
         *,
-        plan:subscription_plans(*)
+        plan:subscription_plans!plan_id(*)
       `)
       .eq("owner_id", profile.id)
       .maybeSingle();
