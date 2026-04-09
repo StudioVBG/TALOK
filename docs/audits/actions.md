@@ -31,6 +31,7 @@
 ## P1 — Important (2 semaines)
 
 ### Bugs critiques
+- [ ] **BUG Properties** : Corriger `canDeleteProperty()` dans lib/properties/guards.ts:162 — requête `property_photos` au lieu de `photos`
 - [ ] Corriger /owner/invoices/[id] crash (RangeError date) — appliquer safeDate()
 - [ ] Corriger Dashboard Biens=0 Baux=0 — filtre entityId manquant
 - [ ] Corriger Tickets chargement infini
@@ -72,10 +73,14 @@
 - [ ] Créer composants FiscalSimulator, FiscalRecommendation
 - [ ] Vérifier quotas messages/mois dans assistant_usage_stats
 
-### Colocation
-- [ ] Implémenter clause de solidarité 6 mois max
-- [ ] Implémenter SEPA individuel par colocataire
-- [ ] Ajouter flag hasColocation dans PlanLimits (sans modifier plans.ts)
+### Biens (Properties)
+- [ ] Ajouter `saisonnier` dans PROPERTY_TYPES array (actuellement dans labels/icons seulement)
+- [ ] Créer `cleanupPropertyPhotos()` pour nettoyage storage lors de suppression
+- [ ] Extraire constantes `TYPES_WITHOUT_ROOMS` / `TYPES_WITH_DPE` depuis FIELD_VISIBILITY
+
+### Baux
+- [ ] Créer cron renouvellement tacite automatique (actuellement manuel uniquement)
+- [ ] Centraliser state machine lease dans un fichier TS (actuellement SQL-only)
 
 ### Garant
 - [ ] Créer cron automatique libération garant à 6 mois

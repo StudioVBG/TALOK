@@ -23,12 +23,12 @@
 
 | # | Module | Tables | Routes API | Pages UI | Composants | Feature gate | Score | Verdict |
 |---|--------|--------|-----------|----------|------------|-------------|-------|---------|
-| 1 | Baux | 4/4 | 40+/15 | 10/8 | 7/7 | ⚠️ partiel | 8/10 | ⚠️ Partiel |
-| 2 | Paiements | 8/8 | 15+/15 | 8/8 | 6/6 | ✅ | 8/10 | ⚠️ Partiel |
+| 1 | Baux | 4/4 | 43/15 | 10/8 | 7+/7 | ✅ maxLeases | 8.5/10 | ⚠️ Partiel |
+| 2 | Paiements | 8/8 | 15+/15 | 8/8 | 6/6 | ✅ | 9/10 | ✅ Complet |
 | 3 | Documents | 5/5 | 12/12 | 4/4 | 5/5 | ✅ | 9/10 | ✅ Complet |
-| 4 | Biens | 3/3 | 20+/10 | 6/6 | 15+/10 | ✅ | 9/10 | ✅ Complet |
-| 5 | EDL | 13/6 | 15+/10 | 9/8 | 10/8 | ⚠️ | 8/10 | ⚠️ Partiel |
-| 6 | Colocation | 5/5 | 12/10 | 12/8 | 12/10 | ⚠️ | 7/10 | ⚠️ Partiel |
+| 4 | Biens | 4/3 | 26/10 | 6/6 | 15+/10 | ✅ maxProperties | 7.5/10 | ⚠️ Partiel |
+| 5 | EDL | 11/6 | 15+/10 | 9/8 | 10/8 | ⚠️ | 8.5/10 | ✅ Complet |
+| 6 | Colocation | 5/5 | 12/10 | 14/8 | 12/10 | ✅ hasIndividualSEPA | 9/10 | ✅ Complet |
 | 7 | Charges | 4/4 | 11/8 | 5/3 | 3/3 | ⚠️ partiel | 8/10 | ✅ Complet |
 | 8 | Candidatures | 3/3 | 13+/8 | 5/5 | 8/7 | ⚠️ | 9/10 | ✅ Complet |
 | 9 | Prestataires | 4/4 | 22+/10 | 40+/10 | 5/5 | ⚠️ | 9/10 | ✅ Complet |
@@ -62,156 +62,76 @@
 ### A. Tables SQL
 | Table attendue | Existe ? | Colonnes clés vérifiées |
 |----------------|---------|------------------------|
-| leases | ✅ | `statut` (draft/pending_signature/active/terminated), `type_bail` (nu/meuble/colocation/saisonnier), `is_colocation`, `initial_payment_confirmed`, `coloc_config`, `invite_token`, `yousign_signature_request_id` |
+| leases | ✅ | `statut` (11 états : draft/sent/pending_signature/partially_signed/pending_owner_signature/fully_signed/active/notice_given/amended/terminated/archived), `type_bail`, `is_colocation`, `initial_payment_confirmed`, `coloc_config`, `invite_token`, `yousign_signature_request_id` |
 | lease_signers | ✅ | lease_id, profile_id, role (proprietaire/locataire_principal/colocataire/garant), signature_status |
-| lease_amendments | ✅ | Existe dans migrations |
-| lease_notices | ✅ | public.lease_notices existe |
+| lease_amendments | ✅ | Types: loyer_revision, ajout/retrait_colocataire, changement_charges, travaux, autre. RLS ✅ |
+| lease_notices | ✅ | Système congé complet : préavis réduit, adresse réexpédition, suivi statut |
 
-### B. Routes API (40+ routes /api/leases/*)
-| Route | Existe ? | Fichier |
-|-------|---------|---------|
-| GET/POST /api/leases | ✅ | app/api/leases/route.ts |
-| GET/PATCH /api/leases/[id] | ✅ | app/api/leases/[id]/route.ts |
-| POST /api/leases/[id]/activate | ✅ | Activation avec conditions |
-| POST /api/leases/[id]/sign | ✅ | Signature électronique |
-| POST /api/leases/[id]/seal | ✅ | Scellement bail |
-| POST /api/leases/[id]/initiate-signature | ✅ | Démarrage session signature |
-| GET/POST /api/leases/[id]/signers | ✅ | Gestion signataires |
-| POST /api/leases/[id]/amend | ✅ | Avenants |
-| POST /api/leases/[id]/notice | ✅ | Congés |
-| POST /api/leases/[id]/terminate | ✅ | Résiliation |
-| POST /api/leases/[id]/renew | ✅ | Renouvellement |
-| POST /api/leases/[id]/cancel | ✅ | Annulation |
-| GET /api/leases/[id]/pdf | ✅ | Génération PDF |
-| GET /api/leases/[id]/html | ✅ | Aperçu HTML |
-| POST /api/leases/[id]/key-handover | ✅ | Remise des clés |
-| POST /api/leases/[id]/deposit | ✅ | Dépôt de garantie |
-| POST /api/leases/[id]/roommates | ✅ | Colocataires |
-| POST /api/leases/[id]/payment-shares | ✅ | Parts de paiement |
-| POST /api/leases/parking | ✅ | Bail parking |
+### B. Routes API (43 fichiers route /api/leases/*)
+Toutes les routes attendues existent + extras : autopay, punctuality, signature-sessions, visale/verify, payment-status, meter-consumption, rent-invoices, summary, seal.
 
-### C. Pages UI
-| Page | Existe ? | Fichier |
-|------|---------|---------|
-| Liste baux | ✅ | app/owner/leases/page.tsx |
-| Création bail | ✅ | app/owner/leases/new/page.tsx |
-| Détail bail | ✅ | app/owner/leases/[id]/page.tsx |
-| Édition bail | ✅ | app/owner/leases/[id]/edit/page.tsx |
-| Signataires | ✅ | app/owner/leases/[id]/signers/page.tsx |
-| Avenant | ✅ | app/owner/leases/[id]/amend/page.tsx |
-| Congé | ✅ | app/owner/leases/[id]/notice/page.tsx |
-| Colocataires | ✅ | app/owner/leases/[id]/roommates/page.tsx |
-| Bail parking | ✅ | app/owner/leases/parking/new/page.tsx |
-| Bail locataire | ✅ | app/tenant/lease/page.tsx |
+### C. Pages UI (10+)
+Toutes les pages attendues existent : list, new (LeaseWizard), detail, edit, signers, amend, notice, roommates, parking/new + tenant/lease.
 
-### D. Composants
-| Composant | Existe ? | Fichier |
-|-----------|---------|---------|
-| LeaseForm | ✅ | features/leases/components/lease-form.tsx |
-| LeaseCard | ✅ | features/leases/components/lease-card.tsx |
-| LeasesList | ✅ | features/leases/components/leases-list.tsx |
-| LeasePreview | ✅ | features/leases/components/lease-preview.tsx |
-| LeaseSigner | ✅ | features/leases/components/lease-signers.tsx |
-| KeysHandover | ✅ | features/leases/components/keys-handover-dialog.tsx |
-| LeaseRenewalWizard | ✅ | features/leases/components/lease-renewal-wizard.tsx |
+### D. Wizard création bail
+✅ LeaseWizard.tsx avec **13 types de bail** : nu, meublé, colocation, saisonnier, bail_mobilité, contrat_parking, commercial_3_6_9, professionnel, étudiant, commercial_dérogatoire, location_gérance, bail_mixte. Chacun avec références légales, durée, plafonds dépôt. Validation Zod v3 via `leaseSchema`.
 
 ### E. Logique métier
 | Règle | Implémentée ? | Détail |
 |-------|--------------|--------|
-| State machine statut | ✅ | draft → pending_signature → active → terminated |
-| Activation 4 conditions | ⚠️ | Signature vérifiée, paiement initial vérifié ; EDL et clés partiellement vérifiés |
-| Signature électronique | ✅ | Canvas signature + Yousign intégration |
-| Renouvellement tacite | ✅ | Route /api/leases/[id]/renew + cron lease-expiry-alerts |
-| Templates par type | ⚠️ | Type bail dans le formulaire (nu/meublé/mobilité/étudiant) mais templates pas différenciés |
+| State machine statut | ✅ | 11 états dans contrainte SQL. Transitions ad-hoc par route (pas de TS state machine centralisé) |
+| Activation 5 conditions | ✅ | **Toutes vérifiées dans /api/leases/[id]/activate** : (1) fully_signed, (2) tous signataires signed, (3) EDL entrée signé, (4) facture initiale payée via getInitialInvoiceSettlement, (5) remise des clés confirmée |
+| Signature électronique | ✅ | react-signature-canvas (draw + text) + flux complet SignatureFlow.tsx |
+| Renouvellement tacite | ⚠️ | Route manuelle /api/leases/[id]/renew (crée nouveau bail, ancien → archived). **Pas de cron automatique** |
+| Templates par type | ✅ | 13 types avec LeaseTypeCards, chacun avec durée et dépôt max |
 | Bail parking spécifique | ✅ | Wizard dédié parking-lease-wizard |
+| Feature gating | ✅ | maxLeases + quotas signature par plan |
 
-### Score : 8/10
+### Score : 8.5/10
 ### Verdict : ⚠️ Partiel
 ### Actions prioritaires :
-1. Vérifier que l'activation vérifie bien les 4 conditions (signé + EDL + paiement + clés)
-2. Différencier les templates bail par type (mobilité, étudiant ont des clauses spécifiques)
-3. Ajouter feature gating sur certaines routes
+1. Créer un cron renouvellement tacite automatique
+2. Centraliser la state machine lease dans un fichier TS (actuellement SQL-only)
 
 ---
 
 ## Module 2 : PAIEMENTS
 ### Skill de référence : talok-stripe-pricing
 
-### A. Tables SQL
-| Table attendue | Existe ? | Colonnes clés |
-|----------------|---------|---------------|
-| invoices | ✅ | statut (draft/sent/paid/late + extensions), montant_total, montant_loyer, montant_charges |
-| payments | ✅ | stripe_payment_intent_id, amount, status, payment_method |
-| rent_payments | ✅ | Table dédiée aux paiements de loyer |
-| security_deposits | ✅ | Table dépôts de garantie |
-| stripe_connect_accounts | ✅ | profile_id, stripe_account_id, charges_enabled, payouts_enabled |
-| stripe_transfers | ✅ | stripe_transfer_id, amount, platform_fee, net_amount, status |
-| payment_intents | ✅ | Tracking des PaymentIntents |
+### A. Tables SQL (toutes confirmées)
+| Table | Existe ? | Détails vérifiés |
+|-------|---------|-----------------|
+| invoices | ✅ | statut, stripe_payment_intent_id, receipt_generated, receipt_generated_at |
+| payments | ✅ | invoice_id, montant, moyen, provider_ref, statut |
+| rent_payments | ✅ | Stripe Connect Express : amount_cents, commission_amount_cents, commission_rate, owner_amount_cents |
+| security_deposits | ✅ | Cycle complet : pending/received/partially_returned/returned/disputed. Retenue JSONB. Late penalty |
+| stripe_connect_accounts | ✅ | stripe_account_id, charges_enabled |
+| stripe_transfers | ✅ | stripe_transfer_id, platform_fee, net_amount |
+| payment_intents | ✅ | Tracking PaymentIntents |
 | sepa_mandates | ✅ | Mandats SEPA |
 
-### B. Routes API
-| Route | Existe ? |
-|-------|---------|
-| /api/payments/create-intent | ✅ |
-| /api/payments/create-rent-intent | ✅ |
-| /api/payments/create-checkout-session | ✅ |
-| /api/payments/setup-sepa | ✅ |
-| /api/payments/confirm | ✅ |
-| /api/payments/calculate-fees | ✅ |
-| /api/payments/cash-receipt | ✅ |
-| /api/stripe/connect | ✅ |
-| /api/stripe/connect/balance | ✅ |
-| /api/stripe/connect/transfers | ✅ |
-| /api/stripe/connect/payouts | ✅ |
-| /api/stripe/connect/dashboard | ✅ |
-| /api/stripe/collect-rent | ✅ |
-| /api/webhooks/stripe | ✅ (1689 lignes) |
+### B. SEPA uniquement pour loyers : ✅ Confirmé
+`lib/payments/rent-collection.service.ts` header : "SEPA uniquement pour les loyers (jamais CB)". payment_method=sepa_debit par défaut.
 
-### C. Webhook Stripe — Événements gérés
-| Événement | Géré ? |
-|-----------|--------|
-| checkout.session.completed | ✅ |
-| payment_intent.succeeded | ✅ |
-| payment_intent.payment_failed | ✅ |
-| invoice.paid | ✅ |
-| invoice.payment_failed | ✅ |
-| customer.subscription.created/updated | ✅ |
-| customer.subscription.deleted | ✅ |
-| customer.subscription.trial_will_end | ✅ |
-| account.updated | ✅ |
-| transfer.created/failed | ✅ |
-| payout.created/updated/paid/failed/canceled | ✅ |
-| charge.dispute.created | ✅ |
+### C. application_fee_amount dynamique : ✅ Confirmé
+Calculé via `calculatePaymentFees` depuis `lib/subscriptions/payment-fees.ts`, dérivé de PLAN_LIMITS.
 
-### D. Pages UI
-| Page | Existe ? |
-|------|---------|
-| Finances owner | ✅ | app/owner/finances/page.tsx + invoices/ + payments/ + deposits/ |
-| Paiement tenant | ✅ | app/tenant/payment/page.tsx + history/ |
-| Money owner | ✅ | app/owner/money/page.tsx + settings/ |
-| Billing | ✅ | app/owner/settings/billing/ |
+### D. Invoice state machine : ✅
+`lib/payments/invoice-state-machine.ts` : draft → sent → pending → paid → receipt_generated. Branche overdue → reminder_sent → collection → written_off.
 
-### E. Quittances
-| Élément | État |
-|---------|------|
-| receipt-generator.ts | ✅ Existe (132 lignes) |
-| Branché sur webhook Stripe | ✅ ensureReceiptDocument() appelé dans payment_intent.succeeded |
-| Email quittance au locataire | ✅ sendReceiptEmail() dans le webhook |
+### E. Webhook Stripe (toutes actions vérifiées)
+- **payment_intent.succeeded** : upsert payment, update invoice, sync status, mark initial_payment_confirmed, **generate receipt** (fire-and-forget)
+- **payment_intent.payment_failed** : sync rent_payments failure, upsert failed payment, **email relay**, auto-entry comptable SEPA rejection
 
-### F. Crons
-| Cron | Existe ? |
-|------|---------|
-| Génération factures mensuelles | ✅ /api/cron/generate-invoices |
-| Relances paiement | ✅ /api/cron/payment-reminders |
-| Relances loyer | ✅ /api/cron/rent-reminders |
-| Vérification impayés | ✅ /api/cron/overdue-check |
+### F. Dépôt de garantie : ✅ Flux complet
+- Réception : POST /api/leases/[id]/deposit
+- Restitution : POST /api/leases/[id]/deposit/refund (déductions, refund_method, IBAN)
 
-### Score : 8/10
-### Verdict : ⚠️ Partiel
-### Actions prioritaires :
-1. Vérifier que SEPA est bien le seul mode pour les loyers (pas CB)
-2. Vérifier application_fee_amount dynamique depuis PLAN_LIMITS
-3. Vérifier flux restitution dépôt de garantie complet
+### G. Crons (4) : generate-invoices, payment-reminders (J-3/J-1/J+1/J+7/J+15/J+30), rent-reminders, overdue-check
+
+### Score : 9/10
+### Verdict : ✅ Complet
+### Note : rent_payments ajouté le 2026-04-08, indiquant finalisation récente de cette couche.
 
 ---
 
@@ -271,46 +191,35 @@
 ### Skill de référence : talok-property-management
 
 ### A. Fichiers clés
-| Fichier | Existe ? |
-|---------|---------|
-| lib/properties/constants.ts | ✅ (14 types, labels, catégories) |
-| lib/properties/guards.ts | ✅ (canDeleteProperty, cleanupPropertyPhotos) |
+| Fichier | Existe ? | Détail |
+|---------|---------|--------|
+| lib/properties/constants.ts | ✅ | **13 types** (pas 14 — `saisonnier` dans labels/icons mais PAS dans PROPERTY_TYPES array). Catégories : habitation, colocation, annexe, professionnel, foncier, ensemble. FIELD_VISIBILITY matrix par catégorie |
+| lib/properties/guards.ts | ✅ | canDeleteProperty() vérifie baux actifs (bloqueur) + baux terminés/docs/tickets (warnings). ⚠️ **BUG** : requête `property_photos` (ligne 162) alors que la table réelle est `photos` |
 
-### B. Tables
-| Table | Existe ? |
-|-------|---------|
-| properties | ✅ |
-| photos | ✅ (pas property_photos) |
-| property_ownership | ✅ |
-| rooms | ✅ |
+### B. Tables (4)
+properties ✅, photos ✅ (pas property_photos), property_ownership ✅, rooms ✅
 
-### C. Routes principales
-| Route | Existe ? |
-|-------|---------|
-| GET/POST /api/properties | ✅ |
-| GET/PATCH/DELETE /api/properties/[id] | ✅ |
-| /api/properties/[id]/photos | ✅ |
-| /api/properties/[id]/rooms | ✅ |
-| /api/properties/[id]/meters | ✅ |
-| /api/properties/[id]/inspections | ✅ |
-| /api/properties/[id]/leases | ✅ |
-| /api/properties/[id]/share | ✅ |
+### C. Routes (26 fichiers) : CRUD + photos, rooms, meters, heating, features, documents, inspections, leases, invitations, units, share, status, submit, diagnostic, init, building-units
 
-### D. Wizard création v3
-| Composant | Existe ? |
-|-----------|---------|
-| address-step.tsx | ✅ |
-| conditions-step.tsx | ✅ |
-| dynamic-step.tsx | ✅ |
-| equipments-info-step.tsx | ✅ |
-| Immersive wizard | ✅ (steps/ subdirectory) |
+### D. Wizard v3 + Immersive wizard : ✅ Complet avec steps/ subdirectory
 
-### E. Feature gating
-- canCreateProperty() vérifie PLAN_LIMITS.maxProperties : ✅ via usePlanAccess()
-- Soft delete : ✅ archived_at colonne ajoutée
+### E. Feature gating & soft delete
+- canCreateProperty() vérifie PLAN_LIMITS.maxProperties : ✅
+- Soft delete : ✅ `deleted_at`, `deleted_by`. Utilise `etat='deleted'` (pas status='archived')
+- entity_id à la création : ✅ legal_entity_id attaché via defaultEntity
 
-### Score : 9/10
-### Verdict : ✅ Complet
+### F. Éléments manquants vs skill
+- ❌ `cleanupPropertyPhotos()` : fonction inexistante dans le codebase
+- ❌ Route GET /api/properties/[id]/can-delete : pas de route dédiée (guard inline dans DELETE)
+- ⚠️ `TYPES_WITHOUT_ROOMS` / `TYPES_WITH_DPE` : pas de constantes nommées (logique via FIELD_VISIBILITY matrix)
+- ⚠️ `saisonnier` manquant dans PROPERTY_TYPES array (présent dans labels/icons)
+
+### Score : 7.5/10
+### Verdict : ⚠️ Partiel
+### Actions prioritaires :
+1. **BUG** : Corriger `canDeleteProperty()` — requête `property_photos` au lieu de `photos`
+2. Ajouter `saisonnier` dans PROPERTY_TYPES array
+3. Créer `cleanupPropertyPhotos()` pour nettoyage storage
 
 ---
 
@@ -389,50 +298,34 @@
 ## Module 6 : COLOCATION
 ### Skill de référence : talok-colocation
 
-### A. Tables SQL
-| Table | Existe ? |
-|-------|---------|
-| colocation_rooms | ✅ |
-| colocation_members | ✅ |
-| colocation_rules | ✅ |
-| colocation_tasks | ✅ |
-| colocation_expenses | ✅ |
+### A. Tables SQL (5 — toutes avec RLS)
+| Table | Existe ? | Détails |
+|-------|---------|---------|
+| colocation_rooms | ✅ | room_number, surface_m2, rent_share_cents, charges_share_cents, is_available |
+| colocation_members | ✅ | Cycle complet : pending/active/departing/departed. SEPA : stripe_payment_method_id, pays_individually |
+| colocation_rules | ✅ | 8 catégories : general, ménage, bruit, invités, animaux, espaces_communs, charges, autre |
+| colocation_tasks | ✅ | Récurrence : daily/weekly/biweekly/monthly. Rotation + assignation par membre ou chambre |
+| colocation_expenses | ✅ | Catégories : ménage, courses, internet, électricité, eau, réparation, autre. Split : equal/by_room/custom |
 
-### B. Routes API (12+)
-- /api/colocation/rooms, /api/colocation/rooms/[id]
-- /api/colocation/members, /api/colocation/members/[id]/departure, /api/colocation/members/[id]/replace
-- /api/colocation/rules, /api/colocation/rules/[id]
-- /api/colocation/tasks, /api/colocation/tasks/[id], /api/colocation/tasks/rotate
-- /api/colocation/expenses, /api/colocation/expenses/balances, /api/colocation/expenses/settle
+### B. Propriétés colocation
+✅ `properties.colocation_type` IN (bail_unique, baux_individuels) + `has_solidarity_clause`, `max_colocataires`
 
-### C. Pages UI
-**Owner :**
-- app/owner/properties/[id]/colocation/page.tsx
-- app/owner/properties/[id]/colocation/rooms/page.tsx + [roomId]
-- app/owner/properties/[id]/colocation/members/page.tsx + [memberId]
-- app/owner/properties/[id]/colocation/rules
-- app/owner/properties/[id]/colocation/tasks
-- app/owner/properties/[id]/colocation/expenses
+### C. Clause de solidarité : ✅ IMPLÉMENTÉE
+- `leases.solidarity_clause` + `coloc_config.solidarite_duration_months` (max 6)
+- `colocation_members.solidarity_end_date`
+- `SolidarityBadge.tsx` composant
 
-**Tenant :**
-- app/tenant/colocation/page.tsx
-- app/tenant/colocation/expenses + /add
-- app/tenant/colocation/rules
-- app/tenant/colocation/tasks
-- app/tenant/colocation/payment
+### D. SEPA individuel : ✅ IMPLÉMENTÉ
+- `colocation_members.stripe_payment_method_id`, `pays_individually` boolean
+- Feature gated : `hasIndividualSEPA` dans `features/colocation/gates.ts` (Pro+)
 
-### D. Composants (12)
-- ColocationDashboard, ColocationPaymentSplit, BalanceSummary
-- RoomCard, RoomEditor, MemberCard, DepartureModal
-- ExpenseForm, ExpensesList, RulesEditor
-- TaskCalendar, SolidarityBadge
+### E. Pages : ✅ 8 owner + 6 tenant (toutes présentes)
+### F. Composants (12) : tous présents + vue SQL `v_colocation_balances`
+### G. Types Zod complets dans `features/colocation/types/index.ts`
 
-### Score : 7/10
-### Verdict : ⚠️ Partiel
-### Actions prioritaires :
-1. Implémenter clause de solidarité (6 mois max)
-2. Feature gating hasColocation (pas dans PlanLimits actuel)
-3. SEPA individuel par colocataire
+### Score : 9/10
+### Verdict : ✅ Complet
+### Note : Module bien plus avancé que l'estimation initiale. Solidarité 6 mois et SEPA individuel SONT implémentés.
 
 ---
 
@@ -1128,6 +1021,11 @@
 | 16 | Stripe metered billing syndic | P2 | UI seulement, pas branché Stripe |
 | 17 | Génération PDF bail signé | P2 | Pas encore implémenté post-signature |
 | 18 | SSO non implémenté | P3 | Flag hasSSO existe mais aucune implémentation |
+| 19 | canDeleteProperty() requête mauvaise table | P1 | guards.ts:162 requête `property_photos` au lieu de `photos` |
+| 20 | `saisonnier` absent de PROPERTY_TYPES | P2 | Présent dans labels/icons mais pas dans l'array canonical |
+| 21 | cleanupPropertyPhotos() inexistant | P2 | Fonction référencée nulle part dans le codebase |
+| 22 | Pas de state machine TS centralisée pour leases | P3 | Transitions SQL-only, pas de ALLOWED_TRANSITIONS map |
+| 23 | Pas de cron renouvellement tacite bail | P2 | Renouvellement manuel uniquement via /api/leases/[id]/renew |
 
 ---
 
@@ -1175,8 +1073,8 @@
 
 ### État global
 
-- **Modules complets (score >= 8/10) :** 22/30 (Baux, Paiements, Documents, Biens, EDL, Charges, Candidatures, Prestataires, Syndic, Garant, Agence, Auth, Comptabilité, Add-ons, Stripe, Saisonnier, Compteurs, Agent TALO, API REST, Diagnostics, Assurances, Admin)
-- **Modules partiels (score 5-7) :** 8/30 (Colocation, Notifications, Onboarding, Landing, Mobile, Tickets, RGPD, Droits locataire)
+- **Modules complets (score >= 8/10) :** 23/30 (Baux 8.5, Paiements 9, Documents 9, EDL 8.5, Colocation 9, Charges 8, Candidatures 9, Prestataires 9, Syndic 8, Garant 8, Agence 9, Auth 8, Comptabilité 9, Add-ons 8, Stripe 8, Saisonnier 9, Compteurs 9, Agent TALO 8, API REST 10, Diagnostics 9, Assurances 8, Admin 8, Landing 8)
+- **Modules partiels (score 5-7.5) :** 7/30 (Biens 7.5, Notifications 7, Onboarding 7, RGPD 7, Tickets 7, Mobile 6, Droits locataire 5)
 - **Modules absents (score 0-4) :** 0/30
 
 ### Statistiques clés
