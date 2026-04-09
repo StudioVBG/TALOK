@@ -3478,7 +3478,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Fast lookups for overdue invoices (cron)
 CREATE INDEX IF NOT EXISTS idx_invoices_overdue_check
-  ON invoices(due_date, statut)
+  ON invoices(date_echeance, statut)
   WHERE statut IN ('sent', 'pending', 'overdue', 'late');
 
 -- Fast lookups for receipt generation
