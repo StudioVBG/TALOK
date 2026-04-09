@@ -6,23 +6,36 @@
  * Charge les dépôts via /api/deposits et affiche DepositTracker + DepositRestitutionForm.
  */
 
-import React, { useState, useCallback } from "react";
-import useSWR from "swr";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   DepositTracker,
   type SecurityDeposit,
 } from "@/features/billing/components/deposit-tracker";
 import { DepositRestitutionForm } from "@/features/billing/components/deposit-restitution-form";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
-
 export function DepotsGarantieTab() {
-  const { data, isLoading, mutate } = useSWR<{
-    deposits: SecurityDeposit[];
-    pagination: { page: number; limit: number; total: number };
-  }>("/api/deposits", fetcher);
-
+  const [deposits, setDeposits] = useState<SecurityDeposit[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedDeposit, setSelectedDeposit] = useState<SecurityDeposit | null>(null);
+
+  const fetchDeposits = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch("/api/deposits");
+      if (res.ok) {
+        const data = await res.json();
+        setDeposits(data.deposits || []);
+      }
+    } catch (err) {
+      console.error("[DepotsGarantieTab] Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDeposits();
+  }, [fetchDeposits]);
 
   const handleRestitute = useCallback((deposit: SecurityDeposit) => {
     setSelectedDeposit(deposit);
@@ -30,14 +43,14 @@ export function DepotsGarantieTab() {
 
   const handleSuccess = useCallback(() => {
     setSelectedDeposit(null);
-    mutate();
-  }, [mutate]);
+    fetchDeposits();
+  }, [fetchDeposits]);
 
   return (
     <>
       <DepositTracker
-        deposits={data?.deposits || []}
-        loading={isLoading}
+        deposits={deposits}
+        loading={loading}
         onRestitute={handleRestitute}
       />
 
