@@ -8165,7 +8165,6 @@ CREATE POLICY "Ticket messages same lease select"
       -- Admin
       OR public.user_role() = 'admin'
     )
-    -- Messages internes visibles uniquement par owner/admin
     AND (
       NOT is_internal
       OR public.user_role() IN ('owner', 'admin')
