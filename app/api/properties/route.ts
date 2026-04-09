@@ -523,11 +523,7 @@ async function createDraftProperty({
   const insertPayload: Record<string, unknown> = {
     owner_id: profileId,
     legal_entity_id: defaultEntity?.id ?? null,
-    // Support V3 : type_bien (nouveau champ)
-    type_bien: payload.type_bien,
-    // Support Legacy : type (pour rétrocompatibilité)
     type: payload.type_bien,
-    usage_principal: payload.usage_principal ?? "habitation",
     adresse_complete: "Adresse à compléter",
     code_postal: "00000",
     ville: "Ville à préciser",
@@ -536,21 +532,16 @@ async function createDraftProperty({
     nb_pieces: 0,
     nb_chambres: 0,
     ascenseur: false,
-    energie: null,
-    ges: null,
-    // Note: loyer_base n'existe pas dans la table, utiliser loyer_hc
     loyer_hc: 0,
     charges_mensuelles: 0,
     depot_garantie: 0,
     zone_encadrement: false,
-    encadrement_loyers: false,
     unique_code: uniqueCode,
-    // État par défaut pour un draft
     etat: "draft",
   };
 
   const { data } = await insertPropertyRecord(serviceClient, insertPayload);
-  createLogger("createDraftProperty").info("Draft créé", { id: data.id, type_bien: payload.type_bien });
+  createLogger("createDraftProperty").info("Draft créé", { id: data.id, type: payload.type_bien });
   return data;
 }
 

@@ -613,13 +613,14 @@ export async function getSubscriptionStats(): Promise<SubscriptionStats | null> 
   if (error || !subs) return null;
 
   const total_users = subs.length;
-  const paying_users = subs.filter(s => s.plan?.slug !== 'gratuit' && s.status === 'active').length;
+  const entitled = (st: string) => ['active', 'trialing', 'past_due'].includes(st);
+  const paying_users = subs.filter(s => s.plan?.slug !== 'gratuit' && entitled(s.status)).length;
   const free_users = subs.filter(s => s.plan?.slug === 'gratuit').length;
   const trialing_users = subs.filter(s => s.status === 'trialing').length;
   const canceled_users = subs.filter(s => s.status === 'canceled').length;
-  
+
   const mrr = subs
-    .filter(s => s.status === 'active' && s.plan?.price_monthly)
+    .filter(s => entitled(s.status) && s.plan?.price_monthly)
     .reduce((sum, s) => sum + (s.plan?.price_monthly || 0), 0);
 
   return {
@@ -782,7 +783,7 @@ export async function getAdminSubscriptionsList(options?: {
       signatures_used_this_month: 0,
       max_properties: (plan?.max_properties as number) || 3,
       max_signatures: 0,
-      mrr_contribution: sub.status === 'active' ? ((plan?.price_monthly as number) || 0) : 0,
+      mrr_contribution: ['active', 'trialing', 'past_due'].includes(sub.status) ? ((plan?.price_monthly as number) || 0) : 0,
     };
   });
 

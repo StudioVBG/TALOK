@@ -123,9 +123,9 @@ class SubscriptionsService {
       .from("subscription_plans")
       .select("*")
       .eq("slug", slug)
-      .single();
+      .maybeSingle();
 
-    if (error) return null;
+    if (error || !data) return null;
     return data as unknown as Plan;
   }
 
@@ -141,7 +141,7 @@ class SubscriptionsService {
         plan:subscription_plans!plan_id(*)
       `)
       .eq("owner_id", ownerId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       if (error.code !== "PGRST116") {
