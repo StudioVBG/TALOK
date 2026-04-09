@@ -2064,5 +2064,41 @@ export const emailTemplates = {
       </div>
     `, `Demande de devis pour ${escapeHtml(data.propertyAddress)}`),
   }),
+
+  /**
+   * Confirmation de suppression de compte (RGPD Article 17)
+   */
+  accountDeletionConfirmation: (data: {
+    userName: string;
+  }) => ({
+    subject: 'Votre compte Talok a été supprimé',
+    html: baseLayout(`
+      <div class="content">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span style="font-size: 48px;">👋</span>
+        </div>
+
+        <h1>Compte supprimé</h1>
+        <p>Bonjour ${escapeHtml(data.userName)},</p>
+        <p>Conformément à votre demande et au droit à l'effacement (Article 17 du RGPD), votre compte Talok a été supprimé.</p>
+
+        <div class="highlight-box">
+          <p style="font-weight: 600; color: ${COLORS.gray[900]};">Ce qui a été fait :</p>
+          <ul style="color: ${COLORS.gray[700]}; font-size: 14px; margin-top: 8px;">
+            <li>Vos données personnelles ont été anonymisées</li>
+            <li>Vos photos et documents d'identité ont été supprimés</li>
+            <li>Toutes vos sessions ont été fermées</li>
+          </ul>
+          <p style="color: ${COLORS.gray[500]}; font-size: 13px; margin-top: 12px;">
+            Les factures et quittances sont conservées 10 ans (obligation légale comptable).
+          </p>
+        </div>
+
+        <p style="font-size: 13px; color: ${COLORS.gray[500]}; margin-top: 24px;">
+          Pour toute question, contactez notre DPO : <a href="mailto:dpo@talok.fr" style="color: ${COLORS.primary};">dpo@talok.fr</a>
+        </p>
+      </div>
+    `, 'Votre compte Talok a été supprimé conformément au RGPD'),
+  }),
 };
 

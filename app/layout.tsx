@@ -85,6 +85,7 @@ import { AIProvider } from "@/components/providers/ai-provider";
 import { CapacitorProvider } from "@/components/providers/capacitor-provider";
 import { MotionProvider } from "@/components/providers/motion-provider";
 import { AccessibilityProvider } from "@/components/providers/accessibility-provider";
+import { CookieBanner } from "@/components/rgpd/CookieBanner";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -269,6 +270,7 @@ export default function RootLayout({
                       <Navbar />
                       <main id="main-content" className="flex-1" tabIndex={-1}>{children}</main>
                       <Toaster />
+                      <CookieBanner />
                       <LocalStorageMigration />
                       <AccessibilityProvider />
                     </div>
