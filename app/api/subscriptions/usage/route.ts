@@ -72,7 +72,7 @@ export async function GET() {
     }
     const limits = PLANS[planSlug]?.limits || PLANS.gratuit.limits;
 
-    const liveUsage = await getLiveOwnerUsage(supabase as any, profile.id);
+    const liveUsage = await getLiveOwnerUsage(adminClient as any, profile.id);
     const propertiesCount = liveUsage.properties;
     const leasesCount = liveUsage.leases;
 

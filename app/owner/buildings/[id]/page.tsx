@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import type { Metadata, ResolvingMetadata } from "next";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -12,24 +14,28 @@ export async function generateMetadata(
   { params }: PageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  const { id } = await params;
-  const serviceClient = getServiceClient();
+  try {
+    const { id } = await params;
+    const serviceClient = getServiceClient();
 
-  const { data: building } = await serviceClient
-    .from("properties")
-    .select("adresse_complete, ville")
-    .eq("id", id)
-    .eq("type", "immeuble")
-    .single();
+    const { data: building } = await serviceClient
+      .from("properties")
+      .select("adresse_complete, ville")
+      .eq("id", id)
+      .eq("type", "immeuble")
+      .single();
 
-  if (!building) {
-    return { title: "Immeuble non trouvé | Talok" };
+    if (!building) {
+      return { title: "Immeuble non trouvé | Talok" };
+    }
+
+    return {
+      title: `${building.adresse_complete} | Talok`,
+      description: `Gestion de l'immeuble situé à ${building.ville}`,
+    };
+  } catch {
+    return { title: "Immeuble | Talok" };
   }
-
-  return {
-    title: `${building.adresse_complete} | Talok`,
-    description: `Gestion de l'immeuble situé à ${building.ville}`,
-  };
 }
 
 export default async function BuildingDetailPage({ params }: PageProps) {
@@ -80,6 +86,7 @@ export default async function BuildingDetailPage({ params }: PageProps) {
     .single();
 
   if (error || !building) {
+    console.error("[building-detail] Property query failed:", { id, ownerId: profile.id, error });
     notFound();
   }
 

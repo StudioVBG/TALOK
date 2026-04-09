@@ -1,6 +1,9 @@
+export const dynamic = "force-dynamic";
+
 import type { Metadata } from "next";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { UnitsManagementClient } from "./UnitsManagementClient";
 
 export const metadata: Metadata = {
@@ -26,7 +29,10 @@ export default async function UnitsPage({ params }: PageProps) {
     redirect("/auth/signin");
   }
 
-  const { data: profile } = await supabase
+  // Service client pour bypasser RLS (évite récursion user_profile_id())
+  const serviceClient = getServiceClient();
+
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)
@@ -37,7 +43,7 @@ export default async function UnitsPage({ params }: PageProps) {
   }
 
   // Verify building ownership
-  const { data: building, error } = await supabase
+  const { data: building, error } = await serviceClient
     .from("properties")
     .select("id, adresse_complete, ville")
     .eq("id", id)
@@ -51,14 +57,14 @@ export default async function UnitsPage({ params }: PageProps) {
   }
 
   // Fetch building metadata (from buildings table linked to this property)
-  const { data: buildingRecord } = await supabase
+  const { data: buildingRecord } = await serviceClient
     .from("buildings")
     .select("floors, has_ascenseur, has_gardien, has_interphone, has_digicode, has_local_velo, has_local_poubelles")
     .eq("property_id", id)
     .single();
 
   // Fetch existing units
-  const { data: units } = await supabase
+  const { data: units } = await serviceClient
     .from("building_units")
     .select("*")
     .eq("property_id", id)
