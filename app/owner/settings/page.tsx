@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Code2, CreditCard, Lock, Palette, User, Wallet, type LucideIcon } from "lucide-react";
+import { ArrowRight, Code2, CreditCard, Lock, Palette, Shield, User, Wallet, type LucideIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageTransition } from "@/components/ui/page-transition";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +37,12 @@ const coreSettingsItems = [
     description: "Gérez votre abonnement et vos factures Talok",
     href: "/owner/money?tab=forfait",
     icon: CreditCard,
+  },
+  {
+    title: "Vie privée & données",
+    description: "Consentements, export et suppression de vos données (RGPD)",
+    href: "/settings/privacy",
+    icon: Shield,
   },
 ];
 

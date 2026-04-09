@@ -582,6 +582,28 @@ export function TenantSettingsClient({
           {/* Sécurité — Changement de mot de passe */}
           <PasswordChangeSection />
 
+          {/* Vie privée & RGPD */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600">
+                  <Shield className="h-5 w-5" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Vie privée & données</CardTitle>
+                  <CardDescription>Consentements, export et suppression (RGPD)</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Link href="/settings/privacy">
+                <Button variant="ghost" className="h-8 px-0 text-sm gap-2">
+                  Gérer mes données <ChevronRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
           {/* Tour guidé */}
           <RestartTourCard />
 
