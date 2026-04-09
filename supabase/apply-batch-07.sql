@@ -1,8 +1,21 @@
 -- Batch 7 — migrations 152 a 169 sur 169
 -- 18 migrations
 
--- HOTFIX: Ensure subscription_addons has profile_id (may exist from older schema without it)
+-- HOTFIX: Ensure subscription_addons has all columns (table may exist from older schema)
 ALTER TABLE subscription_addons ADD COLUMN IF NOT EXISTS profile_id UUID REFERENCES profiles(id);
+ALTER TABLE subscription_addons ADD COLUMN IF NOT EXISTS entity_id UUID;
+ALTER TABLE subscription_addons ADD COLUMN IF NOT EXISTS addon_type TEXT;
+ALTER TABLE subscription_addons ADD COLUMN IF NOT EXISTS stripe_checkout_session_id TEXT;
+ALTER TABLE subscription_addons ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+ALTER TABLE subscription_addons ADD COLUMN IF NOT EXISTS stripe_subscription_item_id TEXT;
+ALTER TABLE subscription_addons ADD COLUMN IF NOT EXISTS stripe_invoice_id TEXT;
+ALTER TABLE subscription_addons ADD COLUMN IF NOT EXISTS quantity INTEGER DEFAULT 1;
+ALTER TABLE subscription_addons ADD COLUMN IF NOT EXISTS consumed_count INTEGER DEFAULT 0;
+ALTER TABLE subscription_addons ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+ALTER TABLE subscription_addons ADD COLUMN IF NOT EXISTS purchased_at TIMESTAMPTZ DEFAULT now();
+ALTER TABLE subscription_addons ADD COLUMN IF NOT EXISTS activated_at TIMESTAMPTZ;
+ALTER TABLE subscription_addons ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE subscription_addons ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMPTZ;
 
 -- === [152/169] 20260408120000_subscription_addons.sql ===
 -- ============================================================
