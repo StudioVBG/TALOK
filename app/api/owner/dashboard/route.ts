@@ -570,7 +570,20 @@ export async function GET(request: Request) {
     recentActivity.sort((a, b) => b.date.localeCompare(a.date));
     const limitedActivity = recentActivity.slice(0, 10);
 
+    // Compute entity-filtered KPI counts so the client can update dashboard state
+    const activeLeaseStatuses = ["active", "notice_given", "amended"];
+    const pendingLeaseStatuses = ["sent", "pending_signature", "partially_signed", "pending_owner_signature", "fully_signed"];
+    const filteredCounts = {
+      properties: { total: (properties || []).length },
+      leases: {
+        active: (leases || []).filter((l: any) => activeLeaseStatuses.includes(l.statut)).length,
+        pending: (leases || []).filter((l: any) => pendingLeaseStatuses.includes(l.statut)).length,
+        total: (leases || []).length,
+      },
+    };
+
     return NextResponse.json({
+      counts: filteredCounts,
       zone1_tasks: tasks.slice(0, 5), // Max 5 tâches
       recentActivity: limitedActivity,
       zone2_finances: {

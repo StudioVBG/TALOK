@@ -139,6 +139,10 @@ CREATE POLICY "user_consents_update_own" ON user_consents
 
 -- 5. Ajouter un CHECK constraint sur telephone (format E.164)
 -- Le format E.164 commence par + suivi de 1 à 15 chiffres
+-- D'abord nettoyer les données existantes non conformes
+UPDATE profiles SET telephone = NULL
+  WHERE telephone IS NOT NULL
+    AND telephone !~ '^\+[1-9]\d{1,14}$';
 ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_telephone_check;
 ALTER TABLE profiles ADD CONSTRAINT profiles_telephone_check
   CHECK (telephone IS NULL OR telephone ~ '^\+[1-9]\d{1,14}$');

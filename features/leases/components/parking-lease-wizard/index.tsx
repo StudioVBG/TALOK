@@ -259,7 +259,7 @@ export function ParkingLeaseWizard({ propertyId, onComplete, onCancel }: Parking
       
       const lease: Partial<ParkingLease> = {
         reference: `PARK-${Date.now()}`,
-        status: "draft",
+        statut: "draft",
         parking: {
           propertyId,
           address: formData.owner.address || "",

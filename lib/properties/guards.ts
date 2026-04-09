@@ -158,7 +158,7 @@ export async function canDeleteProperty(
       .select('id', { count: 'exact', head: true })
       .eq('property_id', propertyId),
     supabase
-      .from('property_photos')
+      .from('photos')
       .select('id', { count: 'exact', head: true })
       .eq('property_id', propertyId),
   ]);

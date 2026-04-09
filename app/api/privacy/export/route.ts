@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
         .select(`
           *,
           units (*),
-          property_photos (*),
+          photos (*),
           property_rooms (*)
         `)
         .eq("owner_id", profileId);

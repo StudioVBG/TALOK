@@ -34,7 +34,8 @@ function formatCurrency(amount: number): string {
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("fr-FR");
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("fr-FR");
 }
 
 export function InvoiceDetailClient() {
@@ -96,11 +97,12 @@ export function InvoiceDetailClient() {
   }
 
   const dueDate = invoice.due_date || invoice.date_echeance;
-  const daysOverdue = dueDate
+  const dueDateParsed = dueDate ? new Date(dueDate) : null;
+  const daysOverdue = dueDateParsed && !isNaN(dueDateParsed.getTime())
     ? Math.max(
         0,
         Math.floor(
-          (Date.now() - new Date(dueDate).getTime()) / (1000 * 60 * 60 * 24)
+          (Date.now() - dueDateParsed.getTime()) / (1000 * 60 * 60 * 24)
         )
       )
     : 0;
