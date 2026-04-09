@@ -4,10 +4,9 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { fetchPropertyDetails } from "../../../_data/fetchPropertyDetails";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Zap, ShieldCheck, FileText } from "lucide-react";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { DpeStatusCard } from "@/features/diagnostics/components/dpe-status-card";
+import { DiagnosticsDashboardClient } from "./DiagnosticsDashboardClient";
 
 interface PageProps {
   params: { id: string };
@@ -46,7 +45,7 @@ export default async function PropertyDiagnosticsPage({ params }: PageProps) {
             </Button>
             <div className="h-6 w-px bg-slate-200 hidden sm:block" />
             <h1 className="text-lg font-bold text-slate-900 truncate max-w-[300px]">
-              Diagnostics • {property.adresse_complete}
+              Diagnostics &bull; {property.adresse_complete}
             </h1>
           </div>
         </div>
@@ -60,22 +59,7 @@ export default async function PropertyDiagnosticsPage({ params }: PageProps) {
               <p className="text-slate-500">Gérez et suivez les diagnostics obligatoires pour la mise en location.</p>
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
-              <DpeStatusCard propertyId={id} />
-              
-              {/* Placeholders pour futurs diagnostics */}
-              <CardPlaceholder 
-                title="Diagnostic Amiante" 
-                icon={<ShieldCheck className="h-5 w-5" />} 
-                description="Obligatoire pour les biens dont le permis de construire a été délivré avant juillet 1997."
-              />
-              
-              <CardPlaceholder 
-                title="État des Risques (ERP)" 
-                icon={<Zap className="h-5 w-5" />} 
-                description="Obligatoire si le bien est situé dans une zone couverte par un plan de prévention des risques."
-              />
-            </div>
+            <DiagnosticsDashboardClient propertyId={id} />
           </div>
 
           <div className="space-y-6">
@@ -94,7 +78,19 @@ export default async function PropertyDiagnosticsPage({ params }: PageProps) {
                 </div>
                 <div className="flex items-center gap-2 text-xs text-blue-600">
                   <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                  ERP : Valable 6 mois
+                  Amiante : Illimité si négatif
+                </div>
+                <div className="flex items-center gap-2 text-xs text-blue-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                  Plomb : 1 an si positif, illimité sinon
+                </div>
+                <div className="flex items-center gap-2 text-xs text-blue-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                  Gaz / Électricité : Valable 6 ans
+                </div>
+                <div className="flex items-center gap-2 text-xs text-blue-600">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                  ERP / Termites : Valable 6 mois
                 </div>
               </div>
             </div>
@@ -104,23 +100,3 @@ export default async function PropertyDiagnosticsPage({ params }: PageProps) {
     </div>
   );
 }
-
-function CardPlaceholder({ title, icon, description }: { title: string, icon: React.ReactNode, description: string }) {
-  return (
-    <div className="bg-card rounded-xl border border-slate-200 p-6 opacity-60 grayscale">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-slate-100 text-slate-500">
-            {icon}
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-900">{title}</h3>
-            <p className="text-xs text-slate-500 mt-1">{description}</p>
-          </div>
-        </div>
-        <Badge variant="outline" className="bg-slate-50">Bientôt</Badge>
-      </div>
-    </div>
-  );
-}
-
