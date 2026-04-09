@@ -29,7 +29,7 @@ export const guarantorSituationProEnum = z.enum([
   "autre",
 ]);
 
-export const cautionTypeEnum = z.enum(["simple", "solidaire"]);
+export const cautionTypeEnum = z.enum(["simple", "solidaire", "visale"]);
 
 export const engagementStatusEnum = z.enum([
   "pending_signature",
@@ -128,6 +128,8 @@ export const createEngagementSchema = z.object({
     .max(120, "La durée maximum est de 10 ans")
     .optional()
     .nullable(),
+  visale_number: z.string().max(50).optional().nullable(),
+  invitation_id: z.string().uuid().optional().nullable(),
 });
 
 export const updateEngagementSchema = z.object({
@@ -209,6 +211,49 @@ export const completeGuarantorProfileSchema = createGuarantorProfileSchema.exten
     path: ["revenus_mensuels_nets"],
   }
 );
+
+// ============================================
+// MESSAGES D'ERREUR PERSONNALISÉS
+// ============================================
+
+// ============================================
+// INVITATION GARANT
+// ============================================
+
+export const createGuarantorInvitationSchema = z.object({
+  lease_id: z.string().uuid("ID bail invalide"),
+  tenant_profile_id: z.string().uuid("ID locataire invalide"),
+  guarantor_name: z.string().min(2, "Le nom du garant est requis").max(255),
+  guarantor_email: z.string().email("Email invalide"),
+  guarantor_phone: z
+    .string()
+    .regex(/^\+[1-9]\d{1,14}$/, "Format téléphone invalide (E.164)")
+    .optional()
+    .nullable(),
+  guarantor_type: cautionTypeEnum.default("solidaire"),
+  relationship: z.string().max(255).optional().nullable(),
+});
+
+export type CreateGuarantorInvitationInput = z.infer<typeof createGuarantorInvitationSchema>;
+
+// ============================================
+// LIBÉRATION
+// ============================================
+
+export const liberationReasonEnum = z.enum([
+  "fin_bail",
+  "remplacement_locataire",
+  "depart_colocataire_6mois",
+  "accord_parties",
+  "autre",
+]);
+
+export const liberateEngagementSchema = z.object({
+  reason: liberationReasonEnum,
+  notes: z.string().max(1000).optional().nullable(),
+});
+
+export type LiberateEngagementInput = z.infer<typeof liberateEngagementSchema>;
 
 // ============================================
 // MESSAGES D'ERREUR PERSONNALISÉS
