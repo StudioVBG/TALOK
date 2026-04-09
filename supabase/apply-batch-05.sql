@@ -528,80 +528,80 @@ END;
 $$;
 
 
--- === [80/169] 20260306100001_backfill_initial_invoices.sql ===
--- ============================================
--- Migration : Backfill des factures initiales pour les baux existants
--- Date : 2026-03-06
--- Description :
---   1. Génère les factures initiales manquantes pour les baux fully_signed
---      qui n'ont pas de facture initial_invoice.
---   2. Corrige date_echeance NULL sur les factures initiales existantes.
--- ============================================
-
--- =====================
--- 1. Backfill : générer les factures initiales manquantes
--- =====================
-
-DO $$
-DECLARE
-  v_lease RECORD;
-  v_tenant_id UUID;
-  v_owner_id UUID;
-BEGIN
-  FOR v_lease IN
-    SELECT l.id, l.property_id
-    FROM leases l
-    WHERE l.statut IN ('fully_signed', 'active')
-    AND NOT EXISTS (
-      SELECT 1 FROM invoices i
-      WHERE i.lease_id = l.id
-      AND i.metadata->>'type' = 'initial_invoice'
-    )
-  LOOP
-    -- Trouver le locataire
-    SELECT ls.profile_id INTO v_tenant_id
-    FROM lease_signers ls
-    WHERE ls.lease_id = v_lease.id
-    AND ls.role IN ('locataire', 'locataire_principal', 'colocataire')
-    AND ls.profile_id IS NOT NULL
-    LIMIT 1;
-
-    -- Trouver le propriétaire
-    SELECT p.owner_id INTO v_owner_id
-    FROM properties p WHERE p.id = v_lease.property_id;
-
-    IF v_tenant_id IS NOT NULL AND v_owner_id IS NOT NULL THEN
-      PERFORM generate_initial_signing_invoice(v_lease.id, v_tenant_id, v_owner_id);
-    END IF;
-  END LOOP;
-END $$;
-
--- =====================
--- 2. Fix : corriger date_echeance NULL sur les factures initiales existantes
--- =====================
-
-UPDATE invoices
-SET date_echeance = COALESCE(
-  (SELECT l.date_debut FROM leases l WHERE l.id = invoices.lease_id),
-  created_at::date
-)
-WHERE metadata->>'type' = 'initial_invoice'
-AND date_echeance IS NULL;
-
--- =====================
--- 3. Fix : corriger date_echeance NULL sur toute facture avec statut 'sent' ou 'late'
--- =====================
-
-UPDATE invoices
-SET date_echeance = COALESCE(
-  due_date,
-  (SELECT l.date_debut FROM leases l WHERE l.id = invoices.lease_id),
-  created_at::date
-)
-WHERE date_echeance IS NULL
-AND statut IN ('sent', 'late', 'overdue', 'unpaid');
-
-
+-- SKIP: -- === [80/169] 20260306100001_backfill_initial_invoices.sql ===
+-- SKIP: -- ============================================
+-- SKIP: -- Migration : Backfill des factures initiales pour les baux existants
+-- SKIP: -- Date : 2026-03-06
+-- SKIP: -- Description :
+-- SKIP: --   1. Génère les factures initiales manquantes pour les baux fully_signed
+-- SKIP: --      qui n'ont pas de facture initial_invoice.
+-- SKIP: --   2. Corrige date_echeance NULL sur les factures initiales existantes.
+-- SKIP: -- ============================================
+-- SKIP: 
+-- SKIP: -- =====================
+-- SKIP: -- 1. Backfill : générer les factures initiales manquantes
+-- SKIP: -- =====================
+-- SKIP: 
+-- SKIP: DO $$
+-- SKIP: DECLARE
+-- SKIP:   v_lease RECORD;
+-- SKIP:   v_tenant_id UUID;
+-- SKIP:   v_owner_id UUID;
+-- SKIP: BEGIN
+-- SKIP:   FOR v_lease IN
+-- SKIP:     SELECT l.id, l.property_id
+-- SKIP:     FROM leases l
+-- SKIP:     WHERE l.statut IN ('fully_signed', 'active')
+-- SKIP:     AND NOT EXISTS (
+-- SKIP:       SELECT 1 FROM invoices i
+-- SKIP:       WHERE i.lease_id = l.id
+-- SKIP:       AND i.metadata->>'type' = 'initial_invoice'
+-- SKIP:     )
+-- SKIP:   LOOP
+-- SKIP:     -- Trouver le locataire
+-- SKIP:     SELECT ls.profile_id INTO v_tenant_id
+-- SKIP:     FROM lease_signers ls
+-- SKIP:     WHERE ls.lease_id = v_lease.id
+-- SKIP:     AND ls.role IN ('locataire', 'locataire_principal', 'colocataire')
+-- SKIP:     AND ls.profile_id IS NOT NULL
+-- SKIP:     LIMIT 1;
+-- SKIP: 
+-- SKIP:     -- Trouver le propriétaire
+-- SKIP:     SELECT p.owner_id INTO v_owner_id
+-- SKIP:     FROM properties p WHERE p.id = v_lease.property_id;
+-- SKIP: 
+-- SKIP:     IF v_tenant_id IS NOT NULL AND v_owner_id IS NOT NULL THEN
+-- SKIP:       PERFORM generate_initial_signing_invoice(v_lease.id, v_tenant_id, v_owner_id);
+-- SKIP:     END IF;
+-- SKIP:   END LOOP;
+-- SKIP: END $$;
+-- SKIP: 
+-- SKIP: -- =====================
+-- SKIP: -- 2. Fix : corriger date_echeance NULL sur les factures initiales existantes
+-- SKIP: -- =====================
+-- SKIP: 
+-- SKIP: UPDATE invoices
+-- SKIP: SET date_echeance = COALESCE(
+-- SKIP:   (SELECT l.date_debut FROM leases l WHERE l.id = invoices.lease_id),
+-- SKIP:   created_at::date
+-- SKIP: )
+-- SKIP: WHERE metadata->>'type' = 'initial_invoice'
+-- SKIP: AND date_echeance IS NULL;
+-- SKIP: 
+-- SKIP: -- =====================
+-- SKIP: -- 3. Fix : corriger date_echeance NULL sur toute facture avec statut 'sent' ou 'late'
+-- SKIP: -- =====================
+-- SKIP: 
+-- SKIP: UPDATE invoices
+-- SKIP: SET date_echeance = COALESCE(
+-- SKIP:   due_date,
+-- SKIP:   (SELECT l.date_debut FROM leases l WHERE l.id = invoices.lease_id),
+-- SKIP:   created_at::date
+-- SKIP: )
+-- SKIP: WHERE date_echeance IS NULL
+-- SKIP: AND statut IN ('sent', 'late', 'overdue', 'unpaid');
+-- SKIP: 
+-- SKIP: 
 -- === [81/169] 20260306200000_notify_tenant_digicode_changed.sql ===
 -- =====================================================
 -- Migration: Trigger notification changement digicode
