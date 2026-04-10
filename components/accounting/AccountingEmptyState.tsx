@@ -21,14 +21,14 @@ export function AccountingEmptyState() {
 
       <div className="flex flex-col sm:flex-row items-center gap-3">
         <Link
-          href="/owner/documents/upload"
+          href="/owner/accounting/upload"
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground font-medium text-sm hover:bg-primary/90 transition-colors"
         >
           <FileText className="w-4 h-4" />
           Scanner un justificatif
         </Link>
         <Link
-          href="/owner/money/settings"
+          href="/owner/accounting/bank/connect"
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-card border border-border text-foreground font-medium text-sm hover:bg-muted transition-colors"
         >
           <Building2 className="w-4 h-4" />

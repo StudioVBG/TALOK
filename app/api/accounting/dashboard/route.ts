@@ -159,8 +159,38 @@ export async function GET(request: Request) {
       0
     );
 
-    // Commissions Talok — pas de table dédiée pour le MVP
-    const totalCommissions = 0;
+    // ────────────────────────────────────────────
+    // Commission de gestion (mandant_accounts)
+    // ────────────────────────────────────────────
+    // Pour un propriétaire géré par une agence (mandat de gestion signé),
+    // on retrouve sa ligne dans `mandant_accounts` via `mandant_user_id`.
+    // Le `commission_rate` (en %) s'applique au total des loyers encaissés.
+    // Pour un propriétaire en gestion directe, aucune ligne => commission = 0.
+    let commissionRate = 0;
+    {
+      const { data: mandate } = await (serviceClient as unknown as {
+        from: (t: string) => {
+          select: (s: string) => {
+            eq: (k: string, v: string) => {
+              eq: (k: string, v: boolean) => {
+                maybeSingle: () => Promise<{
+                  data: { commission_rate: number | string | null } | null;
+                }>;
+              };
+            };
+          };
+        };
+      })
+        .from("mandant_accounts")
+        .select("commission_rate")
+        .eq("mandant_user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      commissionRate = Number(mandate?.commission_rate ?? 0) || 0;
+    }
+    const totalCommissions = Math.round(
+      totalRentCollected * (commissionRate / 100) * 100,
+    ) / 100;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const allExpenses = (expenseRows || []) as any[];
     const totalExpenses = allExpenses.reduce(

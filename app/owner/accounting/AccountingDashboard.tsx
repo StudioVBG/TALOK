@@ -56,7 +56,11 @@ import {
 
 export default function AccountingDashboard() {
   return (
-    <PlanGate feature="bank_reconciliation" mode="block">
+    <PlanGate
+      feature="bank_reconciliation"
+      mode="soft"
+      message="Rapprochement bancaire, FEC, récapitulatif fiscal et déclarations incluses à partir du forfait Confort."
+    >
       <AccountingDashboardContent />
     </PlanGate>
   );

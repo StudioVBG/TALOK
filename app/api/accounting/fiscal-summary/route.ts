@@ -168,14 +168,45 @@ export async function GET(request: Request) {
 
     const ownerName = `${profile.prenom || ""} ${profile.nom || ""}`.trim() || "Propriétaire";
 
+    // ────────────────────────────────────────────
+    // Commission de gestion (mandant_accounts)
+    // ────────────────────────────────────────────
+    // Même logique que le dashboard : on cherche un mandat de gestion actif
+    // pour l'utilisateur (mandant_user_id), on applique commission_rate % au
+    // total des loyers encaissés. Propriétaire en gestion directe => 0.
+    let commissionRate = 0;
+    {
+      const { data: mandate } = await (serviceClient as unknown as {
+        from: (t: string) => {
+          select: (s: string) => {
+            eq: (k: string, v: string) => {
+              eq: (k: string, v: boolean) => {
+                maybeSingle: () => Promise<{
+                  data: { commission_rate: number | string | null } | null;
+                }>;
+              };
+            };
+          };
+        };
+      })
+        .from("mandant_accounts")
+        .select("commission_rate")
+        .eq("mandant_user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      commissionRate = Number(mandate?.commission_rate ?? 0) || 0;
+    }
+    const totalCommissions =
+      Math.round(totalRentCollected * (commissionRate / 100) * 100) / 100;
+
     const fiscalData: FiscalSummaryData = {
       year,
       ownerName,
       totalRentCollected,
       totalChargesCollected,
-      totalCommissions: 0,
+      totalCommissions,
       totalExpenses,
-      netIncome: totalRentCollected - totalExpenses,
+      netIncome: totalRentCollected - totalCommissions - totalExpenses,
       monthlyBreakdown,
       byProperty,
     };
