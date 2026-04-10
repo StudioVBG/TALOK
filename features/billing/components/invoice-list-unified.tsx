@@ -33,16 +33,38 @@ import {
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { formatCurrency } from "@/lib/helpers/format";
+import {
+  getInvoiceStatusLabel,
+  getInvoiceStatusType,
+  isPaidStatus,
+  isUnpaidStatus,
+} from "@/lib/helpers/invoice-status-labels";
 
 import { sendInvoiceAction, updateInvoiceStatusAction } from "../actions/invoices";
 import { invoicesService } from "../services/invoices.service";
 
 // Types
+type InvoiceStatus =
+  | "draft"
+  | "sent"
+  | "viewed"
+  | "pending"
+  | "partial"
+  | "paid"
+  | "receipt_generated"
+  | "succeeded"
+  | "late"
+  | "overdue"
+  | "unpaid"
+  | "reminder_sent"
+  | "collection"
+  | "cancelled";
+
 interface Invoice {
   id: string;
   periode: string;
   montant_total: number;
-  statut: "draft" | "sent" | "viewed" | "partial" | "paid" | "late" | "cancelled";
+  statut: InvoiceStatus;
   created_at: string;
   lease_id?: string;
   lease?: {
@@ -140,8 +162,8 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
               <div className="flex flex-col sm:flex-row items-center p-4 gap-4">
                 {/* Icone Statut */}
                 <div className={`p-3 rounded-full shrink-0 ${
-                  invoice.statut === 'paid' ? 'bg-emerald-100 text-emerald-600' :
-                  invoice.statut === 'late' ? 'bg-red-100 text-red-600' :
+                  isPaidStatus(invoice.statut) ? 'bg-emerald-100 text-emerald-600' :
+                  isUnpaidStatus(invoice.statut) ? 'bg-red-100 text-red-600' :
                   invoice.statut === 'partial' ? 'bg-amber-100 text-amber-600' :
                   'bg-blue-100 text-blue-600'
                 }`}>
@@ -175,14 +197,9 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
                   <span className="text-xl font-bold tracking-tight">
                     {formatCurrency(invoice.montant_total)}
                   </span>
-                  <StatusBadge 
-                    status={invoice.statut} 
-                    type={
-                      invoice.statut === 'paid' ? 'success' :
-                      invoice.statut === 'late' ? 'error' :
-                      invoice.statut === 'sent' || invoice.statut === 'viewed' ? 'info' :
-                      invoice.statut === 'partial' ? 'warning' : 'neutral'
-                    }
+                  <StatusBadge
+                    status={getInvoiceStatusLabel(invoice.statut)}
+                    type={getInvoiceStatusType(invoice.statut)}
                   />
                 </div>
 
@@ -217,7 +234,7 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
                             <Send className="mr-2 h-4 w-4" /> Envoyer
                           </DropdownMenuItem>
                         )}
-                        {variant === "owner" && (invoice.statut === "late" || invoice.statut === "sent") && (
+                        {variant === "owner" && (isUnpaidStatus(invoice.statut) || invoice.statut === "sent") && (
                           <DropdownMenuItem
                             onClick={() => handleSendReminder(invoice.id)}
                             disabled={sendingReminderId === invoice.id}
@@ -260,7 +277,7 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
                   {/* --- ACTIONS LOCATAIRE --- */}
                   {variant === "tenant" && (
                     <>
-                      {invoice.statut === 'paid' ? (
+                      {isPaidStatus(invoice.statut) ? (
                          <Button variant="outline" size="sm" className="gap-2">
                            <Download className="h-4 w-4" /> Quittance
                          </Button>
