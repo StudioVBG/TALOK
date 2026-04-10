@@ -4,8 +4,6 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
-import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
-import { sendReceiptEmail } from "@/lib/emails/send-receipt-email";
 import { generateReceipt } from "@/lib/documents/receipt-generator";
 
 /**

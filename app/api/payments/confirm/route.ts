@@ -9,7 +9,6 @@ import { sendPaymentConfirmation } from "@/lib/services/email-service";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { z } from "zod";
-import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
 import { generateReceipt } from "@/lib/documents/receipt-generator";
 import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
 import { getServiceClient } from "@/lib/supabase/service-client";

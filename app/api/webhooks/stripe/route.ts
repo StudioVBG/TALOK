@@ -19,7 +19,6 @@ import Stripe from "stripe";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Json } from "@/lib/supabase/database.types";
 import { reconcileOwnerTransfer } from "@/lib/billing/owner-payout.service";
-import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
 import { generateReceipt } from "@/lib/documents/receipt-generator";
 import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
 import {

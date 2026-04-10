@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { AccountingIntegrationService } from "@/features/accounting/services/accounting-integration.service";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
-import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
 import { generateReceipt } from "@/lib/documents/receipt-generator";
 import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
 
