@@ -1,6 +1,4 @@
-// @ts-nocheck
 "use client";
-// @ts-nocheck — TODO: remove once database.types.ts is regenerated
 import { useState } from "react";
 import { PlanGate } from "@/components/subscription/plan-gate";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -17,10 +15,27 @@ function ECManageContent() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ ecEmail: "", ecFirmName: "", accessLevel: "read" });
-  const { data, isLoading } = useQuery<any>({ queryKey: ["ec-access", activeEntityId], queryFn: () => apiClient.get(`/accounting/ec/access?entityId=${activeEntityId}`), enabled: !!activeEntityId });
-  const inviteMutation = useMutation<any, any, any>({ mutationFn: (body: Record<string, unknown>) => apiClient.post("/accounting/ec/access", body), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["ec-access"] }); setShowForm(false); } });
-  const revokeMutation = useMutation<any, any, any>({ mutationFn: (id: string) => apiClient.delete(`/accounting/ec/access/${id}`), onSuccess: () => queryClient.invalidateQueries({ queryKey: ["ec-access"] }) });
-  const ecList = (data?.data ?? data ?? []) as Array<{ id: string; ec_name: string; ec_email: string; access_level: string; granted_at: string }>;
+  type EcAccessItem = { id: string; ec_name: string; ec_email: string; access_level: string; granted_at: string };
+  type EcAccessResponse = EcAccessItem[] | { data?: EcAccessItem[] };
+  const { data, isLoading } = useQuery<EcAccessResponse>({
+    queryKey: ["ec-access", activeEntityId],
+    queryFn: () => apiClient.get<EcAccessResponse>(`/accounting/ec/access?entityId=${activeEntityId}`),
+    enabled: !!activeEntityId,
+  });
+  const inviteMutation = useMutation<unknown, unknown, Record<string, unknown>>({
+    mutationFn: (body) => apiClient.post("/accounting/ec/access", body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ec-access"] });
+      setShowForm(false);
+    },
+  });
+  const revokeMutation = useMutation<unknown, unknown, string>({
+    mutationFn: (id) => apiClient.delete(`/accounting/ec/access/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["ec-access"] }),
+  });
+  const ecList: EcAccessItem[] = Array.isArray(data)
+    ? data
+    : (data?.data ?? []);
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
@@ -43,7 +58,14 @@ function ECManageContent() {
         <div className="space-y-3">{ecList.map(ec => (
           <div key={ec.id} className="bg-card rounded-xl border border-border p-4 flex items-center justify-between">
             <div><p className="text-sm font-medium">{ec.ec_name}</p><p className="text-xs text-muted-foreground">{ec.ec_email} — {ec.access_level}</p><p className="text-xs text-muted-foreground">Invite le {new Date(ec.granted_at).toLocaleDateString("fr-FR")}</p></div>
-            <button onClick={() => revokeMutation.mutate(ec.id)} className="text-destructive hover:text-destructive/80"><X className="w-4 h-4" /></button>
+            <button
+              type="button"
+              onClick={() => revokeMutation.mutate(ec.id)}
+              aria-label={`Révoquer l'accès de ${ec.ec_name ?? ec.ec_email}`}
+              className="text-destructive hover:text-destructive/80"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         ))}</div>
       )}

@@ -28,8 +28,8 @@ export function UploadStepIndicator({ currentStep }: UploadStepIndicatorProps) {
               <div
                 className={cn(
                   "flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-colors",
-                  isCompleted && "bg-primary text-white",
-                  isCurrent && "bg-[#1B2A6B] text-white ring-2 ring-[#2563EB]",
+                  isCompleted && "bg-primary text-primary-foreground",
+                  isCurrent && "bg-primary/80 text-primary-foreground ring-2 ring-primary",
                   !isCompleted && !isCurrent && "bg-muted text-muted-foreground"
                 )}
               >

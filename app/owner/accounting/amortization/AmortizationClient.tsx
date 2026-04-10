@@ -1,6 +1,4 @@
-// @ts-nocheck
 "use client";
-// @ts-nocheck — TODO: remove once database.types.ts is regenerated
 
 import { useState } from "react";
 import { PlanGate } from "@/components/subscription/plan-gate";
@@ -31,22 +29,37 @@ function AmortizationContent() {
     terrainPercentage: 15,
   });
 
-  const { data, isLoading } = useQuery<any>({
+  type AmortSchedule = {
+    id: string;
+    property_id: string;
+    component: string;
+    total_amount_cents: number;
+    duration_years: number;
+    terrain_percent: number;
+    depreciable_amount_cents: number;
+    amortization_lines: Array<{
+      annual_amount_cents: number;
+      cumulated_amount_cents: number;
+      net_book_value_cents: number;
+    }>;
+  };
+  type AmortResponse = AmortSchedule[] | { data?: AmortSchedule[] };
+
+  const { data, isLoading } = useQuery<AmortResponse>({
     queryKey: ["amortization", activeEntityId],
-    queryFn: () => apiClient.get(`/accounting/amortization?entityId=${activeEntityId}`),
+    queryFn: () => apiClient.get<AmortResponse>(`/accounting/amortization?entityId=${activeEntityId}`),
     enabled: !!activeEntityId,
   });
 
-  const createMutation = useMutation<any, any, any>({
-    mutationFn: (body: Record<string, unknown>) => apiClient.post("/accounting/amortization", body),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["amortization"] }); setShowForm(false); },
+  const createMutation = useMutation<unknown, unknown, Record<string, unknown>>({
+    mutationFn: (body) => apiClient.post("/accounting/amortization", body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["amortization"] });
+      setShowForm(false);
+    },
   });
 
-  const schedules = (data?.data ?? data ?? []) as Array<{
-    id: string; property_id: string; component: string; total_amount_cents: number;
-    duration_years: number; terrain_percent: number; depreciable_amount_cents: number;
-    amortization_lines: Array<{ annual_amount_cents: number; cumulated_amount_cents: number; net_book_value_cents: number }>;
-  }>;
+  const schedules: AmortSchedule[] = Array.isArray(data) ? data : (data?.data ?? []);
 
   // Group by property
   const byProperty = new Map<string, typeof schedules>();

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: Agency Mandants
  * POST /api/accounting/agency/mandants - Create a new mandant account

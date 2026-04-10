@@ -466,7 +466,7 @@ export const TVA_RATES: Record<string, { normal: number; intermediaire: number; 
   mayotte: { normal: 0, intermediaire: 0, reduit: 0, super_reduit: 0 }, // Exonere
 };
 
-type Territory = keyof typeof TVA_RATES;
+export type Territory = keyof typeof TVA_RATES;
 
 /**
  * Validate TVA coherence for a detected rate against territory.
@@ -555,6 +555,56 @@ export function validateOCRAmounts(extracted: {
   if (extracted.taux_tva_percent > 20) errors.push('Taux TVA > 20% — verifier');
 
   return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Resolve the DROM-COM territory from a French postal code.
+ *
+ * DROM-COM overseas codes:
+ *   971 → Guadeloupe
+ *   972 → Martinique
+ *   973 → Guyane (exonérée TVA, octroi de mer)
+ *   974 → Réunion
+ *   976 → Mayotte (exonérée TVA)
+ * Anything else defaults to `metropole`.
+ */
+export function resolveTerritoryFromPostalCode(
+  codePostal: string | null | undefined,
+): Territory {
+  if (!codePostal) return 'metropole';
+  const prefix = codePostal.trim().slice(0, 3);
+  switch (prefix) {
+    case '971': return 'guadeloupe';
+    case '972': return 'martinique';
+    case '973': return 'guyane';
+    case '974': return 'reunion';
+    case '976': return 'mayotte';
+    default: return 'metropole';
+  }
+}
+
+export type TvaRateKind = 'normal' | 'intermediaire' | 'reduit' | 'super_reduit';
+
+/**
+ * Compute the default TVA components for an expense from an HT amount
+ * and the entity's territory. Returns the rate, VAT amount and TTC
+ * total — all rounded to 2 decimals so they can be stored directly on
+ * the expenses row.
+ *
+ * Use the territory-resolved rate as the default when the user doesn't
+ * provide an explicit `tva_taux`. For DROM where the rate is 0% (Guyane,
+ * Mayotte) this correctly sets TVA to 0 and TTC = HT.
+ */
+export function computeTVA(
+  amountHT: number,
+  territory: Territory,
+  rateKind: TvaRateKind = 'normal',
+): { tva_taux: number; tva_montant: number; montant_ttc: number } {
+  const rates = TVA_RATES[territory] ?? TVA_RATES.metropole;
+  const rate = rates[rateKind];
+  const tva_montant = Math.round(amountHT * (rate / 100) * 100) / 100;
+  const montant_ttc = Math.round((amountHT + tva_montant) * 100) / 100;
+  return { tva_taux: rate, tva_montant, montant_ttc };
 }
 
 /**

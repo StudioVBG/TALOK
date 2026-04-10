@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: Categorize & create entry from bank transaction
  * POST /api/accounting/bank/reconciliation/categorize
@@ -64,10 +63,11 @@ export async function POST(request: Request) {
     const { transactionId, journalCode, accountNumber, accountLabel, label, propertyId } =
       validation.data;
 
-    // Fetch the bank transaction
+    // Fetch the bank transaction (plus the parent connection's account_type
+    // so we can derive the correct PCG class-5 account instead of a hardcode).
     const { data: tx, error: txError } = await (supabase as any)
       .from("bank_transactions")
-      .select("*, bank_connections!inner(entity_id)")
+      .select("*, bank_connections!inner(entity_id, account_type)")
       .eq("id", transactionId)
       .single();
 
@@ -76,14 +76,26 @@ export async function POST(request: Request) {
     }
 
     const entityId = tx.bank_connections.entity_id as string;
+    const bankAccountType = (tx.bank_connections.account_type ?? "checking") as
+      | "checking"
+      | "savings"
+      | "other";
     const amountCents = Math.abs(tx.amount_cents as number);
     const isIncome = (tx.amount_cents as number) > 0;
 
     // Get or create current exercise
     const exercise = await getOrCreateCurrentExercise(supabase, entityId);
 
-    // Determine bank account (default 512100)
-    const bankAccount = "512100";
+    // Map the bank connection's account_type (schema:
+    // supabase/migrations/20260406210000_accounting_complete.sql) to the
+    // matching PCG class-5 account number. Keeps the hardcode in a single
+    // map instead of a bare "512100" buried in the entry construction.
+    const PCG_BANK_BY_TYPE: Record<"checking" | "savings" | "other", string> = {
+      checking: "512100", // Compte courant / exploitation
+      savings: "512200",  // Compte épargne / fonds travaux
+      other: "512100",    // Fallback PCG standard
+    };
+    const bankAccount = PCG_BANK_BY_TYPE[bankAccountType] ?? "512100";
 
     // Build double-entry lines:
     // Income (positive amount): debit bank / credit expense account

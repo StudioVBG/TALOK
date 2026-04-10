@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck — TODO: remove once database.types.ts is regenerated
 
 import { PlanGate } from "@/components/subscription/plan-gate";
 import { useBankConnections, BankConnection } from "@/lib/hooks/use-bank-connections";
@@ -172,7 +171,7 @@ function BankAccountsContent() {
         <div className="flex gap-2">
           <Link
             href="/owner/accounting/bank/reconciliation"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:bg-[#1B2A6B] transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
           >
             <Link2 className="w-4 h-4" />
             Rapprochement bancaire
@@ -192,7 +191,7 @@ function BankAccountsContent() {
       ) : (
         <>
           {/* Treasury header card */}
-          <div className="bg-gradient-to-r from-[#2563EB] to-[#1B2A6B] rounded-xl p-6 text-white">
+          <div className="bg-gradient-to-r from-primary to-primary/70 rounded-xl p-6 text-primary-foreground">
             <div className="flex items-center gap-3 mb-2">
               <Building2 className="w-6 h-6 opacity-80" />
               <span className="text-sm font-medium opacity-80">
@@ -357,7 +356,7 @@ function EmptyState() {
       </div>
       <Link
         href="/owner/accounting/bank/connect"
-        className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-white text-sm font-medium hover:bg-[#1B2A6B] transition-colors"
+        className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
       >
         <Plus className="w-4 h-4" />
         Ajouter un compte bancaire

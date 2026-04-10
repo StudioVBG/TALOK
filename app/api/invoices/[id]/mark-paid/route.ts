@@ -215,6 +215,22 @@ export async function POST(
       } catch (receiptError) {
         console.error("[mark-paid] Erreur génération quittance:", receiptError);
       }
+
+      // Off-Stripe receipt → ensure the double-entry `rent_received` is
+      // posted to the owner accounting module (the Stripe webhook does
+      // this inline; non-Stripe paths were missing it). Idempotent via
+      // `reference = payment_id` guard inside the helper.
+      try {
+        const { ensureReceiptAccountingEntry } = await import(
+          "@/lib/accounting/receipt-entry"
+        );
+        await ensureReceiptAccountingEntry(supabase as any, payment.id);
+      } catch (entryError) {
+        console.error(
+          "[mark-paid] Écriture comptable (non bloquante):",
+          entryError,
+        );
+      }
     }
 
     const [{ data: tenantProfile }, { data: ownerProfile }] = await Promise.all([

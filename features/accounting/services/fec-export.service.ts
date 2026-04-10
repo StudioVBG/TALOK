@@ -1,9 +1,17 @@
 /**
- * FEC Export Service
- * Extracted from accounting.service.ts
+ * @deprecated Utiliser `lib/accounting/fec.ts` à la place.
  *
- * Handles the generation and export of FEC (Fichier des Écritures Comptables)
- * format required by French tax authorities.
+ * Ce service est la version historique (mode agence) de l'export FEC : il
+ * construit le FEC depuis les factures/honoraires (`invoices` + `payments`)
+ * et non depuis le moteur double-entry. Il est encore consommé par la route
+ * admin `/api/accounting/fec/export` (SIREN côté agence).
+ *
+ * Pour tout nouveau code (flow propriétaire double-entry, 18 colonnes
+ * art. A47 A-1 LPF, génération depuis `accounting_entries`), utiliser
+ * `generateFEC` et `exportFEC` exportés depuis `@/lib/accounting/fec`.
+ *
+ * Ce fichier sera supprimé une fois la route `/api/accounting/fec/export`
+ * migrée vers le moteur double-entry.
  */
 
 import { createClient } from "@/lib/supabase/client";

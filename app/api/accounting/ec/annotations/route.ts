@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: Expert-Comptable Annotations
  * POST /api/accounting/ec/annotations - Create annotation

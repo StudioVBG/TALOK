@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Hook React Query pour le dashboard comptabilite proprietaire
  *
@@ -54,7 +53,10 @@ interface UseAccountingDashboardOptions {
 
 export function useAccountingDashboard(options: UseAccountingDashboardOptions = {}) {
   const { profile } = useAuth();
-  const entityId = options.entityId ?? profile?.default_entity_id;
+  const entityId =
+    options.entityId ??
+    (profile as { default_entity_id?: string | null } | null)?.default_entity_id ??
+    undefined;
 
   const exerciseQuery = useQuery({
     queryKey: ["accounting", "exercises", entityId],
@@ -66,8 +68,9 @@ export function useAccountingDashboard(options: UseAccountingDashboardOptions = 
         );
         // Return the current open exercise, or the most recent one
         return data?.find((e) => e.status === "open") ?? data?.[0] ?? null;
-      } catch {
-        return null;
+      } catch (error) {
+        console.error("[useAccountingDashboard] exercises query failed:", error);
+        throw error;
       }
     },
     enabled: !!profile && !!entityId,
@@ -85,8 +88,9 @@ export function useAccountingDashboard(options: UseAccountingDashboardOptions = 
         return await apiClient.get<AccountingBalance>(
           `/accounting/exercises/${exerciseId}/balance`
         );
-      } catch {
-        return null;
+      } catch (error) {
+        console.error("[useAccountingDashboard] balance query failed:", error);
+        throw error;
       }
     },
     enabled: !!exerciseId,
@@ -103,8 +107,9 @@ export function useAccountingDashboard(options: UseAccountingDashboardOptions = 
           `/accounting/entries?entityId=${entityId}&limit=5&sort=created_at:desc`
         );
         return data ?? [];
-      } catch {
-        return [];
+      } catch (error) {
+        console.error("[useAccountingDashboard] entries query failed:", error);
+        throw error;
       }
     },
     enabled: !!profile && !!entityId,

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: Single Amortization Schedule
  * GET   /api/accounting/amortization/[id] - Recupere un plan avec ses lignes

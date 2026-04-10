@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 
 import React, { useState, useMemo, useCallback } from "react";
@@ -59,7 +58,10 @@ export function QuickEntryForm({
   exerciseId,
 }: QuickEntryFormProps) {
   const { profile } = useAuth();
-  const resolvedEntityId = entityId ?? profile?.default_entity_id ?? "";
+  const resolvedEntityId =
+    entityId ??
+    (profile as { default_entity_id?: string | null } | null)?.default_entity_id ??
+    "";
   const queryClient = useQueryClient();
 
   const { data: accounts = [] } = useChartOfAccounts(resolvedEntityId);

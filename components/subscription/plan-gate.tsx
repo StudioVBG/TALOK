@@ -6,9 +6,10 @@
  */
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { useSubscription } from "./subscription-provider";
 import { UpgradeModal } from "./upgrade-modal";
-import { Lock, Sparkles } from "lucide-react";
+import { Lock, Sparkles, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type FeatureKey, getRequiredPlanForFeature, FEATURE_LABELS, PLANS } from "@/lib/subscriptions/plans";
 
@@ -17,8 +18,18 @@ interface PlanGateProps {
   children: React.ReactNode;
   fallback?: React.ReactNode;
   className?: string;
-  /** Mode: 'block' empêche l'accès, 'blur' floute le contenu */
-  mode?: "block" | "blur" | "hide";
+  /**
+   * Mode:
+   * - 'block' : opaque overlay, content unreadable behind
+   * - 'blur'  : blurred overlay, content barely visible
+   * - 'hide'  : renders nothing (or the fallback)
+   * - 'soft'  : renders the children normally and shows an inline upsell
+   *             banner on top with the required plan price and a CTA
+   *             towards the subscription page. Use for pages where the
+   *             underlying data is still safe to render (e.g. empty
+   *             accounting dashboard).
+   */
+  mode?: "block" | "blur" | "hide" | "soft";
   /** Message personnalisé */
   message?: string;
   /** Affiche un badge au lieu de bloquer */
@@ -70,6 +81,42 @@ export function PlanGate({
   // Hide mode - ne montre rien
   if (mode === "hide") {
     return fallback || null;
+  }
+
+  // Soft mode - affiche un bandeau d'upsell au-dessus du contenu intact
+  if (mode === "soft") {
+    const requiredPlanData = PLANS[requiredPlan];
+    const priceLabel = `${requiredPlanData.price_monthly}€/mois`;
+    return (
+      <div className={cn("space-y-4", className)}>
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <div className="shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-foreground">
+                {featureLabel?.label ?? "Fonctionnalité premium"} disponible
+                avec le forfait {requiredPlanData.name}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {message ??
+                  featureLabel?.description ??
+                  "Débloquez cette fonctionnalité en passant au forfait supérieur."}
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/owner/money?tab=forfait"
+            className="inline-flex items-center gap-2 shrink-0 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            Passer au {requiredPlanData.name} — {priceLabel}
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
+        {children}
+      </div>
+    );
   }
 
   // Custom fallback

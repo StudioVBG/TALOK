@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: Resolve EC Annotation
  * PATCH /api/accounting/ec/annotations/[id] - Mark annotation as resolved

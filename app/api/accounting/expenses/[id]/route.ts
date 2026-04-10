@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: Expense detail (GET / PUT / DELETE)
  * /api/accounting/expenses/[id]

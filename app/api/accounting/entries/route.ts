@@ -90,7 +90,14 @@ export async function GET(request: Request) {
     const invoiceId = searchParams.get("invoice_id");
     const startDate = searchParams.get("start_date");
     const endDate = searchParams.get("end_date");
-    const pieceRef = searchParams.get("piece_ref");
+    // Full-text search: match on label OR piece_ref. We still accept the
+    // legacy `piece_ref` parameter name for backward compatibility.
+    const search = searchParams.get("search") ?? searchParams.get("piece_ref");
+    // Status filter: 'draft' | 'validated' | 'all' (default). Maps to the
+    // new double-entry boolean `is_validated`.
+    const statusParam = searchParams.get("status");
+    // Source filter (new column): 'manual' | 'stripe' | 'ocr' | 'bank' | ...
+    const sourceParam = searchParams.get("source");
     const MAX_LIMIT = 500;
     const limit = Math.min(parseInt(searchParams.get("limit") || "100") || 100, MAX_LIMIT);
     const offset = Math.max(parseInt(searchParams.get("offset") || "0") || 0, 0);
@@ -110,13 +117,21 @@ export async function GET(request: Request) {
     if (ownerId) query = query.eq("owner_id", ownerId);
     if (propertyId) query = query.eq("property_id", propertyId);
     if (invoiceId) query = query.eq("invoice_id", invoiceId);
-    if (pieceRef) query = query.ilike("piece_ref", `%${pieceRef}%`);
-    if (startDate) query = query.gte("ecriture_date", startDate);
-    if (endDate) query = query.lte("ecriture_date", endDate);
+    if (search) {
+      // Match both the new `label` column and the legacy `piece_ref` so the
+      // user's query finds rows no matter which schema version produced them.
+      const escaped = search.replace(/[%,]/g, (m) => `\\${m}`);
+      query = query.or(`label.ilike.%${escaped}%,piece_ref.ilike.%${escaped}%`);
+    }
+    if (startDate) query = query.gte("entry_date", startDate);
+    if (endDate) query = query.lte("entry_date", endDate);
+    if (statusParam === "draft") query = query.eq("is_validated", false);
+    else if (statusParam === "validated") query = query.eq("is_validated", true);
+    if (sourceParam) query = query.eq("source", sourceParam);
 
     query = query
-      .order("ecriture_date", { ascending: false })
-      .order("ecriture_num", { ascending: false })
+      .order("entry_date", { ascending: false })
+      .order("entry_number", { ascending: false })
       .range(offset, offset + limit - 1);
 
     const { data: entries, error, count } = await query;

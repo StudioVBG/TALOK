@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import AccountingDashboard from "./AccountingDashboard";
 
-export const metadata = { title: "Comptabilite | Talok" };
+export const metadata = { title: "Comptabilité | Talok" };
 
 export default function AccountingPage() {
   return (
