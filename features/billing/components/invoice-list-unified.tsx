@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { 
@@ -40,7 +41,7 @@ import {
   isUnpaidStatus,
 } from "@/lib/helpers/invoice-status-labels";
 
-import { sendInvoiceAction, updateInvoiceStatusAction } from "../actions/invoices";
+import { sendInvoiceAction } from "../actions/invoices";
 import { invoicesService } from "../services/invoices.service";
 
 // Types
@@ -82,8 +83,10 @@ interface InvoiceListProps {
 
 export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [optimisticInvoices, setOptimisticInvoices] = useState(invoices);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
 
   // Fonction pour formater la période (YYYY-MM -> Mois Année)
@@ -107,11 +110,51 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
   };
 
   const handleMarkPaid = async (id: string) => {
+    // Use the canonical `/api/invoices/[id]/mark-paid` route — it creates a
+    // `payments` row, enforces ownership (403 otherwise), runs
+    // `syncInvoiceStatusFromPayments` (which fills `date_paiement`), and
+    // rejects invalid transitions (already paid / cancelled). The old
+    // `updateInvoiceStatusAction` path did none of that AND returned an
+    // `{error}` object instead of throwing, so failures were swallowed
+    // silently while the UI showed a success toast.
+    setMarkingPaidId(id);
     try {
-      await updateInvoiceStatusAction(id, "paid");
+      const res = await fetch(`/api/invoices/${id}/mark-paid`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(
+          body.error || `Erreur HTTP ${res.status} lors de la mise à jour`
+        );
+      }
+
+      // Update local state so the badge flips from "En retard" → "Payée"
+      // without waiting for a full server round-trip.
+      setOptimisticInvoices((prev) =>
+        prev.map((inv) => (inv.id === id ? { ...inv, statut: "paid" } : inv))
+      );
+
       toast({ title: "Facture marquée comme payée" });
-    } catch {
-      toast({ title: "Erreur lors de la mise à jour", variant: "destructive" });
+
+      // Refresh server components so KPIs ("Impayés", "Encaissé") recompute.
+      router.refresh();
+    } catch (error: unknown) {
+      const msg =
+        error instanceof Error
+          ? error.message
+          : "Erreur lors de la mise à jour";
+      console.error("[InvoiceListUnified] Mark paid failed:", error);
+      toast({
+        title: "Erreur",
+        description: msg,
+        variant: "destructive",
+      });
+    } finally {
+      setMarkingPaidId(null);
     }
   };
 
@@ -248,8 +291,16 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
                           </DropdownMenuItem>
                         )}
                         {invoice.statut !== "paid" && (invoice.statut as string) !== "cancelled" && (
-                          <DropdownMenuItem onClick={() => handleMarkPaid(invoice.id)}>
-                            <CheckCircle2 className="mr-2 h-4 w-4" /> Marquer payé
+                          <DropdownMenuItem
+                            onClick={() => handleMarkPaid(invoice.id)}
+                            disabled={markingPaidId === invoice.id}
+                          >
+                            {markingPaidId === invoice.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="mr-2 h-4 w-4" />
+                            )}
+                            Marquer payé
                           </DropdownMenuItem>
                         )}
                         {invoice.statut === "draft" && (
