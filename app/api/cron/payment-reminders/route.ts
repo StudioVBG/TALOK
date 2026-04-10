@@ -7,6 +7,28 @@ import { addDays, format, startOfDay, endOfDay } from "date-fns";
 import { notifyPaymentLate } from "@/lib/services/notification-service";
 
 /**
+ * Normalize any thrown / returned error object into a plain string.
+ *
+ * Supabase PostgrestError objects are plain `{ message, details, hint,
+ * code }` dicts — they are NOT `instanceof Error`, so the previous
+ * `error instanceof Error ? error.message : 'Erreur serveur'` pattern
+ * swallowed every DB failure as a generic message and made the cron
+ * unobservable in production. Same helper as generate-invoices.
+ */
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as Record<string, unknown>).message === "string"
+  ) {
+    return String((error as Record<string, unknown>).message);
+  }
+  return String(error);
+}
+
+/**
  * GET /api/cron/payment-reminders
  *
  * Cron job pour envoyer des rappels de paiement automatiques.
@@ -15,13 +37,19 @@ import { notifyPaymentLate } from "@/lib/services/notification-service";
  * Envoie des rappels:
  * - J-3: Rappel amical avant échéance
  * - J-1: Rappel urgent
- * - J+1: Notification de retard (→ statut "late")
+ * - J+1: Notification de retard
  * - J+7: Relance formelle
  * - J+15: Mise en demeure
  * - J+30: Dernier avertissement avant procédure
  *
  * SYSTÈME CANONIQUE : remplace rent-reminders et l'edge function payment-reminders.
- * Utilise due_date (pas created_at) comme base de calcul.
+ * Utilise `date_echeance` (pas created_at) comme base de calcul.
+ *
+ * Note: la transition automatique `sent` → `overdue` est gérée par la
+ * fonction SQL `mark_overdue_invoices_late()` (cron `mark-overdue-invoices`
+ * à 00:05 UTC). Cette route filtre donc sur BOTH `overdue` et l'ancienne
+ * valeur `late` pour les étapes J+1..J+30 afin de rester compatible avec
+ * les données historiques.
  *
  * Header requis pour authentification CRON:
  * Authorization: Bearer <CRON_SECRET>
@@ -53,13 +81,13 @@ export async function GET(request: Request) {
 
     // ===== RAPPEL J-3 (Rappel amical) =====
     const targetDateJ3 = addDays(today, 3);
-    const { data: invoicesJ3 } = await supabase
+    const { data: invoicesJ3, error: errJ3 } = await supabase
       .from("invoices")
       .select(`
         id,
         montant_total,
         periode,
-        due_date,
+        date_echeance,
         lease_id,
         reminder_count,
         lease:leases!inner(
@@ -68,9 +96,11 @@ export async function GET(request: Request) {
         )
       `)
       .eq("statut", "sent")
-      .gte("due_date", format(startOfDay(targetDateJ3), "yyyy-MM-dd"))
-      .lte("due_date", format(endOfDay(targetDateJ3), "yyyy-MM-dd"))
+      .gte("date_echeance", format(startOfDay(targetDateJ3), "yyyy-MM-dd"))
+      .lte("date_echeance", format(endOfDay(targetDateJ3), "yyyy-MM-dd"))
       .or("reminder_count.is.null,reminder_count.lt.1");
+
+    if (errJ3) throw errJ3;
 
     if (invoicesJ3) {
       for (const invoice of invoicesJ3) {
@@ -78,7 +108,7 @@ export async function GET(request: Request) {
           await sendReminder(supabase, invoice as any, "j_minus_3");
           stats.j_minus_3++;
         } catch (e) {
-          console.error(`Erreur rappel J-3 pour ${(invoice as any).id}:`, e);
+          console.error(`[CRON] payment-reminders J-3 failed for ${(invoice as any).id}:`, extractErrorMessage(e));
           stats.errors++;
         }
       }
@@ -86,13 +116,13 @@ export async function GET(request: Request) {
 
     // ===== RAPPEL J-1 (Rappel urgent) =====
     const targetDateJ1 = addDays(today, 1);
-    const { data: invoicesJ1 } = await supabase
+    const { data: invoicesJ1, error: errJ1 } = await supabase
       .from("invoices")
       .select(`
         id,
         montant_total,
         periode,
-        due_date,
+        date_echeance,
         lease_id,
         reminder_count,
         lease:leases!inner(
@@ -101,9 +131,11 @@ export async function GET(request: Request) {
         )
       `)
       .eq("statut", "sent")
-      .gte("due_date", format(startOfDay(targetDateJ1), "yyyy-MM-dd"))
-      .lte("due_date", format(endOfDay(targetDateJ1), "yyyy-MM-dd"))
+      .gte("date_echeance", format(startOfDay(targetDateJ1), "yyyy-MM-dd"))
+      .lte("date_echeance", format(endOfDay(targetDateJ1), "yyyy-MM-dd"))
       .or("reminder_count.is.null,reminder_count.lt.2");
+
+    if (errJ1) throw errJ1;
 
     if (invoicesJ1) {
       for (const invoice of invoicesJ1) {
@@ -111,21 +143,24 @@ export async function GET(request: Request) {
           await sendReminder(supabase, invoice as any, "j_minus_1");
           stats.j_minus_1++;
         } catch (e) {
-          console.error(`Erreur rappel J-1 pour ${(invoice as any).id}:`, e);
+          console.error(`[CRON] payment-reminders J-1 failed for ${(invoice as any).id}:`, extractErrorMessage(e));
           stats.errors++;
         }
       }
     }
 
     // ===== NOTIFICATION J+1 (Retard) =====
+    // The daily mark_overdue_invoices_late() cron at 00:05 should already
+    // have moved `sent` → `overdue` by the time this runs at 08:00, but
+    // we keep a belt-and-suspenders update below in case that cron failed.
     const targetDatePlus1 = addDays(today, -1);
-    const { data: invoicesPlus1 } = await supabase
+    const { data: invoicesPlus1, error: errPlus1 } = await supabase
       .from("invoices")
       .select(`
         id,
         montant_total,
         periode,
-        due_date,
+        date_echeance,
         lease_id,
         reminder_count,
         lease:leases!inner(
@@ -133,24 +168,27 @@ export async function GET(request: Request) {
           property:properties!inner(owner_id, address)
         )
       `)
-      .in("statut", ["sent", "late"])
-      .gte("due_date", format(startOfDay(targetDatePlus1), "yyyy-MM-dd"))
-      .lte("due_date", format(endOfDay(targetDatePlus1), "yyyy-MM-dd"))
+      .in("statut", ["sent", "overdue", "late"])
+      .gte("date_echeance", format(startOfDay(targetDatePlus1), "yyyy-MM-dd"))
+      .lte("date_echeance", format(endOfDay(targetDatePlus1), "yyyy-MM-dd"))
       .or("reminder_count.is.null,reminder_count.lt.3");
+
+    if (errPlus1) throw errPlus1;
 
     if (invoicesPlus1) {
       for (const invoice of invoicesPlus1) {
         try {
-          // Marquer comme en retard
+          // Marquer comme en retard (idempotent — le cron mark-overdue le
+          // fait déjà à 00:05, mais on couvre le cas où ce cron a raté).
           await supabase
             .from("invoices")
-            .update({ statut: "late" })
+            .update({ statut: "overdue" })
             .eq("id", (invoice as any).id);
 
           await sendReminder(supabase, invoice as any, "j_plus_1");
           stats.j_plus_1++;
         } catch (e) {
-          console.error(`Erreur rappel J+1 pour ${(invoice as any).id}:`, e);
+          console.error(`[CRON] payment-reminders J+1 failed for ${(invoice as any).id}:`, extractErrorMessage(e));
           stats.errors++;
         }
       }
@@ -158,13 +196,13 @@ export async function GET(request: Request) {
 
     // ===== RELANCE J+7 (Formelle) =====
     const targetDatePlus7 = addDays(today, -7);
-    const { data: invoicesPlus7 } = await supabase
+    const { data: invoicesPlus7, error: errPlus7 } = await supabase
       .from("invoices")
       .select(`
         id,
         montant_total,
         periode,
-        due_date,
+        date_echeance,
         lease_id,
         reminder_count,
         lease:leases!inner(
@@ -172,10 +210,12 @@ export async function GET(request: Request) {
           property:properties!inner(owner_id, address)
         )
       `)
-      .eq("statut", "late")
-      .gte("due_date", format(startOfDay(targetDatePlus7), "yyyy-MM-dd"))
-      .lte("due_date", format(endOfDay(targetDatePlus7), "yyyy-MM-dd"))
+      .in("statut", ["overdue", "late"])
+      .gte("date_echeance", format(startOfDay(targetDatePlus7), "yyyy-MM-dd"))
+      .lte("date_echeance", format(endOfDay(targetDatePlus7), "yyyy-MM-dd"))
       .or("reminder_count.is.null,reminder_count.lt.4");
+
+    if (errPlus7) throw errPlus7;
 
     if (invoicesPlus7) {
       for (const invoice of invoicesPlus7) {
@@ -183,7 +223,7 @@ export async function GET(request: Request) {
           await sendReminder(supabase, invoice as any, "j_plus_7");
           stats.j_plus_7++;
         } catch (e) {
-          console.error(`Erreur rappel J+7 pour ${(invoice as any).id}:`, e);
+          console.error(`[CRON] payment-reminders J+7 failed for ${(invoice as any).id}:`, extractErrorMessage(e));
           stats.errors++;
         }
       }
@@ -191,13 +231,13 @@ export async function GET(request: Request) {
 
     // ===== MISE EN DEMEURE J+15 =====
     const targetDatePlus15 = addDays(today, -15);
-    const { data: invoicesPlus15 } = await supabase
+    const { data: invoicesPlus15, error: errPlus15 } = await supabase
       .from("invoices")
       .select(`
         id,
         montant_total,
         periode,
-        due_date,
+        date_echeance,
         lease_id,
         reminder_count,
         lease:leases!inner(
@@ -205,9 +245,11 @@ export async function GET(request: Request) {
           property:properties!inner(owner_id, address)
         )
       `)
-      .eq("statut", "late")
-      .lte("due_date", format(endOfDay(targetDatePlus15), "yyyy-MM-dd"))
+      .in("statut", ["overdue", "late"])
+      .lte("date_echeance", format(endOfDay(targetDatePlus15), "yyyy-MM-dd"))
       .or("reminder_count.is.null,reminder_count.lt.5");
+
+    if (errPlus15) throw errPlus15;
 
     if (invoicesPlus15) {
       for (const invoice of invoicesPlus15) {
@@ -215,7 +257,7 @@ export async function GET(request: Request) {
           await sendReminder(supabase, invoice as any, "j_plus_15");
           stats.j_plus_15++;
         } catch (e) {
-          console.error(`Erreur mise en demeure J+15 pour ${(invoice as any).id}:`, e);
+          console.error(`[CRON] payment-reminders J+15 failed for ${(invoice as any).id}:`, extractErrorMessage(e));
           stats.errors++;
         }
       }
@@ -223,13 +265,13 @@ export async function GET(request: Request) {
 
     // ===== DERNIER AVERTISSEMENT J+30 =====
     const targetDatePlus30 = addDays(today, -30);
-    const { data: invoicesPlus30 } = await supabase
+    const { data: invoicesPlus30, error: errPlus30 } = await supabase
       .from("invoices")
       .select(`
         id,
         montant_total,
         periode,
-        due_date,
+        date_echeance,
         lease_id,
         reminder_count,
         lease:leases!inner(
@@ -237,9 +279,11 @@ export async function GET(request: Request) {
           property:properties!inner(owner_id, address)
         )
       `)
-      .eq("statut", "late")
-      .lte("due_date", format(endOfDay(targetDatePlus30), "yyyy-MM-dd"))
+      .in("statut", ["overdue", "late"])
+      .lte("date_echeance", format(endOfDay(targetDatePlus30), "yyyy-MM-dd"))
       .or("reminder_count.is.null,reminder_count.lt.6");
+
+    if (errPlus30) throw errPlus30;
 
     if (invoicesPlus30) {
       for (const invoice of invoicesPlus30) {
@@ -247,13 +291,11 @@ export async function GET(request: Request) {
           await sendReminder(supabase, invoice as any, "j_plus_30");
           stats.j_plus_30++;
         } catch (e) {
-          console.error(`Erreur avertissement J+30 pour ${(invoice as any).id}:`, e);
+          console.error(`[CRON] payment-reminders J+30 failed for ${(invoice as any).id}:`, extractErrorMessage(e));
           stats.errors++;
         }
       }
     }
-
-    // Log résumé
 
     return NextResponse.json({
       success: true,
@@ -262,9 +304,14 @@ export async function GET(request: Request) {
     });
 
   } catch (error: unknown) {
-    console.error("[CRON] Erreur payment-reminders:", error);
+    const message = extractErrorMessage(error);
+    console.error("[CRON] payment-reminders failed:", message, error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      {
+        success: false,
+        error: message,
+        timestamp: new Date().toISOString(),
+      },
       { status: 500 }
     );
   }
@@ -279,7 +326,7 @@ async function sendReminder(
     id: string;
     montant_total: number;
     periode: string;
-    due_date: string;
+    date_echeance: string;
     lease_id: string;
     reminder_count: number | null;
     lease: {
@@ -356,7 +403,7 @@ async function sendReminder(
         tenant_name: `${signerData.profile?.prenom || ""} ${signerData.profile?.nom || ""}`.trim(),
         amount: invoice.montant_total,
         month: invoice.periode,
-        due_date: invoice.due_date,
+        date_echeance: invoice.date_echeance,
         property_address: invoice.lease?.property?.address,
         urgency: config.urgency,
         title: config.title,
@@ -389,7 +436,7 @@ async function sendReminder(
         owner_id: invoice.lease?.property?.owner_id,
         amount: invoice.montant_total,
         month: invoice.periode,
-        due_date: invoice.due_date,
+        date_echeance: invoice.date_echeance,
         days_late: daysLateMap[type] ?? 0,
         tenant_count: tenantSigners.length,
       },
