@@ -20,9 +20,23 @@ const GrantAccessSchema = z.object({
   accessLevel: z.enum(["read", "annotate", "validate"]),
 });
 
+const SendDeclarationSchema = z.object({
+  action: z.literal("send_declaration"),
+  entityId: z.string().uuid(),
+  year: z.number().int().min(2020),
+  declarationType: z.string().optional(),
+});
+
 /**
  * POST /api/accounting/ec/access
- * Grant an expert-comptable access to an entity's accounting data.
+ *
+ * Two modes (discriminated by `action` field):
+ * - Default (no `action`) : grant an expert-comptable access to an entity's
+ *   accounting data (invite flow).
+ * - `action: "send_declaration"` : notify every active expert-comptable linked
+ *   to the entity that a new fiscal declaration is ready. Does not ship the
+ *   PDF itself — the email contains a link to the owner's Talok workspace
+ *   where the EC can download it from the Exports tab.
  */
 export async function POST(request: Request) {
   try {
@@ -47,6 +61,70 @@ export async function POST(request: Request) {
     if (featureGate) return featureGate;
 
     const body = await request.json();
+
+    // ── Branch 1: send declaration notification to active EC(s) ──────────
+    if (body && typeof body === "object" && (body as Record<string, unknown>).action === "send_declaration") {
+      const sendValidation = SendDeclarationSchema.safeParse(body);
+      if (!sendValidation.success) {
+        throw new ApiError(400, sendValidation.error.errors[0].message);
+      }
+      const { entityId: targetEntityId, year, declarationType } = sendValidation.data;
+
+      // Load active EC accesses for the entity
+      const { data: activeAccesses } = await (supabase as unknown as {
+        from: (t: string) => {
+          select: (s: string) => {
+            eq: (k: string, v: string) => {
+              eq: (k: string, v: boolean) => Promise<{
+                data: Array<{ id: string; ec_email: string; ec_name: string | null }> | null;
+              }>;
+            };
+          };
+        };
+      })
+        .from("ec_access")
+        .select("id, ec_email, ec_name")
+        .eq("entity_id", targetEntityId)
+        .eq("is_active", true);
+
+      if (!activeAccesses || activeAccesses.length === 0) {
+        return NextResponse.json(
+          {
+            error:
+              "Aucun expert-comptable actif n'est lié à cette entité. Invitez-le d'abord depuis Expert-comptable.",
+          },
+          { status: 404 },
+        );
+      }
+
+      const declLabel = declarationType ? declarationType.toUpperCase() : "fiscale";
+      const subject = `Talok — Déclaration ${declLabel} ${year} prête à consulter`;
+      const html = `
+        <h2>Déclaration ${declLabel} ${year}</h2>
+        <p>Bonjour,</p>
+        <p>Une nouvelle déclaration ${declLabel} est disponible pour l'année ${year}.</p>
+        <p>Connectez-vous à votre espace Talok pour consulter et télécharger les exports comptables (récapitulatif fiscal, FEC, grand livre, balance).</p>
+        <p>Cordialement,<br/>L'équipe Talok</p>
+      `;
+
+      await Promise.all(
+        activeAccesses.map((access) =>
+          sendEmail({
+            to: access.ec_email,
+            subject,
+            html,
+            tags: [{ name: "category", value: "ec-declaration" }],
+          }),
+        ),
+      );
+
+      return NextResponse.json({
+        success: true,
+        data: { notified: activeAccesses.length },
+      });
+    }
+
+    // ── Branch 2: invite flow (default) ──────────────────────────────────
     const validation = GrantAccessSchema.safeParse(body);
 
     if (!validation.success) {

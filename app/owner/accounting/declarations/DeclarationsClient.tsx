@@ -6,8 +6,9 @@ import { formatCents } from "@/lib/utils/format-cents";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useEntityStore } from "@/stores/useEntityStore";
+import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link";
-import { ArrowLeft, Download, Send, FileText, Check, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Download, Send, Check, AlertTriangle, Loader2 } from "lucide-react";
 
 export default function DeclarationsClient() {
   return (<PlanGate feature="bank_reconciliation" mode="block"><DeclarationsContent /></PlanGate>);
@@ -15,9 +16,12 @@ export default function DeclarationsClient() {
 
 function DeclarationsContent() {
   const { activeEntityId } = useEntityStore();
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [regime, setRegime] = useState<string>("reel-2044");
   const [exerciseId, setExerciseId] = useState<string>("");
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [sendingEc, setSendingEc] = useState(false);
 
   type ExerciseItem = { id: string; start_date: string; end_date: string; status: string };
   type ExercisesResponse = ExerciseItem[] | { data?: ExerciseItem[] };
@@ -51,6 +55,102 @@ function DeclarationsContent() {
     const { data: _ignored, ...rest } = declaration;
     return rest as DeclarationPayload;
   })();
+
+  // Derive the fiscal year from the selected closed exercise. Fall back to
+  // the current calendar year if the exercise cannot be resolved.
+  const selectedExercise = closedExercises.find((e) => e.id === exerciseId);
+  const selectedYear = selectedExercise
+    ? parseInt(selectedExercise.start_date.slice(0, 4), 10)
+    : new Date().getFullYear();
+
+  const handleDownloadPDF = async () => {
+    if (!activeEntityId || !exerciseId) {
+      toast({
+        title: "Action impossible",
+        description: "Sélectionnez une entité et un exercice clôturé.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setDownloadingPdf(true);
+    try {
+      const params = new URLSearchParams({
+        year: String(selectedYear),
+        entityId: activeEntityId,
+      });
+      const res = await fetch(`/api/accounting/fiscal-summary?${params.toString()}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || "Erreur génération PDF");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `declaration-fiscale-${declarationType}-${selectedYear}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({ title: "PDF téléchargé" });
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description: err instanceof Error ? err.message : "Téléchargement impossible",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
+  const handleSendEC = async () => {
+    if (!activeEntityId || !exerciseId) {
+      toast({
+        title: "Action impossible",
+        description: "Sélectionnez une entité et un exercice clôturé.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSendingEc(true);
+    try {
+      const res = await fetch("/api/accounting/ec/access", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "send_declaration",
+          entityId: activeEntityId,
+          year: selectedYear,
+          declarationType,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || "Erreur envoi");
+      }
+      const payload = (await res.json()) as { data?: { notified?: number } };
+      const notified = payload?.data?.notified ?? 0;
+      toast({
+        title: "Déclaration envoyée à votre expert-comptable",
+        description:
+          notified > 1
+            ? `${notified} experts-comptables notifiés.`
+            : "1 expert-comptable notifié.",
+      });
+    } catch (err) {
+      toast({
+        title: "Erreur lors de l'envoi",
+        description:
+          err instanceof Error
+            ? err.message
+            : "Impossible de notifier l'expert-comptable.",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingEc(false);
+    }
+  };
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
@@ -136,8 +236,32 @@ function DeclarationsContent() {
           <Check className="w-12 h-12 mx-auto text-emerald-500" />
           <h2 className="text-lg font-semibold">Document pret</h2>
           <div className="flex flex-col gap-3">
-            <button className="bg-primary text-primary-foreground rounded-lg px-4 py-3 text-sm font-medium flex items-center justify-center gap-2"><Download className="w-4 h-4" />Telecharger le PDF</button>
-            <button className="bg-card border border-border rounded-lg px-4 py-3 text-sm font-medium flex items-center justify-center gap-2"><Send className="w-4 h-4" />Envoyer a mon EC</button>
+            <button
+              type="button"
+              onClick={handleDownloadPDF}
+              disabled={downloadingPdf || sendingEc}
+              className="bg-primary text-primary-foreground rounded-lg px-4 py-3 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {downloadingPdf ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              {downloadingPdf ? "Génération..." : "Telecharger le PDF"}
+            </button>
+            <button
+              type="button"
+              onClick={handleSendEC}
+              disabled={downloadingPdf || sendingEc}
+              className="bg-card border border-border rounded-lg px-4 py-3 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {sendingEc ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              {sendingEc ? "Envoi..." : "Envoyer a mon expert-comptable"}
+            </button>
           </div>
           <p className="text-xs text-muted-foreground">Ce document est une aide. Talok ne fournit pas de conseil fiscal. Consultez votre expert-comptable.</p>
         </div>
