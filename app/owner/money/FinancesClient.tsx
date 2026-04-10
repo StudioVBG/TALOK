@@ -42,6 +42,11 @@ import { PageTransition } from "@/components/ui/page-transition";
 import { InvoiceListUnified } from "@/features/billing/components/invoice-list-unified";
 import { PaymentMethodSetup } from "@/features/billing/components/v2/PaymentMethodSetup";
 import {
+  isUnpaidStatus,
+  isPaidStatus,
+  isPendingStatus,
+} from "@/lib/helpers/invoice-status-labels";
+import {
   useOwnerPaymentMethods,
   useOwnerCurrentPaymentMethod,
   useAddOwnerPaymentMethod,
@@ -104,20 +109,30 @@ function EncaissementsTab({ invoices }: { invoices: Invoice[] }) {
     const now = new Date();
     const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-    const thisMonth = invoices.filter(
-      (i) => i.periode?.startsWith(currentMonth) || i.created_at?.startsWith(currentMonth)
-    );
-
-    const revenus = thisMonth
-      .filter((i) => i.statut === "paid")
+    // "Revenus ce mois" = factures payées dont la période correspond au mois courant.
+    // On privilégie la period_start si dispo, sinon on retombe sur periode (YYYY-MM).
+    const revenus = invoices
+      .filter(
+        (i) =>
+          isPaidStatus(i.statut) &&
+          (i.periode?.startsWith(currentMonth) || i.created_at?.startsWith(currentMonth))
+      )
       .reduce((acc, curr) => acc + (curr.montant_total || 0), 0);
 
-    const enAttente = thisMonth
-      .filter((i) => i.statut === "sent" || i.statut === "viewed" || i.statut === "partial")
+    // "En attente" = factures envoyées / vues / partielles du mois courant (pas encore payées
+    // mais pas encore en retard non plus).
+    const enAttente = invoices
+      .filter(
+        (i) =>
+          isPendingStatus(i.statut) &&
+          (i.periode?.startsWith(currentMonth) || i.created_at?.startsWith(currentMonth))
+      )
       .reduce((acc, curr) => acc + (curr.montant_total || 0), 0);
 
-    const impayes = thisMonth
-      .filter((i) => i.statut === "late")
+    // "Impayés" = toutes les factures en retard (tous mois confondus),
+    // pas seulement celles du mois courant. Inclut late/overdue/unpaid/reminder_sent/collection.
+    const impayes = invoices
+      .filter((i) => isUnpaidStatus(i.statut))
       .reduce((acc, curr) => acc + (curr.montant_total || 0), 0);
 
     return { revenus, enAttente, impayes };
