@@ -42,27 +42,40 @@ table `subscription_addons`, flux Checkout, webhooks, `checkLimit()` unifié, co
 
 ## 2. Grille tarifaire complète
 
-### 2.1 Forfaits standard
+### 2.1 Plans proprietaires / SCI
 
-| Plan | Prix HT/mois | Annuel (-20%) | Biens | Users | Signatures/mois | Stockage | Bien suppl. |
-|------|-------------|---------------|-------|-------|----------------|----------|-------------|
-| Gratuit | 0 | 0 | 1 | 1 | 0 | 100 Mo | -- |
-| Starter | 9 | 7,50/mois | 3 | 1 | 0 | 1 Go | +3/bien |
-| Confort | 35 | 28/mois | 10 | 2 | 2 | 5 Go | +2,50/bien |
-| Pro | 69 | 55/mois | 50 | 5 | 10 | 30 Go | +2/bien |
+| | Gratuit | Starter | Confort | Pro |
+|---|---|---|---|---|
+| **Prix HT** | 0 | **9/mois - 86/an** | **35/mois - 349/an** | **69/mois - 687/an** |
+| **Prix TTC (metropole 20%)** | 0 | 10,80 | 42 | 82,80 |
+| **Prix TTC (Martinique/Guadeloupe 8,5%)** | 0 | 9,77 | 37,98 | 74,87 |
+| Biens | 1 | 3 | 10 | 50 |
+| +bien supplementaire | -- | +3 | +2,50 | +2 |
+| Utilisateurs | 1 | 1 | 2 | 5 |
+| Signatures/mois | 0 | 0 | 2 | 10 |
+| Quittances PDF | oui | oui auto | oui auto | oui auto |
+| Suivi des loyers | oui | oui | oui | oui |
+| Paiement en ligne (CB/SEPA) | -- | oui | oui | oui |
+| Portail locataire | Basique | oui | oui | oui |
+| Open Banking | -- | -- | oui | oui |
+| Scoring locataire IA | -- | -- | oui | oui |
+| EDL numerique | -- | -- | oui | oui |
+| Assurance GLI | -- | -5% | -10% | -15% |
+| Relances SMS auto | -- | -- | -- | oui |
+| API lecture + ecriture | -- | -- | -- | oui |
+| Gestion prestataires | -- | -- | -- | oui |
+| Support | Email | Email | Email 24h | Chat prioritaire |
 
-### 2.2 Forfaits Enterprise
+**Annuel = -20%** (affichage badge "-20%" sur le toggle).
+**1er mois offert** sur tous les plans payants, 30 jours d'essai gratuit.
+**Enterprise** : a partir de 249/mois pour agences (contactez-nous).
 
-| Plan | Prix HT/mois | Annuel (-20%) | Biens | Signatures | AM | White Label | SLA |
-|------|-------------|---------------|-------|-----------|-----|------------|-----|
-| Enterprise S | 249 | 199/mois | 50-100 | 25 | Partage | Non | 99% |
-| Enterprise M | 349 | 279/mois | 100-200 | 40 | Partage | Basique | 99% |
-| Enterprise L | 499 | 399/mois | 200-500 | 60 | Dedie | Complet | 99,5% |
-| Enterprise XL | 799 | 639/mois | 500+ | Illimite | Dedie+formations | Complet | 99,9% |
+**Regles d'affichage des prix :**
+- Les prix affiches sur la page `/tarifs` sont **TTC** (HT + TVA territoire)
+- Le selecteur territoire change dynamiquement le TTC affiche
+- Les prix **Stripe sont en HT** (la TVA est calculee cote serveur)
 
-**1er mois offert** sur Starter, Confort, Pro (trial_days: 30).
-
-### 2.3 Frais de paiement
+### 2.2 Frais de paiement
 
 | Type | Standard | Enterprise | Cout Stripe | Marge |
 |------|----------|-----------|-------------|-------|
@@ -70,7 +83,7 @@ table `subscription_addons`, flux Checkout, webhooks, `checkLimit()` unifié, co
 | SEPA | 0,50 | 0,40 | 0,35 | 30% / 12,5% |
 | Virement | Gratuit | Gratuit | -- | -- |
 
-### 2.4 Signatures electroniques
+### 2.3 Signatures electroniques
 
 | Plan | Incluses/mois | Prix hors quota | Cout reel |
 |------|--------------|----------------|-----------|
@@ -168,7 +181,19 @@ if (!hasFeature('hasAccounting')) return <UpgradeGate feature="hasAccounting" />
 if (!canAddProperty(currentCount)) return <UpgradeGate feature="maxProperties" />;
 ```
 
-### 3.4 Flags documentes dans d'autres skills
+### 3.4 PLAN_LIMITS — plan Starter (extrait)
+
+Ajout du plan Starter dans la matrice `PLAN_LIMITS` (centimes pour les prix,
+cohérent avec `lib/subscriptions/pricing-config.ts`) :
+
+```typescript
+starter: { maxProperties: 3, maxUsers: 1, maxSignatures: 0, maxStorageMB: 2048,
+  hasRentCollection: true, rentRate: 0.025, hasAccounting: false, hasFEC: false,
+  hasFiscalAI: false, hasAITalo: false, hasMultiEntity: false, hasAPI: false,
+  extraPropertyPrice: 300 }, // 3/bien supplementaire en centimes
+```
+
+### 3.5 Flags documentes dans d'autres skills
 
 Les flags suivants sont documentes dans des skills dedies et ne sont **pas** dans `PlanLimits` actuel.
 Ne pas modifier `plans.ts` — documentation de reference uniquement :
@@ -221,9 +246,22 @@ Ne pas modifier `plans.ts` — documentation de reference uniquement :
 
 ---
 
-## 6. Webhooks Stripe
+## 6. Produits & Webhooks Stripe
 
-### 6.1 Evenements geres
+### 6.1 Produits a creer
+
+Produits et prix Stripe à provisionner (tous en **HT**, TVA calculée côté serveur) :
+
+| Product Stripe | Type | Prix HT |
+|---|---|---|
+| `prod_talok_starter` -> `price_starter_monthly` | Subscription | 9/mois |
+| `prod_talok_starter` -> `price_starter_annual` | Subscription | 86/an |
+| `prod_talok_confort` -> `price_confort_monthly` | Subscription | 35/mois |
+| `prod_talok_confort` -> `price_confort_annual` | Subscription | 349/an |
+| `prod_talok_pro` -> `price_pro_monthly` | Subscription | 69/mois |
+| `prod_talok_pro` -> `price_pro_annual` | Subscription | 687/an |
+
+### 6.2 Evenements webhook geres
 
 | Evenement | Action |
 |-----------|--------|
@@ -238,13 +276,13 @@ Ne pas modifier `plans.ts` — documentation de reference uniquement :
 | `payout.paid` / `payout.failed` | Sync virement bancaire Connect |
 | `charge.dispute.created` | Notification litige |
 
-### 6.2 Idempotence
+### 6.3 Idempotence
 
 - Table `webhook_logs` avec `stripe_event_id` UNIQUE
 - Chaque handler verifie si l'event a deja ete traite
 - Outbox pattern pour les notifications async
 
-### 6.3 Fichier webhook
+### 6.4 Fichier webhook
 
 `app/api/webhooks/stripe/route.ts` (~1200 lignes)
 
@@ -254,7 +292,7 @@ Imports cles :
 - `syncInvoiceStatusFromPayments` : sync statut facture
 - `buildSubscriptionUpdateFromStripe` : mapping plan Stripe -> Talok
 
-### 6.4 Tables Supabase liees a Stripe
+### 6.5 Tables Supabase liees a Stripe
 
 | Table | Colonnes cles |
 |-------|--------------|
