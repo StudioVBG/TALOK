@@ -5,10 +5,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
-/**
- * Validation schema for updating a unit
- */
 const unitTypeEnum = z.enum(["appartement", "studio", "local_commercial", "parking", "cave", "bureau"]);
 const unitStatusEnum = z.enum(["vacant", "occupe", "travaux", "reserve"]);
 const unitTemplateEnum = z.enum(["studio", "t1", "t2", "t3", "t4", "t5", "local", "parking", "cave"]);
@@ -35,16 +33,13 @@ interface RouteParams {
   params: Promise<{ id: string; unitId: string }>;
 }
 
-/**
- * Helper to verify building access
- */
 async function verifyBuildingAccess(
-  supabase: any,
+  serviceClient: ReturnType<typeof getServiceClient>,
   buildingId: string,
   profileId: string,
   role: string
 ): Promise<void> {
-  const { data: building, error } = await supabase
+  const { data: building, error } = await serviceClient
     .from("buildings")
     .select("id, owner_id")
     .eq("id", buildingId)
@@ -59,20 +54,18 @@ async function verifyBuildingAccess(
   }
 }
 
-/**
- * GET /api/buildings/[id]/units/[unitId] - Get a single unit
- */
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id: buildingId, unitId } = await params;
-    const { user, error, supabase } = await getAuthenticatedUser(request);
+    const { user, error } = await getAuthenticatedUser(request);
 
-    if (error || !user || !supabase) {
+    if (error || !user) {
       throw new ApiError(error?.status || 401, error?.message || "Non authentifié");
     }
 
-    // Get owner profile
-    const { data: profile, error: profileError } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -82,11 +75,9 @@ export async function GET(request: Request, { params }: RouteParams) {
       throw new ApiError(404, "Profil non trouvé");
     }
 
-    // Verify building access
-    await verifyBuildingAccess(supabase, buildingId, profile.id, profile.role);
+    await verifyBuildingAccess(serviceClient, buildingId, profile.id, profile.role);
 
-    // Fetch unit
-    const { data: unit, error: unitError } = await supabase
+    const { data: unit, error: unitError } = await serviceClient
       .from("building_units")
       .select("*")
       .eq("id", unitId)
@@ -103,20 +94,18 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 }
 
-/**
- * PATCH /api/buildings/[id]/units/[unitId] - Update a unit
- */
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
     const { id: buildingId, unitId } = await params;
-    const { user, error, supabase } = await getAuthenticatedUser(request);
+    const { user, error } = await getAuthenticatedUser(request);
 
-    if (error || !user || !supabase) {
+    if (error || !user) {
       throw new ApiError(error?.status || 401, error?.message || "Non authentifié");
     }
 
-    // Get owner profile
-    const { data: profile, error: profileError } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -126,11 +115,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       throw new ApiError(404, "Profil non trouvé");
     }
 
-    // Verify building access
-    await verifyBuildingAccess(supabase, buildingId, profile.id, profile.role);
+    await verifyBuildingAccess(serviceClient, buildingId, profile.id, profile.role);
 
-    // Check unit exists
-    const { data: existing, error: existingError } = await supabase
+    const { data: existing, error: existingError } = await serviceClient
       .from("building_units")
       .select("id")
       .eq("id", unitId)
@@ -141,7 +128,6 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       throw new ApiError(404, "Lot non trouvé");
     }
 
-    // Validate request body
     const body = await request.json();
     const validation = updateUnitSchema.safeParse(body);
 
@@ -149,8 +135,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       throw new ApiError(400, "Données invalides", validation.error.errors);
     }
 
-    // Update unit
-    const { data: unit, error: updateError } = await supabase
+    const { data: unit, error: updateError } = await serviceClient
       .from("building_units")
       .update({
         ...validation.data,
@@ -171,20 +156,18 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 }
 
-/**
- * DELETE /api/buildings/[id]/units/[unitId] - Delete a unit
- */
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
     const { id: buildingId, unitId } = await params;
-    const { user, error, supabase } = await getAuthenticatedUser(request);
+    const { user, error } = await getAuthenticatedUser(request);
 
-    if (error || !user || !supabase) {
+    if (error || !user) {
       throw new ApiError(error?.status || 401, error?.message || "Non authentifié");
     }
 
-    // Get owner profile
-    const { data: profile, error: profileError } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -194,11 +177,9 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       throw new ApiError(404, "Profil non trouvé");
     }
 
-    // Verify building access
-    await verifyBuildingAccess(supabase, buildingId, profile.id, profile.role);
+    await verifyBuildingAccess(serviceClient, buildingId, profile.id, profile.role);
 
-    // Check unit exists and is not occupied
-    const { data: existing, error: existingError } = await supabase
+    const { data: existing, error: existingError } = await serviceClient
       .from("building_units")
       .select("id, status, current_lease_id")
       .eq("id", unitId)
@@ -213,20 +194,6 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       throw new ApiError(400, "Impossible de supprimer un lot occupé ou lié à un bail");
     }
 
-    // Create service client for delete
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      throw new ApiError(500, "Configuration serveur incomplète");
-    }
-
-    const { createClient } = await import("@supabase/supabase-js");
-    const serviceClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
-    // Delete unit
     const { error: deleteError } = await serviceClient
       .from("building_units")
       .delete()
@@ -242,8 +209,3 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     return handleApiError(error);
   }
 }
-
-/**
- * POST /api/buildings/[id]/units/[unitId]/duplicate - Duplicate a unit to other floors
- * Note: This is handled via the main POST route with a special action
- */

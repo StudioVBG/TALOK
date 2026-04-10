@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { fetchPropertyDetails } from "../../../../../_data/fetchPropertyDetails";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, FileUp } from "lucide-react";
@@ -16,10 +17,11 @@ export default async function DpeUploadPage({ params }: PageProps) {
   const { id } = params;
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/signin");
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) redirect("/auth/signin");
 
-  const { data: profile } = await supabase
+  const serviceClient = getServiceClient();
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)

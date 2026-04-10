@@ -150,7 +150,13 @@ export function UnitsManagementClient({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...buildingMeta,
+          building_floors: buildingMeta?.floors ?? 1,
+          has_ascenseur: buildingMeta?.has_ascenseur ?? false,
+          has_gardien: buildingMeta?.has_gardien ?? false,
+          has_interphone: buildingMeta?.has_interphone ?? false,
+          has_digicode: buildingMeta?.has_digicode ?? false,
+          has_local_velo: buildingMeta?.has_local_velo ?? false,
+          has_local_poubelles: buildingMeta?.has_local_poubelles ?? false,
           units: units.map(u => ({
             floor: u.floor,
             position: u.position,

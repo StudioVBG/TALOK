@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { fetchPropertyDetails } from "../../_data/fetchPropertyDetails";
 import { PropertyDetailsClient } from "./PropertyDetailsClient";
 import type { Metadata, ResolvingMetadata } from "next";
@@ -19,10 +20,10 @@ export async function generateMetadata(
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   const { id } = await params;
-  const supabase = await createClient();
-  
+  const serviceClient = getServiceClient();
+
   // Récupérer les infos basiques pour les métadonnées
-  const { data: property } = await supabase
+  const { data: property } = await serviceClient
     .from("properties")
     .select("adresse_complete, ville, surface, nb_pieces, type")
     .eq("id", id)
@@ -55,7 +56,8 @@ export default async function OwnerPropertyDetailPage({ params }: PageProps) {
   }
 
   // 2. Récupérer le profil (nécessaire pour le role ET pour l'ID owner)
-  const { data: profile, error: profileError } = await supabase
+  const serviceClient = getServiceClient();
+  const { data: profile, error: profileError } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)

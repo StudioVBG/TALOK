@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { fetchLeaseDetails } from "../../../_data/fetchLeaseDetails";
 import { SignersClient } from "./SignersClient";
 
@@ -26,7 +27,8 @@ export default async function SignersPage({ params }: PageProps) {
   }
 
   // 2. Récupérer le profil
-  const { data: profile, error: profileError } = await supabase
+  const serviceClient = getServiceClient();
+  const { data: profile, error: profileError } = await serviceClient
     .from("profiles")
     .select("id, role, prenom, nom")
     .eq("user_id", user.id)

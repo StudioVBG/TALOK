@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { Button } from "@/components/ui/button";
 import { 
   ArrowLeft, 
@@ -18,10 +19,12 @@ import { Badge } from "@/components/ui/badge";
 export default async function GlobalDiagnosticsPage() {
   const supabase = await createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/signin");
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) redirect("/auth/signin");
 
-  const { data: profile } = await supabase
+  const serviceClient = getServiceClient();
+
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)
@@ -30,7 +33,7 @@ export default async function GlobalDiagnosticsPage() {
   if (!profile || profile.role !== "owner") redirect("/dashboard");
 
   // Récupérer tous les logements de l'utilisateur
-  const { data: properties } = await supabase
+  const { data: properties } = await serviceClient
     .from("properties")
     .select("id, adresse_complete, ville, type, surface, nb_pieces")
     .eq("owner_id", profile.id)

@@ -3,15 +3,12 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { createLogger } from "@/lib/logging/structured-logger";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
-/**
- * Validation schema for creating a unit
- */
 const unitTypeEnum = z.enum(["appartement", "studio", "local_commercial", "parking", "cave", "bureau"]);
 const unitStatusEnum = z.enum(["vacant", "occupe", "travaux", "reserve"]);
 const unitTemplateEnum = z.enum(["studio", "t1", "t2", "t3", "t4", "t5", "local", "parking", "cave"]);
@@ -37,16 +34,13 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-/**
- * Helper to verify building access
- */
 async function verifyBuildingAccess(
-  supabase: SupabaseClient,
+  serviceClient: ReturnType<typeof getServiceClient>,
   buildingId: string,
   profileId: string,
   role: string
 ): Promise<void> {
-  const { data: building, error } = await supabase
+  const { data: building, error } = await serviceClient
     .from("buildings")
     .select("id, owner_id")
     .eq("id", buildingId)
@@ -61,20 +55,18 @@ async function verifyBuildingAccess(
   }
 }
 
-/**
- * GET /api/buildings/[id]/units - Get all units for a building
- */
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id: buildingId } = await params;
-    const { user, error, supabase } = await getAuthenticatedUser(request);
+    const { user, error } = await getAuthenticatedUser(request);
 
-    if (error || !user || !supabase) {
+    if (error || !user) {
       throw new ApiError(error?.status || 401, error?.message || "Non authentifié");
     }
 
-    // Get owner profile
-    const { data: profile, error: profileError } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -84,11 +76,9 @@ export async function GET(request: Request, { params }: RouteParams) {
       throw new ApiError(404, "Profil non trouvé");
     }
 
-    // Verify building access
-    await verifyBuildingAccess(supabase, buildingId, profile.id, profile.role);
+    await verifyBuildingAccess(serviceClient, buildingId, profile.id, profile.role);
 
-    // Fetch units
-    const { data: units, error: unitsError } = await supabase
+    const { data: units, error: unitsError } = await serviceClient
       .from("building_units")
       .select("*")
       .eq("building_id", buildingId)
@@ -106,23 +96,21 @@ export async function GET(request: Request, { params }: RouteParams) {
   }
 }
 
-/**
- * POST /api/buildings/[id]/units - Create a new unit (or bulk create)
- */
 export async function POST(request: Request, { params }: RouteParams) {
   try {
     const rateLimitResponse = applyRateLimit(request, "property");
     if (rateLimitResponse) return rateLimitResponse;
 
     const { id: buildingId } = await params;
-    const { user, error, supabase } = await getAuthenticatedUser(request);
+    const { user, error } = await getAuthenticatedUser(request);
 
-    if (error || !user || !supabase) {
+    if (error || !user) {
       throw new ApiError(error?.status || 401, error?.message || "Non authentifié");
     }
 
-    // Get owner profile
-    const { data: profile, error: profileError } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -132,33 +120,16 @@ export async function POST(request: Request, { params }: RouteParams) {
       throw new ApiError(404, "Profil non trouvé");
     }
 
-    // Verify building access
-    await verifyBuildingAccess(supabase, buildingId, profile.id, profile.role);
+    await verifyBuildingAccess(serviceClient, buildingId, profile.id, profile.role);
 
-    // Parse body
     const body = await request.json();
 
-    // Check if bulk create
     if (body.units && Array.isArray(body.units)) {
       const validation = bulkCreateSchema.safeParse(body);
       if (!validation.success) {
         throw new ApiError(400, "Données invalides", validation.error.errors);
       }
 
-      // Create service client
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-      if (!supabaseUrl || !serviceRoleKey) {
-        throw new ApiError(500, "Configuration serveur incomplète");
-      }
-
-      const { createClient } = await import("@supabase/supabase-js");
-      const serviceClient = createClient(supabaseUrl, serviceRoleKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
-
-      // Bulk insert
       const unitsToInsert = validation.data.units.map(unit => ({
         building_id: buildingId,
         ...unit,
@@ -177,26 +148,11 @@ export async function POST(request: Request, { params }: RouteParams) {
       return NextResponse.json({ units }, { status: 201 });
     }
 
-    // Single unit create
     const validation = createUnitSchema.safeParse(body);
     if (!validation.success) {
       throw new ApiError(400, "Données invalides", validation.error.errors);
     }
 
-    // Create service client
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      throw new ApiError(500, "Configuration serveur incomplète");
-    }
-
-    const { createClient } = await import("@supabase/supabase-js");
-    const serviceClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
-    // Insert unit
     const { data: unit, error: insertError } = await serviceClient
       .from("building_units")
       .insert({

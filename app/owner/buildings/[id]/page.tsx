@@ -17,12 +17,12 @@ export async function generateMetadata(
     const { id } = await params;
     const serviceClient = getServiceClient();
 
-    // Essayer par property_id d'abord
+    // Essayer par property_id d'abord (sans filtre type pour robustesse)
     let building = (await serviceClient
       .from("properties")
       .select("adresse_complete, ville")
       .eq("id", id)
-      .eq("type", "immeuble")
+      .is("deleted_at", null)
       .maybeSingle()).data;
 
     // Fallback par building_id → property_id
@@ -37,6 +37,7 @@ export async function generateMetadata(
           .from("properties")
           .select("adresse_complete, ville")
           .eq("id", br.property_id)
+          .is("deleted_at", null)
           .maybeSingle()).data;
       }
     }
@@ -81,13 +82,15 @@ export default async function BuildingDetailPage({ params }: PageProps) {
   }
 
   // Fetch building — le param [id] peut être un property_id OU un building_id
-  // Essayer d'abord par property_id (cas normal), sinon par building_id (fallback)
+  // Stratégie : query large (sans filtre type) puis vérification post-query
   let propertyId = id;
 
-  const { data: building, error } = await serviceClient
+  // 1. Chercher la property par id + owner_id (sans filtre type pour robustesse)
+  const { data: property, error } = await serviceClient
     .from("properties")
     .select(`
       id,
+      type,
       adresse_complete,
       ville,
       code_postal,
@@ -100,12 +103,19 @@ export default async function BuildingDetailPage({ params }: PageProps) {
     `)
     .eq("id", id)
     .eq("owner_id", profile.id)
-    .eq("type", "immeuble")
     .is("deleted_at", null)
     .maybeSingle();
 
-  if (!building) {
-    // Fallback : peut-être que l'URL contient un building_id au lieu d'un property_id
+  if (property) {
+    // Property trouvée — vérifier que c'est bien un immeuble
+    if (property.type !== "immeuble") {
+      // Ce n'est pas un immeuble, rediriger vers la fiche bien classique
+      redirect(`/owner/properties/${id}`);
+    }
+  }
+
+  if (!property) {
+    // 2. Fallback : peut-être que l'URL contient un building_id au lieu d'un property_id
     const { data: buildingRecord } = await serviceClient
       .from("buildings")
       .select("property_id")
@@ -117,10 +127,31 @@ export default async function BuildingDetailPage({ params }: PageProps) {
       redirect(`/owner/buildings/${buildingRecord.property_id}`);
     }
 
-    console.error("[building-detail] Property not found:", { id, ownerId: profile.id, error });
+    // 3. Diagnostic : la property existe-t-elle sans filtre owner_id ?
+    const { data: anyProperty } = await serviceClient
+      .from("properties")
+      .select("id, owner_id, type, deleted_at")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (anyProperty) {
+      console.error("[building-detail] Property exists but access denied:", {
+        id,
+        requestedBy: profile.id,
+        actualOwner: anyProperty.owner_id,
+        ownerMatch: anyProperty.owner_id === profile.id,
+        type: anyProperty.type,
+        deleted_at: anyProperty.deleted_at,
+      });
+    } else {
+      console.error("[building-detail] Property not found in DB at all:", { id, error });
+    }
+
     notFound();
   }
 
+  // À ce stade, property est non-null et de type immeuble
+  const building = property;
   propertyId = building.id;
 
   // Fetch building metadata
@@ -130,30 +161,27 @@ export default async function BuildingDetailPage({ params }: PageProps) {
     .eq("property_id", propertyId)
     .single();
 
-  // Fetch units via building_id (pas property_id qui pointe vers le lot individuel)
-  const units = buildingMeta?.id
-    ? (await serviceClient
-        .from("building_units")
-        .select(`
-          id,
-          floor,
-          position,
-          type,
-          template,
-          surface,
-          nb_pieces,
-          loyer_hc,
-          charges,
-          depot_garantie,
-          status,
-          property_id,
-          current_lease_id,
-          notes
-        `)
-        .eq("building_id", buildingMeta.id)
-        .order("floor", { ascending: true })
-        .order("position", { ascending: true })).data
-    : null;
+  // Fetch units + documents en parallèle
+  const [unitsResult, documentsResult] = await Promise.all([
+    buildingMeta?.id
+      ? serviceClient
+          .from("building_units")
+          .select(`
+            id, floor, position, type, template, surface, nb_pieces,
+            loyer_hc, charges, depot_garantie, status, property_id,
+            current_lease_id, notes
+          `)
+          .eq("building_id", buildingMeta.id)
+          .order("floor", { ascending: true })
+          .order("position", { ascending: true })
+      : Promise.resolve({ data: null }),
+    serviceClient
+      .from("documents")
+      .select("id, type, title, original_filename, file_size, mime_type, created_at, expiry_date, valid_until, ged_status")
+      .eq("property_id", propertyId)
+      .eq("is_current_version", true)
+      .order("created_at", { ascending: false }),
+  ]);
 
   return (
     <BuildingDetailClient
@@ -165,7 +193,8 @@ export default async function BuildingDetailPage({ params }: PageProps) {
         annee_construction: building.annee_construction ?? null,
       }}
       buildingMeta={buildingMeta ?? null}
-      units={units || []}
+      units={unitsResult.data || []}
+      documents={(documentsResult.data as any[]) || []}
     />
   );
 }

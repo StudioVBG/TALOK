@@ -9,10 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 
 async function fetchInspections(profileId: string) {
-  const supabase = await createClient();
   const serviceClient = getServiceClient();
 
-  const { data: properties } = await supabase
+  const { data: properties } = await serviceClient
     .from("properties")
     .select("id")
     .eq("owner_id", profileId);
@@ -85,7 +84,9 @@ export default async function OwnerInspectionsPage() {
 
   if (!user) redirect("/auth/signin");
 
-  const { data: profile } = await supabase
+  const serviceClient = getServiceClient();
+
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)

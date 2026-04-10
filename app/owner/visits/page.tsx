@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { CalendarDays, Clock, Users, CheckCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { redirect } from "next/navigation";
 
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,14 +17,14 @@ import { OwnerAvailabilitySection } from "./availability-section";
 export const dynamic = "force-dynamic";
 
 async function getVisitStats(ownerId: string) {
-  const supabase = await createClient();
+  const serviceClient = getServiceClient();
   const currentMonth = new Date().toISOString().slice(0, 7);
 
   const [pendingRes, confirmedRes, thisMonthRes, totalRes] = await Promise.allSettled([
-    supabase.from("visit_bookings").select("*", { count: "exact", head: true }).eq("owner_id", ownerId).eq("status", "pending"),
-    supabase.from("visit_bookings").select("*", { count: "exact", head: true }).eq("owner_id", ownerId).eq("status", "confirmed"),
-    supabase.from("visit_bookings").select("*", { count: "exact", head: true }).eq("owner_id", ownerId).gte("created_at", `${currentMonth}-01`),
-    supabase.from("visit_bookings").select("*", { count: "exact", head: true }).eq("owner_id", ownerId),
+    serviceClient.from("visit_bookings").select("*", { count: "exact", head: true }).eq("owner_id", ownerId).eq("status", "pending"),
+    serviceClient.from("visit_bookings").select("*", { count: "exact", head: true }).eq("owner_id", ownerId).eq("status", "confirmed"),
+    serviceClient.from("visit_bookings").select("*", { count: "exact", head: true }).eq("owner_id", ownerId).gte("created_at", `${currentMonth}-01`),
+    serviceClient.from("visit_bookings").select("*", { count: "exact", head: true }).eq("owner_id", ownerId),
   ]);
 
   return {
@@ -39,7 +40,9 @@ export default async function OwnerVisitsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/auth/signin");
 
-  const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+  const serviceClient = getServiceClient();
+
+  const { data: profile } = await serviceClient.from("profiles").select("id").eq("user_id", user.id).single();
   const stats = profile ? await getVisitStats(profile.id) : { pending: 0, confirmed: 0, thisMonth: 0, total: 0 };
 
   return (

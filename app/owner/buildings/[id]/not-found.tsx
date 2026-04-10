@@ -14,7 +14,7 @@ export default function NotFound() {
       </p>
       <div className="flex gap-3 mt-2">
         <Button variant="outline" size="sm" asChild>
-          <Link href="/owner/buildings">
+          <Link href="/owner/properties?tab=immeubles">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Retour à la liste
           </Link>

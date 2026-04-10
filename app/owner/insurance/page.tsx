@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { OwnerInsuranceClient } from "./OwnerInsuranceClient";
 
 export default async function OwnerInsurancePage() {
@@ -17,7 +18,9 @@ export default async function OwnerInsurancePage() {
     redirect("/auth/signin");
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const serviceClient = getServiceClient();
+
+  const { data: profile, error: profileError } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)
@@ -28,7 +31,7 @@ export default async function OwnerInsurancePage() {
   }
 
   // Recuperer les proprietes pour le formulaire
-  const { data: properties } = await supabase
+  const { data: properties } = await serviceClient
     .from("properties")
     .select("id, adresse_complete")
     .eq("owner_id", profile.id)

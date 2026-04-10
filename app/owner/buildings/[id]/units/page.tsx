@@ -42,34 +42,46 @@ export default async function UnitsPage({ params }: PageProps) {
     redirect("/dashboard");
   }
 
-  // Verify building ownership
+  // Verify building ownership (sans filtre type pour robustesse)
   const { data: building, error } = await serviceClient
     .from("properties")
-    .select("id, adresse_complete, ville")
+    .select("id, type, adresse_complete, ville")
     .eq("id", id)
     .eq("owner_id", profile.id)
-    .eq("type", "immeuble")
     .is("deleted_at", null)
-    .single();
+    .maybeSingle();
 
-  if (error || !building) {
+  if (!building) {
+    console.error("[units-page] Property not found:", { id, ownerId: profile.id, error });
     notFound();
+  }
+
+  // Si ce n'est pas un immeuble, rediriger vers la fiche bien
+  if (building.type !== "immeuble") {
+    redirect(`/owner/properties/${id}`);
   }
 
   // Fetch building metadata (from buildings table linked to this property)
   const { data: buildingRecord } = await serviceClient
     .from("buildings")
-    .select("floors, has_ascenseur, has_gardien, has_interphone, has_digicode, has_local_velo, has_local_poubelles")
+    .select("id, floors, has_ascenseur, has_gardien, has_interphone, has_digicode, has_local_velo, has_local_poubelles")
     .eq("property_id", id)
-    .single();
+    .maybeSingle();
 
-  // Fetch existing units
-  const { data: units } = await serviceClient
-    .from("building_units")
-    .select("*")
-    .eq("property_id", id)
-    .order("floor", { ascending: true })
-    .order("position", { ascending: true });
+  // Fetch existing units via building_id (relation principale) avec fallback property_id
+  const { data: units } = buildingRecord?.id
+    ? await serviceClient
+        .from("building_units")
+        .select("*")
+        .eq("building_id", buildingRecord.id)
+        .order("floor", { ascending: true })
+        .order("position", { ascending: true })
+    : await serviceClient
+        .from("building_units")
+        .select("*")
+        .eq("property_id", id)
+        .order("floor", { ascending: true })
+        .order("position", { ascending: true });
 
   return (
     <UnitsManagementClient
