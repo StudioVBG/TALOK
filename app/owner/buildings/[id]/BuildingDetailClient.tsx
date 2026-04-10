@@ -9,9 +9,6 @@ import {
   MapPin,
   Layers,
   Home,
-  DoorOpen,
-  Car,
-  Store,
   MoreHorizontal,
   Users,
   Euro,
@@ -19,7 +16,6 @@ import {
   Filter,
   FileText,
   Pencil,
-  Check,
   X,
   Upload,
   AlertCircle,
@@ -31,7 +27,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,8 +63,33 @@ import Link from "next/link";
 import Image from "next/image";
 import type { BuildingRow, BuildingUnitRow } from "@/lib/supabase/database.types";
 import { TYPE_TO_LABEL, type DocumentType } from "@/lib/documents/constants";
+import { SmartImageCard } from "@/components/ui/smart-image-card";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+interface LotPropertyRef {
+  id: string;
+  cover_url: string | null;
+  unique_code: string | null;
+  adresse_complete: string | null;
+}
+
+interface UnitLease {
+  id: string;
+  tenant_id: string | null;
+  date_fin: string | null;
+  statut: string | null;
+  loyer: number | null;
+  charges_forfaitaires: number | null;
+}
+
+interface UnitTenant {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+}
 
 interface BuildingDetailClientProps {
   propertyId: string;
@@ -86,7 +107,10 @@ interface BuildingDetailClientProps {
     updated_at: string;
   };
   buildingMeta: Partial<BuildingRow> | null;
-  units: Array<Partial<BuildingUnitRow>>;
+  units: Array<Partial<BuildingUnitRow> & { property_id?: string | null }>;
+  lotProperties?: LotPropertyRef[];
+  leases?: UnitLease[];
+  tenants?: UnitTenant[];
   documents?: BuildingDocument[];
 }
 
@@ -105,15 +129,6 @@ interface BuildingDocument {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const unitTypeIcons: Record<string, typeof Home> = {
-  appartement: Home,
-  studio: DoorOpen,
-  local_commercial: Store,
-  parking: Car,
-  cave: Layers,
-  bureau: Building2,
-};
-
 const unitTypeLabels: Record<string, string> = {
   appartement: "Appartement",
   studio: "Studio",
@@ -123,11 +138,12 @@ const unitTypeLabels: Record<string, string> = {
   bureau: "Bureau",
 };
 
-const statusColors: Record<string, string> = {
-  vacant: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
-  occupe: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  travaux: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-  reserve: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+/** Palette utilisée par le Badge <status> de SmartImageCard — aligné avec /owner/properties */
+const statusStyles: Record<string, string> = {
+  vacant: "bg-red-500/90 text-white border-red-600",
+  occupe: "bg-emerald-500/90 text-white border-emerald-600",
+  travaux: "bg-amber-500/90 text-white border-amber-600",
+  reserve: "bg-indigo-500/90 text-white border-indigo-600",
 };
 
 const statusLabels: Record<string, string> = {
@@ -259,9 +275,31 @@ export function BuildingDetailClient({
   building,
   buildingMeta,
   units,
+  lotProperties = [],
+  leases = [],
+  tenants = [],
   documents: initialDocuments,
 }: BuildingDetailClientProps) {
   const { toast } = useToast();
+
+  // Index lot properties / leases / tenants by id for O(1) lookup in the lot cards
+  const lotPropertyById = useMemo(() => {
+    const m = new Map<string, LotPropertyRef>();
+    for (const lp of lotProperties) m.set(lp.id, lp);
+    return m;
+  }, [lotProperties]);
+
+  const leaseById = useMemo(() => {
+    const m = new Map<string, UnitLease>();
+    for (const l of leases) m.set(l.id, l);
+    return m;
+  }, [leases]);
+
+  const tenantById = useMemo(() => {
+    const m = new Map<string, UnitTenant>();
+    for (const t of tenants) m.set(t.id, t);
+    return m;
+  }, [tenants]);
 
   // ── Inline editing state ──
   const [saving, setSaving] = useState(false);
@@ -460,7 +498,7 @@ export function BuildingDetailClient({
     });
   }, [liveUnits, filterFloor, filterType, filterStatus]);
 
-  const unitsByFloor = filteredUnits.reduce<Record<number, typeof units>>((acc, unit) => {
+  const unitsByFloor = filteredUnits.reduce<Record<number, typeof filteredUnits>>((acc, unit) => {
     const floor = unit.floor ?? 0;
     if (!acc[floor]) acc[floor] = [];
     acc[floor].push(unit);
@@ -493,6 +531,16 @@ export function BuildingDetailClient({
   // ── Render ──
   return (
     <div className="container mx-auto py-8 px-4 max-w-6xl">
+      {/* Breadcrumb : Mes biens > Immeuble "…" */}
+      <Breadcrumb
+        showHome={false}
+        className="mb-4"
+        items={[
+          { label: "Mes biens", href: "/owner/properties?tab=immeubles" },
+          { label: `Immeuble ${building.adresse_complete}` },
+        ]}
+      />
+
       {/* Back Button */}
       <Button variant="ghost" asChild className="mb-6">
         <Link href="/owner/properties?tab=immeubles">
@@ -728,150 +776,173 @@ export function BuildingDetailClient({
             </div>
           </div>
 
-          {/* Units by Floor */}
+          {/* Units by Floor — identical card to /owner/properties */}
           {floors.length > 0 ? (
-            <div className="space-y-6">
+            <div className="space-y-8">
               <AnimatePresence mode="popLayout">
                 {floors.map((floor, floorIndex) => (
-                  <motion.div
+                  <motion.section
                     key={floor}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ delay: floorIndex * 0.05 }}
                   >
-                    <Card className="bg-card">
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-lg">{floorLabel(floor)}</CardTitle>
-                        <CardDescription>
-                          {unitsByFloor[floor].length} lot{unitsByFloor[floor].length > 1 ? "s" : ""}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {unitsByFloor[floor].map((unit) => {
-                            const Icon = unitTypeIcons[unit.type || "appartement"] || Home;
-                            return (
-                              <motion.div
-                                key={unit.id}
-                                layout
-                                className="border rounded-lg p-4 hover:border-[#2563EB]/40 transition-colors bg-card"
-                              >
-                                <div className="flex items-start justify-between mb-3">
-                                  <div className="flex items-center gap-2">
-                                    <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg">
-                                      <Icon className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-                                    </div>
-                                    <div>
-                                      <p className="font-medium">
-                                        {unitTypeLabels[unit.type || "appartement"]} {unit.position}
-                                      </p>
-                                      <p className="text-sm text-muted-foreground">
-                                        {unit.template && `${(unit.template as string).toUpperCase()} • `}
-                                        {unit.surface}m² • {unit.nb_pieces} pièce{(unit.nb_pieces || 0) > 1 ? "s" : ""}
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                      {unit.property_id && (
-                                        <DropdownMenuItem asChild>
-                                          <Link href={`/owner/properties/${unit.property_id}`}>
-                                            <FileText className="h-3.5 w-3.5 mr-2" />
-                                            Fiche du bien
-                                          </Link>
-                                        </DropdownMenuItem>
-                                      )}
-                                      {unit.status === "occupe" && unit.current_lease_id && (
-                                        <DropdownMenuItem asChild>
-                                          <Link href={`/owner/leases/${unit.current_lease_id}`}>
-                                            <Eye className="h-3.5 w-3.5 mr-2" />
-                                            Voir le bail
-                                          </Link>
-                                        </DropdownMenuItem>
-                                      )}
-                                      {unit.status !== "occupe" && unit.property_id && (
-                                        <DropdownMenuItem asChild>
-                                          <Link href={`/owner/leases/new?propertyId=${unit.property_id}&buildingUnitId=${unit.id}`}>
-                                            <Plus className="h-3.5 w-3.5 mr-2" />
-                                            Créer un bail
-                                          </Link>
-                                        </DropdownMenuItem>
-                                      )}
+                    <div className="mb-3 flex items-end justify-between">
+                      <h3 className="text-lg font-semibold font-[family-name:var(--font-manrope)]">
+                        {floorLabel(floor)}
+                      </h3>
+                      <span className="text-sm text-muted-foreground">
+                        {unitsByFloor[floor].length} lot{unitsByFloor[floor].length > 1 ? "s" : ""}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {unitsByFloor[floor].map((unit) => {
+                        const unitType = (unit.type as string) || "appartement";
+                        const typeLabel = unitTypeLabels[unitType] || unitType;
+                        const status = (unit.status as string) || "vacant";
+                        const lease = unit.current_lease_id ? leaseById.get(unit.current_lease_id) : null;
+                        const tenant = lease?.tenant_id ? tenantById.get(lease.tenant_id) : null;
+                        const lotProperty = unit.property_id ? lotPropertyById.get(unit.property_id) : null;
+
+                        // Badges SmartImageCard alignés avec /owner/properties
+                        const badges: Array<{ label: string; variant?: "default" | "secondary" | "outline" | "destructive" }> = [];
+                        if (unit.surface) badges.push({ label: `${unit.surface} m²`, variant: "secondary" });
+                        if (unit.nb_pieces && unitType !== "parking" && unitType !== "cave") {
+                          badges.push({ label: `${unit.nb_pieces} pièce${(unit.nb_pieces || 0) > 1 ? "s" : ""}`, variant: "secondary" });
+                        }
+                        const loyerTotal = (unit.loyer_hc || 0) + (unit.charges || 0);
+                        badges.push({ label: formatCurrency(loyerTotal), variant: "default" });
+                        if (status === "occupe" && tenant && (tenant.first_name || tenant.last_name)) {
+                          badges.push({
+                            label: `${tenant.first_name ?? ""} ${tenant.last_name ?? ""}`.trim(),
+                            variant: "outline",
+                          });
+                        }
+                        if (status === "occupe" && lease?.date_fin) {
+                          badges.push({
+                            label: `Fin ${formatDateShort(lease.date_fin)}`,
+                            variant: "outline",
+                          });
+                        }
+
+                        const statusBadge = (
+                          <span
+                            className={`px-2 py-1 rounded-md text-xs font-medium border shadow-sm backdrop-blur-md ${statusStyles[status] ?? statusStyles.vacant}`}
+                          >
+                            {statusLabels[status] ?? status}
+                          </span>
+                        );
+
+                        const subtitle = `${typeLabel} • Lot ${unit.position ?? ""}`.trim();
+                        const title = lotProperty?.adresse_complete || `${typeLabel} ${unit.position ?? ""}`.trim();
+                        const href = unit.property_id
+                          ? `/owner/properties/${unit.property_id}`
+                          : `/owner/buildings/${building.id}`;
+
+                        return (
+                          <motion.div key={unit.id} layout className="relative group">
+                            <Link href={href} className="block h-full">
+                              <SmartImageCard
+                                src={lotProperty?.cover_url ?? null}
+                                alt={title}
+                                title={title}
+                                subtitle={subtitle}
+                                badges={badges}
+                                status={statusBadge}
+                              />
+                            </Link>
+
+                            {/* Actions dropdown — superposé à la card */}
+                            <div className="absolute top-3 right-3 z-40">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="secondary"
+                                    size="icon"
+                                    className="h-8 w-8 bg-black/50 hover:bg-black/70 text-white border-0 backdrop-blur-sm"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                  {unit.property_id && (
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/owner/properties/${unit.property_id}`}>
+                                        <FileText className="h-3.5 w-3.5 mr-2" />
+                                        Fiche du bien
+                                      </Link>
+                                    </DropdownMenuItem>
+                                  )}
+                                  {status === "occupe" && unit.current_lease_id && (
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/owner/leases/${unit.current_lease_id}`}>
+                                        <Eye className="h-3.5 w-3.5 mr-2" />
+                                        Voir le bail
+                                      </Link>
+                                    </DropdownMenuItem>
+                                  )}
+                                  {status !== "occupe" && unit.property_id && (
+                                    <DropdownMenuItem asChild>
+                                      <Link href={`/owner/leases/new?propertyId=${unit.property_id}&buildingUnitId=${unit.id}`}>
+                                        <Plus className="h-3.5 w-3.5 mr-2" />
+                                        Créer un bail
+                                      </Link>
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuSeparator />
+                                  {status !== "travaux" && (
+                                    <DropdownMenuItem onClick={() => unit.id && handleUnitStatusChange(unit.id, "travaux")}>
+                                      <Wrench className="h-3.5 w-3.5 mr-2" />
+                                      Marquer en travaux
+                                    </DropdownMenuItem>
+                                  )}
+                                  {status !== "vacant" && !unit.current_lease_id && (
+                                    <DropdownMenuItem onClick={() => unit.id && handleUnitStatusChange(unit.id, "vacant")}>
+                                      <Home className="h-3.5 w-3.5 mr-2" />
+                                      Marquer vacant
+                                    </DropdownMenuItem>
+                                  )}
+                                  {!unit.current_lease_id && status !== "occupe" && (
+                                    <>
                                       <DropdownMenuSeparator />
-                                      {unit.status !== "travaux" && (
-                                        <DropdownMenuItem onClick={() => unit.id && handleUnitStatusChange(unit.id, "travaux")}>
-                                          <Wrench className="h-3.5 w-3.5 mr-2" />
-                                          Marquer en travaux
-                                        </DropdownMenuItem>
-                                      )}
-                                      {unit.status !== "vacant" && !unit.current_lease_id && (
-                                        <DropdownMenuItem onClick={() => unit.id && handleUnitStatusChange(unit.id, "vacant")}>
-                                          <Home className="h-3.5 w-3.5 mr-2" />
-                                          Marquer vacant
-                                        </DropdownMenuItem>
-                                      )}
-                                      {!unit.current_lease_id && unit.status !== "occupe" && (
-                                        <>
-                                          <DropdownMenuSeparator />
-                                          <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:text-red-600">
-                                                <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                                Supprimer le lot
-                                              </DropdownMenuItem>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                              <AlertDialogHeader>
-                                                <AlertDialogTitle>Supprimer ce lot ?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                  Le lot {unitTypeLabels[unit.type || "appartement"]} {unit.position} sera définitivement supprimé. Cette action est irréversible.
-                                                </AlertDialogDescription>
-                                              </AlertDialogHeader>
-                                              <AlertDialogFooter>
-                                                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                                <AlertDialogAction
-                                                  onClick={() => unit.id && handleUnitDelete(unit.id)}
-                                                  className="bg-red-600 hover:bg-red-700"
-                                                >
-                                                  Supprimer
-                                                </AlertDialogAction>
-                                              </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                          </AlertDialog>
-                                        </>
-                                      )}
-                                    </DropdownMenuContent>
-                                  </DropdownMenu>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                  <Badge className={statusColors[unit.status || "vacant"]}>
-                                    {statusLabels[unit.status || "vacant"]}
-                                  </Badge>
-                                  <div className="text-right">
-                                    <p className="font-semibold text-[#2563EB]">
-                                      {(unit.loyer_hc || 0).toLocaleString()}€
-                                      <span className="text-xs font-normal text-muted-foreground">/mois</span>
-                                    </p>
-                                    {(unit.charges || 0) > 0 && (
-                                      <p className="text-xs text-muted-foreground">
-                                        + {(unit.charges || 0).toLocaleString()}€ charges
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              </motion.div>
-                            );
-                          })}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
+                                      <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:text-red-600">
+                                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                            Supprimer le lot
+                                          </DropdownMenuItem>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>Supprimer ce lot ?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                              Le lot {typeLabel} {unit.position} sera définitivement supprimé. Cette action est irréversible.
+                                            </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                            <AlertDialogAction
+                                              onClick={() => unit.id && handleUnitDelete(unit.id)}
+                                              className="bg-red-600 hover:bg-red-700"
+                                            >
+                                              Supprimer
+                                            </AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </motion.section>
                 ))}
               </AnimatePresence>
             </div>
