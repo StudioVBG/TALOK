@@ -7,6 +7,10 @@ import { AccountingKPICard } from "@/components/accounting/AccountingKPICard";
 import { RecentEntries } from "@/components/accounting/RecentEntries";
 import { AccountingEmptyState } from "@/components/accounting/AccountingEmptyState";
 import { formatCents } from "@/lib/utils/format-cents";
+import {
+  resolveTerritoryFromPostalCode,
+  TVA_RATES,
+} from "@/lib/accounting/chart-amort-ocr";
 import { useEntityStore } from "@/stores/useEntityStore";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
@@ -95,11 +99,11 @@ function AccountingDashboardContent() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-manrope)]">
-            Comptabilite
+            Comptabilité
           </h1>
           {currentExercise && (
             <p className="text-sm text-muted-foreground mt-1">
-              Exercice : {currentExercise.label} ({currentExercise.status === "open" ? "En cours" : "Cloture"})
+              Exercice : {currentExercise.label} ({currentExercise.status === "open" ? "En cours" : "Clôturé"})
             </p>
           )}
         </div>
@@ -285,8 +289,28 @@ function formatCurrency(v: number): string {
 function ExpensesAndExports() {
   const { toast } = useToast();
   const activeEntityId = useEntityStore((s) => s.activeEntityId);
+  const activeEntity = useEntityStore((s) => s.getActiveEntity());
   const entityParam = activeEntityId ? `&entityId=${encodeURIComponent(activeEntityId)}` : "";
   const currentYear = new Date().getFullYear();
+
+  // TVA rate badge — derived from the active entity's postal code so
+  // the user sees the DROM-COM rate (8,5% Antilles/Réunion, 0% Guyane/
+  // Mayotte) that will be applied server-side on insert. Falls back to
+  // metropole (20%) when no entity is selected.
+  const territory = resolveTerritoryFromPostalCode(
+    activeEntity?.codePostalSiege ?? null,
+  );
+  const tvaRateNormal = TVA_RATES[territory]?.normal ?? 20;
+  const tvaTerritoryLabel = (() => {
+    switch (territory) {
+      case "martinique": return "Martinique";
+      case "guadeloupe": return "Guadeloupe";
+      case "reunion": return "Réunion";
+      case "guyane": return "Guyane";
+      case "mayotte": return "Mayotte";
+      default: return "Métropole";
+    }
+  })();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [expenses, setExpenses] = useState<any[]>([]);
@@ -417,7 +441,16 @@ function ExpensesAndExports() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="exp-amount">Montant HT (€)</Label>
+                    <div className="flex items-center justify-between gap-2">
+                      <Label htmlFor="exp-amount">Montant HT (€)</Label>
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] font-normal shrink-0"
+                        title={`Taux TVA applicable — ${tvaTerritoryLabel}`}
+                      >
+                        TVA {tvaRateNormal}% · {tvaTerritoryLabel}
+                      </Badge>
+                    </div>
                     <Input id="exp-amount" name="montant" type="number" step="0.01" min="0.01" required />
                   </div>
                   <div className="space-y-2">
@@ -482,6 +515,7 @@ function ExpensesAndExports() {
                 <Button
                   variant="ghost" size="icon"
                   className="shrink-0 text-destructive hover:text-destructive h-7 w-7"
+                  aria-label={`Supprimer la dépense ${exp.description}`}
                   onClick={async () => {
                     const res = await fetch(`/api/accounting/expenses/${exp.id}`, { method: "DELETE" });
                     if (res.ok) {

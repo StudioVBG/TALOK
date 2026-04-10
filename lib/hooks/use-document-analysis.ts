@@ -124,7 +124,13 @@ export function useDocumentAnalysis() {
             setIsAnalyzing(false);
             setError("L'analyse a echoue. Veuillez reessayer.");
           }
-        } catch {
+        } catch (error) {
+          // Inside a setInterval callback — do NOT re-throw, it would
+          // crash the polling. Log and surface a user-facing message.
+          console.error(
+            "[useDocumentAnalysis] status poll failed:",
+            error,
+          );
           stopPolling();
           setIsAnalyzing(false);
           setError("Erreur lors de la verification du statut.");

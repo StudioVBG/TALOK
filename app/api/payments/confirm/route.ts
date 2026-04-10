@@ -241,6 +241,21 @@ export async function POST(request: NextRequest) {
         } catch (receiptError) {
           console.error("[confirm] Erreur génération quittance:", receiptError);
         }
+
+        // Post the matching `rent_received` double-entry for off-Stripe
+        // payments. Idempotent: skipped if an entry with
+        // reference=payment_id already exists.
+        try {
+          const { ensureReceiptAccountingEntry } = await import(
+            "@/lib/accounting/receipt-entry"
+          );
+          await ensureReceiptAccountingEntry(serviceClient as any, payment.id);
+        } catch (entryError) {
+          console.error(
+            "[confirm] Écriture comptable (non bloquante):",
+            entryError,
+          );
+        }
       }
 
       // Envoyer l'email de confirmation

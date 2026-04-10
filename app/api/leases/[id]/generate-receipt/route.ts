@@ -137,6 +137,22 @@ export async function POST(
       );
     }
 
+    // 7-bis. Post the matching `rent_received` double-entry for off-Stripe
+    // payments. Idempotent: the helper skips if an entry with
+    // reference=payment_id already exists (so Stripe-originated payments
+    // stay untouched).
+    try {
+      const { ensureReceiptAccountingEntry } = await import(
+        "@/lib/accounting/receipt-entry"
+      );
+      await ensureReceiptAccountingEntry(serviceClient, payment.id);
+    } catch (entryError) {
+      console.error(
+        "[generate-receipt] Écriture comptable (non bloquante):",
+        entryError,
+      );
+    }
+
     // 8. Envoyer email si demandé
     let emailSent = false;
     if (

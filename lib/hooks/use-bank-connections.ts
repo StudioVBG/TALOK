@@ -56,8 +56,9 @@ export function useBankConnections(options: UseBankConnectionsOptions = {}) {
           `/bank-connect/connections?entityId=${entityId}`
         );
         return data?.connections ?? [];
-      } catch {
-        return [];
+      } catch (error) {
+        console.error("[useBankConnections] fetch failed:", error);
+        throw error;
       }
     },
     enabled: !!profile && !!entityId,

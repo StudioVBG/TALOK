@@ -103,11 +103,9 @@ export function useReconciliation(options: UseReconciliationOptions = {}) {
           transactions: [],
           stats: { total: 0, matched: 0, suggested: 0, orphan: 0 },
         };
-      } catch {
-        return {
-          transactions: [],
-          stats: { total: 0, matched: 0, suggested: 0, orphan: 0 },
-        };
+      } catch (error) {
+        console.error("[useReconciliation] fetch failed:", error);
+        throw error;
       }
     },
     enabled: !!profile && !!entityId,

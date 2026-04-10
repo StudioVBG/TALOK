@@ -12,7 +12,7 @@ export function AccountingEmptyState() {
       </div>
 
       <h2 className="text-xl font-bold text-foreground mb-2">
-        Bienvenue dans votre comptabilite
+        Bienvenue dans votre comptabilité
       </h2>
       <p className="text-sm text-muted-foreground max-w-md mb-8">
         Commencez par scanner un justificatif ou connectez votre banque pour

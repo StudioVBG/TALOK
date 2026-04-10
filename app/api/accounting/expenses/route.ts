@@ -14,6 +14,13 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { userHasFeature } from "@/lib/subscriptions/subscription-service";
+import {
+  computeTVA,
+  resolveTerritoryFromPostalCode,
+  validateTVACoherence,
+  type Territory,
+  type TvaRateKind,
+} from "@/lib/accounting/chart-amort-ocr";
 
 const EXPENSE_CATEGORIES = [
   "travaux", "entretien", "assurance", "taxe_fonciere", "charges_copro",
@@ -146,6 +153,85 @@ export async function POST(request: Request) {
       throw new ApiError(400, "La date est requise");
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // Auto-compute TVA from the DROM-COM territory of the entity.
+    // Priority for resolving the territory postal code:
+    //   1. the linked property's code_postal (most specific)
+    //   2. the legal entity's code_postal_siege
+    //   3. metropole (fallback)
+    //
+    // Rules:
+    // - If the caller provides an explicit tva_taux, we trust it but
+    //   still verify coherence against the territory and compute the
+    //   resulting tva_montant / montant_ttc ourselves so the row stays
+    //   internally consistent.
+    // - If tva_taux is missing or zero and the caller has not already
+    //   sent a tva_montant, we apply the territory's default "normal"
+    //   rate (20% metropole, 8.5% Antilles/Réunion, 0% Guyane/Mayotte).
+    // ─────────────────────────────────────────────────────────────
+    let territoryPostalCode: string | null = null;
+    if (body.property_id) {
+      const { data: property } = await (serviceClient as unknown as {
+        from: (t: string) => {
+          select: (s: string) => {
+            eq: (k: string, v: string) => {
+              maybeSingle: () => Promise<{
+                data: { code_postal: string | null } | null;
+              }>;
+            };
+          };
+        };
+      })
+        .from("properties")
+        .select("code_postal")
+        .eq("id", body.property_id)
+        .maybeSingle();
+      territoryPostalCode = property?.code_postal ?? null;
+    }
+    if (!territoryPostalCode && body.legal_entity_id) {
+      const { data: entity } = await (serviceClient as unknown as {
+        from: (t: string) => {
+          select: (s: string) => {
+            eq: (k: string, v: string) => {
+              maybeSingle: () => Promise<{
+                data: { code_postal_siege: string | null } | null;
+              }>;
+            };
+          };
+        };
+      })
+        .from("legal_entities")
+        .select("code_postal_siege")
+        .eq("id", body.legal_entity_id)
+        .maybeSingle();
+      territoryPostalCode = entity?.code_postal_siege ?? null;
+    }
+    const territory: Territory = resolveTerritoryFromPostalCode(territoryPostalCode);
+
+    const providedRate = typeof body.tva_taux === "number" ? body.tva_taux : null;
+    const rateKind: TvaRateKind = (body.tva_rate_kind as TvaRateKind) ?? "normal";
+    const { tva_taux, tva_montant, montant_ttc } =
+      providedRate != null && providedRate > 0
+        ? (() => {
+            // User-specified rate: compute matching amounts and warn if
+            // the rate is incoherent with the territory (non-blocking).
+            const tvaMontant =
+              Math.round(body.montant * (providedRate / 100) * 100) / 100;
+            const coherence = validateTVACoherence(providedRate, territory);
+            if (!coherence.valid) {
+              console.warn(
+                "[expenses] TVA rate incoherent with territory",
+                { providedRate, territory, message: coherence.message },
+              );
+            }
+            return {
+              tva_taux: providedRate,
+              tva_montant: tvaMontant,
+              montant_ttc: Math.round((body.montant + tvaMontant) * 100) / 100,
+            };
+          })()
+        : computeTVA(body.montant, territory, rateKind);
+
     const { data: expense, error } = await (serviceClient as any)
       .from("expenses")
       .insert({
@@ -156,10 +242,11 @@ export async function POST(request: Request) {
         category: body.category,
         description: body.description,
         montant: body.montant,
+        montant_ttc,
         date_depense: body.date_depense,
         fournisseur: body.fournisseur || null,
-        tva_taux: body.tva_taux || 0,
-        tva_montant: body.tva_montant || 0,
+        tva_taux,
+        tva_montant,
         deductible: body.deductible !== false,
         recurrence: body.recurrence || "ponctuel",
         notes: body.notes || null,
@@ -170,7 +257,10 @@ export async function POST(request: Request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ expense }, { status: 201 });
+    return NextResponse.json(
+      { expense, territory, tva_taux },
+      { status: 201 },
+    );
   } catch (error) {
     return handleApiError(error);
   }

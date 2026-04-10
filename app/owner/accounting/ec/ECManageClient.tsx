@@ -58,7 +58,14 @@ function ECManageContent() {
         <div className="space-y-3">{ecList.map(ec => (
           <div key={ec.id} className="bg-card rounded-xl border border-border p-4 flex items-center justify-between">
             <div><p className="text-sm font-medium">{ec.ec_name}</p><p className="text-xs text-muted-foreground">{ec.ec_email} — {ec.access_level}</p><p className="text-xs text-muted-foreground">Invite le {new Date(ec.granted_at).toLocaleDateString("fr-FR")}</p></div>
-            <button onClick={() => revokeMutation.mutate(ec.id)} className="text-destructive hover:text-destructive/80"><X className="w-4 h-4" /></button>
+            <button
+              type="button"
+              onClick={() => revokeMutation.mutate(ec.id)}
+              aria-label={`Révoquer l'accès de ${ec.ec_name ?? ec.ec_email}`}
+              className="text-destructive hover:text-destructive/80"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         ))}</div>
       )}
