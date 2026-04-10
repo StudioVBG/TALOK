@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { z } from "zod";
 import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
+import { generateReceipt } from "@/lib/documents/receipt-generator";
 import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { getTenantInvoicePaymentContext } from "@/lib/payments/tenant-payment-flow";
@@ -237,7 +238,7 @@ export async function POST(request: NextRequest) {
 
       if (settlement?.isSettled && payment?.id) {
         try {
-          await ensureReceiptDocument(serviceClient as any, payment.id);
+          await generateReceipt(payment.id, serviceClient as any);
         } catch (receiptError) {
           console.error("[confirm] Erreur génération quittance:", receiptError);
         }

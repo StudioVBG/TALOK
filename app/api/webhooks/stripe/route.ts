@@ -20,6 +20,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import type { Json } from "@/lib/supabase/database.types";
 import { reconcileOwnerTransfer } from "@/lib/billing/owner-payout.service";
 import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
+import { generateReceipt } from "@/lib/documents/receipt-generator";
 import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
 import {
   handleRentPaymentSucceeded,
@@ -39,42 +40,6 @@ function getStripe(): Stripe {
   return new Stripe(secretKey, {
     apiVersion: "2024-10-28.acacia" as any,
   });
-}
-
-// Fonction utilitaire pour générer et sauvegarder la quittance de façon idempotente,
-// puis envoyer la quittance PDF par email au locataire.
-async function processReceiptGeneration(supabase: any, _invoiceId: string, paymentId: string, _amount: number) {
-  try {
-    const result = await ensureReceiptDocument(supabase, paymentId);
-
-    // Envoyer la quittance par email au locataire (seulement si nouvelle)
-    if (result?.created && result.pdfBytes && result.receiptMeta?.tenantEmail) {
-      try {
-        const { sendReceiptEmail } = await import("@/lib/emails/send-receipt-email");
-        await sendReceiptEmail({
-          tenantEmail: result.receiptMeta.tenantEmail,
-          tenantName: result.receiptMeta.tenantName,
-          period: result.receiptMeta.period,
-          totalAmount: result.receiptMeta.totalAmount,
-          propertyAddress: result.receiptMeta.propertyAddress,
-          paymentDate: result.receiptMeta.paymentDate,
-          paymentMethod: result.receiptMeta.paymentMethod,
-          pdfBytes: result.pdfBytes,
-          paymentId,
-        });
-
-        // Marquer la quittance comme envoyée
-        await supabase
-          .from("receipts")
-          .update({ sent_at: new Date().toISOString() })
-          .eq("payment_id", paymentId);
-      } catch (emailError) {
-        console.error("[Receipt] Email to tenant failed:", emailError);
-      }
-    }
-  } catch (error) {
-    console.error("[Receipt] Generation failed:", error);
-  }
 }
 
 function getCanonicalAppUrl() {
@@ -772,12 +737,7 @@ export async function POST(request: NextRequest) {
             const sourceTransactionId = await resolveSourceTransactionId(stripe, providerRef);
             const receiptGenerated = !!settlement?.isSettled;
             if (settlement?.isSettled) {
-              await processReceiptGeneration(
-                supabase,
-                invoiceId,
-                paymentId,
-                (session.amount_total || 0) / 100
-              );
+              await generateReceipt(paymentId, supabase);
             }
             await emitPaymentSucceededEvent(supabase, paymentId, invoiceId, (session.amount_total || 0) / 100, {
               invoiceSettled: settlement?.isSettled ?? false,
@@ -934,12 +894,7 @@ export async function POST(request: NextRequest) {
             const receiptGenerated = !!settlement?.isSettled;
             if (settlement?.isSettled) {
               // Fire-and-forget : ne pas bloquer la réponse webhook (200 immédiat)
-              processReceiptGeneration(
-                supabase,
-                invoiceId,
-                paymentId,
-                paymentIntent.amount / 100
-              ).catch((err) =>
+              generateReceipt(paymentId, supabase).catch((err) =>
                 console.error("[receipt-gen] fire-and-forget failed:", err?.message ?? err)
               );
             }
@@ -1141,7 +1096,7 @@ export async function POST(request: NextRequest) {
             const settlement = await syncInvoiceStatusFromPayments(supabase as any, rentInvoiceId, paidAt);
 
             if (paymentId && paymentResult.newlySucceeded && settlement?.isSettled) {
-              await processReceiptGeneration(supabase, rentInvoiceId, paymentId, (invoice.amount_paid || 0) / 100);
+              await generateReceipt(paymentId, supabase);
               console.log(`[Stripe Webhook] Receipt generated for rent invoice ${rentInvoiceId}`);
             }
           }
@@ -1234,13 +1189,8 @@ export async function POST(request: NextRequest) {
               paidAt
             );
 
-            if (settlement?.isSettled && paymentResult.newlySucceeded) {
-              await processReceiptGeneration(
-                supabase,
-                rentalInvoiceId,
-                paymentResult.paymentId,
-                (invoice.amount_paid || 0) / 100
-              );
+            if (settlement?.isSettled && paymentResult.newlySucceeded && paymentResult.paymentId) {
+              await generateReceipt(paymentResult.paymentId, supabase);
             }
           }
         }

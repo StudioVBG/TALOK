@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
 import { sendReceiptEmail } from "@/lib/emails/send-receipt-email";
+import { generateReceipt } from "@/lib/documents/receipt-generator";
 
 /**
  * POST /api/leases/[id]/generate-receipt
@@ -75,8 +76,12 @@ export async function POST(
     }
 
     // 4. Parse body
+    // NOTE: `send_email` was historically accepted as an opt-out flag but
+    // is now ignored — the orchestrator `generateReceipt()` always sends
+    // the receipt email to the tenant when a new quittance is created
+    // (and is idempotent when one already exists).
     const body = await request.json();
-    const { invoice_id, send_email } = body as {
+    const { invoice_id } = body as {
       invoice_id: string;
       send_email?: boolean;
     };
@@ -123,13 +128,14 @@ export async function POST(
       );
     }
 
-    // 7. Générer la quittance
-    const result = await ensureReceiptDocument(serviceClient, payment.id);
+    // 7. Générer la quittance (PDF + storage + DB + email au locataire)
+    const result = await generateReceipt(payment.id, serviceClient);
 
-    if (!result) {
+    if (!result.success) {
       return NextResponse.json(
         {
           error:
+            result.error ||
             "Impossible de générer la quittance (facture non réglée ou données manquantes)",
           code: "GENERATION_FAILED",
         },
@@ -153,46 +159,12 @@ export async function POST(
       );
     }
 
-    // 8. Envoyer email si demandé
-    let emailSent = false;
-    if (
-      send_email &&
-      result.created &&
-      result.pdfBytes &&
-      result.receiptMeta?.tenantEmail
-    ) {
-      try {
-        await sendReceiptEmail({
-          tenantEmail: result.receiptMeta.tenantEmail,
-          tenantName: result.receiptMeta.tenantName,
-          period: result.receiptMeta.period,
-          totalAmount: result.receiptMeta.totalAmount,
-          propertyAddress: result.receiptMeta.propertyAddress,
-          paymentDate: result.receiptMeta.paymentDate,
-          paymentMethod: result.receiptMeta.paymentMethod,
-          pdfBytes: result.pdfBytes,
-          paymentId: payment.id,
-        });
-        emailSent = true;
-
-        await (serviceClient as any)
-          .from("receipts")
-          .update({ sent_at: new Date().toISOString() })
-          .eq("payment_id", payment.id);
-      } catch (emailErr) {
-        console.error(
-          "[generate-receipt] Email failed:",
-          emailErr
-        );
-      }
-    }
-
     return NextResponse.json({
       success: true,
       created: result.created,
       document_id: result.documentId,
       storage_path: result.storagePath,
-      email_sent: emailSent,
+      email_sent: result.emailSent ?? false,
     });
   } catch (error) {
     console.error("[generate-receipt] Error:", error);

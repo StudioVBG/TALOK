@@ -6,6 +6,7 @@ import { NextResponse } from "next/server";
 import { AccountingIntegrationService } from "@/features/accounting/services/accounting-integration.service";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
+import { generateReceipt } from "@/lib/documents/receipt-generator";
 import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
 
 /**
@@ -210,7 +211,7 @@ export async function POST(
     let receiptDocumentId: string | null = null;
     if (settlement.isSettled && payment?.id) {
       try {
-        const receiptResult = await ensureReceiptDocument(supabase as any, payment.id);
+        const receiptResult = await generateReceipt(payment.id, supabase as any);
         receiptDocumentId = receiptResult?.documentId || null;
       } catch (receiptError) {
         console.error("[mark-paid] Erreur génération quittance:", receiptError);
