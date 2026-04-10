@@ -183,6 +183,66 @@ export default async function BuildingDetailPage({ params }: PageProps) {
       .order("created_at", { ascending: false }),
   ]);
 
+  // The generated DB types don't include the `property_id` column on `building_units`
+  // yet, so we cast through unknown to layer the runtime-truthful shape.
+  const units = ((unitsResult.data as unknown) || []) as Array<{
+    id: string;
+    property_id: string | null;
+    current_lease_id: string | null;
+    [key: string]: unknown;
+  }>;
+
+  // Fetch lot properties (cover_url, unique_code) and active leases/tenants in parallel.
+  // Chaque lot pointe vers son propre property_id — on récupère ici les infos
+  // nécessaires pour afficher le lot avec la même card que la page "Mes biens".
+  const lotPropertyIds = units.map((u) => u.property_id).filter((v): v is string => !!v);
+  const leaseIds = units.map((u) => u.current_lease_id).filter((v): v is string => !!v);
+
+  const [lotPropertiesResult, leasesResult] = await Promise.all([
+    lotPropertyIds.length > 0
+      ? serviceClient
+          .from("properties")
+          .select("id, cover_url, unique_code, adresse_complete")
+          .in("id", lotPropertyIds)
+      : Promise.resolve({ data: [] }),
+    leaseIds.length > 0
+      ? serviceClient
+          .from("leases")
+          .select("id, tenant_id, date_fin, statut, loyer, charges_forfaitaires")
+          .in("id", leaseIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const lotProperties = (lotPropertiesResult.data || []) as Array<{
+    id: string;
+    cover_url: string | null;
+    unique_code: string | null;
+    adresse_complete: string | null;
+  }>;
+
+  const leases = (leasesResult.data || []) as Array<{
+    id: string;
+    tenant_id: string | null;
+    date_fin: string | null;
+    statut: string | null;
+    loyer: number | null;
+    charges_forfaitaires: number | null;
+  }>;
+
+  const tenantIds = leases.map((l) => l.tenant_id).filter((v): v is string => !!v);
+  const { data: tenantsData } = tenantIds.length > 0
+    ? await serviceClient
+        .from("profiles")
+        .select("id, first_name, last_name")
+        .in("id", tenantIds)
+    : { data: [] as Array<{ id: string; first_name: string | null; last_name: string | null }> };
+
+  const tenants = (tenantsData || []) as Array<{
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+  }>;
+
   return (
     <BuildingDetailClient
       propertyId={propertyId}
@@ -193,7 +253,10 @@ export default async function BuildingDetailPage({ params }: PageProps) {
         annee_construction: building.annee_construction ?? null,
       }}
       buildingMeta={buildingMeta ?? null}
-      units={unitsResult.data || []}
+      units={units}
+      lotProperties={lotProperties}
+      leases={leases}
+      tenants={tenants}
       documents={(documentsResult.data as any[]) || []}
     />
   );
