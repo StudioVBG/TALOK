@@ -4,17 +4,11 @@ import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { PlanGate } from "@/components/subscription/plan-gate";
 import { ExportCard } from "@/components/accounting/ExportCard";
-import { FECPreview } from "@/components/accounting/FECPreview";
-import { formatCents } from "@/lib/utils/format-cents";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useEntityStore } from "@/stores/useEntityStore";
 import {
-  FileText,
   FileSpreadsheet,
-  BookOpen,
-  Scale,
-  ShieldCheck,
   UserPlus,
   Send,
   Mail,
@@ -25,15 +19,12 @@ import type {
   AccountingExercise,
   AccountingBalance,
 } from "@/lib/hooks/use-accounting-dashboard";
+import { FECExportPanel, type FECPreviewResult } from "./components/FECExportPanel";
+import { GrandLivreExportPanel } from "./components/GrandLivreExportPanel";
+import { BalanceExportPanel } from "./components/BalanceExportPanel";
+import { CahierExportPanel } from "./components/CahierExportPanel";
 
 // ── Types ───────────────────────────────────────────────────────────
-
-interface FECPreviewResult {
-  valid: boolean;
-  errors: string[];
-  warnings: string[];
-  lineCount: number;
-}
 
 interface ECAccess {
   id: string;
@@ -285,67 +276,17 @@ function ExportsContent() {
           Documents fiscaux
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Recapitulatif annuel */}
-          <div className="bg-card rounded-xl border border-border p-4 sm:p-5 flex flex-col gap-3">
-            <div className="flex items-start gap-3">
-              <span className="shrink-0 text-primary mt-0.5">
-                <FileText className="w-5 h-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-semibold text-foreground font-[family-name:var(--font-manrope)]">
-                  Recapitulatif annuel
-                </h3>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  Synthese des revenus, charges et resultat net de l'exercice.
-                </p>
-              </div>
-            </div>
-
-            {/* KPI row */}
-            {balance && (
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="bg-muted/30 rounded-lg p-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    Revenus
-                  </p>
-                  <p className="text-sm font-bold text-emerald-500">
-                    {formatCents(balance.revenueCents)}
-                  </p>
-                </div>
-                <div className="bg-muted/30 rounded-lg p-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    Charges
-                  </p>
-                  <p className="text-sm font-bold text-red-500">
-                    {formatCents(balance.expensesCents)}
-                  </p>
-                </div>
-                <div className="bg-muted/30 rounded-lg p-2">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                    Resultat
-                  </p>
-                  <p className="text-sm font-bold text-foreground">
-                    {formatCents(balance.resultCents)}
-                  </p>
-                </div>
-              </div>
+          <CahierExportPanel
+            balance={balance}
+            year={parseInt(
+              currentExercise?.startDate?.substring(0, 4) ??
+                String(new Date().getFullYear()),
+              10,
             )}
-
-            <button
-              type="button"
-              onClick={() =>
-                handleDownload(
-                  "fiscal-pdf",
-                  `/accounting/fiscal?format=pdf&year=${currentExercise?.startDate?.substring(0, 4) ?? new Date().getFullYear()}`,
-                  `recap_annuel_${currentExercise?.label ?? "exercice"}.pdf`
-                )
-              }
-              disabled={loadingMap["fiscal-pdf"]}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border bg-muted/50 hover:bg-muted text-foreground border-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-auto"
-            >
-              {loadingMap["fiscal-pdf"] ? "Telechargement..." : "Telecharger PDF"}
-            </button>
-          </div>
+            exerciseLabel={currentExercise?.label ?? "exercice"}
+            downloading={!!loadingMap["fiscal-pdf"]}
+            onDownload={handleDownload}
+          />
 
           {/* Charges deductibles */}
           <ExportCard
@@ -374,116 +315,26 @@ function ExportsContent() {
           Exports comptables
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Grand livre */}
-          <ExportCard
-            title="Grand livre"
-            description="Toutes les ecritures classees par compte, avec le detail des mouvements."
-            icon={<BookOpen className="w-5 h-5" />}
-            formats={[
-              {
-                label: "PDF",
-                loading: loadingMap["gl-pdf"],
-                onClick: () =>
-                  exerciseId &&
-                  handleDownload(
-                    "gl-pdf",
-                    `/accounting/exercises/${exerciseId}/grand-livre?format=pdf`,
-                    `grand_livre_${currentExercise?.label ?? "exercice"}.pdf`
-                  ),
-                disabled: !exerciseId,
-              },
-              {
-                label: "CSV",
-                loading: loadingMap["gl-csv"],
-                onClick: () =>
-                  exerciseId &&
-                  handleDownload(
-                    "gl-csv",
-                    `/accounting/exercises/${exerciseId}/grand-livre?format=csv`,
-                    `grand_livre_${currentExercise?.label ?? "exercice"}.csv`
-                  ),
-                disabled: !exerciseId,
-              },
-            ]}
+          <GrandLivreExportPanel
+            exerciseId={exerciseId}
+            exerciseLabel={currentExercise?.label ?? "exercice"}
+            onDownload={handleDownload}
+            loadingMap={loadingMap}
           />
-
-          {/* Balance generale */}
-          <ExportCard
-            title="Balance generale"
-            description="Soldes de chaque compte avec totaux debit et credit de l'exercice."
-            icon={<Scale className="w-5 h-5" />}
-            formats={[
-              {
-                label: "PDF",
-                loading: loadingMap["bal-pdf"],
-                onClick: () =>
-                  exerciseId &&
-                  handleDownload(
-                    "bal-pdf",
-                    `/accounting/exercises/${exerciseId}/balance?format=pdf`,
-                    `balance_${currentExercise?.label ?? "exercice"}.pdf`
-                  ),
-                disabled: !exerciseId,
-              },
-              {
-                label: "CSV",
-                loading: loadingMap["bal-csv"],
-                onClick: () =>
-                  exerciseId &&
-                  handleDownload(
-                    "bal-csv",
-                    `/accounting/exercises/${exerciseId}/balance?format=csv`,
-                    `balance_${currentExercise?.label ?? "exercice"}.csv`
-                  ),
-                disabled: !exerciseId,
-              },
-            ]}
+          <BalanceExportPanel
+            exerciseId={exerciseId}
+            exerciseLabel={currentExercise?.label ?? "exercice"}
+            onDownload={handleDownload}
+            loadingMap={loadingMap}
           />
-
-          {/* Export FEC */}
-          <div className="bg-card rounded-xl border border-border p-4 sm:p-5 flex flex-col gap-3 md:col-span-2">
-            <div className="flex items-start gap-3">
-              <span className="shrink-0 text-teal-500 mt-0.5">
-                <ShieldCheck className="w-5 h-5" />
-              </span>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-sm font-semibold text-foreground font-[family-name:var(--font-manrope)]">
-                  Export FEC
-                </h3>
-                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                  Fichier des Ecritures Comptables au format reglementaire. Obligatoire en
-                  cas de controle fiscal.
-                </p>
-              </div>
-            </div>
-
-            <PlanGate feature="bank_reconciliation" mode="blur">
-              <div className="space-y-3">
-                {!fecPreview && (
-                  <button
-                    type="button"
-                    onClick={loadFECPreview}
-                    disabled={fecPreviewLoading || !exerciseId}
-                    className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-teal-600 hover:bg-teal-500 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {fecPreviewLoading
-                      ? "Verification en cours..."
-                      : "Verifier et generer le FEC"}
-                  </button>
-                )}
-
-                {fecPreview && (
-                  <FECPreview
-                    lineCount={fecPreview.lineCount}
-                    errors={fecPreview.errors}
-                    warnings={fecPreview.warnings}
-                    onDownload={handleFECDownload}
-                    downloading={fecDownloading}
-                  />
-                )}
-              </div>
-            </PlanGate>
-          </div>
+          <FECExportPanel
+            exerciseId={exerciseId}
+            fecPreview={fecPreview}
+            fecPreviewLoading={fecPreviewLoading}
+            fecDownloading={fecDownloading}
+            onLoadPreview={loadFECPreview}
+            onDownload={handleFECDownload}
+          />
         </div>
       </section>
 

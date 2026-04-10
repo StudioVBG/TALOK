@@ -5,6 +5,25 @@ import { useRouter } from "next/navigation";
 import { PlanGate } from "@/components/subscription/plan-gate";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { useToast } from "@/components/ui/use-toast";
+
+// Whitelist of hosts we trust for the bank-connect OAuth redirect.
+// Nordigen (historical) and its current GoCardless brand are the only two
+// providers wired in lib/bank/nordigen, so anything else is rejected.
+const ALLOWED_BANK_AUTH_HOSTS = new Set([
+  "ob.nordigen.com",
+  "bankaccountdata.gocardless.com",
+]);
+
+function isTrustedBankAuthLink(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== "https:") return false;
+    return ALLOWED_BANK_AUTH_HOSTS.has(url.hostname);
+  } catch {
+    return false;
+  }
+}
 import {
   Landmark,
   PiggyBank,
@@ -83,6 +102,7 @@ export default function ConnectBankClient() {
 function ConnectBankFlow() {
   const router = useRouter();
   const { profile } = useAuth();
+  const { toast } = useToast();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [accountType, setAccountType] = useState<AccountType | null>(null);
   const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
@@ -158,6 +178,18 @@ function ConnectBankFlow() {
         );
         const authLink = res?.data?.authLink;
         if (authLink) {
+          // Validate the provider-supplied URL before redirecting. Prevents
+          // open-redirect / phishing if the backend is ever compromised or
+          // if a response is tampered with in transit.
+          if (!isTrustedBankAuthLink(authLink)) {
+            toast({
+              title: "Lien de connexion bancaire invalide",
+              description:
+                "Le lien renvoyé par la banque n'est pas reconnu. Réessayez ou contactez le support.",
+              variant: "destructive",
+            });
+            return;
+          }
           window.location.href = authLink;
         } else {
           router.push("/owner/accounting/bank");
@@ -168,7 +200,7 @@ function ConnectBankFlow() {
     } finally {
       setSubmitting(false);
     }
-  }, [accountType, isManual, manualIban, manualBic, selectedInstitution, profile, router]);
+  }, [accountType, isManual, manualIban, manualBic, selectedInstitution, profile, router, toast]);
 
   const selectedTypeConfig = ACCOUNT_TYPES.find((t) => t.value === accountType);
 
@@ -247,7 +279,7 @@ function ConnectBankFlow() {
               placeholder="Rechercher une banque..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
 
@@ -366,7 +398,7 @@ function ConnectBankFlow() {
                     placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"
                     value={manualIban}
                     onChange={(e) => setManualIban(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
                 </div>
                 <div>
@@ -378,7 +410,7 @@ function ConnectBankFlow() {
                     placeholder="BNPAFRPP"
                     value={manualBic}
                     onChange={(e) => setManualBic(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
+                    className="w-full px-3 py-2.5 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
                 </div>
               </div>
@@ -389,7 +421,7 @@ function ConnectBankFlow() {
           <button
             onClick={handleSubmit}
             disabled={submitting || (isManual && !manualIban)}
-            className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-white text-sm font-medium hover:bg-[#1B2A6B] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />

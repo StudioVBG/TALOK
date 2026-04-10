@@ -1,23 +1,23 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, useEffect } from "react";
-import Link from "next/link";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { PlanGate } from "@/components/subscription/plan-gate";
 import {
   useAccountingEntries,
-  type AccountingEntryRow,
+  type AccountingEntryRow as AccountingEntryRowData,
 } from "@/lib/hooks/use-accounting-entries";
 import { QuickEntryForm } from "@/components/accounting/QuickEntryForm";
 import { formatCents } from "@/lib/utils/format-cents";
-import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight, Plus, Loader2 } from "lucide-react";
+import { EntryFilters, type EntryFilterStatus } from "./components/EntryFilters";
+import { BulkActions } from "./components/BulkActions";
 import {
-  Search,
-  ChevronLeft,
-  ChevronRight,
-  Plus,
-  CheckCircle2,
-  Loader2,
-} from "lucide-react";
+  EntryRow,
+  EntryCard,
+  getEntryCreditCents,
+  getEntryDebitCents,
+  isDraft,
+} from "./components/EntryRow";
 
 // -- Debounce hook -----------------------------------------------------------
 // Small local hook to debounce a value. We keep it here (rather than adding a
@@ -30,112 +30,6 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
     return () => clearTimeout(id);
   }, [value, delayMs]);
   return debounced;
-}
-
-// -- Constants ---------------------------------------------------------------
-
-const JOURNAL_OPTIONS = [
-  { value: "", label: "Tous" },
-  { value: "ACH", label: "ACH" },
-  { value: "VE", label: "VE" },
-  { value: "BQ", label: "BQ" },
-  { value: "OD", label: "OD" },
-  { value: "AN", label: "AN" },
-  { value: "CL", label: "CL" },
-] as const;
-
-const STATUS_OPTIONS = [
-  { value: "all", label: "Tous" },
-  { value: "draft", label: "Brouillons" },
-  { value: "validated", label: "Validees" },
-] as const;
-
-const SOURCE_OPTIONS = [
-  { value: "", label: "Tous" },
-  { value: "manual", label: "Manuel" },
-  { value: "stripe", label: "Stripe" },
-  { value: "ocr", label: "OCR" },
-  { value: "import", label: "Import" },
-] as const;
-
-// -- Badge helpers -----------------------------------------------------------
-
-const SOURCE_BADGE_STYLES: Record<string, string> = {
-  manual: "bg-slate-500/10 text-slate-400 border-slate-500/20",
-  stripe: "bg-violet-500/10 text-violet-400 border-violet-500/20",
-  ocr: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-  import: "bg-teal-500/10 text-teal-400 border-teal-500/20",
-};
-
-const SOURCE_LABELS: Record<string, string> = {
-  manual: "Manuel",
-  stripe: "Stripe",
-  ocr: "OCR",
-  import: "Import",
-};
-
-function SourceBadge({ source }: { source: string | null }) {
-  const key = source ?? "manual";
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border",
-        SOURCE_BADGE_STYLES[key] ?? SOURCE_BADGE_STYLES.manual
-      )}
-    >
-      {SOURCE_LABELS[key] ?? key}
-    </span>
-  );
-}
-
-function StatusBadge({ entry }: { entry: AccountingEntryRow }) {
-  const isValidated = entry.is_validated || !!entry.valid_date;
-  const isReversed = !!entry.reversal_of;
-
-  if (isReversed) {
-    return (
-      <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border bg-red-500/10 text-red-500 border-red-500/20">
-        Contre-passe
-      </span>
-    );
-  }
-
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border",
-        isValidated
-          ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-          : "bg-amber-500/10 text-amber-500 border-amber-500/20"
-      )}
-    >
-      {isValidated ? "Valide" : "Brouillon"}
-    </span>
-  );
-}
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("fr-FR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
-function getEntryDebitCents(e: AccountingEntryRow): number {
-  if (typeof e.total_debit_cents === "number") return e.total_debit_cents;
-  if (typeof e.debit === "number") return Math.round(e.debit * 100);
-  return 0;
-}
-
-function getEntryCreditCents(e: AccountingEntryRow): number {
-  if (typeof e.total_credit_cents === "number") return e.total_credit_cents;
-  if (typeof e.credit === "number") return Math.round(e.credit * 100);
-  return 0;
-}
-
-function isDraft(e: AccountingEntryRow): boolean {
-  return !e.is_validated && !e.valid_date;
 }
 
 // -- Main component ----------------------------------------------------------
@@ -155,7 +49,7 @@ function EntriesPageContent() {
   const [searchInput, setSearchInput] = useState("");
   const search = useDebouncedValue(searchInput, 300);
   const [journalCode, setJournalCode] = useState("");
-  const [status, setStatus] = useState<"all" | "draft" | "validated">("all");
+  const [status, setStatus] = useState<EntryFilterStatus>("all");
   const [source, setSource] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -177,7 +71,6 @@ function EntriesPageContent() {
   const {
     entries,
     total,
-    totals,
     totalPages,
     isLoading,
     isFetching,
@@ -199,7 +92,7 @@ function EntriesPageContent() {
   // returned page as-is. `draftEntries` is only used to drive the bulk
   // "select all" checkbox; it's a derived helper, not a redundant filter.
   const draftEntries = useMemo(
-    () => entries.filter((e: AccountingEntryRow) => isDraft(e)),
+    () => entries.filter((e: AccountingEntryRowData) => isDraft(e)),
     [entries],
   );
 
@@ -216,7 +109,7 @@ function EntriesPageContent() {
     if (selected.size === draftEntries.length && draftEntries.length > 0) {
       setSelected(new Set<string>());
     } else {
-      setSelected(new Set(draftEntries.map((e: AccountingEntryRow) => e.id)));
+      setSelected(new Set(draftEntries.map((e: AccountingEntryRowData) => e.id)));
     }
   }, [draftEntries, selected.size]);
 
@@ -233,23 +126,32 @@ function EntriesPageContent() {
   // Totals for page — derived aggregations from the server-filtered page,
   // not a second filter pass.
   const pageDebitCents = useMemo(
-    () => entries.reduce((s: number, e: AccountingEntryRow) => s + getEntryDebitCents(e), 0),
+    () =>
+      entries.reduce(
+        (s: number, e: AccountingEntryRowData) => s + getEntryDebitCents(e),
+        0,
+      ),
     [entries],
   );
   const pageCreditCents = useMemo(
-    () => entries.reduce((s: number, e: AccountingEntryRow) => s + getEntryCreditCents(e), 0),
+    () =>
+      entries.reduce(
+        (s: number, e: AccountingEntryRowData) => s + getEntryCreditCents(e),
+        0,
+      ),
     [entries],
   );
 
-  // Reset page when filters change
-  const handleFilterChange = useCallback(
+  // Reset page + selection when any non-search filter changes. Wraps the
+  // individual filter setters so the EntryFilters sub-component stays dumb.
+  const onFilterChange = useCallback(
     <T,>(setter: React.Dispatch<React.SetStateAction<T>>) =>
       (value: T) => {
         setter(value);
         setPage(1);
         setSelected(new Set());
       },
-    []
+    [],
   );
 
   if (error) {
@@ -277,102 +179,27 @@ function EntriesPageContent() {
       </div>
 
       {/* Filters bar */}
-      <div className="flex flex-wrap gap-2">
-        {/* Search — controlled by the raw input state; the debounced value
-            is what drives the query (see `search` above). */}
-        <div className="relative flex-1 min-w-[12rem]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Rechercher..."
-            className="w-full rounded-lg border border-border bg-card pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
-        </div>
-
-        {/* Journal */}
-        <select
-          value={journalCode}
-          onChange={(e) => handleFilterChange(setJournalCode)(e.target.value)}
-          className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-        >
-          {JOURNAL_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-
-        {/* Status */}
-        <select
-          value={status}
-          onChange={(e) =>
-            handleFilterChange(setStatus)(
-              e.target.value as "all" | "draft" | "validated"
-            )
-          }
-          className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-        >
-          {STATUS_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-
-        {/* Source */}
-        <select
-          value={source}
-          onChange={(e) => handleFilterChange(setSource)(e.target.value)}
-          className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-        >
-          {SOURCE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-
-        {/* Date range */}
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => handleFilterChange(setStartDate)(e.target.value)}
-          className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-          placeholder="Du"
-        />
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => handleFilterChange(setEndDate)(e.target.value)}
-          className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-          placeholder="Au"
-        />
-      </div>
+      <EntryFilters
+        searchInput={searchInput}
+        onSearchInputChange={setSearchInput}
+        journalCode={journalCode}
+        onJournalCodeChange={onFilterChange(setJournalCode)}
+        status={status}
+        onStatusChange={onFilterChange(setStatus)}
+        source={source}
+        onSourceChange={onFilterChange(setSource)}
+        startDate={startDate}
+        onStartDateChange={onFilterChange(setStartDate)}
+        endDate={endDate}
+        onEndDateChange={onFilterChange(setEndDate)}
+      />
 
       {/* Bulk actions */}
-      {selected.size > 0 && (
-        <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5">
-          <span className="text-sm font-medium text-foreground">
-            {selected.size} ecriture{selected.size > 1 ? "s" : ""} selectionnee
-            {selected.size > 1 ? "s" : ""}
-          </span>
-          <button
-            type="button"
-            onClick={handleValidateSelected}
-            disabled={isValidating}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {isValidating ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <CheckCircle2 className="w-3.5 h-3.5" />
-            )}
-            Valider les {selected.size} selectionnees
-          </button>
-        </div>
-      )}
+      <BulkActions
+        selectedCount={selected.size}
+        isValidating={isValidating}
+        onValidateSelected={handleValidateSelected}
+      />
 
       {/* Loading */}
       {isLoading ? (
@@ -430,67 +257,14 @@ function EntriesPageContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {entries.map((entry: AccountingEntryRow) => {
-                    const entryIsDraft = isDraft(entry);
-                    const entryDate =
-                      entry.entry_date ?? entry.ecriture_date ?? "";
-                    const entryNumber =
-                      entry.entry_number ?? entry.ecriture_num ?? "";
-                    const entryLabel =
-                      entry.label ?? entry.ecriture_lib ?? "";
-                    const debitCents = getEntryDebitCents(entry);
-                    const creditCents = getEntryCreditCents(entry);
-
-                    return (
-                      <tr
-                        key={entry.id}
-                        className="border-b border-border last:border-b-0 hover:bg-muted/50 transition-colors"
-                      >
-                        <td className="px-3 py-3">
-                          {entryIsDraft ? (
-                            <input
-                              type="checkbox"
-                              checked={selected.has(entry.id)}
-                              onChange={() => toggleSelect(entry.id)}
-                              className="rounded border-border"
-                              aria-label={`Selectionner ${entryLabel}`}
-                            />
-                          ) : (
-                            <span className="block w-4" />
-                          )}
-                        </td>
-                        <td className="px-3 py-3 text-muted-foreground whitespace-nowrap">
-                          {entryDate ? formatDate(entryDate) : "-"}
-                        </td>
-                        <td className="px-3 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
-                          {entryNumber}
-                        </td>
-                        <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
-                          {entry.journal_code}
-                        </td>
-                        <td className="px-3 py-3">
-                          <Link
-                            href={`/owner/accounting/entries/${entry.id}`}
-                            className="text-foreground hover:text-primary font-medium transition-colors"
-                          >
-                            {entryLabel}
-                          </Link>
-                        </td>
-                        <td className="px-3 py-3 text-right font-medium text-foreground whitespace-nowrap">
-                          {debitCents > 0 ? formatCents(debitCents) : "-"}
-                        </td>
-                        <td className="px-3 py-3 text-right font-medium text-foreground whitespace-nowrap">
-                          {creditCents > 0 ? formatCents(creditCents) : "-"}
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          <StatusBadge entry={entry} />
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          <SourceBadge source={entry.source} />
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {entries.map((entry: AccountingEntryRowData) => (
+                    <EntryRow
+                      key={entry.id}
+                      entry={entry}
+                      isSelected={selected.has(entry.id)}
+                      onToggleSelect={toggleSelect}
+                    />
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -498,56 +272,14 @@ function EntriesPageContent() {
 
           {/* Mobile cards */}
           <div className="md:hidden space-y-2">
-            {entries.map((entry: AccountingEntryRow) => {
-              const entryIsDraft = isDraft(entry);
-              const entryDate = entry.entry_date ?? entry.ecriture_date ?? "";
-              const entryLabel = entry.label ?? entry.ecriture_lib ?? "";
-              const debitCents = getEntryDebitCents(entry);
-              const creditCents = getEntryCreditCents(entry);
-              const amount = debitCents > 0 ? debitCents : creditCents;
-
-              return (
-                <div
-                  key={entry.id}
-                  className="bg-card rounded-xl border border-border overflow-hidden"
-                >
-                  <div className="flex items-start gap-3 px-4 py-3">
-                    {entryIsDraft && (
-                      <input
-                        type="checkbox"
-                        checked={selected.has(entry.id)}
-                        onChange={() => toggleSelect(entry.id)}
-                        className="rounded border-border mt-1 shrink-0"
-                        aria-label={`Selectionner ${entryLabel}`}
-                      />
-                    )}
-                    <Link
-                      href={`/owner/accounting/entries/${entry.id}`}
-                      className="flex-1 min-w-0"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-foreground truncate">
-                            {entryLabel}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {entryDate ? formatDate(entryDate) : ""} -{" "}
-                            {entry.journal_code}
-                          </p>
-                        </div>
-                        <p className="text-sm font-medium text-foreground whitespace-nowrap">
-                          {formatCents(amount)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 mt-2">
-                        <StatusBadge entry={entry} />
-                        <SourceBadge source={entry.source} />
-                      </div>
-                    </Link>
-                  </div>
-                </div>
-              );
-            })}
+            {entries.map((entry: AccountingEntryRowData) => (
+              <EntryCard
+                key={entry.id}
+                entry={entry}
+                isSelected={selected.has(entry.id)}
+                onToggleSelect={toggleSelect}
+              />
+            ))}
           </div>
 
           {/* Totals footer */}
