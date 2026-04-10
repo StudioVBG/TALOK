@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import type { Metadata, ResolvingMetadata } from "next";
+import type { Metadata } from "next";
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
@@ -12,18 +12,34 @@ interface PageProps {
 
 export async function generateMetadata(
   { params }: PageProps,
-  parent: ResolvingMetadata
 ): Promise<Metadata> {
   try {
     const { id } = await params;
     const serviceClient = getServiceClient();
 
-    const { data: building } = await serviceClient
+    // Essayer par property_id d'abord
+    let building = (await serviceClient
       .from("properties")
       .select("adresse_complete, ville")
       .eq("id", id)
       .eq("type", "immeuble")
-      .single();
+      .maybeSingle()).data;
+
+    // Fallback par building_id → property_id
+    if (!building) {
+      const { data: br } = await serviceClient
+        .from("buildings")
+        .select("property_id")
+        .eq("id", id)
+        .maybeSingle();
+      if (br?.property_id) {
+        building = (await serviceClient
+          .from("properties")
+          .select("adresse_complete, ville")
+          .eq("id", br.property_id)
+          .maybeSingle()).data;
+      }
+    }
 
     if (!building) {
       return { title: "Immeuble non trouvé | Talok" };
@@ -64,7 +80,10 @@ export default async function BuildingDetailPage({ params }: PageProps) {
     redirect("/dashboard");
   }
 
-  // Fetch building with units — adminClient avec vérification manuelle owner_id
+  // Fetch building — le param [id] peut être un property_id OU un building_id
+  // Essayer d'abord par property_id (cas normal), sinon par building_id (fallback)
+  let propertyId = id;
+
   const { data: building, error } = await serviceClient
     .from("properties")
     .select(`
@@ -83,18 +102,32 @@ export default async function BuildingDetailPage({ params }: PageProps) {
     .eq("owner_id", profile.id)
     .eq("type", "immeuble")
     .is("deleted_at", null)
-    .single();
+    .maybeSingle();
 
-  if (error || !building) {
-    console.error("[building-detail] Property query failed:", { id, ownerId: profile.id, error });
+  if (!building) {
+    // Fallback : peut-être que l'URL contient un building_id au lieu d'un property_id
+    const { data: buildingRecord } = await serviceClient
+      .from("buildings")
+      .select("property_id")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (buildingRecord?.property_id) {
+      // Rediriger vers l'URL canonique avec property_id
+      redirect(`/owner/buildings/${buildingRecord.property_id}`);
+    }
+
+    console.error("[building-detail] Property not found:", { id, ownerId: profile.id, error });
     notFound();
   }
+
+  propertyId = building.id;
 
   // Fetch building metadata
   const { data: buildingMeta } = await serviceClient
     .from("buildings")
     .select("*")
-    .eq("property_id", id)
+    .eq("property_id", propertyId)
     .single();
 
   // Fetch units via building_id (pas property_id qui pointe vers le lot individuel)
@@ -124,7 +157,7 @@ export default async function BuildingDetailPage({ params }: PageProps) {
 
   return (
     <BuildingDetailClient
-      propertyId={id}
+      propertyId={propertyId}
       buildingId={buildingMeta?.id ?? null}
       building={{
         ...building,
