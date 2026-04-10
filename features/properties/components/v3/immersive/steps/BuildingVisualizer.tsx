@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Building2, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,8 @@ import type { BuildingUnit } from "@/lib/types/building-v3";
 
 interface BuildingVisualizerProps {
   floors: number;
+  /** Lowest floor (negative for basements, e.g. -2). Defaults to 0. */
+  minFloor?: number;
   units: BuildingUnit[];
   selectedFloor: number | null;
   onFloorSelect: (floor: number | null) => void;
@@ -28,12 +30,18 @@ interface BuildingVisualizerProps {
  */
 export function BuildingVisualizer({
   floors,
+  minFloor = 0,
   units,
   selectedFloor,
   onFloorSelect,
   onAddUnit,
   className,
 }: BuildingVisualizerProps) {
+  // Derive actual min floor from units if they contain basements
+  const effectiveMinFloor = useMemo(() => {
+    const unitMinFloor = units.length > 0 ? Math.min(...units.map(u => u.floor)) : 0;
+    return Math.min(minFloor, unitMinFloor);
+  }, [minFloor, units]);
   
   // Stats globales
   const stats = useMemo(() => {
@@ -82,8 +90,8 @@ export function BuildingVisualizer({
           <div className="h-5 bg-gradient-to-b from-slate-500 to-slate-600 rounded-t-lg transform skew-x-[-3deg] shadow-xl border-t border-slate-400/30" />
         </motion.div>
 
-        {/* Étages (du haut vers le bas) */}
-        {Array.from({ length: floors }, (_, i) => floors - 1 - i).map((floor, idx) => {
+        {/* Étages (du haut vers le bas, incluant sous-sols) */}
+        {Array.from({ length: floors - effectiveMinFloor }, (_, i) => floors - 1 - i).map((floor, idx) => {
           const floorUnits = units.filter(u => u.floor === floor);
           const isSelected = selectedFloor === floor;
           const hasVacant = floorUnits.some(u => u.status === "vacant");
@@ -108,7 +116,7 @@ export function BuildingVisualizer({
                 isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
               )}>
                 <span className="text-[10px] font-medium text-slate-400">
-                  {floor === 0 ? "RDC" : `Étage ${floor}`}
+                  {floor < 0 ? `Sous-sol ${Math.abs(floor)}` : floor === 0 ? "RDC" : `Étage ${floor}`}
                 </span>
                 <span className="text-[10px] text-slate-500">
                   {floorUnits.length} lot{floorUnits.length !== 1 ? "s" : ""}
@@ -118,7 +126,9 @@ export function BuildingVisualizer({
               {/* Barre d'étage avec lots */}
               <div className={cn(
                 "relative h-10 md:h-12 rounded-sm border-2 transition-all overflow-hidden",
-                "bg-gradient-to-r from-slate-700/80 via-slate-600/60 to-slate-700/80",
+                floor < 0
+                  ? "bg-gradient-to-r from-slate-800/90 via-slate-700/70 to-slate-800/90"
+                  : "bg-gradient-to-r from-slate-700/80 via-slate-600/60 to-slate-700/80",
                 "shadow-sm hover:shadow-md",
                 isSelected 
                   ? "border-blue-500 shadow-lg shadow-blue-500/20" 

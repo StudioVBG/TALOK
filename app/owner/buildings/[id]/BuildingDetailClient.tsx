@@ -26,6 +26,9 @@ import {
   Clock,
   CheckCircle2,
   FolderOpen,
+  Wrench,
+  Eye,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,8 +41,20 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -265,6 +280,52 @@ export function BuildingDetailClient({
   const [selectedDocType, setSelectedDocType] = useState<string>("assurance_pno");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Cover photo ──
+  const [coverUrl, setCoverUrl] = useState<string | null>(building.cover_url);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCoverUpload = useCallback(async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Seules les images sont acceptées", variant: "destructive" });
+      return;
+    }
+    setUploadingCover(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", "photo");
+      formData.append("property_id", propertyId);
+
+      const res = await fetch("/api/documents/upload", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Erreur d'upload");
+
+      const result = await res.json();
+      const doc = result.document || result;
+
+      // Get signed URL for the uploaded photo to use as cover
+      const urlRes = await fetch(`/api/documents/${doc.id}/signed-url`);
+      if (urlRes.ok) {
+        const urlData = await urlRes.json();
+        const newCoverUrl = urlData.signedUrl || urlData.url;
+        setCoverUrl(newCoverUrl);
+
+        // Persist cover_url on property
+        await fetch(`/api/properties/${propertyId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cover_url: newCoverUrl }),
+        }).catch(() => {});
+      }
+
+      toast({ title: "Photo mise à jour" });
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : "Erreur", variant: "destructive" });
+    } finally {
+      setUploadingCover(false);
+    }
+  }, [propertyId, toast]);
+
   // ── Filters ──
   const [filterFloor, setFilterFloor] = useState<string>("all");
   const [filterType, setFilterType] = useState<string>("all");
@@ -302,6 +363,47 @@ export function BuildingDetailClient({
     const ok = await patchBuilding({ [key]: val });
     if (!ok) setEquipment(prev => ({ ...prev, [key]: !val }));
   }, [patchBuilding]);
+
+  // ── Unit actions ──
+  const [unitStatuses, setUnitStatuses] = useState<Record<string, string>>(() => {
+    const m: Record<string, string> = {};
+    for (const u of units) if (u.id && u.status) m[u.id] = u.status;
+    return m;
+  });
+  const [deletedUnitIds, setDeletedUnitIds] = useState<Set<string>>(new Set());
+
+  const handleUnitStatusChange = useCallback(async (unitId: string, newStatus: string) => {
+    if (!buildingId) return;
+    const prev = unitStatuses[unitId];
+    setUnitStatuses(s => ({ ...s, [unitId]: newStatus }));
+    try {
+      const res = await fetch(`/api/buildings/${buildingId}/units/${unitId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (!res.ok) throw new Error("Erreur");
+      toast({ title: `Lot marqué ${statusLabels[newStatus] || newStatus}` });
+    } catch {
+      setUnitStatuses(s => ({ ...s, [unitId]: prev }));
+      toast({ title: "Erreur de mise à jour", variant: "destructive" });
+    }
+  }, [buildingId, unitStatuses, toast]);
+
+  const handleUnitDelete = useCallback(async (unitId: string) => {
+    if (!buildingId) return;
+    try {
+      const res = await fetch(`/api/buildings/${buildingId}/units/${unitId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error || "Erreur de suppression");
+      }
+      setDeletedUnitIds(prev => new Set(prev).add(unitId));
+      toast({ title: "Lot supprimé" });
+    } catch (e) {
+      toast({ title: e instanceof Error ? e.message : "Erreur", variant: "destructive" });
+    }
+  }, [buildingId, toast]);
 
   // ── Document upload ──
   const handleDocUpload = useCallback(async (file: File) => {
@@ -342,14 +444,21 @@ export function BuildingDetailClient({
     return [...new Set(units.map((u) => u.type || "appartement"))];
   }, [units]);
 
+  // Live units with optimistic status updates and deletions
+  const liveUnits = useMemo(() => {
+    return units
+      .filter(u => u.id && !deletedUnitIds.has(u.id))
+      .map(u => ({ ...u, status: unitStatuses[u.id!] || u.status }));
+  }, [units, unitStatuses, deletedUnitIds]);
+
   const filteredUnits = useMemo(() => {
-    return units.filter((u) => {
+    return liveUnits.filter((u) => {
       if (filterFloor !== "all" && (u.floor ?? 0) !== Number(filterFloor)) return false;
       if (filterType !== "all" && u.type !== filterType) return false;
       if (filterStatus !== "all" && u.status !== filterStatus) return false;
       return true;
     });
-  }, [units, filterFloor, filterType, filterStatus]);
+  }, [liveUnits, filterFloor, filterType, filterStatus]);
 
   const unitsByFloor = filteredUnits.reduce<Record<number, typeof units>>((acc, unit) => {
     const floor = unit.floor ?? 0;
@@ -360,14 +469,14 @@ export function BuildingDetailClient({
 
   const floors = Object.keys(unitsByFloor).map(Number).sort((a, b) => b - a);
 
-  const totalUnits = units.length;
-  const parkingUnits = units.filter((u) => u.type === "parking" || u.type === "cave").length;
+  const totalUnits = liveUnits.length;
+  const parkingUnits = liveUnits.filter((u) => u.type === "parking" || u.type === "cave").length;
   const habitableUnits = totalUnits - parkingUnits;
-  const vacantUnits = units.filter((u) => u.status === "vacant" && u.type !== "parking" && u.type !== "cave").length;
-  const occupiedUnits = units.filter((u) => u.status === "occupe" && u.type !== "parking" && u.type !== "cave").length;
+  const vacantUnits = liveUnits.filter((u) => u.status === "vacant" && u.type !== "parking" && u.type !== "cave").length;
+  const occupiedUnits = liveUnits.filter((u) => u.status === "occupe" && u.type !== "parking" && u.type !== "cave").length;
   const occupancyRate = habitableUnits > 0 ? Math.round((occupiedUnits / habitableUnits) * 100) : 0;
-  const revenuActuel = units.filter((u) => u.status === "occupe").reduce((sum, u) => sum + (u.loyer_hc || 0) + (u.charges || 0), 0);
-  const revenuPotentiel = units.reduce((sum, u) => sum + (u.loyer_hc || 0) + (u.charges || 0), 0);
+  const revenuActuel = liveUnits.filter((u) => u.status === "occupe").reduce((sum, u) => sum + (u.loyer_hc || 0) + (u.charges || 0), 0);
+  const revenuPotentiel = liveUnits.reduce((sum, u) => sum + (u.loyer_hc || 0) + (u.charges || 0), 0);
   const hasActiveFilters = filterFloor !== "all" || filterType !== "all" || filterStatus !== "all";
 
   // Group documents by type
@@ -393,10 +502,10 @@ export function BuildingDetailClient({
       </Button>
 
       {/* Header */}
-      <div className="relative h-56 md:h-64 rounded-xl overflow-hidden mb-8 bg-card">
-        {building.cover_url ? (
+      <div className="relative h-56 md:h-64 rounded-xl overflow-hidden mb-8 bg-card group">
+        {coverUrl ? (
           <Image
-            src={building.cover_url}
+            src={coverUrl}
             alt={building.adresse_complete}
             fill
             className="object-cover"
@@ -407,6 +516,29 @@ export function BuildingDetailClient({
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+        {/* Cover photo button */}
+        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+          <Button
+            size="sm"
+            variant="secondary"
+            className="bg-black/50 hover:bg-black/70 text-white border-0 backdrop-blur-sm"
+            onClick={() => coverInputRef.current?.click()}
+            disabled={uploadingCover}
+          >
+            {uploadingCover ? (
+              <><span className="h-3.5 w-3.5 mr-1.5 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" /> Envoi...</>
+            ) : (
+              <><Pencil className="h-3.5 w-3.5 mr-1.5" /> Modifier la photo</>
+            )}
+          </Button>
+          <input
+            ref={coverInputRef}
+            type="file"
+            className="hidden"
+            accept="image/jpeg,image/png,image/webp"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleCoverUpload(f); e.target.value = ""; }}
+          />
+        </div>
         <div className="absolute bottom-6 left-6 right-6 text-white">
           <div className="flex items-center gap-3 mb-2 flex-wrap">
             <h1 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-manrope)]">
@@ -647,9 +779,6 @@ export function BuildingDetailClient({
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                      <DropdownMenuItem asChild>
-                                        <Link href={`/owner/buildings/${building.id}/units`}>Modifier</Link>
-                                      </DropdownMenuItem>
                                       {unit.property_id && (
                                         <DropdownMenuItem asChild>
                                           <Link href={`/owner/properties/${unit.property_id}`}>
@@ -658,16 +787,64 @@ export function BuildingDetailClient({
                                           </Link>
                                         </DropdownMenuItem>
                                       )}
-                                      {unit.status !== "occupe" && (
+                                      {unit.status === "occupe" && unit.current_lease_id && (
                                         <DropdownMenuItem asChild>
-                                          <Link href={
-                                            unit.property_id
-                                              ? `/owner/leases/new?propertyId=${unit.property_id}&buildingUnitId=${unit.id}`
-                                              : `/owner/buildings/${building.id}/units`
-                                          }>
+                                          <Link href={`/owner/leases/${unit.current_lease_id}`}>
+                                            <Eye className="h-3.5 w-3.5 mr-2" />
+                                            Voir le bail
+                                          </Link>
+                                        </DropdownMenuItem>
+                                      )}
+                                      {unit.status !== "occupe" && unit.property_id && (
+                                        <DropdownMenuItem asChild>
+                                          <Link href={`/owner/leases/new?propertyId=${unit.property_id}&buildingUnitId=${unit.id}`}>
+                                            <Plus className="h-3.5 w-3.5 mr-2" />
                                             Créer un bail
                                           </Link>
                                         </DropdownMenuItem>
+                                      )}
+                                      <DropdownMenuSeparator />
+                                      {unit.status !== "travaux" && (
+                                        <DropdownMenuItem onClick={() => unit.id && handleUnitStatusChange(unit.id, "travaux")}>
+                                          <Wrench className="h-3.5 w-3.5 mr-2" />
+                                          Marquer en travaux
+                                        </DropdownMenuItem>
+                                      )}
+                                      {unit.status !== "vacant" && !unit.current_lease_id && (
+                                        <DropdownMenuItem onClick={() => unit.id && handleUnitStatusChange(unit.id, "vacant")}>
+                                          <Home className="h-3.5 w-3.5 mr-2" />
+                                          Marquer vacant
+                                        </DropdownMenuItem>
+                                      )}
+                                      {!unit.current_lease_id && unit.status !== "occupe" && (
+                                        <>
+                                          <DropdownMenuSeparator />
+                                          <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-red-600 focus:text-red-600">
+                                                <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                                Supprimer le lot
+                                              </DropdownMenuItem>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                              <AlertDialogHeader>
+                                                <AlertDialogTitle>Supprimer ce lot ?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                  Le lot {unitTypeLabels[unit.type || "appartement"]} {unit.position} sera définitivement supprimé. Cette action est irréversible.
+                                                </AlertDialogDescription>
+                                              </AlertDialogHeader>
+                                              <AlertDialogFooter>
+                                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                <AlertDialogAction
+                                                  onClick={() => unit.id && handleUnitDelete(unit.id)}
+                                                  className="bg-red-600 hover:bg-red-700"
+                                                >
+                                                  Supprimer
+                                                </AlertDialogAction>
+                                              </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                          </AlertDialog>
+                                        </>
                                       )}
                                     </DropdownMenuContent>
                                   </DropdownMenu>
