@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { PlanGate } from "@/components/subscription/plan-gate";
 import {
@@ -18,6 +18,19 @@ import {
   CheckCircle2,
   Loader2,
 } from "lucide-react";
+
+// -- Debounce hook -----------------------------------------------------------
+// Small local hook to debounce a value. We keep it here (rather than adding a
+// new file) because it's only used by this page. 300ms matches the audit
+// requirement so the search box stays responsive but the API isn't hammered.
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(id);
+  }, [value, delayMs]);
+  return debounced;
+}
 
 // -- Constants ---------------------------------------------------------------
 
@@ -136,8 +149,11 @@ export default function EntriesPageClient() {
 }
 
 function EntriesPageContent() {
-  // Filters
-  const [search, setSearch] = useState("");
+  // Filters — `searchInput` is the raw input value, `search` is the debounced
+  // value that actually gets sent to the API (300ms) so the user can type
+  // freely without firing a request on every keystroke.
+  const [searchInput, setSearchInput] = useState("");
+  const search = useDebouncedValue(searchInput, 300);
   const [journalCode, setJournalCode] = useState("");
   const [status, setStatus] = useState<"all" | "draft" | "validated">("all");
   const [source, setSource] = useState("");
@@ -150,6 +166,13 @@ function EntriesPageContent() {
 
   // Selection
   const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // Reset pagination + selection whenever the debounced search changes so
+  // the user doesn't end up on page 5 of a result set that no longer exists.
+  useEffect(() => {
+    setPage(1);
+    setSelected(new Set());
+  }, [search]);
 
   const {
     entries,
@@ -172,24 +195,12 @@ function EntriesPageContent() {
     limit: 50,
   });
 
-  // Client-side status/source filtering (API may not support all filters)
-  const filteredEntries = useMemo(() => {
-    let result = entries;
-    if (status === "draft") {
-      result = result.filter((e: AccountingEntryRow) => isDraft(e));
-    } else if (status === "validated") {
-      result = result.filter((e: AccountingEntryRow) => !isDraft(e));
-    }
-    if (source) {
-      result = result.filter((e: AccountingEntryRow) => (e.source ?? "manual") === source);
-    }
-    return result;
-  }, [entries, status, source]);
-
-  // Draft entries for bulk selection
+  // Server now handles status/source/search/date filtering — we consume the
+  // returned page as-is. `draftEntries` is only used to drive the bulk
+  // "select all" checkbox; it's a derived helper, not a redundant filter.
   const draftEntries = useMemo(
-    () => filteredEntries.filter((e: AccountingEntryRow) => isDraft(e)),
-    [filteredEntries]
+    () => entries.filter((e: AccountingEntryRow) => isDraft(e)),
+    [entries],
   );
 
   const toggleSelect = useCallback((id: string) => {
@@ -219,14 +230,15 @@ function EntriesPageContent() {
     }
   };
 
-  // Totals for page
+  // Totals for page — derived aggregations from the server-filtered page,
+  // not a second filter pass.
   const pageDebitCents = useMemo(
-    () => filteredEntries.reduce((s: number, e: AccountingEntryRow) => s + getEntryDebitCents(e), 0),
-    [filteredEntries]
+    () => entries.reduce((s: number, e: AccountingEntryRow) => s + getEntryDebitCents(e), 0),
+    [entries],
   );
   const pageCreditCents = useMemo(
-    () => filteredEntries.reduce((s: number, e: AccountingEntryRow) => s + getEntryCreditCents(e), 0),
-    [filteredEntries]
+    () => entries.reduce((s: number, e: AccountingEntryRow) => s + getEntryCreditCents(e), 0),
+    [entries],
   );
 
   // Reset page when filters change
@@ -266,13 +278,14 @@ function EntriesPageContent() {
 
       {/* Filters bar */}
       <div className="flex flex-wrap gap-2">
-        {/* Search */}
+        {/* Search — controlled by the raw input state; the debounced value
+            is what drives the query (see `search` above). */}
         <div className="relative flex-1 min-w-[12rem]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
             type="text"
-            value={search}
-            onChange={(e) => handleFilterChange(setSearch)(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Rechercher..."
             className="w-full rounded-lg border border-border bg-card pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
           />
@@ -368,7 +381,7 @@ function EntriesPageContent() {
             <div key={i} className="h-14 bg-muted rounded-lg" />
           ))}
         </div>
-      ) : filteredEntries.length === 0 ? (
+      ) : entries.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-12 text-center">
           <p className="text-sm text-muted-foreground">
             Aucune ecriture trouvee.
@@ -417,7 +430,7 @@ function EntriesPageContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredEntries.map((entry: AccountingEntryRow) => {
+                  {entries.map((entry: AccountingEntryRow) => {
                     const entryIsDraft = isDraft(entry);
                     const entryDate =
                       entry.entry_date ?? entry.ecriture_date ?? "";
@@ -485,7 +498,7 @@ function EntriesPageContent() {
 
           {/* Mobile cards */}
           <div className="md:hidden space-y-2">
-            {filteredEntries.map((entry: AccountingEntryRow) => {
+            {entries.map((entry: AccountingEntryRow) => {
               const entryIsDraft = isDraft(entry);
               const entryDate = entry.entry_date ?? entry.ecriture_date ?? "";
               const entryLabel = entry.label ?? entry.ecriture_lib ?? "";
@@ -541,8 +554,8 @@ function EntriesPageContent() {
           <div className="bg-card rounded-xl border border-border px-4 py-3">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium text-muted-foreground">
-                Totaux ({filteredEntries.length} ecriture
-                {filteredEntries.length > 1 ? "s" : ""})
+                Totaux ({entries.length} ecriture
+                {entries.length > 1 ? "s" : ""})
               </span>
               <div className="flex items-center gap-6">
                 <span className="text-foreground">

@@ -7,7 +7,12 @@
 
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "./use-auth";
 
@@ -117,7 +122,11 @@ export function useAccountingEntries(params: UseAccountingEntriesParams) {
       if (params.journalCode) searchParams.set("journal_code", params.journalCode);
       if (params.startDate) searchParams.set("start_date", params.startDate);
       if (params.endDate) searchParams.set("end_date", params.endDate);
-      if (params.search) searchParams.set("piece_ref", params.search);
+      if (params.search) searchParams.set("search", params.search);
+      if (params.status && params.status !== "all") {
+        searchParams.set("status", params.status);
+      }
+      if (params.source) searchParams.set("source", params.source);
 
       return apiClient.get<EntriesApiResponse>(
         `/accounting/entries?${searchParams.toString()}`
@@ -127,6 +136,10 @@ export function useAccountingEntries(params: UseAccountingEntriesParams) {
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     refetchOnWindowFocus: true,
+    // Keep the previous page's data visible while the next page is loading
+    // to avoid a flash of skeleton when the user types in the search box or
+    // changes filters.
+    placeholderData: keepPreviousData,
   });
 
   // Normalize entries for convenience: merge legacy and new-schema fields
