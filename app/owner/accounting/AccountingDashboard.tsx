@@ -222,22 +222,22 @@ function AccountingDashboardContent() {
           {/* Quick actions */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <QuickAction
-              href="/owner/accounting/entries/new"
+              href="/owner/accounting/entries"
               icon={<FileText className="w-5 h-5" />}
               label="Nouvelle ecriture"
             />
             <QuickAction
-              href="/owner/documents/upload"
+              href="/owner/accounting/upload"
               icon={<Upload className="w-5 h-5" />}
               label="Scanner justificatif"
             />
             <QuickAction
-              href="/owner/money/settings"
+              href="/owner/accounting/bank"
               icon={<Building2 className="w-5 h-5" />}
               label="Rapprochement bancaire"
             />
             <QuickAction
-              href="/owner/accounting/export"
+              href="/owner/accounting/exports"
               icon={<Download className="w-5 h-5" />}
               label="Exporter FEC"
             />
