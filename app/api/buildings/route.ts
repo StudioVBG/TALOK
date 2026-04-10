@@ -7,10 +7,8 @@ import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { createLogger } from "@/lib/logging/structured-logger";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
-/**
- * Validation schema for creating a building
- */
 const createBuildingSchema = z.object({
   name: z.string().min(1, "Le nom est requis").max(100, "Le nom est trop long"),
   adresse_complete: z.string().min(1, "L'adresse est requise"),
@@ -28,19 +26,17 @@ const createBuildingSchema = z.object({
   property_id: z.string().uuid().optional(),
 });
 
-/**
- * GET /api/buildings - Get all buildings for the current owner
- */
 export async function GET(request: Request) {
   try {
-    const { user, error, supabase } = await getAuthenticatedUser(request);
+    const { user, error } = await getAuthenticatedUser(request);
 
-    if (error || !user || !supabase) {
+    if (error || !user) {
       throw new ApiError(error?.status || 401, error?.message || "Non authentifié");
     }
 
-    // Get owner profile
-    const { data: profile, error: profileError } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -54,8 +50,7 @@ export async function GET(request: Request) {
       throw new ApiError(403, "Accès réservé aux propriétaires");
     }
 
-    // Fetch buildings with units count
-    let query = supabase
+    let query = serviceClient
       .from("buildings")
       .select(`
         *,
@@ -63,7 +58,6 @@ export async function GET(request: Request) {
       `)
       .order("created_at", { ascending: false });
 
-    // Non-admin users only see their own buildings
     if (profile.role !== "admin") {
       query = query.eq("owner_id", profile.id);
     }
@@ -75,11 +69,10 @@ export async function GET(request: Request) {
       throw new ApiError(500, "Erreur lors de la récupération des immeubles");
     }
 
-    // Transform to include units_count
     const transformedBuildings = (buildings || []).map((b: any) => ({
       ...b,
       units_count: b.building_units?.[0]?.count || 0,
-      building_units: undefined, // Remove the raw count object
+      building_units: undefined,
     }));
 
     return NextResponse.json({ buildings: transformedBuildings });
@@ -88,22 +81,20 @@ export async function GET(request: Request) {
   }
 }
 
-/**
- * POST /api/buildings - Create a new building
- */
 export async function POST(request: Request) {
   try {
     const rateLimitResponse = applyRateLimit(request, "property");
     if (rateLimitResponse) return rateLimitResponse;
 
-    const { user, error, supabase } = await getAuthenticatedUser(request);
+    const { user, error } = await getAuthenticatedUser(request);
 
-    if (error || !user || !supabase) {
+    if (error || !user) {
       throw new ApiError(error?.status || 401, error?.message || "Non authentifié");
     }
 
-    // Get owner profile
-    const { data: profile, error: profileError } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -117,7 +108,6 @@ export async function POST(request: Request) {
       throw new ApiError(403, "Seuls les propriétaires peuvent créer des immeubles");
     }
 
-    // Validate request body
     const body = await request.json();
     const validation = createBuildingSchema.safeParse(body);
 
@@ -127,7 +117,6 @@ export async function POST(request: Request) {
 
     const payload = validation.data;
 
-    // Extract departement from code_postal if not provided
     let departement = payload.departement;
     if (!departement && payload.code_postal) {
       if (payload.code_postal.startsWith("97")) {
@@ -140,20 +129,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Create service client for insert
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseUrl || !serviceRoleKey) {
-      throw new ApiError(500, "Configuration serveur incomplète");
-    }
-
-    const { createClient } = await import("@supabase/supabase-js");
-    const serviceClient = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
-
-    // Insert building
     const { data: building, error: insertError } = await serviceClient
       .from("buildings")
       .insert({
@@ -181,7 +156,6 @@ export async function POST(request: Request) {
       throw new ApiError(500, "Erreur lors de la création de l'immeuble", insertError);
     }
 
-    // Emit event
     try {
       await serviceClient.from("outbox").insert({
         event_type: "Building.Created",

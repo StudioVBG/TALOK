@@ -4,25 +4,24 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-/**
- * GET /api/buildings/[id]/stats - Get statistics for a building
- */
 export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { id: buildingId } = await params;
-    const { user, error, supabase } = await getAuthenticatedUser(request);
+    const { user, error } = await getAuthenticatedUser(request);
 
-    if (error || !user || !supabase) {
+    if (error || !user) {
       throw new ApiError(error?.status || 401, error?.message || "Non authentifié");
     }
 
-    // Get owner profile
-    const { data: profile, error: profileError } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -32,8 +31,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       throw new ApiError(404, "Profil non trouvé");
     }
 
-    // Get building
-    const { data: building, error: buildingError } = await supabase
+    const { data: building, error: buildingError } = await serviceClient
       .from("buildings")
       .select("id, owner_id, name")
       .eq("id", buildingId)
@@ -43,13 +41,11 @@ export async function GET(request: Request, { params }: RouteParams) {
       throw new ApiError(404, "Immeuble non trouvé");
     }
 
-    // Check access
     if (profile.role !== "admin" && building.owner_id !== profile.id) {
       throw new ApiError(403, "Accès non autorisé à cet immeuble");
     }
 
-    // Try to get stats from the view first (if it exists)
-    const { data: viewStats, error: viewError } = await supabase
+    const { data: viewStats, error: viewError } = await serviceClient
       .from("building_stats")
       .select("*")
       .eq("id", buildingId)
@@ -59,8 +55,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       return NextResponse.json({ stats: viewStats });
     }
 
-    // Fallback: calculate stats manually from units
-    const { data: units, error: unitsError } = await supabase
+    const { data: units, error: unitsError } = await serviceClient
       .from("building_units")
       .select("*")
       .eq("building_id", buildingId);
@@ -72,7 +67,6 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     const allUnits = units || [];
 
-    // Calculate stats
     const totalUnits = allUnits.filter(u =>
       u.type === "appartement" || u.type === "studio" || u.type === "bureau" || u.type === "local_commercial"
     ).length;
@@ -84,7 +78,6 @@ export async function GET(request: Request, { params }: RouteParams) {
     const vacantUnits = allUnits.filter(u => u.status === "vacant").length;
     const occupancyRate = allUnits.length > 0 ? Math.round((occupiedUnits / allUnits.length) * 100) : 0;
 
-    // Units by status
     const byStatus = {
       vacant: allUnits.filter(u => u.status === "vacant").length,
       occupe: allUnits.filter(u => u.status === "occupe").length,
@@ -92,7 +85,6 @@ export async function GET(request: Request, { params }: RouteParams) {
       reserve: allUnits.filter(u => u.status === "reserve").length,
     };
 
-    // Units by type
     const byType = {
       appartement: allUnits.filter(u => u.type === "appartement").length,
       studio: allUnits.filter(u => u.type === "studio").length,
@@ -102,7 +94,6 @@ export async function GET(request: Request, { params }: RouteParams) {
       cave: totalCaves,
     };
 
-    // Revenue by status
     const revenueOccupe = allUnits
       .filter(u => u.status === "occupe")
       .reduce((acc, u) => acc + (u.loyer_hc || 0) + (u.charges || 0), 0);

@@ -161,30 +161,27 @@ export default async function BuildingDetailPage({ params }: PageProps) {
     .eq("property_id", propertyId)
     .single();
 
-  // Fetch units via building_id (pas property_id qui pointe vers le lot individuel)
-  const units = buildingMeta?.id
-    ? (await serviceClient
-        .from("building_units")
-        .select(`
-          id,
-          floor,
-          position,
-          type,
-          template,
-          surface,
-          nb_pieces,
-          loyer_hc,
-          charges,
-          depot_garantie,
-          status,
-          property_id,
-          current_lease_id,
-          notes
-        `)
-        .eq("building_id", buildingMeta.id)
-        .order("floor", { ascending: true })
-        .order("position", { ascending: true })).data
-    : null;
+  // Fetch units + documents en parallèle
+  const [unitsResult, documentsResult] = await Promise.all([
+    buildingMeta?.id
+      ? serviceClient
+          .from("building_units")
+          .select(`
+            id, floor, position, type, template, surface, nb_pieces,
+            loyer_hc, charges, depot_garantie, status, property_id,
+            current_lease_id, notes
+          `)
+          .eq("building_id", buildingMeta.id)
+          .order("floor", { ascending: true })
+          .order("position", { ascending: true })
+      : Promise.resolve({ data: null }),
+    serviceClient
+      .from("documents")
+      .select("id, type, title, original_filename, file_size, mime_type, created_at, expiry_date, valid_until, ged_status")
+      .eq("property_id", propertyId)
+      .eq("is_current_version", true)
+      .order("created_at", { ascending: false }),
+  ]);
 
   return (
     <BuildingDetailClient
@@ -196,7 +193,8 @@ export default async function BuildingDetailPage({ params }: PageProps) {
         annee_construction: building.annee_construction ?? null,
       }}
       buildingMeta={buildingMeta ?? null}
-      units={units || []}
+      units={unitsResult.data || []}
+      documents={(documentsResult.data as any[]) || []}
     />
   );
 }
