@@ -892,13 +892,21 @@ export async function POST(request: NextRequest) {
           });
           const paymentId = paymentResult.paymentId;
 
+          // Always update stripe_payment_intent_id for traceability
           await supabase
             .from("invoices")
-            .update({
-              stripe_payment_intent_id: paymentIntent.id,
-              paid_at: paidAt,
-            })
+            .update({ stripe_payment_intent_id: paymentIntent.id })
             .eq("id", invoiceId);
+
+          // paid_at is the first-success timestamp — preserve it on Stripe
+          // webhook retries by only writing when the column is still null.
+          // date_paiement is handled (with the same invariant) by
+          // syncInvoiceStatusFromPayments below.
+          await supabase
+            .from("invoices")
+            .update({ paid_at: paidAt })
+            .eq("id", invoiceId)
+            .is("paid_at", null);
 
           const settlement = await syncInvoiceStatusFromPayments(supabase as any, invoiceId, paidAt);
 

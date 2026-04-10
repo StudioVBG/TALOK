@@ -126,6 +126,53 @@ describe("invoice-status.service", () => {
     ]);
   });
 
+  it("preserve la date_paiement existante sur un replay de webhook (idempotence)", async () => {
+    // Scenario: Stripe retries `payment_intent.succeeded`. The invoice is
+    // already settled with date_paiement = "2026-03-10". The retry passes
+    // a newer timestamp but the stored date must NOT change.
+    const mock = createMockSupabase({
+      invoice: { id: "inv_replay", montant_total: 500, statut: "paid", date_paiement: "2026-03-10" },
+      payments: [{ montant: 500 }],
+    });
+
+    const settlement = await syncInvoiceStatusFromPayments(mock.client as any, "inv_replay", "2026-03-15");
+
+    expect(settlement?.isSettled).toBe(true);
+    expect(mock.updates).toEqual([
+      {
+        table: "invoices",
+        values: {
+          statut: "paid",
+          date_paiement: "2026-03-10",
+        },
+      },
+    ]);
+  });
+
+  it("ne vide pas date_paiement quand une facture paid devient partielle", async () => {
+    // Scenario: a prior event recorded date_paiement, then a failed event
+    // brings the invoice back to "partial". We must keep the original date
+    // instead of writing null.
+    const mock = createMockSupabase({
+      invoice: { id: "inv_partial", montant_total: 1000, statut: "paid", date_paiement: "2026-03-10" },
+      payments: [{ montant: 400 }],
+    });
+
+    const settlement = await syncInvoiceStatusFromPayments(mock.client as any, "inv_partial", null);
+
+    expect(settlement?.status).toBe("partial");
+    expect(settlement?.isSettled).toBe(false);
+    expect(mock.updates).toEqual([
+      {
+        table: "invoices",
+        values: {
+          statut: "partial",
+          date_paiement: "2026-03-10",
+        },
+      },
+    ]);
+  });
+
   it("résout la facture initiale d'un bail et son règlement", async () => {
     const mock = createMockSupabase({
       initialInvoice: { id: "inv_initial" },

@@ -89,9 +89,17 @@ export async function syncInvoiceStatusFromPayments(
   }
 
   const nextStatus = settlement.status;
+  const existingPaymentDate = settlement.invoice?.date_paiement ?? null;
+
+  // Preserve existing date_paiement (idempotence invariant):
+  // - On retries of the same Stripe webhook, the first-success timestamp
+  //   must NOT be overwritten with a later one.
+  // - On partial/failed events, do not wipe a date that a prior settled
+  //   event already recorded.
+  // The fallback chain is therefore: existing → paidAt → now().
   const nextPaymentDate = settlement.isSettled
-    ? paidAt || settlement.invoice?.date_paiement || new Date().toISOString()
-    : null;
+    ? existingPaymentDate || paidAt || new Date().toISOString()
+    : existingPaymentDate;
 
   await supabase
     .from("invoices")
