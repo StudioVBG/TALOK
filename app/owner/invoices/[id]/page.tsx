@@ -39,8 +39,11 @@ const statusConfig = {
   draft: { label: "Brouillon", color: "bg-muted text-foreground", icon: FileText },
   sent: { label: "Envoyée", color: "bg-blue-100 text-blue-700", icon: Send },
   viewed: { label: "Vue", color: "bg-purple-100 text-purple-700", icon: Eye },
+  pending: { label: "En attente", color: "bg-blue-100 text-blue-700", icon: Clock },
   paid: { label: "Payée", color: "bg-green-100 text-green-700", icon: CheckCircle2 },
   late: { label: "En retard", color: "bg-red-100 text-red-700", icon: AlertCircle },
+  overdue: { label: "En retard", color: "bg-red-100 text-red-700", icon: AlertCircle },
+  unpaid: { label: "Impayée", color: "bg-red-100 text-red-700", icon: AlertCircle },
   partial: { label: "Partielle", color: "bg-amber-100 text-amber-700", icon: Clock },
   cancelled: { label: "Annulée", color: "bg-gray-100 text-gray-500", icon: XCircle },
 };
@@ -53,7 +56,7 @@ interface Invoice {
   montant_loyer: number;
   montant_charges: number;
   montant_paye?: number;
-  statut: keyof typeof statusConfig;
+  statut: keyof typeof statusConfig | string;
   date_echeance: string;
   date_emission: string;
   date_paiement?: string;
@@ -91,18 +94,33 @@ export default function InvoiceDetailPage() {
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<{ status: number; message: string } | null>(null);
   const [sending, setSending] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
 
   const fetchInvoice = async () => {
+    setFetchError(null);
     try {
       const response = await fetch(`/api/invoices/${invoiceId}`);
       if (response.ok) {
         const data = await response.json();
         setInvoice(data.invoice || data);
+        return;
       }
+      // Capture the real error so user sees 403/404/500 details instead of
+      // a generic "facture introuvable".
+      const body = await response.json().catch(() => ({}));
+      setFetchError({
+        status: response.status,
+        message: body.error || `Erreur HTTP ${response.status}`,
+      });
+      console.error("[InvoiceDetail] API error:", response.status, body);
     } catch (error) {
       console.error("Erreur chargement facture:", error);
+      setFetchError({
+        status: 0,
+        message: error instanceof Error ? error.message : "Erreur réseau",
+      });
     } finally {
       setLoading(false);
     }
@@ -187,15 +205,31 @@ export default function InvoiceDetailPage() {
   }
 
   if (!invoice) {
+    const isForbidden = fetchError?.status === 403;
+    const isNotFound = fetchError?.status === 404 || !fetchError;
+    const title = isForbidden
+      ? "Accès refusé"
+      : isNotFound
+        ? "Facture introuvable"
+        : "Erreur de chargement";
+    const description = isForbidden
+      ? "Vous n'avez pas la permission d'accéder à cette facture."
+      : isNotFound
+        ? "Cette facture n'existe pas ou vous n'y avez pas accès."
+        : fetchError?.message ?? "Une erreur est survenue lors du chargement.";
+
     return (
       <div className="p-6">
         <Card className="bg-card/80 backdrop-blur-sm">
           <CardContent className="py-16 text-center">
             <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Facture introuvable</h3>
-            <p className="text-muted-foreground mb-6">
-              Cette facture n'existe pas ou vous n'y avez pas accès.
-            </p>
+            <h3 className="text-lg font-semibold mb-2">{title}</h3>
+            <p className="text-muted-foreground mb-2">{description}</p>
+            {fetchError && fetchError.status > 0 && (
+              <p className="text-xs text-muted-foreground/70 mb-6 font-mono">
+                HTTP {fetchError.status} — Facture ID : {invoiceId}
+              </p>
+            )}
             <Button asChild>
               <Link href="/owner/money">Retour aux finances</Link>
             </Button>
@@ -205,7 +239,8 @@ export default function InvoiceDetailPage() {
     );
   }
 
-  const status = statusConfig[invoice.statut] || statusConfig.draft;
+  const status =
+    statusConfig[invoice.statut as keyof typeof statusConfig] ?? statusConfig.draft;
   const StatusIcon = status.icon;
   const resteDu = invoice.montant_total - (invoice.montant_paye || 0);
   const isPaid = invoice.statut === "paid";

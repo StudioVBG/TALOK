@@ -44,18 +44,32 @@ export function InvoiceDetailClient() {
   const invoiceId = params?.id as string;
   const [invoice, setInvoice] = useState<InvoiceDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<{ status: number; message: string } | null>(null);
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
     async function fetchInvoice() {
+      setFetchError(null);
       try {
         const res = await fetch(`/api/invoices/${invoiceId}`);
         if (res.ok) {
           const data = await res.json();
           setInvoice(data.invoice || data);
+          return;
         }
+        // Capture real error so user sees 403/404/500 instead of a blank "not found".
+        const body = await res.json().catch(() => ({}));
+        setFetchError({
+          status: res.status,
+          message: body.error || `Erreur HTTP ${res.status}`,
+        });
+        console.error("[InvoiceDetail] API error:", res.status, body);
       } catch (err) {
         console.error("[InvoiceDetail] Fetch error:", err);
+        setFetchError({
+          status: 0,
+          message: err instanceof Error ? err.message : "Erreur réseau",
+        });
       } finally {
         setLoading(false);
       }
@@ -89,9 +103,36 @@ export function InvoiceDetailClient() {
   }
 
   if (!invoice) {
+    const isForbidden = fetchError?.status === 403;
+    const isNotFound = fetchError?.status === 404 || !fetchError;
+    const title = isForbidden
+      ? "Accès refusé"
+      : isNotFound
+        ? "Facture introuvable"
+        : "Erreur de chargement";
+    const description = isForbidden
+      ? "Vous n'avez pas la permission d'accéder à cette facture."
+      : isNotFound
+        ? "Cette facture n'existe pas ou vous n'y avez pas accès."
+        : fetchError?.message ?? "Une erreur est survenue lors du chargement.";
+
     return (
-      <div className="container mx-auto px-4 py-8 max-w-3xl">
-        <p className="text-muted-foreground">Facture non trouvée</p>
+      <div className="container mx-auto px-4 py-8 max-w-3xl space-y-3">
+        <Button variant="ghost" size="sm" onClick={() => router.back()}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Retour
+        </Button>
+        <Card>
+          <CardContent className="py-12 text-center space-y-2">
+            <h2 className="text-lg font-semibold">{title}</h2>
+            <p className="text-sm text-muted-foreground">{description}</p>
+            {fetchError && fetchError.status > 0 && (
+              <p className="text-xs text-muted-foreground/70 font-mono">
+                HTTP {fetchError.status} — Facture ID : {invoiceId}
+              </p>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
