@@ -1,9 +1,14 @@
 "use client";
 
 /**
- * CashReceiptFlow - Flux complet de paiement en espèces
- * Génère un reçu avec double signature tactile (propriétaire + locataire)
- * SOTA 2025 avec animations, géolocalisation et PDF sécurisé
+ * CashReceiptFlow - Flux SOTA 2026 pour le reçu espèces
+ *
+ * Nouveau flow (deux étapes):
+ *  1. Le propriétaire signe sur SON espace — ce composant.
+ *  2. Une notification est envoyée au locataire qui signe depuis
+ *     SON espace (cf. /tenant/payments/cash-receipt/[id]).
+ *
+ * Ce composant ne demande donc PLUS de passer le téléphone au locataire.
  */
 
 import { useState, useRef, useEffect } from "react";
@@ -19,21 +24,17 @@ import { fr } from "date-fns/locale";
 import {
   Banknote,
   Check,
-  ChevronLeft,
-  ChevronRight,
   Clock,
-  Download,
   Loader2,
   MapPin,
   Send,
   User,
-  Users,
   AlertTriangle,
   Shield,
+  Hourglass,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Types
 interface CashReceiptFlowProps {
   invoiceId: string;
   amount: number;
@@ -41,8 +42,6 @@ interface CashReceiptFlowProps {
   ownerName: string;
   propertyAddress: string;
   periode: string;
-  /** Mode rapide: combine info + signature proprio en une seule étape */
-  quickMode?: boolean;
   onComplete?: (receiptData: ReceiptResult) => void;
   onCancel?: () => void;
 }
@@ -50,22 +49,18 @@ interface CashReceiptFlowProps {
 interface ReceiptResult {
   receiptId: string;
   receiptNumber: string;
-  pdfUrl: string | null;
-  documentHash: string;
+  status: string;
+  actionUrl: string | null;
 }
 
-type Step = "info" | "owner-sign" | "combined" | "tenant-sign" | "generating" | "complete";
+type Step = "sign" | "submitting" | "pending";
 
-// Animation variants
 const slideVariants = {
   enter: (direction: number) => ({
     x: direction > 0 ? 300 : -300,
     opacity: 0,
   }),
-  center: {
-    x: 0,
-    opacity: 1,
-  },
+  center: { x: 0, opacity: 1 },
   exit: (direction: number) => ({
     x: direction < 0 ? 300 : -300,
     opacity: 0,
@@ -79,23 +74,15 @@ export function CashReceiptFlow({
   ownerName,
   propertyAddress,
   periode,
-  quickMode = true, // Par défaut en mode rapide
   onComplete,
   onCancel,
 }: CashReceiptFlowProps) {
   const { toast } = useToast();
 
-  // Refs signatures
   const ownerSignatureRef = useRef<SignaturePadRef>(null);
-  const tenantSignatureRef = useRef<SignaturePadRef>(null);
 
-  // État - en mode rapide, commencer par l'étape combinée
-  const [step, setStep] = useState<Step>(quickMode ? "combined" : "info");
+  const [step, setStep] = useState<Step>("sign");
   const [direction, setDirection] = useState(0);
-  const [ownerSignature, setOwnerSignature] = useState<string | null>(null);
-  const [ownerSignedAt, setOwnerSignedAt] = useState<Date | null>(null);
-  const [tenantSignature, setTenantSignature] = useState<string | null>(null);
-  const [tenantSignedAt, setTenantSignedAt] = useState<Date | null>(null);
   const [canProceed, setCanProceed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [geolocation, setGeolocation] = useState<{
@@ -126,21 +113,18 @@ export function CashReceiptFlow({
     }
   }, []);
 
-  // Montant en lettres (approximatif côté client)
   const amountFormatted = new Intl.NumberFormat("fr-FR", {
     style: "currency",
     currency: "EUR",
   }).format(parseFloat(actualAmount) || amount);
 
-  // Navigation
   const goToStep = (newStep: Step, dir: number = 1) => {
     setDirection(dir);
     setStep(newStep);
     setCanProceed(false);
   };
 
-  // Valider signature propriétaire
-  const handleOwnerSign = () => {
+  const handleOwnerSignAndSend = async () => {
     if (!ownerSignatureRef.current || ownerSignatureRef.current.isEmpty()) {
       toast({
         title: "Signature requise",
@@ -150,26 +134,8 @@ export function CashReceiptFlow({
       return;
     }
 
-    setOwnerSignature(ownerSignatureRef.current.toDataURL());
-    setOwnerSignedAt(new Date());
-    goToStep("tenant-sign", 1);
-  };
-
-  // Valider signature locataire et générer le reçu
-  const handleTenantSign = async () => {
-    if (!tenantSignatureRef.current || tenantSignatureRef.current.isEmpty()) {
-      toast({
-        title: "Signature requise",
-        description: "Le locataire doit signer.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const tenantSig = tenantSignatureRef.current.toDataURL();
-    setTenantSignature(tenantSig);
-    setTenantSignedAt(new Date());
-    goToStep("generating", 1);
+    const ownerSig = ownerSignatureRef.current.toDataURL();
+    goToStep("submitting", 1);
     setLoading(true);
 
     try {
@@ -179,10 +145,8 @@ export function CashReceiptFlow({
         body: JSON.stringify({
           invoice_id: invoiceId,
           amount: parseFloat(actualAmount) || amount,
-          owner_signature: ownerSignature,
-          tenant_signature: tenantSig,
-          owner_signed_at: ownerSignedAt?.toISOString(),
-          tenant_signed_at: new Date().toISOString(),
+          owner_signature: ownerSig,
+          owner_signed_at: new Date().toISOString(),
           geolocation,
           notes,
           device_info: {
@@ -196,213 +160,80 @@ export function CashReceiptFlow({
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Erreur lors de la génération");
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error?.error || "Erreur lors de l'envoi du reçu");
       }
 
       const data = await response.json();
-      setReceiptResult({
+      const result: ReceiptResult = {
         receiptId: data.receipt_id,
         receiptNumber: data.receipt_number,
-        pdfUrl: data.pdf_url,
-        documentHash: data.document_hash,
-      });
-      goToStep("complete", 1);
+        status: data.status,
+        actionUrl: data.action_url ?? null,
+      };
+      setReceiptResult(result);
+      goToStep("pending", 1);
 
       toast({
-        title: "✅ Reçu généré avec succès",
-        description: `Reçu ${data.receipt_number} créé et envoyé.`,
+        title: "Notification envoyée",
+        description: `${tenantName} doit maintenant signer depuis son espace.`,
       });
-
-      onComplete?.(data);
+      // NB: onComplete est appelé lorsque l'utilisateur clique sur "Fermer"
+      // afin qu'il puisse voir l'écran "En attente de signature" avant
+      // que la modal ne se ferme.
     } catch (error: unknown) {
       toast({
         title: "Erreur",
         description: error instanceof Error ? error.message : "Une erreur est survenue",
         variant: "destructive",
       });
-      goToStep("tenant-sign", -1);
+      goToStep("sign", -1);
     } finally {
       setLoading(false);
     }
   };
 
-  // Rendu
   return (
-    <Card className="w-full max-w-lg mx-auto overflow-hidden shadow-xl">
-      {/* Header avec progression */}
-      <CardHeader className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-b pb-4">
+    <Card className="w-full max-w-lg mx-auto overflow-hidden shadow-xl bg-card">
+      <CardHeader className="bg-gradient-to-r from-[#2563EB]/10 to-[#2563EB]/5 border-b pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Banknote className="w-5 h-5 text-green-600" />
+            <Banknote className="w-5 h-5 text-[#2563EB]" />
             Reçu de paiement espèces
           </CardTitle>
-          <span className="text-2xl font-bold text-green-600">
+          <span className="text-2xl font-bold text-[#2563EB]">
             {amountFormatted}
           </span>
         </div>
 
-        {/* Barre de progression */}
+        {/* Barre de progression: Propriétaire → En attente locataire */}
         <div className="flex gap-1 mt-4">
-          {(quickMode ? ["combined", "tenant-sign", "complete"] : ["info", "owner-sign", "tenant-sign", "complete"]).map((s, i) => {
-            const steps: Step[] = quickMode
-              ? ["combined", "tenant-sign", "generating", "complete"]
-              : ["info", "owner-sign", "tenant-sign", "generating", "complete"];
-            const currentIndex = steps.indexOf(step);
-            const stepIndex = i;
-
+          {(["sign", "pending"] as const).map((s, i) => {
+            const currentIndex = step === "pending" ? 1 : 0;
             return (
               <div
                 key={s}
                 className={cn(
                   "h-1.5 flex-1 rounded-full transition-all duration-300",
-                  currentIndex >= stepIndex ? "bg-green-500" : "bg-muted"
+                  currentIndex >= i ? "bg-[#2563EB]" : "bg-muted"
                 )}
               />
             );
           })}
         </div>
 
-        {/* Labels des étapes */}
         <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-          {quickMode ? (
-            <>
-              <span>Propriétaire</span>
-              <span>Locataire</span>
-              <span>Terminé</span>
-            </>
-          ) : (
-            <>
-              <span>Infos</span>
-              <span>Propriétaire</span>
-              <span>Locataire</span>
-              <span>Terminé</span>
-            </>
-          )}
+          <span>Votre signature</span>
+          <span>Locataire signe</span>
         </div>
       </CardHeader>
 
       <CardContent className="p-6">
         <AnimatePresence mode="wait" custom={direction}>
-          {/* ÉTAPE 1: Informations */}
-          {step === "info" && (
+          {/* ÉTAPE 1: Signature propriétaire */}
+          {step === "sign" && (
             <motion.div
-              key="info"
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="space-y-4"
-            >
-              {/* Résumé */}
-              <div className="bg-muted/50 rounded-xl p-4 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground text-sm">
-                    Propriétaire
-                  </span>
-                  <span className="font-medium">{ownerName}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground text-sm">
-                    Locataire
-                  </span>
-                  <span className="font-medium">{tenantName}</span>
-                </div>
-                <div className="flex justify-between items-start">
-                  <span className="text-muted-foreground text-sm">Logement</span>
-                  <span className="font-medium text-right text-sm max-w-[200px]">
-                    {propertyAddress}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground text-sm">Période</span>
-                  <span className="font-medium">{periode}</span>
-                </div>
-                <hr className="border-border/50" />
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground text-sm">
-                    Montant reçu
-                  </span>
-                  <Input
-                    type="number"
-                    value={actualAmount}
-                    onChange={(e) => setActualAmount(e.target.value)}
-                    className="w-32 text-right font-bold text-lg"
-                    step="0.01"
-                  />
-                </div>
-                {parseFloat(actualAmount) !== amount && (
-                  <div className="flex items-center gap-2 text-amber-600 text-xs">
-                    <AlertTriangle className="w-3 h-3" />
-                    Montant différent du loyer attendu ({amount}€)
-                  </div>
-                )}
-              </div>
-
-              {/* Notes optionnelles */}
-              <div>
-                <label className="text-sm font-medium text-muted-foreground">
-                  Notes (optionnel)
-                </label>
-                <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Ex: Reçu en main propre le..."
-                  rows={2}
-                  className="mt-1"
-                />
-              </div>
-
-              {/* Métadonnées */}
-              <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {format(new Date(), "dd/MM/yyyy HH:mm", { locale: fr })}
-                </div>
-                {geolocation ? (
-                  <div className="flex items-center gap-1 text-green-600">
-                    <MapPin className="w-3 h-3" />
-                    Position enregistrée
-                  </div>
-                ) : geoError ? (
-                  <div className="flex items-center gap-1 text-amber-600">
-                    <MapPin className="w-3 h-3" />
-                    {geoError}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    Géolocalisation...
-                  </div>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={onCancel}
-                  className="flex-1"
-                >
-                  Annuler
-                </Button>
-                <Button
-                  onClick={() => goToStep("owner-sign", 1)}
-                  className="flex-1 gap-2"
-                >
-                  Continuer
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* MODE RAPIDE: Étape combinée (infos + signature propriétaire) */}
-          {step === "combined" && (
-            <motion.div
-              key="combined"
+              key="sign"
               custom={direction}
               variants={slideVariants}
               initial="enter"
@@ -414,16 +245,22 @@ export function CashReceiptFlow({
               {/* Résumé compact */}
               <div className="bg-muted/50 rounded-xl p-3 space-y-2 text-sm">
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">De</span>
+                  <span className="text-muted-foreground">Locataire</span>
                   <span className="font-medium">{tenantName}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">À</span>
-                  <span className="font-medium">{ownerName}</span>
+                  <span className="text-muted-foreground">Logement</span>
+                  <span className="font-medium text-right text-xs max-w-[220px] truncate">
+                    {propertyAddress}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Période</span>
+                  <span className="font-medium">{periode}</span>
                 </div>
                 <hr className="border-border/50" />
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Montant</span>
+                  <span className="text-muted-foreground">Montant reçu</span>
                   <div className="flex items-center gap-2">
                     <Input
                       type="number"
@@ -435,13 +272,35 @@ export function CashReceiptFlow({
                     <span className="text-lg font-bold">€</span>
                   </div>
                 </div>
+                {parseFloat(actualAmount) !== amount && (
+                  <div className="flex items-center gap-2 text-amber-600 text-xs">
+                    <AlertTriangle className="w-3 h-3" />
+                    Montant différent du loyer attendu ({amount}€)
+                  </div>
+                )}
               </div>
 
-              {/* Signature propriétaire intégrée */}
-              <div className="border-2 border-primary/20 rounded-xl p-4 bg-primary/5">
+              {/* Notes optionnelles */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">
+                  Notes (optionnel)
+                </label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Ex: Reçu en main propre le..."
+                  rows={2}
+                  className="mt-1"
+                />
+              </div>
+
+              {/* Signature propriétaire */}
+              <div className="border-2 border-[#2563EB]/20 rounded-xl p-4 bg-[#2563EB]/5">
                 <div className="flex items-center gap-2 mb-3">
-                  <User className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-medium">{ownerName} - Je confirme recevoir ce paiement</span>
+                  <User className="w-4 h-4 text-[#2563EB]" />
+                  <span className="text-sm font-medium">
+                    {ownerName} — Je confirme recevoir ce paiement
+                  </span>
                 </div>
                 <SignaturePad
                   ref={ownerSignatureRef}
@@ -462,7 +321,16 @@ export function CashReceiptFlow({
                     <MapPin className="w-3 h-3" />
                     GPS OK
                   </div>
+                ) : geoError ? (
+                  <div className="flex items-center gap-1 text-amber-600">
+                    <MapPin className="w-3 h-3" />
+                    {geoError}
+                  </div>
                 ) : null}
+                <div className="flex items-center gap-1">
+                  <Shield className="w-3 h-3" />
+                  Sécurisé
+                </div>
               </div>
 
               {/* Actions */}
@@ -475,144 +343,25 @@ export function CashReceiptFlow({
                   Annuler
                 </Button>
                 <Button
-                  onClick={handleOwnerSign}
-                  disabled={!canProceed}
-                  className="flex-1 gap-2"
-                >
-                  <Check className="w-4 h-4" />
-                  Passer au locataire
-                </Button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ÉTAPE 2: Signature Propriétaire (mode classique) */}
-          {step === "owner-sign" && (
-            <motion.div
-              key="owner-sign"
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="space-y-4"
-            >
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/20">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">{ownerName}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Propriétaire - Confirme recevoir {amountFormatted}
-                  </p>
-                </div>
-              </div>
-
-              <SignaturePad
-                ref={ownerSignatureRef}
-                label="Votre signature"
-                onSignatureChange={(isEmpty) => setCanProceed(!isEmpty)}
-                height={180}
-              />
-
-              <div className="flex gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => goToStep("info", -1)}
-                  className="gap-2"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Retour
-                </Button>
-                <Button
-                  onClick={handleOwnerSign}
-                  disabled={!canProceed}
-                  className="flex-1 gap-2"
-                >
-                  <Check className="w-4 h-4" />
-                  Valider ma signature
-                </Button>
-              </div>
-            </motion.div>
-          )}
-
-          {/* ÉTAPE 3: Signature Locataire */}
-          {step === "tenant-sign" && (
-            <motion.div
-              key="tenant-sign"
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="space-y-4"
-            >
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                  <Users className="w-5 h-5 text-amber-600 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-amber-800 dark:text-amber-200">
-                      Passez le téléphone au locataire
-                    </p>
-                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                      {tenantName} doit maintenant signer pour confirmer avoir
-                      remis {amountFormatted} en espèces.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border">
-                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                  <User className="w-5 h-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">{tenantName}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Locataire - Confirme remettre {amountFormatted}
-                  </p>
-                </div>
-              </div>
-
-              <SignaturePad
-                ref={tenantSignatureRef}
-                label="Signature du locataire"
-                onSignatureChange={(isEmpty) => setCanProceed(!isEmpty)}
-                height={180}
-              />
-
-              <div className="flex gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => goToStep("owner-sign", -1)}
-                  className="gap-2"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                  Retour
-                </Button>
-                <Button
-                  onClick={handleTenantSign}
+                  onClick={handleOwnerSignAndSend}
                   disabled={!canProceed || loading}
-                  className="flex-1 gap-2"
+                  className="flex-1 gap-2 bg-[#2563EB] hover:bg-[#2563EB]/90"
                 >
                   {loading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Check className="w-4 h-4" />
+                    <Send className="w-4 h-4" />
                   )}
-                  Valider et générer le reçu
+                  Envoyer au locataire
                 </Button>
               </div>
             </motion.div>
           )}
 
-          {/* ÉTAPE 4: Génération */}
-          {step === "generating" && (
+          {/* ÉTAPE 2: Envoi en cours */}
+          {step === "submitting" && (
             <motion.div
-              key="generating"
+              key="submitting"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               className="text-center py-12 space-y-4"
@@ -621,90 +370,74 @@ export function CashReceiptFlow({
                 animate={{ rotate: 360 }}
                 transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
               >
-                <Loader2 className="w-16 h-16 text-primary mx-auto" />
+                <Loader2 className="w-16 h-16 text-[#2563EB] mx-auto" />
               </motion.div>
               <div>
-                <p className="font-medium text-lg">Génération du reçu...</p>
+                <p className="font-medium text-lg">Envoi en cours…</p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Création du PDF et envoi par email
+                  Notification envoyée au locataire
                 </p>
               </div>
             </motion.div>
           )}
 
-          {/* ÉTAPE 5: Terminé */}
-          {step === "complete" && (
+          {/* ÉTAPE 3: En attente de la signature du locataire */}
+          {step === "pending" && (
             <motion.div
-              key="complete"
+              key="pending"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-center py-8 space-y-6"
+              className="text-center py-6 space-y-5"
             >
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
-                className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto"
+                className="w-20 h-20 bg-[#2563EB]/10 rounded-full flex items-center justify-center mx-auto"
               >
-                <Check className="w-10 h-10 text-green-600" />
+                <Hourglass className="w-10 h-10 text-[#2563EB]" />
               </motion.div>
 
               <div>
                 <p className="text-xl font-bold text-foreground">
-                  Reçu généré avec succès !
+                  En attente de signature
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {receiptResult?.receiptNumber}
+                  {tenantName} a reçu une notification pour signer
+                  le reçu depuis son espace.
                 </p>
+                {receiptResult?.receiptNumber && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Référence : {receiptResult.receiptNumber}
+                  </p>
+                )}
               </div>
 
-              {/* Résumé */}
-              <div className="bg-muted/50 rounded-xl p-4 text-sm space-y-2 text-left">
-                <div className="flex items-center gap-2 text-green-600">
+              <div className="bg-muted/50 rounded-xl p-4 text-sm text-left space-y-2">
+                <div className="flex items-center gap-2 text-[#2563EB]">
                   <Check className="w-4 h-4" />
-                  Signatures enregistrées
+                  Votre signature est enregistrée
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Clock className="w-4 h-4" />
-                  {format(new Date(), "dd/MM/yyyy 'à' HH:mm", { locale: fr })}
+                  <Send className="w-4 h-4" />
+                  Notification envoyée au locataire
                 </div>
-                {geolocation && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <MapPin className="w-4 h-4" />
-                    {geolocation.lat.toFixed(4)}, {geolocation.lng.toFixed(4)}
-                  </div>
-                )}
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Shield className="w-4 h-4" />
-                  Hash: {receiptResult?.documentHash?.slice(0, 16)}...
+                  <Hourglass className="w-4 h-4" />
+                  Le reçu sera finalisé après signature du locataire
                 </div>
               </div>
 
-              {/* Notification envoi */}
-              <div className="flex items-center gap-2 justify-center text-sm text-muted-foreground">
-                <Send className="w-4 h-4" />
-                Envoyé à {ownerName} et {tenantName}
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-4">
-                {receiptResult?.pdfUrl && (
-                  <Button variant="outline" asChild className="flex-1 gap-2">
-                    <a
-                      href={receiptResult.pdfUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      <Download className="w-4 h-4" />
-                      Télécharger PDF
-                    </a>
-                  </Button>
-                )}
-                <Button onClick={onCancel} className="flex-1 gap-2">
-                  <Check className="w-4 h-4" />
-                  Terminé
-                </Button>
-              </div>
+              <Button
+                onClick={() => {
+                  if (receiptResult) onComplete?.(receiptResult);
+                  onCancel?.();
+                }}
+                className="w-full gap-2 bg-[#2563EB] hover:bg-[#2563EB]/90"
+              >
+                <Check className="w-4 h-4" />
+                Fermer
+              </Button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -712,4 +445,3 @@ export function CashReceiptFlow({
     </Card>
   );
 }
-

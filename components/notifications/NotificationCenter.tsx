@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { useState, useCallback, forwardRef } from "react";
+import { useState, useCallback, forwardRef, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/popover";
 import {
   Bell,
-  Check,
   CheckCheck,
   Euro,
   FileText,
@@ -23,16 +23,32 @@ import {
   AlertTriangle,
   MessageSquare,
   Clock,
-  Trash2,
   Settings,
   RefreshCw,
   Loader2,
+  Banknote,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useNotifications, type Notification } from "@/lib/hooks/use-notifications";
+
+// Étendre le type Notification pour inclure les différents champs de lien
+interface NotificationWithLinks extends Notification {
+  action_url?: string | null;
+  route?: string | null;
+}
+
+function resolveNotificationLink(n: NotificationWithLinks): string | null {
+  return (
+    n.action_url ||
+    n.link ||
+    n.link_url ||
+    n.route ||
+    null
+  );
+}
 
 // Icône selon le type
 const getNotificationIcon = (type: Notification["type"]) => {
@@ -65,9 +81,21 @@ const getNotificationIcon = (type: Notification["type"]) => {
   }
 };
 
+function getIconForType(type: string) {
+  // Overrides pour les nouveaux types
+  if (type === "cash_receipt_pending_tenant" || type === "cash_receipt_signed" || type === "cash_receipt_signature_requested") {
+    return Banknote;
+  }
+  return getNotificationIcon(type as Notification["type"]);
+}
+
 // Couleur selon le type
-const getNotificationColor = (type: Notification["type"]) => {
+const getNotificationColor = (type: string) => {
   switch (type) {
+    case "cash_receipt_signature_requested":
+    case "cash_receipt_pending_tenant":
+      return "bg-[#2563EB]/10 text-[#2563EB]";
+    case "cash_receipt_signed":
     case "payment_received":
       return "bg-emerald-100 text-emerald-600";
     case "payment_late":
@@ -100,38 +128,40 @@ const getNotificationColor = (type: Notification["type"]) => {
   }
 };
 
-// Composant Item de notification avec forwardRef pour AnimatePresence
+// Composant Item de notification — simple cliquable, sans bouton supprimer
 const NotificationItem = forwardRef<
   HTMLDivElement,
   {
-    notification: Notification;
-    onMarkAsRead: (id: string) => void;
-    onDelete: (id: string) => void;
+    notification: NotificationWithLinks;
+    onNavigate: (n: NotificationWithLinks) => void;
   }
->(({ notification, onMarkAsRead, onDelete }, ref) => {
-  const Icon = getNotificationIcon(notification.type);
+>(({ notification, onNavigate }, ref) => {
+  const Icon = getIconForType(notification.type);
   const colorClass = getNotificationColor(notification.type);
   const timeAgo = formatDistanceToNow(new Date(notification.created_at), {
     addSuffix: true,
     locale: fr,
   });
+  const link = resolveNotificationLink(notification);
 
-  const content = (
+  return (
     <motion.div
       ref={ref}
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -50 }}
+      exit={{ opacity: 0 }}
+      onClick={() => onNavigate(notification)}
+      role={link ? "link" : undefined}
       className={cn(
-        "group relative flex gap-3 p-3 rounded-lg transition-colors",
+        "relative flex gap-3 p-3 rounded-lg transition-colors cursor-pointer",
         notification.read
-          ? "bg-transparent hover:bg-slate-50"
-          : "bg-blue-50/50 hover:bg-blue-50"
+          ? "bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/50"
+          : "bg-blue-50/50 hover:bg-blue-50 dark:bg-blue-950/20 dark:hover:bg-blue-950/30"
       )}
     >
       {/* Indicateur non lu */}
       {!notification.read && (
-        <div className="absolute left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-blue-500" />
+        <div className="absolute left-1 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-[#2563EB]" />
       )}
 
       {/* Icône */}
@@ -141,84 +171,57 @@ const NotificationItem = forwardRef<
 
       {/* Contenu */}
       <div className="flex-1 min-w-0">
-        <p className={cn("text-sm font-medium", notification.read ? "text-slate-700" : "text-slate-900")}>
+        <p className={cn("text-sm font-medium", notification.read ? "text-slate-700 dark:text-slate-300" : "text-slate-900 dark:text-slate-50")}>
           {notification.title}
         </p>
-        <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
-          {notification.message}
+        <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 mt-0.5">
+          {notification.message || notification.body}
         </p>
         <p className="text-xs text-slate-400 mt-1 flex items-center gap-1">
           <Clock className="h-3 w-3" />
           {timeAgo}
         </p>
       </div>
-
-      {/* Actions */}
-      <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        {!notification.read && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onMarkAsRead(notification.id);
-            }}
-            title="Marquer comme lu"
-            aria-label="Marquer comme lu"
-          >
-            <Check className="h-3.5 w-3.5" />
-          </Button>
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 text-slate-400 hover:text-red-500"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onDelete(notification.id);
-          }}
-          title="Supprimer"
-          aria-label="Supprimer la notification"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
-      </div>
     </motion.div>
   );
-
-  if (notification.link) {
-    return <Link href={notification.link}>{content}</Link>;
-  }
-
-  return content;
 });
 
 NotificationItem.displayName = "NotificationItem";
 
 // Composant principal
 export function NotificationCenter() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+  const markedOnOpenRef = useRef<string | null>(null);
+
   // Utiliser le hook temps réel
   const {
     notifications,
     unreadCount,
     loading,
     error,
-    markAsRead,
     markAllAsRead,
-    deleteNotification,
-    deleteAllNotifications,
     refresh,
   } = useNotifications({
     enableSound: true,
     showToast: true,
     limit: 50,
   });
+
+  // ✅ Ouvrir la cloche = marquer TOUTES les notifications affichées comme lues
+  useEffect(() => {
+    if (!open) {
+      markedOnOpenRef.current = null;
+      return;
+    }
+    // Marquer au plus une fois par ouverture, et seulement s'il y a des non-lues
+    const snapshot = notifications.filter((n) => !n.read).map((n) => n.id).sort().join(",");
+    if (snapshot && snapshot !== markedOnOpenRef.current) {
+      markedOnOpenRef.current = snapshot;
+      void markAllAsRead();
+    }
+  }, [open, notifications, markAllAsRead]);
 
   // Refresh manuel
   const handleRefresh = useCallback(async () => {
@@ -227,25 +230,21 @@ export function NotificationCenter() {
     setIsRefreshing(false);
   }, [refresh]);
 
-  // Marquer comme lu
-  const handleMarkAsRead = useCallback((id: string) => {
-    markAsRead(id);
-  }, [markAsRead]);
-
-  // Marquer tout comme lu
   const handleMarkAllAsRead = useCallback(() => {
     markAllAsRead();
   }, [markAllAsRead]);
 
-  // Supprimer
-  const handleDelete = useCallback((id: string) => {
-    deleteNotification(id);
-  }, [deleteNotification]);
-
-  // Supprimer tout
-  const handleDeleteAll = useCallback(() => {
-    deleteAllNotifications();
-  }, [deleteAllNotifications]);
+  // Un clic simple = navigation vers action_url si présent
+  const handleNavigate = useCallback(
+    (n: NotificationWithLinks) => {
+      const link = resolveNotificationLink(n);
+      if (link) {
+        setOpen(false);
+        router.push(link);
+      }
+    },
+    [router],
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -266,13 +265,13 @@ export function NotificationCenter() {
 
       <PopoverContent
         align="end"
-        className="w-96 p-0 shadow-xl"
+        className="w-96 p-0 shadow-xl bg-card"
         sideOffset={8}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-slate-900">Notifications</h3>
+            <h3 className="font-semibold text-foreground">Notifications</h3>
             {unreadCount > 0 && (
               <Badge variant="secondary" className="text-xs">
                 {unreadCount} non lue{unreadCount > 1 ? "s" : ""}
@@ -300,7 +299,7 @@ export function NotificationCenter() {
                 variant="ghost"
                 size="sm"
                 onClick={handleMarkAllAsRead}
-                className="text-xs text-slate-500 h-7"
+                className="text-xs text-muted-foreground h-7"
               >
                 <CheckCheck className="h-3.5 w-3.5 mr-1" />
                 Tout lire
@@ -340,8 +339,8 @@ export function NotificationCenter() {
               <div className="p-4 rounded-full bg-red-100 mb-3">
                 <AlertTriangle className="h-8 w-8 text-red-500" />
               </div>
-              <p className="text-sm text-slate-600 font-medium">Erreur de chargement</p>
-              <p className="text-xs text-slate-400 mt-1">{error}</p>
+              <p className="text-sm text-muted-foreground font-medium">Erreur de chargement</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">{error}</p>
               <Button
                 variant="outline"
                 size="sm"
@@ -354,11 +353,11 @@ export function NotificationCenter() {
             </div>
           ) : notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="p-4 rounded-full bg-slate-100 mb-3">
-                <Bell className="h-8 w-8 text-slate-400" />
+              <div className="p-4 rounded-full bg-muted mb-3">
+                <Bell className="h-8 w-8 text-muted-foreground/50" />
               </div>
-              <p className="text-sm text-slate-600 font-medium">Aucune notification</p>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-sm text-muted-foreground font-medium">Aucune notification</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">
                 Vous êtes à jour !
               </p>
             </div>
@@ -368,9 +367,8 @@ export function NotificationCenter() {
                 {notifications.map((notification) => (
                   <NotificationItem
                     key={notification.id}
-                    notification={notification}
-                    onMarkAsRead={handleMarkAsRead}
-                    onDelete={handleDelete}
+                    notification={notification as NotificationWithLinks}
+                    onNavigate={handleNavigate}
                   />
                 ))}
               </AnimatePresence>
@@ -380,32 +378,20 @@ export function NotificationCenter() {
 
         {/* Footer */}
         {notifications.length > 0 && (
-          <div className="p-3 border-t bg-slate-50/50">
-            <div className="flex items-center justify-between">
-              <Button
-                variant="link"
-                size="sm"
-                className="text-xs text-slate-500 h-auto p-0"
-                asChild
-              >
-                <Link href="/notifications">
-                  Voir toutes les notifications
-                </Link>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleDeleteAll}
-                className="text-xs text-red-500 hover:text-red-600 h-7"
-              >
-                <Trash2 className="h-3 w-3 mr-1" />
-                Tout effacer
-              </Button>
-            </div>
+          <div className="p-3 border-t bg-muted/30">
+            <Button
+              variant="link"
+              size="sm"
+              className="text-xs text-muted-foreground h-auto p-0"
+              asChild
+            >
+              <Link href="/notifications" onClick={() => setOpen(false)}>
+                Voir toutes les notifications
+              </Link>
+            </Button>
           </div>
         )}
       </PopoverContent>
     </Popover>
   );
 }
-
