@@ -24,7 +24,7 @@ export default function MentionsLegalesPage() {
           <CardHeader>
             <CardTitle className="text-3xl">Mentions Légales</CardTitle>
             <p className="text-muted-foreground">
-              Dernière mise à jour : 28 mars 2026
+              Dernière mise à jour : 10 avril 2026
             </p>
           </CardHeader>
           <CardContent className="prose prose-slate max-w-none">
@@ -40,49 +40,45 @@ export default function MentionsLegalesPage() {
             <ul>
               <li>
                 <strong>Raison sociale :</strong>{" "}
-                {process.env.NEXT_PUBLIC_COMPANY_NAME || (
-                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_NAME]</span>
-                )}
+                <span className="text-amber-600 font-semibold">
+                  [À CONFIRMER PAR THOMAS — raison sociale]
+                </span>
               </li>
               <li>
                 <strong>Forme juridique :</strong>{" "}
-                {process.env.NEXT_PUBLIC_COMPANY_FORM || (
-                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_FORM]</span>
-                )}
+                <span className="text-amber-600 font-semibold">
+                  [À CONFIRMER PAR THOMAS — forme juridique]
+                </span>
               </li>
               <li>
-                {/* LEGAL: Thomas doit fournir cette info */}
                 <strong>Capital social :</strong>{" "}
-                {process.env.NEXT_PUBLIC_COMPANY_CAPITAL ? (
-                  <>{process.env.NEXT_PUBLIC_COMPANY_CAPITAL} euros</>
-                ) : (
-                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_CAPITAL]</span>
-                )}
+                <span className="text-amber-600 font-semibold">
+                  [À CONFIRMER PAR THOMAS — capital social]
+                </span>
               </li>
               <li>
                 <strong>Siège social :</strong>{" "}
-                {process.env.NEXT_PUBLIC_COMPANY_ADDRESS || (
-                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_ADDRESS]</span>
-                )}
+                <span className="text-amber-600 font-semibold">
+                  [À CONFIRMER PAR THOMAS — adresse siège social]
+                </span>
               </li>
               <li>
-                {/* LEGAL: Thomas doit fournir cette info */}
                 <strong>SIRET :</strong>{" "}
-                {process.env.NEXT_PUBLIC_COMPANY_SIRET || (
-                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_SIRET]</span>
-                )}
+                <span className="text-amber-600 font-semibold">
+                  [À CONFIRMER PAR THOMAS — SIRET]
+                </span>
               </li>
               <li>
                 <strong>RCS :</strong>{" "}
-                {process.env.NEXT_PUBLIC_COMPANY_RCS || (
-                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_RCS]</span>
-                )}
+                <span className="text-amber-600 font-semibold">
+                  [À CONFIRMER PAR THOMAS — RCS]
+                </span>
               </li>
               <li>
                 <strong>N° TVA intracommunautaire :</strong>{" "}
-                {process.env.NEXT_PUBLIC_COMPANY_TVA || (
-                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_TVA]</span>
-                )}
+                <span className="text-amber-600 font-semibold">
+                  [À CONFIRMER PAR THOMAS — TVA intracommunautaire]
+                </span>
               </li>
               <li>
                 <strong>Directeur de la publication :</strong> Thomas VOLBERG
@@ -97,11 +93,10 @@ export default function MentionsLegalesPage() {
                 </a>
               </li>
               <li>
-                {/* LEGAL: Thomas doit fournir cette info */}
                 <strong>Téléphone :</strong>{" "}
-                {process.env.NEXT_PUBLIC_COMPANY_PHONE || (
-                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_PHONE]</span>
-                )}
+                <span className="text-amber-600 font-semibold">
+                  [À CONFIRMER PAR THOMAS — téléphone]
+                </span>
               </li>
             </ul>
 

@@ -26,7 +26,7 @@ export default function PrivacyPage() {
               Politique de Confidentialité
             </CardTitle>
             <p className="text-muted-foreground">
-              Dernière mise à jour : 28 mars 2026
+              Dernière mise à jour : 10 avril 2026
             </p>
           </CardHeader>
           <CardContent className="prose prose-slate max-w-none">
@@ -44,18 +44,19 @@ export default function PrivacyPage() {
             <p>Le responsable du traitement des données est :</p>
             <ul>
               <li>
-                {/* LEGAL: Thomas doit fournir cette info */}
                 <strong>Société :</strong>{" "}
-                {process.env.NEXT_PUBLIC_COMPANY_NAME || (
-                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_NAME]</span>
-                )}
+                <span className="text-amber-600 font-semibold">
+                  [À CONFIRMER PAR THOMAS — raison sociale]
+                </span>
               </li>
               <li>
-                {/* LEGAL: Thomas doit fournir cette info */}
                 <strong>Siège social :</strong>{" "}
-                {process.env.NEXT_PUBLIC_COMPANY_ADDRESS || (
-                  <span className="text-amber-600 font-semibold">[À configurer via NEXT_PUBLIC_COMPANY_ADDRESS]</span>
-                )}
+                <span className="text-amber-600 font-semibold">
+                  [À CONFIRMER PAR THOMAS — adresse siège social]
+                </span>
+              </li>
+              <li>
+                <strong>Représentant légal :</strong> Thomas VOLBERG
               </li>
               <li>
                 <strong>Contact RGPD / DPO :</strong>{" "}
