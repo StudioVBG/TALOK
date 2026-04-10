@@ -10,6 +10,8 @@
  * @see Art. 21 loi n°89-462 du 6 juillet 1989
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Database } from "@/lib/supabase/database.types";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import {
   ensureReceiptDocument,
@@ -30,14 +32,54 @@ export interface GenerateReceiptResult {
 /**
  * Génère une quittance de loyer complète pour un paiement donné.
  *
- * - Idempotent : si la quittance existe déjà, retourne sans re-générer
+ * - Idempotent : si `invoices.receipt_generated` vaut déjà `true`, ou si
+ *   `ensureReceiptDocument` trouve un document existant, on ne régénère
+ *   ni le PDF ni l'email.
  * - Envoie l'email au locataire uniquement lors de la première génération
  * - Met à jour `invoices.receipt_generated = true`
+ *
+ * @param paymentId id du paiement (payments.id)
+ * @param supabaseClient client Supabase à réutiliser. Si omis, un client
+ *                      service-role est créé en interne (utile pour les
+ *                      appels hors contexte requête). Les routes API
+ *                      doivent toujours passer le client du contexte.
  */
 export async function generateReceipt(
-  paymentId: string
+  paymentId: string,
+  supabaseClient?: SupabaseClient<Database>
 ): Promise<GenerateReceiptResult> {
-  const supabase = createServiceRoleClient();
+  const supabase = (supabaseClient ?? createServiceRoleClient()) as SupabaseClient<Database>;
+
+  // Idempotence guard: if invoice.receipt_generated is already true, skip
+  // the whole pipeline (PDF regeneration and email). This protects against
+  // the edge case where the documents row was deleted but the flag stayed.
+  try {
+    const { data: paymentInvoice } = await supabase
+      .from("payments")
+      .select("invoice_id")
+      .eq("id", paymentId)
+      .maybeSingle();
+
+    const invoiceIdGuard = (paymentInvoice as { invoice_id?: string } | null)?.invoice_id;
+    if (invoiceIdGuard) {
+      const { data: invoiceFlag } = await supabase
+        .from("invoices")
+        .select("receipt_generated")
+        .eq("id", invoiceIdGuard)
+        .maybeSingle();
+
+      if ((invoiceFlag as { receipt_generated?: boolean } | null)?.receipt_generated === true) {
+        return {
+          success: true,
+          created: false,
+          emailSent: false,
+        };
+      }
+    }
+  } catch (guardErr) {
+    // Non-fatal: fall through to the normal pipeline if the guard query fails
+    console.warn("[generateReceipt] receipt_generated guard check failed:", guardErr);
+  }
 
   // 1. Générer le PDF, uploader, insérer le document
   let receiptResult: EnsureReceiptResult | null;
