@@ -28,8 +28,10 @@ export async function GET(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    const serviceClient = getServiceClient();
+
     // Récupérer le profil
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -38,8 +40,6 @@ export async function GET(request: Request, { params }: RouteParams) {
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
-
-    const serviceClient = getServiceClient();
 
     // Récupérer le document
     const { data: document, error: docError } = await serviceClient

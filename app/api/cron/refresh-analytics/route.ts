@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
  * GET /api/cron/refresh-analytics
  */
 
-import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextRequest, NextResponse } from "next/server";
 
 // Clé secrète pour sécuriser le cron
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const supabase = await createClient();
+    const supabase = createServiceRoleClient();
     const startTime = Date.now();
     const results: Record<string, { success: boolean; duration: number; error?: string }> = {};
 

@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClientFromRequest } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -16,8 +17,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    // Récupérer le profil (service role pour éviter récursion RLS)
+    const serviceClient = createServiceRoleClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -28,7 +30,7 @@ export async function GET(request: Request) {
     }
 
     // Récupérer l'abonnement avec le plan
-    const { data: subscription, error: subError } = await supabase
+    const { data: subscription, error: subError } = await serviceClient
       .from("subscriptions")
       .select(`
         *,
@@ -45,7 +47,7 @@ export async function GET(request: Request) {
     // Récupérer les add-ons souscrits
     let addonSubscriptions: any[] = [];
     if (subscription) {
-      const { data: addons } = await supabase
+      const { data: addons } = await serviceClient
         .from("subscription_addon_subscriptions")
         .select(`
           *,
@@ -79,8 +81,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    // Récupérer le profil (service role pour éviter récursion RLS)
+    const svcClient = createServiceRoleClient();
+    const { data: profile } = await svcClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -98,7 +101,7 @@ export async function POST(request: Request) {
     }
 
     // Vérifier que le plan existe
-    const { data: plan, error: planError } = await supabase
+    const { data: plan, error: planError } = await svcClient
       .from("subscription_plans")
       .select("id, slug, name, price_monthly, price_yearly")
       .eq("slug", plan_slug)
@@ -122,7 +125,7 @@ export async function POST(request: Request) {
     }
 
     // Vérifier si un abonnement existe déjà
-    const { data: existingSub } = await supabase
+    const { data: existingSub } = await svcClient
       .from("subscriptions")
       .select("id")
       .eq("owner_id", profile.id)
@@ -130,7 +133,7 @@ export async function POST(request: Request) {
 
     if (existingSub) {
       // Mettre à jour l'abonnement existant
-      const { data: updated, error: updateError } = await supabase
+      const { data: updated, error: updateError } = await svcClient
         .from("subscriptions")
         .update({
           plan_id: plan.id,
@@ -145,7 +148,7 @@ export async function POST(request: Request) {
 
       if (updateError) throw updateError;
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         subscription: updated,
         message: "Abonnement mis à jour"
       });
@@ -156,7 +159,7 @@ export async function POST(request: Request) {
     const periodEnd = new Date(now);
     periodEnd.setMonth(periodEnd.getMonth() + (billing_cycle === "yearly" ? 12 : 1));
 
-    const { data: newSub, error: createError } = await supabase
+    const { data: newSub, error: createError } = await svcClient
       .from("subscriptions")
       .insert({
         owner_id: profile.id,

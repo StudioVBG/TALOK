@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { getRecommendedPlan } from "@/lib/subscriptions/ai/plan-recommender.graph";
 import { PLANS, type PlanSlug, getUsagePercentage } from "@/lib/subscriptions/plans";
@@ -20,8 +21,9 @@ export async function GET() {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    // Récupérer le profil (service role pour éviter récursion RLS)
+    const serviceClient = createServiceRoleClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -32,7 +34,7 @@ export async function GET() {
     }
 
     // Récupérer l'abonnement actuel
-    const { data: subscription } = await supabase
+    const { data: subscription } = await serviceClient
       .from("subscriptions")
       .select("plan_slug, status")
       .eq("user_id", user.id)

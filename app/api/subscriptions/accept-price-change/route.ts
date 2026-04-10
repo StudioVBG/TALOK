@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -16,8 +17,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    // Récupérer le profil (service role pour éviter récursion RLS)
+    const serviceClient = createServiceRoleClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id")
       .eq("user_id", user.id)
@@ -28,7 +30,7 @@ export async function POST(request: Request) {
     }
 
     // Mettre à jour l'abonnement
-    const { data: subscription, error } = await supabase
+    const { data: subscription, error } = await serviceClient
       .from("subscriptions")
       .update({
         price_change_accepted: true,

@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
@@ -43,8 +44,8 @@ export async function POST(request: Request) {
     }
 
     // Récupérer l'ancien avatar pour le supprimer si nécessaire
-    const supabaseClient = supabase as any;
-    const { data: existingProfile } = await supabaseClient
+    const serviceClient = createServiceRoleClient();
+    const { data: existingProfile } = await serviceClient
       .from("profiles")
       .select("avatar_url")
       .eq("user_id", user.id as any)
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
       data: { publicUrl },
     } = supabase.storage.from(STORAGE_BUCKETS.AVATARS).getPublicUrl(path);
 
-    const { data: profile, error: updateError } = await supabaseClient
+    const { data: profile, error: updateError } = await serviceClient
       .from("profiles")
       .update({ avatar_url: path })
       .eq("user_id", user.id as any)

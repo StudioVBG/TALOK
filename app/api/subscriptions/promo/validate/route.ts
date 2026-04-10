@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { PLANS, type PlanSlug, formatPrice } from "@/lib/subscriptions/plans";
 
@@ -94,7 +95,8 @@ export async function POST(request: Request) {
 
     // Vérifier si c'est pour les nouveaux clients uniquement
     if (promo.first_subscription_only) {
-      const { data: subscription } = await supabase
+      const serviceClient = createServiceRoleClient();
+      const { data: subscription } = await serviceClient
         .from("subscriptions")
         .select("plan_slug")
         .eq("user_id", user.id)

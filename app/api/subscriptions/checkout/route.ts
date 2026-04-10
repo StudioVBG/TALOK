@@ -43,8 +43,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    // Récupérer le profil (service role pour éviter récursion RLS)
+    const serviceClient = createServiceRoleClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role, prenom, nom")
       .eq("user_id", user.id)
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
     }
 
     // Récupérer le plan
-    const { data: plan, error: planError } = await supabase
+    const { data: plan, error: planError } = await serviceClient
       .from("subscription_plans")
       .select("*")
       .eq("slug", plan_slug)
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
     }
 
     // Vérifier si le propriétaire a déjà un abonnement
-    const { data: existingSub } = await supabase
+    const { data: existingSub } = await serviceClient
       .from("subscriptions")
       .select("id, stripe_customer_id, stripe_subscription_id, status, plan_slug, billing_cycle")
       .eq("owner_id", profile.id)

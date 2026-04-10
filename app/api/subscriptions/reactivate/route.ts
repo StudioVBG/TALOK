@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { reactivateSubscription } from "@/lib/subscriptions/subscription-service";
 
@@ -19,8 +20,9 @@ export async function POST() {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    // Récupérer le profil (service role pour éviter récursion RLS)
+    const serviceClient = createServiceRoleClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id")
       .eq("user_id", user.id)
@@ -31,7 +33,7 @@ export async function POST() {
     }
 
     // Vérifier que l'abonnement est bien annulé
-    const { data: subscription } = await supabase
+    const { data: subscription } = await serviceClient
       .from("subscriptions")
       .select("status, cancel_at_period_end")
       .eq("owner_id", profile.id)

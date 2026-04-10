@@ -12,6 +12,7 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { stripe } from "@/lib/stripe";
 import { z } from "zod";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
@@ -30,7 +31,9 @@ async function getOwnerContext(supabase: Awaited<ReturnType<typeof createClient>
   } = await supabase.auth.getUser();
   if (authError || !user) throw new ApiError(401, "Non authentifié");
 
-  const { data: profile } = await supabase
+  // Service role pour éviter récursion RLS sur profiles/subscriptions
+  const serviceClient = createServiceRoleClient();
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)
@@ -41,7 +44,7 @@ async function getOwnerContext(supabase: Awaited<ReturnType<typeof createClient>
     throw new ApiError(403, "Accès réservé aux propriétaires");
   }
 
-  const { data: subscription } = await supabase
+  const { data: subscription } = await serviceClient
     .from("subscriptions")
     .select("id, stripe_customer_id")
     .eq("owner_id", profile.id)
