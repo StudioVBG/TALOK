@@ -5,8 +5,30 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
+ * Normalize any thrown / returned error object into a plain string.
+ *
+ * Supabase PostgrestError objects are plain `{ message, details, hint,
+ * code }` dicts — they are NOT `instanceof Error`, so the previous
+ * `error instanceof Error ? error.message : 'Une erreur est survenue'`
+ * pattern swallowed every RPC failure as a generic message and made the
+ * cron unobservable in production.
+ */
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as Record<string, unknown>).message === "string"
+  ) {
+    return String((error as Record<string, unknown>).message);
+  }
+  return String(error);
+}
+
+/**
  * API Route pour la génération automatique des factures
- * Destinée à être appelée par un cron job (ex: Upstash QStash, cron-job.org)
+ * Destinée à être appelée par un cron job (pg_cron via net.http_get).
  * GET /api/cron/generate-invoices
  * Header requis: Authorization: Bearer <CRON_SECRET>
  */
@@ -21,32 +43,47 @@ export async function GET(request: Request) {
 
   try {
     const supabase = createServiceRoleClient();
-    
+
     // Déterminer le mois cible (le mois actuel par défaut)
     const now = new Date();
     const targetMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-
     const { data, error } = await supabase.rpc("generate_monthly_invoices", {
-      p_target_month: targetMonth
+      p_target_month: targetMonth,
     });
 
     if (error) {
-      console.error("[Cron] Erreur RPC:", error);
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      const message = extractErrorMessage(error);
+      console.error("[CRON] generate-invoices RPC failed:", message, error);
+      return NextResponse.json(
+        {
+          success: false,
+          error: message,
+          targetMonth,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 500 },
+      );
     }
-
-    // Envoyer des notifications aux locataires concernés (optionnel, déjà géré via triggers ?)
-    // Ici, on pourrait ajouter un job dans l'outbox pour chaque facture générée
 
     return NextResponse.json({
       success: true,
       result: data,
-      timestamp: new Date().toISOString()
+      targetMonth,
+      timestamp: new Date().toISOString(),
     });
   } catch (error: unknown) {
-    console.error("[Cron] Erreur serveur:", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    const message = extractErrorMessage(error);
+    console.error("[CRON] generate-invoices failed:", message, error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: message,
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 },
+    );
   }
 }
 
