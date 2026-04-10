@@ -64,17 +64,24 @@ export default async function UnitsPage({ params }: PageProps) {
   // Fetch building metadata (from buildings table linked to this property)
   const { data: buildingRecord } = await serviceClient
     .from("buildings")
-    .select("floors, has_ascenseur, has_gardien, has_interphone, has_digicode, has_local_velo, has_local_poubelles")
+    .select("id, floors, has_ascenseur, has_gardien, has_interphone, has_digicode, has_local_velo, has_local_poubelles")
     .eq("property_id", id)
-    .single();
+    .maybeSingle();
 
-  // Fetch existing units
-  const { data: units } = await serviceClient
-    .from("building_units")
-    .select("*")
-    .eq("property_id", id)
-    .order("floor", { ascending: true })
-    .order("position", { ascending: true });
+  // Fetch existing units via building_id (relation principale) avec fallback property_id
+  const { data: units } = buildingRecord?.id
+    ? await serviceClient
+        .from("building_units")
+        .select("*")
+        .eq("building_id", buildingRecord.id)
+        .order("floor", { ascending: true })
+        .order("position", { ascending: true })
+    : await serviceClient
+        .from("building_units")
+        .select("*")
+        .eq("property_id", id)
+        .order("floor", { ascending: true })
+        .order("position", { ascending: true });
 
   return (
     <UnitsManagementClient
