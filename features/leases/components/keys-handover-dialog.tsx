@@ -40,7 +40,7 @@ export function KeysHandoverDialog({
         variant="outline"
         disabled
         className={cn(
-          "gap-2 border-emerald-200 bg-emerald-50 text-emerald-700 cursor-default",
+          "gap-2 border-emerald-200 bg-emerald-50 text-emerald-700 cursor-default dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300",
           triggerClassName
         )}
       >
@@ -56,7 +56,7 @@ export function KeysHandoverDialog({
         <Button
           variant="outline"
           className={cn(
-            "gap-2 border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 font-semibold",
+            "gap-2 border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300 font-semibold dark:border-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-300 dark:hover:bg-indigo-900/40 dark:hover:border-indigo-800",
             triggerClassName
           )}
         >
@@ -68,8 +68,8 @@ export function KeysHandoverDialog({
       <DialogContent className="max-w-md w-full p-0 overflow-hidden rounded-2xl">
         <DialogHeader className="px-6 pt-6 pb-3">
           <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-            <div className="p-1.5 bg-indigo-100 rounded-lg">
-              <Key className="h-4 w-4 text-indigo-600" />
+            <div className="p-1.5 bg-indigo-100 rounded-lg dark:bg-indigo-900/40">
+              <Key className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
             </div>
             Remise des clés
           </DialogTitle>

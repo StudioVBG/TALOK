@@ -66,24 +66,27 @@ const PAYMENT_METHODS: PaymentMethodOption[] = [
     label: "Espèces",
     description: "Paiement en main propre avec double signature",
     icon: <Banknote className="w-6 h-6" />,
-    color: "text-green-600",
-    bgColor: "bg-green-50 border-green-200 hover:bg-green-100",
+    color: "text-green-600 dark:text-green-400",
+    bgColor:
+      "bg-green-50 border-green-200 hover:bg-green-100 dark:bg-green-950/30 dark:border-green-900 dark:hover:bg-green-900/40",
   },
   {
     id: "cheque",
     label: "Chèque",
     description: "Enregistrer un paiement par chèque reçu",
     icon: <FileText className="w-6 h-6" />,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50 border-blue-200 hover:bg-blue-100",
+    color: "text-blue-600 dark:text-blue-400",
+    bgColor:
+      "bg-blue-50 border-blue-200 hover:bg-blue-100 dark:bg-blue-950/30 dark:border-blue-900 dark:hover:bg-blue-900/40",
   },
   {
     id: "virement",
     label: "Virement bancaire",
     description: "Enregistrer un virement reçu",
     icon: <Building2 className="w-6 h-6" />,
-    color: "text-purple-600",
-    bgColor: "bg-purple-50 border-purple-200 hover:bg-purple-100",
+    color: "text-purple-600 dark:text-purple-400",
+    bgColor:
+      "bg-purple-50 border-purple-200 hover:bg-purple-100 dark:bg-purple-950/30 dark:border-purple-900 dark:hover:bg-purple-900/40",
   },
 ];
 
@@ -229,7 +232,12 @@ export function ManualPaymentDialog({
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                   >
-                    <div className={cn("p-2 rounded-lg bg-white shadow-sm", method.color)}>
+                    <div
+                      className={cn(
+                        "p-2 rounded-lg bg-white dark:bg-slate-900/70 shadow-sm",
+                        method.color
+                      )}
+                    >
                       {method.icon}
                     </div>
                     <div className="flex-1">
@@ -261,9 +269,9 @@ export function ManualPaymentDialog({
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   {selectedMethod === "cheque" ? (
-                    <FileText className="w-5 h-5 text-blue-600" />
+                    <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   ) : (
-                    <Building2 className="w-5 h-5 text-purple-600" />
+                    <Building2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
                   )}
                   Enregistrer un {selectedMethod === "cheque" ? "chèque" : "virement"}
                 </DialogTitle>
@@ -293,7 +301,7 @@ export function ManualPaymentDialog({
                     </span>
                   </div>
                   {parseFloat(formData.amount) !== amount && (
-                    <p className="text-xs text-amber-600">
+                    <p className="text-xs text-amber-600 dark:text-amber-400">
                       ⚠️ Montant différent de la facture ({amount.toLocaleString("fr-FR")} €)
                     </p>
                   )}
