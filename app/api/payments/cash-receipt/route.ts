@@ -3,15 +3,17 @@ export const dynamic = 'force-dynamic';
 
 /**
  * POST /api/payments/cash-receipt
- * Crée un reçu de paiement en espèces avec signatures
+ * Le propriétaire signe et crée un reçu en attente.
+ * Une notification est envoyée au locataire qui signera ensuite
+ * depuis SON propre espace (cf. /api/payments/cash-receipt/[id]/tenant-sign).
  *
  * @see Art. 21 loi n°89-462 du 6 juillet 1989
  * @see Décret n°2015-587 du 6 mai 2015
  */
 
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 import { cashReceiptInputSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
@@ -45,16 +47,16 @@ export async function POST(request: Request) {
       invoice_id,
       amount,
       owner_signature,
-      tenant_signature,
       owner_signed_at,
-      tenant_signed_at,
       geolocation,
       device_info,
       notes,
     } = validationResult.data;
 
-    // Vérifier le profil propriétaire
-    const { data: profile, error: profileError } = await supabase
+    const serviceClient = getServiceClient();
+
+    // Vérifier le profil propriétaire (service role pour éviter 406 RLS)
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id, role, prenom, nom")
       .eq("user_id", user.id)
@@ -67,14 +69,12 @@ export async function POST(request: Request) {
       );
     }
 
-    if (profile.role !== "owner") {
+    if (profile.role !== "owner" && profile.role !== "admin") {
       return NextResponse.json(
         { error: "Seul le propriétaire peut créer un reçu espèces" },
         { status: 403 }
       );
     }
-
-    const serviceClient = createServiceRoleClient();
 
     // Récupérer la facture avec les infos liées
     const { data: invoice, error: invoiceError } = await serviceClient
@@ -99,153 +99,125 @@ export async function POST(request: Request) {
     }
 
     // Vérifier que la facture appartient au propriétaire
-    if (invoice.owner_id !== profile.id) {
+    const invoiceAny = invoice as any;
+    if (profile.role !== "admin" && invoiceAny.owner_id !== profile.id) {
       return NextResponse.json(
         { error: "Cette facture ne vous appartient pas" },
         { status: 403 }
       );
     }
 
-    if (invoice.statut === "paid") {
+    if (invoiceAny.statut === "paid") {
       return NextResponse.json(
         { error: "Cette facture est déjà payée" },
         { status: 400 }
       );
     }
 
-    // ✅ SOTA 2026: Utiliser la fonction RPC atomique au lieu de multiples INSERT
-    // Avantage: Transaction complète, pas de rollback manuel, intégrité garantie
+    // ✅ Flow deux étapes: création du reçu en attente (pending_tenant)
+    // Aucun paiement créé ici — il le sera lors de la signature locataire.
     const { data: receiptRaw, error: rpcError } = await serviceClient.rpc(
       "create_cash_receipt",
       {
         p_invoice_id: invoice_id,
         p_amount: amount,
         p_owner_signature: owner_signature,
-        p_tenant_signature: tenant_signature,
         p_owner_signed_at: owner_signed_at || new Date().toISOString(),
-        p_tenant_signed_at: tenant_signed_at || new Date().toISOString(),
         p_latitude: geolocation?.lat ?? null,
         p_longitude: geolocation?.lng ?? null,
         p_device_info: device_info || {},
         p_notes: notes ?? null,
-      }
+      } as any
     );
 
     if (rpcError) {
       console.error("Erreur RPC create_cash_receipt:", rpcError);
-      // Gestion des erreurs spécifiques de la fonction SQL
       if (rpcError.message.includes("Facture non trouvée")) {
         return NextResponse.json({ error: "Facture non trouvée" }, { status: 404 });
       }
       if (rpcError.message.includes("Facture déjà payée")) {
         return NextResponse.json({ error: "Cette facture est déjà payée" }, { status: 400 });
       }
+      if (rpcError.message.includes("reçu existe déjà")) {
+        return NextResponse.json({ error: "Un reçu est déjà en attente de signature" }, { status: 409 });
+      }
       throw new Error(rpcError.message || "Erreur lors de la création du reçu");
     }
 
     const receipt = receiptRaw as Record<string, any>;
 
-    // Récupérer le payment_id depuis le reçu créé
-    const payment = { id: receipt.payment_id };
+    const tenantUserId = invoiceAny.tenant?.user_id as string | undefined;
+    const tenantProfileId = invoiceAny.tenant?.id as string | undefined;
+    const tenantFullName = `${invoiceAny.tenant?.prenom ?? ""} ${invoiceAny.tenant?.nom ?? ""}`.trim() || "Locataire";
+    const ownerFullName = `${profile.prenom ?? ""} ${profile.nom ?? ""}`.trim() || "Propriétaire";
 
-    // Récupérer le hash généré par la fonction SQL
-    const documentHash = receipt.document_hash;
+    // Fire-and-forget: notifications (ne pas bloquer la réponse HTTP)
+    const actionUrl = `/tenant/payments/cash-receipt/${receipt.id}`;
+    const notificationsPromise = (async () => {
+      try {
+        const inserts: any[] = [
+          {
+            profile_id: profile.id,
+            user_id: user.id,
+            type: "cash_receipt_pending_tenant",
+            title: "Reçu espèces envoyé au locataire",
+            message: `Reçu ${receipt.receipt_number} de ${amount}€. En attente de la signature de ${tenantFullName}.`,
+            data: { receipt_id: receipt.id, invoice_id },
+            metadata: { receipt_id: receipt.id, invoice_id },
+            action_url: `/owner/finances/invoices/${invoice_id}`,
+            is_read: false,
+            priority: "normal",
+            status: "pending",
+            channels_status: { in_app: "sent" },
+          },
+        ];
 
-    // Convertir le montant en lettres pour le PDF
-    const amountWords = convertAmountToWords(amount);
-
-    // Générer le PDF (appel asynchrone)
-    let pdfUrl = null;
-    try {
-      const pdfResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/pdf/generate`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            template: "cash_receipt",
-            data: {
-              receipt_id: receipt.id,
-              receipt_number: receipt.receipt_number,
-              owner_name: `${profile.prenom} ${profile.nom}`,
-              tenant_name: `${invoice.tenant.prenom} ${invoice.tenant.nom}`,
-              property_address: invoice.lease?.property?.adresse_complete,
-              amount,
-              amount_words: amountWords,
-              periode: invoice.periode,
-              owner_signature,
-              tenant_signature,
-              owner_signed_at: receipt.owner_signed_at,
-              tenant_signed_at: receipt.tenant_signed_at,
-              geolocation,
-              document_hash: documentHash,
-            },
-          }),
+        if (tenantProfileId && tenantUserId) {
+          inserts.push({
+            profile_id: tenantProfileId,
+            user_id: tenantUserId,
+            type: "cash_receipt_signature_requested",
+            title: "Signature requise — Reçu espèces",
+            message: `${ownerFullName} vous demande de signer un reçu de ${amount}€ pour confirmer votre paiement en espèces.`,
+            data: { receipt_id: receipt.id, invoice_id },
+            metadata: { receipt_id: receipt.id, invoice_id },
+            action_url: actionUrl,
+            is_read: false,
+            priority: "high",
+            status: "pending",
+            channels_status: { in_app: "sent" },
+          });
         }
-      );
 
-      if (pdfResponse.ok) {
-        const pdfData = await pdfResponse.json();
-        pdfUrl = pdfData.url;
+        await serviceClient.from("notifications").insert(inserts);
 
-        // Mettre à jour le reçu avec l'URL du PDF
-        await serviceClient
-          .from("cash_receipts")
-          .update({
-            pdf_url: pdfUrl,
-            pdf_path: pdfData.path,
-            pdf_generated_at: new Date().toISOString(),
-            status: "sent",
-          })
-          .eq("id", receipt.id);
+        await serviceClient.from("audit_log").insert({
+          user_id: user.id,
+          action: "cash_receipt_created_pending",
+          entity_type: "cash_receipt",
+          entity_id: receipt.id,
+          metadata: {
+            invoice_id,
+            amount,
+            tenant_profile_id: tenantProfileId,
+            has_geolocation: !!geolocation,
+          },
+        });
+      } catch (err) {
+        console.error("[cash-receipt] notification error (non-blocking):", err);
       }
-    } catch (pdfError) {
-      console.error("Erreur génération PDF:", pdfError);
-      // Non bloquant
-    }
+    })();
 
-    // Créer les notifications
-    await Promise.all([
-      // Notification propriétaire
-      serviceClient.from("notifications").insert({
-        user_id: user.id,
-        type: "cash_receipt_created",
-        title: "Reçu espèces créé",
-        message: `Reçu ${receipt.receipt_number} de ${amount}€ pour ${invoice.tenant.prenom} ${invoice.tenant.nom}.`,
-        data: { receipt_id: receipt.id, invoice_id, payment_id: payment.id },
-      }),
-      // Notification locataire
-      serviceClient.from("notifications").insert({
-        user_id: invoice.tenant.user_id,
-        type: "cash_payment_confirmed",
-        title: "Paiement confirmé",
-        message: `Votre paiement de ${amount}€ en espèces a été confirmé. Reçu: ${receipt.receipt_number}`,
-        data: { receipt_id: receipt.id, invoice_id },
-      }),
-    ]);
-
-    // Audit log
-    await serviceClient.from("audit_log").insert({
-      user_id: user.id,
-      action: "cash_receipt_created",
-      entity_type: "cash_receipt",
-      entity_id: receipt.id,
-      metadata: {
-        invoice_id,
-        payment_id: payment.id,
-        amount,
-        document_hash: documentHash,
-        has_geolocation: !!geolocation,
-      },
-    });
+    // Ne pas attendre la fin des notifications (fire-and-forget)
+    void notificationsPromise;
 
     return NextResponse.json({
       success: true,
       receipt_id: receipt.id,
       receipt_number: receipt.receipt_number,
-      payment_id: payment.id,
-      pdf_url: pdfUrl,
-      document_hash: documentHash,
+      status: receipt.status,
+      action_url: actionUrl,
+      message: "Reçu créé. En attente de la signature du locataire.",
     });
   } catch (error: unknown) {
     console.error("Erreur création reçu espèces:", error);
@@ -254,102 +226,6 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
-
-/**
- * Convertit un montant en lettres (français)
- */
-function convertAmountToWords(amount: number): string {
-  const units = [
-    "",
-    "un",
-    "deux",
-    "trois",
-    "quatre",
-    "cinq",
-    "six",
-    "sept",
-    "huit",
-    "neuf",
-    "dix",
-    "onze",
-    "douze",
-    "treize",
-    "quatorze",
-    "quinze",
-    "seize",
-    "dix-sept",
-    "dix-huit",
-    "dix-neuf",
-  ];
-  const tens = [
-    "",
-    "",
-    "vingt",
-    "trente",
-    "quarante",
-    "cinquante",
-    "soixante",
-    "soixante",
-    "quatre-vingt",
-    "quatre-vingt",
-  ];
-
-  const euros = Math.floor(amount);
-  const cents = Math.round((amount - euros) * 100);
-
-  function convertLessThanHundred(n: number): string {
-    if (n < 20) return units[n];
-
-    const t = Math.floor(n / 10);
-    const u = n % 10;
-
-    if (t === 7 || t === 9) {
-      return tens[t] + "-" + units[10 + u];
-    } else if (u === 0) {
-      return tens[t] + (t === 8 ? "s" : "");
-    } else if (u === 1 && t !== 8) {
-      return tens[t] + " et un";
-    } else {
-      return tens[t] + "-" + units[u];
-    }
-  }
-
-  function convertLessThanThousand(n: number): string {
-    if (n < 100) return convertLessThanHundred(n);
-
-    const h = Math.floor(n / 100);
-    const remainder = n % 100;
-
-    let result = h === 1 ? "cent" : units[h] + " cent";
-    if (remainder === 0 && h > 1) result += "s";
-    else if (remainder > 0) result += " " + convertLessThanHundred(remainder);
-
-    return result;
-  }
-
-  function convertNumber(n: number): string {
-    if (n === 0) return "zéro";
-    if (n < 1000) return convertLessThanThousand(n);
-
-    const thousands = Math.floor(n / 1000);
-    const remainder = n % 1000;
-
-    let result = thousands === 1 ? "mille" : convertLessThanThousand(thousands) + " mille";
-    if (remainder > 0) result += " " + convertLessThanThousand(remainder);
-
-    return result;
-  }
-
-  let result = convertNumber(euros);
-  result += euros > 1 ? " euros" : " euro";
-
-  if (cents > 0) {
-    result += " et " + cents + " centime" + (cents > 1 ? "s" : "");
-  }
-
-  // Capitaliser la première lettre
-  return result.charAt(0).toUpperCase() + result.slice(1);
 }
 
 /**
@@ -370,7 +246,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const invoiceId = searchParams.get("invoice_id");
 
-    const { data: profile } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -380,7 +258,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    let query = supabase
+    let query = serviceClient
       .from("cash_receipts")
       .select(`
         *,
@@ -416,4 +294,3 @@ export async function GET(request: Request) {
     );
   }
 }
-

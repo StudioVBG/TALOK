@@ -999,7 +999,8 @@ export const cashReceiptInputSchema = z.object({
       { message: "Attention: paiements > 1000€ en espèces soumis à déclaration" }
     ),
 
-  // Signatures (base64 PNG)
+  // Signature du propriétaire (la signature du locataire est collectée
+  // ultérieurement depuis son propre espace — voir flux deux étapes)
   owner_signature: z.string()
     .min(100, "Signature propriétaire trop courte")
     .refine(
@@ -1007,16 +1008,8 @@ export const cashReceiptInputSchema = z.object({
       { message: "Format signature invalide (PNG ou JPEG base64 attendu)" }
     ),
 
-  tenant_signature: z.string()
-    .min(100, "Signature locataire trop courte")
-    .refine(
-      (val) => val.startsWith("data:image/png;base64,") || val.startsWith("data:image/jpeg;base64,"),
-      { message: "Format signature invalide (PNG ou JPEG base64 attendu)" }
-    ),
-
-  // Horodatage signatures
+  // Horodatage signature propriétaire
   owner_signed_at: z.string().datetime({ offset: true }).optional(),
-  tenant_signed_at: z.string().datetime({ offset: true }).optional(),
 
   // Géolocalisation (optionnelle mais recommandée)
   geolocation: geolocationSchema.optional().nullable(),
@@ -1032,6 +1025,23 @@ export const cashReceiptInputSchema = z.object({
 });
 
 export type CashReceiptInput = z.infer<typeof cashReceiptInputSchema>;
+
+/**
+ * Schéma de validation pour la signature du locataire (seconde étape)
+ */
+export const cashReceiptTenantSignatureSchema = z.object({
+  tenant_signature: z.string()
+    .min(100, "Signature locataire trop courte")
+    .refine(
+      (val) => val.startsWith("data:image/png;base64,") || val.startsWith("data:image/jpeg;base64,"),
+      { message: "Format signature invalide (PNG ou JPEG base64 attendu)" }
+    ),
+  tenant_signed_at: z.string().datetime({ offset: true }).optional(),
+  geolocation: geolocationSchema.optional().nullable(),
+  device_info: deviceInfoSchema.optional(),
+});
+
+export type CashReceiptTenantSignatureInput = z.infer<typeof cashReceiptTenantSignatureSchema>;
 
 // ============================================
 // CODES POSTAUX FRANCE + DOM-TOM - SOTA 2026

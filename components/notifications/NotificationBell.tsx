@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Bell, Check, CheckCheck, Home, FileText, AlertCircle, Building2, Camera, Rocket, Mail, UserPlus, ClipboardCheck } from "lucide-react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { Bell, Check, CheckCheck, Home, FileText, AlertCircle, Building2, Camera, Rocket, Mail, UserPlus, ClipboardCheck, Banknote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -58,6 +59,9 @@ const NOTIFICATION_ICONS: Record<string, typeof Bell> = {
   property_published: Rocket,
   property_invitation_sent: Mail,
   property_tenant_joined: UserPlus,
+  cash_receipt_signature_requested: Banknote,
+  cash_receipt_pending_tenant: Banknote,
+  cash_receipt_signed: Banknote,
   default: Bell,
 };
 
@@ -78,14 +82,19 @@ const NOTIFICATION_COLORS: Record<string, string> = {
   property_published: "bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400",
   property_invitation_sent: "bg-cyan-100 text-cyan-600 dark:bg-cyan-900/50 dark:text-cyan-400",
   property_tenant_joined: "bg-teal-100 text-teal-600 dark:bg-teal-900/50 dark:text-teal-400",
+  cash_receipt_signature_requested: "bg-[#2563EB]/10 text-[#2563EB] dark:bg-blue-900/50 dark:text-blue-400",
+  cash_receipt_pending_tenant: "bg-[#2563EB]/10 text-[#2563EB] dark:bg-blue-900/50 dark:text-blue-400",
+  cash_receipt_signed: "bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400",
   default: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
 };
 
 export function NotificationBell() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
+  const markedOnOpenRef = useRef<string | null>(null);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -108,7 +117,7 @@ export function NotificationBell() {
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
-  const markAllAsRead = async () => {
+  const markAllAsRead = useCallback(async () => {
     try {
       const response = await fetch("/api/notifications", {
         method: "PATCH",
@@ -117,13 +126,26 @@ export function NotificationBell() {
       });
 
       if (response.ok) {
-        setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read: true })));
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: true, read: true, read_at: new Date().toISOString() })));
         setUnreadCount(0);
       }
     } catch (error) {
       console.error("Erreur marquage notifications:", error);
     }
-  };
+  }, []);
+
+  // ✅ Ouverture de la cloche = marquer TOUTES les notifications affichées comme lues
+  useEffect(() => {
+    if (!open) {
+      markedOnOpenRef.current = null;
+      return;
+    }
+    const snapshot = notifications.filter(isUnread).map(n => n.id).sort().join(",");
+    if (snapshot && snapshot !== markedOnOpenRef.current) {
+      markedOnOpenRef.current = snapshot;
+      void markAllAsRead();
+    }
+  }, [open, notifications, markAllAsRead]);
 
   const markAsRead = async (notificationId: string) => {
     try {
@@ -163,6 +185,12 @@ export function NotificationBell() {
     const meta = getMeta(notification);
 
     switch (notification.type) {
+      case "cash_receipt_signature_requested":
+      case "cash_receipt_pending_tenant":
+      case "cash_receipt_signed":
+        if (meta.receipt_id) return `/tenant/payments/cash-receipt/${meta.receipt_id}`;
+        return `/tenant/payments`;
+
       case "lease_invite":
         return `/tenant/dashboard`;
 
@@ -256,18 +284,23 @@ export function NotificationBell() {
                 const link = getNotificationLink(notification);
                 const unread = isUnread(notification);
 
-                const content = (
+                return (
                   <div
+                    key={notification.id}
+                    role={link ? "link" : undefined}
                     className={cn(
                       "p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer",
                       unread && "bg-blue-50/50 dark:bg-blue-950/20"
                     )}
                     onClick={() => {
+                      // Marquer comme lu (fire-and-forget)
                       if (unread) {
-                        markAsRead(notification.id);
+                        void markAsRead(notification.id);
                       }
+                      // Navigation vers l'action cible
                       if (link) {
                         setOpen(false);
+                        router.push(link);
                       }
                     }}
                   >
@@ -284,7 +317,7 @@ export function NotificationBell() {
                             {notification.title}
                           </p>
                           {unread && (
-                            <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0 mt-1.5" />
+                            <span className="h-2 w-2 rounded-full bg-[#2563EB] shrink-0 mt-1.5" />
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
@@ -297,16 +330,6 @@ export function NotificationBell() {
                     </div>
                   </div>
                 );
-
-                if (link) {
-                  return (
-                    <Link key={notification.id} href={link}>
-                      {content}
-                    </Link>
-                  );
-                }
-
-                return <div key={notification.id}>{content}</div>;
               })}
             </div>
           )}

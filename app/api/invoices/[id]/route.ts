@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/helpers/api-error";
 import { invoiceSchema } from "@/lib/validations";
@@ -27,12 +28,20 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Note: we no longer fetch the profile here. Authorization is enforced
-    // by RLS on the invoices SELECT policy (see
-    // supabase/migrations/20260410204528_extend_invoices_rls_for_sci_access.sql).
-    // If the user is not allowed to see this invoice, RLS returns no row and
-    // the PGRST116 error is translated to 404 by handleApiError.
-    const { data: invoice, error } = await supabase
+    // ✅ SOTA: Service client pour bypass RLS — autorisation vérifiée côté app
+    const serviceClient = getServiceClient();
+
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
+
+    const { data: invoice, error } = await serviceClient
       .from("invoices")
       .select(`
         *,
@@ -41,7 +50,9 @@ export async function GET(
           type_bail,
           property:properties(
             id,
-            adresse_complete
+            adresse_complete,
+            owner_id,
+            legal_entity_id
           )
         ),
         tenant:profiles!invoices_tenant_id_fkey(
@@ -64,24 +75,43 @@ export async function GET(
       return NextResponse.json({ error: "Facture non trouvée" }, { status: 404 });
     }
 
-    // Authorization is enforced by RLS (SELECT policy on invoices):
-    //   - direct owner: invoices.owner_id === user_profile_id()
-    //   - SCI member:   invoices.entity_id ∈ entity_members(user_id=auth.uid())
-    //                   OR invoices.lease → property.legal_entity_id ∈ …
-    //   - tenant:       invoices.tenant_id === user_profile_id()
-    //   - admin:        dedicated RLS policy
-    // If the query returned a row, the caller is authorized. No redundant
-    // application-level check here (the previous one blocked legitimate SCI
-    // members whose profile.id ≠ invoices.owner_id — see bug #3 audit).
     const invoiceAny = invoice as any;
+    const isAdmin = profile.role === "admin";
+    const isOwner = invoiceAny.owner_id === profile.id;
+    const isTenant = invoiceAny.tenant_id === profile.id;
 
-    const { data: payments } = await supabase
+    // Vérifier l'accès via entity_members (SCI) si ni direct owner ni tenant
+    let isSciMember = false;
+    if (!isAdmin && !isOwner && !isTenant) {
+      const entityId =
+        invoiceAny.entity_id ||
+        invoiceAny.lease?.property?.legal_entity_id ||
+        null;
+      if (entityId) {
+        const { data: membership } = await serviceClient
+          .from("entity_members")
+          .select("id")
+          .eq("entity_id", entityId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        isSciMember = !!membership;
+      }
+    }
+
+    if (!isAdmin && !isOwner && !isTenant && !isSciMember) {
+      return NextResponse.json(
+        { error: "Accès refusé à cette facture" },
+        { status: 403 }
+      );
+    }
+
+    const { data: payments } = await serviceClient
       .from("payments")
       .select("id, montant, moyen, date_paiement, statut")
       .eq("invoice_id", id)
       .order("date_paiement", { ascending: false });
 
-    const settlement = await getInvoiceSettlement(supabase as any, id);
+    const settlement = await getInvoiceSettlement(serviceClient as any, id);
 
     return NextResponse.json({
       invoice: {
@@ -119,8 +149,10 @@ export async function PUT(
     const body = await request.json();
     const validated = invoiceSchema.partial().parse(body) as InvoiceUpdate;
 
+    const serviceClient = getServiceClient();
+
     // Vérifier que l'utilisateur est propriétaire de la facture
-    const { data: invoice } = await supabase
+    const { data: invoice } = await serviceClient
       .from("invoices")
       .select("owner_id")
       .eq("id", id)
@@ -131,7 +163,7 @@ export async function PUT(
       return NextResponse.json({ error: "Facture non trouvée" }, { status: 404 });
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -147,7 +179,7 @@ export async function PUT(
 
     // Recalculer le montant total si nécessaire
     if (validated.montant_loyer !== undefined || validated.montant_charges !== undefined) {
-      const { data: currentInvoice } = await supabase
+      const { data: currentInvoice } = await serviceClient
         .from("invoices")
         .select("montant_loyer, montant_charges")
         .eq("id", id)
@@ -161,7 +193,7 @@ export async function PUT(
       }
     }
 
-    const { data: updatedInvoice, error } = await supabase
+    const { data: updatedInvoice, error } = await serviceClient
       .from("invoices")
       .update(validated)
       .eq("id", id)
@@ -193,8 +225,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    const serviceClient = getServiceClient();
+
     // Vérifier que l'utilisateur est propriétaire de la facture
-    const { data: invoice } = await supabase
+    const { data: invoice } = await serviceClient
       .from("invoices")
       .select("owner_id")
       .eq("id", id)
@@ -205,7 +239,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Facture non trouvée" }, { status: 404 });
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -219,7 +253,7 @@ export async function DELETE(
       );
     }
 
-    const { error } = await supabase.from("invoices").delete().eq("id", id);
+    const { error } = await serviceClient.from("invoices").delete().eq("id", id);
 
     if (error) throw error;
     return NextResponse.json({ success: true });
