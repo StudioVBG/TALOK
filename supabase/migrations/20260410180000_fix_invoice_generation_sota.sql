@@ -279,8 +279,8 @@ COMMENT ON FUNCTION mark_overdue_invoices_late IS
 --
 -- Vault entries expected (create them via the Supabase dashboard →
 -- Project Settings → Vault before the cron jobs actually fire):
---   • talok_app_url       = 'https://talok.fr'    (or the Netlify URL)
---   • talok_cron_secret   = '<matches CRON_SECRET env var in Netlify>'
+--   • app_url       = 'https://talok.fr'    (or the Netlify URL)
+--   • cron_secret   = '<matches CRON_SECRET env var in Netlify>'
 --
 -- Routes targeted (all verified to export GET in app/api/cron/):
 --   generate-invoices, payment-reminders, process-outbox,
@@ -326,10 +326,10 @@ END $$;
 -- Daily rent payment reminders — 08:00 UTC
 SELECT cron.schedule('payment-reminders', '0 8 * * *', $cron$
   SELECT net.http_get(
-    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_app_url') || '/api/cron/payment-reminders',
+    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'app_url') || '/api/cron/payment-reminders',
     headers := jsonb_build_object(
       'Authorization',
-      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_cron_secret')
+      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_secret')
     ),
     timeout_milliseconds := 30000
   );
@@ -338,10 +338,10 @@ $cron$);
 -- Monthly invoice generation — 1st of the month, 06:00 UTC
 SELECT cron.schedule('generate-invoices', '0 6 1 * *', $cron$
   SELECT net.http_get(
-    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_app_url') || '/api/cron/generate-invoices',
+    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'app_url') || '/api/cron/generate-invoices',
     headers := jsonb_build_object(
       'Authorization',
-      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_cron_secret')
+      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_secret')
     ),
     timeout_milliseconds := 30000
   );
@@ -350,10 +350,10 @@ $cron$);
 -- Outbox worker — every 5 minutes
 SELECT cron.schedule('process-outbox', '*/5 * * * *', $cron$
   SELECT net.http_get(
-    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_app_url') || '/api/cron/process-outbox',
+    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'app_url') || '/api/cron/process-outbox',
     headers := jsonb_build_object(
       'Authorization',
-      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_cron_secret')
+      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_secret')
     ),
     timeout_milliseconds := 30000
   );
@@ -362,10 +362,10 @@ $cron$);
 -- Webhook retry worker — every 5 minutes (offset +2 to avoid burst)
 SELECT cron.schedule('process-webhooks', '2-59/5 * * * *', $cron$
   SELECT net.http_get(
-    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_app_url') || '/api/cron/process-webhooks',
+    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'app_url') || '/api/cron/process-webhooks',
     headers := jsonb_build_object(
       'Authorization',
-      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_cron_secret')
+      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_secret')
     ),
     timeout_milliseconds := 30000
   );
@@ -374,10 +374,10 @@ $cron$);
 -- Lease expiry alerts — Mondays at 08:00 UTC
 SELECT cron.schedule('lease-expiry-alerts', '0 8 * * 1', $cron$
   SELECT net.http_get(
-    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_app_url') || '/api/cron/lease-expiry-alerts',
+    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'app_url') || '/api/cron/lease-expiry-alerts',
     headers := jsonb_build_object(
       'Authorization',
-      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_cron_secret')
+      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_secret')
     ),
     timeout_milliseconds := 30000
   );
@@ -386,10 +386,10 @@ $cron$);
 -- CNI expiry check — daily at 10:00 UTC
 SELECT cron.schedule('check-cni-expiry', '0 10 * * *', $cron$
   SELECT net.http_get(
-    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_app_url') || '/api/cron/check-cni-expiry',
+    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'app_url') || '/api/cron/check-cni-expiry',
     headers := jsonb_build_object(
       'Authorization',
-      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_cron_secret')
+      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_secret')
     ),
     timeout_milliseconds := 30000
   );
@@ -398,10 +398,10 @@ $cron$);
 -- Subscription alerts — daily at 10:00 UTC (offset +5 min to avoid burst)
 SELECT cron.schedule('subscription-alerts', '5 10 * * *', $cron$
   SELECT net.http_get(
-    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_app_url') || '/api/cron/subscription-alerts',
+    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'app_url') || '/api/cron/subscription-alerts',
     headers := jsonb_build_object(
       'Authorization',
-      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_cron_secret')
+      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_secret')
     ),
     timeout_milliseconds := 30000
   );
@@ -410,10 +410,10 @@ $cron$);
 -- IRL indexation — 1st of the month, 07:00 UTC
 SELECT cron.schedule('irl-indexation', '0 7 1 * *', $cron$
   SELECT net.http_get(
-    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_app_url') || '/api/cron/irl-indexation',
+    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'app_url') || '/api/cron/irl-indexation',
     headers := jsonb_build_object(
       'Authorization',
-      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_cron_secret')
+      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_secret')
     ),
     timeout_milliseconds := 30000
   );
@@ -422,10 +422,10 @@ $cron$);
 -- Visit reminders — every 30 minutes
 SELECT cron.schedule('visit-reminders', '*/30 * * * *', $cron$
   SELECT net.http_get(
-    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_app_url') || '/api/cron/visit-reminders',
+    url := (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'app_url') || '/api/cron/visit-reminders',
     headers := jsonb_build_object(
       'Authorization',
-      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'talok_cron_secret')
+      'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets WHERE name = 'cron_secret')
     ),
     timeout_milliseconds := 30000
   );
