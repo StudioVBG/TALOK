@@ -7,6 +7,7 @@ export const dynamic = "force-dynamic";
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 export async function POST() {
@@ -21,8 +22,9 @@ export async function POST() {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    // Récupérer le profil (service role pour éviter récursion RLS)
+    const serviceClient = createServiceRoleClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role, prenom, nom, email, telephone")
       .eq("user_id", user.id)
@@ -35,7 +37,7 @@ export async function POST() {
     // Récupérer l'abonnement actuel
     let subscription = null;
     try {
-      const { data } = await supabase
+      const { data } = await serviceClient
         .from("subscriptions")
         .select("*")
         .eq("user_id", user.id)
@@ -50,7 +52,7 @@ export async function POST() {
     // Récupérer les factures
     let invoices: unknown[] = [];
     try {
-      const { data } = await supabase
+      const { data } = await serviceClient
         .from("subscription_invoices")
         .select("*")
         .eq("user_id", user.id)
@@ -64,7 +66,7 @@ export async function POST() {
     let ownerProfile = null;
     if (profile.role === "owner") {
       try {
-        const { data } = await supabase
+        const { data } = await serviceClient
           .from("owner_profiles")
           .select("type, siret, tva, iban, adresse_facturation, raison_sociale")
           .eq("profile_id", profile.id)

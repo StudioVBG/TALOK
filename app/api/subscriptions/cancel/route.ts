@@ -35,7 +35,8 @@ export async function POST(request: Request) {
 
     const { reason, feedback, immediately } = parsed.data;
 
-    const { data: profile } = await supabase
+    const serviceClient = createServiceRoleClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id")
       .eq("user_id", user.id)
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const { data: subscription } = await supabase
+    const { data: subscription } = await serviceClient
       .from("subscriptions")
       .select("id, stripe_subscription_id, status, plan_slug")
       .eq("owner_id", profile.id)
@@ -58,8 +59,6 @@ export async function POST(request: Request) {
     if (subscription.status === "canceled") {
       return NextResponse.json({ error: "Abonnement déjà annulé" }, { status: 400 });
     }
-
-    const serviceClient = createServiceRoleClient();
 
     // Si abonnement Stripe actif, annuler sur Stripe
     if (subscription.stripe_subscription_id) {

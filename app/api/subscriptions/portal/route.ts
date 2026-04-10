@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 
@@ -21,8 +22,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le profil et l'abonnement
-    const { data: profile } = await supabase
+    // Récupérer le profil et l'abonnement (service role pour éviter récursion RLS)
+    const serviceClient = createServiceRoleClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id")
       .eq("user_id", user.id)
@@ -32,7 +34,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const { data: subscription } = await supabase
+    const { data: subscription } = await serviceClient
       .from("subscriptions")
       .select("stripe_customer_id")
       .eq("owner_id", profile.id)

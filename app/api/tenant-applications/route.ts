@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
@@ -49,8 +50,9 @@ export async function POST(request: Request) {
     const resolvedUnitId = unit_id || accessCodeData.unit_id;
     const resolvedPropertyId = property_id || accessCodeData.property_id || accessCodeData.unit?.property_id;
 
-    // Récupérer le profil locataire
-    const { data: profile, error: profileError } = await supabaseClient
+    // Récupérer le profil locataire (service role pour éviter récursion RLS)
+    const serviceClient = createServiceRoleClient();
+    const { data: profile, error: profileError } = await serviceClient
       .from("profiles")
       .select("id")
       .eq("user_id", user.id as any)

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { z } from "zod";
 
 /**
@@ -38,7 +39,8 @@ export async function requireAuth(
     return apiError("Unauthorized", 401, "UNAUTHORIZED");
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const serviceClient = createServiceRoleClient();
+  const { data: profile, error: profileError } = await serviceClient
     .from("profiles")
     .select("id, user_id, role")
     .eq("user_id", user.id)
@@ -216,10 +218,10 @@ export async function requireApiAccess(
     );
   }
 
-  const supabase = await createClient();
+  const serviceClient = createServiceRoleClient();
 
   // Get subscription
-  const { data: subscription } = await supabase
+  const { data: subscription } = await serviceClient
     .from("subscriptions")
     .select("plan_slug")
     .eq("owner_id", profile.id)

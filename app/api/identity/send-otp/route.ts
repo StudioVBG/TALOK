@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAuthenticatedUser } from '@/lib/helpers/auth-helper'
+import { createServiceRoleClient } from '@/lib/supabase/service-client'
 import { sendPhoneOtp } from '@/lib/identity/identity-verification.service'
 import { z } from 'zod'
 
@@ -15,7 +16,8 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
 
-  const { data: existing } = await supabase
+  const serviceClient = createServiceRoleClient()
+  const { data: existing } = await serviceClient
     .from('profiles')
     .select('id')
     .eq('telephone', parsed.data.phone)
@@ -26,7 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Ce numéro est déjà associé à un autre compte.' }, { status: 409 })
   }
 
-  await supabase
+  await serviceClient
     .from('profiles')
     .update({ telephone: parsed.data.phone, onboarding_step: 'phone_pending' })
     .eq('id', user.id)

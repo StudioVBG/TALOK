@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -18,7 +19,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
+    const serviceClient = createServiceRoleClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("role")
       .eq("user_id", user.id as any)
@@ -68,7 +70,7 @@ export async function POST(request: Request) {
       .select("age")
       .in("profile_id", (
         // @ts-ignore - Supabase typing issue
-        await supabase.from("profiles").select("id").eq("role", "owner")
+        await serviceClient.from("profiles").select("id").eq("role", "owner")
       ).data?.map((p: any) => p.id) || []);
 
     const avgOwnerAge = ownerAges && ownerAges.length > 0
@@ -88,7 +90,7 @@ export async function POST(request: Request) {
       .select("age")
       .in("profile_id", (
         // @ts-ignore - Supabase typing issue
-        await supabase.from("profiles").select("id").eq("role", "tenant")
+        await serviceClient.from("profiles").select("id").eq("role", "tenant")
       ).data?.map((p: any) => p.id) || []);
 
     const avgTenantAge = tenantAges && tenantAges.length > 0

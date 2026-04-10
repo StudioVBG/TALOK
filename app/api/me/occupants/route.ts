@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -151,8 +152,9 @@ export async function POST(request: Request) {
       }
     }
 
-    // Récupérer le profil du créateur (pour audit)
-    const { data: profile } = await supabase
+    // Récupérer le profil du créateur (pour audit, service role pour éviter récursion RLS)
+    const serviceClient = createServiceRoleClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id")
       .eq("user_id", user.id as any)

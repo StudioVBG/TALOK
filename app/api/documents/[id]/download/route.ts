@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -18,11 +19,12 @@ export async function GET(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
+    const serviceClient = createServiceRoleClient();
     const { data: document } = await supabase.from("documents").select("*").eq("id", id as any).single();
     if (!document) return NextResponse.json({ error: "Document non trouvé" }, { status: 404 });
 
     const docData = document as any;
-    const { data: profile } = await supabase.from("profiles").select("id, role").eq("user_id", user.id as any).single();
+    const { data: profile } = await serviceClient.from("profiles").select("id, role").eq("user_id", user.id as any).single();
     const profileData = profile as any;
 
     const isTenantRole = profileData?.role === "tenant";
@@ -86,7 +88,8 @@ export async function POST(
     const docData = document as any;
 
     // Vérifier les permissions
-    const { data: profile } = await supabase
+    const serviceClient = createServiceRoleClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)

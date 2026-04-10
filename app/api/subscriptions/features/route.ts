@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextRequest, NextResponse } from "next/server";
 import {
   PLANS,
@@ -34,15 +35,16 @@ export async function GET(request: NextRequest) {
     const singleFeature = searchParams.get("feature") as FeatureKey | null;
     const multipleFeatures = searchParams.get("features")?.split(",") as FeatureKey[] | undefined;
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    // Récupérer le profil (service role pour éviter récursion RLS)
+    const serviceClient = createServiceRoleClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id")
       .eq("user_id", user.id)
       .single();
 
     // Récupérer l'abonnement via owner_id
-    const { data: subscription } = profile ? await supabase
+    const { data: subscription } = profile ? await serviceClient
       .from("subscriptions")
       .select("plan_slug, status")
       .eq("owner_id", profile.id)

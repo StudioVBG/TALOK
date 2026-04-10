@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { addDays, format, startOfDay, endOfDay } from "date-fns";
 import { notifyPaymentLate } from "@/lib/services/notification-service";
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const supabase = await createClient();
+    const supabase = createServiceRoleClient();
     const today = new Date();
     const stats = {
       j_minus_3: 0,

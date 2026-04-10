@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -21,7 +22,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const scope = searchParams.get("scope") || "user"; // 'admin' | 'owner' | 'tenant' | 'provider' | 'user'
 
-    const { data: profile } = await supabase
+    const serviceClient = createServiceRoleClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
@@ -91,7 +93,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: profile } = await supabase
+    const svcClient = createServiceRoleClient();
+    const { data: profile } = await svcClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
