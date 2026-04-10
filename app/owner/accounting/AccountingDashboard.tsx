@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck — TODO: remove once database.types.ts is regenerated
 
 import { useState, useEffect } from "react";
 import { PlanGate } from "@/components/subscription/plan-gate";
@@ -192,14 +191,15 @@ function AccountingDashboardContent() {
                         borderRadius: "0.75rem",
                         fontSize: 12,
                       }}
-                      formatter={(value: number, name: string) => [
-                        formatCents(value),
+                      formatter={((value: unknown, name: unknown) => [
+                        formatCents(typeof value === "number" ? value : Number(value) || 0),
                         name === "debitCents" ? "Debit" : "Credit",
-                      ]}
-                      labelFormatter={(label: string) => {
-                        const [y, m] = label.split("-");
+                      ]) as never}
+                      labelFormatter={((label: unknown) => {
+                        const str = typeof label === "string" ? label : String(label ?? "");
+                        const [y, m] = str.split("-");
                         return `${m}/${y}`;
-                      }}
+                      }) as never}
                     />
                     <Bar
                       dataKey="debitCents"

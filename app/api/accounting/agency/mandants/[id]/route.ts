@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: Agency Mandant Detail
  * GET   /api/accounting/agency/mandants/:id - Detail with properties, entries, CRGs
@@ -67,7 +66,13 @@ export async function GET(request: Request, context: Context) {
     const accountNumber = mandant.sub_account_number as string;
 
     // Fetch properties linked to this mandant's owner entity
-    const { data: properties } = await supabase
+    const { data: properties } = await (supabase as unknown as {
+      from: (t: string) => {
+        select: (s: string) => {
+          eq: (k: string, v: string) => Promise<{ data: unknown }>;
+        };
+      };
+    })
       .from("properties")
       .select("id, address, city, property_type, status")
       .eq("owner_entity_id", mandant.owner_entity_id as string);

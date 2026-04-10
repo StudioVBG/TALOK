@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: Syndic Copropriété — Lot Detail
  * GET    /api/accounting/syndic/lots/[id] - Get single lot

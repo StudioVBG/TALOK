@@ -1,4 +1,3 @@
-// @ts-nocheck
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
@@ -148,7 +147,10 @@ export function useDocumentAnalysis() {
         // Upload file as FormData
         const formData = new FormData();
         formData.append("file", selectedFile);
-        formData.append("entityId", profile.default_entity_id ?? "");
+        const defaultEntityId =
+          (profile as { default_entity_id?: string | null } | null)
+            ?.default_entity_id ?? "";
+        formData.append("entityId", defaultEntityId);
 
         const uploadRes = await fetch("/api/documents/upload", {
           method: "POST",

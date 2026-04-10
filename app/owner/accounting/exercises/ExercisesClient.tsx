@@ -1,6 +1,4 @@
-// @ts-nocheck
 "use client";
-// @ts-nocheck — TODO: remove once database.types.ts is regenerated
 import { useState } from "react";
 import { PlanGate } from "@/components/subscription/plan-gate";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -18,20 +16,46 @@ function ExercisesContent() {
   const [closingId, setClosingId] = useState<string | null>(null);
   const [closingStep, setClosingStep] = useState(0);
 
-  const { data, isLoading } = useQuery<any>({ queryKey: ["exercises", activeEntityId], queryFn: () => apiClient.get(`/accounting/exercises?entityId=${activeEntityId}`), enabled: !!activeEntityId });
+  type ExerciseItem = { id: string; start_date: string; end_date: string; status: string; closed_at?: string };
+  type ExercisesResponse =
+    | ExerciseItem[]
+    | { data?: ExerciseItem[] | { exercises?: ExerciseItem[] }; exercises?: ExerciseItem[] };
 
-  const closeMutation = useMutation<any, any, any>({
-    mutationFn: async (exerciseId: string) => {
-      setClosingId(exerciseId);
-      const steps = ["Verifications", "Amortissements", "Deficit", "A-nouveaux", "Verrouillage", "Exercice suivant"];
-      for (let i = 0; i < steps.length; i++) { setClosingStep(i + 1); await new Promise(r => setTimeout(r, 500)); }
-      return apiClient.post(`/accounting/exercises/${exerciseId}/close`);
-    },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["exercises"] }); setClosingId(null); setClosingStep(0); },
-    onError: () => { setClosingId(null); setClosingStep(0); },
+  const { data, isLoading } = useQuery<ExercisesResponse>({
+    queryKey: ["exercises", activeEntityId],
+    queryFn: () => apiClient.get<ExercisesResponse>(`/accounting/exercises?entityId=${activeEntityId}`),
+    enabled: !!activeEntityId,
   });
 
-  const exercises = (data?.data?.exercises ?? data?.exercises ?? data?.data ?? []) as Array<{ id: string; start_date: string; end_date: string; status: string; closed_at?: string }>;
+  const closeMutation = useMutation<unknown, unknown, string>({
+    mutationFn: async (exerciseId) => {
+      setClosingId(exerciseId);
+      const steps = ["Verifications", "Amortissements", "Deficit", "A-nouveaux", "Verrouillage", "Exercice suivant"];
+      for (let i = 0; i < steps.length; i++) {
+        setClosingStep(i + 1);
+        await new Promise((r) => setTimeout(r, 500));
+      }
+      return apiClient.post(`/accounting/exercises/${exerciseId}/close`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exercises"] });
+      setClosingId(null);
+      setClosingStep(0);
+    },
+    onError: () => {
+      setClosingId(null);
+      setClosingStep(0);
+    },
+  });
+
+  const exercises: ExerciseItem[] = (() => {
+    if (Array.isArray(data)) return data;
+    const nested = data?.data;
+    if (Array.isArray(nested)) return nested;
+    if (nested && "exercises" in nested && Array.isArray(nested.exercises)) return nested.exercises;
+    if (data?.exercises) return data.exercises;
+    return [];
+  })();
   const openExercises = exercises.filter(e => e.status === "open");
   const closedExercises = exercises.filter(e => e.status === "closed");
 

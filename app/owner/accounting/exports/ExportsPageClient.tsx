@@ -1,6 +1,4 @@
-// @ts-nocheck
 "use client";
-// @ts-nocheck — TODO: remove once database.types.ts is regenerated
 
 import { useState, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -74,12 +72,17 @@ export default function ExportsPageClient() {
 function ExportsContent() {
   const { profile } = useAuth();
   const { getActiveEntity } = useEntityStore();
-  const activeEntity = getActiveEntity();
-  const entityId = activeEntity?.id ?? (profile as any)?.default_entity_id;
+  const activeEntity = getActiveEntity() as
+    | { id?: string; siret?: string | null }
+    | null;
+  const entityId =
+    activeEntity?.id ??
+    (profile as { default_entity_id?: string | null } | null)?.default_entity_id ??
+    undefined;
 
   // ── Exercise selector ─────────────────────────────────────────────
 
-  const { data: exercises } = useQuery<any>({
+  const { data: exercises } = useQuery<AccountingExercise[]>({
     queryKey: ["accounting", "exercises", entityId],
     queryFn: () =>
       apiClient.get<AccountingExercise[]>(
@@ -93,9 +96,9 @@ function ExportsContent() {
     null
   );
 
-  const currentExercise =
-    exercises?.find((e: AccountingExercise) => e.id === selectedExerciseId) ??
-    exercises?.find((e: AccountingExercise) => e.status === "open") ??
+  const currentExercise: AccountingExercise | null =
+    exercises?.find((e) => e.id === selectedExerciseId) ??
+    exercises?.find((e) => e.status === "open") ??
     exercises?.[0] ??
     null;
 
@@ -103,7 +106,7 @@ function ExportsContent() {
 
   // ── Balance data (for fiscal recap) ───────────────────────────────
 
-  const { data: balance } = useQuery<any>({
+  const { data: balance } = useQuery<AccountingBalance | null>({
     queryKey: ["accounting", "balance", exerciseId],
     queryFn: () =>
       apiClient.get<AccountingBalance>(
@@ -115,7 +118,7 @@ function ExportsContent() {
 
   // ── EC access ─────────────────────────────────────────────────────
 
-  const { data: ecAccess, refetch: refetchEC } = useQuery<any>({
+  const { data: ecAccess, refetch: refetchEC } = useQuery<ECAccess[]>({
     queryKey: ["ec_access", entityId],
     queryFn: () =>
       apiClient.get<ECAccess[]>(
@@ -125,7 +128,7 @@ function ExportsContent() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const activeEC = ecAccess?.find((ec: ECAccess) => ec.is_active) ?? null;
+  const activeEC = ecAccess?.find((ec) => ec.is_active) ?? null;
 
   // ── FEC preview ───────────────────────────────────────────────────
 
@@ -182,7 +185,7 @@ function ExportsContent() {
     accessLevel: "read" as "read" | "annotate" | "validate",
   });
 
-  const inviteEC = useMutation<any, any, void>({
+  const inviteEC = useMutation<unknown, Error, void>({
     mutationFn: async () => {
       await apiClient.post("/accounting/ec-access", {
         entityId,
@@ -198,7 +201,7 @@ function ExportsContent() {
     },
   });
 
-  const sendExportsToEC = useMutation<any, any, void>({
+  const sendExportsToEC = useMutation<unknown, Error, void>({
     mutationFn: async () => {
       await apiClient.post("/accounting/ec-access/send-exports", {
         entityId,
@@ -265,7 +268,7 @@ function ExportsContent() {
               }}
               className="appearance-none bg-card border border-border rounded-lg px-3 py-2 pr-8 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
-              {exercises.map((ex: any) => (
+              {exercises.map((ex) => (
                 <option key={ex.id} value={ex.id}>
                   {ex.label} ({ex.status === "open" ? "En cours" : "Cloture"})
                 </option>

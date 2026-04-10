@@ -1,6 +1,4 @@
-// @ts-nocheck
 "use client";
-// @ts-nocheck — TODO: remove once database.types.ts is regenerated
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -134,12 +132,14 @@ function ConnectBankFlow() {
   };
 
   const handleSubmit = useCallback(async () => {
-    if (!accountType || !(profile as any).default_entity_id) return;
+    const defaultEntityId = (profile as { default_entity_id?: string | null } | null)
+      ?.default_entity_id;
+    if (!accountType || !defaultEntityId) return;
     setSubmitting(true);
     try {
       if (isManual) {
         await apiClient.post("/accounting/bank/connections", {
-          entityId: (profile as any).default_entity_id,
+          entityId: defaultEntityId,
           provider: "manual",
           accountType,
           iban: manualIban.replace(/\s/g, ""),
@@ -150,7 +150,7 @@ function ConnectBankFlow() {
         const res = await apiClient.post<{ data: { authLink: string } }>(
           "/accounting/bank/connections",
           {
-            entityId: (profile as any).default_entity_id,
+            entityId: defaultEntityId,
             provider: "nordigen",
             institutionId: selectedInstitution.id,
             accountType,

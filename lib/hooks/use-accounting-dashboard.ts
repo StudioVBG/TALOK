@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Hook React Query pour le dashboard comptabilite proprietaire
  *
@@ -54,7 +53,10 @@ interface UseAccountingDashboardOptions {
 
 export function useAccountingDashboard(options: UseAccountingDashboardOptions = {}) {
   const { profile } = useAuth();
-  const entityId = options.entityId ?? profile?.default_entity_id;
+  const entityId =
+    options.entityId ??
+    (profile as { default_entity_id?: string | null } | null)?.default_entity_id ??
+    undefined;
 
   const exerciseQuery = useQuery({
     queryKey: ["accounting", "exercises", entityId],

@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: Close Accounting Exercise
  * POST /api/accounting/exercises/[exerciseId]/close - Close an exercise

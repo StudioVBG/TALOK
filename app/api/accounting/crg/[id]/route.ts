@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: CRG Detail
  * GET  /api/accounting/crg/:id        - Get single CRG detail
@@ -151,10 +150,20 @@ export async function POST(request: Request, context: Context) {
 
           if (entity) {
             // Find a profile linked to this entity
-            const { data: ownerProfile } = await supabase
+            const { data: ownerProfile } = await (supabase as unknown as {
+              from: (t: string) => {
+                select: (s: string) => {
+                  eq: (k: string, v: string) => {
+                    limit: (n: number) => {
+                      single: () => Promise<{ data: { id: string; email?: string } | null }>;
+                    };
+                  };
+                };
+              };
+            })
               .from("profiles")
               .select("id, email")
-              .eq("legal_entity_id", entity.id)
+              .eq("legal_entity_id", entity.id as string)
               .limit(1)
               .single();
 

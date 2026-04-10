@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: Syndic Copropriété — Budgets
  * GET  /api/accounting/syndic/budget  - List budgets (with actual comparison)

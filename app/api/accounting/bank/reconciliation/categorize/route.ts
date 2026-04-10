@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: Categorize & create entry from bank transaction
  * POST /api/accounting/bank/reconciliation/categorize

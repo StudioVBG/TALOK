@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: Récapitulatif fiscal PDF
  * GET /api/accounting/fiscal-summary?year=2025

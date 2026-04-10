@@ -1,6 +1,4 @@
-// @ts-nocheck
 "use client";
-// @ts-nocheck — TODO: remove once database.types.ts is regenerated
 
 import { useState } from "react";
 import { PlanGate } from "@/components/subscription/plan-gate";
@@ -21,23 +19,38 @@ function DeclarationsContent() {
   const [regime, setRegime] = useState<string>("reel-2044");
   const [exerciseId, setExerciseId] = useState<string>("");
 
-  const { data: exercises } = useQuery<any>({
+  type ExerciseItem = { id: string; start_date: string; end_date: string; status: string };
+  type ExercisesResponse = ExerciseItem[] | { data?: ExerciseItem[] };
+  type DeclarationPayload = Record<string, number>;
+  type DeclarationResponse = { data?: DeclarationPayload } & DeclarationPayload;
+
+  const { data: exercises } = useQuery<ExercisesResponse>({
     queryKey: ["exercises", activeEntityId],
-    queryFn: () => apiClient.get(`/accounting/exercises?entityId=${activeEntityId}`),
+    queryFn: () => apiClient.get<ExercisesResponse>(`/accounting/exercises?entityId=${activeEntityId}`),
     enabled: !!activeEntityId,
   });
 
-  const closedExercises = ((exercises?.data ?? exercises ?? []) as Array<{ id: string; start_date: string; end_date: string; status: string }>).filter(e => e.status === "closed");
+  const exercisesList: ExerciseItem[] = Array.isArray(exercises)
+    ? exercises
+    : (exercises?.data ?? []);
+  const closedExercises = exercisesList.filter((e) => e.status === "closed");
 
   const declarationType = regime === "micro-foncier" ? "micro-foncier" : regime === "reel-2044" ? "2044" : regime === "reel-2072" ? "2072" : "2042-cpro";
 
-  const { data: declaration, isLoading: declLoading } = useQuery<any>({
+  const { data: declaration, isLoading: declLoading } = useQuery<DeclarationResponse>({
     queryKey: ["declaration", declarationType, exerciseId],
-    queryFn: () => apiClient.get(`/accounting/declarations/${declarationType}?exerciseId=${exerciseId}`),
+    queryFn: () => apiClient.get<DeclarationResponse>(`/accounting/declarations/${declarationType}?exerciseId=${exerciseId}`),
     enabled: !!exerciseId && step >= 2,
   });
 
-  const declData = (declaration?.data ?? declaration ?? {}) as Record<string, number>;
+  const declData: DeclarationPayload = (() => {
+    if (!declaration) return {};
+    if (declaration.data && typeof declaration.data === "object") {
+      return declaration.data;
+    }
+    const { data: _ignored, ...rest } = declaration;
+    return rest as DeclarationPayload;
+  })();
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-3xl mx-auto space-y-6">

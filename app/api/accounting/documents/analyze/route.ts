@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: OCR Document Analysis
  * POST /api/accounting/documents/analyze - Lance l'analyse OCR d'un document

@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck — TODO: remove once database.types.ts is regenerated
 
 import React, { useState, useMemo, useCallback } from "react";
 import Link from "next/link";

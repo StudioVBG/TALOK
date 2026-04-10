@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: Syndic Copropriété — Lots
  * GET  /api/accounting/syndic/lots  - List lots for an entity

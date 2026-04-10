@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Hook React Query pour la liste des ecritures comptables
  *
@@ -77,7 +76,10 @@ export interface UseAccountingEntriesParams {
 
 export function useAccountingEntries(params: UseAccountingEntriesParams) {
   const { profile } = useAuth();
-  const entityId = params.entityId ?? profile?.default_entity_id;
+  const entityId =
+    params.entityId ??
+    (profile as { default_entity_id?: string | null } | null)?.default_entity_id ??
+    undefined;
   const queryClient = useQueryClient();
 
   const limit = params.limit ?? 50;
@@ -128,11 +130,11 @@ export function useAccountingEntries(params: UseAccountingEntriesParams) {
   });
 
   // Normalize entries for convenience: merge legacy and new-schema fields
-  const rawEntries = (query.data as any)?.data ?? [];
+  const rawEntries = query.data?.data ?? [];
   const entries: AccountingEntryRow[] = rawEntries;
 
-  const total = (query.data as any)?.meta?.total ?? 0;
-  const totals = (query.data as any)?.meta?.totals ?? { debit: 0, credit: 0, balance: 0 };
+  const total = query.data?.meta?.total ?? 0;
+  const totals = query.data?.meta?.totals ?? { debit: 0, credit: 0, balance: 0 };
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
   // -- Validate mutation ---------------------------------------------------
@@ -175,7 +177,10 @@ export interface ChartAccount {
 
 export function useChartOfAccounts(entityId?: string) {
   const { profile } = useAuth();
-  const resolvedEntityId = entityId ?? profile?.default_entity_id;
+  const resolvedEntityId =
+    entityId ??
+    (profile as { default_entity_id?: string | null } | null)?.default_entity_id ??
+    undefined;
 
   return useQuery({
     queryKey: ["accounting", "chart", resolvedEntityId],
@@ -184,7 +189,7 @@ export function useChartOfAccounts(entityId?: string) {
       const res = await apiClient.get<{ success: boolean; data: { accounts: ChartAccount[] } }>(
         `/accounting/chart?entityId=${resolvedEntityId}`
       );
-      return (res as any)?.data?.accounts ?? [];
+      return res?.data?.accounts ?? [];
     },
     enabled: !!profile && !!resolvedEntityId,
     staleTime: 10 * 60 * 1000,

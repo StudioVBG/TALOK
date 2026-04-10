@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: Bank Sync
  * POST /api/accounting/bank/sync - Sync transactions from bank connections

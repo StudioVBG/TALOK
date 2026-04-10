@@ -1,6 +1,4 @@
-// @ts-nocheck
 "use client";
-// @ts-nocheck — TODO: remove once database.types.ts is regenerated
 
 import { useRef, useState } from "react";
 import { PlanGate } from "@/components/subscription/plan-gate";
@@ -34,20 +32,39 @@ export default function UploadFlowClient() {
   );
 }
 
+type ExtractedData = Record<string, unknown> & {
+  document_type?: string;
+  emetteur?: { nom?: string } | Record<string, unknown>;
+  montant_ttc_cents?: number;
+  date_document?: string;
+  alerts?: string[];
+};
+
+type AnalysisExtended = {
+  extracted_data?: ExtractedData;
+  confidence_score?: number;
+  suggested_account?: string;
+  suggested_journal?: string;
+  siret_verified?: boolean | null;
+  tva_coherent?: boolean | null;
+};
+
 function UploadFlowContent() {
+  const hookResult = useDocumentAnalysis();
   const {
-    step, file, analysis, upload, retryAnalysis: analyze, validate, reset,
+    step, file, upload, retryAnalysis: analyze, validate, reset,
     isUploading, isAnalyzing, error, setError,
-  } = useDocumentAnalysis() as any;
+  } = hookResult;
+  const analysis = hookResult.analysis as unknown as AnalysisExtended | null;
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
-  const [validationResult, setValidationResult] = useState<Record<string, unknown> | null>(null);
+  const [, setValidationResult] = useState<Record<string, unknown> | null>(null);
 
   // Overrides for step 3 form
   const [overrides, setOverrides] = useState<Record<string, unknown>>({});
 
-  const extracted = analysis?.extracted_data ?? {};
+  const extracted: ExtractedData = analysis?.extracted_data ?? {};
   const confidence = analysis?.confidence_score ?? 0;
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,12 +76,12 @@ function UploadFlowContent() {
       return;
     }
 
-    await (upload as any)(selected);
-    await (analyze as any)()
+    await upload(selected);
+    analyze();
   };
 
   const handleValidate = async () => {
-    const result = await (validate as any)(overrides);
+    const result = (await validate(overrides)) as Record<string, unknown> | void;
     if (result) setValidationResult(result);
   };
 
@@ -158,7 +175,7 @@ function UploadFlowContent() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <ConfidenceField label="Type" confidence={confidence}>
                 <select
-                  value={String(overrides.documentType ?? (extracted as any).document_type ?? "")}
+                  value={String(overrides.documentType ?? extracted.document_type ?? "")}
                   onChange={(e) => setOverrides({ ...overrides, documentType: e.target.value })}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
@@ -173,7 +190,11 @@ function UploadFlowContent() {
               <ConfidenceField label="Fournisseur" confidence={confidence}>
                 <input
                   type="text"
-                  defaultValue={((extracted.emetteur as Record<string, unknown>)?.nom as string) ?? ""}
+                  defaultValue={
+                    (extracted.emetteur && typeof extracted.emetteur === "object" && "nom" in extracted.emetteur
+                      ? (extracted.emetteur as { nom?: string }).nom
+                      : "") ?? ""
+                  }
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
               </ConfidenceField>
@@ -181,7 +202,7 @@ function UploadFlowContent() {
               <ConfidenceField label="Montant TTC" confidence={confidence}>
                 <input
                   type="text"
-                  defaultValue={extracted.montant_ttc_cents ? formatCents(extracted.montant_ttc_cents as number) : ""}
+                  defaultValue={extracted.montant_ttc_cents ? formatCents(extracted.montant_ttc_cents) : ""}
                   onChange={(e) => {
                     const val = parseFloat(e.target.value.replace(/[^\d,.-]/g, "").replace(",", "."));
                     if (!isNaN(val)) setOverrides({ ...overrides, amount: Math.round(val * 100) });
@@ -193,7 +214,7 @@ function UploadFlowContent() {
               <ConfidenceField label="Date" confidence={confidence}>
                 <input
                   type="date"
-                  defaultValue={(extracted.date_document as string) ?? ""}
+                  defaultValue={extracted.date_document ?? ""}
                   onChange={(e) => setOverrides({ ...overrides, entryDate: e.target.value })}
                   className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
@@ -242,9 +263,9 @@ function UploadFlowContent() {
             </div>
 
             {/* Alerts */}
-            {Array.isArray((extracted as Record<string, unknown>).alerts) && ((extracted as Record<string, unknown>).alerts as string[]).length > 0 && (
+            {Array.isArray(extracted.alerts) && extracted.alerts.length > 0 && (
               <div className="space-y-1">
-                {((extracted as Record<string, unknown>).alerts as string[]).map((alert: string, i: number) => (
+                {extracted.alerts.map((alert: string, i: number) => (
                   <div key={i} className="bg-destructive/10 text-destructive text-xs p-2 rounded">
                     {alert}
                   </div>
@@ -257,16 +278,18 @@ function UploadFlowContent() {
           <ProposedEntry
             lines={[
               {
-                account: (overrides.accountNumber as string) ?? analysis.suggested_account ?? "615100",
+                account: (overrides.accountNumber as string | undefined) ?? analysis.suggested_account ?? "615100",
                 label: "Charge",
-                debitCents: (overrides.amount as number) ?? (extracted.montant_ttc_cents as number) ?? 0,
+                debitCents:
+                  (overrides.amount as number | undefined) ?? extracted.montant_ttc_cents ?? 0,
                 creditCents: 0,
               },
               {
                 account: "401000",
                 label: "Fournisseur",
                 debitCents: 0,
-                creditCents: (overrides.amount as number) ?? (extracted.montant_ttc_cents as number) ?? 0,
+                creditCents:
+                  (overrides.amount as number | undefined) ?? extracted.montant_ttc_cents ?? 0,
               },
             ]}
           />
@@ -298,7 +321,7 @@ function UploadFlowContent() {
           <div>
             <h2 className="text-lg font-bold text-foreground">Justificatif comptabilise</h2>
             <p className="text-sm text-muted-foreground mt-1">
-              {extracted.montant_ttc_cents ? formatCents(extracted.montant_ttc_cents as number) : ""} — {(extracted.document_type as string) ?? "Document"}
+              {extracted.montant_ttc_cents ? formatCents(extracted.montant_ttc_cents) : ""} — {extracted.document_type ?? "Document"}
             </p>
           </div>
 

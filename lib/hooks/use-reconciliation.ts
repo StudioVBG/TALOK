@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Hook React Query pour le rapprochement bancaire
  *
@@ -65,7 +64,10 @@ interface UseReconciliationOptions {
 export function useReconciliation(options: UseReconciliationOptions = {}) {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
-  const entityId = options.entityId ?? profile?.default_entity_id;
+  const entityId =
+    options.entityId ??
+    (profile as { default_entity_id?: string | null } | null)?.default_entity_id ??
+    undefined;
 
   const query = useQuery({
     queryKey: [
@@ -134,7 +136,8 @@ export function useReconciliation(options: UseReconciliationOptions = {}) {
 export function useReconciliationActions() {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
-  const entityId = profile?.default_entity_id;
+  const entityId = (profile as { default_entity_id?: string | null } | null)
+    ?.default_entity_id;
 
   const invalidate = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ["bank", "reconciliation"] });

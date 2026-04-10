@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * API Route: Syndic Copropriété — Fund Call Detail
  * GET  /api/accounting/syndic/appels/[callId]  - Get call with lines
