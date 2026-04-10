@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 import { z } from "zod";
 
 const generateMonthlyInvoiceSchema = z.object({
@@ -19,7 +20,7 @@ export async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
+        { error: extractErrorMessage(error) },
         { status: error.status || 401 }
       );
     }
@@ -157,9 +158,9 @@ export async function POST(request: Request) {
       .single();
 
     if (invoiceError) {
-      console.error("Error creating invoice:", invoiceError);
+      console.error("[invoices/generate-monthly] Error creating invoice:", invoiceError);
       return NextResponse.json(
-        { error: "Erreur lors de la création de la facture" },
+        { error: extractErrorMessage(invoiceError, "Erreur lors de la création de la facture") },
         { status: 500 }
       );
     }
@@ -172,9 +173,9 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    console.error("Error in POST /api/invoices/generate-monthly:", error);
+    console.error("[invoices/generate-monthly] Server error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: extractErrorMessage(error, "Erreur serveur") },
       { status: 500 }
     );
   }

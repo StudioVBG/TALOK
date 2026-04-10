@@ -2,31 +2,10 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 import { NextResponse } from "next/server";
 import { addDays, format, startOfDay, endOfDay } from "date-fns";
 import { notifyPaymentLate } from "@/lib/services/notification-service";
-
-/**
- * Normalize any thrown / returned error object into a plain string.
- *
- * Supabase PostgrestError objects are plain `{ message, details, hint,
- * code }` dicts — they are NOT `instanceof Error`, so the previous
- * `error instanceof Error ? error.message : 'Erreur serveur'` pattern
- * swallowed every DB failure as a generic message and made the cron
- * unobservable in production. Same helper as generate-invoices.
- */
-function extractErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "message" in error &&
-    typeof (error as Record<string, unknown>).message === "string"
-  ) {
-    return String((error as Record<string, unknown>).message);
-  }
-  return String(error);
-}
 
 /**
  * GET /api/cron/payment-reminders

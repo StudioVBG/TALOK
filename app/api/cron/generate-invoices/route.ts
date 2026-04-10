@@ -2,29 +2,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 import { NextResponse } from "next/server";
-
-/**
- * Normalize any thrown / returned error object into a plain string.
- *
- * Supabase PostgrestError objects are plain `{ message, details, hint,
- * code }` dicts — they are NOT `instanceof Error`, so the previous
- * `error instanceof Error ? error.message : 'Une erreur est survenue'`
- * pattern swallowed every RPC failure as a generic message and made the
- * cron unobservable in production.
- */
-function extractErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "message" in error &&
-    typeof (error as Record<string, unknown>).message === "string"
-  ) {
-    return String((error as Record<string, unknown>).message);
-  }
-  return String(error);
-}
 
 /**
  * API Route pour la génération automatique des factures
