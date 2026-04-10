@@ -9,6 +9,8 @@ export const dynamic = "force-dynamic";
 import { DashboardClient } from "./DashboardClient";
 import { fetchProfileCompletion } from "../_data/fetchProfileCompletion";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
+import { redirect } from "next/navigation";
 
 /**
  * Server Component - Les données sont déjà chargées dans le layout
@@ -21,20 +23,24 @@ export default async function OwnerDashboardPage() {
     const supabase = await createClient();
 
     // Récupérer l'utilisateur connecté
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (user) {
-      // Récupérer le profil
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
+    if (authError || !user) {
+      redirect("/auth/signin");
+    }
 
-      if (profile) {
-        // Récupérer les données de complétion
-        profileCompletion = await fetchProfileCompletion(profile.id);
-      }
+    const serviceClient = getServiceClient();
+
+    // Récupérer le profil
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .single();
+
+    if (profile) {
+      // Récupérer les données de complétion
+      profileCompletion = await fetchProfileCompletion(profile.id);
     }
   } catch (error) {
     console.error("[OwnerDashboardPage] Erreur lors du chargement du profil:", error);

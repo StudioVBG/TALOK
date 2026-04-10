@@ -9,6 +9,7 @@ import {
   Plus,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
@@ -27,44 +28,44 @@ import { SeasonalGate } from "./SeasonalGate";
 export const dynamic = "force-dynamic";
 
 async function getSeasonalStats(ownerId: string) {
-  const supabase = await createClient();
+  const serviceClient = getServiceClient();
   const today = new Date().toISOString().split("T")[0];
   const firstOfMonth = today.slice(0, 7) + "-01";
 
   const [listingsRes, activeRes, pendingCheckinRes, pendingCleaningRes, revenueRes] =
     await Promise.allSettled([
-      supabase
+      serviceClient
         .from("seasonal_listings")
         .select("*", { count: "exact", head: true })
         .eq("owner_id", ownerId),
-      supabase
+      serviceClient
         .from("reservations")
         .select("*", { count: "exact", head: true })
         .in("listing_id",
-          (await supabase.from("seasonal_listings").select("id").eq("owner_id", ownerId)).data?.map((l: { id: string }) => l.id) ?? []
+          (await serviceClient.from("seasonal_listings").select("id").eq("owner_id", ownerId)).data?.map((l: { id: string }) => l.id) ?? []
         )
         .in("status", ["confirmed", "checked_in"]),
-      supabase
+      serviceClient
         .from("reservations")
         .select("*", { count: "exact", head: true })
         .in("listing_id",
-          (await supabase.from("seasonal_listings").select("id").eq("owner_id", ownerId)).data?.map((l: { id: string }) => l.id) ?? []
+          (await serviceClient.from("seasonal_listings").select("id").eq("owner_id", ownerId)).data?.map((l: { id: string }) => l.id) ?? []
         )
         .eq("status", "confirmed")
         .lte("check_in", today),
-      supabase
+      serviceClient
         .from("reservations")
         .select("*", { count: "exact", head: true })
         .in("listing_id",
-          (await supabase.from("seasonal_listings").select("id").eq("owner_id", ownerId)).data?.map((l: { id: string }) => l.id) ?? []
+          (await serviceClient.from("seasonal_listings").select("id").eq("owner_id", ownerId)).data?.map((l: { id: string }) => l.id) ?? []
         )
         .eq("cleaning_status", "pending")
         .eq("status", "checked_out"),
-      supabase
+      serviceClient
         .from("reservations")
         .select("total_cents")
         .in("listing_id",
-          (await supabase.from("seasonal_listings").select("id").eq("owner_id", ownerId)).data?.map((l: { id: string }) => l.id) ?? []
+          (await serviceClient.from("seasonal_listings").select("id").eq("owner_id", ownerId)).data?.map((l: { id: string }) => l.id) ?? []
         )
         .gte("check_in", firstOfMonth)
         .in("status", ["confirmed", "checked_in", "checked_out"]),
@@ -91,7 +92,9 @@ export default async function SeasonalDashboardPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/signin");
 
-  const { data: profile } = await supabase
+  const serviceClient = getServiceClient();
+
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)

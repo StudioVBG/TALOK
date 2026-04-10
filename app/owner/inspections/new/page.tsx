@@ -14,13 +14,12 @@ export const metadata = {
 };
 
 async function fetchLeases(profileId: string) {
-  const supabase = await createClient();
   const serviceClient = getServiceClient();
 
   // Fetch leases eligible for EDL:
   // - fully_signed: Bail signé par toutes les parties → EDL d'entrée requis avant activation
   // - active: Bail actif → EDL de sortie possible
-  const { data: leases, error } = await supabase
+  const { data: leases, error } = await serviceClient
     .from("leases")
     .select(`
       id,
@@ -122,7 +121,9 @@ export default async function NewInspectionPage({
 
   if (!user) redirect("/auth/signin");
 
-  const { data: profile } = await supabase
+  const serviceClient = getServiceClient();
+
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)

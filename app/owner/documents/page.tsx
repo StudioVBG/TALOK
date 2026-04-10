@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { fetchDocuments } from "../_data/fetchDocuments";
 import { OwnerDocumentsClient } from "./OwnerDocumentsClient";
 
@@ -22,7 +23,9 @@ export default async function OwnerDocumentsPage({
     redirect("/auth/signin");
   }
 
-  const { data: profile, error: profileError } = await supabase
+  const serviceClient = getServiceClient();
+
+  const { data: profile, error: profileError } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)
@@ -43,7 +46,7 @@ export default async function OwnerDocumentsPage({
   });
 
   // Récupérer les propriétés pour le sélecteur d'upload GED (consolidation Documents + Coffre-fort)
-  const { data: properties } = await supabase
+  const { data: properties } = await serviceClient
     .from("properties")
     .select("id, adresse_complete, ville")
     .eq("owner_id", profile.id)

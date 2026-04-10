@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { redirect } from "next/navigation";
 import { AnalyticsClient } from "./AnalyticsClient";
 import { AnalyticsGate } from "./AnalyticsGate";
@@ -68,10 +69,10 @@ interface AnalyticsData {
 }
 
 async function fetchAnalyticsData(ownerId: string): Promise<AnalyticsData> {
-  const supabase = await createClient();
-  
+  const serviceClient = getServiceClient();
+
   // Récupérer les propriétés
-  const { data: properties } = await supabase
+  const { data: properties } = await serviceClient
     .from("properties")
     .select(`
       id, adresse_complete, ville, type, surface, loyer_hc, charges_mensuelles,
@@ -87,7 +88,7 @@ async function fetchAnalyticsData(ownerId: string): Promise<AnalyticsData> {
   const propertyIds = (properties || []).map((p: any) => p.id);
   
   const { data: invoices } = propertyIds.length > 0
-    ? await supabase
+    ? await serviceClient
         .from("invoices")
         .select("id, montant_total, statut, periode, date_paiement, created_at, lease_id")
         .eq("owner_id", ownerId)
@@ -254,7 +255,9 @@ export default async function AnalyticsPage() {
     redirect("/auth/signin");
   }
 
-  const { data: profile } = await supabase
+  const serviceClient = getServiceClient();
+
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)

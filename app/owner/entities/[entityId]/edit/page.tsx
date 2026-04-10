@@ -10,6 +10,7 @@ export const runtime = "nodejs";
 
 import { redirect, notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { EditEntityClient } from "./EditEntityClient";
 import type { EntityFormData } from "@/lib/entities/entity-form-utils";
 
@@ -26,8 +27,10 @@ export default async function EditEntityPage({ params }: PageProps) {
   } = await supabase.auth.getUser();
   if (!user) redirect("/auth/signin");
 
-  // Fetch entity server-side with RLS
-  const { data: entity, error } = await supabase
+  const serviceClient = getServiceClient();
+
+  // Fetch entity server-side
+  const { data: entity, error } = await serviceClient
     .from("legal_entities")
     .select("*")
     .eq("id", entityId)
@@ -38,7 +41,7 @@ export default async function EditEntityPage({ params }: PageProps) {
   const e = entity as Record<string, unknown>;
 
   // Fetch gerant associate for representative data
-  const { data: associates } = await supabase
+  const { data: associates } = await serviceClient
     .from("entity_associates")
     .select("*")
     .eq("legal_entity_id", entityId)

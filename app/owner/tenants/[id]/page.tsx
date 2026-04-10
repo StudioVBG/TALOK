@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { TenantProfileClient } from "./TenantProfileClient";
 
 interface PageProps {
@@ -11,10 +12,10 @@ interface PageProps {
 }
 
 async function getTenantProfile(tenantId: string, ownerId: string) {
-  const supabase = await createClient();
+  const serviceClient = getServiceClient();
 
   // Récupérer le profil du locataire avec vérification des droits
-  const { data: tenant, error } = await supabase
+  const { data: tenant, error } = await serviceClient
     .from("profiles")
     .select(`
       *,
@@ -42,7 +43,7 @@ async function getTenantProfile(tenantId: string, ownerId: string) {
   }
 
   // Vérifier que le propriétaire a accès à ce locataire
-  const hasAccess = (tenant.roommates as any[])?.some((r: any) => 
+  const hasAccess = (tenant.roommates as any[])?.some((r: any) =>
     r.lease?.property?.owner_id === ownerId
   );
 
@@ -51,7 +52,7 @@ async function getTenantProfile(tenantId: string, ownerId: string) {
   }
 
   // Récupérer les documents valides du locataire
-  const { data: documents } = await supabase
+  const { data: documents } = await serviceClient
     .from("tenant_documents")
     .select("*")
     .eq("tenant_profile_id", tenantId)
@@ -75,7 +76,8 @@ export default async function TenantProfilePage({ params }: PageProps) {
   }
 
   // Récupérer le profil propriétaire
-  const { data: profile } = await supabase
+  const serviceClient = getServiceClient();
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)

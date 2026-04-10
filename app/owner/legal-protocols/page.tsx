@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { redirect } from "next/navigation";
 import { LegalProtocolsOwnerClient } from "./LegalProtocolsOwnerClient";
 
@@ -23,28 +24,30 @@ export default async function OwnerLegalProtocolsPage() {
   const supabase = await createClient();
   
   // Récupérer l'utilisateur connecté
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/auth/signin");
-  
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) redirect("/auth/signin");
+
+  const serviceClient = getServiceClient();
+
   // Récupérer le profil
-  const { data: profile } = await supabase
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)
     .single();
-  
+
   if (!profile) redirect("/auth/signin");
-  
+
   // Vérifier que c'est bien un propriétaire
   if (profile.role !== "owner") {
     redirect("/");
   }
-  
+
   // Récupérer les logements du propriétaire
   let properties: Property[] = [];
-  
+
   try {
-    const { data: propertiesData } = await supabase
+    const { data: propertiesData } = await serviceClient
       .from("properties")
       .select("id, adresse_complete, code_postal, ville, departement")
       .eq("owner_id", profile.id)

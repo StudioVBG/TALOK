@@ -4,15 +4,16 @@ export const dynamic = "force-dynamic";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { fetchLeaseDetails } from "../../_data/fetchLeaseDetails";
 import { LeaseDetailsClient } from "./LeaseDetailsClient";
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id } = await params;
   try {
-    const supabase = await createClient();
+    const serviceClient = getServiceClient();
     // Requête légère : lease → property → ville
-    const { data } = await supabase
+    const { data } = await serviceClient
       .from("leases")
       .select("properties:property_id(ville), units:unit_id(properties:property_id(ville))")
       .eq("id", id)
@@ -49,8 +50,10 @@ export default async function OwnerContractDetailPage({ params }: PageProps) {
     redirect("/auth/signin");
   }
 
+  const serviceClient = getServiceClient();
+
   // 2. Récupérer le profil de base (sans jointure problématique)
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = await serviceClient
     .from("profiles")
     .select("id, role, prenom, nom, email, telephone")
     .eq("user_id", user.id)
@@ -61,7 +64,7 @@ export default async function OwnerContractDetailPage({ params }: PageProps) {
   }
 
   // 3. Récupérer les infos owner_profiles séparément (optionnel, ne bloque pas si absent)
-  const { data: ownerProfileData } = await supabase
+  const { data: ownerProfileData } = await serviceClient
     .from("owner_profiles")
     .select("adresse_facturation, adresse_siege, type, raison_sociale, forme_juridique, siret")
     .eq("profile_id", profile.id)

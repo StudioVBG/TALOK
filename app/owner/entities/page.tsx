@@ -19,7 +19,9 @@ export default async function EntitiesPage() {
 
   if (!user) redirect("/auth/signin");
 
-  const { data: profile } = await supabase
+  const serviceClient = getServiceClient();
+
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role, prenom, nom")
     .eq("user_id", user.id)
@@ -28,7 +30,7 @@ export default async function EntitiesPage() {
   if (!profile || profile.role !== "owner") redirect("/auth/signin");
 
   // Fetch entities — profile.id is the FK value for legal_entities.owner_profile_id
-  let { data } = await supabase
+  let { data } = await serviceClient
     .from("legal_entities")
     .select("*")
     .eq("owner_profile_id", profile.id)
@@ -37,8 +39,6 @@ export default async function EntitiesPage() {
 
   // Fallback : si aucune entité, auto-provisionner via service client (bypass RLS)
   if (!data || data.length === 0) {
-    const serviceClient = getServiceClient();
-
     // Garantir owner_profiles
     const { data: op } = await serviceClient
       .from("owner_profiles")
@@ -86,8 +86,8 @@ export default async function EntitiesPage() {
         console.error("[EntitiesPage] Failed to link orphan properties:", linkError.message);
       }
 
-      // Re-fetch avec le client user (RLS) pour obtenir les données fraîches
-      const { data: refreshed } = await supabase
+      // Re-fetch pour obtenir les données fraîches
+      const { data: refreshed } = await serviceClient
         .from("legal_entities")
         .select("*")
         .eq("owner_profile_id", profile.id)

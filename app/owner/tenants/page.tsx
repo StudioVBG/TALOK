@@ -69,11 +69,10 @@ interface TenantWithDetails {
 }
 
 async function fetchOwnerTenants(ownerId: string): Promise<TenantWithDetails[]> {
-  const supabase = await createClient();
   const serviceClient = getServiceClient();
 
-  // 1. Récupérer les propriétés du propriétaire (client RLS pour la sécurité)
-  const { data: properties } = await supabase
+  // 1. Récupérer les propriétés du propriétaire
+  const { data: properties } = await serviceClient
     .from("properties")
     .select("id")
     .eq("owner_id", ownerId);
@@ -266,7 +265,9 @@ export default async function TenantsPage() {
     redirect("/auth/signin");
   }
 
-  const { data: profile } = await supabase
+  const serviceClient = getServiceClient();
+
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)
