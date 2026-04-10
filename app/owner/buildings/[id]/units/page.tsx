@@ -42,18 +42,23 @@ export default async function UnitsPage({ params }: PageProps) {
     redirect("/dashboard");
   }
 
-  // Verify building ownership
+  // Verify building ownership (sans filtre type pour robustesse)
   const { data: building, error } = await serviceClient
     .from("properties")
-    .select("id, adresse_complete, ville")
+    .select("id, type, adresse_complete, ville")
     .eq("id", id)
     .eq("owner_id", profile.id)
-    .eq("type", "immeuble")
     .is("deleted_at", null)
-    .single();
+    .maybeSingle();
 
-  if (error || !building) {
+  if (!building) {
+    console.error("[units-page] Property not found:", { id, ownerId: profile.id, error });
     notFound();
+  }
+
+  // Si ce n'est pas un immeuble, rediriger vers la fiche bien
+  if (building.type !== "immeuble") {
+    redirect(`/owner/properties/${id}`);
   }
 
   // Fetch building metadata (from buildings table linked to this property)
