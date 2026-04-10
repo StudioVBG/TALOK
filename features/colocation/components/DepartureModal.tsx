@@ -87,8 +87,8 @@ export function DepartureModal({
           </div>
 
           {solidarityEndDate && (
-            <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
-              <div className="flex items-center gap-2 text-sm text-amber-700">
+            <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-900">
+              <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
                 <Shield className="h-4 w-4" />
                 <span>
                   Solidarite jusqu&apos;au{" "}
@@ -97,24 +97,24 @@ export function DepartureModal({
                   </strong>
                 </span>
               </div>
-              <p className="text-xs text-amber-600 mt-1">
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
                 La solidarite s&apos;eteint immediatement si un remplacant est nomme au bail
                 (loi ALUR, max 6 mois)
               </p>
             </div>
           )}
 
-          <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
-            <p className="text-sm text-blue-700">
+          <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 dark:bg-blue-950/30 dark:border-blue-900">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
               <strong>Part loyer :</strong>{" "}
               {(member.rent_share_cents / 100).toFixed(0)}€/mois
             </p>
-            <p className="text-sm text-blue-700">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
               <strong>Depot de garantie :</strong>{" "}
               {(member.deposit_cents / 100).toFixed(0)}€
             </p>
             {member.room && (
-              <p className="text-sm text-blue-700">
+              <p className="text-sm text-blue-700 dark:text-blue-300">
                 <strong>Chambre :</strong> {member.room.room_number}
               </p>
             )}

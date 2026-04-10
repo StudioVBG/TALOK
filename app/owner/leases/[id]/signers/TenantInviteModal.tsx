@@ -139,7 +139,7 @@ export function TenantInviteModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="h-5 w-5 text-blue-600" />
+            <UserPlus className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             Inviter un {ROLE_LABELS[role]}
           </DialogTitle>
           <DialogDescription>
@@ -149,10 +149,10 @@ export function TenantInviteModal({
 
         <form onSubmit={handleSubmit} className="space-y-6 pt-4">
           {/* Info sur le rôle */}
-          <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+          <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 dark:bg-blue-950/30 dark:border-blue-900">
             <div className="flex items-start gap-2">
-              <Info className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
-              <p className="text-sm text-blue-700">
+              <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+              <p className="text-sm text-blue-700 dark:text-blue-300">
                 {ROLE_DESCRIPTIONS[role]}
               </p>
             </div>

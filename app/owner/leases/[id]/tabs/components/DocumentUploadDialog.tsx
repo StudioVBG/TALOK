@@ -170,7 +170,7 @@ export function DocumentUploadDialog({
                   onClick={() => setSelectedType(config.type)}
                   className={`text-left px-3 py-2 rounded-lg border text-xs transition-colors ${
                     selectedType === config.type
-                      ? "border-blue-300 bg-blue-50 text-blue-700 font-semibold"
+                      ? "border-blue-300 bg-blue-50 text-blue-700 font-semibold dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300"
                       : "border-border text-muted-foreground hover:border-border hover:bg-muted"
                   }`}
                 >
@@ -199,14 +199,14 @@ export function DocumentUploadDialog({
                 onClick={() => fileInputRef.current?.click()}
                 className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors ${
                   dragOver
-                    ? "border-blue-400 bg-blue-50"
+                    ? "border-blue-400 bg-blue-50 dark:border-blue-500 dark:bg-blue-950/20"
                     : "border-border hover:border-border hover:bg-muted"
                 }`}
               >
                 <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">
                   Glissez un fichier ici ou{" "}
-                  <span className="text-blue-600 font-medium">
+                  <span className="text-blue-600 dark:text-blue-400 font-medium">
                     cliquez pour parcourir
                   </span>
                 </p>
@@ -225,8 +225,8 @@ export function DocumentUploadDialog({
                 />
               </div>
             ) : (
-              <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+              <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg dark:bg-green-950/20 dark:border-green-900">
+                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground truncate">
                     {file.name}

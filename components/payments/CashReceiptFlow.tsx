@@ -273,7 +273,7 @@ export function CashReceiptFlow({
                   </div>
                 </div>
                 {parseFloat(actualAmount) !== amount && (
-                  <div className="flex items-center gap-2 text-amber-600 text-xs">
+                  <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs">
                     <AlertTriangle className="w-3 h-3" />
                     Montant différent du loyer attendu ({amount}€)
                   </div>
@@ -317,12 +317,12 @@ export function CashReceiptFlow({
                   {format(new Date(), "dd/MM HH:mm", { locale: fr })}
                 </div>
                 {geolocation ? (
-                  <div className="flex items-center gap-1 text-green-600">
+                  <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
                     <MapPin className="w-3 h-3" />
                     GPS OK
                   </div>
                 ) : geoError ? (
-                  <div className="flex items-center gap-1 text-amber-600">
+                  <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
                     <MapPin className="w-3 h-3" />
                     {geoError}
                   </div>
