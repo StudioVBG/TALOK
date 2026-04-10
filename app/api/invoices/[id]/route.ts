@@ -27,17 +27,11 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Vérifier le profil et le rôle de l'utilisateur
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile) {
-      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
-    }
-
+    // Note: we no longer fetch the profile here. Authorization is enforced
+    // by RLS on the invoices SELECT policy (see
+    // supabase/migrations/20260410204528_extend_invoices_rls_for_sci_access.sql).
+    // If the user is not allowed to see this invoice, RLS returns no row and
+    // the PGRST116 error is translated to 404 by handleApiError.
     const { data: invoice, error } = await supabase
       .from("invoices")
       .select(`
@@ -70,18 +64,16 @@ export async function GET(
       return NextResponse.json({ error: "Facture non trouvée" }, { status: 404 });
     }
 
-    // Vérifier que l'utilisateur a le droit d'accéder à cette facture
+    // Authorization is enforced by RLS (SELECT policy on invoices):
+    //   - direct owner: invoices.owner_id === user_profile_id()
+    //   - SCI member:   invoices.entity_id ∈ entity_members(user_id=auth.uid())
+    //                   OR invoices.lease → property.legal_entity_id ∈ …
+    //   - tenant:       invoices.tenant_id === user_profile_id()
+    //   - admin:        dedicated RLS policy
+    // If the query returned a row, the caller is authorized. No redundant
+    // application-level check here (the previous one blocked legitimate SCI
+    // members whose profile.id ≠ invoices.owner_id — see bug #3 audit).
     const invoiceAny = invoice as any;
-    const isOwner = invoiceAny.owner_id === profile.id;
-    const isTenant = invoiceAny.tenant_id === profile.id;
-    const isAdmin = profile.role === "admin";
-
-    if (!isOwner && !isTenant && !isAdmin) {
-      return NextResponse.json(
-        { error: "Vous n'avez pas accès à cette facture" },
-        { status: 403 }
-      );
-    }
 
     const { data: payments } = await supabase
       .from("payments")
