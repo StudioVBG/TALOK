@@ -230,6 +230,9 @@ export async function GET(
     }
 
     // === ÉTAPE 8: Créer l'entrée dans la table documents ===
+    // visible_tenant: true and is_generated: true are explicit (belt-and-suspenders)
+    // alongside the DB trigger `force_visible_tenant_on_generated` — quittances
+    // must always be visible to tenants per Art. 21 Loi du 6 juillet 1989.
     const { data: newDoc, error: insertError } = await serviceClient
       .from("documents")
       .insert({
@@ -239,6 +242,8 @@ export async function GET(
         property_id: paymentData.invoice.lease.property.id,
         lease_id: paymentData.invoice.lease_id,
         storage_path: storagePath,
+        visible_tenant: true,
+        is_generated: true,
         metadata: {
           payment_id: paymentId,
           invoice_id: paymentData.invoice.id,
