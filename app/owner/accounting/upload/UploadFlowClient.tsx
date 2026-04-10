@@ -15,13 +15,11 @@ import Link from "next/link";
 import {
   Camera,
   Upload,
-  Mail,
   FileText,
   Check,
   AlertTriangle,
   ArrowLeft,
   Plus,
-  RefreshCw,
 } from "lucide-react";
 
 export default function UploadFlowClient() {
@@ -114,7 +112,7 @@ function UploadFlowContent() {
       {/* Step 1: Acquisition */}
       {step === 1 && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={() => cameraInputRef.current?.click()}
               disabled={isUploading}
@@ -131,11 +129,7 @@ function UploadFlowContent() {
               <Upload className="w-8 h-8 mx-auto mb-2 text-primary" />
               <span className="text-sm font-medium">Fichier</span>
             </button>
-            <button disabled className="bg-card rounded-xl border border-border p-6 text-center opacity-50">
-              <Mail className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-              <span className="text-sm font-medium text-muted-foreground">Email</span>
-              <span className="text-xs text-muted-foreground block">Bientot</span>
-            </button>
+            {/* TODO: Email upload — feature à implémenter (backend inbox + parser) */}
           </div>
 
           <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileSelect} />

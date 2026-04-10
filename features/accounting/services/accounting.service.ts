@@ -972,20 +972,26 @@ export class AccountingService {
   }
 
   // ============================================================================
-  // EXPORT FEC
+  // EXPORT FEC (LEGACY — agency/honoraires mode)
   // ============================================================================
-  // FEC Export (delegated to ./fec-export.service.ts)
+  // Delegated to ./fec-export.service.ts which is itself @deprecated.
+  // New code MUST use generateFEC / exportFEC from @/lib/accounting/fec
+  // (owner double-entry mode, 18 columns art. A47 A-1 LPF).
   // ============================================================================
 
   /**
-   * Génère l'export FEC pour une année
+   * @deprecated Utiliser `generateFEC` depuis `@/lib/accounting/fec`.
+   * Cette méthode reste active uniquement pour l'ancienne route admin
+   * `/api/accounting/fec/export` (mode agence, honoraires sur factures).
    */
   async generateExportFEC(annee: number): Promise<EcritureFEC[]> {
     return fecExportService.generateExportFEC(annee);
   }
 
   /**
-   * Convertit les écritures FEC en CSV
+   * @deprecated Utiliser `exportFEC` depuis `@/lib/accounting/fec`.
+   * Cette méthode reste active uniquement pour l'ancienne route admin
+   * `/api/accounting/fec/export` (mode agence, honoraires sur factures).
    */
   exportFECToCSV(ecritures: EcritureFEC[]): string {
     return fecExportService.exportFECToCSV(ecritures);
