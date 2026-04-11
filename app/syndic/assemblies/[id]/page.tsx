@@ -1,327 +1,440 @@
 "use client";
-// @ts-nocheck
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ArrowLeft,
   Calendar,
-  Clock,
   MapPin,
+  Video,
   Users,
   FileText,
+  Plus,
+  Send,
   CheckCircle2,
   XCircle,
   AlertCircle,
-  Download,
-  Send,
-  Loader2,
+  Clock,
   Edit,
+  Trash2,
+  Vote,
+  Radio,
 } from "lucide-react";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { useToast } from "@/components/ui/use-toast";
+import { formatDateShort } from "@/lib/helpers/format";
+import { AddResolutionDialog } from "./_components/AddResolutionDialog";
+import { SendConvocationsDialog } from "./_components/SendConvocationsDialog";
+import { DownloadPdfButton } from "./_components/DownloadPdfButton";
 
 interface Assembly {
   id: string;
   site_id: string;
-  site_name: string;
-  type: "ordinary" | "extraordinary";
   title: string;
-  date: string;
-  time: string;
-  location: string;
-  description?: string;
-  status: "draft" | "convocations_sent" | "in_progress" | "completed" | "cancelled";
-  total_owners: number;
-  present_owners: number;
-  proxy_owners: number;
-  resolutions: Resolution[];
+  reference_number: string | null;
+  assembly_type: string;
+  scheduled_at: string;
+  location: string | null;
+  location_address: string | null;
+  online_meeting_url: string | null;
+  is_hybrid: boolean;
+  status: string;
+  quorum_required: number | null;
+  fiscal_year: number | null;
+  description: string | null;
+  notes: string | null;
+  first_convocation_sent_at: string | null;
+  held_at: string | null;
 }
 
 interface Resolution {
   id: string;
+  resolution_number: number;
   title: string;
   description: string;
-  majority: "simple" | "absolute" | "double" | "unanimity";
-  votes_for: number;
-  votes_against: number;
-  votes_abstain: number;
-  status: "pending" | "approved" | "rejected";
+  category: string;
+  majority_rule: string;
+  status: string;
+  estimated_amount_cents: number | null;
+  votes_for_count: number;
+  votes_against_count: number;
+  votes_abstain_count: number;
+  tantiemes_for: number;
+  tantiemes_against: number;
+  tantiemes_abstain: number;
 }
 
-const statusConfig = {
-  draft: { label: "Brouillon", color: "bg-slate-100 text-slate-700" },
-  convocations_sent: { label: "Convocations envoyées", color: "bg-blue-100 text-blue-700" },
-  in_progress: { label: "En cours", color: "bg-amber-100 text-amber-700" },
-  completed: { label: "Terminée", color: "bg-green-100 text-green-700" },
-  cancelled: { label: "Annulée", color: "bg-red-100 text-red-700" },
+interface ConvocationSummary {
+  id: string;
+  status: string;
+  delivery_method: string;
+  sent_at: string | null;
+  delivered_at: string | null;
+  recipient_name: string;
+}
+
+interface MinuteSummary {
+  id: string;
+  version: number;
+  status: string;
+  signed_by_president_at: string | null;
+  distributed_at: string | null;
+}
+
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
+  draft: { label: "Brouillon", color: "bg-slate-500/20 text-slate-200 border-slate-400/40" },
+  convened: { label: "Convoquée", color: "bg-blue-500/20 text-blue-200 border-blue-400/40" },
+  in_progress: { label: "En cours", color: "bg-amber-500/20 text-amber-200 border-amber-400/40" },
+  held: { label: "Tenue", color: "bg-emerald-500/20 text-emerald-200 border-emerald-400/40" },
+  cancelled: { label: "Annulée", color: "bg-red-500/20 text-red-200 border-red-400/40" },
+};
+
+const RESOLUTION_STATUS_LABELS: Record<
+  string,
+  { label: string; color: string; icon: React.ComponentType<{ className?: string }> }
+> = {
+  proposed: { label: "Proposée", color: "bg-slate-500/20 text-slate-200", icon: Clock },
+  voted_for: { label: "Adoptée", color: "bg-emerald-500/20 text-emerald-200", icon: CheckCircle2 },
+  voted_against: { label: "Rejetée", color: "bg-red-500/20 text-red-200", icon: XCircle },
+  abstained: { label: "Abstention", color: "bg-amber-500/20 text-amber-200", icon: AlertCircle },
+  adjourned: { label: "Ajournée", color: "bg-orange-500/20 text-orange-200", icon: Clock },
+  withdrawn: { label: "Retirée", color: "bg-slate-500/20 text-slate-300", icon: XCircle },
+};
+
+const MAJORITY_LABELS: Record<string, string> = {
+  article_24: "Art. 24 (majorité simple)",
+  article_25: "Art. 25 (majorité absolue)",
+  article_25_1: "Art. 25-1 (absolue + passerelle)",
+  article_26: "Art. 26 (double majorité)",
+  article_26_1: "Art. 26-1 (double + passerelle)",
+  unanimite: "Unanimité",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  gestion: "Gestion",
+  budget: "Budget",
+  travaux: "Travaux",
+  reglement: "Règlement",
+  honoraires: "Honoraires",
+  conseil_syndical: "Conseil syndical",
+  assurance: "Assurance",
+  conflits: "Conflits",
+  autre: "Autre",
 };
 
 export default function AssemblyDetailPage() {
-  const params = useParams();
   const router = useRouter();
-  const assemblyId = params.id as string;
+  const params = useParams();
+  const { toast } = useToast();
+  const assemblyId = params?.id as string;
 
-  const [assembly, setAssembly] = useState<Assembly | null>(null);
   const [loading, setLoading] = useState(true);
+  const [assembly, setAssembly] = useState<Assembly | null>(null);
+  const [resolutions, setResolutions] = useState<Resolution[]>([]);
+  const [convocations, setConvocations] = useState<ConvocationSummary[]>([]);
+  const [minutes, setMinutes] = useState<MinuteSummary[]>([]);
+  const [showAddResolution, setShowAddResolution] = useState(false);
+  const [showSendConvocations, setShowSendConvocations] = useState(false);
+
+  const fetchAssembly = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/copro/assemblies/${assemblyId}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          toast({ title: "Assemblée introuvable", variant: "destructive" });
+          router.push("/syndic/assemblies");
+          return;
+        }
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Erreur de chargement");
+      }
+      const data = await res.json();
+      setAssembly(data.assembly);
+      setResolutions(data.resolutions || []);
+      setConvocations(data.convocations || []);
+      setMinutes(data.minutes || []);
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Impossible de charger l'assemblée",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [assemblyId, router, toast]);
 
   useEffect(() => {
-    async function fetchAssembly() {
-      try {
-        const response = await fetch(`/api/copro/assemblies/${assemblyId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setAssembly(data.assembly || data);
-        }
-      } catch (error) {
-        console.error("Erreur chargement assemblée:", error);
-      } finally {
-        setLoading(false);
-      }
+    if (assemblyId) {
+      fetchAssembly();
     }
-    if (assemblyId) fetchAssembly();
-  }, [assemblyId]);
+  }, [assemblyId, fetchAssembly]);
+
+  const handleDelete = async () => {
+    if (!confirm("Annuler cette assemblée ? Cette action peut être réversible en la recréant.")) return;
+
+    try {
+      const res = await fetch(`/api/copro/assemblies/${assemblyId}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Erreur");
+      }
+      toast({ title: "Assemblée annulée" });
+      router.push("/syndic/assemblies");
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Impossible d'annuler",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+        <div className="max-w-5xl mx-auto space-y-6">
+          <Skeleton className="h-12 w-96 bg-white/10" />
+          <Skeleton className="h-48 bg-white/10" />
+          <Skeleton className="h-96 bg-white/10" />
+        </div>
       </div>
     );
   }
 
   if (!assembly) {
     return (
-      <div className="p-6">
-        <Card className="bg-white/80 backdrop-blur-sm">
-          <CardContent className="py-16 text-center">
-            <Calendar className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Assemblée introuvable</h3>
-            <p className="text-muted-foreground mb-6">
-              Cette assemblée n'existe pas ou vous n'y avez pas accès.
-            </p>
-            <Button asChild>
-              <Link href="/syndic/assemblies">Retour aux assemblées</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+        <div className="max-w-5xl mx-auto">
+          <p className="text-white text-center py-12">Assemblée introuvable</p>
+        </div>
       </div>
     );
   }
 
-  const status = statusConfig[assembly.status] || statusConfig.draft;
-  const quorum = assembly.total_owners > 0
-    ? Math.round(((assembly.present_owners + assembly.proxy_owners) / assembly.total_owners) * 100)
-    : 0;
+  const statusConfig = STATUS_LABELS[assembly.status] || STATUS_LABELS.draft;
+  const canEdit = ["draft", "convened"].includes(assembly.status);
+  const canConvene = ["draft", "convened"].includes(assembly.status);
+  const canAddResolution = ["draft", "convened", "in_progress"].includes(assembly.status);
+  const canStartLive = assembly.status === "convened" && resolutions.length > 0;
+  const isLive = assembly.status === "in_progress";
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="p-6"
-    >
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
-        <div className="mb-6">
-          <Link
-            href="/syndic/assemblies"
-            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 mb-4 transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Retour aux assemblées
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
+          <Link href="/syndic/assemblies">
+            <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-white/10 mb-4">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Retour aux assemblées
+            </Button>
           </Link>
 
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-2xl font-bold">{assembly.title}</h1>
-                <Badge className={status.color}>{status.label}</Badge>
+                <h1 className="text-2xl font-bold text-white">{assembly.title}</h1>
+                <Badge className={`${statusConfig.color} border`}>{statusConfig.label}</Badge>
               </div>
-              <p className="text-muted-foreground">{assembly.site_name}</p>
+              <p className="text-slate-400 font-mono text-sm">
+                {assembly.reference_number || "Pas de référence"}
+              </p>
             </div>
-
             <div className="flex gap-2">
-              {assembly.status === "draft" && (
-                <>
-                  <Button variant="outline" asChild>
-                    <Link href={`/syndic/assemblies/${assemblyId}/edit`}>
-                      <Edit className="mr-2 h-4 w-4" />
-                      Modifier
-                    </Link>
+              {canEdit && (
+                <Link href={`/syndic/assemblies/${assembly.id}/edit`}>
+                  <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10">
+                    <Edit className="h-4 w-4 mr-2" />
+                    Modifier
                   </Button>
-                  <Button className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700">
-                    <Send className="mr-2 h-4 w-4" />
-                    Envoyer convocations
-                  </Button>
-                </>
+                </Link>
               )}
-              {assembly.status === "completed" && (
-                <Button variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Télécharger le PV
+              {assembly.status !== "cancelled" && assembly.status !== "held" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDelete}
+                  className="border-red-400/40 text-red-200 hover:bg-red-500/10"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Annuler
                 </Button>
               )}
             </div>
           </div>
+        </motion.div>
+
+        {/* Info card */}
+        <Card className="bg-white/5 border-white/10 backdrop-blur">
+          <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <InfoItem
+              icon={Calendar}
+              label="Date prévue"
+              value={`${formatDateShort(assembly.scheduled_at)} à ${new Date(assembly.scheduled_at).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`}
+            />
+            {assembly.fiscal_year && (
+              <InfoItem icon={FileText} label="Exercice" value={assembly.fiscal_year.toString()} />
+            )}
+            {assembly.location && <InfoItem icon={MapPin} label="Lieu" value={assembly.location} />}
+            {assembly.online_meeting_url && (
+              <InfoItem icon={Video} label="Visio" value="Lien de connexion disponible" />
+            )}
+            {assembly.quorum_required !== null && (
+              <InfoItem icon={Users} label="Quorum requis" value={`${assembly.quorum_required} tantièmes`} />
+            )}
+            {assembly.first_convocation_sent_at && (
+              <InfoItem
+                icon={Send}
+                label="Convoquée le"
+                value={formatDateShort(assembly.first_convocation_sent_at)}
+              />
+            )}
+          </CardContent>
+          {assembly.description && (
+            <div className="px-6 pb-6">
+              <p className="text-sm text-slate-300">{assembly.description}</p>
+            </div>
+          )}
+        </Card>
+
+        {/* Actions */}
+        <div className="flex flex-wrap gap-3">
+          {canConvene && resolutions.length > 0 && (
+            <Button
+              onClick={() => setShowSendConvocations(true)}
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+            >
+              <Send className="h-4 w-4 mr-2" />
+              Envoyer les convocations
+            </Button>
+          )}
+          {canStartLive && (
+            <Link href={`/syndic/assemblies/${assemblyId}/live`}>
+              <Button className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700">
+                <Radio className="h-4 w-4 mr-2" />
+                Démarrer la session
+              </Button>
+            </Link>
+          )}
+          {isLive && (
+            <Link href={`/syndic/assemblies/${assemblyId}/live`}>
+              <Button className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 animate-pulse">
+                <Radio className="h-4 w-4 mr-2" />
+                Session en cours — accéder
+              </Button>
+            </Link>
+          )}
+          {resolutions.length > 0 && (
+            <DownloadPdfButton
+              variant="convocation"
+              assemblyId={assemblyId}
+              label="Télécharger convocation (PDF)"
+              filename={`convocation-${assembly.reference_number || assembly.id}.pdf`}
+            />
+          )}
         </div>
 
-        <div className="grid gap-6 md:grid-cols-3">
-          {/* Informations */}
-          <Card className="bg-white/80 backdrop-blur-sm md:col-span-2">
-            <CardHeader>
-              <CardTitle>Informations</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-                    <Calendar className="h-5 w-5 text-indigo-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Date</p>
-                    <p className="font-medium">
-                      {format(new Date(assembly.date), "EEEE d MMMM yyyy", { locale: fr })}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-lg bg-indigo-100 flex items-center justify-center">
-                    <Clock className="h-5 w-5 text-indigo-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Heure</p>
-                    <p className="font-medium">{assembly.time}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="h-10 w-10 rounded-lg bg-indigo-100 flex items-center justify-center shrink-0">
-                  <MapPin className="h-5 w-5 text-indigo-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Lieu</p>
-                  <p className="font-medium">{assembly.location}</p>
-                </div>
-              </div>
-
-              {assembly.description && (
-                <div className="pt-4 border-t">
-                  <p className="text-sm text-muted-foreground mb-1">Description</p>
-                  <p>{assembly.description}</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Participation */}
-          <Card className="bg-white/80 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-indigo-500" />
-                Participation
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center">
-                <p className="text-4xl font-bold text-indigo-600">{quorum}%</p>
-                <p className="text-sm text-muted-foreground">Quorum atteint</p>
-              </div>
-              <Progress value={quorum} className="h-2" />
-              
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Présents</span>
-                  <span className="font-medium">{assembly.present_owners}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Représentés</span>
-                  <span className="font-medium">{assembly.proxy_owners}</span>
-                </div>
-                <div className="flex justify-between border-t pt-2">
-                  <span className="text-muted-foreground">Total copropriétaires</span>
-                  <span className="font-medium">{assembly.total_owners}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Résolutions */}
-        <Card className="bg-white/80 backdrop-blur-sm mt-6">
+        {/* Resolutions */}
+        <Card className="bg-white/5 border-white/10 backdrop-blur">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-indigo-500" />
-              Résolutions ({assembly.resolutions?.length || 0})
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-white flex items-center gap-2">
+                  <Vote className="h-5 w-5 text-violet-400" />
+                  Ordre du jour ({resolutions.length})
+                </CardTitle>
+                <CardDescription className="text-slate-400">
+                  Résolutions soumises au vote de l'assemblée
+                </CardDescription>
+              </div>
+              {canAddResolution && (
+                <Button
+                  size="sm"
+                  onClick={() => setShowAddResolution(true)}
+                  className="bg-violet-500 hover:bg-violet-600"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Ajouter
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            {!assembly.resolutions || assembly.resolutions.length === 0 ? (
-              <div className="py-8 text-center text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Aucune résolution enregistrée</p>
+            {resolutions.length === 0 ? (
+              <div className="text-center py-8 text-slate-400">
+                <Vote className="h-10 w-10 mx-auto mb-3 text-slate-500" />
+                <p>Aucune résolution pour le moment</p>
+                {canAddResolution && (
+                  <p className="text-xs mt-2">Ajoutez une résolution pour commencer l'ordre du jour</p>
+                )}
               </div>
             ) : (
-              <div className="space-y-4">
-                {assembly.resolutions.map((resolution, index) => {
-                  const totalVotes = resolution.votes_for + resolution.votes_against + resolution.votes_abstain;
-                  const forPercent = totalVotes > 0 ? Math.round((resolution.votes_for / totalVotes) * 100) : 0;
+              <div className="space-y-3">
+                {resolutions.map((resolution) => {
+                  const resStatus =
+                    RESOLUTION_STATUS_LABELS[resolution.status] || RESOLUTION_STATUS_LABELS.proposed;
+                  const StatusIcon = resStatus.icon;
+                  const hasVotes =
+                    resolution.votes_for_count + resolution.votes_against_count + resolution.votes_abstain_count > 0;
 
                   return (
                     <div
                       key={resolution.id}
-                      className="p-4 rounded-lg border border-slate-200 space-y-3"
+                      className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3"
                     >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm font-medium text-muted-foreground">
-                              Résolution {index + 1}
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="font-mono text-xs text-slate-500">
+                              #{resolution.resolution_number}
                             </span>
-                            {resolution.status === "approved" && (
-                              <Badge className="bg-green-100 text-green-700">
-                                <CheckCircle2 className="h-3 w-3 mr-1" />
-                                Adoptée
-                              </Badge>
-                            )}
-                            {resolution.status === "rejected" && (
-                              <Badge className="bg-red-100 text-red-700">
-                                <XCircle className="h-3 w-3 mr-1" />
-                                Rejetée
-                              </Badge>
-                            )}
-                            {resolution.status === "pending" && (
-                              <Badge className="bg-slate-100 text-slate-700">
-                                <AlertCircle className="h-3 w-3 mr-1" />
-                                En attente
-                              </Badge>
-                            )}
+                            <Badge variant="outline" className="border-white/20 text-slate-300 text-xs">
+                              {CATEGORY_LABELS[resolution.category] || resolution.category}
+                            </Badge>
+                            <Badge variant="outline" className="border-violet-400/30 text-violet-200 text-xs">
+                              {MAJORITY_LABELS[resolution.majority_rule] || resolution.majority_rule}
+                            </Badge>
                           </div>
-                          <h4 className="font-medium">{resolution.title}</h4>
-                          {resolution.description && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {resolution.description}
+                          <h4 className="text-white font-medium">{resolution.title}</h4>
+                          <p className="text-sm text-slate-400 mt-1">{resolution.description}</p>
+                          {resolution.estimated_amount_cents && (
+                            <p className="text-xs text-amber-200 mt-2">
+                              Montant estimé : {(resolution.estimated_amount_cents / 100).toLocaleString("fr-FR")} €
                             </p>
                           )}
                         </div>
+                        <Badge className={resStatus.color}>
+                          <StatusIcon className="h-3 w-3 mr-1" />
+                          {resStatus.label}
+                        </Badge>
                       </div>
 
-                      {totalVotes > 0 && (
-                        <div className="space-y-2">
-                          <Progress value={forPercent} className="h-2" />
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>Pour: {resolution.votes_for}</span>
-                            <span>Contre: {resolution.votes_against}</span>
-                            <span>Abstention: {resolution.votes_abstain}</span>
-                          </div>
+                      {hasVotes && (
+                        <div className="grid grid-cols-3 gap-3 pt-3 border-t border-white/10">
+                          <VoteStat
+                            label="Pour"
+                            count={resolution.votes_for_count}
+                            tantiemes={resolution.tantiemes_for}
+                            color="text-emerald-300"
+                          />
+                          <VoteStat
+                            label="Contre"
+                            count={resolution.votes_against_count}
+                            tantiemes={resolution.tantiemes_against}
+                            color="text-red-300"
+                          />
+                          <VoteStat
+                            label="Abstention"
+                            count={resolution.votes_abstain_count}
+                            tantiemes={resolution.tantiemes_abstain}
+                            color="text-amber-300"
+                          />
                         </div>
                       )}
                     </div>
@@ -331,8 +444,146 @@ export default function AssemblyDetailPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Convocations summary */}
+        {convocations.length > 0 && (
+          <Card className="bg-white/5 border-white/10 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Send className="h-5 w-5 text-blue-400" />
+                Convocations ({convocations.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ConvocationStats convocations={convocations} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Minutes */}
+        {minutes.length > 0 && (
+          <Card className="bg-white/5 border-white/10 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <FileText className="h-5 w-5 text-emerald-400" />
+                Procès-verbaux ({minutes.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {minutes.map((minute) => (
+                  <div
+                    key={minute.id}
+                    className="flex items-center justify-between rounded-lg border border-white/10 bg-white/5 p-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText className="h-4 w-4 text-slate-400" />
+                      <div>
+                        <p className="text-white text-sm">Version {minute.version}</p>
+                        <p className="text-xs text-slate-400">
+                          {minute.signed_by_president_at
+                            ? `Signé le ${formatDateShort(minute.signed_by_president_at)}`
+                            : "Non signé"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-slate-500/20 text-slate-200 capitalize">{minute.status}</Badge>
+                      <DownloadPdfButton
+                        variant="minute"
+                        minuteId={minute.id}
+                        label="PDF"
+                        filename={`pv-${assembly.reference_number || assembly.id}-v${minute.version}.pdf`}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
-    </motion.div>
+
+      {showAddResolution && (
+        <AddResolutionDialog
+          assemblyId={assemblyId}
+          nextResolutionNumber={resolutions.length + 1}
+          onClose={() => setShowAddResolution(false)}
+          onCreated={() => {
+            setShowAddResolution(false);
+            fetchAssembly();
+          }}
+        />
+      )}
+
+      {showSendConvocations && (
+        <SendConvocationsDialog
+          assemblyId={assemblyId}
+          onClose={() => setShowSendConvocations(false)}
+          onSent={() => {
+            setShowSendConvocations(false);
+            fetchAssembly();
+          }}
+        />
+      )}
+    </div>
   );
 }
 
+function InfoItem({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <Icon className="h-4 w-4 text-slate-400 mt-0.5" />
+      <div>
+        <p className="text-xs text-slate-500 uppercase tracking-wide">{label}</p>
+        <p className="text-sm text-white mt-0.5">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function VoteStat({
+  label,
+  count,
+  tantiemes,
+  color,
+}: {
+  label: string;
+  count: number;
+  tantiemes: number;
+  color: string;
+}) {
+  return (
+    <div className="text-center">
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className={`text-lg font-bold ${color}`}>{count}</p>
+      <p className="text-xs text-slate-500">{tantiemes.toLocaleString("fr-FR")} tant.</p>
+    </div>
+  );
+}
+
+function ConvocationStats({ convocations }: { convocations: ConvocationSummary[] }) {
+  const byStatus = convocations.reduce<Record<string, number>>((acc, c) => {
+    acc[c.status] = (acc[c.status] || 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {Object.entries(byStatus).map(([status, count]) => (
+        <div key={status} className="rounded-lg border border-white/10 bg-white/5 p-3 text-center">
+          <p className="text-xs text-slate-400 capitalize">{status}</p>
+          <p className="text-xl font-bold text-white mt-1">{count}</p>
+        </div>
+      ))}
+    </div>
+  );
+}

@@ -1,7 +1,6 @@
 "use client";
-// @ts-nocheck
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -10,23 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  ArrowLeft,
-  CalendarIcon,
-  Clock,
-  MapPin,
-  Save,
-  Loader2,
-  FileText,
-  Plus,
-  Trash2,
-} from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
-import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -34,360 +16,406 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  ArrowLeft,
+  CalendarIcon,
+  Loader2,
+  MapPin,
+  Save,
+  Video,
+} from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface Resolution {
-  id: string;
-  title: string;
-  description: string;
-  majority: string;
-}
+type AssemblyType = "ordinaire" | "extraordinaire" | "concertation" | "consultation_ecrite";
 
-interface Assembly {
-  id: string;
-  title: string;
-  type: string;
-  date: string;
-  time: string;
-  location: string;
-  description?: string;
-  resolutions: Resolution[];
-}
-
-const majorityOptions = [
-  { value: "simple", label: "Majorité simple (Art. 24)" },
-  { value: "absolute", label: "Majorité absolue (Art. 25)" },
-  { value: "double", label: "Double majorité (Art. 26)" },
-  { value: "unanimity", label: "Unanimité" },
+const ASSEMBLY_TYPES: { value: AssemblyType; label: string }[] = [
+  { value: "ordinaire", label: "AG Ordinaire" },
+  { value: "extraordinaire", label: "AG Extraordinaire" },
+  { value: "concertation", label: "Concertation" },
+  { value: "consultation_ecrite", label: "Consultation écrite" },
 ];
 
 export default function EditAssemblyPage() {
-  const params = useParams();
   const router = useRouter();
+  const params = useParams();
   const { toast } = useToast();
-  const assemblyId = params.id as string;
+  const isSubmittingRef = useRef(false);
 
-  const [assembly, setAssembly] = useState<Assembly | null>(null);
+  const assemblyId = params?.id as string;
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [status, setStatus] = useState<string>("draft");
+
+  const [form, setForm] = useState({
+    assembly_type: "ordinaire" as AssemblyType,
+    title: "",
+    scheduled_date: "",
+    scheduled_time: "18:00",
+    location: "",
+    location_address: "",
+    online_meeting_url: "",
+    is_hybrid: false,
+    quorum_required: "",
+    fiscal_year: "",
+    description: "",
+    notes: "",
+  });
 
   useEffect(() => {
-    async function fetchAssembly() {
+    if (!assemblyId) return;
+
+    const loadAssembly = async () => {
       try {
-        const response = await fetch(`/api/copro/assemblies/${assemblyId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setAssembly(data.assembly || data);
+        const res = await fetch(`/api/copro/assemblies/${assemblyId}`);
+        if (!res.ok) {
+          if (res.status === 404) {
+            toast({ title: "Assemblée introuvable", variant: "destructive" });
+            router.push("/syndic/assemblies");
+            return;
+          }
+          throw new Error("Erreur de chargement");
         }
+
+        const data = await res.json();
+        const assembly = data.assembly;
+
+        if (!["draft", "convened"].includes(assembly.status)) {
+          toast({
+            title: "Modification impossible",
+            description: `Les assemblées en statut '${assembly.status}' ne peuvent plus être modifiées`,
+            variant: "destructive",
+          });
+          router.push(`/syndic/assemblies/${assemblyId}`);
+          return;
+        }
+
+        setStatus(assembly.status);
+        const scheduledDate = new Date(assembly.scheduled_at);
+        setForm({
+          assembly_type: assembly.assembly_type,
+          title: assembly.title,
+          scheduled_date: scheduledDate.toISOString().split("T")[0],
+          scheduled_time: scheduledDate.toTimeString().slice(0, 5),
+          location: assembly.location || "",
+          location_address: assembly.location_address || "",
+          online_meeting_url: assembly.online_meeting_url || "",
+          is_hybrid: assembly.is_hybrid || false,
+          quorum_required: assembly.quorum_required?.toString() || "",
+          fiscal_year: assembly.fiscal_year?.toString() || "",
+          description: assembly.description || "",
+          notes: assembly.notes || "",
+        });
       } catch (error) {
-        console.error("Erreur chargement assemblée:", error);
+        toast({
+          title: "Erreur",
+          description: error instanceof Error ? error.message : "Impossible de charger",
+          variant: "destructive",
+        });
       } finally {
         setLoading(false);
       }
+    };
+
+    loadAssembly();
+  }, [assemblyId, router, toast]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isSubmittingRef.current) return;
+
+    if (!form.title || form.title.length < 3) {
+      toast({ title: "Titre trop court", variant: "destructive" });
+      return;
     }
-    if (assemblyId) fetchAssembly();
-  }, [assemblyId]);
-
-  const addResolution = () => {
-    if (!assembly) return;
-    setAssembly({
-      ...assembly,
-      resolutions: [
-        ...assembly.resolutions,
-        { id: Date.now().toString(), title: "", description: "", majority: "simple" },
-      ],
-    });
-  };
-
-  const removeResolution = (id: string) => {
-    if (!assembly || assembly.resolutions.length <= 1) return;
-    setAssembly({
-      ...assembly,
-      resolutions: assembly.resolutions.filter((r) => r.id !== id),
-    });
-  };
-
-  const updateResolution = (id: string, field: keyof Resolution, value: string) => {
-    if (!assembly) return;
-    setAssembly({
-      ...assembly,
-      resolutions: assembly.resolutions.map((r) =>
-        r.id === id ? { ...r, [field]: value } : r
-      ),
-    });
-  };
-
-  const handleSave = async () => {
-    if (!assembly) return;
-
-    if (!assembly.title || !assembly.location) {
-      toast({
-        title: "Champs requis",
-        description: "Veuillez remplir tous les champs obligatoires.",
-        variant: "destructive",
-      });
+    if (!form.scheduled_date) {
+      toast({ title: "Date requise", variant: "destructive" });
       return;
     }
 
-    setSaving(true);
+    isSubmittingRef.current = true;
+    setSubmitting(true);
+
     try {
-      const response = await fetch(`/api/copro/assemblies/${assemblyId}`, {
-        method: "PUT",
+      const scheduledAt = new Date(`${form.scheduled_date}T${form.scheduled_time}:00`).toISOString();
+
+      const payload = {
+        assembly_type: form.assembly_type,
+        title: form.title.trim(),
+        scheduled_at: scheduledAt,
+        fiscal_year: form.fiscal_year ? parseInt(form.fiscal_year, 10) : undefined,
+        location: form.location.trim() || undefined,
+        location_address: form.location_address.trim() || undefined,
+        online_meeting_url: form.online_meeting_url.trim() || undefined,
+        is_hybrid: form.is_hybrid,
+        quorum_required: form.quorum_required ? parseInt(form.quorum_required, 10) : undefined,
+        description: form.description.trim() || undefined,
+        notes: form.notes.trim() || undefined,
+      };
+
+      const res = await fetch(`/api/copro/assemblies/${assemblyId}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(assembly),
+        body: JSON.stringify(payload),
       });
 
-      if (!response.ok) throw new Error("Erreur sauvegarde");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Erreur lors de la sauvegarde");
+      }
 
-      toast({
-        title: "Assemblée mise à jour",
-        description: "Les modifications ont été enregistrées.",
-      });
-
+      toast({ title: "Assemblée mise à jour" });
       router.push(`/syndic/assemblies/${assemblyId}`);
     } catch (error) {
       toast({
         title: "Erreur",
-        description: "Impossible de sauvegarder les modifications.",
+        description: error instanceof Error ? error.message : "Impossible de sauvegarder",
         variant: "destructive",
       });
     } finally {
-      setSaving(false);
+      setSubmitting(false);
+      isSubmittingRef.current = false;
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
-      </div>
-    );
-  }
-
-  if (!assembly) {
-    return (
-      <div className="p-6">
-        <Card className="bg-white/80 backdrop-blur-sm">
-          <CardContent className="py-16 text-center">
-            <CalendarIcon className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Assemblée introuvable</h3>
-            <Button asChild>
-              <Link href="/syndic/assemblies">Retour aux assemblées</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+        <div className="max-w-3xl mx-auto space-y-4">
+          <Skeleton className="h-12 w-96 bg-white/10" />
+          <Skeleton className="h-64 bg-white/10" />
+        </div>
       </div>
     );
   }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="p-6"
-    >
-      <div className="max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <Link
-            href={`/syndic/assemblies/${assemblyId}`}
-            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 mb-4 transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Retour à l'assemblée
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      <div className="max-w-3xl mx-auto space-y-6">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-4"
+        >
+          <Link href={`/syndic/assemblies/${assemblyId}`}>
+            <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-white/10">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Retour
+            </Button>
           </Link>
-          <h1 className="text-2xl font-bold">Modifier l'assemblée</h1>
-        </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+              <CalendarIcon className="h-6 w-6 text-violet-400" />
+              Modifier l'assemblée
+            </h1>
+            <p className="text-slate-400">Statut actuel : {status === "draft" ? "Brouillon" : "Convoquée"}</p>
+          </div>
+        </motion.div>
 
-        <div className="space-y-6">
-          {/* Informations générales */}
-          <Card className="bg-white/80 backdrop-blur-sm">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <Card className="bg-white/5 border-white/10 backdrop-blur">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CalendarIcon className="h-5 w-5 text-indigo-500" />
-                Informations générales
+              <CardTitle className="text-white">Informations</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-slate-300">Type *</Label>
+                <Select
+                  value={form.assembly_type}
+                  onValueChange={(value: AssemblyType) => setForm({ ...form, assembly_type: value })}
+                  disabled={submitting}
+                >
+                  <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ASSEMBLY_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="title" className="text-slate-300">
+                  Titre *
+                </Label>
+                <Input
+                  id="title"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  required
+                  disabled={submitting}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Date *</Label>
+                  <Input
+                    type="date"
+                    value={form.scheduled_date}
+                    onChange={(e) => setForm({ ...form, scheduled_date: e.target.value })}
+                    required
+                    disabled={submitting}
+                    className="bg-white/5 border-white/10 text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Heure *</Label>
+                  <Input
+                    type="time"
+                    value={form.scheduled_time}
+                    onChange={(e) => setForm({ ...form, scheduled_time: e.target.value })}
+                    required
+                    disabled={submitting}
+                    className="bg-white/5 border-white/10 text-white"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Exercice</Label>
+                  <Input
+                    type="number"
+                    min="2020"
+                    max="2100"
+                    value={form.fiscal_year}
+                    onChange={(e) => setForm({ ...form, fiscal_year: e.target.value })}
+                    disabled={submitting}
+                    className="bg-white/5 border-white/10 text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Quorum (tantièmes)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={form.quorum_required}
+                    onChange={(e) => setForm({ ...form, quorum_required: e.target.value })}
+                    disabled={submitting}
+                    className="bg-white/5 border-white/10 text-white"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/5 border-white/10 backdrop-blur">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-violet-400" />
+                Lieu
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Titre *</Label>
+                <Label className="text-slate-300">Lieu</Label>
                 <Input
-                  id="title"
-                  value={assembly.title}
-                  onChange={(e) => setAssembly({ ...assembly, title: e.target.value })}
-                  className="bg-white"
-                  required
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  disabled={submitting}
+                  className="bg-white/5 border-white/10 text-white"
                 />
               </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Date *</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal bg-white",
-                          !assembly.date && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {assembly.date
-                          ? format(new Date(assembly.date), "PPP", { locale: fr })
-                          : "Sélectionner"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={new Date(assembly.date)}
-                        onSelect={(date) =>
-                          date && setAssembly({ ...assembly, date: date.toISOString() })
-                        }
-                        locale={fr}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="time" className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    Heure *
-                  </Label>
-                  <Input
-                    id="time"
-                    type="time"
-                    value={assembly.time}
-                    onChange={(e) => setAssembly({ ...assembly, time: e.target.value })}
-                    className="bg-white"
-                    required
-                  />
-                </div>
-              </div>
-
               <div className="space-y-2">
-                <Label htmlFor="location" className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  Lieu *
+                <Label className="text-slate-300">Adresse</Label>
+                <Input
+                  value={form.location_address}
+                  onChange={(e) => setForm({ ...form, location_address: e.target.value })}
+                  disabled={submitting}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300 flex items-center gap-2">
+                  <Video className="h-4 w-4" />
+                  Lien visio
                 </Label>
                 <Input
-                  id="location"
-                  value={assembly.location}
-                  onChange={(e) => setAssembly({ ...assembly, location: e.target.value })}
-                  className="bg-white"
-                  required
+                  type="url"
+                  value={form.online_meeting_url}
+                  onChange={(e) => setForm({ ...form, online_meeting_url: e.target.value })}
+                  disabled={submitting}
+                  className="bg-white/5 border-white/10 text-white"
                 />
               </div>
+              <div className="flex items-center gap-2">
+                <input
+                  id="is_hybrid"
+                  type="checkbox"
+                  checked={form.is_hybrid}
+                  onChange={(e) => setForm({ ...form, is_hybrid: e.target.checked })}
+                  disabled={submitting}
+                  className="h-4 w-4 rounded border-white/30 bg-transparent"
+                />
+                <Label htmlFor="is_hybrid" className="text-slate-300 cursor-pointer">
+                  Assemblée hybride
+                </Label>
+              </div>
+            </CardContent>
+          </Card>
 
+          <Card className="bg-white/5 border-white/10 backdrop-blur">
+            <CardContent className="p-6 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
+                <Label className="text-slate-300">Description</Label>
                 <Textarea
-                  id="description"
-                  value={assembly.description || ""}
-                  onChange={(e) => setAssembly({ ...assembly, description: e.target.value })}
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={3}
-                  className="bg-white resize-none"
+                  disabled={submitting}
+                  className="bg-white/5 border-white/10 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Notes internes</Label>
+                <Textarea
+                  value={form.notes}
+                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                  rows={2}
+                  disabled={submitting}
+                  className="bg-white/5 border-white/10 text-white"
                 />
               </div>
             </CardContent>
           </Card>
 
-          {/* Résolutions */}
-          <Card className="bg-white/80 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-indigo-500" />
-                  Ordre du jour
-                </CardTitle>
-                <CardDescription>Résolutions à voter</CardDescription>
-              </div>
-              <Button type="button" variant="outline" size="sm" onClick={addResolution}>
-                <Plus className="mr-2 h-4 w-4" />
-                Ajouter
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {assembly.resolutions.map((resolution, index) => (
-                <div
-                  key={resolution.id}
-                  className="p-4 rounded-lg border border-slate-200 space-y-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-muted-foreground">
-                      Résolution {index + 1}
-                    </span>
-                    {assembly.resolutions.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeResolution(resolution.id)}
-                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-
-                  <Input
-                    value={resolution.title}
-                    onChange={(e) => updateResolution(resolution.id, "title", e.target.value)}
-                    placeholder="Titre de la résolution"
-                    className="bg-white"
-                  />
-
-                  <Textarea
-                    value={resolution.description}
-                    onChange={(e) => updateResolution(resolution.id, "description", e.target.value)}
-                    placeholder="Description..."
-                    rows={2}
-                    className="bg-white resize-none"
-                  />
-
-                  <Select
-                    value={resolution.majority}
-                    onValueChange={(value) => updateResolution(resolution.id, "majority", value)}
-                  >
-                    <SelectTrigger className="bg-white">
-                      <SelectValue placeholder="Type de majorité" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {majorityOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Actions */}
           <div className="flex gap-3 justify-end">
-            <Button variant="outline" asChild>
-              <Link href={`/syndic/assemblies/${assemblyId}`}>Annuler</Link>
-            </Button>
+            <Link href={`/syndic/assemblies/${assemblyId}`}>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={submitting}
+                className="border-white/20 text-white hover:bg-white/10"
+              >
+                Annuler
+              </Button>
+            </Link>
             <Button
-              onClick={handleSave}
-              disabled={saving}
-              className="bg-gradient-to-r from-indigo-600 to-purple-600"
+              type="submit"
+              disabled={submitting}
+              className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
             >
-              {saving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Sauvegarde...
+                </>
               ) : (
-                <Save className="mr-2 h-4 w-4" />
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Enregistrer
+                </>
               )}
-              Sauvegarder
             </Button>
           </div>
-        </div>
+        </form>
       </div>
-    </motion.div>
+    </div>
   );
 }
-
