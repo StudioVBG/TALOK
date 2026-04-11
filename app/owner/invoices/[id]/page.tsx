@@ -34,6 +34,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { safeDate, safeDateFormat } from "@/lib/helpers/safe-date";
 import { ManualPaymentDialog } from "@/components/payments";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const statusConfig = {
   draft: { label: "Brouillon", color: "bg-muted text-foreground", icon: FileText },
@@ -192,7 +193,7 @@ export default function InvoiceDetailPage() {
 
       poll();
     } catch (error: unknown) {
-      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
+      toast({ title: "Erreur", description: extractErrorMessage(error), variant: "destructive" });
     }
   };
 

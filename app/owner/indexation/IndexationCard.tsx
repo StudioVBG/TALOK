@@ -28,6 +28,7 @@ import {
   Info,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/helpers/format";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface IndexationCardProps {
   indexation: any;
@@ -64,7 +65,7 @@ export function IndexationCard({ indexation, showActions = false }: IndexationCa
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -93,7 +94,7 @@ export function IndexationCard({ indexation, showActions = false }: IndexationCa
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {

@@ -37,6 +37,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { UpgradeModal, useSubscription } from "@/components/subscription";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { getRequiredPlanForFeature, PLANS } from "@/lib/subscriptions/plans";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface Inspection {
   id: string;
@@ -92,7 +93,7 @@ export function InspectionsClient({ inspections }: Props) {
     } catch (error: unknown) {
       toast({
         title: "Erreur de synchronisation",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -121,7 +122,7 @@ export function InspectionsClient({ inspections }: Props) {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {

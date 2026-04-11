@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/select";
 import { OnboardingStepShell } from "@/components/onboarding/onboarding-step-shell";
 import { cn } from "@/lib/utils";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const PAYMENT_LABELS: Record<string, { label: string; desc: string }> = {
   sepa_sdd: { label: "Prélèvement automatique", desc: "Le plus fiable — le loyer est prélevé directement" },
@@ -85,7 +86,7 @@ export default function OwnerFinancePage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

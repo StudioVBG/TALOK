@@ -38,6 +38,7 @@ import {
   SETTLEMENT_STATUS_LABELS,
   DEDUCTION_TYPE_LABELS,
 } from "@/lib/types/end-of-lease";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat("fr-FR", {
@@ -134,7 +135,7 @@ export default function EndOfLeasePage() {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
       });
     }
   };

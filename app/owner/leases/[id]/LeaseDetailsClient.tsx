@@ -73,6 +73,7 @@ import { LeaseDocumentsTab } from "./tabs/LeaseDocumentsTab";
 import { LeasePaymentsTab } from "./tabs/LeasePaymentsTab";
 import { resolveTenantDisplay, resolveTenantFullName } from "@/lib/helpers/resolve-tenant-display";
 import { LeaseDetailsSidebar } from "./LeaseDetailsSidebar";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface LeaseDetailsClientProps {
   details: LeaseDetails;
@@ -521,7 +522,7 @@ export function LeaseDetailsClient({ details, leaseId, ownerProfile }: LeaseDeta
       console.error("Erreur activation:", error);
       toast({
         title: "Action requise",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {

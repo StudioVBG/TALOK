@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TenantInviteModal } from "./TenantInviteModal";
 import { SignatureUsageBadge } from "@/components/subscription/signature-usage-badge";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface Signer {
   id: string;
@@ -205,7 +206,7 @@ export function SignersClient({
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -234,7 +235,7 @@ export function SignersClient({
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {

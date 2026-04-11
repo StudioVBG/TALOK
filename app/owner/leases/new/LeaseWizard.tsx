@@ -70,6 +70,7 @@ import { useEntityStore } from "@/stores/useEntityStore";
 // Aperçu EDL intégré dans le wizard
 import { EdlPreviewStep } from "./EdlPreviewStep";
 import type { BailWizardEdlInput } from "@/lib/mappers/bail-wizard-to-edl-preview";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // Validation Zod des invités colocation (email, nom, rôle requis)
 const colocationInviteeSchema = z.object({
@@ -951,7 +952,7 @@ export function LeaseWizard({ properties, initialPropertyId, initialBuildingUnit
       console.error("Erreur création bail:", error);
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {

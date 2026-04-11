@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export default function OwnerInvitePage() {
   const router = useRouter();
@@ -115,7 +116,7 @@ export default function OwnerInvitePage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'envoi des invitations.",
+        description: extractErrorMessage(error, "Une erreur est survenue lors de l'envoi des invitations."),
         variant: "destructive",
       });
     } finally {

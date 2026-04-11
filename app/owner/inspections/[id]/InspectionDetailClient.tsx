@@ -59,6 +59,7 @@ import { EDLPreview } from "@/features/edl/components/edl-preview";
 import { mapRawEDLToTemplate } from "@/lib/mappers/edl-to-template";
 import { SignaturePad, type SignatureData } from "@/components/signature/SignaturePad";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface Room {
   name: string;
@@ -364,7 +365,7 @@ export function InspectionDetailClient({ data }: Props) {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -398,7 +399,7 @@ export function InspectionDetailClient({ data }: Props) {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -444,7 +445,7 @@ export function InspectionDetailClient({ data }: Props) {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {

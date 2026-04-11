@@ -22,6 +22,7 @@ import {
   Info,
   Shield,
 } from "lucide-react";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface TenantInviteModalProps {
   open: boolean;
@@ -117,7 +118,7 @@ export function TenantInviteModal({
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {

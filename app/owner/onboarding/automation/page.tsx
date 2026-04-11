@@ -9,6 +9,7 @@ import { onboardingService } from "@/features/onboarding/services/onboarding.ser
 import { ownerAutomationSchema } from "@/lib/validations/onboarding";
 import { apiClient } from "@/lib/api-client";
 import { Settings, ArrowRight, CheckCircle2 } from "lucide-react";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const AUTOMATION_LEVELS = [
   {
@@ -83,7 +84,7 @@ export default function OwnerAutomationPage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {
