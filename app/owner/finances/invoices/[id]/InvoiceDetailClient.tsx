@@ -10,6 +10,7 @@ import { ArrowLeft, Send, FileDown, Loader2 } from "lucide-react";
 
 interface InvoiceDetail {
   id: string;
+  lease_id: string | null;
   periode: string;
   montant_loyer: number;
   montant_charges: number;
@@ -219,12 +220,15 @@ export function InvoiceDetailClient() {
         )}
 
         {(invoice.statut === "paid" || invoice.statut === "receipt_generated") &&
-          !invoice.receipt_generated && (
+          !invoice.receipt_generated &&
+          invoice.lease_id && (
             <Button
               variant="outline"
               onClick={() =>
-                fetch(`/api/invoices/${invoiceId}/generate-receipt`, {
+                fetch(`/api/leases/${invoice.lease_id}/generate-receipt`, {
                   method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ invoice_id: invoice.id }),
                 })
               }
             >
