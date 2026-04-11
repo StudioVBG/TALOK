@@ -49,17 +49,49 @@ export async function GET(
       return NextResponse.json({ error: "Accès non autorisé à ce bail" }, { status: 403 });
     }
 
-    // Sealed bail — return stored PDF URL
-    if (leaseCheck.sealed_at && leaseCheck.signed_pdf_path && !leaseCheck.signed_pdf_path.startsWith("pending_generation_")) {
-      const { data: signedUrl } = await serviceClient.storage.from("documents").createSignedUrl(leaseCheck.signed_pdf_path, 3600);
-      if (signedUrl?.signedUrl) {
-        return NextResponse.json({
-          sealed: true,
-          pdfUrl: signedUrl.signedUrl,
-          fileName: `Bail_Signe_${(leaseCheck.property as any)?.ville || "document"}.pdf`,
-          html: null,
-        });
+    // Sealed bail — return stored PDF URL only if the file actually
+    // exists in storage. createSignedUrl() happily signs a URL for a
+    // missing object, which then renders as a blank iframe on the
+    // client. List the parent folder and verify the filename is there
+    // before committing to the sealed branch; otherwise fall through
+    // to regenerating the HTML on the fly.
+    if (
+      leaseCheck.sealed_at &&
+      leaseCheck.signed_pdf_path &&
+      !leaseCheck.signed_pdf_path.startsWith("pending_generation_")
+    ) {
+      const signedPath = leaseCheck.signed_pdf_path as string;
+      const lastSlash = signedPath.lastIndexOf("/");
+      const folder = lastSlash >= 0 ? signedPath.slice(0, lastSlash) : "";
+      const fileName = lastSlash >= 0 ? signedPath.slice(lastSlash + 1) : signedPath;
+
+      const { data: files } = await serviceClient
+        .storage
+        .from("documents")
+        .list(folder, { limit: 100, search: fileName });
+
+      const hasNonEmptyFile = (files || []).some(
+        (f: any) => f.name === fileName && (f.metadata?.size ?? 0) > 0
+      );
+
+      if (hasNonEmptyFile) {
+        const { data: signedUrl } = await serviceClient.storage
+          .from("documents")
+          .createSignedUrl(signedPath, 3600);
+        if (signedUrl?.signedUrl) {
+          return NextResponse.json({
+            sealed: true,
+            pdfUrl: signedUrl.signedUrl,
+            fileName: `Bail_Signe_${(leaseCheck.property as any)?.ville || "document"}.pdf`,
+            html: null,
+          });
+        }
       }
+      // File is missing or empty — fall through to HTML regeneration
+      console.warn(
+        "[Lease HTML] sealed_at set but signed_pdf_path missing in storage, falling back to HTML",
+        { leaseId, signed_pdf_path: signedPath }
+      );
     }
 
     // Build bail data via unified builder
