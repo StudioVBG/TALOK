@@ -152,6 +152,8 @@ export async function GET(
     if (error) throw error;
 
     // Formater les quittances
+    // payment_id est requis par receipts-table.tsx pour appeler /api/payments/[pid]/receipt
+    // (sans lui, le bouton "Télécharger" reste desactive — cf. line 170 du composant).
     const formattedReceipts = await Promise.all(
       (receipts || []).map(async (receipt: any) => ({
         id: receipt.id,
@@ -161,6 +163,7 @@ export async function GET(
         montant_charges: receipt.montant_charges,
         paid_at: receipt.payments?.[0]?.date_paiement || receipt.updated_at,
         payment_method: receipt.payments?.[0]?.moyen,
+        payment_id: receipt.payments?.[0]?.id ?? null,
         pdf_url: await generateReceiptPDF(receipt).catch(() => null), // Générer le PDF de quittance
       }))
     );
