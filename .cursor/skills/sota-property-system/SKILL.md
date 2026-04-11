@@ -62,6 +62,8 @@ buildings
 ├── id (UUID, PK)
 ├── owner_id (FK profiles)
 ├── property_id (FK properties, type=immeuble)
+├── ownership_type ('full' | 'partial')    ← SOTA 2026
+├── total_lots_in_building (INTEGER, nullable, informatif si partial)
 ├── floors, construction_year, surface_totale
 ├── has_ascenseur, has_gardien, has_interphone, has_digicode
 ├── has_local_velo, has_local_poubelles, has_parking_commun
@@ -241,17 +243,77 @@ Every API route verifies:
 
 ## 7. Building System (Immeuble)
 
+### Mental Model
+
+Talok distingue trois concepts strictement séparés :
+- **Bien unitaire** : une `property` standalone (appart isolé, maison)
+- **Lot d'immeuble** : une `property` avec `parent_property_id` pointant vers un
+  wrapper immeuble. Apparaît dans "Mes biens" avec un badge "Immeuble parent".
+- **Immeuble conteneur** : une `property` `type='immeuble'` (wrapper technique) +
+  un record `buildings` + N `building_units`. Visible dans l'onglet "Immeubles",
+  sert de hub managérial (plan + cards lots + documents).
+
+**Règle d'or** : le wrapper `type='immeuble'` n'est JAMAIS affiché comme un bien
+dans "Mes biens". Il est filtré via `p.type !== 'immeuble'`. Les lots enfants
+(avec `parent_property_id`) SONT affichés dans "Mes biens" au même titre que
+les biens unitaires — chacun compte pour 1 dans le quota.
+
+### Ownership Types (SOTA 2026)
+
+| Type | Signification |
+|------|---------------|
+| `full` | Propriétaire unique : possède tous les lots de l'immeuble physique |
+| `partial` | Copropriétaire : possède seulement certains lots dans une copro |
+
+En mode `partial`, le wizard ne configure que les lots du user ; les autres
+emplacements sont grisés dans le visualiseur ; les équipements communs sont en
+lecture seule ("Géré par le syndic").
+
+**Distinction stricte** : `/owner/buildings` = vue propriétaire bailleur (scopée
+aux lots possédés). `/syndic` = vue syndic (gouvernance de toute la copro, AG,
+votes, appels de fonds). Les deux modules ne se recouvrent jamais.
+
 ### Creation Flow
 
 1. Wizard creates property with `type = "immeuble"`
-2. `BuildingConfigStep` configures floors, communal features, and lots
-3. `POST /api/properties/[id]/building-units` creates/replaces all units
+2. Étape `ownership_type` (full/partial + total_lots_in_building si partial)
+3. `BuildingConfigStep` configures floors, communal features, and lots
+4. `POST /api/properties/[id]/building-units` creates/replaces all units
 
 ### URL Pattern
 
 `/owner/buildings/[id]` where `id` = **property_id** (not `building_id`).
 
-Server components resolve the actual `building_id` from the `buildings` table.
+Server components resolve the actual `building_id` from the `buildings` table
+via `buildings.property_id = property_id`.
+
+### Access Check (fix 404)
+
+La page `/owner/buildings/[id]` doit vérifier l'accès via `entity_members` SCI
+en plus de `owner_id`, sinon les immeubles détenus via SCI déclenchent un 404
+injustifié. Pattern à copier depuis `app/api/invoices/[id]/route.ts:78-106` :
+
+1. Query sans filtre owner (service client)
+2. Autoriser si `owner_id === profile.id` OU `profile ∈ entity_members(legal_entity_id)`
+3. Sinon 403 access-denied (distinct du 404 not-found)
+4. Si `building.property_id IS NULL`, rendre quand même avec buildingRecord
+
+### Detail Page Structure
+
+`/owner/buildings/[id]` = **hub managérial** à 3 sections stackées (pas de tabs) :
+
+```
+HEADER          : nom, adresse, badge ownership (full/partial · X/M lots)
+SECTION 1       : Plan des lots (<BuildingVisualizer readOnly />)
+                  Lots user = cliquables → /owner/properties/[lot_id]
+                  Lots externes (partial) = grisés non-interactifs
+SECTION 2       : Grille <BuildingLotCard /> (photo, étage, loyer, statut, tenant)
+                  Clic → /owner/properties/[lot.property_id]
+SECTION 3       : Documents de gestion (DPE collectif, règlement copro, PV AG, PNO)
+```
+
+Le bail, les quittances, les tickets privatifs et les factures restent sur la
+page du **lot** (`/owner/properties/[lot_id]`), pas sur la page immeuble.
 
 ### Templates
 
