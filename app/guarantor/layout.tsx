@@ -3,10 +3,12 @@ export const dynamic = "force-dynamic";
 
 import { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
+import { checkIdentityGate } from "@/lib/helpers/identity-gate";
 import { getSecondaryRoleManifest } from "@/lib/navigation/secondary-role-manifest";
 import { ErrorBoundary } from "@/components/error-boundary";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
@@ -39,7 +41,8 @@ export default async function GuarantorLayout({ children }: { children: ReactNod
     prenom: string | null;
     nom: string | null;
     avatar_url: string | null;
-  }>(user.id, "id, role, prenom, nom, avatar_url");
+    identity_status: string | null;
+  }>(user.id, "id, role, prenom, nom, avatar_url, identity_status");
 
   if (!profile) {
     redirect("/auth/signin");
@@ -49,6 +52,10 @@ export default async function GuarantorLayout({ children }: { children: ReactNod
   if (profile.role !== "guarantor") {
     redirect(getRoleDashboardUrl(profile.role));
   }
+
+  // Identity Gate — redirige vers l'onboarding si le niveau requis n'est pas atteint
+  const pathname = headers().get("x-pathname") || "/guarantor";
+  checkIdentityGate(pathname, profile.role, profile.identity_status);
 
   return (
     <ErrorBoundary>

@@ -2,9 +2,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
+import { checkIdentityGate } from "@/lib/helpers/identity-gate";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import {
   LayoutDashboard,
@@ -65,11 +67,16 @@ export default async function VendorLayout({
     prenom: string | null;
     nom: string | null;
     avatar_url: string | null;
-  }>(user.id, "id, role, prenom, nom, avatar_url");
+    identity_status: string | null;
+  }>(user.id, "id, role, prenom, nom, avatar_url, identity_status");
 
   if (!profile || profile.role !== "provider") {
     redirect(getRoleDashboardUrl(profile?.role));
   }
+
+  // Identity Gate — redirige vers l'onboarding si le niveau requis n'est pas atteint
+  const pathname = headers().get("x-pathname") || "/provider";
+  checkIdentityGate(pathname, profile.role, profile.identity_status);
 
   const initials =
     [profile.prenom?.[0], profile.nom?.[0]]

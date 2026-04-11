@@ -37,6 +37,7 @@ export class AuthService {
         role: data.role,
         prenom: data.prenom,
         nom: data.nom,
+        telephone: data.telephone,
         turnstileToken: data.turnstileToken,
       }),
     });
@@ -142,17 +143,28 @@ export class AuthService {
     }
   }
 
-  async sendMagicLink(email: string) {
+  async sendMagicLink(email: string, turnstileToken?: string) {
     const normalizedEmail = email.trim().toLowerCase();
-    const redirectUrl = getAuthCallbackUrl();
-    const { error } = await this.supabase.auth.signInWithOtp({
-      email: normalizedEmail,
-      options: {
-        emailRedirectTo: redirectUrl,
-      },
+    // SOTA 2026: passer par l'API serveur pour bénéficier de :
+    // - Rate limiting
+    // - Turnstile CAPTCHA
+    // - Protection contre l'énumération d'emails
+    const response = await fetch("/api/v1/auth/magic-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: normalizedEmail,
+        turnstileToken,
+      }),
     });
 
-    if (error) throw error;
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      const err = new Error(data.error || "Impossible d'envoyer le lien magique");
+      (err as any).code = data.code;
+      (err as any).status = response.status;
+      throw err;
+    }
   }
 
   async resetPassword(email: string) {

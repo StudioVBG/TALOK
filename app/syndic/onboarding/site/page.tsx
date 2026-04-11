@@ -65,11 +65,15 @@ export default function SyndicOnboardingSitePage() {
           postal_code: form.postal_code,
           city: form.city,
           syndic_type: "benevole",
-          syndic_company_name: syndicProfile.company_name || undefined,
+          syndic_company_name: syndicProfile.raison_sociale || syndicProfile.company_name || undefined,
           syndic_siret: syndicProfile.siret || undefined,
-          syndic_address: syndicProfile.address ? `${syndicProfile.address}, ${syndicProfile.postal_code || ""} ${syndicProfile.city || ""}`.trim() : undefined,
-          syndic_email: syndicProfile.email || undefined,
-          syndic_phone: syndicProfile.phone || undefined,
+          syndic_address: syndicProfile.adresse_siege
+            ? `${syndicProfile.adresse_siege}, ${syndicProfile.code_postal || ""} ${syndicProfile.ville || ""}`.trim()
+            : syndicProfile.address
+            ? `${syndicProfile.address}, ${syndicProfile.postal_code || ""} ${syndicProfile.city || ""}`.trim()
+            : undefined,
+          syndic_email: syndicProfile.email_contact || syndicProfile.email || undefined,
+          syndic_telephone: syndicProfile.telephone || syndicProfile.phone || undefined,
         }),
       });
 

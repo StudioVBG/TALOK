@@ -53,7 +53,7 @@ interface Owner {
   first_name: string;
   last_name: string;
   email: string;
-  phone?: string;
+  telephone?: string;
   type: 'occupant' | 'bailleur';
   unit_ids: string[];
   send_invite: boolean;
@@ -74,7 +74,7 @@ export default function OnboardingOwnersPage() {
     first_name: '',
     last_name: '',
     email: '',
-    phone: '',
+    telephone: '',
     type: 'occupant',
     unit_ids: [],
     send_invite: true
@@ -110,7 +110,7 @@ export default function OnboardingOwnersPage() {
       first_name: '',
       last_name: '',
       email: '',
-      phone: '',
+      telephone: '',
       type: 'occupant',
       unit_ids: [],
       send_invite: true
@@ -128,7 +128,7 @@ export default function OnboardingOwnersPage() {
       first_name: owner.first_name,
       last_name: owner.last_name,
       email: owner.email,
-      phone: owner.phone || '',
+      telephone: owner.telephone || '',
       type: owner.type,
       unit_ids: owner.unit_ids,
       send_invite: owner.send_invite
@@ -519,8 +519,8 @@ export default function OnboardingOwnersPage() {
                 <Label className="text-slate-300">Téléphone</Label>
                 <Input
                   type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  value={formData.telephone}
+                  onChange={(e) => setFormData(prev => ({ ...prev, telephone: e.target.value }))}
                   className="bg-white/5 border-white/10 text-white"
                   placeholder="06 12 34 56 78"
                 />

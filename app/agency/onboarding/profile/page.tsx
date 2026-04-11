@@ -65,9 +65,32 @@ export default function AgencyProfileOnboardingPage() {
         return;
       }
 
+      // Validation SIRET : 14 chiffres exactement (si fourni)
+      const cleanSiret = formData.siret.replace(/\s/g, "");
+      if (cleanSiret && !/^\d{14}$/.test(cleanSiret)) {
+        toast({
+          title: "SIRET invalide",
+          description: "Le SIRET doit comporter exactement 14 chiffres.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Validation code postal (si fourni)
+      if (formData.code_postal && !/^\d{5}$/.test(formData.code_postal)) {
+        toast({
+          title: "Code postal invalide",
+          description: "Le code postal doit comporter 5 chiffres.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
       await apiClient.put("/me/agency-profile", {
         nom_agence: formData.nom_agence,
-        siret: formData.siret || null,
+        siret: cleanSiret || null,
         adresse: formData.adresse || null,
         ville: formData.ville || null,
         code_postal: formData.code_postal || null,

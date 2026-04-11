@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
           role: data.role,
           prenom: data.prenom,
           nom: data.nom,
+          telephone: data.telephone ?? undefined,
         },
         emailRedirectTo: getAuthCallbackUrl(process.env.NEXT_PUBLIC_APP_URL),
       },
@@ -75,33 +76,83 @@ export async function POST(request: NextRequest) {
 
     if (profile) {
       // Create specialized profile based on role (upsert to avoid duplicate key errors)
-      if (data.role === "owner") {
-        await adminClient.from("owner_profiles").upsert(
-          { profile_id: profile.id, type: "particulier" },
-          { onConflict: "profile_id", ignoreDuplicates: true }
-        );
-      } else if (data.role === "tenant") {
-        await adminClient.from("tenant_profiles").upsert(
-          { profile_id: profile.id },
-          { onConflict: "profile_id", ignoreDuplicates: true }
-        );
-      } else if (data.role === "provider") {
-        await adminClient.from("provider_profiles").upsert(
-          { profile_id: profile.id, type_services: [] },
-          { onConflict: "profile_id", ignoreDuplicates: true }
-        );
-      } else if (data.role === "guarantor") {
-        await adminClient.from("guarantor_profiles").upsert(
-          { profile_id: profile.id },
-          { onConflict: "profile_id", ignoreDuplicates: true }
-        );
-      } else if (data.role === "agency") {
-        await adminClient.from("agency_profiles").upsert(
-          { profile_id: profile.id },
-          { onConflict: "profile_id", ignoreDuplicates: true }
-        );
+      // SOTA 2026: chaque rôle a sa table dédiée, upsert idempotent + erreurs loggées
+      // sans bloquer la création du compte auth.
+      try {
+        if (data.role === "owner") {
+          await adminClient.from("owner_profiles").upsert(
+            { profile_id: profile.id, type: "particulier" },
+            { onConflict: "profile_id", ignoreDuplicates: true }
+          );
+        } else if (data.role === "tenant") {
+          await adminClient.from("tenant_profiles").upsert(
+            { profile_id: profile.id },
+            { onConflict: "profile_id", ignoreDuplicates: true }
+          );
+        } else if (data.role === "provider") {
+          await adminClient.from("provider_profiles").upsert(
+            { profile_id: profile.id, type_services: [] },
+            { onConflict: "profile_id", ignoreDuplicates: true }
+          );
+        } else if (data.role === "guarantor") {
+          await adminClient.from("guarantor_profiles").upsert(
+            { profile_id: profile.id },
+            { onConflict: "profile_id", ignoreDuplicates: true }
+          );
+        } else if (data.role === "agency") {
+          // raison_sociale est nullable (cf migration 20260411130100)
+          // Sera renseignée dans /agency/onboarding/profile
+          await adminClient.from("agency_profiles").upsert(
+            { profile_id: profile.id },
+            { onConflict: "profile_id", ignoreDuplicates: true }
+          );
+        } else if (data.role === "syndic") {
+          // Table créée par migration 20260411130200
+          // Champs réglementaires renseignés dans /syndic/onboarding/profile
+          await adminClient.from("syndic_profiles").upsert(
+            { profile_id: profile.id, type_syndic: "professionnel" },
+            { onConflict: "profile_id", ignoreDuplicates: true }
+          );
+        }
+      } catch (specializedError) {
+        console.error("[register] Specialized profile upsert failed:", {
+          role: data.role,
+          profile_id: profile.id,
+          error: specializedError,
+        });
+        // On continue : le profil de base existe déjà, l'utilisateur peut compléter
+        // dans l'onboarding. Un job de réparation peut corriger plus tard.
       }
-      // Note: syndic uses base profile only (no syndic_profiles table yet)
+
+      // B18: Si un locataire s'inscrit normalement et qu'une invitation est en
+      // attente pour son email, la lier automatiquement au profil créé.
+      // Évite le conflit entre "invité via bail" et "inscription normale".
+      if (data.role === "tenant") {
+        try {
+          const { data: pendingInvitations } = await adminClient
+            .from("invitations")
+            .select("id, lease_id, property_id, role")
+            .eq("email", data.email)
+            .is("used_at", null)
+            .gt("expires_at", new Date().toISOString());
+
+          if (pendingInvitations && pendingInvitations.length > 0) {
+            console.info(
+              `[register] Found ${pendingInvitations.length} pending invitation(s) for ${data.email} — will be auto-resolved on next sign-in`
+            );
+            // Marquer le profil pour que le callback post-verify-email
+            // déclenche la résolution des invitations (via tenant onboarding context)
+            await adminClient
+              .from("profiles")
+              .update({
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", profile.id);
+          }
+        } catch (invitationError) {
+          console.warn("[register] Invitation auto-resolve check failed:", invitationError);
+        }
+      }
 
       // Email de bienvenue (fire-and-forget, ne bloque pas l'inscription)
       // Note: Supabase envoie aussi son email de confirmation séparément

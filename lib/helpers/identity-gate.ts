@@ -34,9 +34,16 @@ const ROUTE_GATES: RouteGate[] = [
   { pattern: /^\/tenant\/apply/, required: "document_uploaded", roles: ["tenant"] },
   { pattern: /^\/owner\/payments/, required: "identity_verified", roles: ["owner", "agency"] },
   { pattern: /^\/owner\/inspections\/.*\/(create|sign)/, required: "identity_verified" },
-  // Routes générales ensuite
-  { pattern: /^\/owner/, required: "phone_verified" },
-  { pattern: /^\/tenant/, required: "phone_verified" },
+  { pattern: /^\/agency\/mandates\/.*\/sign/, required: "identity_verified", roles: ["agency"] },
+  { pattern: /^\/syndic\/assemblies\/.*\/sign/, required: "identity_verified", roles: ["syndic"] },
+  // Routes générales (niveau minimum requis pour accéder au dashboard)
+  // Les pages d'onboarding sont exclues (pas de gate sur /*/onboarding)
+  { pattern: /^\/owner(?!\/onboarding)/, required: "phone_verified" },
+  { pattern: /^\/tenant(?!\/onboarding)/, required: "phone_verified" },
+  { pattern: /^\/agency(?!\/onboarding)/, required: "phone_verified", roles: ["agency"] },
+  { pattern: /^\/provider(?!\/onboarding)/, required: "phone_verified", roles: ["provider"] },
+  { pattern: /^\/syndic(?!\/onboarding)/, required: "phone_verified", roles: ["syndic"] },
+  { pattern: /^\/guarantor(?!\/onboarding)/, required: "phone_verified", roles: ["guarantor"] },
 ];
 
 const STATUS_ORDER: IdentityStatus[] = [
@@ -54,9 +61,17 @@ function meetsRequirement(current: IdentityStatus, required: RequiredLevel): boo
   return STATUS_ORDER.indexOf(current) >= STATUS_ORDER.indexOf(required);
 }
 
-function getRedirectPath(status: IdentityStatus): string {
+function getRedirectPath(status: IdentityStatus, role?: string): string {
+  // La page /onboarding/phone est mutualisée pour tous les rôles.
+  // Elle lit le rôle du profil et propose le parcours approprié.
   if (status === "unverified") return "/onboarding/phone";
-  if (status === "phone_verified") return "/onboarding/profile";
+  if (status === "phone_verified") {
+    // Rediriger vers l'onboarding spécifique du rôle plutôt que /onboarding/profile
+    if (role && ["owner", "tenant", "provider", "guarantor", "agency", "syndic"].includes(role)) {
+      return `/${role}/onboarding/profile`;
+    }
+    return "/onboarding/profile";
+  }
   if (status === "document_uploaded" || status === "identity_review") return "/onboarding/pending";
   if (status === "identity_rejected") return "/onboarding/rejected";
   return "/onboarding";
@@ -82,7 +97,7 @@ export function checkIdentityGate(
   if (!gate) return;
 
   if (!meetsRequirement(status, gate.required)) {
-    const target = getRedirectPath(status);
+    const target = getRedirectPath(status, role);
     redirect(`${target}?from=${encodeURIComponent(pathname)}`);
   }
 }

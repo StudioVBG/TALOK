@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -94,6 +94,8 @@ function AccountCreationContent() {
   const [lastAutosave, setLastAutosave] = useState<Date | null>(null);
   const [emailSent, setEmailSent] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  // SOTA 2026: protection anti double-clic indépendante du state async
+  const isSubmittingRef = useRef(false);
 
   // Guard: useSearchParams() peut retourner null pendant le SSR sans Suspense boundary
   const role = (searchParams?.get("role") ?? null) as UserRole | null;
@@ -227,6 +229,9 @@ function AccountCreationContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Anti double-clic: bloquer si déjà en cours d'envoi
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setLoading(true);
     track("signup_form_submitted", { role });
 
@@ -267,7 +272,7 @@ function AccountCreationContent() {
       }
 
       if (draft.useMagicLink) {
-        await authService.sendMagicLink(validated.email);
+        await authService.sendMagicLink(validated.email, turnstileToken || undefined);
         setEmailSent(true);
         track("signup_completed", { role, method: "magic_link" });
 
@@ -343,6 +348,7 @@ function AccountCreationContent() {
       }
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
   };
 

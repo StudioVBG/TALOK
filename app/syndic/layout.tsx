@@ -7,9 +7,11 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
+import { checkIdentityGate } from "@/lib/helpers/identity-gate";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
@@ -57,9 +59,9 @@ export default async function SyndicLayout({
   }
 
   // 2. Récupérer le profil (avec fallback service role en cas de récursion RLS)
-  const { profile } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null }>(
+  const { profile } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null; identity_status: string | null }>(
     user.id,
-    "id, role, prenom, nom"
+    "id, role, prenom, nom, identity_status"
   );
 
   if (!profile) {
@@ -71,6 +73,10 @@ export default async function SyndicLayout({
   if (!allowedRoles.includes(profile.role)) {
     redirect(getRoleDashboardUrl(profile.role));
   }
+
+  // 3.bis Identity Gate — redirige vers l'onboarding si le niveau requis n'est pas atteint
+  const pathname = headers().get("x-pathname") || "/syndic";
+  checkIdentityGate(pathname, profile.role, profile.identity_status);
 
   // 4. Rendre le layout - SOTA 2026: Thème light unifié + breakpoint lg
   return (
