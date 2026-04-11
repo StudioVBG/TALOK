@@ -70,32 +70,53 @@ export async function POST(
 
     // Récupérer la facture — service client pour bypasser RLS ; l'autorisation
     // est vérifiée manuellement ci-dessous via owner_id.
+    //
+    // Étape 1 : lecture "plate" de l'invoice. Si le résultat est null, c'est
+    // que l'id n'existe pas — 404 légitime. Si une erreur est renvoyée, on
+    // remonte un 500 détaillé plutôt que de masquer la cause derrière un
+    // faux 404 (bug historique : un échec schema-cache / RLS / FK cassé
+    // donnait un 404 "Facture non trouvée" impossible à diagnostiquer côté
+    // front).
     const { data: invoice, error: invoiceError } = await serviceClient
       .from("invoices")
-      .select(`
-        *,
-        lease:leases(
-          id,
-          property:properties(
-            owner_id,
-            adresse_complete
-          )
-        )
-      `)
+      .select("*")
       .eq("id", invoiceId)
       .maybeSingle();
 
-    if (invoiceError || !invoice) {
-      if (invoiceError) {
-        console.error("[mark-paid] Erreur lecture facture:", invoiceError);
-      }
+    if (invoiceError) {
+      console.error("[mark-paid] Erreur lecture facture:", invoiceError);
+      return NextResponse.json(
+        {
+          error: `Erreur lecture facture: ${invoiceError.message}`,
+          code: invoiceError.code ?? null,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!invoice) {
       return NextResponse.json(
         { error: "Facture non trouvée" },
         { status: 404 }
       );
     }
 
+    // Étape 2 : résoudre l'owner + l'adresse via lease→property en
+    // requête séparée. Si le bail ou la property sont orphelins, on retombe
+    // sur `invoice.owner_id` dénormalisé sans renvoyer de 500. Le champ
+    // d'adresse alimente les événements outbox plus bas.
+    let ownerFromLease: string | null = null;
+    let propertyAddress: string | null = null;
     const invoiceData = invoice as any;
+    if (invoiceData.lease_id) {
+      const { data: leaseRow } = await serviceClient
+        .from("leases")
+        .select("property:properties(owner_id, adresse_complete)")
+        .eq("id", invoiceData.lease_id)
+        .maybeSingle();
+      ownerFromLease = (leaseRow as any)?.property?.owner_id ?? null;
+      propertyAddress = (leaseRow as any)?.property?.adresse_complete ?? null;
+    }
 
     // Vérifier les permissions via service client (évite 42P17 sur profiles)
     const { data: profile } = await serviceClient
@@ -108,7 +129,6 @@ export async function POST(
     const isAdmin = profileData?.role === "admin";
     // `owner_id` est dénormalisé sur invoices — le chemin lease→property sert
     // de defense-in-depth au cas où la dénormalisation n'aurait pas eu lieu.
-    const ownerFromLease = invoiceData.lease?.property?.owner_id;
     const invoiceOwnerId = invoiceData.owner_id ?? ownerFromLease;
     const isOwner = !!profileData?.id && invoiceOwnerId === profileData.id;
 
@@ -266,7 +286,7 @@ export async function POST(
           tenant_id: (tenantProfile as any)?.user_id || null,
           amount: paymentAmount,
           periode: invoiceData.periode,
-          property_address: invoiceData.lease?.property?.adresse_complete || null,
+          property_address: propertyAddress,
           receipt_generated: !!receiptDocumentId,
         },
       },
@@ -279,7 +299,7 @@ export async function POST(
           tenant_name: tenantDisplayName,
           amount: paymentAmount,
           periode: invoiceData.periode,
-          property_address: invoiceData.lease?.property?.adresse_complete || null,
+          property_address: propertyAddress,
         },
       },
     ];
@@ -302,24 +322,43 @@ export async function POST(
       });
     }
 
-    await serviceClient.from("outbox").insert(outboxEvents as any);
+    // Outbox + audit_log : non bloquants. Une insertion échouée ne doit
+    // JAMAIS faire retourner 500 alors que le paiement est déjà enregistré
+    // en base (sinon le front affiche "Erreur serveur" et l'utilisateur
+    // retente → doublon).
+    const { error: outboxError } = await serviceClient
+      .from("outbox")
+      .insert(outboxEvents as any);
+    if (outboxError) {
+      console.error(
+        "[mark-paid] Outbox insert failed (non bloquant):",
+        outboxError,
+      );
+    }
 
-    // Journaliser
-    await serviceClient.from("audit_log").insert({
-      user_id: user.id,
-      action: "invoice_marked_paid",
-      entity_type: "invoice",
-      entity_id: invoiceId,
-      metadata: {
-        lease_id: invoiceData.lease_id,
-        payment_id: payment?.id,
-        amount: paymentAmount,
-        payment_method: paymentMethod,
-        reference,
-        bank_name,
-        notes,
-      },
-    } as any);
+    const { error: auditError } = await serviceClient
+      .from("audit_log")
+      .insert({
+        user_id: user.id,
+        action: "invoice_marked_paid",
+        entity_type: "invoice",
+        entity_id: invoiceId,
+        metadata: {
+          lease_id: invoiceData.lease_id,
+          payment_id: payment?.id,
+          amount: paymentAmount,
+          payment_method: paymentMethod,
+          reference,
+          bank_name,
+          notes,
+        },
+      } as any);
+    if (auditError) {
+      console.error(
+        "[mark-paid] Audit log insert failed (non bloquant):",
+        auditError,
+      );
+    }
 
     return NextResponse.json({
       success: true,
