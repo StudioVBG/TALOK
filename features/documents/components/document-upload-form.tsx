@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/components/ui/use-toast";
 import { documentsService } from "../services/documents.service";
 import type { DocumentType } from "@/lib/types";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface DocumentUploadFormProps {
   propertyId?: string;
@@ -77,7 +78,7 @@ export function DocumentUploadForm({
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'upload.",
+        description: extractErrorMessage(error, "Une erreur est survenue lors de l'upload."),
         variant: "destructive",
       });
     } finally {

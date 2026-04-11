@@ -10,6 +10,7 @@ import { tenantProfilesService } from "../services/tenant-profiles.service";
 import type { CreateTenantProfileData } from "../services/tenant-profiles.service";
 import type { TenantProfile } from "@/lib/types";
 import { useProfile } from "@/lib/hooks/use-profile";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface TenantProfileFormProps {
   onSuccess?: () => void;
@@ -55,7 +56,7 @@ export function TenantProfileForm({ onSuccess }: TenantProfileFormProps) {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

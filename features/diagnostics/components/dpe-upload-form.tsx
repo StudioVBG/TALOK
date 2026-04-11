@@ -22,6 +22,7 @@ import {
 import { dpeService } from "../services/dpe.service";
 import { useToast } from "@/components/ui/use-toast";
 import { useRouter } from "next/navigation";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface DpeUploadFormProps {
   propertyId: string;
@@ -113,7 +114,7 @@ export function DpeUploadForm({ propertyId, requestId }: DpeUploadFormProps) {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'import.",
+        description: extractErrorMessage(error, "Une erreur est survenue lors de l'import."),
         variant: "destructive",
       });
     } finally {

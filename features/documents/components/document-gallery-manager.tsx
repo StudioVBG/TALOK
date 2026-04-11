@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { documentsService } from "../services/documents.service";
 import type { Document, DocumentType } from "@/lib/types";
 import { Loader2, Upload, ImageIcon, FileText, ArrowUp, ArrowDown, Star, Trash2, AlertCircle } from "lucide-react";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface DocumentGalleryManagerProps {
   propertyId: string;
@@ -138,7 +139,7 @@ export function DocumentGalleryManager({
     } catch (error: unknown) {
       toast({
         title: "Upload impossible",
-        description: error instanceof Error ? error.message : "Une erreur est survenue lors de l'upload.",
+        description: extractErrorMessage(error, "Une erreur est survenue lors de l'upload."),
         variant: "destructive",
       });
     } finally {
@@ -234,7 +235,7 @@ export function DocumentGalleryManager({
     } catch (error: unknown) {
       toast({
         title: "Suppression impossible",
-        description: error instanceof Error ? error.message : "Une erreur est survenue lors de la suppression.",
+        description: extractErrorMessage(error, "Une erreur est survenue lors de la suppression."),
         variant: "destructive",
       });
     }

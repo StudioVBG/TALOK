@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 type LeaseContext = {
   lease: {
@@ -108,7 +109,7 @@ export function SepaMandateSetup({ onSuccess }: SepaMandateSetupProps) {
     } catch (error) {
       toast({
         title: "Échec de la configuration SEPA",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

@@ -42,6 +42,7 @@ import {
 
 import { sendInvoiceAction, updateInvoiceStatusAction } from "../actions/invoices";
 import { invoicesService } from "../services/invoices.service";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // Types
 type InvoiceStatus =
@@ -123,7 +124,7 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
       setOptimisticInvoices((prev) => prev.filter((i) => i.id !== id));
       toast({ title: "Facture supprimée", description: "La facture a été supprimée avec succès." });
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Une erreur est survenue lors de la suppression";
+      const msg = extractErrorMessage(error, "Une erreur est survenue lors de la suppression");
       toast({ title: "Erreur", description: msg, variant: "destructive" });
     } finally {
       setDeletingId(null);

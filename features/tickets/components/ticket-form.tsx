@@ -11,6 +11,7 @@ import { leasesService } from "@/features/leases/services/leases.service";
 import type { CreateTicketData } from "../services/tickets.service";
 import type { TicketPriority, Lease } from "@/lib/types";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface TicketFormProps {
   propertyId?: string;
@@ -58,7 +59,7 @@ export function TicketForm({ propertyId, onSuccess, onCancel }: TicketFormProps)
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

@@ -11,6 +11,7 @@ import type { Document } from "@/lib/types";
 import { TYPE_TO_LABEL } from "@/lib/documents/constants";
 import { formatDateShort } from "@/lib/helpers/format";
 import { CheckCircle, AlertCircle, XCircle, Clock } from "lucide-react";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface DocumentCardProps {
   document: Document;
@@ -36,7 +37,7 @@ export function DocumentCard({ document, onDelete }: DocumentCardProps) {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue lors de la suppression.",
+        description: extractErrorMessage(error, "Une erreur est survenue lors de la suppression."),
         variant: "destructive",
       });
     } finally {

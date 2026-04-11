@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { invoicesService } from "../services/invoices.service";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface GenerateInvoiceFormProps {
   leaseId: string;
@@ -33,7 +34,7 @@ export function GenerateInvoiceForm({ leaseId, onSuccess }: GenerateInvoiceFormP
       });
       onSuccess?.();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue lors de la génération";
+      const errorMessage = extractErrorMessage(error, "Une erreur est survenue lors de la génération");
       toast({
         title: "Erreur",
         description: errorMessage,

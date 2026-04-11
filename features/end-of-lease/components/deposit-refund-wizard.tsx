@@ -31,6 +31,7 @@ import {
   Calculator,
 } from "lucide-react";
 import { formatCurrency } from "@/lib/helpers/format";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface DepositRefundWizardProps {
   leaseId: string;
@@ -235,7 +236,7 @@ export function DepositRefundWizard({
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {

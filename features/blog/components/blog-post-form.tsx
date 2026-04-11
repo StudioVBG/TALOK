@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { blogService } from "../services/blog.service";
 import type { CreateBlogPostData, UpdateBlogPostData } from "../services/blog.service";
 import type { BlogPost } from "@/lib/types";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface BlogPostFormProps {
   post?: BlogPost;
@@ -95,7 +96,7 @@ export function BlogPostForm({ post, onSuccess, onCancel }: BlogPostFormProps) {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

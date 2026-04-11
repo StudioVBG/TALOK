@@ -10,6 +10,7 @@ import { providerProfilesService } from "../services/provider-profiles.service";
 import type { CreateProviderProfileData } from "../services/provider-profiles.service";
 import type { ProviderProfile } from "@/lib/types";
 import { useProfile } from "@/lib/hooks/use-profile";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface ProviderProfileFormProps {
   onSuccess?: () => void;
@@ -84,7 +85,7 @@ export function ProviderProfileForm({ onSuccess }: ProviderProfileFormProps) {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

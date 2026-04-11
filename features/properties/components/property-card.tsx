@@ -27,6 +27,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Trash2, Shield, Sparkles, AlertTriangle } from "lucide-react";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface PropertyCardProps {
   property: Property;
@@ -77,7 +78,7 @@ export function PropertyCard({ property, onRefresh, onRemove }: PropertyCardProp
         title: notFound ? "Déjà supprimé" : "Erreur",
         description: notFound
           ? "Ce logement n'existe plus ou a déjà été supprimé. Liste mise à jour."
-          : error instanceof Error ? error.message : "Une erreur est survenue lors de la suppression.",
+          : extractErrorMessage(error, "Une erreur est survenue lors de la suppression."),
         variant: notFound ? "default" : "destructive",
       });
 

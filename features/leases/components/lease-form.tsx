@@ -13,6 +13,7 @@ import type { Lease, Property, LeaseType } from "@/lib/types";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { getMaxDepotLegal, getMaxDepotMois } from "@/lib/validations/lease-financial";
 import { useAutoSave, DraftBanner } from "@/lib/hooks/use-auto-save";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface LeaseFormProps {
   propertyId?: string;
@@ -133,7 +134,7 @@ export function LeaseForm({ propertyId, lease, onSuccess, onCancel }: LeaseFormP
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

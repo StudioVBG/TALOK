@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Loader2, ShieldCheck, RefreshCw, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * Dictionnaire de traduction des erreurs Stripe en français
@@ -135,7 +136,7 @@ function SetupForm({ onSuccess, onCancel, returnUrl }: PaymentMethodSetupProps) 
       if (error) {
         toast({
           title: "Erreur de paiement",
-          description: translateStripeError(error instanceof Error ? error.message : "Une erreur est survenue"),
+          description: translateStripeError(extractErrorMessage(error)),
           variant: "destructive",
         });
       } else if (setupIntent?.status === "succeeded") {

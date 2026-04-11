@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { motion } from "framer-motion";
 import type { SignatureRequest, SignatureRequestSigner, SignatureRequestStatus, SignerStatus } from "@/lib/signatures/types";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface SignatureRequestCardProps {
   request: SignatureRequest & {
@@ -100,7 +101,7 @@ export function SignatureRequestCard({ request, onSend, onCancel, onRefresh }: S
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {

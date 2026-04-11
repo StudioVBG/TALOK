@@ -27,6 +27,7 @@ import {
   type DiagnosticType,
   type PropertyDiagnostic,
 } from "@/lib/validations/diagnostics";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface DiagnosticFormDialogProps {
   open: boolean;
@@ -125,7 +126,7 @@ export function DiagnosticFormDialog({
     } catch (err) {
       toast({
         title: "Erreur",
-        description: err instanceof Error ? err.message : "Une erreur est survenue",
+        description: extractErrorMessage(err),
         variant: "destructive",
       });
     } finally {

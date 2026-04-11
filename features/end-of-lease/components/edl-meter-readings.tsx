@@ -56,6 +56,7 @@ import type {
   EDLMeterReading,
   OCR_CONFIDENCE_THRESHOLDS,
 } from "@/lib/types/edl-meters";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // ============================================
 // TYPES & INTERFACES
@@ -221,7 +222,7 @@ export function EDLMeterReadings({
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -274,7 +275,7 @@ export function EDLMeterReadings({
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -326,7 +327,7 @@ export function EDLMeterReadings({
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -361,7 +362,7 @@ export function EDLMeterReadings({
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     }

@@ -11,6 +11,7 @@ import { ownerProfilesService } from "../services/owner-profiles.service";
 import type { CreateOwnerProfileData } from "../services/owner-profiles.service";
 import type { OwnerProfile, OwnerType } from "@/lib/types";
 import { useProfile } from "@/lib/hooks/use-profile";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface OwnerProfileFormProps {
   onSuccess?: () => void;
@@ -65,7 +66,7 @@ export function OwnerProfileForm({ onSuccess }: OwnerProfileFormProps) {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

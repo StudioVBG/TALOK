@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { leasesService } from "../services/leases.service";
 import type { Lease } from "@/lib/types";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface LeaseCardProps {
   lease: Lease;
@@ -32,7 +33,7 @@ export function LeaseCard({ lease, onDelete }: LeaseCardProps) {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue lors de la suppression.",
+        description: extractErrorMessage(error, "Une erreur est survenue lors de la suppression."),
         variant: "destructive",
       });
     } finally {

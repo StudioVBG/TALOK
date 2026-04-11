@@ -25,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreVertical } from "lucide-react";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface InvoiceCardProps {
   invoice: Invoice;
@@ -56,7 +57,7 @@ export function InvoiceCard({
       });
       onDelete?.();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue lors de la suppression";
+      const errorMessage = extractErrorMessage(error, "Une erreur est survenue lors de la suppression");
       toast({
         title: "Erreur",
         description: errorMessage,

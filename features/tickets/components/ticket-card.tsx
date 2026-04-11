@@ -10,6 +10,7 @@ import { ticketsService } from "../services/tickets.service";
 import type { Ticket } from "@/lib/types";
 import { formatDateShort } from "@/lib/helpers/format";
 import { Sparkles } from "lucide-react";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface TicketCardProps {
   ticket: Ticket;
@@ -34,7 +35,7 @@ export function TicketCard({ ticket, onDelete }: TicketCardProps) {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue lors de la suppression.",
+        description: extractErrorMessage(error, "Une erreur est survenue lors de la suppression."),
         variant: "destructive",
       });
     } finally {
