@@ -652,106 +652,6 @@ export const emailTemplates = {
   }),
 
   /**
-   * Bienvenue - nouveau compte créé
-   */
-  welcome: (data: {
-    userName: string;
-    role: 'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency';
-    loginUrl: string;
-  }) => {
-    const roleInfo: Record<
-      'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency',
-      { title: string; emoji: string; features: string[] }
-    > = {
-      owner: {
-        title: 'propriétaire',
-        emoji: '🏠',
-        features: [
-          'Gérer vos logements et locataires',
-          'Créer et faire signer des baux en ligne',
-          'Suivre vos loyers et paiements',
-          'Gérer la maintenance via des tickets',
-        ],
-      },
-      tenant: {
-        title: 'locataire',
-        emoji: '🔑',
-        features: [
-          'Consulter et signer vos baux',
-          'Payer votre loyer en ligne',
-          'Télécharger vos quittances',
-          'Signaler des problèmes de maintenance',
-        ],
-      },
-      provider: {
-        title: 'prestataire',
-        emoji: '🔧',
-        features: [
-          "Recevoir des demandes d'intervention",
-          'Gérer vos devis et factures',
-          'Suivre vos missions en cours',
-        ],
-      },
-      guarantor: {
-        title: 'garant',
-        emoji: '🤝',
-        features: [
-          'Vérifier votre identité en quelques clics',
-          'Signer électroniquement votre acte de cautionnement',
-          'Suivre le bail garanti en temps réel',
-        ],
-      },
-      syndic: {
-        title: 'syndic de copropriété',
-        emoji: '🏢',
-        features: [
-          'Gérer immeubles, lots et tantièmes',
-          'Convoquer et animer vos assemblées générales',
-          'Suivre les charges et les appels de fonds',
-          'Communiquer avec les copropriétaires',
-        ],
-      },
-      agency: {
-        title: 'agence immobilière',
-        emoji: '🏢',
-        features: [
-          'Centraliser mandats et biens gérés',
-          'Inviter votre équipe et assigner les dossiers',
-          'Automatiser loyers, quittances et relances',
-          'Offrir un espace en marque blanche à vos clients',
-        ],
-      },
-    };
-
-    const info = roleInfo[data.role];
-
-    return {
-      subject: `${info.emoji} Bienvenue sur Talok !`,
-      html: baseLayout(`
-        <div class="content">
-          <div style="text-align: center; margin-bottom: 24px;">
-            <span style="font-size: 48px;">${info.emoji}</span>
-          </div>
-
-          <h1 style="text-align: center;">Bienvenue ${escapeHtml(data.userName)} !</h1>
-          <p style="text-align: center;">Votre compte ${info.title} a été créé avec succès.</p>
-
-          <div class="divider"></div>
-
-          <p>Avec Talok, vous pouvez :</p>
-          <ul style="color: ${COLORS.gray[700]};">
-            ${info.features.map(f => `<li>${f}</li>`).join('')}
-          </ul>
-
-          <div style="text-align: center;">
-            <a href="${data.loginUrl}" class="button">Accéder à mon espace</a>
-          </div>
-        </div>
-      `, `Bienvenue sur Talok, votre espace ${info.title} est prêt.`),
-    };
-  },
-
-  /**
    * Réinitialisation de mot de passe
    */
   passwordReset: (data: {
@@ -1254,11 +1154,14 @@ export const emailTemplates = {
    */
   welcomeOnboarding: (data: {
     userName: string;
-    role: 'owner' | 'tenant' | 'provider' | 'guarantor';
+    role: 'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency';
     onboardingUrl: string;
     supportEmail?: string;
   }) => {
-    const roleConfig = {
+    const roleConfig: Record<
+      'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency',
+      { emoji: string; title: string; steps: string[]; benefits: string[] }
+    > = {
       owner: {
         emoji: '🏠',
         title: 'propriétaire',
@@ -1319,6 +1222,38 @@ export const emailTemplates = {
           'Processus 100% dématérialisé',
           'Signature électronique sécurisée',
           'Suivi du bail en temps réel',
+        ],
+      },
+      syndic: {
+        emoji: '🏢',
+        title: 'syndic de copropriété',
+        steps: [
+          'Configurez votre cabinet et votre site',
+          'Ajoutez vos immeubles, lots et tantièmes',
+          'Importez vos copropriétaires',
+          'Lancez votre première assemblée générale',
+        ],
+        benefits: [
+          'Gestion centralisée des copropriétés',
+          'Convocations et PV automatisés',
+          'Suivi des charges et appels de fonds',
+          'Communication simplifiée avec les copropriétaires',
+        ],
+      },
+      agency: {
+        emoji: '🏢',
+        title: 'agence immobilière',
+        steps: [
+          'Configurez votre agence (SIRET, logo, équipe)',
+          'Enregistrez vos mandats de gestion',
+          'Invitez vos collaborateurs',
+          'Offrez un espace en marque blanche à vos clients',
+        ],
+        benefits: [
+          'Tableau de bord multi-mandats',
+          'Automatisation des loyers et quittances',
+          'Comptes clients et reporting CRG',
+          'Marque blanche personnalisable',
         ],
       },
     };

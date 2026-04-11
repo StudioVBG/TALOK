@@ -486,17 +486,33 @@ export async function sendPropertyInvitation(data: {
 }
 
 /**
- * Envoie un email de bienvenue
+ * Envoie un email de bienvenue avec guide d'onboarding par rôle.
+ *
+ * Utilise le template `welcomeOnboarding` (steps numérotés + bénéfices) et
+ * redirige l'utilisateur vers la première étape de son parcours.
  */
 export async function sendWelcomeEmail(data: {
   userEmail: string;
   userName: string;
   role: 'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency';
 }): Promise<EmailResult> {
-  const template = emailTemplates.welcome({
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr';
+
+  // Première étape d'onboarding par rôle (cohérent avec /auth/callback)
+  const onboardingPath: Record<typeof data.role, string> = {
+    owner: '/signup/plan?role=owner',
+    tenant: '/tenant/onboarding/context',
+    provider: '/provider/onboarding/profile',
+    guarantor: '/guarantor/onboarding/context',
+    syndic: '/syndic/onboarding/profile',
+    agency: '/agency/onboarding/profile',
+  };
+
+  const template = emailTemplates.welcomeOnboarding({
     userName: data.userName,
     role: data.role,
-    loginUrl: `${process.env.NEXT_PUBLIC_APP_URL}/auth/signin`,
+    onboardingUrl: `${appUrl}${onboardingPath[data.role]}`,
+    supportEmail: 'support@talok.fr',
   });
 
   return sendEmail({

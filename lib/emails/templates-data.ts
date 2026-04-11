@@ -487,21 +487,9 @@ export function generateEmailTemplatesData(): EmailTemplate[] {
   // ============================================
   // COMPTE
   // ============================================
-
-  const welcome = emailTemplates.welcome({
-    userName: PREVIEW_DATA.userName,
-    role: "owner",
-    loginUrl: PREVIEW_DATA.loginUrl,
-  });
-  templates.push({
-    id: "welcome",
-    name: "Bienvenue (Simple)",
-    description: "Email de bienvenue simple après création de compte",
-    category: "account",
-    subject: welcome.subject,
-    html: welcome.html,
-    variables: ["userName", "role", "loginUrl"],
-  });
+  // NOTE : l'ancien template `welcome` (version simple) a été supprimé.
+  // Le template de bienvenue utilisé à l'inscription est `welcomeOnboarding`
+  // (déclaré plus haut dans ce catalogue).
 
   const passwordReset = emailTemplates.passwordReset({
     userName: PREVIEW_DATA.userName,
