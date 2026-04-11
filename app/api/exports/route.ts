@@ -97,24 +97,24 @@ export async function POST(request: Request) {
       const invoiceId = filters?.invoiceId;
       if (!invoiceId) return NextResponse.json({ error: "invoiceId requis" }, { status: 400 });
 
+      // Les colonnes owner_id / tenant_id existent directement sur invoices :
+      // on évite la jointure imbriquée qui peut être tronquée par RLS.
       const { data: invoice, error } = await supabase
         .from("invoices")
-        .select(`
-          id, periode, montant_total, montant_loyer, montant_charges, statut,
-          lease:leases!inner(
-            property:properties!inner(owner_id)
-          )
-        `)
+        .select("id, periode, montant_total, montant_loyer, montant_charges, statut, owner_id, tenant_id")
         .eq("id", invoiceId)
         .single();
 
       if (error || !invoice) return NextResponse.json({ error: "Facture non trouvée" }, { status: 404 });
 
-      const isOwner = invoice.lease?.property?.owner_id === profile.id;
+      const invAny = invoice as any;
+      const isOwner = invAny.owner_id === profile.id;
+      const isTenant = invAny.tenant_id === profile.id;
       const isAdmin = profile.role === "admin";
-      // Manque check tenant ici, mais simplifié pour l'exemple
 
-      if (!isOwner && !isAdmin) return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+      if (!isOwner && !isTenant && !isAdmin) {
+        return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+      }
 
       dataToExport = [{
         id: invoice.id,
