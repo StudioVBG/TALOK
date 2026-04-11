@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDateShort } from "@/lib/helpers/format";
+import { getRoleColor, getRoleLabel } from "@/lib/helpers/role-labels";
 import { useToast } from "@/components/ui/use-toast";
 
 interface UserProfile {
@@ -51,15 +52,6 @@ interface UserSubscription {
   status: string;
   current_period_end: string | null;
 }
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
-  platform_admin: "Super Admin",
-  owner: "Proprietaire",
-  tenant: "Locataire",
-  provider: "Prestataire",
-  guarantor: "Garant",
-};
 
 export default function AdminUserDetailPage() {
   const params = useParams();
@@ -227,12 +219,8 @@ export default function AdminUserDetailPage() {
                   )}
                 </div>
                 <div>
-                  <Badge className={cn(
-                    user.role === "admin" || user.role === "platform_admin"
-                      ? "bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400"
-                      : "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400"
-                  )}>
-                    {ROLE_LABELS[user.role] || user.role}
+                  <Badge className={cn(getRoleColor(user.role))}>
+                    {getRoleLabel(user.role)}
                   </Badge>
                   {user.suspended && (
                     <Badge variant="destructive" className="ml-2">Suspendu</Badge>
