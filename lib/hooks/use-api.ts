@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient, UseQueryOptions, UseMutationOptions } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * Configuration des clés de cache pour React Query
@@ -143,7 +144,7 @@ export function useApiMutation<TData, TVariables>({
       // Toast d'erreur
       toast({
         title: "Erreur",
-        description: errorMessage || error instanceof Error ? error.message : "Une erreur est survenue",
+        description: errorMessage || extractErrorMessage(error),
         variant: "destructive",
       });
 

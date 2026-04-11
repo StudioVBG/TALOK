@@ -9,6 +9,7 @@
 
 import { useMutation, useMutationState, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface UseMutationWithToastOptions<TData, TVariables, TContext> {
   mutationFn: (variables: TVariables) => Promise<TData>;
@@ -101,7 +102,7 @@ export function useMutationWithToast<TData, TVariables, TContext = unknown>({
       
       toast({
         title: "Erreur",
-        description: message || error instanceof Error ? error.message : "Une erreur est survenue",
+        description: message || extractErrorMessage(error),
         variant: "destructive",
       });
 
