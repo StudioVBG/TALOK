@@ -9,9 +9,25 @@ import { fr } from "date-fns/locale";
 import Link from "next/link";
 
 interface Activity {
-  type: "invoice" | "ticket" | "signature";
+  type: "invoice" | "ticket" | "signature" | "lease";
   title: string;
   date: string;
+  entityId?: string;
+}
+
+function getActivityHref(activity: Activity): string | null {
+  if (!activity.entityId) return null;
+  switch (activity.type) {
+    case "invoice":
+      return `/owner/invoices/${activity.entityId}`;
+    case "ticket":
+      return `/owner/tickets/${activity.entityId}`;
+    case "signature":
+    case "lease":
+      return `/owner/leases/${activity.entityId}`;
+    default:
+      return null;
+  }
 }
 
 interface OwnerRecentActivityProps {
@@ -72,15 +88,10 @@ export function OwnerRecentActivity({ activities }: OwnerRecentActivityProps) {
             const timeAgo = activityDate
               ? formatDistanceToNow(activityDate, { addSuffix: true, locale: fr })
               : "—";
+            const href = getActivityHref(activity);
 
-            return (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className="group flex items-start gap-4 p-2 rounded-lg hover:bg-muted transition-colors"
-              >
+            const content = (
+              <>
                 <div className={`p-2 rounded-full ${config.bgColor}`}>
                   <Icon className={`h-4 w-4 ${config.color}`} />
                 </div>
@@ -94,6 +105,28 @@ export function OwnerRecentActivity({ activities }: OwnerRecentActivityProps) {
                   </p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors mt-1" />
+              </>
+            );
+
+            return (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                {href ? (
+                  <Link
+                    href={href}
+                    className="group flex items-start gap-4 p-2 rounded-lg hover:bg-muted transition-colors"
+                  >
+                    {content}
+                  </Link>
+                ) : (
+                  <div className="group flex items-start gap-4 p-2 rounded-lg hover:bg-muted transition-colors">
+                    {content}
+                  </div>
+                )}
               </motion.div>
             );
           })}

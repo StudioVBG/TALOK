@@ -36,22 +36,21 @@ export class ExportPolicy {
         const invoiceId = filters?.invoiceId;
         if (!invoiceId) return false;
 
-        // Vérifier si owner du bien lié à la facture
+        // Les colonnes owner_id / tenant_id sont présentes directement sur
+        // invoices (cf. migration 20240101000000_initial_schema.sql). On évite
+        // les jointures imbriquées qui peuvent renvoyer null sous RLS.
         const { data: invoice } = await supabase
           .from("invoices")
-          .select(`
-            lease:leases(property:properties(owner_id))
-          `)
+          .select("owner_id, tenant_id")
           .eq("id", invoiceId)
           .single();
 
         if (!invoice) return false;
-        
-        const isOwner = (invoice.lease as any)?.property?.owner_id === profile.id;
-        if (isOwner) return true;
 
-        // Vérifier si locataire du bail lié
-        // TODO: Ajouter check locataire via roommates ou lease_signers
+        const invAny = invoice as any;
+        if (invAny.owner_id === profile.id) return true;
+        if (invAny.tenant_id === profile.id) return true;
+
         return false;
 
       case 'portability':

@@ -529,6 +529,7 @@ export async function GET(request: Request) {
     // 12. Activité récente (agrégation des dernières actions)
     const recentActivity: Array<{
       id: string;
+      entityId: string;
       type: "invoice" | "ticket" | "signature" | "lease";
       title: string;
       description: string;
@@ -544,6 +545,7 @@ export async function GET(request: Request) {
       const statusLabel = inv.statut === "paid" ? "Payée" : inv.statut === "sent" ? "Envoyée" : inv.statut === "draft" ? "Brouillon" : inv.statut;
       recentActivity.push({
         id: `inv-${inv.id}`,
+        entityId: inv.id,
         type: "invoice",
         title: `Facture ${inv.periode}`,
         description: `${Number(inv.montant_total || 0).toLocaleString("fr-FR")} € — ${statusLabel}`,
@@ -557,6 +559,7 @@ export async function GET(request: Request) {
       pendingSignatures.forEach((sig: any) => {
         recentActivity.push({
           id: `sig-${sig.id}`,
+          entityId: sig.lease_id || sig.id,
           type: "signature",
           title: `Signature en attente`,
           description: sig.leases?.properties?.adresse_complete || "Bail en cours",

@@ -46,6 +46,7 @@ export interface OwnerDashboardData {
     type: string;
     title: string;
     date: string;
+    entityId?: string;
   }>;
 }
 
@@ -171,6 +172,7 @@ async function fetchDashboardDirect(
   const recentActivity = [
     ...recentInvoices.map((inv: { id: string; statut: string; periode: string; created_at: string }) => ({
       type: "invoice" as const,
+      entityId: inv.id,
       title: `Facture ${inv.periode} - ${inv.statut === "paid" ? "payée" : inv.statut === "late" ? "en retard" : "envoyée"}`,
       date: inv.created_at,
     })),
@@ -181,6 +183,7 @@ async function fetchDashboardDirect(
       .slice(0, 3)
       .map((t: any) => ({
         type: "ticket" as const,
+        entityId: t.id,
         title: `Ticket ${t.statut === "open" ? "ouvert" : t.statut === "in_progress" ? "en cours" : "résolu"}`,
         date: t.created_at,
       })),
