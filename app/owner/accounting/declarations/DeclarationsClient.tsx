@@ -24,9 +24,19 @@ function DeclarationsContent() {
   const [sendingEc, setSendingEc] = useState(false);
 
   type ExerciseItem = { id: string; start_date: string; end_date: string; status: string };
-  type ExercisesResponse = ExerciseItem[] | { data?: ExerciseItem[] };
+  type ExercisesResponse =
+    | ExerciseItem[]
+    | {
+        data?: ExerciseItem[] | { exercises?: ExerciseItem[] | null } | null;
+        exercises?: ExerciseItem[] | null;
+      }
+    | null
+    | undefined;
   type DeclarationPayload = Record<string, number>;
-  type DeclarationResponse = { data?: DeclarationPayload } & DeclarationPayload;
+  type DeclarationResponse =
+    | ({ data?: DeclarationPayload } & DeclarationPayload)
+    | null
+    | undefined;
 
   const { data: exercises } = useQuery<ExercisesResponse>({
     queryKey: ["exercises", activeEntityId],
@@ -34,10 +44,22 @@ function DeclarationsContent() {
     enabled: !!activeEntityId,
   });
 
-  const exercisesList: ExerciseItem[] = Array.isArray(exercises)
-    ? exercises
-    : (exercises?.data ?? []);
-  const closedExercises = exercisesList.filter((e) => e.status === "closed");
+  // The API returns `{ success: true, data: { exercises: [...] } }`, but we
+  // stay defensive and also accept a bare array or `{ data: [...] }`.
+  const exercisesList: ExerciseItem[] = (() => {
+    if (Array.isArray(exercises)) return exercises;
+    if (!exercises || typeof exercises !== "object") return [];
+    const data = (exercises as { data?: unknown }).data;
+    if (Array.isArray(data)) return data as ExerciseItem[];
+    if (data && typeof data === "object") {
+      const nested = (data as { exercises?: unknown }).exercises;
+      if (Array.isArray(nested)) return nested as ExerciseItem[];
+    }
+    const direct = (exercises as { exercises?: unknown }).exercises;
+    if (Array.isArray(direct)) return direct as ExerciseItem[];
+    return [];
+  })();
+  const closedExercises = (exercisesList ?? []).filter((e) => e.status === "closed");
 
   const declarationType = regime === "micro-foncier" ? "micro-foncier" : regime === "reel-2044" ? "2044" : regime === "reel-2072" ? "2072" : "2042-cpro";
 
@@ -48,17 +70,18 @@ function DeclarationsContent() {
   });
 
   const declData: DeclarationPayload = (() => {
-    if (!declaration) return {};
-    if (declaration.data && typeof declaration.data === "object") {
-      return declaration.data;
+    if (!declaration || typeof declaration !== "object") return {};
+    const payload = declaration as { data?: unknown } & Record<string, unknown>;
+    if (payload.data && typeof payload.data === "object" && !Array.isArray(payload.data)) {
+      return payload.data as DeclarationPayload;
     }
-    const { data: _ignored, ...rest } = declaration;
+    const { data: _ignored, ...rest } = payload;
     return rest as DeclarationPayload;
   })();
 
   // Derive the fiscal year from the selected closed exercise. Fall back to
   // the current calendar year if the exercise cannot be resolved.
-  const selectedExercise = closedExercises.find((e) => e.id === exerciseId);
+  const selectedExercise = (closedExercises ?? []).find((e) => e.id === exerciseId);
   const selectedYear = selectedExercise
     ? parseInt(selectedExercise.start_date.slice(0, 4), 10)
     : new Date().getFullYear();
@@ -180,7 +203,7 @@ function DeclarationsContent() {
           </div>
           <select value={exerciseId} onChange={e => setExerciseId(e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
             <option value="">Selectionnez un exercice cloture</option>
-            {closedExercises.map((ex: { id: string; start_date: string }) => (<option key={ex.id} value={ex.id}>{ex.start_date.slice(0,4)}</option>))}
+            {(closedExercises ?? []).map((ex: { id: string; start_date: string }) => (<option key={ex.id} value={ex.id}>{ex.start_date.slice(0,4)}</option>))}
           </select>
           <button onClick={() => exerciseId && setStep(2)} disabled={!exerciseId} className="w-full bg-primary text-primary-foreground rounded-lg px-4 py-3 text-sm font-medium disabled:opacity-50">Continuer</button>
         </div>
@@ -194,7 +217,7 @@ function DeclarationsContent() {
               <table className="w-full text-sm">
                 <thead><tr className="bg-muted/50"><th className="px-4 py-2 text-left">Ligne</th><th className="px-4 py-2 text-right">Montant</th></tr></thead>
                 <tbody>
-                  {Object.entries(declData).filter(([k]) => k.startsWith("ligne_") || k.startsWith("case_")).map(([key, val]) => (
+                  {Object.entries(declData ?? {}).filter(([k]) => k.startsWith("ligne_") || k.startsWith("case_")).map(([key, val]) => (
                     <tr key={key} className="border-t border-border"><td className="px-4 py-2">{key.replace(/_/g, " ").toUpperCase()}</td><td className="px-4 py-2 text-right font-medium">{formatCents(val)}</td></tr>
                   ))}
                 </tbody>
@@ -222,7 +245,7 @@ function DeclarationsContent() {
           <div className="bg-card rounded-xl border border-border p-4">
             <p className="text-sm text-muted-foreground mb-4">Les montants ci-dessous correspondent aux lignes de votre declaration {declarationType.toUpperCase()}.</p>
             <div className="space-y-2">
-              {Object.entries(declData).map(([key, val]) => (
+              {Object.entries(declData ?? {}).map(([key, val]) => (
                 <div key={key} className="flex justify-between text-sm"><span className="text-muted-foreground">{key.replace(/_/g, " ")}</span><span className="font-medium">{formatCents(val)}</span></div>
               ))}
             </div>
