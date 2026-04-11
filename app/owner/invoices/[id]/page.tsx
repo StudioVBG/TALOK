@@ -242,7 +242,14 @@ export default function InvoiceDetailPage() {
   const status =
     statusConfig[invoice.statut as keyof typeof statusConfig] ?? statusConfig.draft;
   const StatusIcon = status.icon;
-  const resteDu = invoice.montant_total - (invoice.montant_paye || 0);
+  // SOTA: toujours recalculer le total à partir des lignes affichées (loyer +
+  // charges) plutôt que de lire `montant_total` en base. Certaines anciennes
+  // factures ont un `montant_total` désynchronisé quand des lignes ont été
+  // supprimées sans recalcul (cf. facture 2026-01 qui affichait 55€ pour un
+  // détail loyer 20€ + charges 15€ = 35€).
+  const computedTotal =
+    (Number(invoice.montant_loyer) || 0) + (Number(invoice.montant_charges) || 0);
+  const resteDu = Math.max(0, computedTotal - (invoice.montant_paye || 0));
   const isPaid = invoice.statut === "paid";
 
   return (
@@ -332,7 +339,7 @@ export default function InvoiceDetailPage() {
                   <Separator />
                   <div className="flex justify-between items-center py-2">
                     <span className="font-semibold">Total</span>
-                    <span className="font-bold text-lg">{invoice.montant_total.toLocaleString("fr-FR")} €</span>
+                    <span className="font-bold text-lg">{computedTotal.toLocaleString("fr-FR")} €</span>
                   </div>
                   {(invoice.montant_paye ?? 0) > 0 && (
                     <>
@@ -490,7 +497,7 @@ export default function InvoiceDetailPage() {
           onOpenChange={setShowPaymentDialog}
           invoiceId={invoice.id}
           invoiceReference={invoice.reference}
-          amount={resteDu > 0 ? resteDu : invoice.montant_total}
+          amount={resteDu > 0 ? resteDu : computedTotal}
           tenantName={invoice.tenant ? `${invoice.tenant.prenom} ${invoice.tenant.nom}` : "Locataire"}
           ownerName={invoice.owner ? `${invoice.owner.prenom} ${invoice.owner.nom}` : "Propriétaire"}
           propertyAddress={invoice.property?.adresse_complete || ""}

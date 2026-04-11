@@ -1,5 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
+/**
+ * getTickets — SSR fetcher for the owner/tenant/provider tickets list.
+ *
+ * Auth via user-scoped client, DB reads via service client to avoid RLS
+ * recursion (42P17) on profiles/tickets that otherwise silently returns an
+ * empty array (producing the faux "Aucun ticket" empty state).
+ */
 export async function getTickets(role: "owner" | "tenant" | "provider") {
   const supabase = await createClient();
   const {
@@ -7,7 +15,9 @@ export async function getTickets(role: "owner" | "tenant" | "provider") {
   } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data: profile } = await supabase
+  const serviceClient = getServiceClient();
+
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id")
     .eq("user_id", user.id)
@@ -15,7 +25,7 @@ export async function getTickets(role: "owner" | "tenant" | "provider") {
 
   if (!profile) return [];
 
-  let query = supabase
+  let query = (serviceClient as any)
     .from("tickets")
     .select(
       `
@@ -34,36 +44,39 @@ export async function getTickets(role: "owner" | "tenant" | "provider") {
         cout_final,
         provider:profiles!provider_id(id, nom, prenom, telephone)
       )
-    `
+    `,
     )
     .order("created_at", { ascending: false });
 
   if (role === "tenant") {
     query = query.eq("created_by_profile_id", profile.id);
   } else if (role === "owner") {
-    const { data: properties } = await supabase
+    const { data: properties } = await serviceClient
       .from("properties")
       .select("id")
       .eq("owner_id", profile.id);
 
-    const propertyIds = properties?.map((p) => p.id) || [];
+    const propertyIds = (properties || []).map((p) => (p as { id: string }).id);
     if (propertyIds.length === 0) return [];
     query = query.in("property_id", propertyIds);
   } else if (role === "provider") {
     // Tickets assigned directly OR through work_orders
-    const { data: jobs } = await supabase
+    const { data: jobs } = await serviceClient
       .from("work_orders")
       .select("ticket_id")
       .eq("provider_id", profile.id);
 
-    const woTicketIds = jobs?.map((j) => j.ticket_id).filter(Boolean) || [];
+    const woTicketIds =
+      (jobs || [])
+        .map((j) => (j as { ticket_id: string | null }).ticket_id)
+        .filter((id): id is string => Boolean(id)) || [];
 
-    const { data: assigned } = await supabase
+    const { data: assigned } = await serviceClient
       .from("tickets")
       .select("id")
       .eq("assigned_to", profile.id);
 
-    const assignedIds = assigned?.map((t) => t.id) || [];
+    const assignedIds = (assigned || []).map((t) => (t as { id: string }).id);
 
     const allIds = [...new Set([...woTicketIds, ...assignedIds])];
     if (allIds.length === 0) return [];
@@ -73,7 +86,9 @@ export async function getTickets(role: "owner" | "tenant" | "provider") {
   const { data, error } = await query;
 
   if (error) {
-    // RLS infinite recursion (42P17) — return empty gracefully
+    // RLS infinite recursion (42P17) shouldn't happen anymore since we use
+    // the service client, but keep the safety net so any regression surfaces
+    // in logs instead of crashing the SSR render.
     if (error.code === "42P17" || error.message?.includes("infinite recursion")) {
       console.warn("[getTickets] RLS recursion detected, returning empty:", error.message);
       return [];
@@ -86,8 +101,8 @@ export async function getTickets(role: "owner" | "tenant" | "provider") {
 }
 
 export async function getTicketDetails(id: string) {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const serviceClient = getServiceClient();
+  const { data, error } = await (serviceClient as any)
     .from("tickets")
     .select(
       `
@@ -136,7 +151,9 @@ export async function getTicketKPIs() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: profile } = await supabase
+  const serviceClient = getServiceClient();
+
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)
@@ -147,17 +164,18 @@ export async function getTicketKPIs() {
   let propertyIds: string[] = [];
 
   if (profile.role === "owner") {
-    const { data: properties } = await supabase
+    const { data: properties } = await serviceClient
       .from("properties")
       .select("id")
       .eq("owner_id", profile.id);
-    propertyIds = properties?.map((p) => p.id) || [];
+    propertyIds =
+      (properties || []).map((p) => (p as { id: string }).id) || [];
     if (propertyIds.length === 0) return null;
   } else if (profile.role !== "admin") {
     return null;
   }
 
-  let query = supabase
+  let query = (serviceClient as any)
     .from("tickets")
     .select("id, statut, priorite, category, created_at, resolved_at, satisfaction_rating");
 
@@ -165,8 +183,19 @@ export async function getTicketKPIs() {
     query = query.in("property_id", propertyIds);
   }
 
-  const { data: tickets } = await query;
-  if (!tickets) return null;
+  const { data: ticketsRaw } = await query;
+  if (!ticketsRaw) return null;
+
+  type TicketKPIRow = {
+    id: string;
+    statut: string;
+    priorite: string;
+    category: string | null;
+    created_at: string;
+    resolved_at: string | null;
+    satisfaction_rating: number | null;
+  };
+  const tickets = ticketsRaw as TicketKPIRow[];
 
   const open = tickets.filter((t) =>
     ["open", "acknowledged", "assigned", "reopened"].includes(t.statut)
@@ -179,7 +208,7 @@ export async function getTicketKPIs() {
   const resolvedTickets = tickets.filter((t) => t.resolved_at);
   let avgResolutionHours: number | null = null;
   if (resolvedTickets.length > 0) {
-    const totalHours = resolvedTickets.reduce((sum, t) => {
+    const totalHours = resolvedTickets.reduce((sum: number, t) => {
       const created = new Date(t.created_at).getTime();
       const resolvedAt = new Date(t.resolved_at!).getTime();
       return sum + (resolvedAt - created) / (1000 * 60 * 60);
@@ -192,7 +221,8 @@ export async function getTicketKPIs() {
   const avgSatisfaction =
     rated.length > 0
       ? Math.round(
-          (rated.reduce((s, t) => s + t.satisfaction_rating!, 0) / rated.length) * 10
+          (rated.reduce((s: number, t) => s + (t.satisfaction_rating ?? 0), 0) /
+            rated.length) * 10
         ) / 10
       : null;
 

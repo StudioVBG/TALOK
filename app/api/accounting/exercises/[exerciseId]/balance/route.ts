@@ -5,6 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { requireAccountingAccess } from "@/lib/accounting/feature-gates";
 import { getBalance } from "@/lib/accounting/engine";
@@ -14,6 +15,9 @@ export const dynamic = "force-dynamic";
 /**
  * GET /api/accounting/exercises/[exerciseId]/balance?entityId=...
  * Get the balance des comptes for an exercise.
+ *
+ * Auth via user-scoped client, DB reads via service client to avoid RLS
+ * recursion (42P17) on profiles that otherwise produces 500s.
  */
 export async function GET(
   request: Request,
@@ -28,7 +32,8 @@ export async function GET(
       throw new ApiError(401, "Non authentifie");
     }
 
-    const { data: profile } = await supabase
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -48,7 +53,7 @@ export async function GET(
       throw new ApiError(400, "entityId est requis");
     }
 
-    const balance = await getBalance(supabase, entityId, exerciseId);
+    const balance = await getBalance(serviceClient, entityId, exerciseId);
 
     return NextResponse.json({ success: true, data: { balance } });
   } catch (error) {

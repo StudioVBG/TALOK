@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { z } from "zod";
 import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
@@ -58,6 +59,9 @@ const DoubleEntrySchema = z.object({
 /**
  * GET /api/accounting/entries
  * Liste les écritures comptables avec filtrage
+ *
+ * Auth via user-scoped client, DB reads via service client to avoid RLS
+ * recursion (42P17) on profiles that otherwise produces 500s.
  */
 export async function GET(request: Request) {
   try {
@@ -68,7 +72,8 @@ export async function GET(request: Request) {
       throw new ApiError(401, "Non authentifié");
     }
 
-    const { data: profile } = await supabase
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -102,11 +107,12 @@ export async function GET(request: Request) {
     const limit = Math.min(parseInt(searchParams.get("limit") || "100") || 100, MAX_LIMIT);
     const offset = Math.max(parseInt(searchParams.get("offset") || "0") || 0, 0);
 
-    let query = supabase
+    let query = serviceClient
       .from("accounting_entries")
       .select("*", { count: "exact" });
 
-    // Filtrage par rôle
+    // Filtrage par rôle — obligatoire car on utilise le service client qui
+    // bypass RLS. L'enforcement d'accès passe donc par ce filtre explicite.
     if (profile.role !== "admin") {
       query = query.eq("owner_id", profile.id);
     }

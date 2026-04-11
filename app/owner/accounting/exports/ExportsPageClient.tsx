@@ -73,12 +73,18 @@ function ExportsContent() {
 
   // ── Exercise selector ─────────────────────────────────────────────
 
+  // API envelope shape: `{ success, data: { exercises: [...] } }`. Keep the
+  // raw-array fallback so the code is resilient if the shape ever changes.
   const { data: exercises } = useQuery<AccountingExercise[]>({
     queryKey: ["accounting", "exercises", entityId],
-    queryFn: () =>
-      apiClient.get<AccountingExercise[]>(
-        `/accounting/exercises?entityId=${entityId}`
-      ),
+    queryFn: async () => {
+      const response = await apiClient.get<
+        | { success?: boolean; data?: { exercises: AccountingExercise[] } }
+        | AccountingExercise[]
+      >(`/accounting/exercises?entityId=${entityId}`);
+      if (Array.isArray(response)) return response;
+      return response?.data?.exercises ?? [];
+    },
     enabled: !!entityId,
     staleTime: 5 * 60 * 1000,
   });
@@ -98,12 +104,25 @@ function ExportsContent() {
   // ── Balance data (for fiscal recap) ───────────────────────────────
 
   const { data: balance } = useQuery<AccountingBalance | null>({
-    queryKey: ["accounting", "balance", exerciseId],
-    queryFn: () =>
-      apiClient.get<AccountingBalance>(
-        `/accounting/exercises/${exerciseId}/balance`
-      ),
-    enabled: !!exerciseId,
+    queryKey: ["accounting", "balance", exerciseId, entityId],
+    queryFn: async () => {
+      if (!exerciseId || !entityId) return null;
+      const response = await apiClient.get<
+        | { success?: boolean; data?: { balance: AccountingBalance } }
+        | AccountingBalance
+      >(
+        `/accounting/exercises/${exerciseId}/balance?entityId=${encodeURIComponent(entityId)}`,
+      );
+      if (!response) return null;
+      if ("totalDebitCents" in (response as AccountingBalance)) {
+        return response as AccountingBalance;
+      }
+      return (
+        (response as { data?: { balance: AccountingBalance } })?.data?.balance ??
+        null
+      );
+    },
+    enabled: !!exerciseId && !!entityId,
     staleTime: 2 * 60 * 1000,
   });
 
@@ -111,10 +130,19 @@ function ExportsContent() {
 
   const { data: ecAccess, refetch: refetchEC } = useQuery<ECAccess[]>({
     queryKey: ["ec_access", entityId],
-    queryFn: () =>
-      apiClient.get<ECAccess[]>(
-        `/accounting/ec-access?entityId=${entityId}`
-      ),
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get<
+          { success?: boolean; data?: ECAccess[] } | ECAccess[]
+        >(`/accounting/ec-access?entityId=${entityId}`);
+        if (Array.isArray(response)) return response;
+        return response?.data ?? [];
+      } catch (err) {
+        // Endpoint may not exist in all environments — degrade gracefully.
+        console.warn("[ExportsPageClient] ec-access query failed:", err);
+        return [];
+      }
+    },
     enabled: !!entityId,
     staleTime: 5 * 60 * 1000,
   });
