@@ -314,9 +314,11 @@ function AccountCreationContent() {
         router.push(`/signup/verify-email?email=${encodeURIComponent(validated.email)}${role ? `&role=${role}` : ""}`);
       }
     } catch (error: unknown) {
-      const message = (error as Error).message?.toLowerCase() || "";
+      const rawMessage = (error as Error).message || "";
+      const message = rawMessage.toLowerCase();
+      const errorCode = (error as any).code as string | undefined;
 
-      if (message.includes("already registered") || message.includes("already exists") || (error as any).code === "PGRST301") {
+      if (message.includes("already registered") || message.includes("already exists") || errorCode === "EMAIL_EXISTS" || errorCode === "PGRST301") {
         toast({
           title: "Email déjà utilisé",
           description: "Connexion ou réinitialisation nécessaire.",
@@ -328,6 +330,15 @@ function AccountCreationContent() {
           description: "Veuillez patienter avant de réessayer.",
           variant: "destructive",
         });
+      } else if (errorCode === "CAPTCHA_FAILED" || message.includes("anti-spam") || message.includes("captcha") || message.includes("turnstile")) {
+        // Le token Turnstile a expiré ou n'a pas été soumis. On le purge
+        // pour forcer un renouvellement : le user doit re-cocher le widget.
+        setTurnstileToken(null);
+        toast({
+          title: "Vérification anti-spam expirée",
+          description: "Re-validez le CAPTCHA ci-dessous puis réessayez.",
+          variant: "destructive",
+        });
       } else if (message.includes("password") || message.includes("mot de passe")) {
         toast({
           title: "Mot de passe invalide",
@@ -337,7 +348,7 @@ function AccountCreationContent() {
       } else {
         toast({
           title: "Erreur",
-          description: "Impossible de créer le compte. Veuillez réessayer.",
+          description: rawMessage || "Impossible de créer le compte. Veuillez réessayer.",
           variant: "destructive",
         });
       }
@@ -693,7 +704,11 @@ function AccountCreationContent() {
             </div>
           )}
 
-          <TurnstileWidget onSuccess={setTurnstileToken} />
+          <TurnstileWidget
+            onSuccess={setTurnstileToken}
+            onExpire={() => setTurnstileToken(null)}
+            onError={() => setTurnstileToken(null)}
+          />
 
           <Button
             type="submit"
