@@ -268,7 +268,7 @@ export function useInvoiceApi(ownerId: string) {
 
   const sendReminder = useApiMutation({
     mutator: async (invoiceId: string) => {
-      const res = await fetch(`/api/invoices/${invoiceId}/send-reminder`, {
+      const res = await fetch(`/api/invoices/${invoiceId}/remind`, {
         method: "POST",
       });
       if (!res.ok) throw new Error("Erreur");

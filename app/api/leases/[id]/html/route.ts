@@ -30,13 +30,14 @@ export async function GET(
 
     const { data: leaseCheck } = await serviceClient
       .from("leases")
-      .select("sealed_at, signed_pdf_path, property:properties(owner_id, ville)")
+      .select("tenant_id, sealed_at, signed_pdf_path, property:properties(owner_id, ville)")
       .eq("id", leaseId)
       .single();
 
     if (!leaseCheck) return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
 
     const isOwner = (leaseCheck.property as any)?.owner_id === profile.id;
+    const isDirectTenant = (leaseCheck as any).tenant_id === profile.id;
     const { data: signerCheck } = await serviceClient
       .from("lease_signers")
       .select("id")
@@ -45,7 +46,10 @@ export async function GET(
       .maybeSingle();
     const isAdmin = profile.role === "admin";
 
-    if (!isOwner && !signerCheck && !isAdmin) {
+    // Tenants whose bail was created without the e-signature flow are not
+    // in `lease_signers` but are still referenced by `leases.tenant_id` —
+    // allow them to read their own bail HTML via the direct FK.
+    if (!isOwner && !signerCheck && !isDirectTenant && !isAdmin) {
       return NextResponse.json({ error: "Accès non autorisé à ce bail" }, { status: 403 });
     }
 

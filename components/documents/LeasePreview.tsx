@@ -16,6 +16,7 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isSealed, setIsSealed] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -25,8 +26,12 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
   const fetchLeaseHtml = useCallback(async () => {
     try {
       setLoading(true);
+      setFetchError(null);
       const response = await fetch(`/api/leases/${leaseId}/html`);
-      if (!response.ok) throw new Error("Erreur lors de la récupération du bail");
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.error || `HTTP ${response.status}`);
+      }
 
       const data = await response.json();
 
@@ -35,13 +40,18 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
         setIsSealed(true);
         setHtml("");
       } else {
-        setHtml(data.html || "");
+        setHtml(typeof data.html === "string" ? data.html : "");
         setPdfUrl(null);
         setIsSealed(false);
       }
       setIframeKey(prev => prev + 1);
     } catch (error) {
       console.error("LeasePreview Error:", error);
+      const message = error instanceof Error ? error.message : "Erreur inconnue";
+      setFetchError(message);
+      setHtml("");
+      setPdfUrl(null);
+      setIsSealed(false);
       toast({
         title: "Erreur",
         description: "Impossible de charger l'aperçu du bail",
@@ -160,9 +170,24 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
               </div>
             </div>
           ) : (
-            <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
+            <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
               <FileText className="h-8 w-8 text-white/40" />
-              <p className="text-xs text-white/60 mt-2">Aucun aperçu disponible</p>
+              <p className="text-xs text-white/70 mt-2 font-medium">
+                {fetchError ? "Aperçu indisponible" : "Aucun aperçu disponible"}
+              </p>
+              {fetchError && (
+                <p className="text-[10px] text-white/50 mt-1 max-w-xs font-mono">
+                  {fetchError}
+                </p>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={fetchLeaseHtml}
+                className="mt-3 text-white/80 hover:text-white hover:bg-white/10 text-xs h-7"
+              >
+                <RefreshCw className="h-3 w-3 mr-1" /> Réessayer
+              </Button>
             </div>
           )}
         </div>
