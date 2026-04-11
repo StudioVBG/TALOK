@@ -105,90 +105,55 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maxEvents, showToasts]);
 
-  // Charger les données initiales
+  // Charger les données initiales via l'API route (service client côté
+  // serveur pour éviter la récursion RLS 42P17 qui produisait 4x GET 500
+  // quand les queries étaient émises directement depuis le navigateur).
   const fetchInitialData = useCallback(async () => {
     if (!ownerId) return;
-    
+
     setLoading(true);
-    
+
     try {
-      // Récupérer les propriétés du propriétaire
-      const { data: properties } = await supabase
-        .from("properties")
-        .select("id")
-        .eq("owner_id", ownerId);
-      
-      const propertyIds = properties?.map(p => p.id) || [];
-      
-      if (propertyIds.length === 0) {
-        setLoading(false);
+      const res = await fetch("/api/owner/dashboard/counts", {
+        method: "GET",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        console.error(
+          "[useRealtimeDashboard] /api/owner/dashboard/counts",
+          res.status,
+        );
         return;
       }
-      
-      // Récupérer les stats en parallèle
-      // Calculer la période du mois en cours au format YYYY-MM pour le filtre sur invoices
-      const currentPeriod = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-      
-      const [
-        { data: invoices },
-        { data: leases },
-        { data: signers },
-        { data: tickets },
-      ] = await Promise.all([
-        // Factures du mois en cours (utiliser owner_id et periode, pas property_id/created_at)
-        supabase
-          .from("invoices")
-          .select("montant_total, statut")
-          .eq("owner_id", ownerId)
-          .eq("periode", currentPeriod),
-        // Baux actifs
-        supabase
-          .from("leases")
-          .select("id, statut")
-          .in("property_id", propertyIds),
-        // Signatures en attente
-        supabase
-          .from("lease_signers")
-          .select("id, signature_status, lease:leases!inner(property_id)")
-          .eq("signature_status", "pending"),
-        // Tickets ouverts
-        supabase
-          .from("tickets")
-          .select("id, statut")
-          .in("property_id", propertyIds)
-          .in("statut", ["open", "in_progress"]),
-      ]);
-      
-      // Calculer les stats
-      const paidInvoices = invoices?.filter(i => i.statut === "paid") || [];
-      const totalRevenue = paidInvoices.reduce((sum, i) => sum + (i.montant_total || 0), 0);
-      const pendingPayments = invoices?.filter(i => i.statut === "sent" || i.statut === "draft").length || 0;
-      const latePayments = invoices?.filter(i => i.statut === "late").length || 0;
-      const activeLeases = leases?.filter(l => l.statut === "active").length || 0;
-      
-      // Filtrer les signataires pour les propriétés du propriétaire
-      const pendingSignatures = signers?.filter(s => 
-        propertyIds.includes((s.lease as any)?.property_id)
-      ).length || 0;
-      
-      const openTickets = tickets?.length || 0;
-      
-      setData(prev => ({
+
+      const counts = (await res.json()) as {
+        totalRevenue?: number;
+        pendingPayments?: number;
+        latePayments?: number;
+        activeLeases?: number;
+        pendingSignatures?: number;
+        openTickets?: number;
+      };
+
+      setData((prev) => ({
         ...prev,
-        totalRevenue,
-        pendingPayments,
-        latePayments,
-        activeLeases,
-        pendingSignatures,
-        openTickets,
+        totalRevenue: counts.totalRevenue ?? 0,
+        pendingPayments: counts.pendingPayments ?? 0,
+        latePayments: counts.latePayments ?? 0,
+        activeLeases: counts.activeLeases ?? 0,
+        pendingSignatures: counts.pendingSignatures ?? 0,
+        openTickets: counts.openTickets ?? 0,
         lastUpdate: new Date(),
       }));
     } catch (error) {
-      console.error("[useRealtimeDashboard] Error fetching initial data:", error);
+      console.error(
+        "[useRealtimeDashboard] Error fetching initial data:",
+        error,
+      );
     } finally {
       setLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ownerId]);
 
   // Charger les données au montage
