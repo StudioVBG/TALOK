@@ -113,11 +113,27 @@ export async function GET(
 
     const settlement = await getInvoiceSettlement(serviceClient as any, id);
 
+    // Bug 10 : `date_emission` ne doit jamais être postérieure à `date_echeance`.
+    // Quand une facture est créée rétroactivement (cron lancé tardivement), la
+    // base stocke `created_at = now()` mais l'échéance dans le passé. On clamp
+    // `date_emission` à min(date_emission||created_at, date_echeance) pour
+    // afficher des dates cohérentes côté UI.
+    const rawIssued = invoiceAny.date_emission || invoiceAny.created_at || null;
+    const rawDue = invoiceAny.date_echeance || invoiceAny.due_date || null;
+    let normalizedIssued = rawIssued;
+    if (rawIssued && rawDue) {
+      const issuedTs = new Date(rawIssued).getTime();
+      const dueTs = new Date(rawDue).getTime();
+      if (Number.isFinite(issuedTs) && Number.isFinite(dueTs) && issuedTs > dueTs) {
+        normalizedIssued = rawDue;
+      }
+    }
+
     return NextResponse.json({
       invoice: {
         ...invoiceAny,
-        date_echeance: invoiceAny.date_echeance || invoiceAny.due_date || null,
-        date_emission: invoiceAny.date_emission || invoiceAny.created_at || null,
+        date_echeance: rawDue,
+        date_emission: normalizedIssued,
         property: invoiceAny.lease?.property || null,
         payments: payments || [],
         montant_paye: settlement?.totalPaid || 0,

@@ -35,6 +35,11 @@ import { useTenantRealtime } from "@/lib/hooks/use-realtime-tenant";
 import { useTenantPaymentMethodsDisplay } from "@/lib/hooks/use-tenant-payment-methods";
 import { useToast } from "@/components/ui/use-toast";
 import { isInvoicePayableStatus } from "@/lib/payments/tenant-payment-flow";
+import {
+  computeUnpaidStats,
+  computePunctualityScore,
+  getNextUpcomingInvoice,
+} from "@/lib/payments/unpaid-invoices";
 
 interface TenantPaymentsClientProps {
   invoices: any[];
@@ -61,32 +66,32 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
     const now = new Date();
     const lease = dashboard?.lease ?? (dashboard?.leases && dashboard.leases.length > 0 ? dashboard.leases[0] : null);
 
-    // Chercher la prochaine facture non payée parmi les invoices
-    const nextInvoice = [...payableInvoices]
-      .sort((a: any, b: any) => {
-        const dateA = a.date_echeance || a.due_date || a.created_at;
-        const dateB = b.date_echeance || b.due_date || b.created_at;
-        return new Date(dateA).getTime() - new Date(dateB).getTime();
-      })[0];
+    // Source unique : prochaine facture dont la date d'échéance est >= aujourd'hui.
+    // Les factures passées impayées appartiennent à la section "Total à régulariser",
+    // pas à la section "Prochaine échéance" (corrige Bug 4).
+    const nextInvoice = getNextUpcomingInvoice(initialInvoices);
 
     if (nextInvoice) {
-      // Source de vérité : la facture réelle
-      const effectiveDate = nextInvoice.date_echeance || nextInvoice.due_date || nextInvoice.created_at;
+      const effectiveDate =
+        (nextInvoice as any).date_echeance ||
+        (nextInvoice as any).due_date ||
+        (nextInvoice as any).created_at;
       const dueDate = new Date(effectiveDate);
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const diffMs = dueDate.getTime() - today.getTime();
       const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
       return {
         date: dueDate,
-        amount: Number(nextInvoice.montant_total) || 0,
+        amount: Number((nextInvoice as any).montant_total) || 0,
         daysLeft,
         hasLease: !!lease,
-        loyer: Number(nextInvoice.montant_loyer) || 0,
-        charges: Number(nextInvoice.montant_charges) || 0,
+        loyer: Number((nextInvoice as any).montant_loyer) || 0,
+        charges: Number((nextInvoice as any).montant_charges) || 0,
+        invoice: nextInvoice,
       };
     }
 
-    // Fallback : calcul basé sur jour_paiement du bail
+    // Fallback : calcul basé sur jour_paiement du bail si aucune facture future
     const jourPaiement = (lease as any)?.jour_paiement ?? 5;
     let nextDate = new Date(now.getFullYear(), now.getMonth(), jourPaiement);
     if (nextDate <= now) {
@@ -103,8 +108,9 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
       hasLease: !!lease,
       loyer: lease?.loyer ?? 0,
       charges: lease?.charges_forfaitaires ?? 0,
+      invoice: null,
     };
-  }, [dashboard?.lease, dashboard?.leases, payableInvoices]);
+  }, [dashboard?.lease, dashboard?.leases, initialInvoices]);
 
   // SOTA 2026: Temps réel pour synchronisation des factures avec le propriétaire
   const realtime = useTenantRealtime({ showToasts: true, enableSound: false });
@@ -159,43 +165,52 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
     router.refresh(); 
   };
 
-  // Statistiques financières SOTA - score de ponctualité calculé réellement
-  // Exclure les factures initiales (type='initial_invoice') du score de ponctualité
+  // Statistiques financières SOTA — délègue aux helpers centralisés pour
+  // garantir la cohérence avec le dashboard et le bandeau d'actions documents.
   const stats = useMemo(() => {
-    const now = new Date();
-    const unpaid = invoices.filter(i =>
-      i.statut !== 'paid' && i.statut !== 'draft' && i.statut !== 'cancelled' &&
-      (!i.due_date || new Date(i.due_date) <= now)
-    );
-    const totalUnpaid = unpaid.reduce((acc, curr) => acc + (curr.montant_total || 0), 0);
+    // Total à régulariser (Bug 1)
+    const unpaidStats = computeUnpaidStats(invoices);
 
-    // Seules les factures de loyer comptent pour le score de ponctualité
-    const rentInvoices = invoices.filter(i => i.type !== 'initial_invoice' && i.statut !== 'cancelled');
-    const paidRentInvoices = rentInvoices.filter(i => i.statut === 'paid');
-    const paidCount = paidRentInvoices.length;
-    const totalCount = rentInvoices.length;
+    // Score de ponctualité (Bug 5) : null tant qu'aucun paiement n'est enregistré
+    const { score, paidCount, totalCount } = computePunctualityScore(invoices);
 
-    // Calcul du score de ponctualité réel (loyers uniquement)
-    const lateCount = rentInvoices.filter(i => i.statut === 'late' || i.statut === 'overdue' || i.statut === 'unpaid').length;
-    const punctualityScore = totalCount > 0
-      ? Math.round(((totalCount - lateCount) / totalCount) * 100)
-      : null;
-    const punctualityLabel = punctualityScore === null ? "En construction"
-      : punctualityScore >= 90 ? "Excellent"
-      : punctualityScore >= 70 ? "Bon"
-      : punctualityScore >= 50 ? "Moyen"
+    const punctualityLabel = score === null ? "En construction"
+      : score >= 90 ? "Excellent"
+      : score >= 70 ? "Bon"
+      : score >= 50 ? "Moyen"
       : "À améliorer";
 
-    return { totalUnpaid, unpaidCount: unpaid.length, paidCount, punctualityScore, punctualityLabel, totalCount };
+    return {
+      totalUnpaid: unpaidStats.totalAmount,
+      unpaidCount: unpaidStats.count,
+      paidCount,
+      punctualityScore: score,
+      punctualityLabel,
+      totalCount,
+    };
   }, [invoices]);
 
   const filteredInvoices = useMemo(() => {
-    return invoices.filter(inv =>
+    const filtered = invoices.filter(inv =>
       inv.statut !== 'cancelled' && (
         inv.periode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         formatCurrency(inv.montant_total).includes(searchQuery)
       )
     );
+
+    // Bug 6 : tri par date d'échéance descendante (plus récente en haut)
+    // Avant : tri par "periode" alphabétique qui mélangeait passé et futur.
+    return [...filtered].sort((a: any, b: any) => {
+      const dateA = a.date_echeance || a.due_date || a.created_at || a.periode;
+      const dateB = b.date_echeance || b.due_date || b.created_at || b.periode;
+      const tA = new Date(dateA).getTime();
+      const tB = new Date(dateB).getTime();
+      // Si les dates sont invalides, fallback sur periode
+      if (Number.isNaN(tA) || Number.isNaN(tB)) {
+        return (b.periode || "").localeCompare(a.periode || "");
+      }
+      return tB - tA;
+    });
   }, [invoices, searchQuery]);
 
   return (
@@ -314,13 +329,15 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
                 <Button
                   className="rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700"
                   onClick={() => {
-                    const firstPayable = payableInvoices[0];
-                    if (firstPayable) {
-                      setSelectedInvoice(firstPayable);
+                    // Préfère la facture "prochaine échéance" si elle est payable,
+                    // sinon retombe sur la première facture passée impayée.
+                    const target = (nextDue.invoice as any) || payableInvoices[0];
+                    if (target) {
+                      setSelectedInvoice(target);
                       setIsPaymentOpen(true);
                     }
                   }}
-                  disabled={payableInvoices.length === 0}
+                  disabled={!nextDue.invoice && payableInvoices.length === 0}
                 >
                   <CreditCard className="mr-2 h-4 w-4" /> Payer
                 </Button>
@@ -339,7 +356,7 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
               <div className="relative z-10">
                 <p className="text-xs font-bold text-white/50 uppercase tracking-widest mb-1">Total à régulariser</p>
                 <p className="text-4xl font-black">
-                  {formatCurrency(realtime.unpaidAmount > 0 ? realtime.unpaidAmount : stats.totalUnpaid)}
+                  {formatCurrency(stats.totalUnpaid)}
                 </p>
                 <div className="mt-4 flex items-center gap-2">
                   <Badge className={cn("border-none", stats.totalUnpaid > 0 ? "bg-red-500" : "bg-emerald-500")}>

@@ -36,3 +36,15 @@ export {
   type RentPaymentResult,
   type ConnectAccountInfo,
 } from "./rent-collection.service";
+
+export {
+  UNPAID_INVOICE_STATUSES,
+  isInvoiceUnpaid,
+  getInvoiceEffectiveDueDate,
+  computeUnpaidStats,
+  getNextUpcomingInvoice,
+  computePunctualityScore,
+  type InvoiceLike,
+  type UnpaidInvoiceStatus,
+  type UnpaidStats,
+} from "./unpaid-invoices";

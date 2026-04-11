@@ -1,12 +1,8 @@
 import type { InvoiceRow } from "@/lib/supabase/database.types";
 
-type SupabaseLike = {
-  from: (table: string) => {
-    select: (...args: unknown[]) => any;
-    update: (values: Record<string, unknown>) => any;
-    order: (...args: unknown[]) => any;
-  };
-};
+// Type très permissif pour rester compatible avec createClient et getServiceClient
+// (le client réel est utilisé en production, ce type sert uniquement à éviter `any` brut)
+type SupabaseLike = any;
 
 export interface InvoiceSettlement {
   invoice: Pick<InvoiceRow, "id" | "montant_total" | "statut" | "date_paiement"> | null;
@@ -100,6 +96,26 @@ export async function syncInvoiceStatusFromPayments(
       date_paiement: nextPaymentDate,
     })
     .eq("id", invoiceId);
+
+  // Bug 11 : quand une facture est entièrement réglée, on annule les anciens
+  // Payment Intents `pending` orphelins liés à cette facture. Sans ce nettoyage,
+  // l'historique côté propriétaire continue d'afficher "55€ — En attente — Date
+  // non renseignée" alors que la facture est marquée "Payée".
+  if (settlement.isSettled) {
+    try {
+      await supabase
+        .from("payments")
+        .update({ statut: "cancelled" })
+        .eq("invoice_id", invoiceId)
+        .in("statut", ["pending", "processing"]);
+    } catch (cleanupError) {
+      // Non bloquant : la facture est déjà marquée payée, c'est l'essentiel
+      console.warn(
+        "[syncInvoiceStatusFromPayments] Cleanup pending payments failed:",
+        cleanupError
+      );
+    }
+  }
 
   return {
     ...settlement,

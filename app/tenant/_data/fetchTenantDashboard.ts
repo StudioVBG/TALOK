@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { linkOrphanSigners } from "@/features/tenant/services/tenant-linking.service";
+import { computeUnpaidStats } from "@/lib/payments/unpaid-invoices";
 
 // Interface pour un bail avec propriété jointe
 export interface TenantLease {
@@ -654,7 +655,8 @@ async function fetchTenantDashboardDirect(
     };
   });
 
-  const unpaidInvoices = invoices.filter((i) => i.statut === "sent" || i.statut === "late");
+  // Source de vérité unique pour les impayés (cf. lib/payments/unpaid-invoices.ts)
+  const unpaidStats = computeUnpaidStats(invoices);
 
   // kyc_status est sur tenant_profiles, pas sur profiles
   let kycStatus: TenantDashboardData["kyc_status"] = "pending";
@@ -685,8 +687,8 @@ async function fetchTenantDashboardDirect(
       last_expiry_date: insuranceDoc?.expiry_date || undefined,
     },
     stats: {
-      unpaid_amount: unpaidInvoices.reduce((sum, i) => sum + Number(i.montant_total || 0), 0),
-      unpaid_count: unpaidInvoices.length,
+      unpaid_amount: unpaidStats.totalAmount,
+      unpaid_count: unpaidStats.count,
       total_monthly_rent: enrichedLeases.reduce((sum: number, l: any) => sum + Number(l.loyer || 0), 0),
       active_leases_count: enrichedLeases.filter((l: any) => l.statut === "active").length,
     },

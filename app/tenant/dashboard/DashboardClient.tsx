@@ -41,6 +41,10 @@ import {
 } from "lucide-react";
 import { differenceInMonths, differenceInDays } from "date-fns";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
+import {
+  computeUnpaidStats,
+  getNextUpcomingInvoice,
+} from "@/lib/payments/unpaid-invoices";
 import { Badge } from "@/components/ui/badge";
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -271,6 +275,15 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
     return tenantSigner?.signature_status === 'signed' || !!tenantSigner?.signed_at;
   }, [dashboard]);
 
+  // Source de vérité unique : calcul des impayés via helper centralisé.
+  // La RPC `tenant_dashboard` peut renvoyer des stats périmées (filtrées sur
+  // un sous-ensemble de statuts). On recalcule côté client à partir de la
+  // liste complète des factures pour garantir la cohérence avec /tenant/payments.
+  const unpaidSummary = useMemo(
+    () => computeUnpaidStats(dashboard?.invoices ?? []),
+    [dashboard?.invoices]
+  );
+
   // 2. Calcul des actions requises (Command Center)
   const pendingActions = useMemo(() => {
     if (!dashboard) return [];
@@ -292,11 +305,11 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
       });
     }
 
-    // Action 2 : Impayés
-    if (dashboard.stats?.unpaid_amount > 0) {
+    // Action 2 : Impayés (calcul centralisé pour cohérence avec /tenant/payments)
+    if (unpaidSummary.totalAmount > 0) {
       actions.push({
         id: 'payment',
-        label: `Régulariser ${formatCurrency(dashboard.stats.unpaid_amount)}`,
+        label: `Régulariser ${formatCurrency(unpaidSummary.totalAmount)}`,
         icon: CreditCard,
         color: 'text-red-600',
         bg: 'bg-red-50',
@@ -329,7 +342,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
     }
     
     return actions;
-  }, [dashboard, pendingEDLs, hasSignedLease]);
+  }, [dashboard, pendingEDLs, hasSignedLease, unpaidSummary.totalAmount]);
   const primaryPendingAction = pendingActions[0] ?? null;
   const secondaryPendingActions = pendingActions.slice(1, 3);
 
@@ -366,38 +379,29 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
     return { steps, completed, percentage: Math.round((completed / steps) * 100) };
   }, [hasLeaseData, dashboard?.kyc_status, currentLease?.statut, dashboard]);
 
-  // Prochaine échéance basée sur la prochaine invoice non payée (source de vérité)
-  // Fallback : calcul basé sur jour_paiement du bail si aucune invoice n'existe encore
-  // SOTA 2026 / Légal : Seules les vraies factures (sent, late, partial) déclenchent l'affichage
-  // d'un montant à payer. Pas de fallback frontend — la facture initiale est générée par le
-  // trigger DB generate_initial_signing_invoice() quand le bail passe à fully_signed.
+  // Prochaine échéance : la prochaine facture dont la date_echeance est >= aujourd'hui.
+  // Les factures passées impayées appartiennent à la section "impayés", pas ici.
   const nextDue = useMemo(() => {
     if (!currentLease) return null;
     const now = new Date();
 
-    const invoicesList = dashboard?.invoices || [];
-    const nextInvoice = invoicesList
-      .filter((i: any) => ['sent', 'late', 'partial', 'viewed'].includes(i.statut))
-      .sort((a: any, b: any) => {
-        const dateA = a.date_echeance || a.due_date || a.created_at;
-        const dateB = b.date_echeance || b.due_date || b.created_at;
-        return new Date(dateA).getTime() - new Date(dateB).getTime();
-      })[0];
+    const nextInvoice = getNextUpcomingInvoice(dashboard?.invoices ?? []);
+    if (!nextInvoice) return null;
 
-    if (nextInvoice) {
-      const effectiveDate = nextInvoice.date_echeance || nextInvoice.due_date || nextInvoice.created_at;
-      const dueDate = new Date(effectiveDate);
-      const daysLeft = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      return {
-        date: dueDate,
-        amount: Number(nextInvoice.montant_total) || 0,
-        daysLeft,
-        invoiceId: nextInvoice.id,
-      };
-    }
-
-    // Pas de facture réelle à payer — ne pas afficher de montant fictif
-    return null;
+    const effectiveDate =
+      (nextInvoice as any).date_echeance ||
+      (nextInvoice as any).due_date ||
+      (nextInvoice as any).created_at;
+    const dueDate = new Date(effectiveDate);
+    const daysLeft = Math.ceil(
+      (dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    return {
+      date: dueDate,
+      amount: Number((nextInvoice as any).montant_total) || 0,
+      daysLeft,
+      invoiceId: (nextInvoice as any).id,
+    };
   }, [currentLease, dashboard?.invoices]);
 
   if (error) {
@@ -662,7 +666,7 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
               asChild
               className={cn(
                 "h-14 rounded-2xl font-bold text-sm shadow-md transition-all hover:scale-[1.02]",
-                (dashboard.stats?.unpaid_amount > 0 || (nextDue && nextDue.daysLeft <= 7))
+                (unpaidSummary.totalAmount > 0 || (nextDue && nextDue.daysLeft <= 7))
                   ? "bg-primary hover:bg-primary/90 text-white"
                   : "bg-card border border-border text-foreground hover:bg-muted"
               )}
@@ -843,11 +847,14 @@ export function DashboardClient({ serverPendingEDLs = [] }: DashboardClientProps
                       </p>
                     </div>
                     
-                    {(realtime.unpaidAmount > 0 || dashboard.stats?.unpaid_amount > 0) ? (
+                    {unpaidSummary.totalAmount > 0 ? (
                       <div className="mt-6 p-4 rounded-2xl bg-red-50 border border-red-100">
                         <p className="text-xs font-bold text-red-600 uppercase">Impayé en cours</p>
                         <p className="text-2xl font-black text-red-700">
-                          {formatCurrency(realtime.unpaidAmount > 0 ? realtime.unpaidAmount : dashboard.stats?.unpaid_amount)}
+                          {formatCurrency(unpaidSummary.totalAmount)}
+                        </p>
+                        <p className="text-[11px] text-red-600/80 mt-1">
+                          {unpaidSummary.count} facture{unpaidSummary.count > 1 ? "s" : ""} à régulariser
                         </p>
                       </div>
                     ) : (!dashboard.invoices || dashboard.invoices.length === 0) && (currentLease?.statut === 'active' || currentLease?.statut === 'fully_signed') ? (

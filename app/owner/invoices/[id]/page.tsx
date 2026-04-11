@@ -329,6 +329,20 @@ export default function InvoiceDetailPage() {
                     <span className="text-muted-foreground">Charges</span>
                     <span className="font-medium">{invoice.montant_charges.toLocaleString("fr-FR")} €</span>
                   </div>
+                  {/* Bug 9 : afficher le dépôt de garantie comme ligne dédiée
+                      sur les factures initiales (sinon le total ne tombe pas juste). */}
+                  {(() => {
+                    const meta = (invoice as any).metadata || {};
+                    const includesDeposit = meta.includes_deposit === true || meta.includes_deposit === "true";
+                    const depositAmount = Number(meta.deposit_amount || 0);
+                    if (!includesDeposit || depositAmount <= 0) return null;
+                    return (
+                      <div className="flex justify-between items-center py-2">
+                        <span className="text-muted-foreground">Dépôt de garantie</span>
+                        <span className="font-medium">{depositAmount.toLocaleString("fr-FR")} €</span>
+                      </div>
+                    );
+                  })()}
                   <Separator />
                   <div className="flex justify-between items-center py-2">
                     <span className="font-semibold">Total</span>
@@ -380,14 +394,20 @@ export default function InvoiceDetailPage() {
                         <div className="text-right">
                           <Badge
                             className={cn(
-                              payment.statut === "succeeded" && "bg-green-100 text-green-700",
+                              (payment.statut === "succeeded" || payment.statut === "paid") && "bg-green-100 text-green-700",
                               payment.statut === "pending" && "bg-amber-100 text-amber-700",
-                              payment.statut === "failed" && "bg-red-100 text-red-700"
+                              payment.statut === "processing" && "bg-blue-100 text-blue-700",
+                              payment.statut === "failed" && "bg-red-100 text-red-700",
+                              payment.statut === "cancelled" && "bg-gray-100 text-gray-600",
+                              payment.statut === "refunded" && "bg-purple-100 text-purple-700"
                             )}
                           >
-                            {payment.statut === "succeeded" && "Réussi"}
+                            {(payment.statut === "succeeded" || payment.statut === "paid") && "Réussi"}
                             {payment.statut === "pending" && "En attente"}
+                            {payment.statut === "processing" && "En cours"}
                             {payment.statut === "failed" && "Échoué"}
+                            {payment.statut === "cancelled" && "Annulé"}
+                            {payment.statut === "refunded" && "Remboursé"}
                           </Badge>
                           <p className="text-xs text-muted-foreground mt-1">
                             {safeDateFormat(payment.date_paiement)}
