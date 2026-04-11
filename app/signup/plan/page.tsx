@@ -80,11 +80,29 @@ function SignupPlanContent() {
           router.push("/auth/signin");
           return;
         }
-        
+
         // Seuls les propriétaires choisissent un forfait
         if (role !== "owner") {
           router.push(`/${role}/onboarding/profile`);
           return;
+        }
+
+        // B21: Vérifier si le propriétaire a déjà sélectionné un plan
+        // pour éviter le retour en arrière vers /signup/plan
+        try {
+          const subResponse = await fetch("/api/me/subscription-status", {
+            credentials: "include",
+          });
+          if (subResponse.ok) {
+            const { selected_plan_at } = await subResponse.json();
+            if (selected_plan_at) {
+              router.push("/owner/onboarding/profile?from=plan_already_selected");
+              return;
+            }
+          }
+        } catch (subError) {
+          // Non bloquant : si l'endpoint n'existe pas, on laisse l'utilisateur continuer
+          console.warn("[signup/plan] Cannot check existing subscription:", subError);
         }
       } catch (error) {
         console.error("Erreur vérification auth:", error);
@@ -93,7 +111,7 @@ function SignupPlanContent() {
         setCheckingAuth(false);
       }
     };
-    
+
     checkAuth();
   }, [role, router, toast]);
 

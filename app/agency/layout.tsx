@@ -7,8 +7,10 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
+import { checkIdentityGate } from "@/lib/helpers/identity-gate";
 import { ErrorBoundary } from "@/components/error-boundary";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
@@ -38,9 +40,9 @@ export default async function AgencyLayout({
   }
 
   // 2. Récupérer le profil (avec fallback service role en cas de récursion RLS)
-  const { profile } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null }>(
+  const { profile } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null; identity_status: string | null }>(
     user.id,
-    "id, role, prenom, nom"
+    "id, role, prenom, nom, identity_status"
   );
 
   if (!profile) {
@@ -59,6 +61,10 @@ export default async function AgencyLayout({
     };
     redirect(roleRedirects[profile.role] || "/dashboard");
   }
+
+  // 3.bis Identity Gate — redirige vers l'onboarding si le niveau requis n'est pas atteint
+  const pathname = headers().get("x-pathname") || "/agency";
+  checkIdentityGate(pathname, profile.role, profile.identity_status);
 
   // 4. Récupérer les données de l'agence
   const { data: agencyProfile } = await supabase

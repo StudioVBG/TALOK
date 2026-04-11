@@ -9,7 +9,10 @@ import { z } from "zod";
 // ==========================================
 
 export const RegisterSchema = z.object({
-  email: z.string().email("Email invalide"),
+  email: z
+    .string()
+    .email("Email invalide")
+    .transform((val) => val.trim().toLowerCase()),
   password: z
     .string()
     .min(12, "Mot de passe: 12 caractères minimum")
@@ -20,6 +23,14 @@ export const RegisterSchema = z.object({
   role: z.enum(["owner", "tenant", "provider", "guarantor", "syndic", "agency"]),
   prenom: z.string().min(1, "Prénom requis").max(80).regex(/^[\p{L}\s'\-]+$/u, "Caractères non autorisés dans le prénom"),
   nom: z.string().min(1, "Nom requis").max(80).regex(/^[\p{L}\s'\-]+$/u, "Caractères non autorisés dans le nom"),
+  telephone: z
+    .union([
+      z.string().regex(/^\+[1-9]\d{1,14}$/, "Format téléphone invalide (E.164 requis)"),
+      z.string().length(0),
+      z.null(),
+    ])
+    .optional()
+    .transform((val) => (val === "" || val === null ? undefined : val)),
 });
 
 export const LoginSchema = z.object({

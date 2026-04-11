@@ -140,6 +140,11 @@ function RoleChoiceContent() {
     }
   };
 
+  // Feature flag syndic : le module copropriété est en bêta privée.
+  // Activer via NEXT_PUBLIC_SYNDIC_ENABLED=true quand les 14 tables manquantes
+  // seront créées (cf audit syndic Phase 2/8).
+  const syndicEnabled = process.env.NEXT_PUBLIC_SYNDIC_ENABLED === "true";
+
   const roleOptions = [
     {
       role: "owner" as const,
@@ -154,6 +159,8 @@ function RoleChoiceContent() {
         "Encaissement & signature en 1 clic",
       ],
       gradient: "from-blue-400/25 via-blue-500/10 to-transparent",
+      disabled: false,
+      badge: undefined as string | undefined,
     },
     {
       role: "tenant" as const,
@@ -162,6 +169,8 @@ function RoleChoiceContent() {
       icon: Users,
       features: ["Accès docs instantané", "Paiements en ligne", "SAV maintenance 24/7", "Codes d'accès sécurisés"],
       gradient: "from-cyan-300/30 via-cyan-400/10 to-transparent",
+      disabled: false,
+      badge: undefined as string | undefined,
     },
     {
       role: "provider" as const,
@@ -170,6 +179,8 @@ function RoleChoiceContent() {
       icon: Wrench,
       features: ["Planning interventions", "Facturation automatique", "Suivi temps réel", "Paiements sécurisés"],
       gradient: "from-emerald-300/30 via-emerald-400/10 to-transparent",
+      disabled: false,
+      badge: undefined as string | undefined,
     },
     {
       role: "agency" as const,
@@ -178,14 +189,20 @@ function RoleChoiceContent() {
       icon: Building2,
       features: ["Mandats & commissions", "Portefeuille multi-propriétaires", "Pilotage équipe", "Reporting agence"],
       gradient: "from-fuchsia-300/30 via-fuchsia-400/10 to-transparent",
+      disabled: false,
+      badge: undefined as string | undefined,
     },
     {
       role: "syndic" as const,
       title: "Syndic / Copropriété",
-      pitch: "Je gère ma copropriété avec Talok.",
+      pitch: syndicEnabled
+        ? "Je gère ma copropriété avec Talok."
+        : "Module copropriété en bêta privée — contactez-nous.",
       icon: Building2,
       features: ["Gestion des lots & tantièmes", "Assemblées générales", "Appels de fonds", "Suivi des charges"],
       gradient: "from-violet-300/30 via-violet-400/10 to-transparent",
+      disabled: !syndicEnabled,
+      badge: syndicEnabled ? undefined : "Bêta privée",
     },
   ];
 
@@ -212,18 +229,21 @@ function RoleChoiceContent() {
           {roleOptions.map((option, index) => {
             const Icon = option.icon;
             const isActive = selectedRole === option.role;
+            const isDisabled = option.disabled || loading;
             return (
               <motion.div
                 key={option.role}
                 initial={{ opacity: 0, y: 25 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.08, type: "spring", stiffness: 120 }}
-                onMouseEnter={() => setSelectedRole(option.role)}
-                onFocus={() => setSelectedRole(option.role)}
+                onMouseEnter={() => !option.disabled && setSelectedRole(option.role)}
+                onFocus={() => !option.disabled && setSelectedRole(option.role)}
               >
                 <Card
                   className={`relative h-full overflow-hidden border border-white/10 bg-white/5 p-4 text-white shadow-2xl backdrop-blur transition-all duration-300 ${
-                    isActive ? "ring-2 ring-blue-400" : "hover:-translate-y-1 hover:ring-1 hover:ring-white/40"
+                    option.disabled ? "opacity-60" : ""
+                  } ${
+                    isActive && !option.disabled ? "ring-2 ring-blue-400" : !option.disabled ? "hover:-translate-y-1 hover:ring-1 hover:ring-white/40" : ""
                   }`}
                 >
                   <div className={`pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-br ${option.gradient}`} />
@@ -235,6 +255,11 @@ function RoleChoiceContent() {
                         </div>
                         {option.highlight && (
                           <Badge className="bg-white/20 text-white backdrop-blur">{option.highlight}</Badge>
+                        )}
+                        {option.badge && (
+                          <Badge className="bg-amber-500/20 text-amber-100 backdrop-blur border border-amber-400/30">
+                            {option.badge}
+                          </Badge>
                         )}
                       </div>
                       <div>
@@ -252,11 +277,20 @@ function RoleChoiceContent() {
                         ))}
                       </ul>
                       <Button
-                        onClick={() => handleRoleChoice(option.role)}
-                        disabled={loading}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-white text-slate-900 hover:bg-slate-100"
+                        onClick={() => {
+                          if (option.disabled) {
+                            toast({
+                              title: "Bientôt disponible",
+                              description: "Le module copropriété est en bêta privée. Écrivez-nous à support@talok.fr pour un accès anticipé.",
+                            });
+                            return;
+                          }
+                          handleRoleChoice(option.role);
+                        }}
+                        disabled={isDisabled}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-white text-slate-900 hover:bg-slate-100 disabled:cursor-not-allowed"
                       >
-                        Commencer
+                        {option.disabled ? "Nous contacter" : "Commencer"}
                         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                       </Button>
                     </CardContent>
