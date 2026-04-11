@@ -60,25 +60,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDateShort } from "@/lib/helpers/format";
+import {
+  getRoleColor,
+  getRoleLabel,
+  ROLE_OPTIONS,
+} from "@/lib/helpers/role-labels";
 import { useToast } from "@/components/ui/use-toast";
-
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Admin",
-  platform_admin: "Super Admin",
-  owner: "Proprietaire",
-  tenant: "Locataire",
-  provider: "Prestataire",
-  guarantor: "Garant",
-};
-
-const ROLE_COLORS: Record<string, string> = {
-  admin: "bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400",
-  platform_admin: "bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400",
-  owner: "bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400",
-  tenant: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400",
-  provider: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400",
-  guarantor: "bg-slate-100 text-slate-700 dark:bg-slate-500/20 dark:text-slate-400",
-};
 
 export default function AdminUsersPage() {
   const { toast } = useToast();
@@ -185,8 +172,8 @@ export default function AdminUsersPage() {
         </Button>
       </motion.div>
 
-      {/* Stats rapides */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* Stats rapides — statut + total */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className="rounded-xl bg-blue-50 dark:bg-blue-500/10 p-4 text-center">
           <Users className="mx-auto mb-2 h-5 w-5 text-blue-600" />
           <p className="text-2xl font-bold text-blue-700 dark:text-blue-400">{total}</p>
@@ -206,13 +193,65 @@ export default function AdminUsersPage() {
           </p>
           <p className="text-xs text-muted-foreground">Suspendus (page)</p>
         </div>
-        <div className="rounded-xl bg-purple-50 dark:bg-purple-500/10 p-4 text-center">
-          <Shield className="mx-auto mb-2 h-5 w-5 text-purple-600" />
-          <p className="text-2xl font-bold text-purple-700 dark:text-purple-400">
-            {users.filter((u) => u.role === "admin" || u.role === "platform_admin").length}
-          </p>
-          <p className="text-xs text-muted-foreground">Admins (page)</p>
-        </div>
+      </div>
+
+      {/* Répartition par type de compte (sur la page courante) */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+        {[
+          { key: "owner", label: "Propriétaires", icon: Users, color: "blue" },
+          { key: "tenant", label: "Locataires", icon: Users, color: "emerald" },
+          { key: "provider", label: "Prestataires", icon: Users, color: "amber" },
+          { key: "agency", label: "Agences", icon: Users, color: "indigo" },
+          { key: "syndic", label: "Syndics", icon: Users, color: "teal" },
+          { key: "__other", label: "Autres", icon: Shield, color: "slate" },
+        ].map((kpi) => {
+          const KNOWN = ["owner", "tenant", "provider", "agency", "syndic"];
+          const count =
+            kpi.key === "__other"
+              ? users.filter((u) => !KNOWN.includes(u.role)).length
+              : users.filter((u) => u.role === kpi.key).length;
+          const Icon = kpi.icon;
+          return (
+            <div
+              key={kpi.key}
+              className={cn(
+                "rounded-xl p-4 text-center",
+                kpi.color === "blue" && "bg-blue-50 dark:bg-blue-500/10",
+                kpi.color === "emerald" && "bg-emerald-50 dark:bg-emerald-500/10",
+                kpi.color === "amber" && "bg-amber-50 dark:bg-amber-500/10",
+                kpi.color === "indigo" && "bg-indigo-50 dark:bg-indigo-500/10",
+                kpi.color === "teal" && "bg-teal-50 dark:bg-teal-500/10",
+                kpi.color === "slate" && "bg-slate-50 dark:bg-slate-500/10",
+              )}
+            >
+              <Icon
+                className={cn(
+                  "mx-auto mb-2 h-5 w-5",
+                  kpi.color === "blue" && "text-blue-600",
+                  kpi.color === "emerald" && "text-emerald-600",
+                  kpi.color === "amber" && "text-amber-600",
+                  kpi.color === "indigo" && "text-indigo-600",
+                  kpi.color === "teal" && "text-teal-600",
+                  kpi.color === "slate" && "text-slate-600",
+                )}
+              />
+              <p
+                className={cn(
+                  "text-2xl font-bold",
+                  kpi.color === "blue" && "text-blue-700 dark:text-blue-400",
+                  kpi.color === "emerald" && "text-emerald-700 dark:text-emerald-400",
+                  kpi.color === "amber" && "text-amber-700 dark:text-amber-400",
+                  kpi.color === "indigo" && "text-indigo-700 dark:text-indigo-400",
+                  kpi.color === "teal" && "text-teal-700 dark:text-teal-400",
+                  kpi.color === "slate" && "text-slate-700 dark:text-slate-400",
+                )}
+              >
+                {count}
+              </p>
+              <p className="text-xs text-muted-foreground">{kpi.label}</p>
+            </div>
+          );
+        })}
       </div>
 
       {/* Filtres + Tableau */}
@@ -239,16 +278,16 @@ export default function AdminUsersPage() {
             </form>
 
             <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(1); }}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Tous les roles</SelectItem>
-                <SelectItem value="owner">Proprietaires</SelectItem>
-                <SelectItem value="tenant">Locataires</SelectItem>
-                <SelectItem value="provider">Prestataires</SelectItem>
-                <SelectItem value="admin">Admins</SelectItem>
-                <SelectItem value="guarantor">Garants</SelectItem>
+                <SelectItem value="all">Tous les rôles</SelectItem>
+                {ROLE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -304,8 +343,8 @@ export default function AdminUsersPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={cn(ROLE_COLORS[user.role] || "bg-slate-100 text-slate-700")}>
-                          {ROLE_LABELS[user.role] || user.role}
+                        <Badge className={cn(getRoleColor(user.role))}>
+                          {getRoleLabel(user.role)}
                         </Badge>
                       </TableCell>
                       <TableCell>
