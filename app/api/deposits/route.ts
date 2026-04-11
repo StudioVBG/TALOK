@@ -71,21 +71,36 @@ export async function GET(request: Request) {
       )
       .order("created_at", { ascending: false });
 
-    // RBAC
+    // RBAC — PostgREST does not support passing a query builder to `.in()`
+    // as a subquery, so we have to resolve the scope in two short hops.
     if (typedProfile.role === "owner") {
-      query = query.in(
-        "lease_id",
-        serviceClient
-          .from("leases")
-          .select("id")
-          .in(
-            "property_id",
-            serviceClient
-              .from("properties")
-              .select("id")
-              .eq("owner_id", typedProfile.id) as any
-          ) as any
-      );
+      const { data: ownedProperties } = await serviceClient
+        .from("properties")
+        .select("id")
+        .eq("owner_id", typedProfile.id);
+
+      const propertyIds = (ownedProperties || []).map((p: any) => p.id);
+      if (propertyIds.length === 0) {
+        return NextResponse.json({
+          deposits: [],
+          pagination: { page, limit, total: 0 },
+        });
+      }
+
+      const { data: ownedLeases } = await serviceClient
+        .from("leases")
+        .select("id")
+        .in("property_id", propertyIds);
+
+      const leaseIds = (ownedLeases || []).map((l: any) => l.id);
+      if (leaseIds.length === 0) {
+        return NextResponse.json({
+          deposits: [],
+          pagination: { page, limit, total: 0 },
+        });
+      }
+
+      query = query.in("lease_id", leaseIds);
     } else if (typedProfile.role === "tenant") {
       query = query.eq("tenant_id", typedProfile.id);
     } else if (typedProfile.role !== "admin") {
