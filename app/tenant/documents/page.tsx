@@ -241,60 +241,50 @@ export default function TenantDocumentsPage() {
     pendingEDLs,
   });
 
-  // ── Documents clés (4 slots fixes) ──
-  // Ensembles de types (lowercase) — alignés avec la vue SQL v_tenant_key_documents
-  // et le CHECK CONSTRAINT documents.type (qui stocke "EDL_entree" en capitales).
+  // ── Documents clés (3 slots fixes) ──
+  // Whitelist STRICTE alignée avec la vue SQL v_tenant_key_documents et le
+  // CHECK CONSTRAINT documents.type. Tout document dont le type ne fait pas
+  // partie de ces ensembles est explicitement exclu — captures d'écran,
+  // documents "autre", uploads sans type ne peuvent JAMAIS apparaître dans
+  // les Documents essentiels.
   const BAIL_TYPES = useMemo(() => new Set([
-    "bail", "contrat_bail", "contrat", "lease",
-    "avenant", "bail_signe", "bail_signe_locataire", "bail_signe_proprietaire",
+    "bail", "contrat_bail", "bail_signe", "bail_signe_locataire", "bail_signe_proprietaire",
+    "avenant",
   ]), []);
   const QUITTANCE_TYPES = useMemo(() => new Set([
-    "quittance", "quittance_loyer", "receipt",
+    "quittance", "quittance_loyer",
   ]), []);
   const EDL_TYPES = useMemo(() => new Set([
-    "edl_entree", "edl_sortie", "edl", "inventaire",
-    "etat_des_lieux", "etat_lieux",
-  ]), []);
-  const ASSURANCE_TYPES = useMemo(() => new Set([
-    "attestation_assurance", "assurance", "assurance_pno", "assurance_habitation",
+    "edl_entree", "edl_sortie", "inventaire",
   ]), []);
 
   const keyDocuments = useMemo(() => {
-    if (!documents.length) return { bail: null, quittance: null, edl: null, assurance: null };
-
-    // Bug 2 : ne pas considérer les documents sans type valide / "autre" pour
-    // les slots des documents essentiels. Sinon une capture d'écran uploadée
-    // sans type apparaît dans la grille des 4 cards essentielles.
-    const eligible = documents.filter((d: any) => {
-      const rawType = (d.type ?? "").toString().toLowerCase().trim();
-      const detected = (detectType(d) ?? "").toString().toLowerCase().trim();
-      if (!rawType && !detected) return false;
-      if (rawType === "autre" && detected === "autre") return false;
-      return true;
-    });
-
-    const sorted = [...eligible].sort((a, b) => safeTime(b.created_at) - safeTime(a.created_at));
+    if (!documents.length) return { bail: null, quittance: null, edl: null };
 
     let bail: any = null;
     let quittance: any = null;
     let edlEntree: any = null;
-    let assurance: any = null;
+
+    // Tri par date décroissante : on garde le plus récent pour chaque slot
+    const sorted = [...documents].sort(
+      (a, b) => safeTime(b.created_at) - safeTime(a.created_at)
+    );
 
     for (const doc of sorted) {
-      // Comparaison case-insensitive : les DB historiques mélangent "EDL_entree" et "edl_entree".
-      const rawType = (doc.type ?? "").toString().toLowerCase();
-      const detected = (detectType(doc) ?? "").toLowerCase();
-      const matches = (set: Set<string>) => set.has(rawType) || set.has(detected);
+      // Comparaison case-insensitive : la base mélange "EDL_entree" et "edl_entree".
+      const rawType = (doc.type ?? "").toString().toLowerCase().trim();
+      // On regarde UNIQUEMENT le type stocké (pas la détection heuristique
+      // qui peut classer une capture d'écran dans une catégorie par hasard).
+      if (!rawType) continue;
 
-      if (!bail && matches(BAIL_TYPES)) bail = doc;
-      if (!quittance && matches(QUITTANCE_TYPES)) quittance = doc;
-      if (!edlEntree && matches(EDL_TYPES)) edlEntree = doc;
-      if (!assurance && matches(ASSURANCE_TYPES)) assurance = doc;
-      if (bail && quittance && edlEntree && assurance) break;
+      if (!bail && BAIL_TYPES.has(rawType)) bail = doc;
+      else if (!quittance && QUITTANCE_TYPES.has(rawType)) quittance = doc;
+      else if (!edlEntree && EDL_TYPES.has(rawType)) edlEntree = doc;
+      if (bail && quittance && edlEntree) break;
     }
 
-    return { bail, quittance, edl: edlEntree, assurance };
-  }, [documents, BAIL_TYPES, QUITTANCE_TYPES, EDL_TYPES, ASSURANCE_TYPES]);
+    return { bail, quittance, edl: edlEntree };
+  }, [documents, BAIL_TYPES, QUITTANCE_TYPES, EDL_TYPES]);
 
   // ── Filtrage et tri des documents ──
   const filteredDocuments = useMemo(() => {
@@ -554,11 +544,11 @@ export default function TenantDocumentsPage() {
             </div>
           )}
 
-          {/* ═══════ ZONE 2 : DOCUMENTS CLÉS ═══════ */}
+          {/* ═══════ ZONE 2 : DOCUMENTS CLÉS (3 slots stricts) ═══════ */}
           {hasLease && (
             <div className="space-y-3" role="region" aria-label="Documents essentiels">
               <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Documents essentiels</h2>
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-3 md:grid-cols-3">
                 {/* Bail */}
                 {keyDocuments.bail ? (
                   <DocumentCard
@@ -605,7 +595,7 @@ export default function TenantDocumentsPage() {
                   </GlassCard>
                 )}
 
-                {/* EDL d'entrée */}
+                {/* État des lieux (entrée ou sortie) */}
                 {keyDocuments.edl ? (
                   <DocumentCard
                     doc={keyDocuments.edl}
@@ -624,29 +614,6 @@ export default function TenantDocumentsPage() {
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">État des lieux</p>
                       <p className="text-xs text-muted-foreground/70">Pas encore réalisé</p>
-                    </div>
-                  </GlassCard>
-                )}
-
-                {/* Assurance */}
-                {keyDocuments.assurance ? (
-                  <DocumentCard
-                    doc={keyDocuments.assurance}
-                    resolvedType={detectType(keyDocuments.assurance)}
-                    displayTitle={getDocumentDisplayName(keyDocuments.assurance)}
-                    onPreview={handlePreview}
-                    onDownload={handleDownload}
-                    compact
-                    isNew={isRecent(keyDocuments.assurance)}
-                  />
-                ) : (
-                  <GlassCard className="flex items-center gap-4 p-4 border-dashed border-2 border-border bg-muted/30">
-                    <div className="p-2.5 rounded-xl bg-muted shrink-0">
-                      <Shield className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Assurance</p>
-                      <p className="text-xs text-muted-foreground/70">À déposer</p>
                     </div>
                   </GlassCard>
                 )}

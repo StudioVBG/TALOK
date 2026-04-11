@@ -18,13 +18,13 @@ import { DOCUMENT_CONFIG } from "@/lib/documents/document-config";
 /**
  * Formate une date en FR. Retourne "Date inconnue" si la date est nulle,
  * vide, ou invalide — évite les "Invalid Date" visibles à l'utilisateur.
+ *
+ * Accepte plusieurs candidats car certaines vues SQL omettent `created_at`
+ * mais exposent `uploaded_at`/`updated_at`/`metadata.uploaded_at`.
  */
-function formatSafeDocDate(
-  primary: string | null | undefined,
-  fallback?: string | null,
-): string {
-  const candidates = [primary, fallback].filter((s): s is string => !!s && s.length > 0);
+function formatSafeDocDate(...candidates: Array<string | null | undefined>): string {
   for (const c of candidates) {
+    if (!c || typeof c !== "string") continue;
     const d = new Date(c);
     if (!isNaN(d.getTime())) {
       return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" });
@@ -104,7 +104,13 @@ export function DocumentCard({
           <p className="text-sm font-bold text-foreground line-clamp-2" title={displayTitle}>{displayTitle}</p>
           <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
             <Calendar className="h-3 w-3" />
-            {formatSafeDocDate(doc.created_at, doc.uploaded_at ?? doc.updated_at)}
+            {formatSafeDocDate(
+              doc.created_at,
+              doc.uploaded_at,
+              doc.updated_at,
+              doc.metadata?.uploaded_at as string | undefined,
+              doc.metadata?.created_at as string | undefined,
+            )}
           </p>
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -189,7 +195,13 @@ export function DocumentCard({
         <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <Calendar className="h-3.5 w-3.5" />
-            {formatSafeDocDate(doc.created_at, doc.uploaded_at ?? doc.updated_at)}
+            {formatSafeDocDate(
+              doc.created_at,
+              doc.uploaded_at,
+              doc.updated_at,
+              doc.metadata?.uploaded_at as string | undefined,
+              doc.metadata?.created_at as string | undefined,
+            )}
           </div>
           {doc.metadata?.file_size && (
             <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded uppercase font-medium">

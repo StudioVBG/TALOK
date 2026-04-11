@@ -22,6 +22,26 @@ import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { ErrorState } from "@/components/ui/error-state";
 import { useTenantInspections } from "@/lib/hooks/queries/use-tenant-inspections";
 
+/**
+ * Traduction des statuts EDL en français pour l'affichage tenant.
+ * Aligné avec les statuts définis dans la migration
+ * 20260128000001_fix_edl_schema_500.sql.
+ */
+const EDL_STATUS_LABELS: Record<string, string> = {
+  draft: "Brouillon",
+  scheduled: "Planifié",
+  in_progress: "En cours",
+  completed: "Terminé",
+  signed: "Signé",
+  disputed: "Contesté",
+  closed: "Clôturé",
+};
+
+function formatEdlStatusLabel(status: string | null | undefined): string {
+  if (!status) return "—";
+  return EDL_STATUS_LABELS[status] ?? status;
+}
+
 export default function TenantInspectionsPage() {
   const { data: edlList = [], isLoading, error, refetch } = useTenantInspections();
 
@@ -127,8 +147,8 @@ export default function TenantInspectionsPage() {
                             <h3 className="font-bold text-lg text-foreground capitalize">
                               EDL {edl.type === 'entree' ? "d'entrée" : "de sortie"}
                             </h3>
-                            <StatusBadge 
-                              status={edl.needsMySignature ? "À Signer" : edl.status}
+                            <StatusBadge
+                              status={edl.needsMySignature ? "À Signer" : formatEdlStatusLabel(edl.status)}
                               type={edl.needsMySignature ? "warning" : (edl.status === 'signed' ? 'success' : 'info')}
                               className="text-[10px] h-5"
                             />

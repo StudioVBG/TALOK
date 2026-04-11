@@ -32,10 +32,36 @@ export function getDisplayName(filename: string, type?: string | null): string {
 }
 
 /**
+ * Détecte un titre "générique" qui ne mérite pas d'être affiché tel quel.
+ * Couvre "Document", "Document.pdf", "DOCUMENT", "document_1", etc. — qui
+ * apparaissent quand l'upload n'a pas correctement renseigné le titre.
+ */
+function isGenericTitle(value: string | null | undefined): boolean {
+  if (!value) return true;
+  const normalized = value
+    .toLowerCase()
+    .replace(/\.(pdf|jpe?g|png|webp|heic|heif|doc|docx|html?|txt)$/i, "")
+    .replace(/[\s_-]+\d+$/g, "")
+    .trim();
+  if (!normalized) return true;
+  return (
+    normalized === "document" ||
+    normalized === "fichier" ||
+    normalized === "file" ||
+    normalized === "untitled" ||
+    normalized === "sans titre" ||
+    normalized === "sans nom"
+  );
+}
+
+/**
  * Génère un titre lisible à partir d'un objet document complet.
  * Parcourt plusieurs champs candidats dans l'ordre de priorité.
  *
  * Priorité : title → display_name → original_filename → name → metadata → fallback type label
+ *
+ * Les titres "génériques" ("Document", "fichier.pdf", etc.) sont ignorés
+ * pour éviter d'afficher une étiquette inutile à l'utilisateur.
  */
 export function getDocumentDisplayName(doc: {
   title?: string | null;
@@ -53,20 +79,25 @@ export function getDocumentDisplayName(doc: {
     doc.name,
     doc.metadata?.original_name,
     doc.metadata?.title,
-  ].filter((s): s is string => !!s && s.length > 0 && s !== "Document");
+  ].filter((s): s is string => !!s && s.length > 0 && !isGenericTitle(s));
 
   if (candidates.length > 0) {
     return cleanFilename(candidates[0]);
   }
 
-  // Fallback: type label (case-insensitive) + date si disponible
+  // Pas de titre exploitable — privilégier le label du type
   const label = labelForType(doc.type);
   if (label) {
     const date = formatSafeShortDate(doc.created_at);
     return date ? `${label} — ${date}` : label;
   }
 
-  return "Document";
+  // Dernier recours : nom de fichier brut (même générique) ou date
+  if (doc.original_filename) {
+    return cleanFilename(doc.original_filename);
+  }
+  const date = formatSafeShortDate(doc.created_at);
+  return date ? `Document — ${date}` : "Document";
 }
 
 function cleanFilename(name: string): string {
