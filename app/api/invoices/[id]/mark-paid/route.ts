@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { AccountingIntegrationService } from "@/features/accounting/services/accounting-integration.service";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
@@ -13,6 +14,11 @@ import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.ser
  *
  * Utilisé par les propriétaires pour enregistrer un paiement reçu
  * (espèces, chèque, virement manuel, etc.)
+ *
+ * Auth via user-scoped client, DB reads/writes via service client pour
+ * éviter la récursion RLS 42P17 sur profiles/leases/properties qui faisait
+ * remonter `!inner` joins à vide → 404 "Facture non trouvée" pour des
+ * factures pourtant existantes.
  * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
  */
 export async function POST(
@@ -36,6 +42,8 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    const serviceClient = getServiceClient();
+
     const invoiceId = id;
 
     // Récupérer les données optionnelles du body
@@ -48,35 +56,39 @@ export async function POST(
       bank_name?: string;
       notes?: string;
     }
-    
+
     let body: MarkPaidBody = {};
     try {
       body = await request.json();
     } catch {
       // Body vide, c'est OK
     }
-    
+
     // Support both "moyen" and "payment_method" for backward compatibility
     const paymentMethod = body.moyen || body.payment_method || "autre";
     const { reference, bank_name, notes, date_paiement } = body;
 
-    // Récupérer la facture avec vérification d'accès
-    const { data: invoice, error: invoiceError } = await supabase
+    // Récupérer la facture — service client pour bypasser RLS ; l'autorisation
+    // est vérifiée manuellement ci-dessous via owner_id.
+    const { data: invoice, error: invoiceError } = await serviceClient
       .from("invoices")
       .select(`
         *,
-        lease:leases!inner(
+        lease:leases(
           id,
-          property:properties!inner(
+          property:properties(
             owner_id,
             adresse_complete
           )
         )
       `)
       .eq("id", invoiceId)
-      .single();
+      .maybeSingle();
 
     if (invoiceError || !invoice) {
+      if (invoiceError) {
+        console.error("[mark-paid] Erreur lecture facture:", invoiceError);
+      }
       return NextResponse.json(
         { error: "Facture non trouvée" },
         { status: 404 }
@@ -85,8 +97,8 @@ export async function POST(
 
     const invoiceData = invoice as any;
 
-    // Vérifier les permissions
-    const { data: profile } = await supabase
+    // Vérifier les permissions via service client (évite 42P17 sur profiles)
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -94,7 +106,11 @@ export async function POST(
 
     const profileData = profile as any;
     const isAdmin = profileData?.role === "admin";
-    const isOwner = invoiceData.lease?.property?.owner_id === profileData?.id;
+    // `owner_id` est dénormalisé sur invoices — le chemin lease→property sert
+    // de defense-in-depth au cas où la dénormalisation n'aurait pas eu lieu.
+    const ownerFromLease = invoiceData.lease?.property?.owner_id;
+    const invoiceOwnerId = invoiceData.owner_id ?? ownerFromLease;
+    const isOwner = !!profileData?.id && invoiceOwnerId === profileData.id;
 
     if (!isOwner && !isAdmin) {
       return NextResponse.json(
@@ -120,10 +136,10 @@ export async function POST(
     }
 
     // Déterminer le montant (utiliser celui fourni ou le total de la facture)
-    const paymentAmount = body.amount && body.amount > 0 
-      ? body.amount 
+    const paymentAmount = body.amount && body.amount > 0
+      ? body.amount
       : invoiceData.montant_total;
-    
+
     // Créer le paiement avec toutes les métadonnées
     const paymentData: Record<string, unknown> = {
       invoice_id: invoiceId,
@@ -132,7 +148,7 @@ export async function POST(
       date_paiement: date_paiement || new Date().toISOString().split("T")[0],
       statut: "succeeded",
     };
-    
+
     // Ajouter les métadonnées optionnelles si présentes
     // Ces données seront stockées dans provider_ref ou un champ metadata
     if (reference || bank_name || notes) {
@@ -142,10 +158,10 @@ export async function POST(
         notes: notes || null,
       });
     }
-    
-    const { data: payment, error: paymentError } = await supabase
+
+    const { data: payment, error: paymentError } = await serviceClient
       .from("payments")
-      .insert(paymentData)
+      .insert(paymentData as any)
       .select()
       .single();
 
@@ -155,7 +171,7 @@ export async function POST(
     }
 
     const settlement = await syncInvoiceStatusFromPayments(
-      supabase as any,
+      serviceClient as any,
       invoiceId,
       paymentData.date_paiement as string
     );
@@ -168,15 +184,15 @@ export async function POST(
     // INTÉGRATION COMPTABLE
     // =============================================
     try {
-      const accountingService = new AccountingIntegrationService(supabase);
+      const accountingService = new AccountingIntegrationService(serviceClient as any);
 
       // Récupérer les informations nécessaires pour la comptabilité
-      const { data: leaseDetails } = await supabase
+      const { data: leaseDetails } = await serviceClient
         .from("leases")
         .select(`
           id,
           tenant_id,
-          property:properties!inner(
+          property:properties(
             owner_id,
             code_postal,
             adresse_complete
@@ -186,19 +202,19 @@ export async function POST(
         .single();
 
       if (leaseDetails) {
-        const propertyData = leaseDetails.property as any;
+        const propertyData = (leaseDetails as any).property;
 
         await accountingService.recordRentPayment({
           invoiceId,
-          leaseId: leaseDetails.id,
-          ownerId: propertyData.owner_id,
-          tenantId: leaseDetails.tenant_id || "",
+          leaseId: (leaseDetails as any).id,
+          ownerId: propertyData?.owner_id,
+          tenantId: (leaseDetails as any).tenant_id || "",
           periode: invoiceData.periode,
           montantLoyer: invoiceData.montant_loyer || 0,
           montantCharges: invoiceData.montant_charges || 0,
           montantTotal: paymentAmount,
           paymentDate: paymentData.date_paiement as string,
-          propertyCodePostal: propertyData.code_postal || "75000",
+          propertyCodePostal: propertyData?.code_postal || "75000",
         });
 
       }
@@ -210,7 +226,7 @@ export async function POST(
     let receiptDocumentId: string | null = null;
     if (settlement.isSettled && payment?.id) {
       try {
-        const receiptResult = await ensureReceiptDocument(supabase as any, payment.id);
+        const receiptResult = await ensureReceiptDocument(serviceClient as any, payment.id);
         receiptDocumentId = receiptResult?.documentId || null;
       } catch (receiptError) {
         console.error("[mark-paid] Erreur génération quittance:", receiptError);
@@ -224,7 +240,7 @@ export async function POST(
         const { ensureReceiptAccountingEntry } = await import(
           "@/lib/accounting/receipt-entry"
         );
-        await ensureReceiptAccountingEntry(supabase as any, payment.id);
+        await ensureReceiptAccountingEntry(serviceClient as any, payment.id);
       } catch (entryError) {
         console.error(
           "[mark-paid] Écriture comptable (non bloquante):",
@@ -234,12 +250,12 @@ export async function POST(
     }
 
     const [{ data: tenantProfile }, { data: ownerProfile }] = await Promise.all([
-      supabase.from("profiles").select("user_id, prenom, nom").eq("id", invoiceData.tenant_id).maybeSingle(),
-      supabase.from("profiles").select("user_id").eq("id", invoiceData.lease?.property?.owner_id).maybeSingle(),
+      serviceClient.from("profiles").select("user_id, prenom, nom").eq("id", invoiceData.tenant_id).maybeSingle(),
+      serviceClient.from("profiles").select("user_id").eq("id", invoiceOwnerId).maybeSingle(),
     ]);
 
     const tenantDisplayName =
-      `${tenantProfile?.prenom || ""} ${tenantProfile?.nom || ""}`.trim() || "Le locataire";
+      `${(tenantProfile as any)?.prenom || ""} ${(tenantProfile as any)?.nom || ""}`.trim() || "Le locataire";
 
     const outboxEvents: Array<Record<string, unknown>> = [
       {
@@ -247,7 +263,7 @@ export async function POST(
         payload: {
           payment_id: payment?.id,
           invoice_id: invoiceId,
-          tenant_id: tenantProfile?.user_id || null,
+          tenant_id: (tenantProfile as any)?.user_id || null,
           amount: paymentAmount,
           periode: invoiceData.periode,
           property_address: invoiceData.lease?.property?.adresse_complete || null,
@@ -259,7 +275,7 @@ export async function POST(
         payload: {
           payment_id: payment?.id,
           invoice_id: invoiceId,
-          owner_id: ownerProfile?.user_id || null,
+          owner_id: (ownerProfile as any)?.user_id || null,
           tenant_name: tenantDisplayName,
           amount: paymentAmount,
           periode: invoiceData.periode,
@@ -286,10 +302,10 @@ export async function POST(
       });
     }
 
-    await supabase.from("outbox").insert(outboxEvents as any);
+    await serviceClient.from("outbox").insert(outboxEvents as any);
 
     // Journaliser
-    await supabase.from("audit_log").insert({
+    await serviceClient.from("audit_log").insert({
       user_id: user.id,
       action: "invoice_marked_paid",
       entity_type: "invoice",
