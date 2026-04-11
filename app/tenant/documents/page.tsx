@@ -242,6 +242,23 @@ export default function TenantDocumentsPage() {
   });
 
   // ── Documents clés (4 slots fixes) ──
+  // Ensembles de types (lowercase) — alignés avec la vue SQL v_tenant_key_documents
+  // et le CHECK CONSTRAINT documents.type (qui stocke "EDL_entree" en capitales).
+  const BAIL_TYPES = useMemo(() => new Set([
+    "bail", "contrat_bail", "contrat", "lease",
+    "avenant", "bail_signe", "bail_signe_locataire", "bail_signe_proprietaire",
+  ]), []);
+  const QUITTANCE_TYPES = useMemo(() => new Set([
+    "quittance", "quittance_loyer", "receipt",
+  ]), []);
+  const EDL_TYPES = useMemo(() => new Set([
+    "edl_entree", "edl_sortie", "edl", "inventaire",
+    "etat_des_lieux", "etat_lieux",
+  ]), []);
+  const ASSURANCE_TYPES = useMemo(() => new Set([
+    "attestation_assurance", "assurance", "assurance_pno", "assurance_habitation",
+  ]), []);
+
   const keyDocuments = useMemo(() => {
     if (!documents.length) return { bail: null, quittance: null, edl: null, assurance: null };
 
@@ -253,16 +270,20 @@ export default function TenantDocumentsPage() {
     let assurance: any = null;
 
     for (const doc of sorted) {
-      const type = detectType(doc);
-      if (!bail && (type === "contrat_bail" || type === "bail" || type === "lease" || type === "contrat")) bail = doc;
-      if (!quittance && (type === "quittance" || type === "receipt")) quittance = doc;
-      if (!edlEntree && (type === "EDL_entree" || type === "edl_entree" || type === "edl")) edlEntree = doc;
-      if (!assurance && (type === "attestation_assurance" || type === "assurance")) assurance = doc;
+      // Comparaison case-insensitive : les DB historiques mélangent "EDL_entree" et "edl_entree".
+      const rawType = (doc.type ?? "").toString().toLowerCase();
+      const detected = (detectType(doc) ?? "").toLowerCase();
+      const matches = (set: Set<string>) => set.has(rawType) || set.has(detected);
+
+      if (!bail && matches(BAIL_TYPES)) bail = doc;
+      if (!quittance && matches(QUITTANCE_TYPES)) quittance = doc;
+      if (!edlEntree && matches(EDL_TYPES)) edlEntree = doc;
+      if (!assurance && matches(ASSURANCE_TYPES)) assurance = doc;
       if (bail && quittance && edlEntree && assurance) break;
     }
 
     return { bail, quittance, edl: edlEntree, assurance };
-  }, [documents]);
+  }, [documents, BAIL_TYPES, QUITTANCE_TYPES, EDL_TYPES, ASSURANCE_TYPES]);
 
   // ── Filtrage et tri des documents ──
   const filteredDocuments = useMemo(() => {

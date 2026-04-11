@@ -1,13 +1,33 @@
 import { TYPE_TO_LABEL } from "@/lib/documents/constants";
 
 /**
+ * Lookup case-insensitive dans TYPE_TO_LABEL.
+ *
+ * En base, les types sont censés être stockés exactement comme dans constants.ts
+ * (ex. "EDL_entree"), mais certains documents historiques utilisent la forme
+ * lowercase ("edl_entree"). On résout les deux pour garantir un label lisible.
+ */
+function labelForType(type: string | null | undefined): string | null {
+  if (!type) return null;
+  if (type in TYPE_TO_LABEL) {
+    return TYPE_TO_LABEL[type as keyof typeof TYPE_TO_LABEL];
+  }
+  const lower = type.toLowerCase();
+  for (const key of Object.keys(TYPE_TO_LABEL)) {
+    if (key.toLowerCase() === lower) {
+      return TYPE_TO_LABEL[key as keyof typeof TYPE_TO_LABEL];
+    }
+  }
+  return null;
+}
+
+/**
  * Génère un titre lisible pour un document.
  * Si le type a un label connu, l'utilise. Sinon, nettoie le nom de fichier.
  */
 export function getDisplayName(filename: string, type?: string | null): string {
-  if (type && type in TYPE_TO_LABEL) {
-    return TYPE_TO_LABEL[type as keyof typeof TYPE_TO_LABEL];
-  }
+  const label = labelForType(type);
+  if (label) return label;
   return cleanFilename(filename);
 }
 
@@ -39,9 +59,9 @@ export function getDocumentDisplayName(doc: {
     return cleanFilename(candidates[0]);
   }
 
-  // Fallback: type label + date
-  if (doc.type && doc.type in TYPE_TO_LABEL) {
-    const label = TYPE_TO_LABEL[doc.type as keyof typeof TYPE_TO_LABEL];
+  // Fallback: type label (case-insensitive) + date si disponible
+  const label = labelForType(doc.type);
+  if (label) {
     const date = formatSafeShortDate(doc.created_at);
     return date ? `${label} — ${date}` : label;
   }
