@@ -140,11 +140,6 @@ function RoleChoiceContent() {
     }
   };
 
-  // Feature flag syndic : le module copropriété est en bêta privée.
-  // Activer via NEXT_PUBLIC_SYNDIC_ENABLED=true quand les 14 tables manquantes
-  // seront créées (cf audit syndic Phase 2/8).
-  const syndicEnabled = process.env.NEXT_PUBLIC_SYNDIC_ENABLED === "true";
-
   const roleOptions = [
     {
       role: "owner" as const,
@@ -195,14 +190,12 @@ function RoleChoiceContent() {
     {
       role: "syndic" as const,
       title: "Syndic / Copropriété",
-      pitch: syndicEnabled
-        ? "Je gère ma copropriété avec Talok."
-        : "Module copropriété en bêta privée — contactez-nous.",
+      pitch: "Je gère ma copropriété avec Talok.",
       icon: Building2,
       features: ["Gestion des lots & tantièmes", "Assemblées générales", "Appels de fonds", "Suivi des charges"],
       gradient: "from-violet-300/30 via-violet-400/10 to-transparent",
-      disabled: !syndicEnabled,
-      badge: syndicEnabled ? undefined : "Bêta privée",
+      disabled: false,
+      badge: undefined as string | undefined,
     },
   ];
 
@@ -277,20 +270,11 @@ function RoleChoiceContent() {
                         ))}
                       </ul>
                       <Button
-                        onClick={() => {
-                          if (option.disabled) {
-                            toast({
-                              title: "Bientôt disponible",
-                              description: "Le module copropriété est en bêta privée. Écrivez-nous à support@talok.fr pour un accès anticipé.",
-                            });
-                            return;
-                          }
-                          handleRoleChoice(option.role);
-                        }}
+                        onClick={() => handleRoleChoice(option.role)}
                         disabled={isDisabled}
                         className="flex w-full items-center justify-center gap-2 rounded-xl bg-white text-slate-900 hover:bg-slate-100 disabled:cursor-not-allowed"
                       >
-                        {option.disabled ? "Nous contacter" : "Commencer"}
+                        Commencer
                         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                       </Button>
                     </CardContent>
