@@ -20,6 +20,10 @@ import { createClient } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useToast } from "@/components/ui/use-toast";
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import {
+  computeUnpaidStats,
+  UNPAID_INVOICE_STATUSES,
+} from "@/lib/payments/unpaid-invoices";
 
 export interface TenantRealtimeEvent {
   id: string;
@@ -198,12 +202,12 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
           .from("leases")
           .select("id, loyer, charges_forfaitaires, statut, type_bail, property_id")
           .in("id", ids),
-        // Factures impayées
+        // Factures (toutes les statuts non finaux pour calculer correctement les impayés)
         supabaseRef.current
           .from("invoices")
-          .select("id, montant_total, statut, periode")
+          .select("id, montant_total, statut, periode, due_date, date_echeance, created_at, type")
           .in("lease_id", ids)
-          .in("statut", ["sent", "late"]),
+          .in("statut", UNPAID_INVOICE_STATUSES as unknown as string[]),
         // Tickets ouverts
         supabaseRef.current
           .from("tickets")
@@ -222,7 +226,9 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
       const activeLease = leases?.find(l => l.statut === "active") || leases?.[0];
       const currentRent = activeLease?.loyer || 0;
       const currentCharges = activeLease?.charges_forfaitaires || 0;
-      const unpaidAmount = invoices?.reduce((sum, inv) => sum + (inv.montant_total || 0), 0) || 0;
+      // Source unique : helper centralisé qui filtre uniquement les factures
+      // dont la date d'échéance est passée (cohérent avec /tenant/payments).
+      const unpaidAmount = computeUnpaidStats(invoices || []).totalAmount;
       
       setData(prev => ({
         ...prev,

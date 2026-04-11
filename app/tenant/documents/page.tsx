@@ -262,7 +262,18 @@ export default function TenantDocumentsPage() {
   const keyDocuments = useMemo(() => {
     if (!documents.length) return { bail: null, quittance: null, edl: null, assurance: null };
 
-    const sorted = [...documents].sort((a, b) => safeTime(b.created_at) - safeTime(a.created_at));
+    // Bug 2 : ne pas considérer les documents sans type valide / "autre" pour
+    // les slots des documents essentiels. Sinon une capture d'écran uploadée
+    // sans type apparaît dans la grille des 4 cards essentielles.
+    const eligible = documents.filter((d: any) => {
+      const rawType = (d.type ?? "").toString().toLowerCase().trim();
+      const detected = (detectType(d) ?? "").toString().toLowerCase().trim();
+      if (!rawType && !detected) return false;
+      if (rawType === "autre" && detected === "autre") return false;
+      return true;
+    });
+
+    const sorted = [...eligible].sort((a, b) => safeTime(b.created_at) - safeTime(a.created_at));
 
     let bail: any = null;
     let quittance: any = null;

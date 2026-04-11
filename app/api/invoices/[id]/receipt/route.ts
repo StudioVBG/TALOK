@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { generateReceiptPDF } from "@/lib/services/receipt-generator";
+import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -175,7 +176,21 @@ export async function GET(
       dateEmission: new Date().toISOString().substring(0, 10),
     });
 
-    // 8. Retourner le PDF
+    // 8. Persistance fire-and-forget : si la quittance n'est pas encore stockée
+    //    en base (cas Bug 7 : facture marquée payée hors webhook Stripe), on
+    //    déclenche la création du document via `ensureReceiptDocument` pour que
+    //    la page /tenant/documents la voie. La réponse au client n'attend pas.
+    if (lastPayment?.id) {
+      void ensureReceiptDocument(serviceClient as any, lastPayment.id).catch(
+        (err) =>
+          console.error(
+            "[Receipt] ensureReceiptDocument fire-and-forget failed:",
+            err?.message ?? err
+          )
+      );
+    }
+
+    // 9. Retourner le PDF
     const filename = `quittance_${inv.periode || "loyer"}.pdf`;
     return new NextResponse(Buffer.from(pdfBytes), {
       status: 200,
