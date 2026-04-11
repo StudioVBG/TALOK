@@ -24,6 +24,7 @@ import {
   Edit,
   Trash2,
   Vote,
+  Radio,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { formatDateShort } from "@/lib/helpers/format";
@@ -220,6 +221,8 @@ export default function AssemblyDetailPage() {
   const canEdit = ["draft", "convened"].includes(assembly.status);
   const canConvene = ["draft", "convened"].includes(assembly.status);
   const canAddResolution = ["draft", "convened", "in_progress"].includes(assembly.status);
+  const canStartLive = assembly.status === "convened" && resolutions.length > 0;
+  const isLive = assembly.status === "in_progress";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
@@ -310,6 +313,22 @@ export default function AssemblyDetailPage() {
               <Send className="h-4 w-4 mr-2" />
               Envoyer les convocations
             </Button>
+          )}
+          {canStartLive && (
+            <Link href={`/syndic/assemblies/${assemblyId}/live`}>
+              <Button className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700">
+                <Radio className="h-4 w-4 mr-2" />
+                Démarrer la session
+              </Button>
+            </Link>
+          )}
+          {isLive && (
+            <Link href={`/syndic/assemblies/${assemblyId}/live`}>
+              <Button className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 animate-pulse">
+                <Radio className="h-4 w-4 mr-2" />
+                Session en cours — accéder
+              </Button>
+            </Link>
           )}
           {resolutions.length > 0 && (
             <DownloadPdfButton

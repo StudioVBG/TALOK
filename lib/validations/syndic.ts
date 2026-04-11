@@ -33,6 +33,25 @@ export const ConveneAssemblySchema = z.object({
   second_convocation_at: z.string().datetime().optional(),
 });
 
+export const StartAssemblySchema = z.object({
+  presided_by: z.string().uuid().optional(),
+  secretary_profile_id: z.string().uuid().optional(),
+  scrutineers: z
+    .array(
+      z.object({
+        profile_id: z.string().uuid(),
+        unit_id: z.string().uuid().optional(),
+      })
+    )
+    .optional(),
+  present_tantiemes: z.number().int().nonnegative(),
+});
+
+export const CloseAssemblySchema = z.object({
+  held_at: z.string().datetime().optional(), // Défaut = now()
+  final_notes: z.string().max(2000).optional(),
+});
+
 // ============================================
 // CONVOCATIONS
 // ============================================
