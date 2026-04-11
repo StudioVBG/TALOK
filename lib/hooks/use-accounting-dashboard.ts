@@ -51,6 +51,15 @@ interface UseAccountingDashboardOptions {
 
 // ── Hook ────────────────────────────────────────────────────────────
 
+// API response envelope used by the accounting routes. All routes wrap the
+// payload in `{ success, data }` — the older client code assumed the response
+// itself was the raw data, which produced `TypeError: O.find is not a
+// function` at runtime on the dashboard.
+interface AccountingApiEnvelope<T> {
+  success?: boolean;
+  data?: T;
+}
+
 export function useAccountingDashboard(options: UseAccountingDashboardOptions = {}) {
   const { profile } = useAuth();
   const entityId =
@@ -63,11 +72,18 @@ export function useAccountingDashboard(options: UseAccountingDashboardOptions = 
     queryFn: async (): Promise<AccountingExercise | null> => {
       if (!entityId) return null;
       try {
-        const data = await apiClient.get<AccountingExercise[]>(
-          `/accounting/exercises?entityId=${entityId}`
+        // Server returns `{ success, data: { exercises: [...] } }`.
+        // Fallback accepts a raw array so the hook is resilient if the
+        // shape ever gets simplified.
+        const response = await apiClient.get<
+          AccountingApiEnvelope<{ exercises: AccountingExercise[] }> | AccountingExercise[]
+        >(`/accounting/exercises?entityId=${entityId}`);
+        const exercises: AccountingExercise[] = Array.isArray(response)
+          ? response
+          : response?.data?.exercises ?? [];
+        return (
+          exercises.find((e) => e.status === "open") ?? exercises[0] ?? null
         );
-        // Return the current open exercise, or the most recent one
-        return data?.find((e) => e.status === "open") ?? data?.[0] ?? null;
       } catch (error) {
         console.error("[useAccountingDashboard] exercises query failed:", error);
         throw error;
@@ -81,19 +97,29 @@ export function useAccountingDashboard(options: UseAccountingDashboardOptions = 
   const exerciseId = exerciseQuery.data?.id;
 
   const balanceQuery = useQuery({
-    queryKey: ["accounting", "balance", exerciseId],
+    queryKey: ["accounting", "balance", exerciseId, entityId],
     queryFn: async (): Promise<AccountingBalance | null> => {
-      if (!exerciseId) return null;
+      if (!exerciseId || !entityId) return null;
       try {
-        return await apiClient.get<AccountingBalance>(
-          `/accounting/exercises/${exerciseId}/balance`
+        // Server requires entityId query param and returns
+        // `{ success, data: { balance } }`.
+        const response = await apiClient.get<
+          AccountingApiEnvelope<{ balance: AccountingBalance }> | AccountingBalance
+        >(
+          `/accounting/exercises/${exerciseId}/balance?entityId=${encodeURIComponent(entityId)}`,
         );
+        if (!response) return null;
+        if ("totalDebitCents" in (response as AccountingBalance)) {
+          return response as AccountingBalance;
+        }
+        return (response as AccountingApiEnvelope<{ balance: AccountingBalance }>)
+          ?.data?.balance ?? null;
       } catch (error) {
         console.error("[useAccountingDashboard] balance query failed:", error);
         throw error;
       }
     },
-    enabled: !!exerciseId,
+    enabled: !!exerciseId && !!entityId,
     staleTime: 2 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
   });
@@ -103,10 +129,12 @@ export function useAccountingDashboard(options: UseAccountingDashboardOptions = 
     queryFn: async (): Promise<AccountingEntry[]> => {
       if (!entityId) return [];
       try {
-        const data = await apiClient.get<AccountingEntry[]>(
-          `/accounting/entries?entityId=${entityId}&limit=5&sort=created_at:desc`
-        );
-        return data ?? [];
+        // Server returns `{ success, data: AccountingEntry[], meta }`.
+        const response = await apiClient.get<
+          AccountingApiEnvelope<AccountingEntry[]> | AccountingEntry[]
+        >(`/accounting/entries?entityId=${entityId}&limit=5&sort=created_at:desc`);
+        if (Array.isArray(response)) return response;
+        return response?.data ?? [];
       } catch (error) {
         console.error("[useAccountingDashboard] entries query failed:", error);
         throw error;

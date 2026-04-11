@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { requireAccountingAccess } from "@/lib/accounting/feature-gates";
 import { createExercise } from "@/lib/accounting/engine";
@@ -22,6 +23,9 @@ const CreateExerciseSchema = z.object({
 /**
  * GET /api/accounting/exercises?entityId=...
  * List all exercises for an entity, ordered by start_date DESC.
+ *
+ * Auth via user-scoped client, DB reads via service client to avoid RLS
+ * recursion (42P17) on profiles that otherwise produces 500s.
  */
 export async function GET(request: Request) {
   try {
@@ -32,7 +36,8 @@ export async function GET(request: Request) {
       throw new ApiError(401, "Non authentifie");
     }
 
-    const { data: profile } = await supabase
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
@@ -52,13 +57,14 @@ export async function GET(request: Request) {
       throw new ApiError(400, "entityId est requis");
     }
 
-    const { data: exercises, error } = await (supabase as any)
+    const { data: exercises, error } = await (serviceClient as any)
       .from("accounting_exercises")
       .select("*")
       .eq("entity_id", entityId)
       .order("start_date", { ascending: false });
 
     if (error) {
+      console.error("[Exercises API] DB error:", error);
       throw new ApiError(500, "Erreur lors de la recuperation des exercices");
     }
 

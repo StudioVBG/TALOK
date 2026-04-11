@@ -2,11 +2,19 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 import { workOrderSchema } from "@/lib/validations";
 import { withFeatureAccess, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 
+/**
+ * GET /api/work-orders
+ *
+ * Auth via user-scoped client, DB reads via service client to avoid RLS
+ * recursion (42P17) on profiles/work_orders that otherwise produces 500s.
+ * Results are explicitly scoped by profile role since RLS is bypassed.
+ */
 export async function GET(request: Request) {
   try {
     const supabase = await createClient();
@@ -18,24 +26,51 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const ticketId = searchParams.get("ticket_id");
     const providerId = searchParams.get("provider_id");
 
-    let query = supabaseClient.from("work_orders").select("*").order("created_at", { ascending: false });
+    let query = (serviceClient as any)
+      .from("work_orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    // Scope by role — mandatory since we bypass RLS with the service client.
+    if (profile.role === "owner") {
+      query = query.eq("owner_id", profile.id);
+    } else if (profile.role === "provider") {
+      query = query.eq("provider_id", profile.id);
+    } else if (profile.role !== "admin") {
+      return NextResponse.json({ workOrders: [] });
+    }
 
     if (ticketId) {
-      query = query.eq("ticket_id", ticketId as any);
+      query = query.eq("ticket_id", ticketId);
     }
     if (providerId) {
-      query = query.eq("provider_id", providerId as any);
+      query = query.eq("provider_id", providerId);
     }
 
     const { data, error } = await query;
 
-    if (error) throw error;
-    return NextResponse.json({ workOrders: data });
+    if (error) {
+      console.error("[work-orders API] DB error:", error);
+      throw error;
+    }
+    return NextResponse.json({ workOrders: data ?? [] });
   } catch (error: unknown) {
+    console.error("[work-orders API] Erreur:", error);
     return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Erreur serveur" }, { status: 500 });
   }
 }
