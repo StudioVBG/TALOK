@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { createClientFromRequest } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/subscriptions - Récupérer l'abonnement actuel (alias de /current)
@@ -65,7 +66,7 @@ export async function GET(request: Request) {
     });
   } catch (error: unknown) {
     console.error("[GET /api/subscriptions]", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -182,7 +183,7 @@ export async function POST(request: Request) {
 
   } catch (error: unknown) {
     console.error("[POST /api/subscriptions]", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

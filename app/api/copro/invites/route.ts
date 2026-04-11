@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // Schéma pour une invitation
 const InviteSchema = z.object({
@@ -93,7 +94,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data || []);
   } catch (error: unknown) {
     console.error('Erreur GET /api/copro/invites:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -141,7 +142,7 @@ export async function POST(request: NextRequest) {
             .single();
           
           if (error) {
-            errors.push({ email: invite.email, error: error instanceof Error ? error.message : "Une erreur est survenue" });
+            errors.push({ email: invite.email, error: extractErrorMessage(error) });
             continue;
           }
           
@@ -193,7 +194,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(invite, { status: 201 });
   } catch (error: unknown) {
     console.error('Erreur POST /api/copro/invites:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

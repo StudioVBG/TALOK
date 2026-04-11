@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextRequest, NextResponse } from "next/server";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * POST /api/documents/check
@@ -238,7 +239,7 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     console.error("[documents/check] Erreur:", error);
     return NextResponse.json(
-      { exists: false, error: error instanceof Error ? error.message : "Une erreur est survenue" },
+      { exists: false, error: extractErrorMessage(error) },
       { status: 500 }
     );
   }

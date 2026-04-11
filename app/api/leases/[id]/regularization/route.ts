@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient, createRouteHandlerClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const createRegularizationSchema = z.object({
   period_start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -52,7 +53,7 @@ export async function GET(
 
     if (error) {
       console.error("Erreur calcul régularisation:", error);
-      return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     return NextResponse.json(data);

@@ -6,6 +6,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { supabaseServer } from "../../_lib/supabase";
 import { revalidateTag } from "next/cache";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -19,7 +20,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     .update(body)
     .eq("id", id);
   
-  if (error) return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+  if (error) return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
 
   revalidateTag("owner:properties");
   revalidateTag("admin:properties");

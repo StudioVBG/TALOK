@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface RouteParams {
   params: { assemblyId: string };
@@ -125,7 +126,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(result);
   } catch (error: unknown) {
     console.error('Erreur GET /api/copro/assemblies/[assemblyId]:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -163,7 +164,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(assembly);
   } catch (error: unknown) {
     console.error('Erreur PUT /api/copro/assemblies/[assemblyId]:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -234,7 +235,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ success: true, assembly });
   } catch (error: unknown) {
     console.error('Erreur POST /api/copro/assemblies/[assemblyId]:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -275,7 +276,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error('Erreur DELETE /api/copro/assemblies/[assemblyId]:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

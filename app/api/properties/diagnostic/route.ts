@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/properties/diagnostic - Diagnostic complet de l'endpoint /api/properties
@@ -225,7 +226,7 @@ export async function GET(request: Request) {
       count,
       hasError: !!error,
       error: error ? {
-        message: error instanceof Error ? error.message : "Une erreur est survenue",
+        message: extractErrorMessage(error),
         code: error.code,
         details: error.details,
         hint: error.hint,
@@ -236,7 +237,7 @@ export async function GET(request: Request) {
     if (error) {
       diagnostic.errors.push({ 
         step: 5, 
-        error: error instanceof Error ? error.message : "Une erreur est survenue",
+        error: extractErrorMessage(error),
         code: error.code,
         details: error.details,
         hint: error.hint,

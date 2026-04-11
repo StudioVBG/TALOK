@@ -5,6 +5,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { supabaseServer } from "../../../_lib/supabase";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 function genCode() {
   return "U" + Math.random().toString(36).slice(2, 8).toUpperCase();
@@ -22,7 +23,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     .update({ code_unique: code })
     .eq("id", id);
   
-  if (error) return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+  if (error) return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
 
   return NextResponse.json({ code });
 }

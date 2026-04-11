@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export async function GET() {
   try {
@@ -37,7 +38,7 @@ export async function GET() {
 
     if (error) {
       console.error("Erreur récupération documents:", error);
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     return NextResponse.json({ documents: documents || [] });

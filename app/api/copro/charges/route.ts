@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // GET: Liste des charges
 export async function GET(request: NextRequest) {
@@ -102,7 +103,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'siteId ou unitId requis' }, { status: 400 });
   } catch (error: unknown) {
     console.error('Erreur GET /api/copro/charges:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -185,7 +186,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'expense_id ou site_id + période requis' }, { status: 400 });
   } catch (error: unknown) {
     console.error('Erreur POST /api/copro/charges:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

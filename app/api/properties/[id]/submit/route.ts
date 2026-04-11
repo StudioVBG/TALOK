@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
@@ -18,7 +19,7 @@ export async function POST(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
+        { error: extractErrorMessage(error), details: (error as any).details },
         { status: error.status || 401 }
       );
     }

@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { withFeatureAccess, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 import { z } from "zod";
 import { sendLeaseInviteEmail } from "@/lib/services/email-service";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // Schéma pour ajouter un colocataire
 const addRoommateSchema = z.object({
@@ -64,7 +65,7 @@ export async function GET(
 
     if (error) {
       console.error("Erreur récupération roommates:", error);
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     // Récupérer les parts de paiement du mois en cours
@@ -88,7 +89,7 @@ export async function GET(
 
   } catch (error: unknown) {
     console.error("Erreur API roommates GET:", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -364,7 +365,7 @@ export async function POST(
       return NextResponse.json({ error: "Données invalides", details: error.errors }, { status: 400 });
     }
     
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -468,6 +469,6 @@ export async function PATCH(
       return NextResponse.json({ error: "Données invalides", details: error.errors }, { status: 400 });
     }
     
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }

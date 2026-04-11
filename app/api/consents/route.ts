@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { consentsSchema } from "@/lib/validations/onboarding";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export async function POST(request: Request) {
   try {
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("Erreur sauvegarde consentements:", error);
-      return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });

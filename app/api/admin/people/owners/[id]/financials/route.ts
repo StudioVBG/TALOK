@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface FinancialMetrics {
   totalRevenue: number;
@@ -34,7 +35,7 @@ export async function GET(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
+        { error: extractErrorMessage(error) },
         { status: error.status }
       );
     }

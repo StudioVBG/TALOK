@@ -10,6 +10,7 @@ import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { validateFile } from "@/lib/security/file-validation";
 import { DOCUMENT_TYPES, MAX_FILE_SIZE } from "@/lib/documents/constants";
 import { withSecurity } from "@/lib/api/with-security";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 function isImage(mimeType: string) {
   return mimeType.startsWith("image/");
@@ -23,7 +24,7 @@ export const POST = withSecurity(async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? (error as Error).message : "Une erreur est survenue", details: (error as any).details },
+        { error: extractErrorMessage(error), details: (error as any).details },
         { status: (error as any).status || 401 }
       );
     }

@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServerClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const validateSchema = z.object({
   approved: z.boolean(),
@@ -123,7 +124,7 @@ export async function POST(
       );
     }
     
-    return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

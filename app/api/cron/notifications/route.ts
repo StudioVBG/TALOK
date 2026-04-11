@@ -10,6 +10,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export async function GET(request: NextRequest) {
   const supabase = createClient(
@@ -247,7 +248,7 @@ export async function GET(request: NextRequest) {
   } catch (error: unknown) {
     console.error("Cron notifications error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue", results },
+      { error: extractErrorMessage(error), results },
       { status: 500 }
     );
   }

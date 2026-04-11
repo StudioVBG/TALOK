@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * POST /api/subscriptions/addons/consume-signature
@@ -50,7 +51,7 @@ export async function POST() {
   } catch (error: unknown) {
     console.error("[Addons Consume Signature]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue" },
+      { error: extractErrorMessage(error) },
       { status: 500 }
     );
   }

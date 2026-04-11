@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { ensureDocumentGallerySupport, getDocumentGallerySupportMessage } from "@/lib/server/document-gallery";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
@@ -18,7 +19,7 @@ export async function PATCH(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? (error as Error).message : "Une erreur est survenue", details: (error as any).details },
+        { error: extractErrorMessage(error), details: (error as any).details },
         { status: (error as any).status || 401 }
       );
     }

@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { createClient } from "@supabase/supabase-js";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/admin/providers/[id] - Récupérer les détails d'un prestataire
@@ -20,7 +21,7 @@ export async function GET(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
+        { error: extractErrorMessage(error) },
         { status: error.status }
       );
     }
@@ -121,7 +122,7 @@ export async function PATCH(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
+        { error: extractErrorMessage(error) },
         { status: error.status }
       );
     }

@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/admin/people/owners/[id] - Détails d'un propriétaire (admin uniquement)
@@ -18,7 +19,7 @@ export async function GET(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
+        { error: extractErrorMessage(error), details: (error as any).details },
         { status: error.status }
       );
     }

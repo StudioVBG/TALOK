@@ -10,6 +10,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface RouteParams {
   params: { id: string };
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     if (error) {
       console.error('Error fetching payments:', error);
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     return NextResponse.json({ payments });

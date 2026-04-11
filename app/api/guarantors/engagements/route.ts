@@ -11,6 +11,7 @@ import { createServiceRoleClient, createRouteHandlerClient } from "@/lib/supabas
 import { createEngagementSchema } from "@/lib/validations/guarantor";
 import { sendEmail } from "@/lib/services/email-service";
 import { emailTemplates } from "@/lib/emails/templates";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export async function GET() {
   try {
@@ -74,7 +75,7 @@ export async function GET() {
 
     if (error) {
       console.error("Erreur récupération engagements:", error);
-      return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     return NextResponse.json({ engagements: engagements || [] });

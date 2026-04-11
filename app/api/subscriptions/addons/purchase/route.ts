@@ -6,6 +6,7 @@ import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { stripe } from "@/lib/stripe";
 import { NextResponse } from "next/server";
 import { ADDON_CONFIGS, getAddonPriceId, type AddonType } from "@/lib/subscriptions/addon-config";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const VALID_ADDON_TYPES: AddonType[] = [
   'signature_pack',
@@ -111,7 +112,7 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     console.error("[Addons Purchase]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue" },
+      { error: extractErrorMessage(error) },
       { status: 500 }
     );
   }

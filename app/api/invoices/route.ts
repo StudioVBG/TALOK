@@ -8,6 +8,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { invoicesQuerySchema, validateQueryParams } from "@/lib/validations/params";
 import { withSecurity } from "@/lib/api/with-security";
 import { withFeatureAccess, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/invoices - Récupérer les factures de l'utilisateur
@@ -18,7 +19,7 @@ export async function GET(request: Request) {
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? (error as Error).message : "Une erreur est survenue", details: (error as any).details },
+        { error: extractErrorMessage(error), details: (error as any).details },
         { status: (error as any).status || 401 }
       );
     }
@@ -153,7 +154,7 @@ export const POST = withSecurity(async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? (error as Error).message : "Une erreur est survenue", details: (error as any).details },
+        { error: extractErrorMessage(error), details: (error as any).details },
         { status: (error as any).status || 401 }
       );
     }

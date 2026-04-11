@@ -29,6 +29,7 @@ import {
   buildSubscriptionUpdateFromStripe,
   resolvePlanIdentifiers,
 } from "@/lib/subscriptions/market-standard";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // Initialiser Stripe de manière lazy pour éviter les erreurs au build
 function getStripe(): Stripe {
@@ -1671,13 +1672,13 @@ export async function POST(request: NextRequest) {
       provider: "stripe",
       event_type: event.type,
       event_id: event.id,
-      error: error instanceof Error ? error.message : "Une erreur est survenue",
+      error: extractErrorMessage(error),
       processed_at: new Date().toISOString(),
       status: "error",
     });
 
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue" },
+      { error: extractErrorMessage(error) },
       { status: 500 }
     );
   }

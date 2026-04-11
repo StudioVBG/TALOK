@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/admin/plans/[id]/subscribers-count - Compter les abonnés actifs d'un plan
@@ -36,7 +37,7 @@ export async function GET(
     return NextResponse.json({ count: count || 0 });
   } catch (error: unknown) {
     console.error("[Subscribers Count]", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

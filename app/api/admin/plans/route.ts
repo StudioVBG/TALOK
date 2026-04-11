@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 import { z } from "zod";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const createPlanSchema = z.object({
   name: z.string().min(1),
@@ -80,7 +81,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ plans: plansWithCounts });
   } catch (error: unknown) {
     console.error("[Admin Plans GET]", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -306,7 +307,7 @@ export async function PUT(request: Request) {
     });
   } catch (error: unknown) {
     console.error("[Admin Plans PUT]", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -393,7 +394,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ plan });
   } catch (error: unknown) {
     console.error("[Admin Plans POST]", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { sendEmail } from "@/lib/services/email-service";
 import { emailTemplates } from "@/lib/emails/templates";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * POST /api/admin/providers/invite - Inviter un prestataire par email
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
+        { error: extractErrorMessage(error) },
         { status: error.status }
       );
     }

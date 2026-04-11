@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { checkLimit, type LimitResource } from "@/lib/subscriptions/check-limit";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const VALID_RESOURCES: LimitResource[] = ['signatures', 'storage', 'properties', 'users'];
 
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     console.error("[Addons Check]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue" },
+      { error: extractErrorMessage(error) },
       { status: 500 }
     );
   }

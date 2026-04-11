@@ -11,6 +11,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // Schéma de validation pour la mise à jour
 const UpdateSiteSchema = z.object({
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ ...site, stats });
   } catch (error: unknown) {
     console.error('Erreur GET /api/copro/sites/[siteId]:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -128,7 +129,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(site);
   } catch (error: unknown) {
     console.error('Erreur PUT /api/copro/sites/[siteId]:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -158,7 +159,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error('Erreur DELETE /api/copro/sites/[siteId]:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

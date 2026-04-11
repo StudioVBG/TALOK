@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export async function GET(request: Request) {
   try {
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
 
     if (error) {
       console.error("Erreur stats admin:", error);
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     return NextResponse.json(data);

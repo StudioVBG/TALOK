@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/admin/moderation/rules - Lister les règles de modération IA
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("[POST /api/admin/moderation/rules] Insert error:", error);
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     // Émettre un événement

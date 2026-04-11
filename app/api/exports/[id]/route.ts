@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { ExportService } from "@/lib/services/export.service";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/exports/[id] - Statut du job
@@ -42,7 +43,7 @@ export async function GET(
       expires_at: job.expires_at
     });
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

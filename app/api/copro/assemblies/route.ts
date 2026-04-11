@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // Schéma de validation
 const CreateAssemblySchema = z.object({
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(data || []);
   } catch (error: unknown) {
     console.error('Erreur GET /api/copro/assemblies:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(assembly, { status: 201 });
   } catch (error: unknown) {
     console.error('Erreur POST /api/copro/assemblies:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

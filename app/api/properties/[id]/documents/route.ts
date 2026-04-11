@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { createClient } from "@supabase/supabase-js";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/properties/[id]/documents - Récupérer les documents d'une propriété
@@ -19,7 +20,7 @@ export async function GET(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
+        { error: extractErrorMessage(error), details: (error as any).details },
         { status: error.status || 401 }
       );
     }

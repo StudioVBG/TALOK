@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-limit";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * POST /api/applications/[id]/analyze - Déclencher l'analyse OCR/IDP
@@ -125,7 +126,7 @@ export async function POST(
       return NextResponse.json({
         success: false,
         message: "Erreur lors de l'analyse",
-        error: error instanceof Error ? error.message : "Une erreur est survenue",
+        error: extractErrorMessage(error),
       });
     }
   } catch (error: unknown) {

@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { photoUpdateSchema } from "@/lib/validations";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const PHOTOS_BUCKET = "property-photos";
 
@@ -20,7 +21,7 @@ export async function PATCH(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? (error as Error).message : "Une erreur est survenue", details: (error as any).details },
+        { error: extractErrorMessage(error), details: (error as any).details },
         { status: (error as any).status || 401 }
       );
     }
@@ -170,7 +171,7 @@ export async function DELETE(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? (error as Error).message : "Une erreur est survenue", details: (error as any).details },
+        { error: extractErrorMessage(error), details: (error as any).details },
         { status: (error as any).status || 401 }
       );
     }

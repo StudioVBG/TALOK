@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 import { updateGuarantorProfileSchema } from "@/lib/validations/guarantor";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export async function GET() {
   try {
@@ -39,7 +40,7 @@ export async function GET() {
 
     if (error) {
       console.error("Erreur récupération profil garant:", error);
-      return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     if (!guarantorProfile) {

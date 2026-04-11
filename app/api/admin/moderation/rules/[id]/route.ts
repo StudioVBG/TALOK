@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -98,7 +99,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     if (error) {
       console.error("[PATCH /api/admin/moderation/rules/[id]] Error:", error);
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     // Journaliser
@@ -153,7 +154,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       .eq("id", id);
 
     if (error) {
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     // Journaliser

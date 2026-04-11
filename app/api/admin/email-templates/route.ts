@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/admin/email-templates — Lister tous les templates email
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
   } catch (error: unknown) {
     console.error("[Admin Email Templates GET]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue" },
+      { error: extractErrorMessage(error) },
       { status: 500 }
     );
   }

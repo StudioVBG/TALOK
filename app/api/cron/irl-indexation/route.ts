@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // Vérifier le secret CRON
 function verifyCronSecret(request: Request): boolean {
@@ -253,7 +254,7 @@ export async function GET(request: Request) {
       action: "cron_irl_indexation_error",
       entity_type: "cron",
       metadata: {
-        error: error instanceof Error ? error.message : "Une erreur est survenue",
+        error: extractErrorMessage(error),
         executed_at: new Date().toISOString(),
       },
     });
@@ -261,7 +262,7 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Une erreur est survenue",
+        error: extractErrorMessage(error),
         ...results,
       },
       { status: 500 }

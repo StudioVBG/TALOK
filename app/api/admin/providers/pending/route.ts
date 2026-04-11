@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/admin/providers/pending - Liste des prestataires en attente de validation
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
     if (error) {
       console.error("requireAdmin returned error:", error);
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
+        { error: extractErrorMessage(error), details: (error as any).details },
         { status: error.status }
       );
     }

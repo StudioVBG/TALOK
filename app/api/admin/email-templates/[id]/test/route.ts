@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { renderEmailTemplate } from "@/lib/email/render-template";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * POST /api/admin/email-templates/[id]/test — Envoyer un email de test
@@ -72,7 +73,7 @@ export async function POST(
   } catch (error: unknown) {
     console.error("[Admin Email Template Test POST]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue" },
+      { error: extractErrorMessage(error) },
       { status: 500 }
     );
   }

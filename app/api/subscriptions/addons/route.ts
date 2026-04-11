@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/subscriptions/addons — Liste les add-ons de l'utilisateur (actifs + historique)
@@ -38,7 +39,7 @@ export async function GET() {
   } catch (error: unknown) {
     console.error("[Addons GET]", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue" },
+      { error: extractErrorMessage(error) },
       { status: 500 }
     );
   }

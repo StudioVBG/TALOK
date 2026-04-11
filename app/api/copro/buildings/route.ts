@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // Schéma pour un bâtiment
 const BuildingSchema = z.object({
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(buildings || []);
   } catch (error: unknown) {
     console.error('Erreur GET /api/copro/buildings:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -195,7 +196,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(building, { status: 201 });
   } catch (error: unknown) {
     console.error('Erreur POST /api/copro/buildings:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

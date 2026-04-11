@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * POST /api/admin/sync-signatures
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
 
   } catch (error: unknown) {
     console.error("[Sync Signatures] Erreur:", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -89,7 +90,7 @@ export async function GET(request: Request) {
 
   } catch (error: unknown) {
     console.error("[Sync Signatures GET] Erreur:", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

@@ -6,6 +6,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export async function POST(request: Request) {
   // Seulement en développement
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
 
     if (error) {
       console.error("[Reset Password] Update error:", error);
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     return NextResponse.json({ 
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
 
   } catch (error: unknown) {
     console.error("[Reset Password] Exception:", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

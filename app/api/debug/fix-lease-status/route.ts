@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/debug/fix-lease-status?leaseId=xxx&fix=true
@@ -97,7 +98,7 @@ export async function GET(request: Request) {
     
   } catch (error: unknown) {
     console.error("[fix-lease-status] Erreur:", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

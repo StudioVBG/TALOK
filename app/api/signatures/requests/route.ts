@@ -7,6 +7,7 @@ import { createClient as createServerClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { CreateSignatureRequestDTO, SignatureRequest } from "@/lib/signatures/types";
 import { withSubscriptionLimit, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // Schema de validation
 const createRequestSchema = z.object({
@@ -184,7 +185,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -251,13 +252,13 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("[GET /api/signatures/requests] Error:", error);
-      return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     return NextResponse.json(requests);
   } catch (error: unknown) {
     console.error("[GET /api/signatures/requests] Error:", error);
-    return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

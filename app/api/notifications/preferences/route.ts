@@ -10,6 +10,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const updatePreferencesSchema = z.object({
   in_app_enabled: z.boolean().optional(),
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
       preferences = newPrefs;
     } else if (error) {
       console.error('Error fetching preferences:', error);
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     // Récupérer aussi les templates disponibles pour la config
@@ -144,7 +145,7 @@ export async function PUT(request: NextRequest) {
 
     if (error) {
       console.error('Error updating preferences:', error);
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     return NextResponse.json({ preferences });

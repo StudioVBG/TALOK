@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient, createRouteHandlerClient } from "@/lib/supabase/server";
 import { createGuarantorProfileSchema } from "@/lib/validations/guarantor";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export async function GET(request: NextRequest) {
   try {
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
 
       if (error) {
         console.error("Erreur récupération garants:", error);
-        return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" }, { status: 500 });
+        return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
       }
 
       return NextResponse.json({
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Erreur récupération profil garant:", error);
-      return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     return NextResponse.json(guarantorProfile);

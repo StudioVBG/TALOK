@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient, createRouteHandlerClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const sendPushSchema = z.object({
   profile_id: z.string().uuid().optional(),
@@ -138,7 +139,7 @@ export async function POST(request: NextRequest) {
                 .update({ is_active: false } as any)
                 .eq("id", sub.id as string);
             }
-            return { success: false, subscriptionId: sub.id, error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" };
+            return { success: false, subscriptionId: sub.id, error: extractErrorMessage(error) };
           }
         })
       );

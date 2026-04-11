@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase/server";
 import { z } from "zod";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const createProcessSchema = z.object({
   lease_id: z.string().uuid(),
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error("Erreur récupération processus:", error);
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     return NextResponse.json({ processes: processes || [] });

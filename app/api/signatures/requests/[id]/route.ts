@@ -7,6 +7,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createServerClient } from "@supabase/supabase-js";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/signatures/requests/[id] - Récupérer une demande de signature
@@ -52,7 +53,7 @@ export async function GET(
     return NextResponse.json(signatureRequest);
   } catch (error: unknown) {
     console.error("[GET /api/signatures/requests/[id]] Error:", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -117,13 +118,13 @@ export async function DELETE(
       .eq("id", id);
 
     if (error) {
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error("[DELETE /api/signatures/requests/[id]] Error:", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * POST /api/subscriptions/accept-price-change - Accepter les nouvelles conditions tarifaires
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, subscription });
   } catch (error: unknown) {
     console.error("[Accept Price Change POST]", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

@@ -9,6 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { ProfileRow, TicketRow } from "@/lib/supabase/typed-client";
 import { ticketsQuerySchema, validateQueryParams } from "@/lib/validations/params";
 import { withSecurity } from "@/lib/api/with-security";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/tickets - Récupérer les tickets de l'utilisateur
@@ -22,7 +23,7 @@ export async function GET(request: Request) {
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
+        { error: extractErrorMessage(error), details: (error as any).details },
         { status: error.status || 401 }
       );
     }

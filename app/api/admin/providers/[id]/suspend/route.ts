@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * POST /api/admin/providers/[id]/suspend - Mettre un prestataire en standby
@@ -18,7 +19,7 @@ export async function POST(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
+        { error: extractErrorMessage(error) },
         { status: error.status }
       );
     }
@@ -97,7 +98,7 @@ export async function DELETE(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
+        { error: extractErrorMessage(error) },
         { status: error.status }
       );
     }

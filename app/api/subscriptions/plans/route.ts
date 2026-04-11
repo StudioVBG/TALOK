@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/subscriptions/plans - Lister les plans actifs (public)
@@ -22,7 +23,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ plans: plans || [] });
   } catch (error: unknown) {
     console.error("[Subscriptions Plans GET]", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

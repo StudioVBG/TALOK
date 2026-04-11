@@ -6,6 +6,7 @@ import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { ensureDocumentGallerySupport } from "@/lib/server/document-gallery";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { DOCUMENT_TYPES } from "@/lib/documents/constants";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // ============================================
 // GET /api/documents/[id] — Recuperer un document par ID
@@ -181,7 +182,7 @@ export async function DELETE(
 
     if (error) {
       return NextResponse.json(
-        { error: error instanceof Error ? (error as Error).message : "Une erreur est survenue", details: (error as any).details },
+        { error: extractErrorMessage(error), details: (error as any).details },
         { status: (error as any).status || 401 }
       );
     }

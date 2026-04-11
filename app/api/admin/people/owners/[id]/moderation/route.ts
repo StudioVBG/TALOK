@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 type ModerationActionType = "warn" | "restrict" | "suspend" | "unsuspend" | "ban" | "unban" | "verify" | "note";
 
@@ -19,7 +20,7 @@ export async function GET(
     const { error, user } = await requireAdmin(request);
 
     if (error) {
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: error.status });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: error.status });
     }
 
     if (!user) {
@@ -143,7 +144,7 @@ export async function POST(
     const { error, user, supabase: adminSupabase } = await requireAdmin(request);
 
     if (error) {
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: error.status });
+      return NextResponse.json({ error: extractErrorMessage(error) }, { status: error.status });
     }
 
     if (!user || !adminSupabase) {

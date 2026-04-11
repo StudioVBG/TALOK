@@ -8,6 +8,7 @@ import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { LeaseTemplateService } from "@/lib/templates/bail/template.service";
 import { mapLeaseToTemplate } from "@/lib/mappers/lease-to-template";
 import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * POST /api/leases/[id]/seal
@@ -282,7 +283,7 @@ export async function GET(
     });
     
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 

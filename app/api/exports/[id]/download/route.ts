@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { ExportService } from "@/lib/services/export.service";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/exports/[id]/download - Redirection vers Signed URL
@@ -29,7 +30,7 @@ export async function GET(
     return NextResponse.redirect(signedUrl);
   } catch (error: unknown) {
     console.error("Download error:", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 403 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 403 });
   }
 }
 

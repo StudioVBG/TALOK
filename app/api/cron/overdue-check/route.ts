@@ -15,6 +15,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 function verifyCronSecret(request: NextRequest): boolean {
   const authHeader = request.headers.get("authorization");
@@ -222,7 +223,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Une erreur est survenue",
+        error: extractErrorMessage(error),
         result,
       },
       { status: 500 }

@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 /**
  * GET /api/admin/addons - Lister tous les add-ons avec statistiques
@@ -44,7 +45,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ addons: addonsWithStats });
   } catch (error: unknown) {
     console.error("[Admin Addons GET]", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -110,7 +111,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ addon });
   } catch (error: unknown) {
     console.error("[Admin Addons POST]", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -177,7 +178,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({ addon });
   } catch (error: unknown) {
     console.error("[Admin Addons PUT]", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -234,7 +235,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error("[Admin Addons DELETE]", error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+    return NextResponse.json({ error: extractErrorMessage(error) }, { status: 500 });
   }
 }
 
