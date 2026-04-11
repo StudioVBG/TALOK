@@ -656,52 +656,98 @@ export const emailTemplates = {
    */
   welcome: (data: {
     userName: string;
-    role: 'owner' | 'tenant' | 'provider';
+    role: 'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency';
     loginUrl: string;
   }) => {
-    const roleInfo = {
-      owner: { title: 'propriétaire', emoji: '🏠' },
-      tenant: { title: 'locataire', emoji: '🔑' },
-      provider: { title: 'prestataire', emoji: '🔧' },
+    const roleInfo: Record<
+      'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency',
+      { title: string; emoji: string; features: string[] }
+    > = {
+      owner: {
+        title: 'propriétaire',
+        emoji: '🏠',
+        features: [
+          'Gérer vos logements et locataires',
+          'Créer et faire signer des baux en ligne',
+          'Suivre vos loyers et paiements',
+          'Gérer la maintenance via des tickets',
+        ],
+      },
+      tenant: {
+        title: 'locataire',
+        emoji: '🔑',
+        features: [
+          'Consulter et signer vos baux',
+          'Payer votre loyer en ligne',
+          'Télécharger vos quittances',
+          'Signaler des problèmes de maintenance',
+        ],
+      },
+      provider: {
+        title: 'prestataire',
+        emoji: '🔧',
+        features: [
+          "Recevoir des demandes d'intervention",
+          'Gérer vos devis et factures',
+          'Suivre vos missions en cours',
+        ],
+      },
+      guarantor: {
+        title: 'garant',
+        emoji: '🤝',
+        features: [
+          'Vérifier votre identité en quelques clics',
+          'Signer électroniquement votre acte de cautionnement',
+          'Suivre le bail garanti en temps réel',
+        ],
+      },
+      syndic: {
+        title: 'syndic de copropriété',
+        emoji: '🏢',
+        features: [
+          'Gérer immeubles, lots et tantièmes',
+          'Convoquer et animer vos assemblées générales',
+          'Suivre les charges et les appels de fonds',
+          'Communiquer avec les copropriétaires',
+        ],
+      },
+      agency: {
+        title: 'agence immobilière',
+        emoji: '🏢',
+        features: [
+          'Centraliser mandats et biens gérés',
+          'Inviter votre équipe et assigner les dossiers',
+          'Automatiser loyers, quittances et relances',
+          'Offrir un espace en marque blanche à vos clients',
+        ],
+      },
     };
-    
+
+    const info = roleInfo[data.role];
+
     return {
-      subject: `${roleInfo[data.role].emoji} Bienvenue sur Talok !`,
+      subject: `${info.emoji} Bienvenue sur Talok !`,
       html: baseLayout(`
         <div class="content">
           <div style="text-align: center; margin-bottom: 24px;">
-            <span style="font-size: 48px;">${roleInfo[data.role].emoji}</span>
+            <span style="font-size: 48px;">${info.emoji}</span>
           </div>
-          
+
           <h1 style="text-align: center;">Bienvenue ${escapeHtml(data.userName)} !</h1>
-          <p style="text-align: center;">Votre compte ${roleInfo[data.role].title} a été créé avec succès.</p>
-          
+          <p style="text-align: center;">Votre compte ${info.title} a été créé avec succès.</p>
+
           <div class="divider"></div>
-          
+
           <p>Avec Talok, vous pouvez :</p>
           <ul style="color: ${COLORS.gray[700]};">
-            ${data.role === 'owner' ? `
-              <li>Gérer vos logements et locataires</li>
-              <li>Créer et faire signer des baux en ligne</li>
-              <li>Suivre vos loyers et paiements</li>
-              <li>Gérer la maintenance via des tickets</li>
-            ` : data.role === 'tenant' ? `
-              <li>Consulter et signer vos baux</li>
-              <li>Payer votre loyer en ligne</li>
-              <li>Télécharger vos quittances</li>
-              <li>Signaler des problèmes de maintenance</li>
-            ` : `
-              <li>Recevoir des demandes d'intervention</li>
-              <li>Gérer vos devis et factures</li>
-              <li>Suivre vos missions en cours</li>
-            `}
+            ${info.features.map(f => `<li>${f}</li>`).join('')}
           </ul>
-          
+
           <div style="text-align: center;">
             <a href="${data.loginUrl}" class="button">Accéder à mon espace</a>
           </div>
         </div>
-      `, `Bienvenue sur Talok, votre espace ${roleInfo[data.role].title} est prêt.`),
+      `, `Bienvenue sur Talok, votre espace ${info.title} est prêt.`),
     };
   },
 

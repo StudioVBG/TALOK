@@ -165,6 +165,14 @@ export async function GET(request: NextRequest) {
             });
             break;
 
+          case "completed":
+            emailData = emailTemplates.onboardingCompleted({
+              userName,
+              role: reminder.role as any,
+              dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/${reminder.role}/dashboard`,
+            });
+            break;
+
           default:
             results.skipped++;
             await markReminderFailed(supabase, reminder.id, `Unknown reminder type: ${reminder.reminder_type}`);

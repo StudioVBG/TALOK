@@ -491,7 +491,7 @@ export async function sendPropertyInvitation(data: {
 export async function sendWelcomeEmail(data: {
   userEmail: string;
   userName: string;
-  role: 'owner' | 'tenant' | 'provider';
+  role: 'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency';
 }): Promise<EmailResult> {
   const template = emailTemplates.welcome({
     userName: data.userName,

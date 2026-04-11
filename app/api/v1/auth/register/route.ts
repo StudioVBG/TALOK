@@ -105,12 +105,13 @@ export async function POST(request: NextRequest) {
 
       // Email de bienvenue (fire-and-forget, ne bloque pas l'inscription)
       // Note: Supabase envoie aussi son email de confirmation séparément
-      const welcomeRole = data.role as "owner" | "tenant" | "provider";
-      if (["owner", "tenant", "provider"].includes(data.role)) {
+      const WELCOME_ROLES = ["owner", "tenant", "provider", "guarantor", "syndic", "agency"] as const;
+      type WelcomeRole = (typeof WELCOME_ROLES)[number];
+      if ((WELCOME_ROLES as readonly string[]).includes(data.role)) {
         sendWelcomeEmail({
           userEmail: data.email,
           userName: data.prenom || data.nom || data.email.split("@")[0],
-          role: welcomeRole,
+          role: data.role as WelcomeRole,
         }).catch(err => console.error("[register] Welcome email failed:", err));
       }
 
