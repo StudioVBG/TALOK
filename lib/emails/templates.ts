@@ -652,60 +652,6 @@ export const emailTemplates = {
   }),
 
   /**
-   * Bienvenue - nouveau compte créé
-   */
-  welcome: (data: {
-    userName: string;
-    role: 'owner' | 'tenant' | 'provider';
-    loginUrl: string;
-  }) => {
-    const roleInfo = {
-      owner: { title: 'propriétaire', emoji: '🏠' },
-      tenant: { title: 'locataire', emoji: '🔑' },
-      provider: { title: 'prestataire', emoji: '🔧' },
-    };
-    
-    return {
-      subject: `${roleInfo[data.role].emoji} Bienvenue sur Talok !`,
-      html: baseLayout(`
-        <div class="content">
-          <div style="text-align: center; margin-bottom: 24px;">
-            <span style="font-size: 48px;">${roleInfo[data.role].emoji}</span>
-          </div>
-          
-          <h1 style="text-align: center;">Bienvenue ${escapeHtml(data.userName)} !</h1>
-          <p style="text-align: center;">Votre compte ${roleInfo[data.role].title} a été créé avec succès.</p>
-          
-          <div class="divider"></div>
-          
-          <p>Avec Talok, vous pouvez :</p>
-          <ul style="color: ${COLORS.gray[700]};">
-            ${data.role === 'owner' ? `
-              <li>Gérer vos logements et locataires</li>
-              <li>Créer et faire signer des baux en ligne</li>
-              <li>Suivre vos loyers et paiements</li>
-              <li>Gérer la maintenance via des tickets</li>
-            ` : data.role === 'tenant' ? `
-              <li>Consulter et signer vos baux</li>
-              <li>Payer votre loyer en ligne</li>
-              <li>Télécharger vos quittances</li>
-              <li>Signaler des problèmes de maintenance</li>
-            ` : `
-              <li>Recevoir des demandes d'intervention</li>
-              <li>Gérer vos devis et factures</li>
-              <li>Suivre vos missions en cours</li>
-            `}
-          </ul>
-          
-          <div style="text-align: center;">
-            <a href="${data.loginUrl}" class="button">Accéder à mon espace</a>
-          </div>
-        </div>
-      `, `Bienvenue sur Talok, votre espace ${roleInfo[data.role].title} est prêt.`),
-    };
-  },
-
-  /**
    * Réinitialisation de mot de passe
    */
   passwordReset: (data: {
@@ -1208,11 +1154,14 @@ export const emailTemplates = {
    */
   welcomeOnboarding: (data: {
     userName: string;
-    role: 'owner' | 'tenant' | 'provider' | 'guarantor';
+    role: 'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency';
     onboardingUrl: string;
     supportEmail?: string;
   }) => {
-    const roleConfig = {
+    const roleConfig: Record<
+      'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency',
+      { emoji: string; title: string; steps: string[]; benefits: string[] }
+    > = {
       owner: {
         emoji: '🏠',
         title: 'propriétaire',
@@ -1273,6 +1222,38 @@ export const emailTemplates = {
           'Processus 100% dématérialisé',
           'Signature électronique sécurisée',
           'Suivi du bail en temps réel',
+        ],
+      },
+      syndic: {
+        emoji: '🏢',
+        title: 'syndic de copropriété',
+        steps: [
+          'Configurez votre cabinet et votre site',
+          'Ajoutez vos immeubles, lots et tantièmes',
+          'Importez vos copropriétaires',
+          'Lancez votre première assemblée générale',
+        ],
+        benefits: [
+          'Gestion centralisée des copropriétés',
+          'Convocations et PV automatisés',
+          'Suivi des charges et appels de fonds',
+          'Communication simplifiée avec les copropriétaires',
+        ],
+      },
+      agency: {
+        emoji: '🏢',
+        title: 'agence immobilière',
+        steps: [
+          'Configurez votre agence (SIRET, logo, équipe)',
+          'Enregistrez vos mandats de gestion',
+          'Invitez vos collaborateurs',
+          'Offrez un espace en marque blanche à vos clients',
+        ],
+        benefits: [
+          'Tableau de bord multi-mandats',
+          'Automatisation des loyers et quittances',
+          'Comptes clients et reporting CRG',
+          'Marque blanche personnalisable',
         ],
       },
     };

@@ -333,8 +333,39 @@ Copier-coller ce prompt pour une vérification manuelle exhaustive du site :
 
 ### 13. NOTIFICATIONS & EMAILS
 
+#### 13.1 Configuration Supabase Dashboard (à vérifier manuellement)
+
+Ces réglages vivent dans le dashboard Supabase (projet prod) et ne sont PAS
+visibles dans le repo. À auditer avant chaque mise en prod :
+
+- [ ] **Authentication → Providers → Email** : `Confirm email` activé
+      (équivalent `auth.email.enable_confirmations = true`). Sinon Supabase
+      n'envoie AUCUN email de confirmation et `supabase.auth.signUp()` laisse
+      l'utilisateur avec `email_confirmed_at = NOW()` immédiatement.
+- [ ] **Authentication → Rate Limits → Emails sent** : supérieur à 30/h
+      (défaut dev = 2/h, insuffisant pour un trafic réel). Recommandé : 150/h
+      minimum pour la prod.
+- [ ] **Authentication → URL Configuration → Site URL** : pointe bien vers
+      `https://app.talok.fr` (ou domaine prod).
+- [ ] **Authentication → URL Configuration → Redirect URLs** : contient
+      `https://app.talok.fr/auth/callback` (sinon le magic link rebondit
+      vers une 404).
+- [ ] **Authentication → Email Templates** : si des templates custom sont
+      configurés, vérifier qu'ils utilisent `{{ .ConfirmationURL }}` et pas
+      `{{ .SiteURL }}` (autrement le rôle / la redirection onboarding ne
+      sont pas propagés).
+- [ ] Envoyer un email de test depuis l'onglet Resend Dashboard pour valider
+      la vérification SPF / DKIM du domaine `talok.fr`.
+
+#### 13.2 Envois applicatifs (Resend + templates internes)
+
 - [ ] Vérifier l'envoi d'emails pour :
-  - [ ] Confirmation d'inscription
+  - [ ] Confirmation d'inscription (Supabase Auth)
+  - [ ] Bienvenue par rôle (owner, tenant, provider, guarantor, syndic,
+        agency) — template `welcomeOnboarding` via `sendWelcomeEmail()`
+  - [ ] Rappel onboarding 24h / 72h / 7j — cron `onboarding-reminders`
+        (toutes les heures depuis migration 20260411120000)
+  - [ ] Félicitations onboarding complété — type `completed` du même cron
   - [ ] Réinitialisation de mot de passe
   - [ ] Invitation à signer un bail
   - [ ] Rappel de paiement
@@ -342,6 +373,9 @@ Copier-coller ce prompt pour une vérification manuelle exhaustive du site :
   - [ ] Paiement reçu
   - [ ] Quittance disponible
   - [ ] EDL à signer
+- [ ] Vérifier `pg_cron` : `SELECT jobname, schedule, active FROM cron.job;`
+      doit lister `onboarding-reminders` (toutes les heures), `payment-reminders`,
+      `process-webhooks`, etc.
 - [ ] Vérifier les notifications in-app (icône cloche)
 - [ ] Vérifier les notifications push (mobile Capacitor)
 
