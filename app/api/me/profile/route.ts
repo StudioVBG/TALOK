@@ -112,23 +112,40 @@ export async function POST(request: Request) {
 
     const profileId = (newProfile as { id: string }).id;
 
-    // Filet de sécurité : créer le profil spécialisé (owner_profiles / tenant_profiles) si le trigger DB n'a pas tourné
-    if (role === "owner") {
-      await serviceClient
-        .from("owner_profiles")
-        .upsert({ profile_id: profileId, type: "particulier" }, { onConflict: "profile_id", ignoreDuplicates: true });
-    } else if (role === "tenant") {
-      await serviceClient
-        .from("tenant_profiles")
-        .upsert({ profile_id: profileId }, { onConflict: "profile_id", ignoreDuplicates: true });
-    } else if (role === "provider") {
-      await serviceClient
-        .from("provider_profiles")
-        .upsert({ profile_id: profileId, type_services: [] }, { onConflict: "profile_id", ignoreDuplicates: true });
-    } else if (role === "agency") {
-      await serviceClient
-        .from("agency_profiles")
-        .upsert({ profile_id: profileId }, { onConflict: "profile_id", ignoreDuplicates: true });
+    // Filet de sécurité : créer le profil spécialisé si le trigger DB n'a pas tourné
+    try {
+      if (role === "owner") {
+        await serviceClient
+          .from("owner_profiles")
+          .upsert({ profile_id: profileId, type: "particulier" }, { onConflict: "profile_id", ignoreDuplicates: true });
+      } else if (role === "tenant") {
+        await serviceClient
+          .from("tenant_profiles")
+          .upsert({ profile_id: profileId }, { onConflict: "profile_id", ignoreDuplicates: true });
+      } else if (role === "provider") {
+        await serviceClient
+          .from("provider_profiles")
+          .upsert({ profile_id: profileId, type_services: [] }, { onConflict: "profile_id", ignoreDuplicates: true });
+      } else if (role === "agency") {
+        await serviceClient
+          .from("agency_profiles")
+          .upsert({ profile_id: profileId }, { onConflict: "profile_id", ignoreDuplicates: true });
+      } else if (role === "guarantor") {
+        await serviceClient
+          .from("guarantor_profiles")
+          .upsert({ profile_id: profileId }, { onConflict: "profile_id", ignoreDuplicates: true });
+      } else if (role === "syndic") {
+        // syndic_profiles n'est pas encore dans database.types.ts : cast local
+        await (serviceClient as any)
+          .from("syndic_profiles")
+          .upsert({ profile_id: profileId, type_syndic: "professionnel" }, { onConflict: "profile_id", ignoreDuplicates: true });
+      }
+    } catch (specializedError) {
+      console.error("[POST /api/me/profile] Specialized profile upsert failed (non-blocking):", {
+        role,
+        profile_id: profileId,
+        error: specializedError,
+      });
     }
 
     // Filet de sécurité : lier lease_signers orphelins + backfill invoices (au cas où le trigger DB n'a pas tourné)
