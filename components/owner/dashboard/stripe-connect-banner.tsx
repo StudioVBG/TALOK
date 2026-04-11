@@ -4,11 +4,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, CreditCard, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
 
 /**
  * Banner displayed on the owner dashboard when Stripe Connect is not configured.
  * Dismissible per session via localStorage.
+ *
+ * Historical note: this component used to query `profiles` and
+ * `stripe_connect_accounts` directly from the browser with the anon
+ * Supabase client. That triggered RLS 42P17 recursion on `profiles` in
+ * production, which was visible as two of the "4x GET Supabase 500"
+ * errors on the owner dashboard. We now hit a dedicated server route
+ * (`/api/owner/stripe-connect-status`) that uses the service client.
  */
 export function StripeConnectBanner() {
   const [show, setShow] = useState(false);
@@ -20,29 +26,32 @@ export function StripeConnectBanner() {
       return;
     }
 
-    const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!profile) return;
-
-      const { data: connectAccount } = await supabase
-        .from("stripe_connect_accounts")
-        .select("id, charges_enabled")
-        .eq("profile_id", profile.id)
-        .maybeSingle();
-
-      // Show banner if no Stripe Connect account or charges not enabled
-      if (!connectAccount || !connectAccount.charges_enabled) {
-        setShow(true);
+    let aborted = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/owner/stripe-connect-status", {
+          method: "GET",
+          credentials: "include",
+        });
+        if (!res.ok || aborted) return;
+        const data = (await res.json()) as {
+          configured?: boolean;
+        };
+        if (!aborted && data.configured === false) {
+          setShow(true);
+        }
+      } catch (err) {
+        // Cosmetic banner — never crash the dashboard on failure.
+        console.error(
+          "[StripeConnectBanner] Failed to load status:",
+          err,
+        );
       }
-    });
+    })();
+
+    return () => {
+      aborted = true;
+    };
   }, []);
 
   if (!show || dismissed) return null;

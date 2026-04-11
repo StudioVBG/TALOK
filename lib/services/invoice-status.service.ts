@@ -89,7 +89,7 @@ export async function syncInvoiceStatusFromPayments(
     ? paidAt || settlement.invoice?.date_paiement || new Date().toISOString()
     : null;
 
-  await supabase
+  const { error: invoiceUpdateError } = await supabase
     .from("invoices")
     .update({
       statut: nextStatus,
@@ -97,22 +97,35 @@ export async function syncInvoiceStatusFromPayments(
     })
     .eq("id", invoiceId);
 
+  if (invoiceUpdateError) {
+    console.error(
+      "[syncInvoiceStatusFromPayments] Invoice status update failed:",
+      invoiceUpdateError,
+    );
+  }
+
   // Bug 11 : quand une facture est entièrement réglée, on annule les anciens
   // Payment Intents `pending` orphelins liés à cette facture. Sans ce nettoyage,
   // l'historique côté propriétaire continue d'afficher "55€ — En attente — Date
   // non renseignée" alors que la facture est marquée "Payée".
+  //
+  // NB : le statut `cancelled` sur payments est autorisé depuis la
+  // migration 20260411120000_harden_payments_check_constraints.sql.
+  // Avant cette migration, cette update échouait silencieusement sur
+  // la CHECK (ancien set = pending|succeeded|failed|refunded).
   if (settlement.isSettled) {
-    try {
-      await supabase
-        .from("payments")
-        .update({ statut: "cancelled" })
-        .eq("invoice_id", invoiceId)
-        .in("statut", ["pending", "processing"]);
-    } catch (cleanupError) {
-      // Non bloquant : la facture est déjà marquée payée, c'est l'essentiel
+    const { error: cleanupError } = await supabase
+      .from("payments")
+      .update({ statut: "cancelled" })
+      .eq("invoice_id", invoiceId)
+      .in("statut", ["pending", "processing"]);
+
+    if (cleanupError) {
+      // Non bloquant : la facture est déjà marquée payée, c'est l'essentiel.
+      // On log quand même pour ne plus perdre silencieusement les échecs.
       console.warn(
         "[syncInvoiceStatusFromPayments] Cleanup pending payments failed:",
-        cleanupError
+        cleanupError,
       );
     }
   }
