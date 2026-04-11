@@ -1320,7 +1320,7 @@ export const emailTemplates = {
    */
   onboardingReminder24h: (data: {
     userName: string;
-    role: 'owner' | 'tenant' | 'provider' | 'guarantor';
+    role: 'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency';
     progressPercent: number;
     nextStepLabel: string;
     onboardingUrl: string;
@@ -1365,15 +1365,20 @@ export const emailTemplates = {
    */
   onboardingReminder72h: (data: {
     userName: string;
-    role: 'owner' | 'tenant' | 'provider' | 'guarantor';
+    role: 'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency';
     progressPercent: number;
     onboardingUrl: string;
   }) => {
-    const roleMessages = {
+    const roleMessages: Record<
+      'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency',
+      string
+    > = {
       owner: 'Vos futurs locataires vous attendent ! Finalisez votre espace pour commencer à gérer vos biens.',
       tenant: 'Votre propriétaire attend votre dossier complet. Finalisez votre inscription pour signer votre bail.',
       provider: 'Des propriétaires recherchent des prestataires comme vous. Complétez votre profil pour être visible.',
       guarantor: 'Le locataire que vous accompagnez a besoin de votre cautionnement. Finalisez votre inscription.',
+      syndic: 'Vos copropriétaires comptent sur vous. Finalisez la configuration de votre cabinet pour lancer votre première assemblée.',
+      agency: 'Vos propriétaires mandants vous attendent. Finalisez votre espace pour gérer vos mandats en toute sérénité.',
     };
 
     return {
@@ -1411,7 +1416,7 @@ export const emailTemplates = {
    */
   onboardingReminder7d: (data: {
     userName: string;
-    role: 'owner' | 'tenant' | 'provider' | 'guarantor';
+    role: 'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency';
     onboardingUrl: string;
   }) => ({
     subject: `💭 ${escapeHtml(data.userName)}, nous pensons à vous`,
@@ -1447,10 +1452,13 @@ export const emailTemplates = {
    */
   onboardingCompleted: (data: {
     userName: string;
-    role: 'owner' | 'tenant' | 'provider' | 'guarantor';
+    role: 'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency';
     dashboardUrl: string;
   }) => {
-    const roleConfig = {
+    const roleConfig: Record<
+      'owner' | 'tenant' | 'provider' | 'guarantor' | 'syndic' | 'agency',
+      { emoji: string; title: string; nextSteps: Array<{ label: string; url: string }> }
+    > = {
       owner: {
         emoji: '🏠',
         title: 'propriétaire',
@@ -1484,6 +1492,24 @@ export const emailTemplates = {
         nextSteps: [
           { label: 'Voir le bail', url: '/guarantor/lease' },
           { label: 'Mes documents', url: '/guarantor/documents' },
+        ],
+      },
+      syndic: {
+        emoji: '🏢',
+        title: 'syndic de copropriété',
+        nextSteps: [
+          { label: 'Ajouter une copropriété', url: '/syndic/sites' },
+          { label: 'Préparer une assemblée', url: '/syndic/assemblies' },
+          { label: 'Lancer un appel de fonds', url: '/syndic/calls' },
+        ],
+      },
+      agency: {
+        emoji: '🏢',
+        title: 'agence immobilière',
+        nextSteps: [
+          { label: 'Créer un mandat', url: '/agency/mandates' },
+          { label: 'Inviter votre équipe', url: '/agency/settings/team' },
+          { label: 'Voir vos biens gérés', url: '/agency/properties' },
         ],
       },
     };
