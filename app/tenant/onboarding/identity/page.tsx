@@ -15,6 +15,7 @@ import {
   ErrorStep,
   useIdentityVerification,
 } from "@/features/identity-verification";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export default function TenantIdentityPage() {
   const router = useRouter();
@@ -60,7 +61,7 @@ export default function TenantIdentityPage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     }

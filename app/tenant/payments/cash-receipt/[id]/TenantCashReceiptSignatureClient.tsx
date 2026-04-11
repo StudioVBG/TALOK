@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { SignaturePad, type SignaturePadRef } from "@/components/payments/SignaturePad";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface Props {
   receiptId: string;
@@ -114,7 +115,7 @@ export function TenantCashReceiptSignatureClient({
     } catch (error) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {

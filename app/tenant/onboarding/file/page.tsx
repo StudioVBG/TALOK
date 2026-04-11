@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const SITUATIONS_PRO = [
   "Salarié",
@@ -114,7 +115,7 @@ export default function TenantFilePage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

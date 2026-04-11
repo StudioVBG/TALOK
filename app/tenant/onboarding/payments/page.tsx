@@ -20,6 +20,7 @@ import {
 import { PaymentMethodSetup } from "@/features/billing/components/v2/PaymentMethodSetup";
 import { useAddPaymentMethod } from "@/lib/hooks/use-tenant-payment-methods";
 import { cn } from "@/lib/utils";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export default function TenantPaymentsPage() {
   const router = useRouter();
@@ -103,7 +104,7 @@ export default function TenantPaymentsPage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

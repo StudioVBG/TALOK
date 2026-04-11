@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { OnboardingStepShell } from "@/components/onboarding/onboarding-step-shell";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface PropertyInfoShort {
   id: string;
@@ -150,7 +151,7 @@ export default function TenantContextPage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {
@@ -230,7 +231,7 @@ export default function TenantContextPage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

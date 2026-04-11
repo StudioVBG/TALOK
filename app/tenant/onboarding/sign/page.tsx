@@ -14,6 +14,7 @@ import { SignaturePad, type SignatureData } from "@/components/signature/Signatu
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { isIdentityVerified } from "@/lib/helpers/identity-check";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export default function TenantSignLeasePage() {
   const router = useRouter();
@@ -124,7 +125,7 @@ export default function TenantSignLeasePage() {
       console.error("[SignLease] Error:", error);
       toast({
         title: "Erreur de signature",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {
