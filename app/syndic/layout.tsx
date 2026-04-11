@@ -20,16 +20,19 @@ import {
   Building2, Users, Calendar, Euro,
   FileText, Settings, Bell, HelpCircle,
   LayoutDashboard, ClipboardList, UserPlus,
-  Calculator, AlertTriangle, Hammer,
+  Calculator, AlertTriangle, Hammer, Scale,
 } from "lucide-react";
 
 // Navigation syndic
 const navigation = [
   { name: "Dashboard", href: "/syndic/dashboard", icon: LayoutDashboard },
   { name: "Copropriétés", href: "/syndic/sites", icon: Building2 },
-  { name: "Comptabilité", href: "/syndic/accounting", icon: Calculator },
   { name: "Assemblées", href: "/syndic/assemblies", icon: Calendar },
+  { name: "Mandats", href: "/syndic/mandates", icon: FileText },
+  { name: "Conseils syndicaux", href: "/syndic/councils", icon: Users },
+  { name: "Comptabilité", href: "/syndic/accounting", icon: Calculator },
   { name: "Appels de fonds", href: "/syndic/calls", icon: Euro },
+  { name: "Fonds travaux", href: "/syndic/fonds-travaux", icon: Hammer },
   { name: "Dépenses", href: "/syndic/expenses", icon: FileText },
   { name: "Impayés", href: "/syndic/impayes", icon: AlertTriangle },
   { name: "Invitations", href: "/syndic/invites", icon: UserPlus },
