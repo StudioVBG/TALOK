@@ -334,11 +334,11 @@ export default function InvoiceDetailPage() {
                     <span className="font-semibold">Total</span>
                     <span className="font-bold text-lg">{invoice.montant_total.toLocaleString("fr-FR")} €</span>
                   </div>
-                  {invoice.montant_paye && invoice.montant_paye > 0 && (
+                  {(invoice.montant_paye ?? 0) > 0 && (
                     <>
                       <div className="flex justify-between items-center py-2 text-green-600">
                         <span>Déjà payé</span>
-                        <span className="font-medium">-{invoice.montant_paye.toLocaleString("fr-FR")} €</span>
+                        <span className="font-medium">-{(invoice.montant_paye ?? 0).toLocaleString("fr-FR")} €</span>
                       </div>
                       <Separator />
                       <div className="flex justify-between items-center py-2">
