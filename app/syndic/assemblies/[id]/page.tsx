@@ -29,6 +29,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { formatDateShort } from "@/lib/helpers/format";
 import { AddResolutionDialog } from "./_components/AddResolutionDialog";
 import { SendConvocationsDialog } from "./_components/SendConvocationsDialog";
+import { DownloadPdfButton } from "./_components/DownloadPdfButton";
 
 interface Assembly {
   id: string;
@@ -310,6 +311,14 @@ export default function AssemblyDetailPage() {
               Envoyer les convocations
             </Button>
           )}
+          {resolutions.length > 0 && (
+            <DownloadPdfButton
+              variant="convocation"
+              assemblyId={assemblyId}
+              label="Télécharger convocation (PDF)"
+              filename={`convocation-${assembly.reference_number || assembly.id}.pdf`}
+            />
+          )}
         </div>
 
         {/* Resolutions */}
@@ -459,7 +468,15 @@ export default function AssemblyDetailPage() {
                         </p>
                       </div>
                     </div>
-                    <Badge className="bg-slate-500/20 text-slate-200 capitalize">{minute.status}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-slate-500/20 text-slate-200 capitalize">{minute.status}</Badge>
+                      <DownloadPdfButton
+                        variant="minute"
+                        minuteId={minute.id}
+                        label="PDF"
+                        filename={`pv-${assembly.reference_number || assembly.id}-v${minute.version}.pdf`}
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
