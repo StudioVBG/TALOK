@@ -62,22 +62,6 @@
       "purpose": "maskable any"
     }
   ],
-  "screenshots": [
-    {
-      "src": "/screenshots/dashboard-wide.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Tableau de bord propriétaire"
-    },
-    {
-      "src": "/screenshots/mobile-home.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Vue mobile"
-    }
-  ],
   "shortcuts": [
     {
       "name": "Tableau de bord",
