@@ -78,6 +78,7 @@ import {
 import Link from "next/link";
 import { changePlanForCurrentUser } from "@/lib/subscriptions/change-plan-client";
 import { isValidPlanSlug, type PlanSlug } from "@/lib/subscriptions/plans";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // ============================================
 // TYPES
@@ -870,7 +871,7 @@ export default function BillingPage() {
         setInvoices((invoicesData.invoices || []).slice(0, 5));
       }
     } catch (error: unknown) {
-      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
+      toast({ title: "Erreur", description: extractErrorMessage(error), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -904,7 +905,7 @@ export default function BillingPage() {
         if (!res.ok) throw new Error(data.error);
         window.location.href = data.url;
       } catch (error: unknown) {
-        toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
+        toast({ title: "Erreur", description: extractErrorMessage(error), variant: "destructive" });
       } finally {
         setActionLoading(null);
       }
@@ -918,7 +919,7 @@ export default function BillingPage() {
       if (!res.ok) throw new Error(data.error);
       window.location.href = data.url;
     } catch (error: unknown) {
-      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
+      toast({ title: "Erreur", description: extractErrorMessage(error), variant: "destructive" });
     } finally {
       setActionLoading(null);
     }
@@ -934,7 +935,7 @@ export default function BillingPage() {
       await fetchData();
       setPriceChangeDialog({ open: false });
     } catch (error: unknown) {
-      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
+      toast({ title: "Erreur", description: extractErrorMessage(error), variant: "destructive" });
     } finally {
       setActionLoading(null);
     }
@@ -953,7 +954,7 @@ export default function BillingPage() {
       setCancelDialog(false);
       await fetchData();
     } catch (error: unknown) {
-      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
+      toast({ title: "Erreur", description: extractErrorMessage(error), variant: "destructive" });
     } finally {
       setActionLoading(null);
     }
@@ -987,7 +988,7 @@ export default function BillingPage() {
       toast({ title: "Abonnement reactive", description: "Votre abonnement a ete reactive avec succes." });
       await fetchData();
     } catch (error: unknown) {
-      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
+      toast({ title: "Erreur", description: extractErrorMessage(error), variant: "destructive" });
     } finally {
       setActionLoading(null);
     }
@@ -1019,7 +1020,7 @@ export default function BillingPage() {
       });
       await fetchData();
     } catch (error: unknown) {
-      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
+      toast({ title: "Erreur", description: extractErrorMessage(error), variant: "destructive" });
     } finally {
       setActionLoading(null);
     }

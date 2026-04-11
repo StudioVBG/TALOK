@@ -32,6 +32,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface PendingProvider {
   id: string;
@@ -300,7 +301,7 @@ function PendingProvidersContent() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -349,7 +350,7 @@ function PendingProvidersContent() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     }
@@ -399,7 +400,7 @@ function PendingProvidersContent() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     }
@@ -447,7 +448,7 @@ function PendingProvidersContent() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     }

@@ -63,6 +63,7 @@ import {
   type DocumentVerificationStatus,
 } from "@/lib/types/provider-compliance";
 import { cn } from "@/lib/utils";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -167,7 +168,7 @@ export default function ProviderCompliancePage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -213,7 +214,7 @@ export default function ProviderCompliancePage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -241,7 +242,7 @@ export default function ProviderCompliancePage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     }

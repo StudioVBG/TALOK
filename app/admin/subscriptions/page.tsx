@@ -80,6 +80,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // ============================================
 // STATS CARDS
@@ -289,7 +290,7 @@ function AdminActionModal({ open, onClose, user, action, onSuccess }: ActionModa
       onSuccess();
       onClose();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue";
+      const errorMessage = extractErrorMessage(error);
       toast({
         title: "Erreur",
         description: errorMessage,

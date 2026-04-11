@@ -60,6 +60,7 @@ import {
   DOCUMENT_TYPE_LABELS,
   type ComplianceDocumentType,
 } from "@/lib/types/provider-compliance";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -195,7 +196,7 @@ export default function AdminCompliancePage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {

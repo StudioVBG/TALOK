@@ -44,6 +44,7 @@ import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface QuoteItem {
   id: string;
@@ -156,7 +157,7 @@ export default function QuoteDetailPage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -185,7 +186,7 @@ export default function QuoteDetailPage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
         variant: "destructive",
       });
       setDeleting(false);

@@ -27,6 +27,7 @@ import {
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 type BillingCycle = "monthly" | "yearly";
 
@@ -138,7 +139,7 @@ function SignupPlanContent() {
       // Rediriger vers Stripe Checkout
       window.location.href = data.url;
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Une erreur est survenue";
+      const errorMessage = extractErrorMessage(error);
       toast({
         title: "Erreur",
         description: errorMessage,

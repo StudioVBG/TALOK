@@ -11,6 +11,7 @@ import { onboardingService } from "@/features/onboarding/services/onboarding.ser
 import { invitationsService } from "@/features/onboarding/services/invitations.service";
 import { guarantorContextSchema } from "@/lib/validations/onboarding";
 import { User, Calendar, ArrowRight } from "lucide-react";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export default function GuarantorContextPage() {
   const router = useRouter();
@@ -145,7 +146,7 @@ export default function GuarantorContextPage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

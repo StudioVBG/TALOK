@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
 
@@ -84,7 +85,7 @@ export default function ProviderOpsPage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

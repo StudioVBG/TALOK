@@ -19,6 +19,7 @@ import { CautionActeViewer } from "@/components/guarantor/CautionActeViewer";
 import { VisaleChecker } from "@/components/guarantor/VisaleChecker";
 import { guarantorProfilesService } from "@/features/profiles/services/guarantor-profiles.service";
 import type { GuarantorEngagement, CautionType } from "@/lib/types/guarantor";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 interface EngagementWithDetails extends GuarantorEngagement {
   tenant?: { id: string; prenom: string; nom: string };
@@ -100,7 +101,7 @@ export default function SignEngagementPage() {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
       });
     } finally {
       setSigning(false);

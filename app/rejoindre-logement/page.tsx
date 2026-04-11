@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { propertyCodesService } from "@/features/onboarding/services/property-codes.service";
 import { Key, ArrowRight } from "lucide-react";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export default function JoinPropertyPage() {
   const router = useRouter();
@@ -39,7 +40,7 @@ export default function JoinPropertyPage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

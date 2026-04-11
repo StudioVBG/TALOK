@@ -112,6 +112,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 // ============================================
 // TYPES
@@ -1729,7 +1730,7 @@ export default function AdminPlansPage() {
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (error: unknown) {
       setSaveStatus("error");
-      toast({ title: "Erreur", description: error instanceof Error ? error.message : "Une erreur est survenue", variant: "destructive" });
+      toast({ title: "Erreur", description: extractErrorMessage(error), variant: "destructive" });
     } finally {
       setSaving(false);
     }

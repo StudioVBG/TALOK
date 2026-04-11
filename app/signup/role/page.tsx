@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { track } from "@/lib/analytics/posthog";
 import { TalokLogo } from "@/components/marketing/TalokLogo";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 function RoleChoiceLoading() {
   return (
@@ -93,7 +94,7 @@ function RoleChoiceContent() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

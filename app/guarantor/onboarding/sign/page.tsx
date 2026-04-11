@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { onboardingService } from "@/features/onboarding/services/onboarding.service";
 import { FileSignature, CheckCircle2 } from "lucide-react";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export default function GuarantorSignPage() {
   const router = useRouter();
@@ -38,7 +39,7 @@ export default function GuarantorSignPage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue lors de la signature.",
+        description: extractErrorMessage(error, "Une erreur est survenue lors de la signature."),
         variant: "destructive",
       });
     } finally {

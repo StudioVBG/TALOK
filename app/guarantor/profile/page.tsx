@@ -33,6 +33,7 @@ import {
   type GuarantorRelation,
   type GuarantorSituationPro,
 } from "@/lib/types/guarantor";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export default function GuarantorProfilePage() {
   const router = useRouter();
@@ -105,7 +106,7 @@ export default function GuarantorProfilePage() {
       toast({
         variant: "destructive",
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
       });
     } finally {
       setSaving(false);

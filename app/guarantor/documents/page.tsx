@@ -32,6 +32,7 @@ import {
   REQUIRED_GUARANTOR_DOCUMENTS,
   OPTIONAL_GUARANTOR_DOCUMENTS,
 } from "@/lib/types/guarantor";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -111,7 +112,7 @@ export default function GuarantorDocumentsPage() {
       toast({
         variant: "destructive",
         title: "Erreur d'upload",
-        description: error instanceof Error ? error.message : "Une erreur est survenue",
+        description: extractErrorMessage(error),
       });
     } finally {
       setUploading(false);

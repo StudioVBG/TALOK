@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { onboardingService } from "@/features/onboarding/services/onboarding.service";
 import { providerServicesSchema } from "@/lib/validations/onboarding";
 import { Wrench, MapPin, ArrowRight, X, CheckCircle2 } from "lucide-react";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 const SPECIALITES = [
   "Plomberie",
@@ -136,7 +137,7 @@ export default function ProviderServicesPage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { onboardingService } from "@/features/onboarding/services/onboarding.service";
 import { CheckCircle2, Clock, ArrowRight } from "lucide-react";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 
 export default function ProviderReviewPage() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function ProviderReviewPage() {
     } catch (error: unknown) {
       toast({
         title: "Erreur",
-        description: error instanceof Error ? error.message : "Une erreur est survenue.",
+        description: extractErrorMessage(error, "Une erreur est survenue."),
         variant: "destructive",
       });
     } finally {
