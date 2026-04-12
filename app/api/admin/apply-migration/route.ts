@@ -3,20 +3,30 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 
 /**
  * Route API pour appliquer la migration lease_signers
- * Accessible uniquement en développement ou avec un secret
+ * Double protection : requireAdmin + MIGRATION_SECRET
  */
 
 export async function POST(request: Request) {
-  // Vérifier l'environnement ou le secret
+  // 1. Vérifier que l'utilisateur est admin
+  const { error: authError } = await requireAdmin(request);
+
+  if (authError) {
+    return NextResponse.json(
+      { error: authError.message || "Accès non autorisé" },
+      { status: authError.status || 403 }
+    );
+  }
+
+  // 2. Vérifier le secret de migration (défense en profondeur)
   const { searchParams } = new URL(request.url);
   const secret = searchParams.get("secret");
-  
+
   const expectedSecret = process.env.MIGRATION_SECRET;
 
-  // SECURITY: Ne jamais autoriser sans secret en production
   if (!expectedSecret) {
     console.error("[apply-migration] MIGRATION_SECRET non configuré");
     return NextResponse.json(
@@ -25,8 +35,8 @@ export async function POST(request: Request) {
     );
   }
 
-  if (process.env.NODE_ENV !== "development" && secret !== expectedSecret) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (secret !== expectedSecret) {
+    return NextResponse.json({ error: "Secret invalide" }, { status: 401 });
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -50,20 +60,16 @@ export async function POST(request: Request) {
 
   // Migration 1: Vérifier si profile_id est nullable
   try {
-    // On ne peut pas faire ALTER TABLE directement via le client Supabase
-    // Mais on peut vérifier si les colonnes existent et tester les insertions
-    
-    // Test: essayer d'insérer sans profile_id pour voir si ça marche
     const { error: testError } = await supabase
       .from("lease_signers")
       .select("id, invited_email")
       .limit(1);
 
     if (testError) {
-      results.push({ 
-        step: "Vérification structure", 
-        success: false, 
-        error: testError.message 
+      results.push({
+        step: "Vérification structure",
+        success: false,
+        error: testError.message
       });
     } else {
       results.push({ step: "Vérification structure", success: true });
@@ -79,29 +85,29 @@ export async function POST(request: Request) {
 -- =====================================================
 
 -- 1. Rendre profile_id nullable
-ALTER TABLE lease_signers 
+ALTER TABLE lease_signers
 ALTER COLUMN profile_id DROP NOT NULL;
 
 -- 2. Ajouter invited_email
-ALTER TABLE lease_signers 
+ALTER TABLE lease_signers
 ADD COLUMN IF NOT EXISTS invited_email VARCHAR(255);
 
--- 3. Ajouter invited_at  
-ALTER TABLE lease_signers 
+-- 3. Ajouter invited_at
+ALTER TABLE lease_signers
 ADD COLUMN IF NOT EXISTS invited_at TIMESTAMPTZ DEFAULT NOW();
 
 -- 4. Ajouter invited_name
-ALTER TABLE lease_signers 
+ALTER TABLE lease_signers
 ADD COLUMN IF NOT EXISTS invited_name VARCHAR(255);
 
 -- 5. Index
-CREATE INDEX IF NOT EXISTS idx_lease_signers_invited_email 
-ON lease_signers(invited_email) 
+CREATE INDEX IF NOT EXISTS idx_lease_signers_invited_email
+ON lease_signers(invited_email)
 WHERE invited_email IS NOT NULL;
 
 -- Vérification
-SELECT column_name, is_nullable, data_type 
-FROM information_schema.columns 
+SELECT column_name, is_nullable, data_type
+FROM information_schema.columns
 WHERE table_name = 'lease_signers'
 ORDER BY ordinal_position;
 `;
@@ -121,4 +127,3 @@ ORDER BY ordinal_position;
     dashboardUrl: `https://supabase.com/dashboard/project/${supabaseUrl?.replace("https://", "").replace(".supabase.co", "")}/sql/new`,
   });
 }
-

@@ -1,31 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 
 /**
  * GET /api/admin/site-content
  * Liste toutes les pages de contenu (dernière version publiée de chaque page)
  */
-export async function GET() {
-  const supabase = await createClient();
+export async function GET(request: Request) {
+  const { error: authError, supabase } = await requireAdmin(request);
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-  }
-
-  // Vérifier le rôle admin
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || (profile.role !== "admin" && profile.role !== "platform_admin")) {
-    return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+  if (authError || !supabase) {
+    return NextResponse.json(
+      { error: authError?.message || "Accès non autorisé" },
+      { status: authError?.status || 403 }
+    );
   }
 
   // Récupérer toutes les pages (toutes versions)
@@ -48,25 +35,13 @@ export async function GET() {
  * Créer ou mettre à jour le contenu d'une page
  */
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
+  const { error: authError, user, supabase } = await requireAdmin(request);
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-
-  if (!profile || (profile.role !== "admin" && profile.role !== "platform_admin")) {
-    return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+  if (authError || !supabase) {
+    return NextResponse.json(
+      { error: authError?.message || "Accès non autorisé" },
+      { status: authError?.status || 403 }
+    );
   }
 
   const body = await request.json();
@@ -114,7 +89,7 @@ export async function POST(request: NextRequest) {
       meta_description,
       version: nextVersion,
       is_published,
-      updated_by: user.id,
+      updated_by: user!.id,
       last_updated_at: new Date().toISOString(),
     })
     .select()
