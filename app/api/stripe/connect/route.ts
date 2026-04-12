@@ -128,10 +128,16 @@ async function getStoredConnectAccountReference(
   serviceClient: ReturnType<typeof createServiceRoleClient>,
   profileId: string
 ): Promise<StoredConnectAccountReference | null> {
+  // S2-2 : filtrer explicitement sur le compte personnel (entity_id IS NULL).
+  // Depuis la migration 20260412100000 un même profile_id peut avoir plusieurs
+  // comptes Connect (un personnel + plusieurs scopés par entité juridique).
+  // Cette route sert historiquement aux propriétaires, on veut donc le compte
+  // personnel.
   const { data, error } = await serviceClient
     .from("stripe_connect_accounts")
     .select("id, stripe_account_id")
     .eq("profile_id", profileId)
+    .is("entity_id", null)
     .maybeSingle();
 
   if (error) {
@@ -161,11 +167,12 @@ export async function GET() {
     const { profile } = auth;
     const serviceClient = createServiceRoleClient();
 
-    // Récupérer le compte Connect
+    // Récupérer le compte Connect personnel (S2-2 : entity_id IS NULL)
     const { data: connectAccount } = await serviceClient
       .from("stripe_connect_accounts")
       .select("*")
       .eq("profile_id", profile.id)
+      .is("entity_id", null)
       .maybeSingle();
 
     if (!connectAccount) {

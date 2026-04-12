@@ -61,6 +61,7 @@ export async function GET() {
       .from("stripe_connect_accounts")
       .select("id, charges_enabled")
       .eq("profile_id", profileId)
+      .is("entity_id", null) // S2-2 : compte personnel de l'owner uniquement
       .maybeSingle();
 
     if (connectError) {

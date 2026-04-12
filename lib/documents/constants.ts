@@ -31,8 +31,17 @@ export const DOCUMENT_TYPES = [
   "garant_identite", "garant_revenus", "garant_domicile", "garant_engagement",
   // Prestataire
   "devis", "ordre_mission", "rapport_intervention",
-  // Copropriete
+  // Copropriete — types historiques
   "taxe_fonciere", "taxe_sejour", "copropriete", "proces_verbal", "appel_fonds",
+  // Copropriete — types reglementaires ajoutes S2-3
+  // proces_verbal couvre deja les PV d'AG (pas de duplication avec pv_assemblee).
+  // diagnostic_amiante et diagnostic_plomb existent deja dans la categorie diagnostic.
+  "convocation_ag", "etat_date", "pre_etat_date",
+  "carnet_entretien", "fiche_synthetique",
+  "reglement_copropriete", "etat_descriptif_division",
+  "regularisation_charges", "dpe_collectif",
+  "ppt", "contrat_syndic",
+  "budget_previsionnel", "annexe_comptable",
   // Divers
   "annexe_pinel", "etat_travaux", "publication_jal", "consentement", "courrier", "photo", "autre",
 ] as const;
@@ -86,6 +95,14 @@ export const TYPE_TO_CATEGORY: Record<DocumentType, DocumentCategory> = {
 
   taxe_fonciere: "copropriete", taxe_sejour: "copropriete",
   copropriete: "copropriete", proces_verbal: "copropriete", appel_fonds: "copropriete",
+
+  // S2-3 : nouveaux types reglementaires copro
+  convocation_ag: "copropriete", etat_date: "copropriete", pre_etat_date: "copropriete",
+  carnet_entretien: "copropriete", fiche_synthetique: "copropriete",
+  reglement_copropriete: "copropriete", etat_descriptif_division: "copropriete",
+  regularisation_charges: "copropriete", dpe_collectif: "copropriete",
+  ppt: "copropriete", contrat_syndic: "copropriete",
+  budget_previsionnel: "copropriete", annexe_comptable: "copropriete",
 
   annexe_pinel: "autre", etat_travaux: "autre", publication_jal: "autre",
   consentement: "autre", courrier: "autre", photo: "autre", autre: "autre",
@@ -146,8 +163,22 @@ export const TYPE_TO_LABEL: Record<DocumentType, string> = {
   taxe_fonciere: "Taxe fonciere",
   taxe_sejour: "Taxe de sejour",
   copropriete: "Document copropriete",
-  proces_verbal: "Proces-verbal",
+  proces_verbal: "Proces-verbal d'AG",
   appel_fonds: "Appel de fonds",
+  // S2-3 : libelles FR pour les nouveaux types copro
+  convocation_ag: "Convocation d'assemblee generale",
+  etat_date: "Etat date",
+  pre_etat_date: "Pre-etat date",
+  carnet_entretien: "Carnet d'entretien",
+  fiche_synthetique: "Fiche synthetique",
+  reglement_copropriete: "Reglement de copropriete",
+  etat_descriptif_division: "Etat descriptif de division",
+  regularisation_charges: "Regularisation de charges",
+  dpe_collectif: "DPE collectif",
+  ppt: "Plan pluriannuel de travaux (PPT)",
+  contrat_syndic: "Contrat de syndic",
+  budget_previsionnel: "Budget previsionnel",
+  annexe_comptable: "Annexe comptable",
   annexe_pinel: "Annexe Pinel",
   etat_travaux: "Etat des travaux",
   publication_jal: "Publication JAL",

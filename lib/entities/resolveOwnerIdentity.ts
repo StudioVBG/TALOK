@@ -376,6 +376,7 @@ async function resolveFromEntity(
           .from("stripe_connect_accounts")
           .select("stripe_account_id, payouts_enabled")
           .eq("profile_id", ownerProfileId)
+          .is("entity_id", null) // S2-2 : compte personnel uniquement
           .maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
@@ -591,6 +592,7 @@ async function resolveFromOwnerProfile(
       .from("stripe_connect_accounts")
       .select("stripe_account_id, payouts_enabled")
       .eq("profile_id", profileId)
+      .is("entity_id", null) // S2-2 : compte personnel uniquement
       .maybeSingle(),
   ]);
 
