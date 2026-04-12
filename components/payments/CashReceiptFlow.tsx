@@ -194,8 +194,8 @@ export function CashReceiptFlow({
   };
 
   return (
-    <Card className="w-full max-w-lg mx-auto overflow-hidden shadow-xl bg-card">
-      <CardHeader className="bg-gradient-to-r from-[#2563EB]/10 to-[#2563EB]/5 border-b pb-4">
+    <Card className="w-full max-w-lg mx-auto flex flex-col max-h-[90vh] overflow-hidden shadow-xl bg-card">
+      <CardHeader className="bg-gradient-to-r from-[#2563EB]/10 to-[#2563EB]/5 border-b pb-4 shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Banknote className="w-5 h-5 text-[#2563EB]" />
@@ -206,7 +206,7 @@ export function CashReceiptFlow({
           </span>
         </div>
 
-        {/* Barre de progression: Propriétaire → En attente locataire */}
+        {/* Barre de progression: Signature propriétaire → Signature locataire */}
         <div className="flex gap-1 mt-4">
           {(["sign", "pending"] as const).map((s, i) => {
             const currentIndex = step === "pending" ? 1 : 0;
@@ -223,12 +223,14 @@ export function CashReceiptFlow({
         </div>
 
         <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-          <span>Votre signature</span>
-          <span>Locataire signe</span>
+          <span>
+            {step === "sign" ? "Votre signature" : "Signature propriétaire ✓"}
+          </span>
+          <span>Signature locataire</span>
         </div>
       </CardHeader>
 
-      <CardContent className="p-6">
+      <CardContent className="p-6 overflow-y-auto flex-1 min-h-0">
         <AnimatePresence mode="wait" custom={direction}>
           {/* ÉTAPE 1: Signature propriétaire */}
           {step === "sign" && (
@@ -296,17 +298,17 @@ export function CashReceiptFlow({
 
               {/* Signature propriétaire */}
               <div className="border-2 border-[#2563EB]/20 rounded-xl p-4 bg-[#2563EB]/5">
-                <div className="flex items-center gap-2 mb-3">
-                  <User className="w-4 h-4 text-[#2563EB]" />
-                  <span className="text-sm font-medium">
-                    {ownerName} — Je confirme recevoir ce paiement
+                <div className="flex items-start gap-2 mb-3">
+                  <User className="w-4 h-4 text-[#2563EB] mt-0.5 shrink-0" />
+                  <span className="text-sm font-medium leading-tight">
+                    {ownerName} — Je confirme avoir reçu ce paiement en espèces
                   </span>
                 </div>
                 <SignaturePad
                   ref={ownerSignatureRef}
                   label="Signez ici"
                   onSignatureChange={(isEmpty) => setCanProceed(!isEmpty)}
-                  height={140}
+                  height={128}
                 />
               </div>
 
@@ -333,12 +335,13 @@ export function CashReceiptFlow({
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex gap-3 pt-2">
+              {/* Actions — sticky bottom pour rester visibles sur petits écrans */}
+              <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 bg-card border-t flex gap-3">
                 <Button
                   variant="outline"
                   onClick={onCancel}
                   className="gap-2"
+                  disabled={loading}
                 >
                   Annuler
                 </Button>
