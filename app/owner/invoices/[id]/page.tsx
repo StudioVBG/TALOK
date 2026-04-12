@@ -35,6 +35,15 @@ import { cn } from "@/lib/utils";
 import { safeDate, safeDateFormat } from "@/lib/helpers/safe-date";
 import { ManualPaymentDialog } from "@/components/payments";
 
+interface CashReceiptInfo {
+  id: string;
+  receipt_number: string;
+  status: string;
+  amount: number;
+  owner_signature: string | null;
+  tenant_signature: string | null;
+}
+
 const statusConfig = {
   draft: { label: "Brouillon", color: "bg-muted text-foreground", icon: FileText },
   sent: { label: "Envoyée", color: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300", icon: Send },
@@ -97,6 +106,7 @@ export default function InvoiceDetailPage() {
   const [fetchError, setFetchError] = useState<{ status: number; message: string } | null>(null);
   const [sending, setSending] = useState(false);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [cashReceipts, setCashReceipts] = useState<CashReceiptInfo[]>([]);
 
   const fetchInvoice = async () => {
     setFetchError(null);
@@ -126,13 +136,35 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  // Charge les reçus espèces liés à la facture (pour proposer le téléchargement
+  // de l'attestation une fois les deux signatures apposées).
+  const fetchCashReceipts = async () => {
+    try {
+      const response = await fetch(
+        `/api/payments/cash-receipt?invoice_id=${invoiceId}`,
+        { credentials: "include" }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setCashReceipts(data.receipts || []);
+      }
+    } catch (error) {
+      // Non bloquant — la page reste fonctionnelle même si l'API échoue.
+      console.warn("[InvoiceDetail] cash-receipts fetch failed:", error);
+    }
+  };
+
   useEffect(() => {
-    if (invoiceId) fetchInvoice();
+    if (invoiceId) {
+      fetchInvoice();
+      fetchCashReceipts();
+    }
   }, [invoiceId]);
 
   // Refresh after payment
   const handlePaymentComplete = () => {
     fetchInvoice();
+    fetchCashReceipts();
     setShowPaymentDialog(false);
   };
 
@@ -371,6 +403,58 @@ export default function InvoiceDetailPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Attestations de paiement espèces signées (2 parties) */}
+            {cashReceipts.some(
+              (r) => r.status === "signed" || r.status === "sent" || r.status === "archived"
+            ) && (
+              <Card className="bg-card/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Banknote className="h-5 w-5 text-emerald-600" />
+                    Attestations espèces signées
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {cashReceipts
+                    .filter(
+                      (r) =>
+                        r.status === "signed" ||
+                        r.status === "sent" ||
+                        r.status === "archived"
+                    )
+                    .map((r) => (
+                      <div
+                        key={r.id}
+                        className="flex items-center justify-between gap-2 p-3 rounded-lg border border-border/50 bg-muted/30"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            Reçu {r.receipt_number}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {r.amount.toLocaleString("fr-FR")} € • Signé par les 2 parties
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            window.open(
+                              `/api/payments/cash-receipt/${r.id}/pdf`,
+                              "_blank"
+                            )
+                          }
+                          className="gap-2 shrink-0"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span className="hidden sm:inline">Télécharger</span>
+                        </Button>
+                      </div>
+                    ))}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Paiements */}
             <Card className="bg-card/80 backdrop-blur-sm">

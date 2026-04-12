@@ -194,20 +194,20 @@ export function CashReceiptFlow({
   };
 
   return (
-    <Card className="w-full max-w-lg mx-auto flex flex-col max-h-[90vh] overflow-hidden shadow-xl bg-card">
-      <CardHeader className="bg-gradient-to-r from-[#2563EB]/10 to-[#2563EB]/5 border-b pb-4 shrink-0">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Banknote className="w-5 h-5 text-[#2563EB]" />
-            Reçu de paiement espèces
+    <Card className="w-full max-w-lg mx-auto shadow-xl bg-card border-0 sm:border">
+      <CardHeader className="bg-gradient-to-r from-[#2563EB]/10 to-[#2563EB]/5 border-b px-4 sm:px-6 py-3 sm:py-4">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Banknote className="w-5 h-5 text-[#2563EB] shrink-0" />
+            <span className="truncate">Reçu espèces</span>
           </CardTitle>
-          <span className="text-2xl font-bold text-[#2563EB]">
+          <span className="text-xl sm:text-2xl font-bold text-[#2563EB] shrink-0">
             {amountFormatted}
           </span>
         </div>
 
-        {/* Barre de progression: Signature propriétaire → Signature locataire */}
-        <div className="flex gap-1 mt-4">
+        {/* Barre de progression: Attestation propriétaire → Contresignature locataire */}
+        <div className="flex gap-1 mt-3">
           {(["sign", "pending"] as const).map((s, i) => {
             const currentIndex = step === "pending" ? 1 : 0;
             return (
@@ -222,15 +222,22 @@ export function CashReceiptFlow({
           })}
         </div>
 
-        <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-          <span>
-            {step === "sign" ? "Votre signature" : "Signature propriétaire ✓"}
+        {/* T4: libellés reflètant la logique correcte — le propriétaire atteste
+            recevoir le cash (étape 1), puis le locataire contresigne (étape 2). */}
+        <div className="flex justify-between mt-2 text-[11px] sm:text-xs text-muted-foreground">
+          <span className={cn(step === "sign" && "font-semibold text-foreground")}>
+            1. Propriétaire atteste
           </span>
-          <span>Signature locataire</span>
+          <span className={cn(step === "pending" && "font-semibold text-foreground")}>
+            2. Locataire contresigne
+          </span>
         </div>
       </CardHeader>
 
-      <CardContent className="p-6 overflow-y-auto flex-1 min-h-0">
+      {/* Le CardContent est scrollable en interne au cas où le contenu dépasse
+          la hauteur du DialogContent (max-h-[90vh]) — garantit que les boutons
+          d'action en bas restent toujours atteignables via scroll. */}
+      <CardContent className="p-4 sm:p-6">
         <AnimatePresence mode="wait" custom={direction}>
           {/* ÉTAPE 1: Signature propriétaire */}
           {step === "sign" && (
@@ -244,15 +251,15 @@ export function CashReceiptFlow({
               transition={{ duration: 0.3, ease: "easeInOut" }}
               className="space-y-4"
             >
-              {/* Résumé compact */}
-              <div className="bg-muted/50 rounded-xl p-3 space-y-2 text-sm">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Locataire</span>
-                  <span className="font-medium">{tenantName}</span>
+              {/* Résumé compact — T3: reserre le padding sur mobile */}
+              <div className="bg-muted/50 rounded-xl p-3 space-y-1.5 text-xs sm:text-sm">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="text-muted-foreground shrink-0">Locataire</span>
+                  <span className="font-medium truncate">{tenantName}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Logement</span>
-                  <span className="font-medium text-right text-xs max-w-[220px] truncate">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="text-muted-foreground shrink-0">Logement</span>
+                  <span className="font-medium text-right truncate max-w-[60%]">
                     {propertyAddress}
                   </span>
                 </div>
@@ -261,22 +268,22 @@ export function CashReceiptFlow({
                   <span className="font-medium">{periode}</span>
                 </div>
                 <hr className="border-border/50" />
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Montant reçu</span>
-                  <div className="flex items-center gap-2">
+                <div className="flex justify-between items-center gap-2">
+                  <span className="text-muted-foreground shrink-0">Montant reçu</span>
+                  <div className="flex items-center gap-1">
                     <Input
                       type="number"
                       value={actualAmount}
                       onChange={(e) => setActualAmount(e.target.value)}
-                      className="w-24 h-8 text-right font-bold"
+                      className="w-20 h-8 text-right font-bold text-sm"
                       step="0.01"
                     />
-                    <span className="text-lg font-bold">€</span>
+                    <span className="text-base font-bold">€</span>
                   </div>
                 </div>
                 {parseFloat(actualAmount) !== amount && (
-                  <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs">
-                    <AlertTriangle className="w-3 h-3" />
+                  <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-[11px]">
+                    <AlertTriangle className="w-3 h-3 shrink-0" />
                     Montant différent du loyer attendu ({amount}€)
                   </div>
                 )}
@@ -292,28 +299,33 @@ export function CashReceiptFlow({
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Ex: Reçu en main propre le..."
                   rows={2}
-                  className="mt-1"
+                  className="mt-1 text-sm"
                 />
               </div>
 
-              {/* Signature propriétaire */}
-              <div className="border-2 border-[#2563EB]/20 rounded-xl p-4 bg-[#2563EB]/5">
-                <div className="flex items-start gap-2 mb-3">
+              {/* T4: la zone signature représente l'attestation du propriétaire.
+                  Le libellé est sémantiquement clair — "Je confirme avoir reçu
+                  ce paiement en espèces" — c'est le propriétaire qui atteste.
+                  T3: hauteur canvas réduite à 110 pour tenir sur écrans 320px. */}
+              <div className="border-2 border-[#2563EB]/20 rounded-xl p-3 bg-[#2563EB]/5">
+                <div className="flex items-start gap-2 mb-2">
                   <User className="w-4 h-4 text-[#2563EB] mt-0.5 shrink-0" />
-                  <span className="text-sm font-medium leading-tight">
-                    {ownerName} — Je confirme avoir reçu ce paiement en espèces
-                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm font-semibold truncate">{ownerName}</p>
+                    <p className="text-[11px] sm:text-xs text-muted-foreground">
+                      Je confirme avoir reçu ce paiement en espèces
+                    </p>
+                  </div>
                 </div>
                 <SignaturePad
                   ref={ownerSignatureRef}
-                  label="Signez ici"
                   onSignatureChange={(isEmpty) => setCanProceed(!isEmpty)}
-                  height={128}
+                  height={110}
                 />
               </div>
 
               {/* Métadonnées compactes */}
-              <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground px-1">
                 <div className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   {format(new Date(), "dd/MM HH:mm", { locale: fr })}
@@ -335,27 +347,30 @@ export function CashReceiptFlow({
                 </div>
               </div>
 
-              {/* Actions — sticky bottom pour rester visibles sur petits écrans */}
-              <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 bg-card border-t flex gap-3">
+              {/* T3: actions sticky bas, toujours visibles même sur petit écran.
+                  Utilise `sticky bottom-0` avec fond pour chevaucher proprement
+                  le contenu scrollable du CardContent. */}
+              <div className="sticky bottom-0 -mx-4 sm:-mx-6 -mb-4 sm:-mb-6 px-4 sm:px-6 py-3 bg-card border-t border-border/50 flex gap-2 sm:gap-3">
                 <Button
                   variant="outline"
                   onClick={onCancel}
-                  className="gap-2"
-                  disabled={loading}
+                  size="sm"
+                  className="sm:h-10"
                 >
                   Annuler
                 </Button>
                 <Button
                   onClick={handleOwnerSignAndSend}
                   disabled={!canProceed || loading}
-                  className="flex-1 gap-2 bg-[#2563EB] hover:bg-[#2563EB]/90"
+                  size="sm"
+                  className="flex-1 gap-2 bg-[#2563EB] hover:bg-[#2563EB]/90 sm:h-10"
                 >
                   {loading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
                     <Send className="w-4 h-4" />
                   )}
-                  Envoyer au locataire
+                  <span className="truncate">Envoyer au locataire</span>
                 </Button>
               </div>
             </motion.div>

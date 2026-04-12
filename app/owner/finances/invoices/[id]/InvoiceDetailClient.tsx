@@ -219,23 +219,23 @@ export function InvoiceDetailClient() {
           </Button>
         )}
 
-        {(invoice.statut === "paid" || invoice.statut === "receipt_generated") &&
-          !invoice.receipt_generated &&
-          invoice.lease_id && (
-            <Button
-              variant="outline"
-              onClick={() =>
-                fetch(`/api/leases/${invoice.lease_id}/generate-receipt`, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ invoice_id: invoice.id }),
-                })
-              }
-            >
-              <FileDown className="mr-2 h-4 w-4" />
-              Générer la quittance
-            </Button>
-          )}
+        {(invoice.statut === "paid" || invoice.statut === "receipt_generated") && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              // Route invoice-scoped : pas de dépendance sur lease_id, fonctionne
+              // même pour les factures dont le bail a été archivé/supprimé.
+              // Le endpoint GET /api/invoices/[id]/receipt :
+              //   - génère le PDF à la volée,
+              //   - déclenche ensureReceiptDocument en fire-and-forget pour la persistance,
+              //   - retourne le PDF en téléchargement direct.
+              window.open(`/api/invoices/${invoice.id}/receipt`, "_blank");
+            }}
+          >
+            <FileDown className="mr-2 h-4 w-4" />
+            Télécharger la quittance
+          </Button>
+        )}
       </div>
 
       {/* Reminders timeline */}
