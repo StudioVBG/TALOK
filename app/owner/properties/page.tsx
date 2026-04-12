@@ -335,16 +335,18 @@ export default function OwnerPropertiesPage() {
       return badges;
     }
 
-    // Surface (toujours affichée)
-    badges.push({
-      label: `${property.surface || "?"} m²`,
-      variant: "secondary" as const
-    });
+    // Surface : masquée pour parking/box/etc. si absente
+    if (!TYPES_WITHOUT_ROOMS.includes(property.type) || property.surface) {
+      badges.push({
+        label: property.surface ? `${property.surface} m²` : "? m²",
+        variant: "secondary" as const
+      });
+    }
 
     // Pièces : seulement pour les biens d'habitation
     if (!TYPES_WITHOUT_ROOMS.includes(property.type)) {
       badges.push({
-        label: `${property.nb_pieces || "?"} pièces`,
+        label: property.nb_pieces ? `${property.nb_pieces} pièce${property.nb_pieces > 1 ? "s" : ""}` : "? pièces",
         variant: "secondary" as const
       });
     } else if (property.type === "parking" || property.type === "box") {
@@ -357,11 +359,18 @@ export default function OwnerPropertiesPage() {
       }
     }
 
-    // Loyer (toujours affiché)
-    badges.push({
-      label: formatCurrency(property.monthlyRent),
-      variant: "default" as const
-    });
+    // Loyer : "Non renseigné" si 0 ou absent
+    if (property.monthlyRent && property.monthlyRent > 0) {
+      badges.push({
+        label: formatCurrency(property.monthlyRent),
+        variant: "default" as const
+      });
+    } else {
+      badges.push({
+        label: "Non renseigné",
+        variant: "outline" as const
+      });
+    }
 
     return badges;
   };
@@ -418,11 +427,13 @@ export default function OwnerPropertiesPage() {
       cell: (property: any) => (
         <div className="text-right">
           <span className="font-medium block">
-            {formatCurrency(property.monthlyRent)}
+            {property.monthlyRent && property.monthlyRent > 0 ? formatCurrency(property.monthlyRent) : "Non renseigné"}
           </span>
-          <span className="text-xs text-muted-foreground">
-            {property.currentLease ? "Loyer actuel" : "Loyer estimé"}
-          </span>
+          {property.monthlyRent && property.monthlyRent > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {property.currentLease ? "Loyer actuel" : "Loyer estimé"}
+            </span>
+          )}
         </div>
       )
     },
@@ -625,7 +636,7 @@ export default function OwnerPropertiesPage() {
                   {isAtLimit && !canNavigateToNew && (
                     <Button variant="outline" onClick={() => setShowUpgradeModal(true)}>
                       <Sparkles className="mr-2 h-4 w-4" />
-                      Debloquer plus de biens
+                      Débloquer plus de biens
                     </Button>
                   )}
                 </CardContent>
@@ -806,7 +817,7 @@ export default function OwnerPropertiesPage() {
                       data={filteredProperties}
                       columns={columns}
                       keyExtractor={(item: any) => item.id}
-                      onRowClick={(item: any) => router.push(`/owner/properties/${item.id}`)}
+                      onRowClick={(item: any) => router.push(item.type === "immeuble" ? `/owner/buildings/${item.id}` : `/owner/properties/${item.id}`)}
                     />
                   </motion.div>
                 )
