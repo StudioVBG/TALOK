@@ -53,6 +53,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Erreur lors de la création" }, { status: 500 });
     }
 
+    // Notify admins
+    import("@/lib/services/admin-notification.service").then(({ notifyAdmins }) =>
+      notifyAdmins({
+        type: "new_ticket",
+        title: "Nouveau ticket support",
+        body: `${profile.prenom || ""} ${profile.nom || ""} — ${subject}`,
+        actionUrl: "/admin/support",
+        metadata: { ticket_id: ticket.id, service },
+      })
+    ).catch(() => {});
+
     return NextResponse.json({ success: true, ticket_id: ticket.id });
   } catch (error) {
     console.error("[Support] Unexpected error:", error);
