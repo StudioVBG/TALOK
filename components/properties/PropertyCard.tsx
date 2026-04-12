@@ -22,6 +22,12 @@ export interface PropertyCardProps {
     loyer_hc?: number;
     photos?: { url: string; is_main?: boolean }[];
     status?: "vacant" | "rented" | "pending";
+    /**
+     * Si défini, le bien est un lot d'immeuble. Affiche un badge cliquable
+     * "Immeuble · [adresse]" qui renvoie vers le hub managérial immeuble.
+     */
+    parent_property_id?: string | null;
+    parent_building_label?: string | null;
   };
   activeLease?: {
     id: string;
@@ -90,6 +96,21 @@ export const PropertyCard = memo(function PropertyCard({
 
       {/* Content */}
       <CardContent className="p-4 space-y-3">
+        {/* Badge "Immeuble parent" si c'est un lot */}
+        {property.parent_property_id && (
+          <Link
+            href={`/owner/buildings/${property.parent_property_id}`}
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/40 dark:hover:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-xs font-medium transition-colors"
+            aria-label="Voir l'immeuble parent"
+          >
+            <Building2 className="h-3 w-3" />
+            <span className="line-clamp-1 max-w-[180px]">
+              Immeuble{property.parent_building_label ? ` · ${property.parent_building_label}` : ""}
+            </span>
+          </Link>
+        )}
+
         {/* Address */}
         <div>
           <h3 className="font-semibold text-lg line-clamp-1 group-hover:text-primary transition-colors">

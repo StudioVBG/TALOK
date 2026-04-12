@@ -123,11 +123,21 @@ export default function OwnerPropertiesPage() {
 
 
   const propertiesWithStatus = useMemo(() => {
+    // Construire une map `parent_property_id → adresse du wrapper immeuble`.
+    // Les wrappers `type='immeuble'` sont déjà dans la liste properties, donc
+    // pas besoin d'une query supplémentaire — résolution 100% in-memory.
+    const parentLabels = new Map<string, string>();
+    properties.forEach((p: any) => {
+      if (p.type === "immeuble" && p.id && p.adresse_complete) {
+        parentLabels.set(p.id, p.adresse_complete);
+      }
+    });
+
     return properties.map((property: any) => {
       const propertyLeases = leases.filter(
         (lease: any) => lease.property_id === property.id
       );
-      
+
       // Trouver les différents types de baux par ordre de priorité
       const activeLease = propertyLeases.find(
         (lease: any) => lease.statut === "active"
@@ -155,17 +165,23 @@ export default function OwnerPropertiesPage() {
 
       // Prendre le bail le plus pertinent
       const currentLease = activeLease || signedLease || partiallySignedLease || pendingLease || draftLease;
-      
+
       const rentFromLease = currentLease
         ? Number(currentLease.loyer || 0) + Number(currentLease.charges_forfaitaires || 0)
         : 0;
       const rentFromProperty = Number(property.loyer_hc || property.loyer_base || 0);
-      
+
+      // Badge "Immeuble parent" pour les lots : lookup O(1) dans la map.
+      const parentLabel = property.parent_property_id
+        ? parentLabels.get(property.parent_property_id) ?? null
+        : null;
+
       return {
         ...property,
         status,
         currentLease,
         monthlyRent: rentFromLease > 0 ? rentFromLease : rentFromProperty,
+        parent_building_label: parentLabel,
       };
     });
   }, [properties, leases]);
@@ -177,8 +193,11 @@ export default function OwnerPropertiesPage() {
     if (propertyTab === "immeubles") {
       filtered = filtered.filter((p: any) => p.type === "immeuble");
     } else {
-      // Tab "Mes biens" : exclure les immeubles parents et les lots (enfants)
-      filtered = filtered.filter((p: any) => p.type !== "immeuble" && !p.parent_property_id);
+      // Tab "Mes biens" : exclut uniquement le wrapper technique `type='immeuble'`.
+      // Les lots avec `parent_property_id` SONT affichés comme des biens à part
+      // entière (ils ont leur bail, leurs factures, leurs quittances) et sont
+      // matérialisés avec un badge "Immeuble · [adresse]" sur leur card.
+      filtered = filtered.filter((p: any) => p.type !== "immeuble");
     }
 
     if (moduleFilter) {
