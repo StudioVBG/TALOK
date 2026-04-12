@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireCoproFeature } from '@/lib/helpers/copro-feature-gate';
 import { z } from 'zod';
 
 // GET: Liste des charges
@@ -117,14 +118,11 @@ const AllocateSchema = z.object({
 // POST: Répartir une dépense ou une période
 export async function POST(request: NextRequest) {
   try {
+    // S1-2 : auth + feature gate copro_module
+    const access = await requireCoproFeature();
+    if (access instanceof NextResponse) return access;
+
     const supabase = await createClient();
-    
-    // Vérifier l'authentification
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
-    }
-    
     const body = await request.json();
     const validationResult = AllocateSchema.safeParse(body);
     

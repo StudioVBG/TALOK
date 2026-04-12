@@ -176,10 +176,32 @@ export default function SyndicOnboardingProfilePage() {
       });
 
       if (!syndicResponse.ok) {
-        // Fallback : sauvegarder en localStorage si l'endpoint n'est pas encore déployé
-        if (typeof window !== "undefined") {
-          localStorage.setItem("syndic_profile", JSON.stringify(syndicPayload));
-        }
+        // S1-1 Fix 2 : ne plus masquer silencieusement les erreurs serveur.
+        // L'API /api/me/syndic-profile applique la validation réglementaire
+        // loi Hoguet (carte pro / garantie / RCP obligatoires pour les pros).
+        // Si on tombait en fallback localStorage, un syndic professionnel
+        // sans credentials pouvait passer l'étape 1 et créer un site marqué
+        // pro sans validation serveur.
+        const errorBody = await syndicResponse.json().catch(() => ({}));
+        const errorMessage =
+          errorBody?.error ||
+          (syndicResponse.status === 400
+            ? "Vérifiez les champs obligatoires (carte pro, garantie financière, RCP pour un syndic professionnel)."
+            : "Impossible d'enregistrer le profil syndic. Veuillez réessayer.");
+        toast({
+          title: "Profil non enregistré",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Cache localStorage pour pré-remplir les champs en cas de retour arrière
+      // et pour propager le type_syndic à l'étape 2 (site creation).
+      // NB: la source de vérité reste le serveur — ce cache est purement UX.
+      if (typeof window !== "undefined") {
+        localStorage.setItem("syndic_profile", JSON.stringify(syndicPayload));
       }
 
       toast({
@@ -191,7 +213,7 @@ export default function SyndicOnboardingProfilePage() {
     } catch (error) {
       toast({
         title: "Erreur",
-        description: "Impossible de sauvegarder le profil.",
+        description: error instanceof Error ? error.message : "Impossible de sauvegarder le profil.",
         variant: "destructive",
       });
     } finally {

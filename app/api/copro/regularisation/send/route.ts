@@ -3,18 +3,15 @@ export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireCoproFeature } from "@/lib/helpers/copro-feature-gate";
 
 export async function POST(request: Request) {
   try {
+    // S1-2 : auth + feature gate copro_module
+    const access = await requireCoproFeature();
+    if (access instanceof NextResponse) return access;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
     const body = await request.json();
     const { regularisation_id, tenant_ids } = body;
 
@@ -23,16 +20,6 @@ export async function POST(request: Request) {
         { error: "regularisation_id requis" },
         { status: 400 }
       );
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile) {
-      return NextResponse.json({ error: "Profil introuvable" }, { status: 404 });
     }
 
     const notificationPromises = (tenant_ids || []).map((tenantId: string) =>
