@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Banknote, Check, Clock, Loader2, MapPin, Shield, User } from "lucide-react";
+import { Banknote, Check, Clock, Download, Loader2, MapPin, Shield, User } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -124,8 +124,8 @@ export function TenantCashReceiptSignatureClient({
 
   return (
     <div className="min-h-screen bg-muted/30 py-6 px-4">
-      <Card className="w-full max-w-lg mx-auto overflow-hidden shadow-xl bg-card">
-        <CardHeader className="bg-gradient-to-r from-[#2563EB]/10 to-[#2563EB]/5 border-b pb-4">
+      <Card className="w-full max-w-lg mx-auto flex flex-col max-h-[90vh] overflow-hidden shadow-xl bg-card">
+        <CardHeader className="bg-gradient-to-r from-[#2563EB]/10 to-[#2563EB]/5 border-b pb-4 shrink-0">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Banknote className="w-5 h-5 text-[#2563EB]" />
@@ -138,7 +138,7 @@ export function TenantCashReceiptSignatureClient({
           </p>
         </CardHeader>
 
-        <CardContent className="p-6 space-y-5">
+        <CardContent className="p-6 space-y-5 overflow-y-auto flex-1 min-h-0">
           {/* Résumé */}
           <div className="bg-muted/50 rounded-xl p-4 space-y-3 text-sm">
             <div className="flex justify-between items-center">
@@ -204,19 +204,40 @@ export function TenantCashReceiptSignatureClient({
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="text-center py-6 space-y-3"
+              className="text-center py-6 space-y-4"
             >
               <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
                 <Check className="w-8 h-8 text-green-600" />
               </div>
-              <p className="font-semibold">Reçu déjà signé</p>
-              <p className="text-sm text-muted-foreground">
-                Merci ! Votre paiement a bien été confirmé.
-              </p>
+              <div className="space-y-1">
+                <p className="font-semibold">Reçu déjà signé</p>
+                <p className="text-sm text-muted-foreground">
+                  Merci ! Votre paiement a bien été confirmé.
+                </p>
+              </div>
+
+              {/* T5 — Attestation PDF téléchargeable une fois les deux
+                  signatures collectées. Le backend retourne 409 si le
+                  status n'est pas 'signed'|'sent'|'archived' donc le
+                  bouton reste inactif tant que ce n'est pas prêt. */}
+              <Button
+                asChild
+                className="w-full gap-2 bg-[#2563EB] hover:bg-[#2563EB]/90"
+              >
+                <a
+                  href={`/api/payments/cash-receipt/${receiptId}/pdf`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Download className="w-4 h-4" />
+                  Télécharger l'attestation
+                </a>
+              </Button>
+
               <Button
                 variant="outline"
                 onClick={() => router.push("/tenant/payments")}
-                className="mt-2"
+                className="w-full"
               >
                 Retour à mes paiements
               </Button>
@@ -224,17 +245,17 @@ export function TenantCashReceiptSignatureClient({
           ) : (
             <>
               <div className="border-2 border-[#2563EB]/20 rounded-xl p-4 bg-[#2563EB]/5">
-                <div className="flex items-center gap-2 mb-3">
-                  <User className="w-4 h-4 text-[#2563EB]" />
-                  <span className="text-sm font-medium">
-                    {tenantName} — Je confirme avoir remis {amountFormatted} en espèces
+                <div className="flex items-start gap-2 mb-3">
+                  <User className="w-4 h-4 text-[#2563EB] mt-0.5 shrink-0" />
+                  <span className="text-sm font-medium leading-tight">
+                    {tenantName} — Je confirme avoir effectué ce paiement en espèces
                   </span>
                 </div>
                 <SignaturePad
                   ref={signatureRef}
                   label="Signez ici"
                   onSignatureChange={(isEmpty) => setCanProceed(!isEmpty)}
-                  height={160}
+                  height={128}
                 />
               </div>
 
@@ -265,7 +286,8 @@ export function TenantCashReceiptSignatureClient({
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-2">
+              {/* Actions — sticky bottom pour rester visibles sur mobile */}
+              <div className="sticky bottom-0 -mx-6 -mb-6 px-6 py-3 bg-card border-t flex gap-3">
                 <Button
                   variant="outline"
                   onClick={() => router.push("/tenant/payments")}
