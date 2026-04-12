@@ -77,15 +77,19 @@ export default async function BuildingDetailPage({ params }: PageProps) {
     .eq("user_id", user.id)
     .single();
 
-  if (!profile || profile.role !== "owner") {
+  if (!profile || (profile.role !== "owner" && profile.role !== "admin")) {
     redirect("/dashboard");
   }
 
   // Fetch building — le param [id] peut être un property_id OU un building_id
-  // Stratégie : query large (sans filtre type) puis vérification post-query
+  // Stratégie : query large (sans filtre owner/type) puis vérification post-
+  // query via owner_id direct OU entity_members (cas SCI).
   let propertyId = id;
 
-  // 1. Chercher la property par id + owner_id (sans filtre type pour robustesse)
+  // 1. Chercher la property par id SANS filtrer par owner_id. Le filtre
+  //    `owner_id = profile.id` produisait un faux 404 pour les immeubles
+  //    détenus via une entité SCI dont le `legal_entity_id` pointe vers un
+  //    autre profil ou dont l'utilisateur est membre via `entity_members`.
   const { data: property, error } = await serviceClient
     .from("properties")
     .select(`
@@ -98,16 +102,43 @@ export default async function BuildingDetailPage({ params }: PageProps) {
       surface,
       cover_url,
       annee_construction,
+      owner_id,
+      legal_entity_id,
       created_at,
       updated_at
     `)
     .eq("id", id)
-    .eq("owner_id", profile.id)
     .is("deleted_at", null)
     .maybeSingle();
 
   if (property) {
-    // Property trouvée — vérifier que c'est bien un immeuble
+    // Vérification d'accès : admin, owner direct, ou membre SCI via
+    // entity_members. Même pattern que `/api/invoices/[id]/route.ts:78-106`.
+    const propertyAny = property as any;
+    const isAdmin = profile.role === "admin";
+    const isOwnerDirect = propertyAny.owner_id === profile.id;
+    let isSciMember = false;
+    if (!isAdmin && !isOwnerDirect && propertyAny.legal_entity_id) {
+      const { data: membership } = await serviceClient
+        .from("entity_members")
+        .select("id")
+        .eq("entity_id", propertyAny.legal_entity_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      isSciMember = !!membership;
+    }
+
+    if (!isAdmin && !isOwnerDirect && !isSciMember) {
+      console.warn("[building-detail] Accès refusé", {
+        propertyId: id,
+        profileId: profile.id,
+        ownerId: propertyAny.owner_id,
+        legalEntityId: propertyAny.legal_entity_id,
+      });
+      notFound();
+    }
+
+    // Property trouvée et accessible — vérifier que c'est bien un immeuble
     if (property.type !== "immeuble") {
       // Ce n'est pas un immeuble, rediriger vers la fiche bien classique
       redirect(`/owner/properties/${id}`);
