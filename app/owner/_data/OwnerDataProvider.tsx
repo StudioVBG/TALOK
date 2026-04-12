@@ -127,7 +127,21 @@ export function OwnerDataProvider({
   const [isRefetching, setIsRefetching] = useState(false);
   const [error, setError] = useState<string | null>(initialError);
   const activeEntityId = useEntityStore((s) => s.activeEntityId);
+  const getActiveEntity = useEntityStore((s) => s.getActiveEntity);
   const prevEntityId = useRef(activeEntityId);
+
+  /**
+   * Résout l'entityId à envoyer à l'API :
+   * - null → pas de filtre (tous les biens)
+   * - entité de type "particulier" → "personal" (biens en nom propre, legal_entity_id IS NULL)
+   * - autre UUID → tel quel (SCI, SARL, etc.)
+   */
+  const resolveEntityFilter = useCallback((): string | undefined => {
+    if (!activeEntityId) return undefined;
+    const activeEntity = getActiveEntity();
+    if (activeEntity?.entityType === "particulier") return "personal";
+    return activeEntityId;
+  }, [activeEntityId, getActiveEntity]);
 
   // Charger les données détaillées de l'API au montage
   const fetchApiData = useCallback(async (entityId?: string | null) => {
@@ -167,31 +181,31 @@ export function OwnerDataProvider({
     } catch (err) {
       console.error("[OwnerDataProvider] Erreur chargement API dashboard:", err);
     }
-  }, [activeEntityId]);
+  }, []);
 
   // Chargement initial des données API
   useEffect(() => {
     setIsLoadingApi(true);
-    fetchApiData(activeEntityId).finally(() => setIsLoadingApi(false));
-  }, [fetchApiData, activeEntityId]);
+    fetchApiData(resolveEntityFilter()).finally(() => setIsLoadingApi(false));
+  }, [fetchApiData, resolveEntityFilter]);
 
   // Re-fetch quand l'entité active change (après le montage initial)
   useEffect(() => {
     if (prevEntityId.current !== activeEntityId) {
       prevEntityId.current = activeEntityId;
-      fetchApiData(activeEntityId);
+      fetchApiData(resolveEntityFilter());
     }
-  }, [activeEntityId, fetchApiData]);
+  }, [activeEntityId, fetchApiData, resolveEntityFilter]);
 
   // Rafraîchir toutes les données
   const refetch = useCallback(async () => {
     setIsRefetching(true);
     try {
-      await fetchApiData(activeEntityId);
+      await fetchApiData(resolveEntityFilter());
     } finally {
       setIsRefetching(false);
     }
-  }, [fetchApiData, activeEntityId]);
+  }, [fetchApiData, resolveEntityFilter]);
 
   return (
     <OwnerDataContext.Provider

@@ -53,19 +53,22 @@ interface UseRealtimeDashboardOptions {
   maxEvents?: number;
   /** Profil ID du propriétaire (optionnel, utilise useAuth sinon) */
   ownerId?: string;
+  /** Entity ID résolu ("personal" pour particulier, UUID pour SCI, etc.) */
+  entityId?: string;
 }
 
 export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) {
   const { showToasts = true, maxEvents = 10 } = options;
-  
+
   const { profile } = useAuth();
   const { toast } = useToast();
-  
+
   // FIX AUDIT 2026-02-16: Stabiliser toast dans un ref
   const toastRef = useRef(toast);
   toastRef.current = toast;
-  
+
   const ownerId = options.ownerId || profile?.id;
+  const entityId = options.entityId;
   
   const [data, setData] = useState<RealtimeDashboardData>({
     totalRevenue: 0,
@@ -114,7 +117,10 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
     setLoading(true);
 
     try {
-      const res = await fetch("/api/owner/dashboard/counts", {
+      const params = new URLSearchParams();
+      if (entityId) params.set("entityId", entityId);
+      const countsUrl = `/api/owner/dashboard/counts${params.toString() ? `?${params}` : ""}`;
+      const res = await fetch(countsUrl, {
         method: "GET",
         credentials: "include",
       });
@@ -154,7 +160,7 @@ export function useRealtimeDashboard(options: UseRealtimeDashboardOptions = {}) 
     } finally {
       setLoading(false);
     }
-  }, [ownerId]);
+  }, [ownerId, entityId]);
 
   // Charger les données au montage
   useEffect(() => {
