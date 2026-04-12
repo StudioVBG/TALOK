@@ -17,6 +17,7 @@ import {
   Sparkles, ArrowRight, Rocket, Mail, RefreshCw
 } from "lucide-react";
 import confetti from "canvas-confetti";
+import { SyndicPlanBanner } from "@/components/syndic/SyndicPlanBanner";
 
 interface OnboardingData {
   site: {
@@ -249,6 +250,16 @@ export default function OnboardingCompletePage() {
                   <p className="text-3xl font-bold text-violet-400">{ownersToInvite}</p>
                   <p className="text-slate-400">Invitations envoyées</p>
                 </div>
+              </motion.div>
+
+              {/* S2-4 : bannière "plan requis" — ne s'affiche que si le
+                  plan actuel n'inclut pas copro_module */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55 }}
+              >
+                <SyndicPlanBanner variant="onboarding" dismissible={false} />
               </motion.div>
 
               <motion.div

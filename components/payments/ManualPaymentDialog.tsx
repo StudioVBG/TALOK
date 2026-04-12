@@ -198,7 +198,13 @@ export function ManualPaymentDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-lg md:max-w-xl overflow-hidden" aria-describedby={undefined}>
+      {/* Mobile-first : pleine largeur sur 320px, max-h avec scroll interne
+          pour garantir que les boutons restent visibles même si le contenu
+          dépasse le viewport (bug : modal dépassait l'écran, boutons coupés). */}
+      <DialogContent
+        className="w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] sm:max-w-lg md:max-w-xl max-h-[90vh] overflow-y-auto p-4 sm:p-6"
+        aria-describedby={undefined}
+      >
         <DialogTitle className="sr-only">Enregistrer un paiement manuel</DialogTitle>
         <AnimatePresence mode="wait">
           {/* Step 1: Method Selection */}
@@ -390,7 +396,7 @@ export function ManualPaymentDialog({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="relative -m-6"
+              className="relative -mx-4 -my-4 sm:-mx-6 sm:-my-6"
             >
               <CashReceiptFlow
                 invoiceId={invoiceId}

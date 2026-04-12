@@ -55,10 +55,14 @@ export async function reconcileOwnerTransfer(
     return { created: false, skippedReason: "missing_owner" };
   }
 
+  // S2-2 : filtrer sur le compte personnel de l'owner (entity_id IS NULL).
+  // Pour un futur flux syndic multi-entité, une variante scopée par
+  // entity_id devra être ajoutée — voir stripe-connect-multi-entity migration.
   const { data: connectAccount } = await supabase
     .from("stripe_connect_accounts")
     .select("id, stripe_account_id, charges_enabled, payouts_enabled")
     .eq("profile_id", ownerId)
+    .is("entity_id", null)
     .maybeSingle();
 
   const readyAccount = connectAccount as

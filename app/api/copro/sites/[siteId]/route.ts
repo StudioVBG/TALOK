@@ -10,6 +10,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { requireCoproFeature } from '@/lib/helpers/copro-feature-gate';
 import { z } from 'zod';
 
 // Schéma de validation pour la mise à jour
@@ -95,15 +96,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // PUT: Modifier un site
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
     const { siteId } = params;
-    
-    // Vérifier l'authentification
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
-    }
-    
+
+    // S1-2 : auth + feature gate copro_module
+    const access = await requireCoproFeature();
+    if (access instanceof NextResponse) return access;
+
+    const supabase = await createClient();
+
     // Parser et valider le body
     const body = await request.json();
     const validationResult = UpdateSiteSchema.safeParse(body);
@@ -135,15 +135,14 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 // DELETE: Supprimer (soft delete) un site
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
     const { siteId } = params;
-    
-    // Vérifier l'authentification
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
-    }
-    
+
+    // S1-2 : auth + feature gate copro_module
+    const access = await requireCoproFeature();
+    if (access instanceof NextResponse) return access;
+
+    const supabase = await createClient();
+
     // Soft delete
     const { error } = await supabase
       .from('sites')

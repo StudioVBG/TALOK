@@ -29,11 +29,13 @@ export async function GET() {
       );
     }
 
+    // S2-2 : compte personnel uniquement (entity_id IS NULL)
     const { data: connectAccount } = await serviceClient
       .from("stripe_connect_accounts")
       .select("id")
       .eq("profile_id", profile.id)
-      .single();
+      .is("entity_id", null)
+      .maybeSingle();
 
     if (!connectAccount?.id) {
       return NextResponse.json([]);

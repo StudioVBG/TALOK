@@ -15,6 +15,26 @@ interface InvitationData {
   role: "locataire_principal" | "colocataire" | "garant";
 }
 
+/**
+ * Mappe les rôles d'invitation (table `invitations`) vers les UserRole
+ * attendus par le signup flow (/signup/role → /signup/account).
+ *
+ * Bug audit comptes : le signup validait `role IN ['owner','tenant',
+ * 'provider','guarantor','syndic','agency']` mais recevait
+ * `locataire_principal|colocataire|garant` → boucle de redirection.
+ */
+function mapInvitationRoleToUserRole(
+  invitationRole: InvitationData["role"]
+): "tenant" | "guarantor" {
+  switch (invitationRole) {
+    case "locataire_principal":
+    case "colocataire":
+      return "tenant";
+    case "garant":
+      return "guarantor";
+  }
+}
+
 export default function InvitePage() {
   const router = useRouter();
   const params = useParams();
@@ -56,8 +76,12 @@ export default function InvitePage() {
   }, [token]);
 
   const handleAcceptInvitation = () => {
-    // Rediriger vers l'inscription avec le token et le rôle
-    router.push(`/signup/role?invite=${token}&role=${invitation!.role}`);
+    // Convertir le rôle invitation (locataire_principal/colocataire/garant)
+    // vers le UserRole attendu par /signup/account (tenant/guarantor).
+    // Sans cette conversion, /signup/account rejette le rôle inconnu et
+    // redirige vers /signup/role → boucle infinie (bug audit comptes).
+    const userRole = mapInvitationRoleToUserRole(invitation!.role);
+    router.push(`/signup/role?invite=${token}&role=${userRole}`);
   };
 
   const handleResendInvitation = async () => {

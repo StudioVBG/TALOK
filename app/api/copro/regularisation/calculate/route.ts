@@ -3,18 +3,15 @@ export const dynamic = "force-dynamic";
 
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
+import { requireCoproFeature } from "@/lib/helpers/copro-feature-gate";
 
 export async function POST(request: Request) {
   try {
+    // S1-2 : auth + feature gate copro_module
+    const access = await requireCoproFeature();
+    if (access instanceof NextResponse) return access;
+
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
     const body = await request.json();
     const { property_id, period_start, period_end } = body;
 

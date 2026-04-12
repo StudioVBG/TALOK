@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireSyndic } from "@/lib/helpers/syndic-auth";
+import { checkCoproFeatureForProfile } from "@/lib/helpers/copro-feature-gate";
 import { CreateSyndicMandateSchema } from "@/lib/validations/syndic";
 
 export async function GET(request: NextRequest) {
@@ -67,6 +68,10 @@ export async function POST(request: NextRequest) {
 
     const auth = await requireSyndic(request, { siteId: input.site_id });
     if (auth instanceof NextResponse) return auth;
+
+    // S1-2 : feature gate copro_module
+    const gateError = await checkCoproFeatureForProfile(auth.profile.id);
+    if (gateError) return gateError;
 
     // Seul un admin peut créer un mandat pour un autre syndic_profile_id
     if (!auth.isAdmin && input.syndic_profile_id !== auth.profile.id) {

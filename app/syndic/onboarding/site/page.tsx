@@ -51,9 +51,22 @@ export default function SyndicOnboardingSitePage() {
 
     setLoading(true);
     try {
-      // Récupérer les infos du cabinet syndic depuis le profil (étape précédente)
+      // Récupérer les infos du cabinet syndic depuis le profil (étape précédente).
+      // Le type_syndic choisi à l'étape 1 est persisté en localStorage et doit
+      // être propagé à la création du site, sinon tous les sites sont créés
+      // avec syndic_type='benevole' quel que soit le choix réel (bug S1-1).
       const syndicProfileRaw = typeof window !== 'undefined' ? localStorage.getItem("syndic_profile") : null;
       const syndicProfile = syndicProfileRaw ? JSON.parse(syndicProfileRaw) : {};
+
+      // Lire le type_syndic depuis le cache profil, fallback 'benevole' si absent
+      // (cas où l'étape 1 n'a pas été complétée — la route /api/copro/sites
+      // appliquera sa propre validation et rejettera la requête si nécessaire).
+      const syndicType: "professionnel" | "benevole" | "cooperatif" =
+        syndicProfile?.type_syndic === "professionnel" ||
+        syndicProfile?.type_syndic === "cooperatif" ||
+        syndicProfile?.type_syndic === "benevole"
+          ? syndicProfile.type_syndic
+          : "benevole";
 
       const response = await fetch("/api/copro/sites", {
         method: "POST",
@@ -64,7 +77,7 @@ export default function SyndicOnboardingSitePage() {
           address_line1: form.address,
           postal_code: form.postal_code,
           city: form.city,
-          syndic_type: "benevole",
+          syndic_type: syndicType,
           syndic_company_name: syndicProfile.raison_sociale || syndicProfile.company_name || undefined,
           syndic_siret: syndicProfile.siret || undefined,
           syndic_address: syndicProfile.adresse_siege

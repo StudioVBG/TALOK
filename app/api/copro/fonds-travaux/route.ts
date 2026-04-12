@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireSyndic } from "@/lib/helpers/syndic-auth";
+import { checkCoproFeatureForProfile } from "@/lib/helpers/copro-feature-gate";
 import { CreateFondsTravauxSchema } from "@/lib/validations/syndic";
 
 export async function GET(request: NextRequest) {
@@ -73,6 +74,10 @@ export async function POST(request: NextRequest) {
 
     const auth = await requireSyndic(request, { siteId: input.site_id });
     if (auth instanceof NextResponse) return auth;
+
+    // S1-2 : feature gate copro_module
+    const gateError = await checkCoproFeatureForProfile(auth.profile.id);
+    if (gateError) return gateError;
 
     // Validation : si non exempt, le taux doit être >= 5% (loi ALUR)
     if (!input.loi_alur_exempt && input.cotisation_taux_percent < 5) {

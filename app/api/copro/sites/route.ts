@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getServiceClient } from '@/lib/supabase/service-client';
 import { sitesService } from '@/features/copro/services';
+import { withFeatureAccess, createSubscriptionErrorResponse } from '@/lib/middleware/subscription-check';
 import { z } from 'zod';
 
 // Schéma de validation pour la création
@@ -76,7 +77,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
-    
+
     // Vérifier l'authentification
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
@@ -85,20 +86,7 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       );
     }
-    
-    // Parser et valider le body
-    const body = await request.json();
-    const validationResult = CreateSiteSchema.safeParse(body);
-    
-    if (!validationResult.success) {
-      return NextResponse.json(
-        { error: 'Données invalides', details: validationResult.error.errors },
-        { status: 400 }
-      );
-    }
-    
-    const input = validationResult.data;
-    
+
     // Récupérer le profile_id avec service role (bypass RLS)
     const serviceClient = getServiceClient();
     const { data: profile } = await serviceClient
@@ -106,18 +94,44 @@ export async function POST(request: NextRequest) {
       .select('id')
       .eq('user_id', user.id)
       .single();
-    
+
+    if (!profile) {
+      return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
+    }
+
+    // S1-2 : Feature gate copro_module — empêche un user sur plan
+    // Gratuit/Starter de créer un site orphelin qu'il ne pourra pas
+    // peupler (car /api/copro/units est déjà gaté).
+    // Pattern identique à app/api/copro/units/route.ts:88.
+    const featureCheck = await withFeatureAccess((profile as any).id, "copro_module");
+    if (!featureCheck.allowed) {
+      return createSubscriptionErrorResponse(featureCheck);
+    }
+
+    // Parser et valider le body
+    const body = await request.json();
+    const validationResult = CreateSiteSchema.safeParse(body);
+
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: 'Données invalides', details: validationResult.error.errors },
+        { status: 400 }
+      );
+    }
+
+    const input = validationResult.data;
+
     // Créer le site
     const { data: site, error } = await supabase
       .from('sites')
       .insert({
         ...input,
-        syndic_profile_id: profile?.id,
+        syndic_profile_id: (profile as any).id,
         created_by: user.id,
       })
       .select()
       .single();
-    
+
     if (error) throw error;
     
     // Attribuer le rôle syndic à l'utilisateur pour ce site

@@ -352,6 +352,7 @@ export const PLANS: Record<PlanSlug, Plan> = {
       scoring_tenant: true,
       edl_digital: true,
       connected_meters: false,
+      copro_module: true, // S2-1: ouvert au plan Confort pour acquérir les syndics bénévoles
       gli_discount: GLI_DISCOUNTS.confort, // -10%
     },
     highlights: [
@@ -424,6 +425,7 @@ export const PLANS: Record<PlanSlug, Plan> = {
       scoring_advanced: true,
       edl_digital: true,
       connected_meters: true,
+      copro_module: true, // S2-1: ouvert au plan Pro pour les syndics pro de taille moyenne
       gli_discount: GLI_DISCOUNTS.pro, // -15%
     },
     highlights: [
@@ -501,7 +503,7 @@ export const PLANS: Record<PlanSlug, Plan> = {
       scoring_tenant: true,
       scoring_advanced: true,
       edl_digital: true,
-      copro_module: false,
+      copro_module: true, // S2-1: cohérence avec Confort/Pro (hiérarchie des plans)
       priority_support: true,
       dedicated_account_manager: true, // Partagé inclus!
       account_manager_type: 'shared',
@@ -586,7 +588,7 @@ export const PLANS: Record<PlanSlug, Plan> = {
       scoring_tenant: true,
       scoring_advanced: true,
       edl_digital: true,
-      copro_module: false,
+      copro_module: true, // S2-1: cohérence avec Confort/Pro (hiérarchie des plans)
       priority_support: true,
       dedicated_account_manager: true,
       account_manager_type: 'shared',

@@ -36,12 +36,13 @@ export async function GET() {
       );
     }
 
-    // Récupérer le compte Connect
+    // Récupérer le compte Connect personnel (S2-2 : entity_id IS NULL)
     const { data: connectAccount } = await serviceClient
       .from("stripe_connect_accounts")
       .select("id")
       .eq("profile_id", profile.id)
-      .single();
+      .is("entity_id", null)
+      .maybeSingle();
 
     const connectAccountId = connectAccount?.id;
     if (!connectAccountId) {

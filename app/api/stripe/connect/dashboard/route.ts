@@ -37,14 +37,15 @@ export async function POST() {
       );
     }
 
-    // Récupérer le compte Connect
+    // Récupérer le compte Connect personnel (S2-2 : entity_id IS NULL)
     const { data: connectAccount } = await serviceClient
       .from("stripe_connect_accounts")
       .select(
         "stripe_account_id, charges_enabled, payouts_enabled, details_submitted, requirements_currently_due, requirements_past_due, requirements_disabled_reason"
       )
       .eq("profile_id", profile.id)
-      .single();
+      .is("entity_id", null)
+      .maybeSingle();
 
     if (!connectAccount) {
       return NextResponse.json(
