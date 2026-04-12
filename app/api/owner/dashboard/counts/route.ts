@@ -26,7 +26,7 @@ interface DashboardCountsResponse {
   openTickets: number;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await createClient();
     const {
@@ -51,12 +51,26 @@ export async function GET() {
 
     const ownerId = (profile as { id: string }).id;
 
+    // Support du filtre par entité juridique (multi-entity)
+    const { searchParams } = new URL(request.url);
+    const entityId = searchParams.get("entityId");
+
     // Récupérer les propriétés du propriétaire pour filtrer les tables
     // scopées par property_id (leases, tickets, lease_signers via leases).
-    const { data: properties } = await serviceClient
+    let propertiesQuery = serviceClient
       .from("properties")
       .select("id")
       .eq("owner_id", ownerId);
+
+    if (entityId && entityId !== "all") {
+      if (entityId === "personal") {
+        propertiesQuery = propertiesQuery.is("legal_entity_id", null);
+      } else {
+        propertiesQuery = propertiesQuery.eq("legal_entity_id", entityId);
+      }
+    }
+
+    const { data: properties } = await propertiesQuery;
 
     const propertyIds = (properties || []).map(
       (p) => (p as { id: string }).id,

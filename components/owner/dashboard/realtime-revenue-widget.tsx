@@ -7,6 +7,7 @@
 
 import { motion, AnimatePresence } from "framer-motion";
 import { useRealtimeDashboard } from "@/lib/hooks/use-realtime-dashboard";
+import { useEntityStore } from "@/stores/useEntityStore";
 import { formatCurrency } from "@/lib/helpers/format";
 import { GlassCard } from "@/components/ui/glass-card";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
@@ -29,6 +30,14 @@ import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 
 export function RealtimeRevenueWidget() {
+  const activeEntityId = useEntityStore((s) => s.activeEntityId);
+  const getActiveEntity = useEntityStore((s) => s.getActiveEntity);
+  const resolvedEntityId = (() => {
+    if (!activeEntityId) return undefined;
+    const activeEntity = getActiveEntity();
+    return activeEntity?.entityType === "particulier" ? "personal" : activeEntityId;
+  })();
+
   const {
     totalRevenue,
     pendingPayments,
@@ -37,7 +46,7 @@ export function RealtimeRevenueWidget() {
     isConnected,
     lastUpdate,
     loading,
-  } = useRealtimeDashboard({ showToasts: true });
+  } = useRealtimeDashboard({ showToasts: true, entityId: resolvedEntityId });
 
   if (loading) {
     return (
