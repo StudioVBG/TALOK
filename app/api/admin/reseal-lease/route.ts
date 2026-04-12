@@ -6,9 +6,8 @@ import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { handleLeaseFullySigned } from "@/lib/services/lease-post-signature.service";
 
 /**
- * POST /api/admin/reseal-lease
- *
- * Re-génère le document HTML signé d'un bail déjà scellé.
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Re-génère le document HTML signé d'un bail déjà scellé (mode force).
  * Réservé aux admins. Utilise le mode force de handleLeaseFullySigned
  * pour bypasser la garde d'idempotence et re-générer proprement.
  */

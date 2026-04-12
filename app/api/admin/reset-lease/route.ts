@@ -5,9 +5,9 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
- * POST /api/admin/reset-lease
- * Réinitialise un bail pour permettre une nouvelle signature
- * Body: { lease_id: string, reset_edl?: boolean, reset_invoices?: boolean }
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Réinitialise un bail pour permettre une nouvelle signature
+ * @usage POST /api/admin/reset-lease { lease_id: string, reset_edl?: boolean, reset_invoices?: boolean }
  */
 export async function POST(request: Request) {
   try {

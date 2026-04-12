@@ -5,8 +5,9 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
 
 /**
- * GET /api/admin/integrations/env-status
- * Renvoie l'état de la configuration Supabase (sans exposer les secrets)
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Renvoie l'état de la configuration Supabase (URL, anon key, service role) sans exposer les secrets
+ * @usage GET /api/admin/integrations/env-status
  */
 export async function GET(request: Request) {
   const { error, user } = await requireAdmin(request);

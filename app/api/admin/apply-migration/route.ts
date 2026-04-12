@@ -6,8 +6,9 @@ import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
 
 /**
- * Route API pour appliquer la migration lease_signers
- * Double protection : requireAdmin + MIGRATION_SECRET
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Applique la migration lease_signers (rend profile_id nullable, ajoute invited_email/name/at). Double protection : requireAdmin + MIGRATION_SECRET.
+ * @usage POST /api/admin/apply-migration?secret=MIGRATION_SECRET
  */
 
 export async function POST(request: Request) {

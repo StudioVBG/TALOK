@@ -3,12 +3,9 @@ import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
- * POST /api/admin/sync-edl-lease-status
- * Synchronise les statuts des EDL et des baux basés sur les signatures réelles
- * 
- * Cette route corrige les incohérences où :
- * - Un EDL a toutes les signatures mais reste en "draft" ou "in_progress"
- * - Un bail a son EDL d'entrée signé mais son workflow d'activation n'est pas encore cohérent
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Synchronise les statuts des EDL et baux basés sur les signatures réelles (corrige incohérences EDL draft/in_progress)
+ * @usage POST /api/admin/sync-edl-lease-status
  */
 export async function POST(request: Request) {
   try {

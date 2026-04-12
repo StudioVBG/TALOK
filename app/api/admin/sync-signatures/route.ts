@@ -5,9 +5,9 @@ import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
- * POST /api/admin/sync-signatures
- * Synchronise les images de signature entre signature_image (base64) et signature_image_path (Storage)
- * Utile pour réparer les signatures qui ont été enregistrées en base64 mais pas dans Storage
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Synchronise les images de signature entre signature_image (base64) et signature_image_path (Storage)
+ * @usage POST /api/admin/sync-signatures
  */
 export async function POST(request: Request) {
   try {
