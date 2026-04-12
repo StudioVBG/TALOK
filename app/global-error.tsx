@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * Page d'erreur globale pour les erreurs au niveau du root layout
@@ -14,8 +15,10 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // En production, envoyer à Sentry ou autre service de monitoring
     console.error("Critical global error:", error);
+    Sentry.captureException(error, {
+      tags: { boundary: "global-error", digest: error.digest },
+    });
   }, [error]);
 
   return (

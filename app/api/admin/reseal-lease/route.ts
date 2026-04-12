@@ -69,6 +69,7 @@ export async function POST(request: Request) {
     });
   } catch (error: unknown) {
     console.error("[admin/reseal-lease] Erreur:", error);
+    try { const Sentry = await import("@sentry/nextjs"); Sentry.captureException(error, { tags: { route: "admin.reseal-lease" } }); } catch {}
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }

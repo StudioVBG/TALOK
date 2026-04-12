@@ -187,6 +187,7 @@ function ActionModal({ open, onClose, user, action, onSuccess }: ActionModalProp
   const [loading, setLoading] = useState(false);
   const [targetPlan, setTargetPlan] = useState<PlanSlug>("confort");
   const [giftDays, setGiftDays] = useState(30);
+  const [giftPlan, setGiftPlan] = useState<PlanSlug | "">("");
   const [reason, setReason] = useState("");
   const [notifyUser, setNotifyUser] = useState(true);
 
@@ -207,7 +208,10 @@ function ActionModal({ open, onClose, user, action, onSuccess }: ActionModalProp
       };
 
       if (action === "override") body.target_plan = targetPlan;
-      else if (action === "gift") body.days = giftDays;
+      else if (action === "gift") {
+        body.days = giftDays;
+        if (giftPlan) body.plan_slug = giftPlan;
+      }
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -264,17 +268,33 @@ function ActionModal({ open, onClose, user, action, onSuccess }: ActionModalProp
           )}
 
           {action === "gift" && (
-            <div className="space-y-2">
-              <Label>Nombre de jours</Label>
-              <Input
-                type="number"
-                value={giftDays}
-                onChange={(e) => setGiftDays(parseInt(e.target.value))}
-                min={1}
-                max={365}
-                className="bg-slate-800 border-slate-700"
-              />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label>Nombre de jours</Label>
+                <Input
+                  type="number"
+                  value={giftDays}
+                  onChange={(e) => setGiftDays(parseInt(e.target.value))}
+                  min={1}
+                  max={365}
+                  className="bg-slate-800 border-slate-700"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Plan associé (optionnel)</Label>
+                <Select value={giftPlan} onValueChange={(v) => setGiftPlan(v as PlanSlug | "")}>
+                  <SelectTrigger className="bg-slate-800 border-slate-700">
+                    <SelectValue placeholder="Plan actuel (inchangé)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Plan actuel (inchangé)</SelectItem>
+                    {PLANS.map((p) => (
+                      <SelectItem key={p.slug} value={p.slug}>{p.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
           )}
 
           <div className="space-y-2">

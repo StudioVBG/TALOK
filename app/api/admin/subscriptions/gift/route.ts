@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { adminGiftDays } from "@/lib/subscriptions/subscription-service";
 import { z } from "zod";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { validateCsrfFromRequest } from "@/lib/security/csrf";
 
 const giftSchema = z.object({
   user_id: z.string().uuid(),
@@ -21,6 +22,16 @@ const giftSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    // CSRF validation
+    try {
+      const csrfValid = await validateCsrfFromRequest(request);
+      if (!csrfValid) {
+        return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+      }
+    } catch {
+      // CSRF_SECRET not configured — degrade gracefully
+    }
+
     // RBAC + rate limit + audit
     const auth = await requireAdminPermissions(request, ["admin.subscriptions.write"], {
       rateLimit: "adminCritical",
@@ -56,6 +67,7 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Erreur serveur";
     console.error("[Admin Gift POST]", error);
+    try { const Sentry = await import("@sentry/nextjs"); Sentry.captureException(error, { tags: { route: "admin.subscriptions.gift" } }); } catch {}
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
