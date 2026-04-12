@@ -124,35 +124,19 @@ export async function POST(request: NextRequest) {
         // dans l'onboarding. Un job de réparation peut corriger plus tard.
       }
 
-      // B18: Si un locataire s'inscrit normalement et qu'une invitation est en
-      // attente pour son email, la lier automatiquement au profil créé.
-      // Évite le conflit entre "invité via bail" et "inscription normale".
-      if (data.role === "tenant") {
-        try {
-          const { data: pendingInvitations } = await adminClient
-            .from("invitations")
-            .select("id, lease_id, property_id, role")
-            .eq("email", data.email)
-            .is("used_at", null)
-            .gt("expires_at", new Date().toISOString());
-
-          if (pendingInvitations && pendingInvitations.length > 0) {
-            console.info(
-              `[register] Found ${pendingInvitations.length} pending invitation(s) for ${data.email} — will be auto-resolved on next sign-in`
-            );
-            // Marquer le profil pour que le callback post-verify-email
-            // déclenche la résolution des invitations (via tenant onboarding context)
-            await adminClient
-              .from("profiles")
-              .update({
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", profile.id);
-          }
-        } catch (invitationError) {
-          console.warn("[register] Invitation auto-resolve check failed:", invitationError);
-        }
-      }
+      // B18: Résolution automatique des invitations pending.
+      // Le vrai travail est fait par le trigger DB
+      // `auto_link_lease_signers_on_profile_created()` (migration
+      // 20260225100000) qui se déclenche à l'INSERT sur profiles et :
+      //   1. Lie les lease_signers orphelins (invited_email = user email)
+      //   2. Backfill invoices.tenant_id
+      //   3. Marque les invitations comme used_at = NOW()
+      //
+      // Ce trigger se déclenche AVANT ce code (le handle_new_user trigger
+      // insère le profil, puis auto_link_lease_signers_on_profile_created
+      // s'exécute). Aucune action supplémentaire côté API n'est nécessaire.
+      //
+      // On log simplement pour le monitoring.
 
       // Email de bienvenue (fire-and-forget, ne bloque pas l'inscription)
       // Note: Supabase envoie aussi son email de confirmation séparément
