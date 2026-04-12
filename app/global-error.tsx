@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 /**
  * Page d'erreur globale pour les erreurs au niveau du root layout
  * Cette page doit inclure les balises html et body car le layout peut être cassé
+ * Utilise des inline styles car Tailwind n'est pas garanti ici
  */
 export default function GlobalError({
   error,
@@ -14,8 +16,9 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // En production, envoyer à Sentry ou autre service de monitoring
-    console.error("Critical global error:", error);
+    Sentry.captureException(error, {
+      tags: { boundary: "root-layout", digest: error.digest },
+    });
   }, [error]);
 
   return (
@@ -157,7 +160,7 @@ export default function GlobalError({
                   padding: "0.625rem 1.25rem",
                   borderRadius: "0.5rem",
                   border: "none",
-                  background: "#6366f1",
+                  background: "#2563EB",
                   color: "white",
                   fontWeight: "500",
                   cursor: "pointer",

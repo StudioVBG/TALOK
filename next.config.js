@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const { withSentryConfig } = require('@sentry/nextjs');
+
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
 });
@@ -281,4 +283,12 @@ const nextConfig = {
   },
 };
 
-module.exports = withBundleAnalyzer(withSerwist(nextConfig));
+module.exports = withSentryConfig(withBundleAnalyzer(withSerwist(nextConfig)), {
+  // Supprime les logs Sentry pendant le build
+  silent: true,
+  // Ne pas uploader les source maps sans SENTRY_AUTH_TOKEN
+  disableServerWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+  disableClientWebpackPlugin: !process.env.SENTRY_AUTH_TOKEN,
+  // Masquer les source maps en production
+  hideSourceMaps: true,
+});
