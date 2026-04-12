@@ -32,7 +32,6 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -698,21 +697,24 @@ export function BuildingDetailClient({
         </CardContent>
       </Card>
 
-      {/* Tabs: Lots | Documents */}
-      <Tabs defaultValue="lots" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="lots" className="gap-1.5">
-            <Layers className="h-4 w-4" />
-            Lots ({totalUnits})
-          </TabsTrigger>
-          <TabsTrigger value="documents" className="gap-1.5">
-            <FolderOpen className="h-4 w-4" />
-            Documents ({documents.length})
-          </TabsTrigger>
-        </TabsList>
+      {/* SOTA 2026 — Hub managérial à sections stackées (pas de tabs).
+          Section 1 : Plan des lots par étage (le grid `Lots par étage` sert
+          à la fois de plan et de liste détaillée).
+          Section 2 : Documents de gestion de l'immeuble.
+          Les tabs ont été supprimés pour aligner la page sur la spec spec
+          du skill talok-buildings (1 page = hub managérial complet). */}
+      <div className="space-y-8">
 
-        {/* ─── TAB: Lots ──────────────────────────────────────────────── */}
-        <TabsContent value="lots">
+        {/* ─── SECTION 1 : Lots par étage ─────────────────────────────── */}
+        <section aria-labelledby="building-lots-heading">
+          <div className="flex items-center gap-2 mb-4">
+            <Layers className="h-5 w-5 text-blue-500" />
+            <h2 id="building-lots-heading" className="text-xl font-semibold font-[family-name:var(--font-manrope)]">
+              Plan des lots
+            </h2>
+            <Badge variant="outline" className="ml-1">{totalUnits} lot{totalUnits > 1 ? "s" : ""}</Badge>
+          </div>
+
           {/* Filters */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
             <h2 className="text-xl font-semibold font-[family-name:var(--font-manrope)]">
@@ -973,10 +975,18 @@ export function BuildingDetailClient({
               </CardContent>
             </Card>
           )}
-        </TabsContent>
+        </section>
 
-        {/* ─── TAB: Documents ─────────────────────────────────────────── */}
-        <TabsContent value="documents">
+        {/* ─── SECTION 2 : Documents de gestion ─────────────────────── */}
+        <section aria-labelledby="building-documents-heading">
+          <div className="flex items-center gap-2 mb-4">
+            <FolderOpen className="h-5 w-5 text-blue-500" />
+            <h2 id="building-documents-heading" className="text-xl font-semibold font-[family-name:var(--font-manrope)]">
+              Documents de gestion
+            </h2>
+            <Badge variant="outline" className="ml-1">{documents.length} document{documents.length > 1 ? "s" : ""}</Badge>
+          </div>
+
           {/* Upload section */}
           <Card className="mb-6 bg-card">
             <CardHeader className="pb-3">
@@ -1109,8 +1119,9 @@ export function BuildingDetailClient({
                 </div>
               </div>
             ))}
-        </TabsContent>
-      </Tabs>
+        </section>
+
+      </div>
     </div>
   );
 }
