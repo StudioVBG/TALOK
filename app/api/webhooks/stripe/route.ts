@@ -348,12 +348,18 @@ async function upsertPaymentAttempt(
     .maybeSingle();
 
   const existing = existingPayment as { id?: string | null; statut?: string | null } | null;
+  // `payments.date_paiement` est de type DATE — les callers passent souvent
+  // `new Date().toISOString()` (timestamp ISO). On normalise vers YYYY-MM-DD
+  // pour éviter la coercition silencieuse côté Postgres.
+  const normalizedPaidAt = params.paidAt
+    ? params.paidAt.slice(0, 10)
+    : null;
   const payload = {
     invoice_id: params.invoiceId,
     montant: params.amount,
     moyen: params.method,
     provider_ref: params.providerRef,
-    date_paiement: params.paidAt || null,
+    date_paiement: normalizedPaidAt,
     statut: params.status,
   };
 
@@ -1027,11 +1033,15 @@ export async function POST(request: NextRequest) {
         }
 
         if (invoiceId) {
+          // `payments.moyen` CHECK ∈ (cb, virement, prelevement, especes,
+          // cheque, autre). Stripe renvoie par ex. `card` ou `sepa_debit`
+          // dans `payment_method_types[0]` — on les mappe vers nos valeurs
+          // canoniques (tout ce qui n'est pas SEPA est stocké comme `cb`).
           const paymentMethod = paymentIntent.payment_method_types?.[0] || "cb";
           const paymentResult = await upsertPaymentAttempt(supabase, {
             invoiceId,
             amount: paymentIntent.amount / 100,
-            method: paymentMethod === "sepa_debit" ? "prelevement" : paymentMethod,
+            method: paymentMethod === "sepa_debit" ? "prelevement" : "cb",
             providerRef: paymentIntent.id,
             status: "failed",
             paidAt: new Date().toISOString(),
@@ -1213,7 +1223,9 @@ export async function POST(request: NextRequest) {
           const paymentResult = await upsertPaymentAttempt(supabase, {
             invoiceId: rentalInvoiceId,
             amount: (invoice.amount_paid || 0) / 100,
-            method: "sepa_debit",
+            // `payments.moyen` CHECK rejette 'sepa_debit' — la valeur
+            // canonique pour un prélèvement SEPA est 'prelevement'.
+            method: "prelevement",
             providerRef: invoice.id,
             status: "succeeded",
             paidAt,

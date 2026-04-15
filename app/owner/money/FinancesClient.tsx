@@ -76,6 +76,7 @@ interface Invoice {
     property?: { adresse_complete: string };
     tenant_name?: string;
   };
+  owner_name?: string;
 }
 
 interface FinancesClientProps {

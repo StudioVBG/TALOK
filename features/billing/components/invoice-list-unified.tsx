@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { 
-  FileText, 
-  MoreHorizontal, 
-  Send, 
-  CreditCard, 
-  Download, 
-  CheckCircle2, 
+import {
+  FileText,
+  MoreHorizontal,
+  Send,
+  CreditCard,
+  Download,
+  CheckCircle2,
   AlertCircle,
   Clock,
   Trash2,
@@ -39,8 +40,9 @@ import {
   isPaidStatus,
   isUnpaidStatus,
 } from "@/lib/helpers/invoice-status-labels";
+import { ManualPaymentDialog } from "@/components/payments/ManualPaymentDialog";
 
-import { sendInvoiceAction, updateInvoiceStatusAction } from "../actions/invoices";
+import { sendInvoiceAction } from "../actions/invoices";
 import { invoicesService } from "../services/invoices.service";
 
 // Types
@@ -73,6 +75,7 @@ interface Invoice {
     };
     tenant_name?: string;
   };
+  owner_name?: string;
 }
 
 interface InvoiceListProps {
@@ -82,9 +85,11 @@ interface InvoiceListProps {
 
 export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [optimisticInvoices, setOptimisticInvoices] = useState(invoices);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [sendingReminderId, setSendingReminderId] = useState<string | null>(null);
+  const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
 
   // Fonction pour formater la période (YYYY-MM -> Mois Année)
   const formatPeriod = (period: string) => {
@@ -106,13 +111,14 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
     }
   };
 
-  const handleMarkPaid = async (id: string) => {
-    try {
-      await updateInvoiceStatusAction(id, "paid");
-      toast({ title: "Facture marquée comme payée" });
-    } catch {
-      toast({ title: "Erreur lors de la mise à jour", variant: "destructive" });
-    }
+  const handleOpenPaymentDialog = (invoice: Invoice) => {
+    setPaymentInvoice(invoice);
+  };
+
+  const handlePaymentComplete = () => {
+    setPaymentInvoice(null);
+    // Refetch server data so that the invoice row reflects the new paid status
+    router.refresh();
   };
 
   const handleDelete = async (id: string) => {
@@ -248,7 +254,7 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
                           </DropdownMenuItem>
                         )}
                         {invoice.statut !== "paid" && (invoice.statut as string) !== "cancelled" && (
-                          <DropdownMenuItem onClick={() => handleMarkPaid(invoice.id)}>
+                          <DropdownMenuItem onClick={() => handleOpenPaymentDialog(invoice)}>
                             <CheckCircle2 className="mr-2 h-4 w-4" /> Marquer payé
                           </DropdownMenuItem>
                         )}
@@ -294,6 +300,27 @@ export function InvoiceListUnified({ invoices, variant }: InvoiceListProps) {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Dialog unifié de paiement manuel (espèces / chèque / virement).
+          Le bouton « Marquer payé » du dropdown ne doit JAMAIS marquer une
+          facture payée sans demander le mode de paiement — il passe toujours
+          par ce dialog pour que les espèces déclenchent CashReceiptFlow. */}
+      {paymentInvoice && (
+        <ManualPaymentDialog
+          open={!!paymentInvoice}
+          onOpenChange={(open) => {
+            if (!open) setPaymentInvoice(null);
+          }}
+          invoiceId={paymentInvoice.id}
+          invoiceReference={`INV-${paymentInvoice.id.slice(0, 8).toUpperCase()}`}
+          amount={paymentInvoice.montant_total}
+          tenantName={paymentInvoice.lease?.tenant_name || "Locataire"}
+          ownerName={paymentInvoice.owner_name || "Propriétaire"}
+          propertyAddress={paymentInvoice.lease?.property?.adresse_complete || ""}
+          periode={paymentInvoice.periode}
+          onPaymentComplete={handlePaymentComplete}
+        />
       )}
     </div>
   );
