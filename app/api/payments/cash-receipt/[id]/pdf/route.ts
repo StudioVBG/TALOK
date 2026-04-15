@@ -19,6 +19,9 @@ import { PDFDocument, PDFImage, StandardFonts, rgb } from "pdf-lib";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function sanitizeText(input: string | null | undefined): string {
   // pdf-lib/WinAnsi ne supporte pas tous les caractères unicode (emoji, etc.)
   // On strip les non-printables et on garde les caractères latin-1.
@@ -78,6 +81,16 @@ export async function GET(
 ) {
   try {
     const { id: receiptId } = await params;
+
+    // Filet défensif : un id non-UUID (ex. "undefined") ferait échouer
+    // la requête Postgres (22P02) et remonterait en 500. On retourne un
+    // 404 clair et on évite une trace d'erreur inutile.
+    if (!receiptId || !UUID_REGEX.test(receiptId)) {
+      return NextResponse.json(
+        { error: "Identifiant de reçu invalide" },
+        { status: 404 }
+      );
+    }
 
     const supabase = await createClient();
     const {
