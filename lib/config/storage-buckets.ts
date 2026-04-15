@@ -18,6 +18,8 @@ export const STORAGE_BUCKETS = {
   ASSEMBLY_DOCUMENTS: "assembly-documents",
   /** Images éditables de la landing page (public) */
   LANDING_IMAGES: "landing-images",
+  /** Preuves de paiement manuelles (photos de chèques) — privé, accès via signed URL */
+  PAYMENT_PROOFS: "payment-proofs",
 } as const;
 
 export type StorageBucket = (typeof STORAGE_BUCKETS)[keyof typeof STORAGE_BUCKETS];
