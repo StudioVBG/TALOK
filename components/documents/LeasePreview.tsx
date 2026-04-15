@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Loader2, Maximize2, RefreshCw } from "lucide-react";
+import { FileText, Loader2, Maximize2, RefreshCw, Download } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -17,6 +17,7 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
   const [isSealed, setIsSealed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [iframeFailed, setIframeFailed] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -27,6 +28,7 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
     try {
       setLoading(true);
       setFetchError(null);
+      setIframeFailed(false);
       const response = await fetch(`/api/leases/${leaseId}/html`);
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
@@ -39,10 +41,17 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
         setPdfUrl(data.pdfUrl);
         setIsSealed(true);
         setHtml("");
-      } else {
-        setHtml(typeof data.html === "string" ? data.html : "");
+      } else if (typeof data.html === "string" && data.html.length > 0) {
+        setHtml(data.html);
         setPdfUrl(null);
         setIsSealed(false);
+      } else {
+        // Ni PDF signé, ni HTML : impossible d'afficher l'aperçu
+        console.error("[LeasePreview] Réponse API vide — ni pdfUrl ni html", { leaseId, data });
+        setHtml("");
+        setPdfUrl(null);
+        setIsSealed(false);
+        setFetchError("Le document n'est pas encore disponible");
       }
       setIframeKey(prev => prev + 1);
     } catch (error) {
@@ -145,7 +154,7 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
               <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-blue-600 mb-2" />
               <p className="text-xs sm:text-sm text-white/80 text-center">Chargement du contrat...</p>
             </div>
-          ) : isSealed && pdfUrl ? (
+          ) : isSealed && pdfUrl && !iframeFailed ? (
             <div className="h-full overflow-y-auto flex justify-center py-4 px-2 sm:px-4">
               <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)] flex-shrink-0 h-fit">
                 <iframe
@@ -153,10 +162,14 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
                   className="w-full border-0 bg-white"
                   style={{ height: "calc(297mm * 1.5)" }}
                   title="Bail signé (document définitif)"
+                  onError={() => {
+                    console.error("[LeasePreview] iframe PDF failed to load", { leaseId, pdfUrl });
+                    setIframeFailed(true);
+                  }}
                 />
               </div>
             </div>
-          ) : html ? (
+          ) : html && !iframeFailed ? (
             <div className="h-full overflow-y-auto flex justify-center py-4 px-2 sm:px-4">
               <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)] flex-shrink-0 h-fit">
                 <iframe
@@ -166,28 +179,49 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
                   className="w-full border-0 bg-white"
                   style={{ height: "calc(297mm * 1.5)" }}
                   title="Aperçu du bail"
+                  onError={() => {
+                    console.error("[LeasePreview] iframe HTML failed to load", { leaseId });
+                    setIframeFailed(true);
+                  }}
                 />
               </div>
             </div>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
-              <FileText className="h-8 w-8 text-white/40" />
-              <p className="text-xs text-white/70 mt-2 font-medium">
-                {fetchError ? "Aperçu indisponible" : "Aucun aperçu disponible"}
+              <FileText className="h-10 w-10 text-white/40" />
+              <p className="text-sm text-white/90 mt-3 font-semibold">
+                Document non disponible
               </p>
-              {fetchError && (
-                <p className="text-[10px] text-white/50 mt-1 max-w-xs font-mono">
-                  {fetchError}
-                </p>
-              )}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={fetchLeaseHtml}
-                className="mt-3 text-white/80 hover:text-white hover:bg-white/10 text-xs h-7"
-              >
-                <RefreshCw className="h-3 w-3 mr-1" /> Réessayer
-              </Button>
+              <p className="text-[11px] text-white/60 mt-1 max-w-xs">
+                {fetchError
+                  ? "L'aperçu du bail n'a pas pu être chargé."
+                  : "L'aperçu n'est pas disponible pour le moment."}
+              </p>
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  asChild
+                  className="h-8 text-xs font-bold"
+                >
+                  <a
+                    href={`/api/leases/${leaseId}/pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                    Télécharger le bail
+                  </a>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={fetchLeaseHtml}
+                  className="text-white/80 hover:text-white hover:bg-white/10 text-xs h-8"
+                >
+                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Réessayer
+                </Button>
+              </div>
             </div>
           )}
         </div>

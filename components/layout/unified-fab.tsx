@@ -35,7 +35,19 @@ export function UnifiedFAB({ className }: UnifiedFABProps) {
   const pathname = usePathname();
   const { currentPlan } = useSubscription();
 
+  // Les locataires et garants ne souscrivent pas : aucun upgrade ne doit leur être proposé.
+  // Cela évite que le modal d'upgrade (qui mentionne le prestataire de paiement) s'affiche
+  // dans leur UI — conforme à la règle produit "jamais de branding Stripe côté locataire".
+  const isNonSubscriberRole =
+    pathname?.startsWith("/tenant") ||
+    pathname?.startsWith("/guarantor") ||
+    pathname?.startsWith("/provider");
+
   const getUpgradeTarget = (): { plan: PlanSlug; label: string } | null => {
+    if (isNonSubscriberRole) {
+      return null;
+    }
+
     if (pathname?.startsWith("/owner/providers")) {
       return { plan: "pro", label: `Passer ${PLANS.pro.name}` };
     }
