@@ -5,43 +5,31 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 interface TalokLogoProps {
-  /** "light" = texte sombre sur fond clair, "dark" = texte blanc sur fond sombre */
+  /** Conservé pour compatibilité API — le logo horizontal intègre son propre badge, fonctionne sur fond clair & sombre */
   variant?: "light" | "dark";
-  /** Taille du logo */
+  /** Taille du logo (hauteur) */
   size?: "sm" | "md" | "lg";
   /** Desactiver le lien vers l'accueil */
   noLink?: boolean;
   className?: string;
 }
 
-const SIZE_MAP = {
-  sm: { img: "h-7 w-7", text: "text-base" },
-  md: { img: "h-9 w-9", text: "text-lg" },
-  lg: { img: "h-12 w-12", text: "text-xl" },
+const SIZE_CLS = {
+  sm: "h-8 w-auto",
+  md: "h-10 w-auto",
+  lg: "h-14 w-auto",
 };
 
-export function TalokLogo({ variant = "dark", size = "md", noLink = false, className }: TalokLogoProps) {
-  const s = SIZE_MAP[size];
-
+export function TalokLogo({ size = "md", noLink = false, className }: TalokLogoProps) {
   const content = (
-    <span className={cn("inline-flex items-center gap-2", className)}>
-      <Image
-        src="/images/talok-icon.png"
-        alt="TALOK"
-        width={48}
-        height={48}
-        className={cn("object-contain rounded-lg", s.img)}
-      />
-      <span
-        className={cn(
-          "font-bold tracking-tight",
-          s.text,
-          variant === "dark" ? "text-white" : "text-foreground"
-        )}
-      >
-        TALOK
-      </span>
-    </span>
+    <Image
+      src="/images/talok-logo-horizontal.png"
+      alt="TALOK"
+      width={160}
+      height={64}
+      className={cn("object-contain", SIZE_CLS[size], className)}
+      priority
+    />
   );
 
   if (noLink) return content;

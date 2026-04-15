@@ -49,9 +49,8 @@ export function MarketingFooter() {
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-5">
           {/* Brand column */}
           <div className="lg:col-span-1">
-            <Link href="/" className="mb-4 flex items-center gap-2">
-              <img src="/images/talok-icon.png" alt="TALOK" className="h-8 w-8 rounded-lg object-contain" />
-              <span className="text-lg font-bold text-white font-display">TALOK</span>
+            <Link href="/" className="mb-4 flex items-center">
+              <img src="/images/talok-logo-horizontal.png" alt="TALOK" className="h-10 w-auto object-contain" />
             </Link>
             <p className="text-sm leading-relaxed text-slate-400">
               LE Logiciel de Gestion Locative

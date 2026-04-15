@@ -189,9 +189,11 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
         >
           {/* Logo compact */}
           <div className="flex h-14 shrink-0 items-center justify-center border-b border-border">
-            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
-              <Building2 className="h-5 w-5 text-white" />
-            </div>
+            <img
+              src="/images/talok-icon.png"
+              alt="TALOK"
+              className="h-8 w-8 rounded-lg object-contain"
+            />
           </div>
 
           {/* Navigation icônes avec tooltips, groupées */}
@@ -263,14 +265,15 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
           className="hidden lg:fixed lg:inset-y-0 lg:z-40 lg:flex lg:w-64 xl:w-72 lg:flex-col"
         >
           <div className="flex grow flex-col gap-y-4 lg:gap-y-5 overflow-y-auto bg-card border-r border-border px-4 lg:px-6 pb-4">
-            <div className="flex h-16 shrink-0 items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
-                <Building2 className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-foreground">Talok</h1>
-                <p className="text-xs text-muted-foreground">Compte Propriétaire</p>
-              </div>
+            <div className="flex h-16 shrink-0 items-center gap-3">
+              <img
+                src="/images/talok-logo-horizontal.png"
+                alt="TALOK"
+                className="h-9 w-auto object-contain"
+              />
+              <p className="text-xs text-muted-foreground border-l border-border pl-3">
+                Compte<br />Propriétaire
+              </p>
             </div>
 
             {/* Company Switcher */}

@@ -68,13 +68,8 @@ export function PublicFooter({
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             {/* Logo */}
-            <div className="flex items-center gap-2">
-              <img src="/images/talok-icon.png" alt="TALOK" className="h-8 w-8 rounded-lg object-contain" />
-              <span
-                className={`font-bold ${isDark ? "text-white" : "text-slate-900"}`}
-              >
-                TALOK
-              </span>
+            <div className="flex items-center">
+              <img src="/images/talok-logo-horizontal.png" alt="TALOK" className="h-8 w-auto object-contain" />
             </div>
 
             {/* Links */}
@@ -131,13 +126,8 @@ export function PublicFooter({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
           {/* Brand Column */}
           <div className="col-span-2 md:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <img src="/images/talok-icon.png" alt="TALOK" className="h-10 w-10 rounded-xl object-contain" />
-              <span
-                className={`text-xl font-bold ${isDark ? "text-white" : "text-slate-900"}`}
-              >
-                TALOK
-              </span>
+            <div className="flex items-center mb-4">
+              <img src="/images/talok-logo-horizontal.png" alt="TALOK" className="h-10 w-auto object-contain" />
             </div>
             <p
               className={`text-sm mb-4 ${isDark ? "text-slate-400" : "text-slate-600"}`}
