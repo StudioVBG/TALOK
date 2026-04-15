@@ -140,7 +140,7 @@ export async function GET(
         owner:profiles!cash_receipts_owner_id_fkey(id, prenom, nom),
         tenant:profiles!cash_receipts_tenant_id_fkey(id, prenom, nom),
         property:properties(id, adresse_complete, ville, code_postal),
-        invoice:invoices(id, periode, montant_total, date_emission)
+        invoice:invoices(id, periode, montant_total)
       `
       )
       .eq("id", receiptId)
