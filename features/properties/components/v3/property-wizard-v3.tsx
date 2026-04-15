@@ -420,19 +420,30 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
 
     // SOTA 2026: Persister les lots d'immeuble avant publication
     if (formData.type === "immeuble" && (formData.building_units as unknown[] | undefined)?.length) {
-      const units = (formData.building_units as Array<{ floor: number; position: string; type: string; surface: number; nb_pieces: number; loyer_hc: number; charges: number; depot_garantie: number; status?: string; template?: string }>) ?? [];
+      const units = (formData.building_units as Array<{ floor: number; position: string; type: string; surface: number; nb_pieces: number; loyer_hc: number; charges: number; depot_garantie: number; status?: string; template?: string; meuble?: boolean }>) ?? [];
       try {
         const res = await fetch(`/api/properties/${storePropertyId}/building-units`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            // Identité + structure
+            name: formData.building_name,
             building_floors: formData.building_floors ?? 1,
+            construction_year: formData.construction_year,
+            surface_totale: formData.surface_totale,
+            // Mode de possession
+            ownership_type: formData.ownership_type ?? "full",
+            total_lots_in_building: formData.total_lots_in_building,
+            // Parties communes
             has_ascenseur: formData.has_ascenseur,
             has_gardien: formData.has_gardien,
             has_interphone: formData.has_interphone,
             has_digicode: formData.has_digicode,
             has_local_velo: formData.has_local_velo,
             has_local_poubelles: formData.has_local_poubelles,
+            has_parking_commun: formData.has_parking_commun,
+            has_jardin_commun: formData.has_jardin_commun,
+            // Lots
             units: units.map((u) => ({
               floor: u.floor,
               position: u.position ?? "A",
@@ -444,6 +455,7 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
               depot_garantie: u.depot_garantie ?? 0,
               status: u.status ?? "vacant",
               template: u.template ?? null,
+              meuble: u.meuble ?? false,
             })),
           }),
         });

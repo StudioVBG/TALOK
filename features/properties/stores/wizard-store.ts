@@ -112,12 +112,19 @@ export interface WizardFormData {
   // SOTA 2026 - Champs spécifiques immeuble
   building_floors?: number;
   building_units?: BuildingUnit[];
+  building_name?: string;
+  construction_year?: number;
+  surface_totale?: number;
+  ownership_type?: 'full' | 'partial';
+  total_lots_in_building?: number;
   has_ascenseur?: boolean;
   has_gardien?: boolean;
   has_interphone?: boolean;
   has_digicode?: boolean;
   has_local_velo?: boolean;
   has_local_poubelles?: boolean;
+  has_parking_commun?: boolean;
+  has_jardin_commun?: boolean;
   digicode?: string;
   interphone?: string;
 }
@@ -243,10 +250,15 @@ const INITIAL_STATE: Omit<WizardState, 'reset' | 'initializeDraft' | 'loadProper
     // Valeurs par défaut immeuble
     building_floors: 4,
     building_units: [],
+    ownership_type: 'full',
     has_ascenseur: false,
     has_gardien: false,
     has_interphone: false,
     has_digicode: false,
+    has_local_velo: false,
+    has_local_poubelles: false,
+    has_parking_commun: false,
+    has_jardin_commun: false,
     digicode: "",
     interphone: "",
   },
@@ -401,12 +413,20 @@ export const usePropertyWizardStore = create<WizardState>()(
           buildingId = buildingData.building.id;
           buildingFormData = {
             building_floors: buildingData.building.floors ?? 4,
+            building_name: buildingData.building.name ?? undefined,
+            construction_year: (buildingData.building as any).construction_year ?? undefined,
+            surface_totale: (buildingData.building as any).surface_totale ?? undefined,
+            ownership_type: (buildingData.building as any).ownership_type ?? 'full',
+            total_lots_in_building:
+              (buildingData.building as any).total_lots_in_building ?? undefined,
             has_ascenseur: buildingData.building.has_ascenseur ?? false,
             has_gardien: buildingData.building.has_gardien ?? false,
             has_interphone: buildingData.building.has_interphone ?? false,
             has_digicode: buildingData.building.has_digicode ?? false,
             has_local_velo: buildingData.building.has_local_velo ?? false,
             has_local_poubelles: buildingData.building.has_local_poubelles ?? false,
+            has_parking_commun: (buildingData.building as any).has_parking_commun ?? false,
+            has_jardin_commun: (buildingData.building as any).has_jardin_commun ?? false,
             building_units: (buildingData.units ?? []).map((u: any) => ({
               id: u.id,
               floor: u.floor,
@@ -415,6 +435,7 @@ export const usePropertyWizardStore = create<WizardState>()(
               surface: u.surface,
               nb_pieces: u.nb_pieces,
               template: u.template,
+              meuble: u.meuble ?? false,
               loyer_hc: u.loyer_hc,
               charges: u.charges,
               depot_garantie: u.depot_garantie,

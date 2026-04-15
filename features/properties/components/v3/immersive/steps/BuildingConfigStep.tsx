@@ -2,9 +2,10 @@
 
 import React, { useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Building2, Plus, Copy, Trash2, Sparkles, Wand2, 
-  Globe, ChevronRight, Home, Car, Warehouse
+import {
+  Building2, Plus, Copy, Trash2, Sparkles, Wand2,
+  Globe, ChevronRight, ChevronDown, Home, Car, Warehouse,
+  Euro, Users, Calendar, Ruler
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
+import {
+  RadioGroup, RadioGroupItem,
+} from "@/components/ui/radio-group";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -23,8 +27,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { usePropertyWizardStore } from "@/features/properties/stores/wizard-store";
 import { cn } from "@/lib/utils";
 import { BuildingVisualizer } from "./BuildingVisualizer";
-import { 
-  type BuildingUnit, 
+import {
+  type BuildingUnit,
+  type BuildingOwnershipType,
   type UnitTemplateConfig,
   UNIT_TEMPLATES,
   generateUnitId,
@@ -61,21 +66,67 @@ export function BuildingConfigStep() {
   const [hasGardien, setHasGardien] = useState(formData.has_gardien || false);
   const [hasInterphone, setHasInterphone] = useState(formData.has_interphone || false);
   const [hasDigicode, setHasDigicode] = useState(formData.has_digicode || false);
+  const [hasLocalVelo, setHasLocalVelo] = useState(formData.has_local_velo || false);
+  const [hasLocalPoubelles, setHasLocalPoubelles] = useState(formData.has_local_poubelles || false);
+  const [hasParkingCommun, setHasParkingCommun] = useState(formData.has_parking_commun || false);
+  const [hasJardinCommun, setHasJardinCommun] = useState(formData.has_jardin_commun || false);
   const [digicodeValue, setDigicodeValue] = useState((formData as any).digicode || "");
   const [interphoneValue, setInterphoneValue] = useState((formData as any).interphone || "");
 
-  // Sync avec le store
+  // Détails immeuble (SOTA 2026)
+  const [buildingName, setBuildingName] = useState(formData.building_name || "");
+  const [constructionYear, setConstructionYear] = useState<number | "">(
+    formData.construction_year ?? ""
+  );
+  const [surfaceTotale, setSurfaceTotale] = useState<number | "">(
+    formData.surface_totale ?? ""
+  );
+
+  // Mode de possession (SOTA 2026)
+  const [ownershipType, setOwnershipType] = useState<BuildingOwnershipType>(
+    formData.ownership_type ?? "full"
+  );
+  const [totalLotsInBuilding, setTotalLotsInBuilding] = useState<number | "">(
+    formData.total_lots_in_building ?? ""
+  );
+
+  // Expand édition inline d'un lot (loyer/charges/dépôt/meublé)
+  const [expandedUnitId, setExpandedUnitId] = useState<string | null>(null);
+
+  // Sync avec le store (lots + floors + équipements communs)
   const syncToStore = useCallback((newUnits: BuildingUnit[], newFloors?: number) => {
     setUnits(newUnits);
-    updateFormData({ 
+    updateFormData({
       building_units: newUnits,
       building_floors: newFloors ?? floors,
       has_ascenseur: hasAscenseur,
       has_gardien: hasGardien,
       has_interphone: hasInterphone,
       has_digicode: hasDigicode,
+      has_local_velo: hasLocalVelo,
+      has_local_poubelles: hasLocalPoubelles,
+      has_parking_commun: hasParkingCommun,
+      has_jardin_commun: hasJardinCommun,
     });
-  }, [floors, hasAscenseur, hasGardien, hasInterphone, hasDigicode, updateFormData]);
+  }, [
+    floors,
+    hasAscenseur, hasGardien, hasInterphone, hasDigicode,
+    hasLocalVelo, hasLocalPoubelles, hasParkingCommun, hasJardinCommun,
+    updateFormData,
+  ]);
+
+  // Mettre à jour un seul champ d'un lot donné (loyer, charges, dépôt, meublé)
+  const updateUnit = useCallback(
+    (unitId: string, patch: Partial<BuildingUnit>) => {
+      const next = units.map((u) =>
+        u.id === unitId
+          ? { ...u, ...patch, updated_at: new Date().toISOString() }
+          : u
+      );
+      syncToStore(next);
+    },
+    [units, syncToStore]
+  );
 
   // Ajouter un lot
   const addUnit = useCallback((floor: number, template: UnitTemplateConfig) => {
@@ -359,6 +410,150 @@ export function BuildingConfigStep() {
           </CardContent>
         </Card>
 
+        {/* Détails de l'immeuble */}
+        <Card>
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-blue-500" />
+              Détails de l'immeuble
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="building_name" className="text-xs">Nom (optionnel)</Label>
+              <Input
+                id="building_name"
+                value={buildingName}
+                onChange={(e) => {
+                  setBuildingName(e.target.value);
+                  updateFormData({ building_name: e.target.value });
+                }}
+                placeholder="Résidence Les Oliviers"
+                className="h-8 text-sm"
+                maxLength={200}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label htmlFor="construction_year" className="text-xs flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  Année
+                </Label>
+                <Input
+                  id="construction_year"
+                  type="number"
+                  min={1800}
+                  max={2100}
+                  value={constructionYear}
+                  onChange={(e) => {
+                    const v = e.target.value === "" ? "" : Number(e.target.value);
+                    setConstructionYear(v);
+                    updateFormData({
+                      construction_year: v === "" ? undefined : v,
+                    });
+                  }}
+                  placeholder="1960"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="surface_totale" className="text-xs flex items-center gap-1">
+                  <Ruler className="h-3 w-3" />
+                  Surface m²
+                </Label>
+                <Input
+                  id="surface_totale"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={surfaceTotale}
+                  onChange={(e) => {
+                    const v = e.target.value === "" ? "" : Number(e.target.value);
+                    setSurfaceTotale(v);
+                    updateFormData({
+                      surface_totale: v === "" ? undefined : v,
+                    });
+                  }}
+                  placeholder="280"
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Mode de possession */}
+        <Card>
+          <CardHeader className="pb-2 pt-3 px-4">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Users className="h-4 w-4 text-purple-500" />
+              Mode de possession
+            </CardTitle>
+            <CardDescription className="text-[11px]">
+              Possédez-vous l'immeuble en totalité, ou seulement certains lots ?
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 space-y-3">
+            <RadioGroup
+              value={ownershipType}
+              onValueChange={(v) => {
+                const next = (v as BuildingOwnershipType) ?? "full";
+                setOwnershipType(next);
+                updateFormData({
+                  ownership_type: next,
+                  total_lots_in_building:
+                    next === "full" ? undefined : (typeof totalLotsInBuilding === "number" ? totalLotsInBuilding : undefined),
+                });
+              }}
+              className="space-y-2"
+            >
+              <div className="flex items-start gap-2 p-2 rounded-md border hover:border-blue-400 cursor-pointer">
+                <RadioGroupItem value="full" id="own-full" className="mt-0.5" />
+                <Label htmlFor="own-full" className="flex-1 cursor-pointer">
+                  <div className="text-sm font-medium">Immeuble entier</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Vous possédez tous les lots.
+                  </div>
+                </Label>
+              </div>
+              <div className="flex items-start gap-2 p-2 rounded-md border hover:border-blue-400 cursor-pointer">
+                <RadioGroupItem value="partial" id="own-partial" className="mt-0.5" />
+                <Label htmlFor="own-partial" className="flex-1 cursor-pointer">
+                  <div className="text-sm font-medium">Copropriété partielle</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Vous ne possédez qu'une partie des lots (les autres sont à d'autres copropriétaires).
+                  </div>
+                </Label>
+              </div>
+            </RadioGroup>
+            {ownershipType === "partial" && (
+              <div className="space-y-1 pl-2 border-l-2 border-purple-200">
+                <Label htmlFor="total_lots" className="text-xs">
+                  Nombre total de lots de l'immeuble physique
+                </Label>
+                <Input
+                  id="total_lots"
+                  type="number"
+                  min={1}
+                  value={totalLotsInBuilding}
+                  onChange={(e) => {
+                    const v = e.target.value === "" ? "" : Number(e.target.value);
+                    setTotalLotsInBuilding(v);
+                    updateFormData({
+                      total_lots_in_building: v === "" ? undefined : v,
+                    });
+                  }}
+                  placeholder="Ex: 12"
+                  className="h-8 text-sm"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Incluez tous les lots, y compris ceux qui ne vous appartiennent pas.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Parties communes */}
         <Card>
           <CardHeader className="pb-2 pt-3 px-4">
@@ -367,9 +562,9 @@ export function BuildingConfigStep() {
           <CardContent className="px-4 pb-4 space-y-3">
             <div className="flex items-center justify-between">
               <Label htmlFor="ascenseur" className="text-sm">Ascenseur</Label>
-              <Switch 
-                id="ascenseur" 
-                checked={hasAscenseur} 
+              <Switch
+                id="ascenseur"
+                checked={hasAscenseur}
                 onCheckedChange={(v) => {
                   setHasAscenseur(v);
                   updateFormData({ has_ascenseur: v });
@@ -378,12 +573,56 @@ export function BuildingConfigStep() {
             </div>
             <div className="flex items-center justify-between">
               <Label htmlFor="gardien" className="text-sm">Gardien</Label>
-              <Switch 
-                id="gardien" 
-                checked={hasGardien} 
+              <Switch
+                id="gardien"
+                checked={hasGardien}
                 onCheckedChange={(v) => {
                   setHasGardien(v);
                   updateFormData({ has_gardien: v });
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="local_velo" className="text-sm">Local vélo</Label>
+              <Switch
+                id="local_velo"
+                checked={hasLocalVelo}
+                onCheckedChange={(v) => {
+                  setHasLocalVelo(v);
+                  updateFormData({ has_local_velo: v });
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="local_poubelles" className="text-sm">Local poubelles</Label>
+              <Switch
+                id="local_poubelles"
+                checked={hasLocalPoubelles}
+                onCheckedChange={(v) => {
+                  setHasLocalPoubelles(v);
+                  updateFormData({ has_local_poubelles: v });
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="parking_commun" className="text-sm">Parking commun</Label>
+              <Switch
+                id="parking_commun"
+                checked={hasParkingCommun}
+                onCheckedChange={(v) => {
+                  setHasParkingCommun(v);
+                  updateFormData({ has_parking_commun: v });
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="jardin_commun" className="text-sm">Jardin commun</Label>
+              <Switch
+                id="jardin_commun"
+                checked={hasJardinCommun}
+                onCheckedChange={(v) => {
+                  setHasJardinCommun(v);
+                  updateFormData({ has_jardin_commun: v });
                 }}
               />
             </div>
@@ -461,54 +700,186 @@ export function BuildingConfigStep() {
               <ScrollArea className="max-h-48">
                 <div className="space-y-2">
                   <AnimatePresence mode="popLayout">
-                    {selectedFloorUnits.map((unit) => (
-                      <motion.div
-                        key={unit.id}
-                        layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        className="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg border"
-                      >
-                        <div className={cn(
-                          "w-8 h-8 rounded-md flex items-center justify-center text-lg",
-                          unit.type === "parking" && "bg-blue-100 dark:bg-blue-900",
-                          unit.type === "cave" && "bg-amber-100 dark:bg-amber-900",
-                          unit.type !== "parking" && unit.type !== "cave" && "bg-emerald-100 dark:bg-emerald-900"
-                        )}>
-                          {unit.type === "parking" ? "🚗" : unit.type === "cave" ? "🪨" : "🏠"}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">
-                            Lot {unit.position} • {unit.template?.toUpperCase() || unit.type}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {unit.surface} m² • {unit.nb_pieces > 0 ? `${unit.nb_pieces} pièce${unit.nb_pieces > 1 ? "s" : ""}` : ""}
-                          </p>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            className="h-7 w-7 text-slate-400 hover:text-blue-500"
-                            onClick={() => {
-                              setUnitToDuplicate(unit);
-                              setShowDuplicateDialog(true);
-                            }}
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            className="h-7 w-7 text-slate-400 hover:text-red-500"
-                            onClick={() => removeUnit(unit.id)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </motion.div>
-                    ))}
+                    {selectedFloorUnits.map((unit) => {
+                      const isExpanded = expandedUnitId === unit.id;
+                      const isHabitable = unit.type !== "parking" && unit.type !== "cave";
+                      return (
+                        <motion.div
+                          key={unit.id}
+                          layout
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          className="bg-slate-50 dark:bg-slate-800 rounded-lg border overflow-hidden"
+                        >
+                          {/* Ligne compacte */}
+                          <div className="flex items-center gap-2 p-2">
+                            <button
+                              type="button"
+                              className={cn(
+                                "w-8 h-8 rounded-md flex items-center justify-center text-lg shrink-0",
+                                unit.type === "parking" && "bg-blue-100 dark:bg-blue-900",
+                                unit.type === "cave" && "bg-amber-100 dark:bg-amber-900",
+                                unit.type !== "parking" && unit.type !== "cave" && "bg-emerald-100 dark:bg-emerald-900"
+                              )}
+                              onClick={() => setExpandedUnitId(isExpanded ? null : unit.id)}
+                              aria-label={isExpanded ? "Réduire" : "Modifier"}
+                            >
+                              {unit.type === "parking" ? "🚗" : unit.type === "cave" ? "🪨" : "🏠"}
+                            </button>
+                            <button
+                              type="button"
+                              className="flex-1 min-w-0 text-left"
+                              onClick={() => setExpandedUnitId(isExpanded ? null : unit.id)}
+                            >
+                              <p className="font-medium text-sm truncate">
+                                Lot {unit.position} • {unit.template?.toUpperCase() || unit.type}
+                                {unit.loyer_hc > 0 && (
+                                  <span className="ml-2 text-xs text-emerald-600 font-normal">
+                                    {unit.loyer_hc}€ HC
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {unit.surface} m² • {unit.nb_pieces > 0 ? `${unit.nb_pieces} pièce${unit.nb_pieces > 1 ? "s" : ""}` : ""}
+                              </p>
+                            </button>
+                            <div className="flex gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-slate-400 hover:text-blue-500"
+                                onClick={() => setExpandedUnitId(isExpanded ? null : unit.id)}
+                                aria-label="Éditer le lot"
+                              >
+                                {isExpanded
+                                  ? <ChevronDown className="h-3.5 w-3.5" />
+                                  : <ChevronRight className="h-3.5 w-3.5" />}
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-slate-400 hover:text-blue-500"
+                                onClick={() => {
+                                  setUnitToDuplicate(unit);
+                                  setShowDuplicateDialog(true);
+                                }}
+                              >
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-slate-400 hover:text-red-500"
+                                onClick={() => removeUnit(unit.id)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Zone éditable (loyer / charges / dépôt / meublé) */}
+                          <AnimatePresence initial={false}>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="border-t border-slate-200 dark:border-slate-700 bg-white/60 dark:bg-slate-900/40"
+                              >
+                                <div className="p-3 space-y-3">
+                                  <div className="grid grid-cols-3 gap-2">
+                                    <div className="space-y-1">
+                                      <Label
+                                        htmlFor={`loyer-${unit.id}`}
+                                        className="text-[11px] flex items-center gap-1"
+                                      >
+                                        <Euro className="h-3 w-3" />
+                                        Loyer HC
+                                      </Label>
+                                      <Input
+                                        id={`loyer-${unit.id}`}
+                                        type="number"
+                                        min={0}
+                                        step="0.01"
+                                        value={unit.loyer_hc || ""}
+                                        onChange={(e) =>
+                                          updateUnit(unit.id, {
+                                            loyer_hc: e.target.value === "" ? 0 : Number(e.target.value),
+                                          })
+                                        }
+                                        placeholder="650"
+                                        className="h-8 text-sm"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label
+                                        htmlFor={`charges-${unit.id}`}
+                                        className="text-[11px]"
+                                      >
+                                        Charges
+                                      </Label>
+                                      <Input
+                                        id={`charges-${unit.id}`}
+                                        type="number"
+                                        min={0}
+                                        step="0.01"
+                                        value={unit.charges || ""}
+                                        onChange={(e) =>
+                                          updateUnit(unit.id, {
+                                            charges: e.target.value === "" ? 0 : Number(e.target.value),
+                                          })
+                                        }
+                                        placeholder="50"
+                                        className="h-8 text-sm"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label
+                                        htmlFor={`depot-${unit.id}`}
+                                        className="text-[11px]"
+                                      >
+                                        Dépôt
+                                      </Label>
+                                      <Input
+                                        id={`depot-${unit.id}`}
+                                        type="number"
+                                        min={0}
+                                        step="0.01"
+                                        value={unit.depot_garantie || ""}
+                                        onChange={(e) =>
+                                          updateUnit(unit.id, {
+                                            depot_garantie: e.target.value === "" ? 0 : Number(e.target.value),
+                                          })
+                                        }
+                                        placeholder="650"
+                                        className="h-8 text-sm"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  {isHabitable && (
+                                    <div className="flex items-center justify-between">
+                                      <Label
+                                        htmlFor={`meuble-${unit.id}`}
+                                        className="text-[12px]"
+                                      >
+                                        Lot meublé
+                                      </Label>
+                                      <Switch
+                                        id={`meuble-${unit.id}`}
+                                        checked={unit.meuble ?? false}
+                                        onCheckedChange={(v) => updateUnit(unit.id, { meuble: v })}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </motion.div>
+                      );
+                    })}
                   </AnimatePresence>
                   
                   {selectedFloorUnits.length === 0 && (

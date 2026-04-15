@@ -1,3 +1,14 @@
+/**
+ * /api/buildings/[id]
+ *
+ * - GET    : [NOT CONSUMED BY FRONTEND] conservé pour usage API externe.
+ *            Le hub `/owner/buildings/[id]` fait son fetch en SSR direct.
+ * - PATCH  : ACTIF — consommé par BuildingDetailClient (équipements, nom,
+ *            adresse, surface_totale, ownership_type, notes, etc.).
+ * - DELETE : ACTIF — garde baux actifs via building_active_lease_units.
+ *
+ * Voir docs/api-buildings.md.
+ */
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
@@ -8,19 +19,25 @@ import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { getServiceClient } from "@/lib/supabase/service-client";
 
 const updateBuildingSchema = z.object({
-  name: z.string().min(1).max(100).optional(),
+  name: z.string().min(1).max(200).optional(),
   adresse_complete: z.string().min(1).optional(),
   code_postal: z.string().regex(/^(?:(?:0[1-9]|[1-8]\d|9[0-5])\d{3}|97[1-6]\d{2})$/).optional(),
   ville: z.string().min(1).optional(),
   departement: z.string().optional(),
   floors: z.number().int().min(1).max(50).optional(),
-  construction_year: z.number().int().min(1800).max(new Date().getFullYear() + 5).optional(),
+  construction_year: z.number().int().min(1800).max(new Date().getFullYear() + 5).optional().nullable(),
+  surface_totale: z.number().nonnegative().optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+  ownership_type: z.enum(["full", "partial"]).optional(),
+  total_lots_in_building: z.number().int().positive().optional().nullable(),
   has_ascenseur: z.boolean().optional(),
   has_gardien: z.boolean().optional(),
   has_interphone: z.boolean().optional(),
   has_digicode: z.boolean().optional(),
   has_local_velo: z.boolean().optional(),
   has_local_poubelles: z.boolean().optional(),
+  has_parking_commun: z.boolean().optional(),
+  has_jardin_commun: z.boolean().optional(),
 });
 
 interface RouteParams {
@@ -139,6 +156,32 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       }
     }
 
+    // Cohérence ownership_type ↔ total_lots_in_building
+    if (
+      payload.ownership_type === "partial" &&
+      (payload.total_lots_in_building === null ||
+        (payload.total_lots_in_building === undefined &&
+          !("total_lots_in_building" in payload)))
+    ) {
+      // Si partial fourni sans total_lots, on n'exige pas nécessairement qu'il soit
+      // dans CE patch (il peut déjà exister). On vérifie en DB.
+      const { data: current } = await serviceClient
+        .from("buildings")
+        .select("total_lots_in_building")
+        .eq("id", id)
+        .single();
+      if (!current || current.total_lots_in_building == null) {
+        throw new ApiError(
+          400,
+          "Copropriété partielle : indiquez le nombre total de lots de l'immeuble physique."
+        );
+      }
+    }
+    if (payload.ownership_type === "full") {
+      // En mode full, total_lots_in_building doit être NULL (réinitialisation)
+      (payload as Record<string, unknown>).total_lots_in_building = null;
+    }
+
     const { data: building, error: updateError } = await serviceClient
       .from("buildings")
       .update({
@@ -195,6 +238,21 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       throw new ApiError(403, "Accès non autorisé à cet immeuble");
     }
 
+    // Garde : refuser la suppression si au moins un lot a un bail bloquant
+    // (status='occupe' OU current_lease_id != NULL OU bail actif via leases).
+    const { data: blocking } = await serviceClient.rpc(
+      "building_active_lease_units",
+      { p_building_id: id }
+    );
+    if (Array.isArray(blocking) && blocking.length > 0) {
+      throw new ApiError(
+        409,
+        `Impossible de supprimer l'immeuble : ${blocking.length} lot(s) ont un bail actif. Résilier les baux d'abord.`
+      );
+    }
+
+    // Fallback safety : garder la vérification status='occupe' au cas où
+    // `current_lease_id` n'est pas sync (anciens records).
     const { data: occupiedUnits, error: occupiedError } = await serviceClient
       .from("building_units")
       .select("id")
