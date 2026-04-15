@@ -11,12 +11,25 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
+
+    // Filet défensif : un id non-UUID (ex. "undefined" suite à un bug côté
+    // client) ferait remonter une erreur Postgres 22P02 qui serait ensuite
+    // encapsulée en 500. On retourne un 404 clair à la place.
+    if (!id || !UUID_REGEX.test(id)) {
+      return NextResponse.json(
+        { error: "Identifiant de reçu invalide" },
+        { status: 404 }
+      );
+    }
 
     const supabase = await createClient();
     const {

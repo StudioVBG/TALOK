@@ -3,7 +3,12 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 
 export interface TenantPendingCashReceipt {
   id: string;
-  receipt_number: string;
+  /**
+   * Numéro "REC-YYYY-MM-XXXX" auto-généré par trigger côté DB.
+   * Peut être null si le trigger n'a pas encore été (re)déployé —
+   * l'UI retombe alors sur les 8 premiers caractères de l'id.
+   */
+  receipt_number: string | null;
   amount: number;
   periode: string | null;
   owner_signed_at: string | null;
@@ -43,16 +48,21 @@ export async function getTenantPendingCashReceipts(): Promise<TenantPendingCashR
 
   if (error || !data) return [];
 
-  return data.map((r: any) => ({
-    id: r.id,
-    receipt_number: r.receipt_number,
-    amount: Number(r.amount),
-    periode: r.periode,
-    owner_signed_at: r.owner_signed_at,
-    created_at: r.created_at,
-    property_address: r.property?.adresse_complete ?? null,
-    owner_name: `${r.owner?.prenom ?? ""} ${r.owner?.nom ?? ""}`.trim() || "Propriétaire",
-  }));
+  // Filet défensif : on écarte toute ligne sans id pour éviter des CTA
+  // pointant vers /tenant/payments/cash-receipt/undefined et des 500 en
+  // cascade sur les routes API correspondantes.
+  return data
+    .filter((r: any) => typeof r?.id === "string" && r.id.length > 0)
+    .map((r: any) => ({
+      id: r.id,
+      receipt_number: r.receipt_number ?? null,
+      amount: Number(r.amount),
+      periode: r.periode,
+      owner_signed_at: r.owner_signed_at,
+      created_at: r.created_at,
+      property_address: r.property?.adresse_complete ?? null,
+      owner_name: `${r.owner?.prenom ?? ""} ${r.owner?.nom ?? ""}`.trim() || "Propriétaire",
+    }));
 }
 
 export async function getOwnerInvoices(limit = 50) {

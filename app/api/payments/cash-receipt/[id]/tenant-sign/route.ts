@@ -13,12 +13,24 @@ import { NextResponse } from "next/server";
 import { cashReceiptTenantSignatureSchema } from "@/lib/validations";
 import { sendPushNotification } from "@/lib/push/send";
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id: receiptId } = await params;
+
+    // Filet défensif : un id non-UUID produirait une erreur Postgres 22P02
+    // encapsulée en 500. On retourne un 404 clair à la place.
+    if (!receiptId || !UUID_REGEX.test(receiptId)) {
+      return NextResponse.json(
+        { error: "Identifiant de reçu invalide" },
+        { status: 404 }
+      );
+    }
 
     const supabase = await createClient();
     const {
