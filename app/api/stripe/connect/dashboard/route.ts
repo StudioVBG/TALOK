@@ -6,11 +6,11 @@ export const runtime = "nodejs";
  * POST /api/stripe/connect/dashboard - Génère un lien vers le dashboard Stripe
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { connectService } from "@/lib/stripe/connect.service";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     const supabase = await createRouteHandlerClient();
     const serviceClient = createServiceRoleClient();
@@ -30,22 +30,31 @@ export async function POST() {
       .eq("user_id", user.id)
       .single();
 
-    if (!profile || profile.role !== "owner") {
+    if (!profile || !["owner", "syndic"].includes(profile.role)) {
       return NextResponse.json(
-        { error: "Seuls les propriétaires peuvent accéder au dashboard" },
+        { error: "Seuls les propriétaires et syndics peuvent accéder au dashboard" },
         { status: 403 }
       );
     }
 
-    // Récupérer le compte Connect personnel (S2-2 : entity_id IS NULL)
-    const { data: connectAccount } = await serviceClient
+    const body = await request.json().catch(() => ({}));
+    const entityId: string | undefined = body.entityId || undefined;
+
+    // Récupérer le compte Connect (personnel ou scopé par entité)
+    let connectQuery = serviceClient
       .from("stripe_connect_accounts")
       .select(
         "stripe_account_id, charges_enabled, payouts_enabled, details_submitted, requirements_currently_due, requirements_past_due, requirements_disabled_reason"
       )
-      .eq("profile_id", profile.id)
-      .is("entity_id", null)
-      .maybeSingle();
+      .eq("profile_id", profile.id);
+
+    if (entityId) {
+      connectQuery = connectQuery.eq("entity_id", entityId);
+    } else {
+      connectQuery = connectQuery.is("entity_id", null);
+    }
+
+    const { data: connectAccount } = await connectQuery.maybeSingle();
 
     if (!connectAccount) {
       return NextResponse.json(
