@@ -1,6 +1,60 @@
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 
+export interface TenantPendingCashReceipt {
+  id: string;
+  receipt_number: string;
+  amount: number;
+  periode: string | null;
+  owner_signed_at: string | null;
+  property_address: string | null;
+  owner_name: string;
+  created_at: string;
+}
+
+/**
+ * Reçus espèces en attente de contresignature du locataire courant.
+ * Utilisé par /tenant/payments pour afficher un bandeau d'action.
+ */
+export async function getTenantPendingCashReceipts(): Promise<TenantPendingCashReceipt[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const serviceClient = getServiceClient();
+  const { data: profile } = await serviceClient
+    .from("profiles")
+    .select("id")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!profile) return [];
+
+  const { data, error } = await serviceClient
+    .from("cash_receipts")
+    .select(`
+      id, receipt_number, amount, periode, owner_signed_at, created_at,
+      owner:profiles!cash_receipts_owner_id_fkey(prenom, nom),
+      property:properties(adresse_complete)
+    `)
+    .eq("tenant_id", profile.id)
+    .eq("status", "pending_tenant")
+    .order("created_at", { ascending: false });
+
+  if (error || !data) return [];
+
+  return data.map((r: any) => ({
+    id: r.id,
+    receipt_number: r.receipt_number,
+    amount: Number(r.amount),
+    periode: r.periode,
+    owner_signed_at: r.owner_signed_at,
+    created_at: r.created_at,
+    property_address: r.property?.adresse_complete ?? null,
+    owner_name: `${r.owner?.prenom ?? ""} ${r.owner?.nom ?? ""}`.trim() || "Propriétaire",
+  }));
+}
+
 export async function getOwnerInvoices(limit = 50) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

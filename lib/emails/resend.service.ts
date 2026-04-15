@@ -837,6 +837,43 @@ export async function sendKeyHandoverConfirmedNotification(data: {
 }
 
 /**
+ * Envoie la demande de contresignature d'un reçu espèces au locataire.
+ * Appelée après que le propriétaire ait signé le reçu (flow 2 étapes).
+ */
+export async function sendCashReceiptSignatureRequest(data: {
+  tenantEmail: string;
+  tenantName: string;
+  ownerName: string;
+  propertyAddress: string;
+  period: string;
+  amount: number;
+  receiptId: string;
+  receiptNumber: string;
+}): Promise<EmailResult> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr';
+  const template = emailTemplates.cashReceiptSignatureRequest({
+    tenantName: data.tenantName,
+    ownerName: data.ownerName,
+    propertyAddress: data.propertyAddress,
+    period: data.period,
+    amount: data.amount,
+    receiptNumber: data.receiptNumber,
+    signatureUrl: `${appUrl}/tenant/payments/cash-receipt/${data.receiptId}`,
+  });
+
+  return sendEmail({
+    to: data.tenantEmail,
+    subject: template.subject,
+    html: template.html,
+    idempotencyKey: `cash-receipt-signature/${data.receiptId}`,
+    tags: [
+      { name: 'type', value: 'cash_receipt_signature_request' },
+      { name: 'receipt_id', value: data.receiptId },
+    ],
+  });
+}
+
+/**
  * Confirmation de suppression de compte (RGPD Article 17)
  */
 export async function sendAccountDeletionConfirmation(
@@ -875,6 +912,8 @@ export const emailService = {
   // Key Handover
   sendKeyHandoverScanRequest,
   sendKeyHandoverConfirmedNotification,
+  // Paiements espèces (flow 2 étapes)
+  sendCashReceiptSignatureRequest,
   // RGPD
   sendAccountDeletionConfirmation,
 };

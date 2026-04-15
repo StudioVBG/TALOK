@@ -2200,6 +2200,68 @@ export const emailTemplates = {
   }),
 
   /**
+   * Reçu espèces — demande de contresignature au locataire
+   * Envoyé après que le propriétaire ait signé le reçu.
+   */
+  cashReceiptSignatureRequest: (data: {
+    tenantName: string;
+    ownerName: string;
+    propertyAddress: string;
+    period: string;
+    amount: number;
+    receiptNumber: string;
+    signatureUrl: string;
+  }) => ({
+    subject: `Vous avez un reçu de paiement à contresigner`,
+    html: baseLayout(`
+      <div class="content">
+        <h1>Un reçu de paiement attend votre signature</h1>
+        <p>Bonjour ${escapeHtml(data.tenantName)},</p>
+        <p><strong>${escapeHtml(data.ownerName)}</strong> a enregistré votre paiement en espèces et vous demande de contresigner le reçu pour confirmer sa bonne réception.</p>
+
+        <div class="highlight-box">
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Montant reçu</p>
+          <div class="amount">${data.amount.toLocaleString('fr-FR')} €</div>
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px;">Période : ${escapeHtml(data.period)}</p>
+        </div>
+
+        <div class="info-grid">
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+            <tr>
+              <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]};">
+                <span style="color: ${COLORS.gray[500]}; font-size: 14px;">Logement</span>
+              </td>
+              <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]}; text-align: right;">
+                <span style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 14px;">${escapeHtml(data.propertyAddress || '—')}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]};">
+                <span style="color: ${COLORS.gray[500]}; font-size: 14px;">Référence du reçu</span>
+              </td>
+              <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]}; text-align: right;">
+                <span style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 14px;">${escapeHtml(data.receiptNumber)}</span>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="color: ${COLORS.gray[700]}; font-size: 14px;">
+          Votre contresignature confirme la bonne réception du paiement et génère une attestation officielle téléchargeable, conforme à l'article 21 de la loi du 6 juillet 1989.
+        </p>
+
+        <div style="text-align: center;">
+          <a href="${data.signatureUrl}" class="button">Signer le reçu</a>
+        </div>
+
+        <p style="font-size: 13px; color: ${COLORS.gray[500]}; margin-top: 24px;">
+          Si vous n'êtes pas à l'origine de ce paiement, contactez immédiatement votre propriétaire.
+        </p>
+      </div>
+    `, `${escapeHtml(data.ownerName)} vous demande de contresigner un reçu de ${data.amount}€.`),
+  }),
+
+  /**
    * Confirmation de suppression de compte (RGPD Article 17)
    */
   accountDeletionConfirmation: (data: {
