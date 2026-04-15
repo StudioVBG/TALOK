@@ -64,11 +64,15 @@ export async function getOwnerInvoices(limit = 50) {
   const serviceClient = getServiceClient();
   const { data: profile } = await serviceClient
     .from("profiles")
-    .select("id")
+    .select("id, prenom, nom")
     .eq("user_id", user.id)
     .single();
 
   if (!profile) return [];
+
+  const ownerName =
+    `${(profile as any).prenom || ""} ${(profile as any).nom || ""}`.trim() ||
+    "Propriétaire";
 
   const { data } = await serviceClient
     .from("invoices")
@@ -102,12 +106,14 @@ export async function getOwnerInvoices(limit = 50) {
         montant_total: inv.montant_total,
         statut: inv.statut as "draft" | "sent" | "paid" | "late" | "cancelled",
         created_at: inv.created_at,
+        lease_id: inv.lease_id,
         lease: {
           property: {
             adresse_complete: inv.lease?.property?.adresse_complete
           },
           tenant_name: tenantName
-        }
+        },
+        owner_name: ownerName
       };
     });
 }
