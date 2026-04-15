@@ -1,3 +1,13 @@
+/**
+ * /api/buildings/[id]/units
+ *
+ * [NOT CONSUMED BY FRONTEND — kept for API programmatic use]
+ *
+ * Le wizard et la page de gestion des lots passent par
+ * POST /api/properties/[id]/building-units (RPC transactionnelle).
+ * Cette route reste disponible pour un usage API direct (tests, scripts,
+ * intégration future). Voir docs/api-buildings.md.
+ */
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 

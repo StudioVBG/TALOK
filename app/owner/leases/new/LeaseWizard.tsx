@@ -594,34 +594,86 @@ export function LeaseWizard({ properties, initialPropertyId, initialBuildingUnit
   const handlePropertySelect = useCallback((property: Property) => {
     setSelectedPropertyId(property.id);
     const propAny = property as any;
-    
+
     const loyerValue = propAny.loyer_hc ?? propAny.loyer_base ?? 0;
     setPropertyLoyer(loyerValue);
     if (loyerValue > 0) setLoyer(loyerValue);
-    
+
     // Charges : charges_mensuelles (propriété) → charges_forfaitaires (bail)
     const chargesValue = propAny.charges_mensuelles ?? propAny.charges_forfaitaires ?? 0;
     if (chargesValue > 0) setCharges(chargesValue);
-    
+
     // Dépôt : calculer selon le type de bail
     const depotMonths = selectedType ? LEASE_TYPE_CONFIGS[selectedType].maxDepositMonths : 1;
     if (loyerValue > 0) setDepot(loyerValue * depotMonths);
-    
+
     // ✅ SOTA 2026: Toast de confirmation
     const address = property.adresse_complete || property.adresse || "Bien";
     toast({
       title: `✓ ${address.substring(0, 30)}${address.length > 30 ? "..." : ""}`,
-      description: loyerValue > 0 
-        ? `Loyer pré-rempli : ${loyerValue.toLocaleString("fr-FR")} €` 
+      description: loyerValue > 0
+        ? `Loyer pré-rempli : ${loyerValue.toLocaleString("fr-FR")} €`
         : "⚠️ Renseignez le loyer ci-dessous",
       duration: 2000,
     });
-    
+
     // ✅ Pré-remplir digicode/interphone depuis la propriété
     setWizardDigicode(propAny.digicode || "");
     setWizardInterphone(propAny.interphone || "");
     setDigicodeModified(false);
     setInterphoneModified(false);
+
+    // ─── Item #12 : prioriser building_unit.loyer_hc si c'est un lot d'immeuble ──
+    // Fetch async en arrière-plan — ne bloque pas l'UX.
+    // Si la property a un parent_property_id, elle est un lot → on fetch le
+    // building_unit associé et on override loyer/charges/dépôt si les valeurs
+    // diffèrent (le lot est la source de vérité pour ces champs).
+    if (propAny.parent_property_id) {
+      fetch(`/api/properties/${property.id}/building-unit`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          const unit = data?.unit;
+          if (!unit) return;
+
+          // Override uniquement si le building_unit a des valeurs significatives
+          // ET qu'elles différent de la property.
+          const unitLoyer = Number(unit.loyer_hc) || 0;
+          const unitCharges = Number(unit.charges) || 0;
+          const unitDepot = Number(unit.depot_garantie) || 0;
+
+          let overridden = false;
+          if (unitLoyer > 0 && unitLoyer !== loyerValue) {
+            setPropertyLoyer(unitLoyer);
+            setLoyer(unitLoyer);
+            const depMonths = selectedType ? LEASE_TYPE_CONFIGS[selectedType].maxDepositMonths : 1;
+            setDepot(unitDepot > 0 ? unitDepot : unitLoyer * depMonths);
+            overridden = true;
+          } else if (unitDepot > 0) {
+            setDepot(unitDepot);
+          }
+          if (unitCharges > 0 && unitCharges !== chargesValue) {
+            setCharges(unitCharges);
+            overridden = true;
+          }
+
+          if (overridden) {
+            const floorLabel =
+              unit.floor < 0
+                ? `SS${Math.abs(unit.floor)}`
+                : unit.floor === 0
+                ? "RDC"
+                : `Étage ${unit.floor}`;
+            toast({
+              title: "Loyer issu du lot",
+              description: `Lot ${unit.position} · ${floorLabel} — valeurs alignées sur building_units.`,
+              duration: 2500,
+            });
+          }
+        })
+        .catch(() => {
+          /* silencieux — on garde les valeurs property */
+        });
+    }
 
     // ✅ SOTA 2026: Auto-scroll vers la section financière
     setTimeout(() => {
@@ -653,6 +705,26 @@ export function LeaseWizard({ properties, initialPropertyId, initialBuildingUnit
         if (loyerValue > 0) setDepot(loyerValue);
         if (propAny.digicode) setWizardDigicode(propAny.digicode);
         if (propAny.interphone) setWizardInterphone(propAny.interphone);
+
+        // Item #12 : override async depuis le building_unit si c'est un lot.
+        if (propAny.parent_property_id) {
+          fetch(`/api/properties/${property.id}/building-unit`)
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+              const unit = data?.unit;
+              if (!unit) return;
+              const unitLoyer = Number(unit.loyer_hc) || 0;
+              const unitCharges = Number(unit.charges) || 0;
+              const unitDepot = Number(unit.depot_garantie) || 0;
+              if (unitLoyer > 0) setLoyer(unitLoyer);
+              if (unitCharges > 0) setCharges(unitCharges);
+              if (unitDepot > 0) setDepot(unitDepot);
+              else if (unitLoyer > 0) setDepot(unitLoyer);
+            })
+            .catch(() => {
+              /* silencieux */
+            });
+        }
       }
     }
   }, [initialPropertyId, properties, loyer]);

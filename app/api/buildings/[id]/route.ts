@@ -1,3 +1,14 @@
+/**
+ * /api/buildings/[id]
+ *
+ * - GET    : [NOT CONSUMED BY FRONTEND] conservé pour usage API externe.
+ *            Le hub `/owner/buildings/[id]` fait son fetch en SSR direct.
+ * - PATCH  : ACTIF — consommé par BuildingDetailClient (équipements, nom,
+ *            adresse, surface_totale, ownership_type, notes, etc.).
+ * - DELETE : ACTIF — garde baux actifs via building_active_lease_units.
+ *
+ * Voir docs/api-buildings.md.
+ */
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 

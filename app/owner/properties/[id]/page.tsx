@@ -85,7 +85,33 @@ export default async function OwnerPropertyDetailPage({ params }: PageProps) {
       redirect(`/owner/buildings/${id}`);
     }
 
-    return <PropertyDetailsClient details={details} propertyId={id} />;
+    // Item #13 : si la property est un lot d'immeuble, enrichir le contexte
+    // avec l'adresse du parent pour afficher un breadcrumb "Mes biens >
+    // Immeuble [X] > Lot [Y]" et un badge cliquable vers le hub immeuble.
+    let parentBuilding: { id: string; adresse_complete: string | null } | null = null;
+    const parentPropertyId = (details as any).parent_property_id as string | null | undefined;
+    if (parentPropertyId) {
+      const { data: parent } = await serviceClient
+        .from("properties")
+        .select("id, adresse_complete")
+        .eq("id", parentPropertyId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (parent) {
+        parentBuilding = {
+          id: parent.id,
+          adresse_complete: parent.adresse_complete ?? null,
+        };
+      }
+    }
+
+    return (
+      <PropertyDetailsClient
+        details={details}
+        propertyId={id}
+        parentBuilding={parentBuilding}
+      />
+    );
   } catch (error) {
     console.error("Error loading property details:", error);
     return (

@@ -76,6 +76,11 @@ const PropertyMap = dynamic(
 interface PropertyDetailsClientProps {
   details: PropertyDetails;
   propertyId: string;
+  /**
+   * Item #13 : contexte parent pour breadcrumb "Mes biens > Immeuble > Lot"
+   * et badge cliquable. Null si la property n'est pas un lot d'immeuble.
+   */
+  parentBuilding?: { id: string; adresse_complete: string | null } | null;
 }
 
 // Mapping type de bien → label CTA bail adapté + route
@@ -129,7 +134,7 @@ function getLeaseCtaForPropertyType(propertyType: string | undefined, propertyId
   }
 }
 
-export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsClientProps) {
+export function PropertyDetailsClient({ details, propertyId, parentBuilding }: PropertyDetailsClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -622,17 +627,46 @@ export function PropertyDetailsClient({ details, propertyId }: PropertyDetailsCl
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isGalleryOpen, handleKeyDown]);
 
+  // Item #13 : breadcrumb et badge contextualisés pour un lot d'immeuble.
+  const breadcrumbItems = parentBuilding
+    ? [
+        { label: "Mes biens", href: "/owner/properties?tab=immeubles" },
+        {
+          label: `Immeuble ${parentBuilding.adresse_complete ?? ""}`.trim(),
+          href: `/owner/buildings/${parentBuilding.id}`,
+        },
+        { label: property.adresse_complete || "Lot" },
+      ]
+    : [
+        { label: "Mes biens", href: "/owner/properties" },
+        { label: property.adresse_complete || "Détails du bien" },
+      ];
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-7xl">
-      {/* Breadcrumb */}
+      {/* Breadcrumb (contextualisé pour les lots d'immeuble — item #13) */}
       <Breadcrumb
-        items={[
-          { label: "Mes biens", href: "/owner/properties" },
-          { label: property.adresse_complete || "Détails du bien" }
-        ]}
+        items={breadcrumbItems}
         homeHref="/owner/dashboard"
         className="mb-4"
       />
+
+      {/* Badge parent cliquable — visible uniquement pour les lots d'immeuble */}
+      {parentBuilding && (
+        <Link
+          href={`/owner/buildings/${parentBuilding.id}`}
+          className="inline-flex items-center gap-2 px-3 py-1.5 mb-4 rounded-full bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#2563EB] text-sm transition-colors"
+        >
+          <Building2 className="h-3.5 w-3.5" />
+          <span>
+            Lot dans l'immeuble
+            {parentBuilding.adresse_complete
+              ? ` · ${parentBuilding.adresse_complete}`
+              : ""}
+          </span>
+          <ArrowLeft className="h-3.5 w-3.5 rotate-180 opacity-60" />
+        </Link>
+      )}
 
       {/* Bouton retour */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">

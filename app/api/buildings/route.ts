@@ -1,3 +1,11 @@
+/**
+ * [NOT CONSUMED BY FRONTEND — kept for API programmatic use]
+ *
+ * GET et POST de /api/buildings sont fonctionnels mais non appelés par
+ * l'UI Talok. Toute création d'immeuble passe par le wizard et la route
+ * POST /api/properties/[id]/building-units (RPC transactionnelle).
+ * Voir docs/api-buildings.md.
+ */
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 

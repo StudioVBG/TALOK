@@ -1,3 +1,12 @@
+/**
+ * /api/buildings/[id]/units/[unitId]
+ *
+ * - GET    : [NOT CONSUMED BY FRONTEND] conservé pour usage API externe.
+ * - PATCH  : ACTIF — BuildingDetailClient (changement de status inline).
+ * - DELETE : ACTIF — BuildingDetailClient (suppression d'un lot).
+ *
+ * Voir docs/api-buildings.md.
+ */
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
