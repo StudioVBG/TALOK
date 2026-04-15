@@ -150,6 +150,17 @@ export async function POST(request: NextRequest) {
         }).catch(err => console.error("[register] Welcome email failed:", err));
       }
 
+      // Notify admins of new registration
+      import("@/lib/services/admin-notification.service").then(({ notifyAdmins }) =>
+        notifyAdmins({
+          type: "new_user",
+          title: "Nouvel utilisateur",
+          body: `${data.prenom || ""} ${data.nom || ""} (${data.email}) — ${data.role}`,
+          actionUrl: "/admin/users",
+          metadata: { user_id: authData.user!.id, role: data.role },
+        })
+      ).catch(() => {});
+
       // Audit log (via service role pour bypass RLS)
       await logAudit(
         adminClient,

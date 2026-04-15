@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, LogOut, User, ChevronDown } from "lucide-react";
+import { BarChart3, Bell, LogOut, User, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -18,6 +18,7 @@ import { getCoreShellMetadata } from "@/lib/navigation/core-shell-metadata";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
 import { buildAvatarUrl, formatFullName } from "@/lib/helpers/format";
+import { AdminNotificationBell } from "@/components/admin/admin-notification-bell";
 
 const ADMIN_TITLES: Array<{ pattern: string; title: string }> = [
   { pattern: "/admin/dashboard", title: "Tableau de bord" },
@@ -75,6 +76,8 @@ export function AdminShellHeader() {
               Rapports
             </Link>
           </Button>
+
+          <AdminNotificationBell />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

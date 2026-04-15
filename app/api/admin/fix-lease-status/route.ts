@@ -6,10 +6,9 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
- * POST /api/admin/fix-lease-status
- * Corrige le statut d'un bail signé vers "fully_signed"
- * 
- * Body: { leaseId: string }
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Corrige le statut d'un bail signé vers "fully_signed"
+ * @usage POST /api/admin/fix-lease-status { leaseId: string }
  */
 export async function POST(request: Request) {
   try {

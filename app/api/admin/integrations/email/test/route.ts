@@ -6,7 +6,11 @@ import { NextResponse } from "next/server";
 import { sendEmail } from "@/lib/services/email-service";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
-// POST - Envoyer un email de test
+/**
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Envoie un email de test pour vérifier la configuration email
+ * @usage POST /api/admin/integrations/email/test { to: string }
+ */
 export async function POST(request: Request) {
   try {
     const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {

@@ -1,21 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    return NextResponse.json({ error: "Non autorise" }, { status: 401 });
-  }
+  const { error: authError } = await requireAdmin(request);
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id, role")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!profile || !["admin", "platform_admin"].includes(profile.role)) {
-    return NextResponse.json({ error: "Acces interdit" }, { status: 403 });
+  if (authError) {
+    return NextResponse.json(
+      { error: authError.message || "Accès non autorisé" },
+      { status: authError.status || 403 }
+    );
   }
 
   const { searchParams } = new URL(request.url);

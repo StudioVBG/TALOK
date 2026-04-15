@@ -1,3 +1,8 @@
+/**
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Diagnostic complet de la première facture d'un bail (signataires, documents, paiements, outbox)
+ * @usage GET /api/admin/leases/[id]/initial-invoice-diagnostic
+ */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 

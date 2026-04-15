@@ -82,6 +82,14 @@ export interface AdminStatsDataV2 {
   moderationPending: number;
   moderationCritical: number;
   subscriptionStats: { total: number; active: number; trial: number; churned: number };
+  /** New users in the last 7 days */
+  newUsersThisWeek: number;
+  /** MRR in cents (monthly + yearly/12 for active/trialing subs) */
+  mrr: number;
+  /** Churn rate (%) on last 30 days: canceled / active_at_start_of_period */
+  churnRate: number;
+  /** MRR distribution by plan */
+  revenueByPlan: Array<{ plan: string; mrr: number; subscribers: number }>;
   recentActivity: Array<{ type: 'user' | 'property' | 'lease' | 'payment'; description: string; date: string }>;
 }
 
@@ -148,6 +156,72 @@ export async function fetchAdminStatsV2(): Promise<AdminStatsDataV2 | null> {
     // RPC may not exist yet
   }
 
+  // New users this week
+  const startOfWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { count: newUsersThisWeek } = await supabase
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", startOfWeek);
+
+  // MRR + revenue by plan (from active/trialing subscriptions joined with subscription_plans)
+  let mrr = 0;
+  const revenueByPlan: Array<{ plan: string; mrr: number; subscribers: number }> = [];
+  try {
+    const { data: activeSubs } = await supabase
+      .from("subscriptions")
+      .select("billing_cycle, plan:subscription_plans!plan_id(name, price_monthly, price_yearly)")
+      .in("status", ["active", "trialing"]);
+
+    if (activeSubs) {
+      const perPlan = new Map<string, { mrr: number; subscribers: number }>();
+      for (const sub of activeSubs as Array<{
+        billing_cycle: string;
+        plan: { name: string; price_monthly: number; price_yearly: number } | null;
+      }>) {
+        if (!sub.plan) continue;
+        const monthlyRev =
+          sub.billing_cycle === "yearly"
+            ? Math.round((sub.plan.price_yearly || 0) / 12)
+            : sub.plan.price_monthly || 0;
+        mrr += monthlyRev;
+        const existing = perPlan.get(sub.plan.name) || { mrr: 0, subscribers: 0 };
+        perPlan.set(sub.plan.name, {
+          mrr: existing.mrr + monthlyRev,
+          subscribers: existing.subscribers + 1,
+        });
+      }
+      for (const [plan, { mrr: planMrr, subscribers }] of perPlan) {
+        revenueByPlan.push({ plan, mrr: planMrr, subscribers });
+      }
+      revenueByPlan.sort((a, b) => b.mrr - a.mrr);
+    }
+  } catch {
+    // table may not exist or join may fail
+  }
+
+  // Churn rate (last 30 days): canceled / (active + canceled) in period
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  let churnRate = 0;
+  try {
+    const [canceledResult, activeResult] = await Promise.all([
+      supabase
+        .from("subscriptions")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "canceled")
+        .gte("canceled_at", thirtyDaysAgo),
+      supabase
+        .from("subscriptions")
+        .select("id", { count: "exact", head: true })
+        .in("status", ["active", "trialing"]),
+    ]);
+    const canceled = canceledResult.count || 0;
+    const active = activeResult.count || 0;
+    const denominator = canceled + active;
+    churnRate = denominator > 0 ? Math.round((canceled / denominator) * 100 * 10) / 10 : 0;
+  } catch {
+    // no subscriptions table
+  }
+
   // Taux d'occupation et de recouvrement
   const occupancyRate = base.totalProperties > 0
     ? Math.round((base.activeLeases / base.totalProperties) * 100)
@@ -202,6 +276,10 @@ export async function fetchAdminStatsV2(): Promise<AdminStatsDataV2 | null> {
     moderationPending: moderationPending.count || 0,
     moderationCritical: moderationCritical.count || 0,
     subscriptionStats: (subStats as AdminStatsDataV2["subscriptionStats"]) || { total: 0, active: 0, trial: 0, churned: 0 },
+    newUsersThisWeek: newUsersThisWeek || 0,
+    mrr,
+    churnRate,
+    revenueByPlan,
     recentActivity: (base.recentActivity as AdminStatsDataV2["recentActivity"]) || [],
   };
 }

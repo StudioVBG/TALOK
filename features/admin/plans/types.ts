@@ -3,7 +3,7 @@
  * Extracted from app/admin/plans/page.tsx
  */
 
-export interface PlanFeatures {
+export interface AdminPlanFeatures {
   signatures?: boolean;
   signatures_monthly_quota?: number;
   lease_generation?: boolean;
@@ -55,7 +55,7 @@ export interface PlanFeatures {
   copro_module?: boolean;
 }
 
-export interface Plan {
+export interface AdminPlan {
   id: string;
   name: string;
   slug: string;
@@ -69,12 +69,17 @@ export interface Plan {
   included_properties: number;
   extra_property_price: number;
   billing_type: "fixed" | "per_unit" | "tiered";
-  features: PlanFeatures;
+  features: AdminPlanFeatures;
   is_active: boolean;
   is_popular: boolean;
   display_order: number;
   active_subscribers_count?: number;
 }
+
+/** @deprecated Use AdminPlan */
+export type Plan = AdminPlan;
+/** @deprecated Use AdminPlanFeatures */
+export type PlanFeatures = AdminPlanFeatures;
 
 export interface Addon {
   id: string;

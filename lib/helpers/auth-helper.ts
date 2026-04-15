@@ -114,7 +114,7 @@ export async function requireAdmin(request: Request) {
 
     profileData = profile as any;
 
-    if (!profileData || profileData?.role !== "admin") {
+    if (!profileData || !["admin", "platform_admin"].includes(profileData?.role)) {
       return {
         error: { message: "Accès non autorisé", status: 403 },
         user: null,

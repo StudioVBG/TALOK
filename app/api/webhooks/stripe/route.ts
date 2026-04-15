@@ -1271,6 +1271,17 @@ export async function POST(request: NextRequest) {
                 : "Le renouvellement de votre abonnement a echoue. Verifiez votre carte.",
             p_link: "/owner/money?tab=forfait",
           });
+
+          // Notify admins
+          import("@/lib/services/admin-notification.service").then(({ notifyAdmins }) =>
+            notifyAdmins({
+              type: "payment_failed",
+              title: "Paiement echoue",
+              body: `Abonnement ${subscription.owner_id} — ${event.type}`,
+              actionUrl: "/admin/subscriptions",
+              metadata: { owner_id: subscription.owner_id, event_type: event.type },
+            })
+          ).catch(() => {});
         }
         break;
       }

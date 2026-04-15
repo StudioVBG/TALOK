@@ -15,6 +15,9 @@ import {
   Ticket,
   TrendingUp,
   Users,
+  TrendingDown,
+  UserPlus,
+  Wallet,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -265,6 +268,100 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           />
         </motion.div>
       </motion.div>
+
+      {/* KPIs revenue/churn */}
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+      >
+        <motion.div variants={itemVariants}>
+          <StatsCardEnhanced
+            title="MRR"
+            value={formatCurrency((stats.mrr || 0) / 100)}
+            icon={Wallet}
+            color="success"
+            description={`${stats.subscriptionStats.active} abonnements actifs`}
+            delay={0}
+          />
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <StatsCardEnhanced
+            title="Churn (30j)"
+            value={`${stats.churnRate || 0}%`}
+            icon={TrendingDown}
+            color={stats.churnRate > 5 ? "warning" : "success"}
+            description={`${stats.subscriptionStats.churned} annulations`}
+            delay={1}
+          />
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <StatsCardEnhanced
+            title="Inscriptions (7j)"
+            value={stats.newUsersThisWeek || 0}
+            icon={UserPlus}
+            color="primary"
+            description={`${stats.newUsersThisMonth} ce mois-ci`}
+            delay={2}
+          />
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <StatsCardEnhanced
+            title="Essais en cours"
+            value={stats.subscriptionStats.trial}
+            icon={TrendingUp}
+            color="info"
+            description="Periodes d'essai actives"
+            delay={3}
+          />
+        </motion.div>
+      </motion.div>
+
+      {/* Revenue by plan */}
+      {stats.revenueByPlan && stats.revenueByPlan.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+        >
+          <Card className="border-border bg-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-emerald-600" />
+                MRR par plan
+              </CardTitle>
+              <CardDescription>
+                Repartition du revenu mensuel recurrent par forfait
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {stats.revenueByPlan.map((p) => {
+                  const maxMrr = Math.max(...stats.revenueByPlan.map((x) => x.mrr));
+                  const pct = maxMrr > 0 ? (p.mrr / maxMrr) * 100 : 0;
+                  return (
+                    <div key={p.plan} className="space-y-1">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium">{p.plan}</span>
+                        <span className="text-muted-foreground">
+                          {formatCurrency(p.mrr / 100)} · {p.subscribers} abonne{p.subscribers > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

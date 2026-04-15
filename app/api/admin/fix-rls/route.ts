@@ -6,10 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
- * API Route pour appliquer les corrections RLS admin
- * POST /api/admin/fix-rls
- * 
- * Cette route appelle la fonction RPC apply_admin_rls_fixes()
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Appelle la fonction RPC apply_admin_rls_fixes() pour corriger les policies RLS
+ * @usage POST /api/admin/fix-rls
  */
 
 export async function POST(request: Request) {

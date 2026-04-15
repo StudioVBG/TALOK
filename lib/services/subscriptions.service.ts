@@ -4,12 +4,15 @@
  */
 
 import { createClient } from "@/lib/supabase/client";
+import type { Subscription, SubscriptionWithPlan } from "@/lib/subscriptions/types";
+import type { SubscriptionStatus, BillingCycle } from "@/lib/subscriptions/plans";
 
 // ============================================
-// TYPES
+// SERVICE-LOCAL TYPES (DB row shapes)
 // ============================================
 
-export interface Plan {
+/** DB row from subscription_plans table */
+export interface DbPlan {
   id: string;
   name: string;
   slug: string;
@@ -20,12 +23,12 @@ export interface Plan {
   max_leases: number;
   max_tenants: number;
   max_documents_gb: number;
-  features: PlanFeatures;
+  features: DbPlanFeatures;
   is_popular: boolean;
   display_order: number;
 }
 
-export interface PlanFeatures {
+export interface DbPlanFeatures {
   signatures: boolean;
   ocr: boolean;
   scoring: boolean;
@@ -38,37 +41,8 @@ export interface PlanFeatures {
   multi_users: boolean;
 }
 
-export interface Subscription {
-  id: string;
-  owner_id: string;
-  plan_id: string;
-  plan: Plan;
-  stripe_subscription_id: string | null;
-  stripe_customer_id: string | null;
-  status: SubscriptionStatus;
-  billing_cycle: "monthly" | "yearly";
-  current_period_start: string | null;
-  current_period_end: string | null;
-  trial_start: string | null;
-  trial_end: string | null;
-  canceled_at: string | null;
-  cancel_at_period_end: boolean;
-  properties_count: number;
-  leases_count: number;
-  tenants_count: number;
-  documents_size_mb: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export type SubscriptionStatus =
-  | "trialing"
-  | "active"
-  | "past_due"
-  | "canceled"
-  | "unpaid"
-  | "paused"
-  | "incomplete";
+/** Subscription with embedded plan join */
+type SubscriptionWithDbPlan = Subscription & { plan: DbPlan };
 
 export interface SubscriptionLimits {
   plan_name: string;
@@ -81,7 +55,7 @@ export interface SubscriptionLimits {
   leases_max: number;
   tenants_current: number;
   tenants_max: number;
-  features: PlanFeatures;
+  features: DbPlanFeatures;
 }
 
 export interface UsageRecord {
@@ -89,6 +63,9 @@ export interface UsageRecord {
   quantity: number;
   period_month: string;
 }
+
+// Re-export for backwards compatibility
+export type { Subscription, SubscriptionStatus, BillingCycle };
 
 // ============================================
 // SERVICE
@@ -98,7 +75,7 @@ class SubscriptionsService {
   /**
    * Récupère tous les plans disponibles
    */
-  async getPlans(): Promise<Plan[]> {
+  async getPlans(): Promise<DbPlan[]> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("subscription_plans")
@@ -111,13 +88,13 @@ class SubscriptionsService {
       return [];
     }
 
-    return (data as unknown as Plan[]) || [];
+    return (data as unknown as DbPlan[]) || [];
   }
 
   /**
    * Récupère un plan par son slug
    */
-  async getPlanBySlug(slug: string): Promise<Plan | null> {
+  async getPlanBySlug(slug: string): Promise<DbPlan | null> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("subscription_plans")
@@ -126,13 +103,13 @@ class SubscriptionsService {
       .maybeSingle();
 
     if (error || !data) return null;
-    return data as unknown as Plan;
+    return data as unknown as DbPlan;
   }
 
   /**
    * Récupère l'abonnement actuel d'un propriétaire
    */
-  async getCurrentSubscription(ownerId: string): Promise<Subscription | null> {
+  async getCurrentSubscription(ownerId: string): Promise<SubscriptionWithDbPlan | null> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from("subscriptions")
@@ -151,7 +128,7 @@ class SubscriptionsService {
       return null;
     }
 
-    return data as unknown as Subscription;
+    return data as unknown as SubscriptionWithDbPlan;
   }
 
   /**
@@ -217,7 +194,7 @@ class SubscriptionsService {
    */
   async hasFeature(
     ownerId: string,
-    feature: keyof PlanFeatures
+    feature: keyof DbPlanFeatures
   ): Promise<boolean> {
     const supabase = createClient();
     const { data, error } = await supabase.rpc("has_subscription_feature", {
@@ -395,7 +372,7 @@ class SubscriptionsService {
   /**
    * Calcule l'économie annuelle
    */
-  calculateYearlySaving(plan: Plan): { amount: number; percent: number } {
+  calculateYearlySaving(plan: DbPlan): { amount: number; percent: number } {
     if (plan.price_monthly === 0) return { amount: 0, percent: 0 };
     const monthlyYearTotal = plan.price_monthly * 12;
     const yearlySaving = monthlyYearTotal - plan.price_yearly;
@@ -406,4 +383,3 @@ class SubscriptionsService {
 
 // Singleton
 export const subscriptionsService = new SubscriptionsService();
-

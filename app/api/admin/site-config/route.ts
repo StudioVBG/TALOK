@@ -1,13 +1,21 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { revalidatePath } from "next/cache";
 
 export async function GET(request: NextRequest) {
+  const { error: authError, supabase } = await requireAdmin(request);
+
+  if (authError || !supabase) {
+    return NextResponse.json(
+      { error: authError?.message || "Accès non autorisé" },
+      { status: authError?.status || 403 }
+    );
+  }
+
   try {
-    const supabase = await createClient();
     const section = request.nextUrl.searchParams.get("section");
 
     let query = supabase
@@ -33,27 +41,16 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const { error: authError, supabase } = await requireAdmin(request);
+
+  if (authError || !supabase) {
+    return NextResponse.json(
+      { error: authError?.message || "Accès non autorisé" },
+      { status: authError?.status || 403 }
+    );
+  }
+
   try {
-    const supabase = await createClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile || !["admin", "platform_admin"].includes(profile.role)) {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
-    }
-
     const { key, value } = await request.json();
 
     if (!key) {

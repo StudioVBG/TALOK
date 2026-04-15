@@ -6,12 +6,9 @@ import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
- * POST /api/admin/sync-lease-statuses
- * 
- * Synchronise les statuts des baux qui ont toutes les signatures
- * mais dont le statut n'a pas été mis à jour correctement.
- * 
- * Accessible aux propriétaires (pour leurs propres baux) et aux admins.
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Synchronise les statuts des baux ayant toutes les signatures mais dont le statut n'a pas été mis à jour
+ * @usage POST /api/admin/sync-lease-statuses
  */
 export async function POST(request: Request) {
   try {
