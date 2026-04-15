@@ -148,7 +148,7 @@ export function SepaMandateSetup({ onSuccess }: SepaMandateSetupProps) {
               <div className="flex items-start gap-2">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
                 <p>
-                  Le prélèvement est traité par Stripe SEPA Debit pour le compte de la plateforme. Les informations bancaires sont tokenisées et ne transitent pas en clair par l&apos;application.
+                  Le prélèvement automatique est traité de façon sécurisée pour le compte de la plateforme. Les informations bancaires sont tokenisées et ne transitent pas en clair par l&apos;application.
                 </p>
               </div>
             </div>

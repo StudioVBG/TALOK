@@ -164,6 +164,30 @@ export default function TenantLeasePage() {
   const isSent = lease.statut === 'sent';
   const isPropertyDeleted = !!(property as { deleted_at?: string; etat?: string } | null)?.deleted_at || (property as { deleted_at?: string; etat?: string } | null)?.etat === 'deleted';
 
+  // Conformité DDT : on accepte deux sources de vérité pour éviter les faux "En attente"
+  //  1. Un document diagnostic lié au bail (type dpe/plomb/electricite/gaz/erp…) — via /api/tenant/lease/[id]/documents
+  //  2. Les champs DPE remplis directement sur la propriété (dpe_classe_energie / dpe_consommation)
+  //     — fréquent car beaucoup de propriétaires saisissent les valeurs sans uploader le PDF
+  const propertyForDdt = property as {
+    dpe_classe_energie?: string | null;
+    dpe_consommation?: number | null;
+    energie?: string | null;
+  } | null;
+  const hasDiagnosticDocs = !!(docs?.diagnostics && docs.diagnostics.length > 0);
+  const hasDpeOnProperty = !!(
+    propertyForDdt?.dpe_classe_energie ||
+    propertyForDdt?.dpe_consommation ||
+    propertyForDdt?.energie
+  );
+  // Pendant le chargement initial des documents on reste neutre ("pending" sans note)
+  // pour ne pas faire clignoter la carte. Une fois chargé, on statue.
+  const ddtStatus: 'success' | 'pending' = (hasDiagnosticDocs || hasDpeOnProperty) ? 'success' : 'pending';
+  const ddtPendingNote: string | undefined = loadingDocs
+    ? undefined
+    : lease.statut === 'active' || lease.statut === 'fully_signed'
+      ? 'Le propriétaire n\'a pas encore partagé les diagnostics'
+      : 'En attente du propriétaire';
+
   if (isPropertyDeleted) {
     return (
       <PageTransition>
@@ -440,7 +464,11 @@ export default function TenantLeasePage() {
                           
                           <div className="space-y-4">
                             <CheckItem label="Contrat de bail signé" status={isFullySigned ? 'success' : 'pending'} />
-                            <CheckItem label="Dossier Diagnostics (DDT)" status={docs?.diagnostics && docs.diagnostics.length > 0 ? 'success' : 'pending'} pendingNote="En attente du propriétaire" />
+                            <CheckItem
+                              label="Dossier Diagnostics (DDT)"
+                              status={ddtStatus}
+                              pendingNote={ddtPendingNote}
+                            />
                             <CheckItem label="Attestation d'assurance" status={dashboard.insurance?.has_insurance ? 'success' : 'pending'} pendingCta={{ href: '/tenant/documents', label: 'Ajoutez votre attestation' }} />
                             <CheckItem label="État des lieux d'entrée" status={((lease as { has_signed_entry_edl?: boolean }).has_signed_entry_edl === true || lease.statut === 'active') ? 'success' : 'pending'} />
                           </div>

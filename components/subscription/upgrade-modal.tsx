@@ -434,7 +434,7 @@ export function UpgradeModal({ open, onClose, feature, requiredPlan, context }: 
           <div className="text-center text-xs text-slate-500 space-y-1">
             <p>
               {billing === "yearly" && "Économisez jusqu'à 20% avec le paiement annuel — "}
-              1er mois offert — Paiement sécurisé par Stripe
+              1er mois offert — Paiement 100 % sécurisé
             </p>
             <p>
               Prix HT. TVA {TVA_RATE}% en sus.{" "}
