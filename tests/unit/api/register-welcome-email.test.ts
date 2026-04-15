@@ -3,10 +3,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 /**
  * Test unit : POST /api/v1/auth/register
  *
- * Vérifie que l'email de bienvenue est bien envoyé pour les 6 rôles supportés
- * (owner, tenant, provider, guarantor, syndic, agency) avec le bon payload
- * et qu'il reste fire-and-forget (une erreur Resend ne doit pas casser
- * l'inscription).
+ * Vérifie que l'inscription :
+ *  - appelle bien supabase.auth.signUp avec emailRedirectTo pointant vers
+ *    /auth/callback (c'est Supabase qui envoie l'email de confirmation via
+ *    SMTP Resend configuré au niveau projet — pas d'envoi manuel ici)
+ *  - N'envoie PAS d'email de bienvenue manuel depuis le handler register,
+ *    pour éviter le double email (Supabase natif + Resend API). L'envoi
+ *    d'un éventuel email de bienvenue doit être déclenché ailleurs (ex:
+ *    après confirmation dans /auth/callback).
+ *  - Reste strict sur la validation (rôle inconnu, email déjà utilisé).
  */
 
 // ---------- Mocks ----------
@@ -39,7 +44,8 @@ const adminClient = {
       table === "tenant_profiles" ||
       table === "provider_profiles" ||
       table === "guarantor_profiles" ||
-      table === "agency_profiles"
+      table === "agency_profiles" ||
+      table === "syndic_profiles"
     ) {
       return { upsert: adminUpsert };
     }
@@ -68,6 +74,8 @@ vi.mock("@/lib/security/turnstile", () => ({
   verifyTurnstileToken: vi.fn().mockResolvedValue({ success: true }),
 }));
 
+// On mock malgré tout l'email-service : si un jour le handler venait à
+// réintroduire un envoi manuel, ce test le détecterait immédiatement.
 vi.mock("@/lib/services/email-service", () => ({
   sendWelcomeEmail: (...args: unknown[]) => sendWelcomeEmail(...args),
 }));
@@ -105,7 +113,7 @@ async function callRegister(body: Record<string, unknown>) {
 
 // ---------- Tests ----------
 
-describe("POST /api/v1/auth/register — welcome email", () => {
+describe("POST /api/v1/auth/register — email de confirmation unique (pas de double email)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     signUp.mockResolvedValue({
@@ -124,7 +132,7 @@ describe("POST /api/v1/auth/register — welcome email", () => {
   const ROLES = ["owner", "tenant", "provider", "guarantor", "syndic", "agency"] as const;
 
   for (const role of ROLES) {
-    it(`envoie un welcome email pour le rôle ${role}`, async () => {
+    it(`délègue l'email de confirmation à Supabase pour le rôle ${role} (pas d'envoi manuel)`, async () => {
       const response = await callRegister(
         buildBody({ role, email: `${role}@test.fr` })
       );
@@ -141,27 +149,14 @@ describe("POST /api/v1/auth/register — welcome email", () => {
         })
       );
 
-      // Le welcome email est fire-and-forget, donc laisser la microtask se résoudre.
+      // Laisser les microtasks se résoudre (sendWelcomeEmail était fire-and-forget).
       await new Promise(resolve => setImmediate(resolve));
 
-      expect(sendWelcomeEmail).toHaveBeenCalledTimes(1);
-      expect(sendWelcomeEmail).toHaveBeenCalledWith({
-        userEmail: `${role}@test.fr`,
-        userName: "Alice",
-        role,
-      });
+      // Aucun email manuel ne doit être envoyé depuis le handler register :
+      // Supabase envoie son email de confirmation via SMTP Resend, c'est suffisant.
+      expect(sendWelcomeEmail).not.toHaveBeenCalled();
     });
   }
-
-  it("n'échoue pas l'inscription si l'envoi du welcome email lève une erreur", async () => {
-    sendWelcomeEmail.mockRejectedValueOnce(new Error("Resend down"));
-
-    const response = await callRegister(buildBody({ role: "owner" }));
-
-    expect(response.status).toBe(201);
-    await new Promise(resolve => setImmediate(resolve));
-    expect(sendWelcomeEmail).toHaveBeenCalledTimes(1);
-  });
 
   it("refuse un rôle inconnu avant d'appeler signUp", async () => {
     const response = await callRegister(buildBody({ role: "hacker" as any }));
@@ -171,7 +166,7 @@ describe("POST /api/v1/auth/register — welcome email", () => {
     expect(sendWelcomeEmail).not.toHaveBeenCalled();
   });
 
-  it("retourne 409 si l'email est déjà utilisé et n'envoie pas d'email", async () => {
+  it("retourne 409 si l'email est déjà utilisé et n'envoie aucun email", async () => {
     signUp.mockResolvedValueOnce({
       data: { user: null },
       error: { message: "User already registered" },

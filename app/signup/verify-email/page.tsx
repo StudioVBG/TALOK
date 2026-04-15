@@ -35,26 +35,11 @@ function VerifyEmailContent() {
   const emailParam = searchParams?.get("email") ?? null;
   const isMagicLink = searchParams?.get("magic") === "true";
   const role = searchParams?.get("role") ?? null;
+  const confirmedParam = searchParams?.get("confirmed") === "true";
 
   useEffect(() => {
     if (emailParam) {
       setEmail(emailParam);
-    } else {
-      // Récupérer l'email de l'utilisateur
-      authService
-        .getUser()
-        .then((user) => {
-          if (user?.email) {
-            setEmail(user.email);
-            // Vérifier si l'email est déjà confirmé
-            if (user.email_confirmed_at) {
-              setVerified(true);
-            }
-          }
-        })
-        .catch(() => {
-          // Pas d'utilisateur connecté
-        });
     }
   }, [emailParam]);
 
@@ -185,9 +170,13 @@ function VerifyEmailContent() {
   }, [role, router]);
 
   // Détection automatique de la confirmation email via :
-  //   (a) onAuthStateChange — événements temps réel du client Supabase (SIGNED_IN,
+  //   (a) Fast-path ?confirmed=true posé par /auth/callback (redirection explicite)
+  //   (b) Check au montage via getSession() — si l'utilisateur a déjà confirmé
+  //       dans un autre onglet et que les cookies sont déjà posés, on redirige
+  //       immédiatement sans attendre le prochain tick de polling
+  //   (c) onAuthStateChange — événements temps réel du client Supabase (SIGNED_IN,
   //       USER_UPDATED, TOKEN_REFRESHED) dans le même onglet
-  //   (b) polling via getSession() — filet de sécurité pour les cas cross-onglets
+  //   (d) Polling via getSession() toutes les 3s — filet de sécurité cross-onglets
   //       où la pose des cookies par /auth/callback ne déclenche pas d'événement
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -196,7 +185,7 @@ function VerifyEmailContent() {
 
     let cancelled = false;
 
-    const handleConfirmedUser = (userEmailConfirmedAt?: string | null) => {
+    const handleConfirmedUser = (userEmailConfirmedAt?: string | null, immediate = false) => {
       if (cancelled || verified || !userEmailConfirmedAt) return;
       setVerified(true);
       if (pollingRef.current) clearInterval(pollingRef.current);
@@ -204,10 +193,38 @@ function VerifyEmailContent() {
         title: "Email confirmé",
         description: "Votre email a été confirmé avec succès !",
       });
-      setTimeout(() => goToNextStep(), 1500);
+      // Redirection immédiate si on sait déjà au montage que c'est confirmé,
+      // sinon petit délai pour laisser voir le toast de succès.
+      setTimeout(() => goToNextStep(), immediate ? 0 : 1500);
     };
 
-    // (a) Listener temps réel Supabase
+    // (a) Fast-path : le callback a redirigé avec ?confirmed=true → on fait
+    //     confiance et on redirige sans attendre.
+    if (confirmedParam) {
+      handleConfirmedUser(new Date().toISOString(), true);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // (b) Check immédiat au montage : si la session existe déjà (autre onglet
+    //     qui a posé les cookies avant même que cette page ne monte), rediriger
+    //     sans attendre le prochain tick de polling.
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (session?.user?.email) {
+          setEmail((prev) => prev || session.user.email || "");
+        }
+        if (session?.user?.email_confirmed_at) {
+          handleConfirmedUser(session.user.email_confirmed_at, true);
+        }
+      })
+      .catch(() => {
+        // Pas de session : normal tant que l'utilisateur n'a pas cliqué le lien
+      });
+
+    // (c) Listener temps réel Supabase
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -222,8 +239,9 @@ function VerifyEmailContent() {
       }
     });
 
-    // (b) Polling de secours via getSession() — relit les cookies fraîchement écrits
-    //     par /auth/callback dans un autre onglet sans exiger de session préalable.
+    // (d) Polling de secours via getSession() toutes les 3s — relit les cookies
+    //     fraîchement écrits par /auth/callback dans un autre onglet sans exiger
+    //     de session préalable.
     pollingRef.current = setInterval(async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -233,14 +251,14 @@ function VerifyEmailContent() {
       } catch {
         // Silencieux — relecture des cookies sans importance si échec ponctuel
       }
-    }, 5000);
+    }, 3000);
 
     return () => {
       cancelled = true;
       subscription.unsubscribe();
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [verified, goToNextStep, toast, supabase]);
+  }, [verified, goToNextStep, toast, supabase, confirmedParam]);
 
   const handleContinue = () => {
     goToNextStep();
