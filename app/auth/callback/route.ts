@@ -2,7 +2,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
+import {
+  getRoleDashboardUrl,
+  getOnboardingStartPath,
+  isPublicRole,
+  type PublicRole,
+} from "@/lib/helpers/role-redirects";
 import {
   PASSWORD_RESET_COOKIE_NAME,
   createPasswordResetCookieToken,
@@ -16,33 +21,8 @@ interface ProfilePartial {
   onboarding_completed_at?: string | null;
 }
 
-const VALID_ROLES = ["owner", "tenant", "provider", "guarantor", "syndic", "agency"] as const;
-type ValidRole = (typeof VALID_ROLES)[number];
-
-function isValidRole(role: string | undefined | null): role is ValidRole {
-  return !!role && (VALID_ROLES as readonly string[]).includes(role);
-}
-
-/**
- * Première étape d'onboarding pour un rôle donné.
- * Source unique de vérité côté callback — toute redirection post-confirmation
- * passe par ce mapping pour éviter de retomber sur /signup/verify-email.
- */
-function getOnboardingStartPath(role: ValidRole): string {
-  switch (role) {
-    case "owner":
-      return "/signup/plan?role=owner";
-    case "tenant":
-      return "/tenant/onboarding/context";
-    case "provider":
-      return "/provider/onboarding/profile";
-    case "guarantor":
-      return "/guarantor/onboarding/context";
-    case "syndic":
-      return "/syndic/onboarding/profile";
-    case "agency":
-      return "/agency/onboarding/profile";
-  }
+function isValidRole(role: string | undefined | null): role is PublicRole {
+  return isPublicRole(role);
 }
 
 function isSafeRelativePath(path: string | null | undefined): path is string {
@@ -116,15 +96,32 @@ export async function GET(request: Request) {
         .maybeSingle();
 
       const profileData = profile as ProfilePartial | null;
-      if (!profileData?.role) {
+
+      const metadataRole = data.user.user_metadata?.role as string | undefined;
+      const role = isValidRole(profileData?.role)
+        ? (profileData!.role as PublicRole)
+        : isValidRole(metadataRole)
+          ? metadataRole
+          : null;
+
+      console.log("[auth/callback] token_hash verified", {
+        user_id: data.user.id,
+        profile_role: profileData?.role,
+        metadata_role: metadataRole,
+        resolved_role: role,
+        onboarding_completed: !!profileData?.onboarding_completed_at,
+      });
+
+      if (!role) {
         return NextResponse.redirect(new URL("/signup/role", origin));
       }
-      if (!profileData?.onboarding_completed_at) {
-        const dashUrl = getRoleDashboardUrl(profileData.role);
-        return NextResponse.redirect(new URL(dashUrl, origin));
+
+      if (profileData?.onboarding_completed_at) {
+        return NextResponse.redirect(new URL(getRoleDashboardUrl(role), origin));
       }
-      const dashUrl = getRoleDashboardUrl(profileData.role);
-      return NextResponse.redirect(new URL(dashUrl, origin));
+
+      // Onboarding non terminé → première étape par rôle (pas le dashboard)
+      return NextResponse.redirect(new URL(getOnboardingStartPath(role), origin));
     }
 
     return NextResponse.redirect(new URL("/auth/signin", origin));
@@ -193,10 +190,18 @@ export async function GET(request: Request) {
       // signUp). Si rien, on envoie choisir un rôle.
       const metadataRole = data.user.user_metadata?.role as string | undefined;
       const role = isValidRole(profileData?.role)
-        ? (profileData!.role as ValidRole)
+        ? (profileData!.role as PublicRole)
         : isValidRole(metadataRole)
           ? metadataRole
           : null;
+
+      console.log("[auth/callback] PKCE exchange OK", {
+        user_id: data.user.id,
+        profile_role: profileData?.role,
+        metadata_role: metadataRole,
+        resolved_role: role,
+        onboarding_completed: !!profileData?.onboarding_completed_at,
+      });
 
       if (!role) {
         return NextResponse.redirect(new URL("/signup/role", origin));

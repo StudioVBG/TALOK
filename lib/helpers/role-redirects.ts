@@ -1,6 +1,24 @@
 import { match, P } from "ts-pattern";
 
 /**
+ * Rôles publics pour lesquels un parcours d'inscription est proposé.
+ */
+export const PUBLIC_ROLES = [
+  "owner",
+  "tenant",
+  "provider",
+  "guarantor",
+  "syndic",
+  "agency",
+] as const;
+
+export type PublicRole = (typeof PUBLIC_ROLES)[number];
+
+export function isPublicRole(role: string | null | undefined): role is PublicRole {
+  return !!role && (PUBLIC_ROLES as readonly string[]).includes(role);
+}
+
+/**
  * Fonction centralisée pour obtenir l'URL du dashboard d'un rôle.
  * Source de vérité unique pour toutes les redirections par rôle.
  * Gère tous les rôles et sous-rôles (copropriétaires, platform_admin, etc.)
@@ -21,6 +39,43 @@ export function getRoleDashboardUrl(role: string | null | undefined): string {
       () => "/copro/dashboard"
     )
     .otherwise(() => "/");
+}
+
+/**
+ * Première étape d'onboarding pour un rôle donné.
+ * Source unique de vérité pour toutes les redirections post-confirmation d'email
+ * et post-étape account_creation. À utiliser partout où l'on doit envoyer un
+ * utilisateur vers sa première étape d'onboarding (callback, signup/account,
+ * signup/verify-email, /dashboard gating, etc.).
+ *
+ * Note : le rôle admin n'a pas d'onboarding — il est envoyé directement au
+ * dashboard admin. Les rôles inconnus/copropriétaires dérivés retombent sur
+ * le dashboard correspondant via getRoleDashboardUrl.
+ */
+export function getOnboardingStartPath(
+  role: string | null | undefined,
+  options?: { inviteToken?: string | null; propertyCode?: string | null }
+): string {
+  const invite = options?.inviteToken?.trim() || null;
+  const code = options?.propertyCode?.trim() || null;
+
+  return match(role)
+    .with("owner", () => "/signup/plan?role=owner")
+    .with("tenant", () => {
+      if (invite) return `/tenant/onboarding/context?invite=${encodeURIComponent(invite)}`;
+      if (code) return `/tenant/onboarding/context?code=${encodeURIComponent(code)}`;
+      return "/tenant/onboarding/context";
+    })
+    .with("provider", () => "/provider/onboarding/profile")
+    .with("guarantor", () =>
+      invite
+        ? `/guarantor/onboarding/context?invite=${encodeURIComponent(invite)}`
+        : "/guarantor/onboarding/context"
+    )
+    .with("syndic", () => "/syndic/onboarding/profile")
+    .with("agency", () => "/agency/onboarding/profile")
+    .with("admin", "platform_admin", () => "/admin/dashboard")
+    .otherwise(() => getRoleDashboardUrl(role));
 }
 
 /**

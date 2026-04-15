@@ -14,6 +14,7 @@ import { authService } from "../services/auth.service";
 import type { SignInData } from "../services/auth.service";
 import { TurnstileWidget } from "@/components/auth/TurnstileWidget";
 import { TalokLogo } from "@/components/marketing/TalokLogo";
+import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
 
 // Icône SVG pour Google OAuth
 const GoogleIcon = () => (
@@ -157,26 +158,8 @@ export function SignInForm() {
         return;
       }
       
-      // Rediriger selon le rôle - Tous les rôles gérés
-      const roleRoutes: Record<string, string> = {
-        admin: "/admin/dashboard",
-        platform_admin: "/admin/dashboard",
-        owner: "/owner/dashboard",
-        tenant: "/tenant/dashboard",
-        provider: "/provider/dashboard",
-        guarantor: "/guarantor/dashboard",
-        agency: "/agency/dashboard",
-        syndic: "/syndic/dashboard",
-        coproprietaire: "/copro/dashboard",
-        coproprietaire_occupant: "/copro/dashboard",
-        coproprietaire_bailleur: "/copro/dashboard",
-        coproprietaire_nu: "/copro/dashboard",
-        usufruitier: "/copro/dashboard",
-        president_cs: "/copro/dashboard",
-        conseil_syndical: "/copro/dashboard",
-      };
-
-      const targetRoute = redirectTo || roleRoutes[profileData?.role] || "/dashboard";
+      // Rediriger selon le rôle — source unique de vérité dans lib/helpers/role-redirects.ts
+      const targetRoute = redirectTo || getRoleDashboardUrl(profileData?.role);
       router.push(targetRoute);
       
       router.refresh();
