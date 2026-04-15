@@ -236,9 +236,18 @@ export async function ensureReceiptDocument(
   }
 
   // Mark invoice as receipt generated
+  // Alimente aussi receipt_document_id + receipt_generated_at
+  // (migration 20260408220000_payment_architecture_sota.sql lignes 213/219).
+  // Ces colonnes permettent au front de savoir directement quelle quittance
+  // est attachée à une facture sans rechercher dans documents par metadata.
+  const insertedDocumentId = (insertedDoc as { id?: string } | null)?.id ?? null;
   await (supabase as any)
     .from("invoices")
-    .update({ receipt_generated: true })
+    .update({
+      receipt_generated: true,
+      receipt_document_id: insertedDocumentId,
+      receipt_generated_at: new Date().toISOString(),
+    })
     .eq("id", paymentData.invoice.id);
 
   const tenantProfileData = tenantProfile as { prenom?: string; nom?: string; email?: string } | null;
@@ -246,7 +255,7 @@ export async function ensureReceiptDocument(
   return {
     created: true,
     storagePath,
-    documentId: (insertedDoc as { id?: string } | null)?.id ?? null,
+    documentId: insertedDocumentId,
     pdfBytes,
     receiptMeta: {
       tenantEmail: tenantProfileData?.email || "",

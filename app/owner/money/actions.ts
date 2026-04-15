@@ -2,9 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { z } from "zod";
 import { calculateTaxes } from "@/lib/services/tax-engine";
 import { sendRentReminderEmail } from "@/lib/services/email-service";
+import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
+import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
 
 // ============================================
 // TYPES
@@ -19,7 +22,14 @@ type ActionResult<T = void> =
 // ============================================
 
 /**
- * Marque une facture comme payée
+ * Marque une facture comme payée (paiement manuel owner).
+ *
+ * IMPORTANT : cette action DOIT créer une row `payments` ET une quittance.
+ * Historiquement, elle faisait un UPDATE direct `statut='paid'` sans payment
+ * associé, ce qui produisait des factures orphelines que `ensureReceiptDocument`
+ * ne pouvait pas régénérer (il part d'un payment_id). Voir migration
+ * 20260415230000_enforce_invoice_paid_has_payment.sql qui bloque désormais
+ * ce chemin au niveau DB.
  */
 export async function markInvoiceAsPaid(
   invoiceId: string,
@@ -42,32 +52,66 @@ export async function markInvoiceAsPaid(
     return { success: false, error: "Accès non autorisé" };
   }
 
-  // Vérifier la facture
-  const { data: invoice } = await supabase
-    .from("invoices")
-    .select("id, owner_id, statut")
-    .eq("id", invoiceId)
-    .single();
+  // Service client pour bypass RLS sur payments/documents (idem route mark-paid)
+  const serviceClient = getServiceClient();
 
-  if (!invoice || invoice.owner_id !== profile.id) {
+  // Vérifier la facture via service client (cohérent avec mark-paid API route)
+  const { data: invoice } = await serviceClient
+    .from("invoices")
+    .select("id, owner_id, statut, montant_total")
+    .eq("id", invoiceId)
+    .maybeSingle();
+
+  const invoiceData = invoice as { id: string; owner_id: string; statut: string; montant_total: number } | null;
+
+  if (!invoiceData || invoiceData.owner_id !== profile.id) {
     return { success: false, error: "Facture non trouvée" };
   }
 
-  if (invoice.statut === "paid") {
+  if (invoiceData.statut === "paid") {
     return { success: false, error: "Cette facture est déjà payée" };
   }
 
-  // Mettre à jour
-  const { error } = await supabase
-    .from("invoices")
-    .update({
-      statut: "paid",
-      date_paiement: paymentDate || new Date().toISOString().split("T")[0],
-    })
-    .eq("id", invoiceId);
+  const effectivePaymentDate = paymentDate || new Date().toISOString().split("T")[0];
 
-  if (error) {
-    return { success: false, error: "Erreur lors de la mise à jour" };
+  // 1. Créer la row payments — obligatoire pour que ensureReceiptDocument
+  //    puisse générer la quittance et pour que le trigger DB accepte le paid.
+  const { data: payment, error: paymentError } = await serviceClient
+    .from("payments")
+    .insert({
+      invoice_id: invoiceId,
+      montant: invoiceData.montant_total,
+      moyen: "autre",
+      date_paiement: effectivePaymentDate,
+      statut: "succeeded",
+    } as any)
+    .select("id")
+    .single();
+
+  if (paymentError || !payment) {
+    console.error("[markInvoiceAsPaid] payment insert failed:", paymentError);
+    return { success: false, error: "Erreur lors de l'enregistrement du paiement" };
+  }
+
+  // 2. Synchroniser le statut invoice depuis les payments (source de vérité)
+  const settlement = await syncInvoiceStatusFromPayments(
+    serviceClient as any,
+    invoiceId,
+    effectivePaymentDate
+  );
+
+  if (!settlement) {
+    return { success: false, error: "Erreur de synchronisation du statut facture" };
+  }
+
+  // 3. Générer la quittance + mettre à jour receipt_generated/document_id/at
+  //    (non bloquant : si la génération échoue, le paiement reste enregistré).
+  if (settlement.isSettled) {
+    try {
+      await ensureReceiptDocument(serviceClient as any, (payment as { id: string }).id);
+    } catch (receiptError) {
+      console.error("[markInvoiceAsPaid] receipt generation failed:", receiptError);
+    }
   }
 
   revalidatePath("/owner/money");
