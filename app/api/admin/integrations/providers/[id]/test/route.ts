@@ -1,3 +1,8 @@
+/**
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Teste la connectivité d'un provider d'API externe (envoie un email test via le provider)
+ * @usage POST /api/admin/integrations/providers/[id]/test
+ */
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 

@@ -2,40 +2,26 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { getServiceClient } from "@/lib/supabase/service-client";
+import { requireAdmin } from "@/lib/helpers/auth-helper";
 import { handleLeaseFullySigned } from "@/lib/services/lease-post-signature.service";
 
 /**
- * POST /api/admin/reseal-lease
- *
- * Re-génère le document HTML signé d'un bail déjà scellé.
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Re-génère le document HTML signé d'un bail déjà scellé (mode force).
  * Réservé aux admins. Utilise le mode force de handleLeaseFullySigned
  * pour bypasser la garde d'idempotence et re-générer proprement.
  */
 export async function POST(request: Request) {
+  const { error: authError, user, supabase } = await requireAdmin(request);
+
+  if (authError || !supabase) {
+    return NextResponse.json(
+      { error: authError?.message || "Accès non autorisé" },
+      { status: authError?.status || 403 }
+    );
+  }
+
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    const serviceClient = getServiceClient();
-
-    const { data: profile } = await serviceClient
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!profile || profile.role !== "admin") {
-      return NextResponse.json({ error: "Accès réservé aux administrateurs" }, { status: 403 });
-    }
-
     const body = await request.json();
     const { lease_id } = body;
 
@@ -43,7 +29,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "lease_id requis" }, { status: 400 });
     }
 
-    const { data: lease } = await serviceClient
+    const { data: lease } = await supabase
       .from("leases")
       .select("id, statut, sealed_at, signed_pdf_path")
       .eq("id", lease_id)
@@ -56,8 +42,8 @@ export async function POST(request: Request) {
     const result = await handleLeaseFullySigned(lease_id, { force: true });
 
     try {
-      await serviceClient.from("audit_log").insert({
-        user_id: user.id,
+      await supabase.from("audit_log").insert({
+        user_id: user!.id,
         action: "admin_reseal_lease",
         entity_type: "lease",
         entity_id: lease_id,
@@ -83,6 +69,7 @@ export async function POST(request: Request) {
     });
   } catch (error: unknown) {
     console.error("[admin/reseal-lease] Erreur:", error);
+    try { const Sentry = await import("@sentry/nextjs"); Sentry.captureException(error, { tags: { route: "admin.reseal-lease" } }); } catch {}
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }

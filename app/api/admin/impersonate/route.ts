@@ -23,6 +23,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { validateCsrfFromRequest } from "@/lib/security/csrf";
 
 const IMPERSONATION_COOKIE = "impersonation_session";
 const MAX_DURATION_HOURS = 1;
@@ -43,6 +44,16 @@ interface ImpersonationSession {
  */
 export async function POST(request: NextRequest) {
   try {
+    // CSRF validation
+    try {
+      const csrfValid = await validateCsrfFromRequest(request);
+      if (!csrfValid) {
+        return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+      }
+    } catch {
+      // CSRF_SECRET not configured — degrade gracefully
+    }
+
     // RBAC: seuls les platform_admin peuvent impersonner
     const auth = await requireAdminPermissions(request, ["admin.impersonate"], {
       rateLimit: "adminCritical",
@@ -162,6 +173,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error: unknown) {
     console.error("[admin/impersonate] Erreur POST:", error);
+    try { const Sentry = await import("@sentry/nextjs"); Sentry.captureException(error, { tags: { route: "admin.impersonate" } }); } catch {}
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }

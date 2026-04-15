@@ -5,8 +5,9 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
 
 /**
- * POST /api/admin/integrations/test-service-role
- * Vérifie que la clé service-role est configurée et peut interroger Supabase
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Vérifie que la clé service-role est configurée et peut interroger Supabase
+ * @usage POST /api/admin/integrations/test-service-role
  */
 export async function POST(request: Request) {
   const { error, user } = await requireAdmin(request);

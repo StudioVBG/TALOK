@@ -93,6 +93,17 @@ export async function GET(request: Request) {
 
           results.trial_ending_alerts++;
           results.processed++;
+
+          // Notify admins
+          import("@/lib/services/admin-notification.service").then(({ notifyAdmins }) =>
+            notifyAdmins({
+              type: "trial_expired",
+              title: "Essai expirant",
+              body: `Plan ${sub.plan.name} — expire dans ${daysRemaining}j`,
+              actionUrl: "/admin/subscriptions",
+              metadata: { subscription_id: sub.id, days_remaining: daysRemaining },
+            })
+          ).catch(() => {});
         } catch (subError: any) {
           results.errors.push(`Subscription ${sub.id}: ${subError.message}`);
         }

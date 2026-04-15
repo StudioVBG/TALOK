@@ -6,12 +6,9 @@ import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 
 /**
- * POST /api/admin/cleanup-cni-duplicates
- * 
- * Nettoie les doublons de CNI en archivant les anciennes versions
- * Garde uniquement le document le plus récent par (lease_id, type)
- * 
- * 🔒 Réservé aux admins ou via secret key
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Nettoie les doublons de CNI en archivant les anciennes versions (garde le plus récent par lease_id+type)
+ * @usage POST /api/admin/cleanup-cni-duplicates
  */
 export async function POST(request: Request) {
   try {

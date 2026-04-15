@@ -6,7 +6,7 @@ export const runtime = "nodejs";
  * GET /api/stripe/connect/balance - Récupère le solde disponible et en attente
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { connectService } from "@/lib/stripe/connect.service";
 import { isStripeConfigurationError } from "@/lib/helpers/api-error";
@@ -15,7 +15,7 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createRouteHandlerClient();
     const serviceClient = createServiceRoleClient();
@@ -35,22 +35,30 @@ export async function GET() {
       .eq("user_id", user.id)
       .single();
 
-    if (!profile || profile.role !== "owner") {
+    if (!profile || !["owner", "syndic"].includes(profile.role)) {
       return NextResponse.json(
-        { error: "Seuls les propriétaires peuvent consulter leur solde" },
+        { error: "Seuls les propriétaires et syndics peuvent consulter leur solde" },
         { status: 403 }
       );
     }
 
-    // Récupérer le compte Connect personnel (S2-2 : entity_id IS NULL)
-    const { data: connectAccount, error: connectAccountError } = await serviceClient
+    const entityId = new URL(request.url).searchParams.get("entityId") || undefined;
+
+    // Récupérer le compte Connect (personnel ou scopé par entité)
+    let connectQuery = serviceClient
       .from("stripe_connect_accounts")
       .select(
         "stripe_account_id, charges_enabled, payouts_enabled, details_submitted, requirements_currently_due, requirements_past_due, requirements_disabled_reason"
       )
-      .eq("profile_id", profile.id)
-      .is("entity_id", null)
-      .maybeSingle();
+      .eq("profile_id", profile.id);
+
+    if (entityId) {
+      connectQuery = connectQuery.eq("entity_id", entityId);
+    } else {
+      connectQuery = connectQuery.is("entity_id", null);
+    }
+
+    const { data: connectAccount, error: connectAccountError } = await connectQuery.maybeSingle();
 
     if (connectAccountError) {
       throw new Error(`Erreur lecture compte Connect: ${connectAccountError.message}`);

@@ -31,6 +31,8 @@ import {
   Ticket,
   TrendingUp,
   UserCog,
+  Clock,
+  Zap,
 } from "lucide-react";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
 import { cn } from "@/lib/utils";
@@ -99,6 +101,7 @@ const adminNavItems: NavCategory[] = [
       { href: "/admin/subscriptions", label: "Abonnements", icon: Wallet },
       { href: "/admin/accounting", label: "Comptabilité", icon: Calculator },
       { href: "/admin/branding", label: "Branding", icon: Palette },
+      { href: "/admin/stripe", label: "Stripe Connect", icon: Zap },
       { href: "/admin/integrations", label: "Intégrations", icon: Key },
     ],
   },
@@ -107,6 +110,7 @@ const adminNavItems: NavCategory[] = [
     items: [
       { href: "/admin/metrics", label: "Métriques", icon: TrendingUp },
       { href: "/admin/flags", label: "Feature Flags", icon: Flag },
+      { href: "/admin/crons", label: "Tâches planifiées", icon: Clock },
     ],
   },
   {

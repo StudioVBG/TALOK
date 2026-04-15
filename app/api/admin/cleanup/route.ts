@@ -1,10 +1,7 @@
 /**
- * API Admin: Nettoyage des données orphelines
- * 
- * GET /api/admin/cleanup - Rapport des données orphelines
- * POST /api/admin/cleanup - Exécuter le nettoyage
- * 
- * ✅ SOTA 2026: Nettoyage automatique des données orphelines
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Nettoyage des données orphelines (profils sans user, baux sans propriété, fichiers storage orphelins)
+ * @usage GET /api/admin/cleanup (rapport) | POST /api/admin/cleanup (exécuter)
  */
 
 import { createClient } from "@/lib/supabase/server";

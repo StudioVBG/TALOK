@@ -283,12 +283,20 @@ const nextConfig = {
   },
 };
 
-module.exports = withSentryConfig(withBundleAnalyzer(withSerwist(nextConfig)), {
-  org: "talok",
-  project: "talok",
-  silent: !process.env.CI,
-  widenClientFileUpload: true,
-  tunnelRoute: "/monitoring",
-  disableLogger: true,
-  automaticVercelMonitors: false,
-});
+const baseConfig = withBundleAnalyzer(withSerwist(nextConfig));
+
+// Wrapper Sentry UNIQUEMENT si SENTRY_AUTH_TOKEN est défini.
+// Sans le token, withSentryConfig peut échouer au build sur Netlify
+// (tentative d'upload de source maps sans credentials).
+module.exports = process.env.SENTRY_AUTH_TOKEN
+  ? withSentryConfig(baseConfig, {
+      org: "talok",
+      project: "talok",
+      silent: !process.env.CI,
+      widenClientFileUpload: true,
+      tunnelRoute: "/monitoring",
+      disableLogger: true,
+      automaticVercelMonitors: false,
+      hideSourceMaps: true,
+    })
+  : baseConfig;

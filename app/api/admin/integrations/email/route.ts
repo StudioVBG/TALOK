@@ -5,7 +5,11 @@ import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 import { getEmailConfigurationStatus } from "@/lib/services/email-service";
 
-// GET - Récupérer le statut de la configuration email
+/**
+ * @maintenance Route utilitaire admin — usage ponctuel
+ * @description Récupère le statut de la configuration email (provider, domaine, DKIM)
+ * @usage GET /api/admin/integrations/email
+ */
 export async function GET(request: Request) {
   try {
     const auth = await requireAdminPermissions(request, ["admin.integrations.read"], {

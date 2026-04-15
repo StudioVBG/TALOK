@@ -66,10 +66,10 @@ export type CancellationReason =
 export type PauseDuration = 1 | 2 | 3;
 
 // ============================================
-// SUBSCRIPTION
+// SUBSCRIPTION (Stripe billing context)
 // ============================================
 
-export interface Subscription {
+export interface BillingSubscription {
   id: string;
   user_id: string;
   plan_id: PlanId;
@@ -87,6 +87,9 @@ export interface Subscription {
   created_at: string;
   updated_at: string;
 }
+
+/** @deprecated Use BillingSubscription for Stripe billing context, or Subscription from @/lib/subscriptions/types for DB records */
+export type Subscription = BillingSubscription;
 
 // ============================================
 // USAGE
@@ -188,7 +191,7 @@ export interface PlanDefinition {
 // ============================================
 
 export interface BillingData {
-  subscription: Subscription;
+  subscription: BillingSubscription;
   usage: UsageSummary;
   plan: PlanDefinition;
   payment_method: BillingPaymentMethod | null;

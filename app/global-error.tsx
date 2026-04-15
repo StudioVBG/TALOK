@@ -11,7 +11,9 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    Sentry.captureException(error);
+    Sentry.captureException(error, {
+      tags: { boundary: "root-layout", digest: error.digest },
+    });
   }, [error]);
 
   return (
