@@ -9,7 +9,6 @@ import { RegisterSchema } from "@/lib/api/schemas";
 import { applyRateLimit } from "@/lib/security/rate-limit";
 import { verifyTurnstileToken } from "@/lib/security/turnstile";
 import { getAuthCallbackUrl } from "@/lib/utils/redirect-url";
-import { sendWelcomeEmail } from "@/lib/services/email-service";
 
 /**
  * POST /api/v1/auth/register
@@ -138,17 +137,11 @@ export async function POST(request: NextRequest) {
       //
       // On log simplement pour le monitoring.
 
-      // Email de bienvenue (fire-and-forget, ne bloque pas l'inscription)
-      // Note: Supabase envoie aussi son email de confirmation séparément
-      const WELCOME_ROLES = ["owner", "tenant", "provider", "guarantor", "syndic", "agency"] as const;
-      type WelcomeRole = (typeof WELCOME_ROLES)[number];
-      if ((WELCOME_ROLES as readonly string[]).includes(data.role)) {
-        sendWelcomeEmail({
-          userEmail: data.email,
-          userName: data.prenom || data.nom || data.email.split("@")[0],
-          role: data.role as WelcomeRole,
-        }).catch(err => console.error("[register] Welcome email failed:", err));
-      }
+      // NOTE: l'email de confirmation est envoyé par Supabase (SMTP Resend configuré
+      // au niveau du projet). Pas d'envoi manuel supplémentaire ici pour éviter le
+      // double email à l'inscription. L'email de bienvenue/onboarding guidé peut être
+      // déclenché ultérieurement (ex: après confirmation dans /auth/callback), mais
+      // JAMAIS en parallèle de l'inscription.
 
       // Notify admins of new registration
       import("@/lib/services/admin-notification.service").then(({ notifyAdmins }) =>

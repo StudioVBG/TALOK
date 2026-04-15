@@ -16,6 +16,39 @@ interface ProfilePartial {
   onboarding_completed_at?: string | null;
 }
 
+const VALID_ROLES = ["owner", "tenant", "provider", "guarantor", "syndic", "agency"] as const;
+type ValidRole = (typeof VALID_ROLES)[number];
+
+function isValidRole(role: string | undefined | null): role is ValidRole {
+  return !!role && (VALID_ROLES as readonly string[]).includes(role);
+}
+
+/**
+ * Première étape d'onboarding pour un rôle donné.
+ * Source unique de vérité côté callback — toute redirection post-confirmation
+ * passe par ce mapping pour éviter de retomber sur /signup/verify-email.
+ */
+function getOnboardingStartPath(role: ValidRole): string {
+  switch (role) {
+    case "owner":
+      return "/signup/plan?role=owner";
+    case "tenant":
+      return "/tenant/onboarding/context";
+    case "provider":
+      return "/provider/onboarding/profile";
+    case "guarantor":
+      return "/guarantor/onboarding/context";
+    case "syndic":
+      return "/syndic/onboarding/profile";
+    case "agency":
+      return "/agency/onboarding/profile";
+  }
+}
+
+function isSafeRelativePath(path: string | null | undefined): path is string {
+  return !!path && path.startsWith("/") && !path.startsWith("//");
+}
+
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
@@ -131,31 +164,22 @@ export async function GET(request: Request) {
       return response;
     }
 
-    // Si un paramètre "next" est présent (ex: /auth/reset-password), y rediriger directement
-    // Cela permet au flux de réinitialisation de mot de passe de fonctionner correctement
-    if (next && next.startsWith("/auth/reset-password")) {
-      const legacyResponse = NextResponse.redirect(new URL("/auth/reset-password", origin));
-      legacyResponse.headers.set("Cache-Control", "no-store");
-      return legacyResponse;
+    // 1) Si un paramètre "next" est présent et pointe vers une route relative sûre,
+    //    on le respecte (ex: /auth/reset-password, ou une deep-link interne).
+    //    Cela permet aux flux spécifiques (reset-password, invitation, etc.) de
+    //    reprendre exactement où ils étaient, sans passer par la logique rôle.
+    if (isSafeRelativePath(next)) {
+      const nextResponse = NextResponse.redirect(new URL(next, origin));
+      nextResponse.headers.set("Cache-Control", "no-store");
+      return nextResponse;
     }
 
-    // Vérifier si l'email est confirmé → rediriger vers le parcours onboarding
-    if (data.user && !data.user.email_confirmed_at) {
-      // Récupérer le rôle pour garder le contexte d'onboarding
-      const { data: p } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("user_id", data.user.id)
-        .maybeSingle();
-      const profileRole = (p as ProfilePartial)?.role;
-      const roleParam = profileRole ? `&role=${profileRole}` : "";
-      return NextResponse.redirect(
-        new URL(`/signup/verify-email?email=${encodeURIComponent(data.user.email || "")}${roleParam}`, origin)
-      );
-    }
-
-    // Si l'email est confirmé, rediriger selon le rôle et le statut d'onboarding
-    if (data.user && data.user.email_confirmed_at) {
+    // 2) Après exchangeCodeForSession réussi sur un lien d'inscription, l'email
+    //    est confirmé côté Supabase. On ne retombe JAMAIS sur /signup/verify-email
+    //    (sinon la page qui attend reste figée en attendant une confirmation déjà
+    //    faite). On déduit directement la cible à partir du profil, ou à défaut
+    //    du user_metadata posé au signUp.
+    if (data.user) {
       // Récupérer le profil pour obtenir le rôle et le statut d'onboarding
       const { data: profile } = await supabase
         .from("profiles")
@@ -165,51 +189,43 @@ export async function GET(request: Request) {
 
       const profileData = profile as ProfilePartial | null;
 
-      // Si pas de profil (ex: OAuth sans role), rediriger vers choix du rôle
-      if (!profileData?.role) {
+      // Rôle : priorité au profil DB, fallback sur user_metadata.role (posé au
+      // signUp). Si rien, on envoie choisir un rôle.
+      const metadataRole = data.user.user_metadata?.role as string | undefined;
+      const role = isValidRole(profileData?.role)
+        ? (profileData!.role as ValidRole)
+        : isValidRole(metadataRole)
+          ? metadataRole
+          : null;
+
+      if (!role) {
         return NextResponse.redirect(new URL("/signup/role", origin));
       }
 
-      // Si onboarding non terminé, rediriger vers l'onboarding approprié
-      if (!profileData?.onboarding_completed_at) {
-        switch (profileData.role) {
-          case "owner": {
-            const ownerId = profileData.id;
-            if (!ownerId) {
-              return NextResponse.redirect(new URL("/signup/role", origin));
-            }
+      // Onboarding terminé → dashboard (ou redirect explicite)
+      if (profileData?.onboarding_completed_at) {
+        const dashUrl = isSafeRelativePath(redirectParam)
+          ? redirectParam
+          : getRoleDashboardUrl(role);
+        return NextResponse.redirect(new URL(dashUrl, origin));
+      }
 
-            const { data: ownerSubscription } = await supabase
-              .from("subscriptions")
-              .select("selected_plan_at")
-              .eq("owner_id", ownerId)
-              .maybeSingle();
+      // Cas particulier owner : sauter l'étape plan si déjà sélectionné
+      if (role === "owner" && profileData?.id) {
+        const { data: ownerSubscription } = await supabase
+          .from("subscriptions")
+          .select("selected_plan_at")
+          .eq("owner_id", profileData.id)
+          .maybeSingle();
 
-            if (!(ownerSubscription as { selected_plan_at?: string | null } | null)?.selected_plan_at) {
-              return NextResponse.redirect(new URL("/signup/plan?role=owner", origin));
-            }
-
-            return NextResponse.redirect(new URL("/owner/onboarding/profile", origin));
-          }
-          case "tenant":
-            return NextResponse.redirect(new URL("/tenant/onboarding/context", origin));
-          case "provider":
-            return NextResponse.redirect(new URL("/provider/onboarding/profile", origin));
-          case "guarantor":
-            return NextResponse.redirect(new URL("/guarantor/onboarding/context", origin));
-          case "syndic":
-            return NextResponse.redirect(new URL("/syndic/onboarding/profile", origin));
-          case "agency":
-            return NextResponse.redirect(new URL("/agency/onboarding/profile", origin));
+        if ((ownerSubscription as { selected_plan_at?: string | null } | null)?.selected_plan_at) {
+          return NextResponse.redirect(new URL("/owner/onboarding/profile", origin));
         }
       }
 
-      // Onboarding terminé — rediriger vers la page demandée ou le dashboard
-      const safeRedirect = redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//")
-        ? redirectParam
-        : null;
-      const dashUrl = safeRedirect || getRoleDashboardUrl(profileData.role);
-      return NextResponse.redirect(new URL(dashUrl, origin));
+      // Redirection directe vers la première étape d'onboarding du rôle, sans
+      // repasser par /signup/verify-email.
+      return NextResponse.redirect(new URL(getOnboardingStartPath(role), origin));
     }
   }
 
