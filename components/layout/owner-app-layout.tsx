@@ -360,7 +360,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
               ============================================ */}
           <CoreShellHeader
             title={shellMeta.title}
-            description={isDashboardPage ? shellMeta.description : "Concentrez-vous sur la tache qui debloque votre gestion."}
+            description={isDashboardPage ? shellMeta.description : "Concentrez-vous sur la tâche qui débloque votre gestion."}
             roleLabel={shellMeta.roleLabel}
             isDetailPage={isDetailPage}
             onBack={() => router.back()}

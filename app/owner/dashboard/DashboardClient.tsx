@@ -23,6 +23,7 @@ import { SignatureAlertBanner } from "@/components/owner/dashboard/signature-ale
 import { OwnerRecentActivity } from "@/components/owner/dashboard/recent-activity";
 import { RealtimeRevenueWidget, RealtimeStatusIndicator } from "@/components/owner/dashboard/realtime-revenue-widget";
 import { useRealtimeDashboard } from "@/lib/hooks/use-realtime-dashboard";
+import { useEntityStore } from "@/stores/useEntityStore";
 import { StartTourButton } from "@/components/onboarding";
 import { SecondaryContentPanel } from "@/components/layout/secondary-content-panel";
 import { StripeConnectBanner } from "@/components/owner/dashboard/stripe-connect-banner";
@@ -117,8 +118,18 @@ interface DashboardClientProps {
 
 export function DashboardClient({ profileCompletion }: DashboardClientProps) {
   const { dashboard, apiData, isLoadingApi, error } = useOwnerData();
+
+  // Résoudre l'entityId pour les compteurs live (même pattern que properties page)
+  const activeEntityId = useEntityStore((s) => s.activeEntityId);
+  const getActiveEntity = useEntityStore((s) => s.getActiveEntity);
+  const resolvedEntityId = (() => {
+    if (!activeEntityId) return undefined;
+    const activeEntity = getActiveEntity();
+    return activeEntity?.entityType === "particulier" ? "personal" : activeEntityId;
+  })();
+
   // Single realtime hook instance shared between RealtimeRevenueWidget (via its own hook) and RealtimeStatusIndicator (via props)
-  const realtimeStatus = useRealtimeDashboard({ showToasts: true });
+  const realtimeStatus = useRealtimeDashboard({ showToasts: true, entityId: resolvedEntityId });
   const completionPercentage = profileCompletion ? calculateCompletionPercentage(profileCompletion) : 0;
 
   if (error) {

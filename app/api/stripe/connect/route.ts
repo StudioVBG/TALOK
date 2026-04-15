@@ -112,10 +112,10 @@ async function getAuthenticatedOwnerProfile() {
     .eq("user_id", user.id)
     .single();
 
-  if (!profile || profile.role !== "owner") {
+  if (!profile || !["owner", "syndic"].includes(profile.role)) {
     return {
       error: NextResponse.json(
-        { error: "Seuls les propriétaires peuvent avoir un compte Connect" },
+        { error: "Seuls les propriétaires et syndics peuvent avoir un compte Connect" },
         { status: 403 }
       ),
     };
@@ -126,19 +126,24 @@ async function getAuthenticatedOwnerProfile() {
 
 async function getStoredConnectAccountReference(
   serviceClient: ReturnType<typeof createServiceRoleClient>,
-  profileId: string
+  profileId: string,
+  entityId?: string | null
 ): Promise<StoredConnectAccountReference | null> {
-  // S2-2 : filtrer explicitement sur le compte personnel (entity_id IS NULL).
+  // S2-2 : filtrer par entité juridique si fournie, sinon compte personnel.
   // Depuis la migration 20260412100000 un même profile_id peut avoir plusieurs
   // comptes Connect (un personnel + plusieurs scopés par entité juridique).
-  // Cette route sert historiquement aux propriétaires, on veut donc le compte
-  // personnel.
-  const { data, error } = await serviceClient
+  let query = serviceClient
     .from("stripe_connect_accounts")
     .select("id, stripe_account_id")
-    .eq("profile_id", profileId)
-    .is("entity_id", null)
-    .maybeSingle();
+    .eq("profile_id", profileId);
+
+  if (entityId) {
+    query = query.eq("entity_id", entityId);
+  } else {
+    query = query.is("entity_id", null);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
     throw new Error(`Erreur lecture compte Connect: ${error.message}`);
@@ -157,7 +162,7 @@ async function getStoredConnectAccountReference(
 /**
  * GET - Récupérer le compte Connect de l'utilisateur
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const auth = await getAuthenticatedOwnerProfile();
     if (auth.error) {
@@ -166,14 +171,21 @@ export async function GET() {
 
     const { profile } = auth;
     const serviceClient = createServiceRoleClient();
+    const entityId = new URL(request.url).searchParams.get("entityId") || undefined;
 
-    // Récupérer le compte Connect personnel (S2-2 : entity_id IS NULL)
-    const { data: connectAccount } = await serviceClient
+    // Récupérer le compte Connect (personnel ou scopé par entité)
+    let connectQuery = serviceClient
       .from("stripe_connect_accounts")
       .select("*")
-      .eq("profile_id", profile.id)
-      .is("entity_id", null)
-      .maybeSingle();
+      .eq("profile_id", profile.id);
+
+    if (entityId) {
+      connectQuery = connectQuery.eq("entity_id", entityId);
+    } else {
+      connectQuery = connectQuery.is("entity_id", null);
+    }
+
+    const { data: connectAccount } = await connectQuery.maybeSingle();
 
     if (!connectAccount) {
       return NextResponse.json({
@@ -269,10 +281,14 @@ export async function POST(request: NextRequest) {
     const { profile, user } = auth;
     const serviceClient = createServiceRoleClient();
 
-    // Vérifier si un compte existe déjà
+    const body = await request.json().catch(() => ({}));
+    const entityId: string | undefined = body.entityId || undefined;
+
+    // Vérifier si un compte existe déjà (personnel ou scopé par entité)
     const existingAccount = await getStoredConnectAccountReference(
       serviceClient,
-      profile.id
+      profile.id,
+      entityId
     );
 
     let stripeAccountId: string;
@@ -284,7 +300,6 @@ export async function POST(request: NextRequest) {
       stripeAccountId = existingAccount.stripe_account_id as string;
     } else {
       // Créer un nouveau compte Stripe Connect
-      const body = await request.json().catch(() => ({}));
       const businessType = body.business_type || "individual";
 
       const stripeAccount = await connectService.createConnectAccount({
@@ -295,22 +310,29 @@ export async function POST(request: NextRequest) {
           profile_id: profile.id,
           talok_user_id: user.id,
         },
-        idempotencyKey: `owner-connect-account:${profile.id}`,
+        idempotencyKey: entityId
+          ? `connect-account:${profile.id}:${entityId}`
+          : `owner-connect-account:${profile.id}`,
       });
 
       stripeAccountId = stripeAccount.id;
       createdStripeAccountId = stripeAccount.id;
 
-      // Enregistrer en base de données
+      // Enregistrer en base de données (personnel ou scopé par entité)
+      const insertPayload: Record<string, any> = {
+        profile_id: profile.id,
+        stripe_account_id: stripeAccountId,
+        account_type: "express",
+        business_type: businessType,
+        country: "FR",
+      };
+      if (entityId) {
+        insertPayload.entity_id = entityId;
+      }
+
       const { error: insertError } = await serviceClient
         .from("stripe_connect_accounts")
-        .insert({
-          profile_id: profile.id,
-          stripe_account_id: stripeAccountId,
-          account_type: "express",
-          business_type: businessType,
-          country: "FR",
-        });
+        .insert(insertPayload);
 
       if (insertError) {
         if (isUniqueProfileConflict(insertError)) {
@@ -324,7 +346,8 @@ export async function POST(request: NextRequest) {
 
       const persistedAccount = await getStoredConnectAccountReference(
         serviceClient,
-        profile.id
+        profile.id,
+        entityId
       );
 
       if (!persistedAccount?.stripe_account_id) {
@@ -361,10 +384,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Créer le lien d'onboarding
+    const returnBase = entityId
+      ? `${APP_URL}/syndic/settings/connect`
+      : `${APP_URL}/owner/money?tab=banque`;
     const accountLink = await connectService.createAccountLink({
       accountId: stripeAccountId,
-      refreshUrl: `${APP_URL}/owner/money?tab=banque&refresh=true`,
-      returnUrl: `${APP_URL}/owner/money?tab=banque&success=true`,
+      refreshUrl: `${returnBase}${entityId ? "?" : "&"}refresh=true`,
+      returnUrl: `${returnBase}${entityId ? "?" : "&"}success=true`,
       type: hasExistingAccount ? "account_update" : "account_onboarding",
     });
 

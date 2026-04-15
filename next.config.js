@@ -1,4 +1,6 @@
 /** @type {import('next').NextConfig} */
+const { withSentryConfig } = require('@sentry/nextjs');
+
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
 });
@@ -281,4 +283,14 @@ const nextConfig = {
   },
 };
 
-module.exports = withBundleAnalyzer(withSerwist(nextConfig));
+const baseConfig = withBundleAnalyzer(withSerwist(nextConfig));
+
+// Wrapper Sentry UNIQUEMENT si SENTRY_AUTH_TOKEN est défini.
+// Sans le token, withSentryConfig peut échouer au build sur Netlify
+// (tentative d'upload de source maps sans credentials).
+module.exports = process.env.SENTRY_AUTH_TOKEN
+  ? withSentryConfig(baseConfig, {
+      silent: true,
+      hideSourceMaps: true,
+    })
+  : baseConfig;
