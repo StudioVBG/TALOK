@@ -74,10 +74,13 @@ export async function GET(request: NextRequest) {
     const invoiceIds = invoices.map((i: any) => i.id);
 
     // Get payments
+    // Columns are French on the `payments` table — there is no
+    // `stripe_payment_id`; the canonical column is `provider_ref`
+    // (stores Stripe PaymentIntent IDs as well as manual references).
     let query = supabase
       .from("payments")
       .select(`
-        id, invoice_id, montant, moyen, statut, stripe_payment_id, created_at, updated_at,
+        id, invoice_id, montant, moyen, statut, provider_ref, date_paiement, created_at, updated_at,
         invoices!inner(id, lease_id, periode, montant_loyer, montant_charges)
       `, { count: "exact" })
       .in("invoice_id", invoiceIds)

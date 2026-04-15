@@ -85,8 +85,14 @@ export async function syncInvoiceStatusFromPayments(
   }
 
   const nextStatus = settlement.status;
+  // `invoices.date_paiement` est de type DATE → on produit YYYY-MM-DD et on
+  // normalise `paidAt` au cas où un caller passe un timestamp ISO complet.
+  const normalizePaidAt = (value: string | null | undefined): string | null =>
+    value ? value.slice(0, 10) : null;
   const nextPaymentDate = settlement.isSettled
-    ? paidAt || settlement.invoice?.date_paiement || new Date().toISOString()
+    ? normalizePaidAt(paidAt) ||
+      normalizePaidAt(settlement.invoice?.date_paiement ?? null) ||
+      new Date().toISOString().split("T")[0]
     : null;
 
   const { error: invoiceUpdateError } = await supabase

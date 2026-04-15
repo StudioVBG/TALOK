@@ -135,14 +135,18 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Enregistrer le paiement en DB
+    // Enregistrer le paiement en DB.
+    // `payments.moyen` CHECK ∈ (cb, virement, prelevement, especes, cheque,
+    // autre) — un prélèvement SEPA est stocké sous `'prelevement'`.
+    // `payments.date_paiement` est de type DATE ; on passe YYYY-MM-DD (pas
+    // un timestamp ISO complet).
     await serviceClient.from("payments").insert({
       invoice_id: invoice.id,
       montant: invoice.montant_total,
-      moyen: "sepa",
+      moyen: "prelevement",
       provider_ref: paymentResult.id,
       statut: paymentResult.status === "succeeded" ? "succeeded" : "pending",
-      date_paiement: new Date().toISOString(),
+      date_paiement: new Date().toISOString().split("T")[0],
     });
 
     // Mettre à jour la facture avec la référence Stripe

@@ -229,10 +229,12 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (invoice) {
+      // `invoices.date_paiement` est de type DATE — on passe YYYY-MM-DD
+      // plutôt qu'un timestamp ISO pour éviter une coercition silencieuse.
       const settlement = await syncInvoiceStatusFromPayments(
         serviceClient as any,
         invoiceId,
-        new Date().toISOString()
+        new Date().toISOString().split("T")[0]
       );
 
       if (settlement?.isSettled && payment?.id) {
