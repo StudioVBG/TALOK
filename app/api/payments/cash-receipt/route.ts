@@ -15,6 +15,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { cashReceiptInputSchema } from "@/lib/validations";
+import { sendCashReceiptSignatureRequest } from "@/lib/emails/resend.service";
+import { sendPushNotification } from "@/lib/push/send";
+import { sendSMS } from "@/lib/services/sms.service";
 
 export async function POST(request: Request) {
   try {
@@ -81,7 +84,7 @@ export async function POST(request: Request) {
       .from("invoices")
       .select(`
         *,
-        tenant:profiles!invoices_tenant_id_fkey(id, prenom, nom, user_id),
+        tenant:profiles!invoices_tenant_id_fkey(id, prenom, nom, user_id, email, telephone),
         lease:leases(
           id,
           property_id,
@@ -148,8 +151,12 @@ export async function POST(request: Request) {
 
     const tenantUserId = invoiceAny.tenant?.user_id as string | undefined;
     const tenantProfileId = invoiceAny.tenant?.id as string | undefined;
+    const tenantEmail = invoiceAny.tenant?.email as string | undefined;
+    const tenantTelephone = invoiceAny.tenant?.telephone as string | undefined;
     const tenantFullName = `${invoiceAny.tenant?.prenom ?? ""} ${invoiceAny.tenant?.nom ?? ""}`.trim() || "Locataire";
     const ownerFullName = `${profile.prenom ?? ""} ${profile.nom ?? ""}`.trim() || "Propriétaire";
+    const propertyAddress = (invoiceAny.lease?.property?.adresse_complete as string | undefined) ?? "";
+    const receiptPeriod = (receipt.periode as string | undefined) ?? (invoiceAny.periode as string | undefined) ?? "";
 
     // Fire-and-forget: notifications (ne pas bloquer la réponse HTTP)
     const actionUrl = `/tenant/payments/cash-receipt/${receipt.id}`;
@@ -203,6 +210,52 @@ export async function POST(request: Request) {
             has_geolocation: !!geolocation,
           },
         });
+
+        // --- Multi-canal : email (Resend) + push + SMS si téléphone ---
+        if (tenantProfileId) {
+          // Email Resend
+          if (tenantEmail) {
+            try {
+              await sendCashReceiptSignatureRequest({
+                tenantEmail,
+                tenantName: tenantFullName,
+                ownerName: ownerFullName,
+                propertyAddress,
+                period: receiptPeriod,
+                amount: Number(amount),
+                receiptId: receipt.id,
+                receiptNumber: receipt.receipt_number,
+              });
+            } catch (emailErr) {
+              console.error("[cash-receipt] email notification failed:", emailErr);
+            }
+          }
+
+          // Push (Web Push + FCM natif iOS/Android)
+          try {
+            await sendPushNotification(
+              tenantProfileId,
+              "Signature requise — Reçu espèces",
+              `${ownerFullName} vous demande de contresigner un reçu de ${Number(amount).toLocaleString("fr-FR")} €.`,
+              { route: actionUrl }
+            );
+          } catch (pushErr) {
+            console.error("[cash-receipt] push notification failed:", pushErr);
+          }
+
+          // SMS de secours si téléphone renseigné
+          if (tenantTelephone) {
+            try {
+              const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
+              await sendSMS({
+                to: tenantTelephone,
+                message: `[Talok] ${ownerFullName} a enregistré votre paiement de ${Number(amount).toLocaleString("fr-FR")} €. Contresignez votre reçu : ${appUrl}${actionUrl}`,
+              });
+            } catch (smsErr) {
+              console.error("[cash-receipt] SMS notification failed:", smsErr);
+            }
+          }
+        }
       } catch (err) {
         console.error("[cash-receipt] notification error (non-blocking):", err);
       }

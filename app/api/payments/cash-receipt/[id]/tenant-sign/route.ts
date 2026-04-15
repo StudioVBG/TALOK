@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { cashReceiptTenantSignatureSchema } from "@/lib/validations";
+import { sendPushNotification } from "@/lib/push/send";
 
 export async function POST(
   request: Request,
@@ -126,6 +127,18 @@ export async function POST(
             status: "pending",
             channels_status: { in_app: "sent" },
           });
+
+          // Push (Web + FCM natif) — boucle de rétroaction pour le propriétaire
+          try {
+            await sendPushNotification(
+              receiptAny.owner.id,
+              `Reçu espèces signé — ${Number(receiptAny.amount).toLocaleString("fr-FR")} €`,
+              `${tenantFullName} a contresigné le reçu ${receiptAny.receipt_number}.`,
+              { route: `/owner/finances/invoices/${receiptAny.invoice_id}` }
+            );
+          } catch (pushErr) {
+            console.error("[tenant-sign] push notification failed:", pushErr);
+          }
         }
 
         await serviceClient.from("audit_log").insert({

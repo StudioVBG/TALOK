@@ -21,7 +21,10 @@ import {
   Calendar,
   Clock,
   Wallet,
+  Banknote,
+  PenLine,
 } from "lucide-react";
+import type { TenantPendingCashReceipt } from "@/features/billing/server/data-fetching";
 import { PaymentCheckout } from "@/features/billing/components/payment-checkout";
 import { Input } from "@/components/ui/input";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -43,9 +46,13 @@ import {
 
 interface TenantPaymentsClientProps {
   invoices: any[];
+  pendingCashReceipts?: TenantPendingCashReceipt[];
 }
 
-export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymentsClientProps) {
+export function TenantPaymentsClient({
+  invoices: initialInvoices,
+  pendingCashReceipts = [],
+}: TenantPaymentsClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -290,6 +297,54 @@ export function TenantPaymentsClient({ invoices: initialInvoices }: TenantPaymen
               </Button>
             </div>
           </GlassCard>
+        )}
+
+        {/* Reçus espèces en attente de contresignature — SOTA 2026 */}
+        {pendingCashReceipts.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.02 }}
+            className="space-y-3"
+          >
+            {pendingCashReceipts.map((cr) => (
+              <GlassCard
+                key={cr.id}
+                className="p-5 border-amber-200 dark:border-amber-900/50 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 shadow-lg"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-4">
+                    <div className="h-12 w-12 rounded-2xl bg-amber-600 flex items-center justify-center text-white shadow-md shrink-0">
+                      <Banknote className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest mb-1">
+                        Signature requise — Reçu espèces
+                      </p>
+                      <p className="text-lg font-black text-foreground">
+                        {formatCurrency(cr.amount)} · {cr.owner_name}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        {cr.periode ? `Période ${cr.periode}` : "Paiement en espèces"}
+                        {cr.property_address ? ` · ${cr.property_address}` : ""}
+                      </p>
+                      <p className="text-xs text-muted-foreground/80 mt-1">
+                        Référence : {cr.receipt_number}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    asChild
+                    className="rounded-xl font-bold bg-amber-600 hover:bg-amber-700 shrink-0"
+                  >
+                    <Link href={`/tenant/payments/cash-receipt/${cr.id}`}>
+                      <PenLine className="mr-2 h-4 w-4" /> Signer le reçu
+                    </Link>
+                  </Button>
+                </div>
+              </GlassCard>
+            ))}
+          </motion.div>
         )}
 
         {/* Prochaine échéance - SOTA 2026 */}
