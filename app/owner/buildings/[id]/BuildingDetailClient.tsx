@@ -25,6 +25,9 @@ import {
   Wrench,
   Eye,
   Trash2,
+  Sparkles,
+  Copy,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,7 +60,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { LotCharacteristicsDrawer } from "./LotCharacteristicsDrawer";
 import Link from "next/link";
 import Image from "next/image";
 import type { BuildingRow, BuildingUnitRow } from "@/lib/supabase/database.types";
@@ -309,7 +322,54 @@ export function BuildingDetailClient({
     has_digicode: buildingMeta?.has_digicode ?? false,
     has_local_velo: buildingMeta?.has_local_velo ?? false,
     has_local_poubelles: buildingMeta?.has_local_poubelles ?? false,
+    has_parking_commun: (buildingMeta as any)?.has_parking_commun ?? false,
+    has_jardin_commun: (buildingMeta as any)?.has_jardin_commun ?? false,
   });
+
+  // Détails immeuble (name, construction_year, surface_totale, notes)
+  const [buildingName, setBuildingName] = useState<string>(
+    (buildingMeta as any)?.name ?? ""
+  );
+  const [constructionYear, setConstructionYear] = useState<number | "">(
+    (buildingMeta as any)?.construction_year ?? ""
+  );
+  const [surfaceTotale, setSurfaceTotale] = useState<number | "">(
+    (buildingMeta as any)?.surface_totale ?? ""
+  );
+  const [buildingNotes, setBuildingNotes] = useState<string>(
+    (buildingMeta as any)?.notes ?? ""
+  );
+
+  // Mode de possession
+  const [ownershipType, setOwnershipType] = useState<"full" | "partial">(
+    ((buildingMeta as any)?.ownership_type as "full" | "partial") ?? "full"
+  );
+  const [totalLotsInBuilding, setTotalLotsInBuilding] = useState<number | "">(
+    (buildingMeta as any)?.total_lots_in_building ?? ""
+  );
+
+  // Drawer caractéristiques lot (item #5)
+  const [drawerLot, setDrawerLot] = useState<{
+    propertyId: string;
+    label: string;
+  } | null>(null);
+
+  // Dialog duplication lot (item #25)
+  const [duplicateSource, setDuplicateSource] = useState<{
+    unitId: string;
+    sourceFloor: number;
+  } | null>(null);
+  const [duplicateTargetFloors, setDuplicateTargetFloors] = useState<number[]>([]);
+  const [duplicating, setDuplicating] = useState(false);
+
+  // Stats officielles via /api/buildings/[id]/stats (item #15)
+  const [serverStats, setServerStats] = useState<{
+    occupancy_rate: number | null;
+    revenus_actuels: number | null;
+    revenus_potentiels: number | null;
+    occupied_units: number | null;
+    total_units: number | null;
+  } | null>(null);
 
   // ── Documents state ──
   const [documents, setDocuments] = useState<BuildingDocument[]>(initialDocuments || []);
@@ -400,6 +460,77 @@ export function BuildingDetailClient({
     const ok = await patchBuilding({ [key]: val });
     if (!ok) setEquipment(prev => ({ ...prev, [key]: !val }));
   }, [patchBuilding]);
+
+  // Fetch server stats (building_stats view) — fallback silencieux sur calcul inline
+  useEffect(() => {
+    if (!buildingId) return;
+    let cancelled = false;
+    fetch(`/api/buildings/${buildingId}/stats`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data) return;
+        const s = data.stats || data;
+        if (s && typeof s === "object") {
+          setServerStats({
+            occupancy_rate:
+              typeof s.occupancy_rate === "number" ? s.occupancy_rate : null,
+            revenus_actuels:
+              typeof s.revenus_actuels === "number" ? s.revenus_actuels : null,
+            revenus_potentiels:
+              typeof s.revenus_potentiels === "number" ? s.revenus_potentiels : null,
+            occupied_units:
+              typeof s.occupied_units === "number" ? s.occupied_units : null,
+            total_units:
+              typeof s.total_units === "number" ? s.total_units : null,
+          });
+        }
+      })
+      .catch(() => {
+        /* silencieux — fallback sur calcul inline */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [buildingId]);
+
+  // Duplication lot (item #25)
+  const handleDuplicateSubmit = useCallback(async () => {
+    if (!buildingId || !duplicateSource) return;
+    if (duplicateTargetFloors.length === 0) return;
+    setDuplicating(true);
+    try {
+      const res = await fetch(
+        `/api/buildings/${buildingId}/units/${duplicateSource.unitId}/duplicate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ target_floors: duplicateTargetFloors }),
+        }
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        throw new Error(err?.error || "Erreur duplication");
+      }
+      const data = await res.json();
+      toast({
+        title: `${data.count ?? duplicateTargetFloors.length} lot(s) créé(s)`,
+        description: "Rechargement…",
+      });
+      // Rafraîchir pour charger les nouveaux lots
+      setTimeout(() => {
+        if (typeof window !== "undefined") window.location.reload();
+      }, 600);
+      setDuplicateSource(null);
+      setDuplicateTargetFloors([]);
+    } catch (e) {
+      toast({
+        title: e instanceof Error ? e.message : "Erreur",
+        variant: "destructive",
+      });
+    } finally {
+      setDuplicating(false);
+    }
+  }, [buildingId, duplicateSource, duplicateTargetFloors, toast]);
 
   // ── Unit actions ──
   const [unitStatuses, setUnitStatuses] = useState<Record<string, string>>(() => {
@@ -510,11 +641,27 @@ export function BuildingDetailClient({
   const parkingUnits = liveUnits.filter((u) => u.type === "parking" || u.type === "cave").length;
   const habitableUnits = totalUnits - parkingUnits;
   const vacantUnits = liveUnits.filter((u) => u.status === "vacant" && u.type !== "parking" && u.type !== "cave").length;
-  const occupiedUnits = liveUnits.filter((u) => u.status === "occupe" && u.type !== "parking" && u.type !== "cave").length;
-  const occupancyRate = habitableUnits > 0 ? Math.round((occupiedUnits / habitableUnits) * 100) : 0;
-  const revenuActuel = liveUnits.filter((u) => u.status === "occupe").reduce((sum, u) => sum + (u.loyer_hc || 0) + (u.charges || 0), 0);
-  const revenuPotentiel = liveUnits.reduce((sum, u) => sum + (u.loyer_hc || 0) + (u.charges || 0), 0);
+  const occupiedUnitsInline = liveUnits.filter((u) => u.status === "occupe" && u.type !== "parking" && u.type !== "cave").length;
+  const revenuActuelInline = liveUnits.filter((u) => u.status === "occupe").reduce((sum, u) => sum + (u.loyer_hc || 0) + (u.charges || 0), 0);
+  const revenuPotentielInline = liveUnits.reduce((sum, u) => sum + (u.loyer_hc || 0) + (u.charges || 0), 0);
+
+  // Stats finales : priorité à serverStats (vue building_stats) sinon calcul inline
+  const occupiedUnits = serverStats?.occupied_units ?? occupiedUnitsInline;
+  const occupancyRate =
+    serverStats?.occupancy_rate ??
+    (habitableUnits > 0 ? Math.round((occupiedUnitsInline / habitableUnits) * 100) : 0);
+  const revenuActuel = serverStats?.revenus_actuels ?? revenuActuelInline;
+  const revenuPotentiel = serverStats?.revenus_potentiels ?? revenuPotentielInline;
+
   const hasActiveFilters = filterFloor !== "all" || filterType !== "all" || filterStatus !== "all";
+
+  // Liste des étages possibles pour la duplication (tous sauf celui du lot source)
+  const duplicateCandidateFloors = useMemo(() => {
+    const floorsCount = buildingMeta?.floors ?? 1;
+    const all = Array.from({ length: floorsCount }, (_, i) => i);
+    if (duplicateSource) return all.filter((f) => f !== duplicateSource.sourceFloor);
+    return all;
+  }, [buildingMeta, duplicateSource]);
 
   // Group documents by type
   const documentsByType = useMemo(() => {
@@ -590,18 +737,36 @@ export function BuildingDetailClient({
           <div className="flex items-center gap-3 mb-2 flex-wrap">
             <h1 className="text-2xl md:text-3xl font-bold font-[family-name:var(--font-manrope)]">
               <EditableField
-                value={building.adresse_complete}
-                onSave={(val) => patchBuilding({ adresse_complete: val })}
+                value={buildingName || building.adresse_complete}
+                onSave={(val) => {
+                  setBuildingName(val);
+                  void patchBuilding({ name: val });
+                }}
                 className="text-white"
               />
             </h1>
             <Badge className="bg-[#2563EB] text-white shrink-0">
               Immeuble &bull; {totalUnits} lot{totalUnits > 1 ? "s" : ""}
             </Badge>
+            {/* Badge ownership_type (item #14) */}
+            {ownershipType === "full" ? (
+              <Badge className="bg-emerald-600 text-white shrink-0">
+                Propriété complète
+              </Badge>
+            ) : (
+              <Badge className="bg-amber-600 text-white shrink-0">
+                Copropriété &bull; {totalUnits} lot(s) sur {totalLotsInBuilding || "?"}
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-4 text-white/80 flex-wrap">
             <span className="flex items-center gap-1">
               <MapPin className="h-4 w-4" />
+              <EditableField
+                value={building.adresse_complete}
+                onSave={(val) => patchBuilding({ adresse_complete: val })}
+                className="text-white/80"
+              />
               <EditableField
                 value={building.code_postal}
                 onSave={(val) => patchBuilding({ code_postal: val })}
@@ -675,7 +840,160 @@ export function BuildingDetailClient({
         </Card>
       </div>
 
-      {/* Equipment — Toggles */}
+      {/* Détails de l'immeuble (item #17) */}
+      <Card className="mb-6 bg-card">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Détails de l'immeuble</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="hub-construction-year" className="text-xs">
+                Année de construction
+              </Label>
+              <Input
+                id="hub-construction-year"
+                type="number"
+                min={1800}
+                max={new Date().getFullYear() + 5}
+                value={constructionYear}
+                onChange={(e) => {
+                  const v = e.target.value === "" ? "" : Number(e.target.value);
+                  setConstructionYear(v);
+                }}
+                onBlur={() => {
+                  patchBuilding({
+                    construction_year:
+                      constructionYear === "" ? null : constructionYear,
+                  });
+                }}
+                placeholder="1960"
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="hub-surface-totale" className="text-xs">
+                Surface totale (m²)
+              </Label>
+              <Input
+                id="hub-surface-totale"
+                type="number"
+                min={0}
+                step="0.01"
+                value={surfaceTotale}
+                onChange={(e) => {
+                  const v = e.target.value === "" ? "" : Number(e.target.value);
+                  setSurfaceTotale(v);
+                }}
+                onBlur={() => {
+                  patchBuilding({
+                    surface_totale: surfaceTotale === "" ? null : surfaceTotale,
+                  });
+                }}
+                placeholder="280"
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="hub-floors" className="text-xs">
+                Nombre d'étages
+              </Label>
+              <Input
+                id="hub-floors"
+                type="number"
+                min={1}
+                max={50}
+                value={buildingMeta?.floors ?? ""}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  if (!Number.isNaN(v) && v >= 1 && v <= 50) {
+                    patchBuilding({ floors: v });
+                  }
+                }}
+                placeholder="4"
+                className="h-9 text-sm"
+              />
+            </div>
+          </div>
+          <div className="mt-4 space-y-1">
+            <Label htmlFor="hub-notes" className="text-xs">
+              Notes internes
+            </Label>
+            <Textarea
+              id="hub-notes"
+              value={buildingNotes}
+              onChange={(e) => setBuildingNotes(e.target.value)}
+              onBlur={() => patchBuilding({ notes: buildingNotes || null })}
+              placeholder="Informations internes sur l'immeuble…"
+              rows={2}
+              maxLength={2000}
+              className="text-sm"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Mode de possession (item #14 édition) */}
+      <Card className="mb-6 bg-card">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Mode de possession</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="hub-ownership" className="text-xs">
+                Type de propriété
+              </Label>
+              <Select
+                value={ownershipType}
+                onValueChange={(v) => {
+                  const next = v as "full" | "partial";
+                  setOwnershipType(next);
+                  patchBuilding({
+                    ownership_type: next,
+                    ...(next === "full" ? { total_lots_in_building: null } : {}),
+                  });
+                  if (next === "full") setTotalLotsInBuilding("");
+                }}
+              >
+                <SelectTrigger id="hub-ownership" className="h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">Immeuble entier</SelectItem>
+                  <SelectItem value="partial">Copropriété partielle</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {ownershipType === "partial" && (
+              <div className="space-y-1">
+                <Label htmlFor="hub-total-lots" className="text-xs">
+                  Nombre total de lots de l'immeuble physique
+                </Label>
+                <Input
+                  id="hub-total-lots"
+                  type="number"
+                  min={1}
+                  value={totalLotsInBuilding}
+                  onChange={(e) => {
+                    const v = e.target.value === "" ? "" : Number(e.target.value);
+                    setTotalLotsInBuilding(v);
+                  }}
+                  onBlur={() => {
+                    if (totalLotsInBuilding !== "") {
+                      patchBuilding({ total_lots_in_building: totalLotsInBuilding });
+                    }
+                  }}
+                  placeholder="Ex: 12"
+                  className="h-9 text-sm"
+                />
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Equipment — Toggles (items #16 : + parking_commun, jardin_commun) */}
       <Card className="mb-8 bg-card">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Équipements</CardTitle>
@@ -688,6 +1006,8 @@ export function BuildingDetailClient({
             <EquipmentToggle label="Digicode" checked={equipment.has_digicode} onToggle={(v) => handleEquipmentToggle("has_digicode", v)} saving={saving} />
             <EquipmentToggle label="Local vélos" checked={equipment.has_local_velo} onToggle={(v) => handleEquipmentToggle("has_local_velo", v)} saving={saving} />
             <EquipmentToggle label="Local poubelles" checked={equipment.has_local_poubelles} onToggle={(v) => handleEquipmentToggle("has_local_poubelles", v)} saving={saving} />
+            <EquipmentToggle label="Parking commun" checked={equipment.has_parking_commun} onToggle={(v) => handleEquipmentToggle("has_parking_commun", v)} saving={saving} />
+            <EquipmentToggle label="Jardin commun" checked={equipment.has_jardin_commun} onToggle={(v) => handleEquipmentToggle("has_jardin_commun", v)} saving={saving} />
           </div>
           {buildingMeta?.floors && (
             <div className="mt-3 pt-3 border-t">
@@ -878,6 +1198,20 @@ export function BuildingDetailClient({
                                       </Link>
                                     </DropdownMenuItem>
                                   )}
+                                  {/* Item #5 : Drawer caractéristiques lot (DPE, chauffage, équipements, meublé) */}
+                                  {unit.property_id && (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        setDrawerLot({
+                                          propertyId: unit.property_id as string,
+                                          label: `Lot ${unit.position ?? ""} · ${floorLabel((unit.floor as number) ?? 0)}`,
+                                        })
+                                      }
+                                    >
+                                      <Sparkles className="h-3.5 w-3.5 mr-2" />
+                                      Caractéristiques (DPE, chauffage…)
+                                    </DropdownMenuItem>
+                                  )}
                                   {status === "occupe" && unit.current_lease_id && (
                                     <DropdownMenuItem asChild>
                                       <Link href={`/owner/leases/${unit.current_lease_id}`}>
@@ -895,6 +1229,20 @@ export function BuildingDetailClient({
                                     </DropdownMenuItem>
                                   )}
                                   <DropdownMenuSeparator />
+                                  {/* Item #25 : Dupliquer sur d'autres étages */}
+                                  <DropdownMenuItem
+                                    onClick={() => {
+                                      if (!unit.id) return;
+                                      setDuplicateSource({
+                                        unitId: unit.id,
+                                        sourceFloor: (unit.floor as number) ?? 0,
+                                      });
+                                      setDuplicateTargetFloors([]);
+                                    }}
+                                  >
+                                    <Copy className="h-3.5 w-3.5 mr-2" />
+                                    Dupliquer sur d'autres étages
+                                  </DropdownMenuItem>
                                   {status !== "travaux" && (
                                     <DropdownMenuItem onClick={() => unit.id && handleUnitStatusChange(unit.id, "travaux")}>
                                       <Wrench className="h-3.5 w-3.5 mr-2" />
@@ -1122,6 +1470,119 @@ export function BuildingDetailClient({
         </section>
 
       </div>
+
+      {/* Drawer caractéristiques lot (item #5) */}
+      {drawerLot && (
+        <LotCharacteristicsDrawer
+          open={!!drawerLot}
+          onOpenChange={(o) => {
+            if (!o) setDrawerLot(null);
+          }}
+          propertyId={drawerLot.propertyId}
+          unitLabel={drawerLot.label}
+        />
+      )}
+
+      {/* Dialog de duplication lot (item #25) */}
+      <Dialog
+        open={!!duplicateSource}
+        onOpenChange={(o) => {
+          if (!o) {
+            setDuplicateSource(null);
+            setDuplicateTargetFloors([]);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Copy className="h-5 w-5 text-blue-500" />
+              Dupliquer ce lot
+            </DialogTitle>
+            <DialogDescription>
+              Sélectionnez les étages sur lesquels recréer ce lot. Les nouveaux lots
+              seront créés à la prochaine position disponible, avec le même loyer,
+              la même surface et le statut <em>vacant</em>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-3">
+            <Label className="text-xs mb-2 block">Étages cibles</Label>
+            <div className="flex flex-wrap gap-2">
+              {duplicateCandidateFloors.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Aucun autre étage disponible. Ajoutez un étage dans les détails
+                  de l'immeuble pour en créer.
+                </p>
+              ) : (
+                duplicateCandidateFloors.map((f) => {
+                  const isSelected = duplicateTargetFloors.includes(f);
+                  return (
+                    <Button
+                      key={f}
+                      type="button"
+                      size="sm"
+                      variant={isSelected ? "default" : "outline"}
+                      onClick={() => {
+                        setDuplicateTargetFloors((prev) =>
+                          prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]
+                        );
+                      }}
+                    >
+                      {floorLabel(f)}
+                    </Button>
+                  );
+                })
+              )}
+            </div>
+            {duplicateCandidateFloors.length > 0 && (
+              <div className="flex gap-2 mt-3">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDuplicateTargetFloors(duplicateCandidateFloors)}
+                >
+                  Tous
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDuplicateTargetFloors([])}
+                >
+                  Aucun
+                </Button>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDuplicateSource(null);
+                setDuplicateTargetFloors([]);
+              }}
+              disabled={duplicating}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={handleDuplicateSubmit}
+              disabled={duplicating || duplicateTargetFloors.length === 0}
+            >
+              {duplicating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Duplication…
+                </>
+              ) : (
+                <>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Dupliquer ({duplicateTargetFloors.length})
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
