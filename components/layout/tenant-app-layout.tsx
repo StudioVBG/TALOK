@@ -150,9 +150,11 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
       >
         {/* Logo compact */}
         <div className="flex h-14 shrink-0 items-center justify-center border-b border-border">
-          <span className="text-lg font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            T
-          </span>
+          <img
+            src="/images/talok-icon.png"
+            alt="TALOK"
+            className="h-8 w-8 rounded-lg object-contain"
+          />
         </div>
 
         {/* Navigation icônes avec tooltips */}
@@ -222,9 +224,11 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b shrink-0">
           <Link href="/tenant/dashboard" className="flex items-center gap-2">
-            <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              Talok
-            </span>
+            <img
+              src="/images/talok-logo-horizontal.png"
+              alt="TALOK"
+              className="h-9 w-auto object-contain"
+            />
             <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700">
               Locataire
             </Badge>

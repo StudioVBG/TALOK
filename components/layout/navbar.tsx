@@ -496,13 +496,12 @@ export function Navbar() {
           <div className="container mx-auto px-4">
             <div className="flex h-16 items-center justify-between">
               <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                    <Building2 className="h-5 w-5" />
-                  </div>
-                  <span className="text-xl font-bold hidden sm:inline-block">
-                    Talok
-                  </span>
+                <div className="flex items-center">
+                  <img
+                    src="/images/talok-logo-horizontal.png"
+                    alt="TALOK"
+                    className="h-10 w-auto object-contain"
+                  />
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -530,13 +529,12 @@ export function Navbar() {
           <div className="flex h-16 items-center justify-between">
             {/* Logo & Brand */}
             <div className="flex items-center gap-6">
-              <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <Building2 className="h-5 w-5" />
-                </div>
-                <span className="text-xl font-extrabold tracking-tight hidden sm:inline-block" style={{ color: "#1B2A6B" }}>
-                  TALOK
-                </span>
+              <Link href={user ? "/dashboard" : "/"} className="flex items-center">
+                <img
+                  src="/images/talok-logo-horizontal.png"
+                  alt="TALOK"
+                  className="h-10 w-auto object-contain"
+                />
               </Link>
 
               {/* Desktop Navigation - Authenticated */}

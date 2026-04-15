@@ -87,9 +87,8 @@ export function DashboardMockup() {
         <div className="flex">
           {/* Sidebar */}
           <div className="hidden w-[140px] shrink-0 bg-[#1E293B] p-3 sm:block">
-            <div className="mb-4 flex items-center gap-2">
-              <img src="/images/talok-icon.png" alt="TALOK" className="h-7 w-7 rounded-lg object-contain" />
-              <span className="text-[10px] font-bold text-white">TALOK</span>
+            <div className="mb-4 flex items-center">
+              <img src="/images/talok-logo-horizontal.png" alt="TALOK" className="h-7 w-auto object-contain" />
             </div>
             {sidebarItems.map((item, i) => (
               <motion.div

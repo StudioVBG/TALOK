@@ -22,14 +22,6 @@ const IMG_CLS: Record<Size, string> = {
   xl: "h-12 w-12",
 };
 
-const TEXT_CLS: Record<Size, string> = {
-  xs: "text-sm",
-  sm: "text-lg",
-  md: "text-xl",
-  lg: "text-2xl",
-  xl: "text-3xl",
-};
-
 // ── TalokMark (icon only) ──────────────────────────────────
 interface MarkProps {
   size?: Size;
@@ -69,44 +61,39 @@ export function TalokBadge({ size = "md", className }: BadgeProps) {
   );
 }
 
-// ── TalokLogo (horizontal: badge + text) ───────────────────
+// ── TalokLogo (horizontal logo PNG — badge intégré + texte) ─
 interface LogoProps {
   size?: Size;
-  variant?: Variant;
+  /** Conservé pour compatibilité — si false, affiche uniquement le badge carré */
   showText?: boolean;
   className?: string;
-  textClassName?: string;
 }
+
+const LOGO_CLS: Record<Size, string> = {
+  xs: "h-5 w-auto",
+  sm: "h-7 w-auto",
+  md: "h-9 w-auto",
+  lg: "h-12 w-auto",
+  xl: "h-14 w-auto",
+};
 
 export function TalokLogo({
   size = "md",
-  variant = "color",
   showText = true,
   className,
-  textClassName,
 }: LogoProps) {
-  const textColor =
-    variant === "inverse"
-      ? "text-white"
-      : variant === "mono"
-        ? ""
-        : "text-foreground";
+  // Si showText=false, on affiche uniquement le badge (icône carrée)
+  if (!showText) {
+    return <TalokBadge size={size} className={className} />;
+  }
 
   return (
-    <span className={cn("inline-flex items-center gap-2", className)}>
-      <TalokBadge size={size} />
-      {showText && (
-        <span
-          className={cn(
-            "font-display font-extrabold tracking-tight",
-            TEXT_CLS[size],
-            textColor,
-            textClassName,
-          )}
-        >
-          TALOK
-        </span>
-      )}
-    </span>
+    <Image
+      src="/images/talok-logo-horizontal.png"
+      alt="TALOK"
+      width={160}
+      height={64}
+      className={cn("shrink-0 object-contain", LOGO_CLS[size], className)}
+    />
   );
 }
