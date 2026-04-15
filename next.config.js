@@ -224,7 +224,7 @@ const nextConfig = {
               "default-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com",
               "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://*.supabase.co https://*.supabase.in blob:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://api-adresse.data.gouv.fr https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org https://api.stripe.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.googleapis.com https://api-adresse.data.gouv.fr https://nominatim.openstreetmap.org https://*.tile.openstreetmap.org https://api.stripe.com https://*.ingest.sentry.io",
               "img-src 'self' blob: data: https://*.supabase.co https://*.googleapis.com https://images.unsplash.com https://*.tile.openstreetmap.org https://tile.openstreetmap.org https://a.tile.openstreetmap.org https://b.tile.openstreetmap.org https://c.tile.openstreetmap.org https://unpkg.com https://*.stripe.com",
               "font-src 'self' https://fonts.gstatic.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com",
@@ -290,7 +290,13 @@ const baseConfig = withBundleAnalyzer(withSerwist(nextConfig));
 // (tentative d'upload de source maps sans credentials).
 module.exports = process.env.SENTRY_AUTH_TOKEN
   ? withSentryConfig(baseConfig, {
-      silent: true,
+      org: "talok",
+      project: "talok",
+      silent: !process.env.CI,
+      widenClientFileUpload: true,
+      tunnelRoute: "/monitoring",
+      disableLogger: true,
+      automaticVercelMonitors: false,
       hideSourceMaps: true,
     })
   : baseConfig;
