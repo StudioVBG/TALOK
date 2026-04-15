@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { exportCSV } from "@/lib/utils/export-csv";
 import {
   Search,
   RefreshCw,
@@ -57,6 +58,7 @@ import {
   Shield,
   Loader2,
   LogIn,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDateShort } from "@/lib/helpers/format";
@@ -166,10 +168,33 @@ export default function AdminUsersPage() {
             Gestion des comptes utilisateurs de la plateforme
           </p>
         </div>
-        <Button variant="outline" onClick={() => refetch()}>
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Actualiser
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              exportCSV(
+                users.map((u: any) => ({
+                  nom: `${u.prenom || ""} ${u.nom || ""}`.trim() || "—",
+                  email: u.email || "—",
+                  role: u.role,
+                  inscription: u.created_at?.split("T")[0] || "",
+                  suspendu: u.suspended ? "Oui" : "Non",
+                })),
+                "utilisateurs",
+                { nom: "Nom", email: "Email", role: "Role", inscription: "Date inscription", suspendu: "Suspendu" }
+              )
+            }
+            disabled={users.length === 0}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Exporter CSV
+          </Button>
+          <Button variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Actualiser
+          </Button>
+        </div>
       </motion.div>
 
       {/* Stats rapides — statut + total */}

@@ -77,8 +77,10 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { exportCSV } from "@/lib/utils/export-csv";
 import { useToast } from "@/components/ui/use-toast";
 
 // ============================================
@@ -497,10 +499,45 @@ export default function AdminSubscriptionsPage() {
           <h1 className="text-2xl font-bold text-foreground">Abonnements</h1>
           <p className="text-muted-foreground">Gérez les abonnements de vos utilisateurs</p>
         </div>
-        <Button variant="outline" onClick={() => { fetchStats(); fetchUsers(); }}>
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Actualiser
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              exportCSV(
+                users.map((u) => ({
+                  utilisateur: `${u.prenom || ""} ${u.nom || ""}`.trim() || u.email,
+                  email: u.email,
+                  plan: u.plan_name,
+                  statut: u.status,
+                  trial_end: u.trial_end?.split("T")[0] || "",
+                  periode_fin: u.current_period_end?.split("T")[0] || "",
+                  stripe_subscription: u.stripe_subscription_id || "",
+                  mrr: u.mrr_contribution || 0,
+                })),
+                "abonnements",
+                {
+                  utilisateur: "Utilisateur",
+                  email: "Email",
+                  plan: "Plan",
+                  statut: "Statut",
+                  trial_end: "Fin essai",
+                  periode_fin: "Fin periode",
+                  stripe_subscription: "Stripe Sub ID",
+                  mrr: "MRR (centimes)",
+                }
+              )
+            }
+            disabled={users.length === 0}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Exporter CSV
+          </Button>
+          <Button variant="outline" onClick={() => { fetchStats(); fetchUsers(); }}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Actualiser
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}

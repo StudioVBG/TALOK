@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
-import { Search, Eye, Building2, Users, Wrench, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Eye, Building2, Users, Wrench, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useDebounce } from "@/lib/hooks/use-debounce";
+import { exportCSV } from "@/lib/utils/export-csv";
 
 interface PeopleClientProps {
   activeTab: "owners" | "tenants" | "vendors";
@@ -110,7 +111,7 @@ export function PeopleClient({ activeTab, initialData, currentPage, currentSearc
                 Rechercher par nom, email ou téléphone
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2 w-full max-w-sm">
+            <div className="flex items-center gap-2 w-full max-w-md">
               <div className="relative flex-1">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -120,6 +121,27 @@ export function PeopleClient({ activeTab, initialData, currentPage, currentSearc
                   className="pl-8"
                 />
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  exportCSV(
+                    initialData.users.map((u: any) => ({
+                      nom: `${u.prenom || ""} ${u.nom || ""}`.trim() || "—",
+                      email: u.user?.email || u.email || "",
+                      telephone: u.telephone || "",
+                      role: activeTab === "owners" ? "owner" : activeTab === "tenants" ? "tenant" : "vendor",
+                      cree_le: u.created_at?.split("T")[0] || "",
+                    })),
+                    activeTab,
+                    { nom: "Nom", email: "Email", telephone: "Telephone", role: "Role", cree_le: "Cree le" }
+                  )
+                }
+                disabled={initialData.users.length === 0}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                CSV
+              </Button>
             </div>
           </div>
         </CardHeader>
