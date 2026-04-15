@@ -1,11 +1,13 @@
-// Edge Function : Génération automatique de quittance de loyer post-paiement
-// À déployer avec: supabase functions deploy receipt-generator
-// Appelé après payment_intent.succeeded (via webhook ou process-outbox)
+// @deprecated 2026-04 — Conservé pour rétro-compatibilité d'un éventuel
+// déploiement antérieur côté Supabase, mais la génération de quittance
+// passe désormais par le pipeline Node :
+//   lib/services/final-documents.service.ts :: ensureReceiptDocument()
+// Appelé en fire-and-forget depuis app/api/webhooks/stripe/route.ts
+// (case payment_intent.succeeded, checkout.session.completed, invoice.paid)
+// et en await depuis app/api/invoices/[id]/mark-paid/route.ts.
+// → NE PAS ÉTENDRE. Toute nouvelle logique va dans final-documents.service.ts.
 //
 // Conformité : Art. 21 de la loi du 6 juillet 1989
-// "Le bailleur est tenu de transmettre gratuitement une quittance au locataire
-//  qui en fait la demande. La quittance porte le détail des sommes versées
-//  par le locataire en distinguant le loyer, le droit au bail et les charges."
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
