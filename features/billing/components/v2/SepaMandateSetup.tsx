@@ -39,7 +39,17 @@ export function SepaMandateSetup({ onSuccess }: SepaMandateSetupProps) {
     const loadLease = async () => {
       try {
         const response = await fetch("/api/tenant/lease", { credentials: "include" });
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
+
+        // 404 = pas de bail actif (état normal pour un locataire nouvellement
+        // inscrit) — on fixe simplement un contexte vide sans afficher de toast
+        // d'erreur. Le bouton de soumission gère déjà ce cas plus bas.
+        if (response.status === 404) {
+          if (!isMounted) return;
+          setLeaseContext({ lease: null, property: null });
+          return;
+        }
+
         if (!response.ok) {
           throw new Error(data.error ?? "Impossible de charger le bail");
         }

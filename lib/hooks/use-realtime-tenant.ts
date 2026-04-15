@@ -161,12 +161,17 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
   // Récupérer les IDs des baux du locataire
   const fetchLeaseIds = useCallback(async () => {
     if (!profile?.id) return [];
-    
-    const { data: signers } = await supabaseRef.current
+
+    const { data: signers, error } = await supabaseRef.current
       .from("lease_signers")
       .select("lease_id")
       .eq("profile_id", profile.id);
-    
+
+    if (error) {
+      console.warn("[useTenantRealtime] fetchLeaseIds error:", error.message);
+      return [];
+    }
+
     return signers?.map(s => s.lease_id).filter(Boolean) || [];
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.id]);
@@ -174,9 +179,9 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
   // Charger les données initiales
   const fetchInitialData = useCallback(async () => {
     if (!profile?.id) return;
-    
+
     setLoading(true);
-    
+
     try {
       // Récupérer les IDs des baux si non fournis
       let ids = options.leaseIds || [];
@@ -184,51 +189,79 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
         ids = await fetchLeaseIds();
         setLeaseIds(ids);
       }
-      
+
       if (ids.length === 0) {
         setLoading(false);
         return;
       }
-      
-      // Récupérer les données en parallèle
-      const [
-        { data: leases },
-        { data: invoices },
-        { data: tickets },
-        { data: signers },
-      ] = await Promise.all([
-        // Baux actifs avec infos financières
-        supabaseRef.current
-          .from("leases")
-          .select("id, loyer, charges_forfaitaires, statut, type_bail, property_id")
-          .in("id", ids),
-        // Factures (toutes les statuts non finaux pour calculer correctement les impayés)
-        supabaseRef.current
-          .from("invoices")
-          .select("id, montant_total, statut, periode, due_date, date_echeance, created_at, type")
-          .in("lease_id", ids)
-          .in("statut", UNPAID_INVOICE_STATUSES as unknown as string[]),
-        // Tickets ouverts
+
+      // Filet défensif : on n'envoie jamais un `in("lease_id", [])` côté
+      // PostgREST — ça génère une URL `lease_id=in.()` qui remonte en 500
+      // dans certaines configurations. Dans tous les autres cas on ignore
+      // silencieusement les ids invalides (non-UUID).
+      const validIds = ids.filter(
+        (id): id is string =>
+          typeof id === "string" &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+      );
+
+      // Récupérer les données en parallèle — `allSettled` pour qu'une
+      // politique RLS cassée sur UNE table ne fasse pas tomber les trois
+      // autres. Chaque query est logguée individuellement si elle échoue,
+      // ce qui évite le "500 en cascade" côté UI locataire.
+      const [leasesRes, invoicesRes, ticketsRes, signersRes] = await Promise.allSettled([
+        validIds.length > 0
+          ? supabaseRef.current
+              .from("leases")
+              .select("id, loyer, charges_forfaitaires, statut, type_bail, property_id")
+              .in("id", validIds)
+          : Promise.resolve({ data: [] as any[], error: null }),
+        validIds.length > 0
+          ? supabaseRef.current
+              .from("invoices")
+              .select("id, montant_total, statut, periode, due_date, date_echeance, created_at, type")
+              .in("lease_id", validIds)
+              .in("statut", UNPAID_INVOICE_STATUSES as unknown as string[])
+          : Promise.resolve({ data: [] as any[], error: null }),
         supabaseRef.current
           .from("tickets")
           .select("id, statut")
           .eq("created_by_profile_id", profile.id)
           .in("statut", ["open", "in_progress"]),
-        // Signatures en attente
         supabaseRef.current
           .from("lease_signers")
           .select("id, signature_status")
           .eq("profile_id", profile.id)
           .eq("signature_status", "pending"),
       ]);
-      
+
+      const extract = <T,>(
+        result: PromiseSettledResult<{ data: T[] | null; error: { message: string } | null }>,
+        label: string
+      ): T[] => {
+        if (result.status === "rejected") {
+          console.warn(`[useTenantRealtime] ${label} rejected:`, result.reason);
+          return [];
+        }
+        if (result.value?.error) {
+          console.warn(`[useTenantRealtime] ${label} error:`, result.value.error.message);
+          return [];
+        }
+        return (result.value?.data ?? []) as T[];
+      };
+
+      const leases = extract<{ id: string; loyer: number; charges_forfaitaires: number; statut: string; type_bail: string; property_id: string }>(leasesRes, "leases");
+      const invoices = extract<any>(invoicesRes, "invoices");
+      const tickets = extract<{ id: string; statut: string }>(ticketsRes, "tickets");
+      const signers = extract<{ id: string; signature_status: string }>(signersRes, "lease_signers");
+
       // Calculer les stats
-      const activeLease = leases?.find(l => l.statut === "active") || leases?.[0];
+      const activeLease = leases.find(l => l.statut === "active") || leases[0];
       const currentRent = activeLease?.loyer || 0;
       const currentCharges = activeLease?.charges_forfaitaires || 0;
       // Source unique : helper centralisé qui filtre uniquement les factures
       // dont la date d'échéance est passée (cohérent avec /tenant/payments).
-      const unpaidAmount = computeUnpaidStats(invoices || []).totalAmount;
+      const unpaidAmount = computeUnpaidStats(invoices).totalAmount;
       
       setData(prev => ({
         ...prev,
@@ -237,8 +270,8 @@ export function useTenantRealtime(options: UseTenantRealtimeOptions = {}) {
         totalMonthly: currentRent + currentCharges,
         unpaidAmount,
         leaseStatus: activeLease?.statut || "",
-        pendingSignatures: signers?.length || 0,
-        openTickets: tickets?.length || 0,
+        pendingSignatures: signers.length,
+        openTickets: tickets.length,
         lastUpdate: new Date(),
       }));
     } catch (error) {
