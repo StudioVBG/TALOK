@@ -26,6 +26,7 @@ import {
   Mail,
   CreditCard,
   Banknote,
+  Paperclip,
   Plus,
   Eye,
   XCircle,
@@ -92,7 +93,76 @@ interface Invoice {
     moyen: string;
     date_paiement: string;
     statut: string;
+    cheque_photo_path?: string | null;
   }>;
+}
+
+/**
+ * Vignette cliquable pour la photo d'un chèque. Résout l'URL signée via
+ * l'API `/api/payments/cheque-photo/[paymentId]` et ouvre la photo en
+ * plein écran (nouvel onglet) au clic.
+ *
+ * Bucket privé → on ne peut pas construire d'URL publique. On récupère
+ * une signed URL (15 min) au mount.
+ */
+function ChequePhotoThumbnail({ paymentId }: { paymentId: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [errored, setErrored] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/payments/cheque-photo/${paymentId}`);
+        if (!res.ok) {
+          if (!cancelled) setErrored(true);
+          return;
+        }
+        const data = await res.json();
+        if (!cancelled && data?.url) setUrl(data.url);
+      } catch {
+        if (!cancelled) setErrored(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [paymentId]);
+
+  if (errored) return null;
+
+  const openFull = () => {
+    window.open(
+      `/api/payments/cheque-photo/${paymentId}?redirect=1`,
+      "_blank",
+      "noopener,noreferrer"
+    );
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={openFull}
+      className="relative flex items-center justify-center shrink-0 w-20 h-[60px] rounded-md overflow-hidden border border-border/60 bg-background hover:ring-2 hover:ring-blue-400 transition-all group"
+      aria-label="Voir le chèque"
+      title="Voir le chèque"
+    >
+      {url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={url}
+          alt="Photo du chèque"
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+      )}
+      <span className="absolute inset-0 flex items-center justify-center gap-1 bg-black/50 text-white text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+        <Paperclip className="w-3 h-3" />
+        Voir
+      </span>
+    </button>
+  );
 }
 
 export default function InvoiceDetailPage() {
@@ -470,19 +540,24 @@ export default function InvoiceDetailPage() {
                     {invoice.payments.map((payment) => (
                       <div
                         key={payment.id}
-                        className="flex items-center justify-between p-3 bg-muted rounded-lg"
+                        className="flex items-center justify-between gap-3 p-3 bg-muted rounded-lg"
                       >
-                        <div>
-                          <p className="font-medium">{payment.montant.toLocaleString("fr-FR")} €</p>
-                          <p className="text-sm text-muted-foreground">
-                            {payment.moyen === "cb" && "Carte bancaire"}
-                            {payment.moyen === "virement" && "Virement"}
-                            {payment.moyen === "prelevement" && "Prélèvement"}
-                            {payment.moyen === "especes" && "Espèces"}
-                            {payment.moyen === "cheque" && "Chèque"}
-                          </p>
+                        <div className="flex items-center gap-3 min-w-0">
+                          {payment.moyen === "cheque" && payment.cheque_photo_path && (
+                            <ChequePhotoThumbnail paymentId={payment.id} />
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-medium">{payment.montant.toLocaleString("fr-FR")} €</p>
+                            <p className="text-sm text-muted-foreground">
+                              {payment.moyen === "cb" && "Carte bancaire"}
+                              {payment.moyen === "virement" && "Virement"}
+                              {payment.moyen === "prelevement" && "Prélèvement"}
+                              {payment.moyen === "especes" && "Espèces"}
+                              {payment.moyen === "cheque" && "Chèque"}
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right shrink-0">
                           <Badge
                             className={cn(
                               (payment.statut === "succeeded" || payment.statut === "paid") && "bg-green-100 text-green-700",

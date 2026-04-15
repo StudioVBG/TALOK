@@ -55,6 +55,7 @@ export async function POST(
       reference?: string;
       bank_name?: string;
       notes?: string;
+      cheque_photo_path?: string;
     }
 
     let body: MarkPaidBody = {};
@@ -66,7 +67,7 @@ export async function POST(
 
     // Support both "moyen" and "payment_method" for backward compatibility
     const paymentMethod = body.moyen || body.payment_method || "autre";
-    const { reference, bank_name, notes, date_paiement } = body;
+    const { reference, bank_name, notes, date_paiement, cheque_photo_path } = body;
 
     // Récupérer la facture — service client pour bypasser RLS ; l'autorisation
     // est vérifiée manuellement ci-dessous via owner_id.
@@ -177,6 +178,16 @@ export async function POST(
         bank_name: bank_name || null,
         notes: notes || null,
       });
+    }
+
+    // Photo optionnelle du chèque (uploadée en amont via POST
+    // /api/payments/cheque-photo). Persistée ici dans la colonne dédiée
+    // `cheque_photo_path` (cf. migration 20260415124844). N'est valable
+    // que pour `moyen = 'cheque'` côté UI, mais on n'enforce pas côté
+    // serveur pour rester flexible (un virement avec justificatif photo
+    // pourrait être un usage futur légitime).
+    if (cheque_photo_path && typeof cheque_photo_path === "string") {
+      paymentData.cheque_photo_path = cheque_photo_path;
     }
 
     const { data: payment, error: paymentError } = await serviceClient

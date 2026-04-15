@@ -107,7 +107,7 @@ export async function GET(
 
     const { data: payments } = await serviceClient
       .from("payments")
-      .select("id, montant, moyen, date_paiement, statut")
+      .select("id, montant, moyen, date_paiement, statut, cheque_photo_path")
       .eq("invoice_id", id)
       .order("date_paiement", { ascending: false });
 
