@@ -1,12 +1,13 @@
 "use client";
 
-import { Suspense, useEffect, useState, useCallback, useRef } from "react";
+import { Suspense, useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { authService } from "@/features/auth/services/auth.service";
+import { createClient } from "@/lib/supabase/client";
 import { Mail, RefreshCw, CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
 
@@ -26,6 +27,9 @@ function VerifyEmailContent() {
   const [email, setEmail] = useState<string>("");
   const [emailSent, setEmailSent] = useState(false);
   const [verified, setVerified] = useState(false);
+
+  // Client Supabase browser (singleton) pour écouter les événements auth temps réel
+  const supabase = useMemo(() => createClient(), []);
 
   // Guard: useSearchParams() peut retourner null pendant le SSR sans Suspense boundary
   const emailParam = searchParams?.get("email") ?? null;
@@ -100,26 +104,39 @@ function VerifyEmailContent() {
   const handleCheckStatus = async () => {
     setLoading(true);
     try {
-      // Essayer de récupérer l'utilisateur, mais ne pas échouer si pas de session
+      // 1. Relire d'abord la session depuis les cookies (fraîchement écrits par le callback)
+      //    getSession() lit l'adaptateur de stockage — indispensable quand le clic du lien
+      //    a eu lieu dans un autre onglet et que les cookies viennent d'être posés.
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.user?.email_confirmed_at) {
+        setVerified(true);
+        toast({
+          title: "Email confirmé",
+          description: "Votre email a été confirmé avec succès !",
+        });
+        setTimeout(() => goToNextStep(), 1000);
+        return;
+      }
+
+      // 2. Si getSession() ne retourne rien (cookies pas encore synchronisés),
+      //    tenter un appel réseau frais via getUser() — ignore les caches locaux.
       try {
-        const user = await authService.getUser();
-        if (user?.email_confirmed_at) {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (!error && user?.email_confirmed_at) {
           setVerified(true);
           toast({
             title: "Email confirmé",
             description: "Votre email a été confirmé avec succès !",
           });
-          setTimeout(() => {
-            goToNextStep();
-          }, 1000);
+          setTimeout(() => goToNextStep(), 1000);
           return;
         }
       } catch (sessionError: any) {
-        // Pas de session active, c'est normal après la création du compte
-        // L'utilisateur doit cliquer sur le lien dans l'email pour créer la session
+        // Pas de session active : c'est normal tant que l'utilisateur n'a pas cliqué le lien
         if (
-          !sessionError.message?.includes("session") &&
-          !sessionError.message?.includes("Auth session missing")
+          !sessionError?.message?.includes("session") &&
+          !sessionError?.message?.includes("Auth session missing")
         ) {
           throw sessionError;
         }
@@ -167,33 +184,63 @@ function VerifyEmailContent() {
     }
   }, [role, router]);
 
-  // Polling automatique toutes les 5 secondes pour détecter la confirmation
+  // Détection automatique de la confirmation email via :
+  //   (a) onAuthStateChange — événements temps réel du client Supabase (SIGNED_IN,
+  //       USER_UPDATED, TOKEN_REFRESHED) dans le même onglet
+  //   (b) polling via getSession() — filet de sécurité pour les cas cross-onglets
+  //       où la pose des cookies par /auth/callback ne déclenche pas d'événement
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (verified) return;
 
+    let cancelled = false;
+
+    const handleConfirmedUser = (userEmailConfirmedAt?: string | null) => {
+      if (cancelled || verified || !userEmailConfirmedAt) return;
+      setVerified(true);
+      if (pollingRef.current) clearInterval(pollingRef.current);
+      toast({
+        title: "Email confirmé",
+        description: "Votre email a été confirmé avec succès !",
+      });
+      setTimeout(() => goToNextStep(), 1500);
+    };
+
+    // (a) Listener temps réel Supabase
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (
+        (event === "SIGNED_IN" ||
+          event === "USER_UPDATED" ||
+          event === "TOKEN_REFRESHED" ||
+          event === "INITIAL_SESSION") &&
+        session?.user?.email_confirmed_at
+      ) {
+        handleConfirmedUser(session.user.email_confirmed_at);
+      }
+    });
+
+    // (b) Polling de secours via getSession() — relit les cookies fraîchement écrits
+    //     par /auth/callback dans un autre onglet sans exiger de session préalable.
     pollingRef.current = setInterval(async () => {
       try {
-        const user = await authService.getUser();
-        if (user?.email_confirmed_at) {
-          setVerified(true);
-          if (pollingRef.current) clearInterval(pollingRef.current);
-          toast({
-            title: "Email confirmé",
-            description: "Votre email a été confirmé avec succès !",
-          });
-          setTimeout(() => goToNextStep(), 1500);
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.email_confirmed_at) {
+          handleConfirmedUser(session.user.email_confirmed_at);
         }
       } catch {
-        // Silencieux — pas de session active
+        // Silencieux — relecture des cookies sans importance si échec ponctuel
       }
     }, 5000);
 
     return () => {
+      cancelled = true;
+      subscription.unsubscribe();
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-  }, [verified, goToNextStep, toast]);
+  }, [verified, goToNextStep, toast, supabase]);
 
   const handleContinue = () => {
     goToNextStep();
