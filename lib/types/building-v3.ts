@@ -42,22 +42,23 @@ export type UnitTemplate =
 export interface BuildingUnit {
   id: string;
   building_id: string;
-  
+
   // Position dans l'immeuble
   floor: number;              // 0 = RDC, 1 = 1er étage, etc.
   position: string;           // "A", "B", "gauche", "droite", etc.
-  
+
   // Type et caractéristiques
   type: BuildingUnitType;
   surface: number;
   nb_pieces: number;
   template?: UnitTemplate;
-  
+  meuble?: boolean;           // SOTA 2026 — fin du hardcode studio/local
+
   // Conditions de location
   loyer_hc: number;
   charges: number;
   depot_garantie: number;
-  
+
   // Statut actuel
   status: BuildingUnitStatus;
   
@@ -156,11 +157,16 @@ export interface BuildingFormData {
   code_postal: string;
   ville: string;
   departement?: string;
-  
+
   // Structure
   building_floors: number;
   construction_year?: number;
-  
+  surface_totale?: number;
+
+  // Mode de possession (SOTA 2026)
+  ownership_type?: 'full' | 'partial';
+  total_lots_in_building?: number;
+
   // Parties communes
   has_ascenseur: boolean;
   has_gardien: boolean;
@@ -168,10 +174,14 @@ export interface BuildingFormData {
   has_digicode: boolean;
   has_local_velo: boolean;
   has_local_poubelles: boolean;
-  
+  has_parking_commun?: boolean;
+  has_jardin_commun?: boolean;
+
   // Lots (état temporaire du wizard)
   building_units: BuildingUnit[];
 }
+
+export type BuildingOwnershipType = 'full' | 'partial';
 
 // ============================================
 // 6. TYPES POUR ACTIONS/API
