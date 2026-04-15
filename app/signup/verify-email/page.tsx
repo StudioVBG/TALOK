@@ -10,6 +10,7 @@ import { authService } from "@/features/auth/services/auth.service";
 import { createClient } from "@/lib/supabase/client";
 import { Mail, RefreshCw, CheckCircle2, ArrowRight, Loader2 } from "lucide-react";
 import { OnboardingShell } from "@/components/onboarding/onboarding-shell";
+import { getOnboardingStartPath } from "@/lib/helpers/role-redirects";
 
 export default function VerifyEmailOnboardingPage() {
   return (
@@ -144,29 +145,13 @@ function VerifyEmailContent() {
   };
 
   const goToNextStep = useCallback(() => {
-    // Redirection selon le rôle
-    switch (role) {
-      case "owner":
-        router.push(`/signup/plan?role=owner`);
-        break;
-      case "tenant":
-        router.push("/tenant/onboarding/context");
-        break;
-      case "provider":
-        router.push("/provider/onboarding/profile");
-        break;
-      case "guarantor":
-        router.push("/guarantor/onboarding/context");
-        break;
-      case "syndic":
-        router.push("/syndic/onboarding/profile");
-        break;
-      case "agency":
-        router.push("/agency/onboarding/profile");
-        break;
-      default:
-        router.push("/dashboard");
+    // Redirection selon le rôle — source unique de vérité
+    // dans lib/helpers/role-redirects.ts#getOnboardingStartPath
+    if (!role) {
+      router.push("/dashboard");
+      return;
     }
+    router.push(getOnboardingStartPath(role));
   }, [role, router]);
 
   // Détection automatique de la confirmation email via :

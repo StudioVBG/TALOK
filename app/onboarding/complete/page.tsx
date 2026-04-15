@@ -3,23 +3,32 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { getRoleDashboardUrl } from '@/lib/helpers/role-redirects'
 
 export default function OnboardingCompletePage() {
   const router = useRouter()
   const supabase = createClient()
   const [countdown, setCountdown] = useState(4)
-  const [destination, setDestination] = useState('/owner/dashboard')
+  const [destination, setDestination] = useState('/dashboard')
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }: any) => {
       if (!session) return
-      supabase.from('profiles').select('role').eq('id', session.user.id).single().then(({ data }: any) => {
-        const dest = data?.role === 'tenant' ? '/tenant/dashboard' : '/owner/dashboard'
-        setDestination(dest)
-        const timer = setInterval(() => {
-          setCountdown((c) => { if (c <= 1) { clearInterval(timer); router.push(dest); return 0 } return c - 1 })
-        }, 1000)
-      })
+      // Filtre sur user_id (et non id — id = profile.id généré par la table,
+      // user_id = auth.users.id). Sans ce correctif la requête ne renvoyait
+      // aucun profil et tous les rôles retombaient sur /owner/dashboard.
+      supabase
+        .from('profiles')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .maybeSingle()
+        .then(({ data }: any) => {
+          const dest = getRoleDashboardUrl(data?.role)
+          setDestination(dest)
+          const timer = setInterval(() => {
+            setCountdown((c) => { if (c <= 1) { clearInterval(timer); router.push(dest); return 0 } return c - 1 })
+          }, 1000)
+        })
     })
   }, [supabase, router])
 

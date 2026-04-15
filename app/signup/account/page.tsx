@@ -142,17 +142,10 @@ function AccountCreationContent() {
     }
   }, [role]);
 
-  const nextStepByRole: Record<UserRole, string> = {
-    owner: "/owner/onboarding/profile",
-    tenant: inviteToken ? `/tenant/onboarding/context?invite=${inviteToken}` : "/tenant/onboarding/context",
-    provider: "/provider/onboarding/profile",
-    guarantor: inviteToken ? `/guarantor/onboarding/context?invite=${inviteToken}` : "/guarantor/onboarding/context",
-    syndic: "/syndic/onboarding/profile",
-    agency: "/agency/onboarding/profile",
-    copro: "/copro/dashboard",
-    admin: "/dashboard",
-    platform_admin: "/admin",
-  };
+  // La prochaine étape après confirmation email est résolue dans
+  // app/auth/callback/route.ts et app/signup/verify-email/page.tsx via
+  // getOnboardingStartPath() (lib/helpers/role-redirects.ts).
+  // Pas de table locale ici pour éviter la divergence entre endroits.
 
   // Helper pour sauvegarder en arrière-plan
   // SECURITY: On exclut les mots de passe du brouillon pour ne jamais les persister

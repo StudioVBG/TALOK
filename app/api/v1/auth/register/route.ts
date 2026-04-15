@@ -32,10 +32,19 @@ export async function POST(request: NextRequest) {
 
     if (validationError) return validationError;
 
+    // Log du rôle reçu avant d'appeler Supabase — utile pour auditer les bugs
+    // de routing par rôle (ex: syndic qui crée un compte tenant).
+    console.log("[register] signUp request", {
+      email: data.email,
+      role: data.role,
+      has_telephone: !!data.telephone,
+    });
+
     const supabase = await createClient();
 
     // Create auth user
-    // Le trigger handle_new_user créera automatiquement le profil via ON CONFLICT
+    // Le trigger handle_new_user lira raw_user_meta_data.role et créera le
+    // profil avec le bon rôle (cf. migration 20260415000000_signup_integrity_guard).
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
@@ -67,11 +76,21 @@ export async function POST(request: NextRequest) {
     const adminClient = supabaseAdmin();
 
     // Le profil est créé par le trigger handle_new_user (ON CONFLICT DO UPDATE)
+    // On relit le rôle réellement écrit en base pour détecter tout écart entre
+    // le rôle demandé (data.role) et le rôle persisté (profile.role).
     const { data: profile } = await adminClient
       .from("profiles")
-      .select("id")
+      .select("id, role")
       .eq("user_id", authData.user.id)
       .maybeSingle();
+
+    if (profile && profile.role !== data.role) {
+      console.error("[register] Role mismatch between request and profile", {
+        user_id: authData.user.id,
+        requested_role: data.role,
+        persisted_role: profile.role,
+      });
+    }
 
     if (profile) {
       // Create specialized profile based on role (upsert to avoid duplicate key errors)

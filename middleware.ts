@@ -149,10 +149,13 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // B5: Redirect authenticated users from /pricing to their dashboard
+  // B5: Redirect authenticated users from /pricing to their dashboard.
+  // Le middleware tourne en Edge runtime et ne peut pas lire le rôle depuis
+  // la DB — on redirige vers /dashboard qui résout le rôle côté serveur Node
+  // via getRoleDashboardUrl() (évite de coincer les non-owners sur /owner).
   if (hasAuthCookie && pathname === "/pricing") {
     const url = request.nextUrl.clone();
-    url.pathname = "/owner/dashboard";
+    url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
 
