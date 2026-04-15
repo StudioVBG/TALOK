@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import {
@@ -23,6 +23,7 @@ import {
   Wallet,
   Banknote,
   PenLine,
+  ArrowRight,
 } from "lucide-react";
 import type { TenantPendingCashReceipt } from "@/features/billing/server/data-fetching";
 import { PaymentCheckout } from "@/features/billing/components/payment-checkout";
@@ -43,6 +44,13 @@ import {
   computePunctualityScore,
   getNextUpcomingInvoice,
 } from "@/lib/payments/unpaid-invoices";
+
+// Miroir client du filet défensif déjà présent côté page de signature
+// (app/tenant/payments/cash-receipt/[id]/page.tsx). Évite de rendre un CTA
+// pointant vers /tenant/payments/cash-receipt/undefined — ce qui génère un
+// 500 côté Postgres (22P02 invalid_text_representation sur le .eq("id",…)).
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface TenantPaymentsClientProps {
   invoices: any[];
@@ -300,7 +308,7 @@ export function TenantPaymentsClient({
         )}
 
         {/* Reçus espèces en attente de contresignature — SOTA 2026 */}
-        {pendingCashReceipts.filter((cr) => !!cr.id).length > 0 && (
+        {pendingCashReceipts.filter((cr) => UUID_REGEX.test(cr.id)).length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -308,7 +316,11 @@ export function TenantPaymentsClient({
             className="space-y-3"
           >
             {pendingCashReceipts
-              .filter((cr) => !!cr.id)
+              // Filet défensif : on n'affiche le bandeau QUE si l'id est un
+              // UUID valide, pour éviter qu'un id corrompu ("undefined", "null",
+              // id tronqué) ne produise une URL invalide ni un 500 Postgres
+              // sur /tenant/payments/cash-receipt/[id].
+              .filter((cr) => UUID_REGEX.test(cr.id))
               .map((cr) => {
                 // Référence affichée : numéro REC-YYYY-MM-XXXX si présent,
                 // sinon fallback sur les 8 premiers caractères de l'id
@@ -319,42 +331,55 @@ export function TenantPaymentsClient({
                     ? cr.receipt_number
                     : cr.id.slice(0, 8).toUpperCase();
 
+                const signatureHref = `/tenant/payments/cash-receipt/${cr.id}`;
+
                 return (
-                  <GlassCard
+                  <Link
                     key={cr.id}
-                    className="p-5 border-amber-200 dark:border-amber-900/50 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 shadow-lg"
+                    href={signatureHref}
+                    aria-label={`Signer le reçu espèces ${referenceLabel} de ${formatCurrency(cr.amount)}`}
+                    className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:ring-offset-2 rounded-2xl"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-start gap-4">
-                        <div className="h-12 w-12 rounded-2xl bg-amber-600 flex items-center justify-center text-white shadow-md shrink-0">
-                          <Banknote className="h-6 w-6" />
+                    <GlassCard
+                      className="p-5 border-amber-200 dark:border-amber-900/50 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30 shadow-lg cursor-pointer transition-all hover:shadow-xl hover:border-amber-300 dark:hover:border-amber-800"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <div className="h-12 w-12 rounded-2xl bg-amber-600 flex items-center justify-center text-white shadow-md shrink-0">
+                            <Banknote className="h-6 w-6" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest mb-1">
+                              Signature requise — Reçu espèces
+                            </p>
+                            <p className="text-lg font-black text-foreground">
+                              {formatCurrency(cr.amount)} · {cr.owner_name}
+                            </p>
+                            <p className="text-sm text-muted-foreground mt-0.5">
+                              {cr.periode ? `Période ${cr.periode}` : "Paiement en espèces"}
+                              {cr.property_address ? ` · ${cr.property_address}` : ""}
+                            </p>
+                            <p className="text-xs text-muted-foreground/80 mt-1">
+                              Référence : {referenceLabel}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-widest mb-1">
-                            Signature requise — Reçu espèces
-                          </p>
-                          <p className="text-lg font-black text-foreground">
-                            {formatCurrency(cr.amount)} · {cr.owner_name}
-                          </p>
-                          <p className="text-sm text-muted-foreground mt-0.5">
-                            {cr.periode ? `Période ${cr.periode}` : "Paiement en espèces"}
-                            {cr.property_address ? ` · ${cr.property_address}` : ""}
-                          </p>
-                          <p className="text-xs text-muted-foreground/80 mt-1">
-                            Référence : {referenceLabel}
-                          </p>
-                        </div>
+                        {/* Visuel "bouton" — le vrai lien cliquable est le
+                            Link parent, on évite un <a> imbriqué. */}
+                        <span
+                          className={cn(
+                            buttonVariants({ variant: "default" }),
+                            "rounded-xl font-bold bg-amber-600 hover:bg-amber-700 text-white shrink-0"
+                          )}
+                          aria-hidden="true"
+                        >
+                          <PenLine className="mr-2 h-4 w-4" />
+                          Signer le reçu
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </span>
                       </div>
-                      <Button
-                        asChild
-                        className="rounded-xl font-bold bg-amber-600 hover:bg-amber-700 shrink-0"
-                      >
-                        <Link href={`/tenant/payments/cash-receipt/${cr.id}`}>
-                          <PenLine className="mr-2 h-4 w-4" /> Signer le reçu
-                        </Link>
-                      </Button>
-                    </div>
-                  </GlassCard>
+                    </GlassCard>
+                  </Link>
                 );
               })}
           </motion.div>
