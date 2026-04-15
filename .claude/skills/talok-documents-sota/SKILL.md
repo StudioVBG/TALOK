@@ -29,9 +29,24 @@ description: >
 - Titre anciens documents : la DB garde encore l'original_filename brut pour les docs existants
 
 ### Encore à implémenter
-- Génération quittances automatique (receipt-generator.ts à brancher webhook Stripe)
 - Génération PDF bail signé après signature
 - Barre progression onboarding documents nouveaux comptes
+
+### Génération quittances — EN PRODUCTION (2026-04-15)
+- `lib/services/receipt-generator.ts` (605 lignes) : PDF pdf-lib conforme ALUR
+  (art. 21 loi 89-462 + décret 2015-587, loyer nu / charges / régul séparés)
+- `lib/services/final-documents.service.ts :: ensureReceiptDocument(supabase, paymentId)` :
+  orchestrateur idempotent (lookup metadata->>payment_id, upload storage,
+  INSERT documents type='quittance', INSERT receipts, UPDATE invoices
+  receipt_generated + receipt_document_id + receipt_generated_at)
+- Branchements :
+  - `app/api/webhooks/stripe/route.ts` cases `payment_intent.succeeded`
+    (fire-and-forget), `checkout.session.completed` et `invoice.paid` (await)
+  - `app/api/invoices/[id]/mark-paid/route.ts` (paiement manuel, await)
+  - `app/api/leases/[id]/generate-receipt/route.ts` (régénération manuelle owner-only)
+  - `app/api/invoices/[id]/receipt/route.ts` + `/api/payments/[pid]/receipt`
+    (download tenant, génère à la volée si absent)
+- Backfill : `scripts/backfill-receipts.ts` (npx tsx, supporte --lease-id= et --dry-run)
 
 ---
 
@@ -220,19 +235,23 @@ return displayDocs.map(doc =>
 
 ## 8. Mise à jour titres anciens documents (SQL)
 
+**Source canonique des types** : `lib/documents/constants.ts` (DOCUMENT_TYPES).
+Important : le type quittance s'écrit `quittance` (pas `quittance_loyer`),
+et les EDL utilisent `EDL_entree` / `EDL_sortie` en capitales.
+
 ```sql
 -- Corriger les titres bruts des documents existants
 UPDATE documents SET
   title = CASE
-    WHEN type = 'cni_recto' THEN 'Carte d''Identité (Recto)'
-    WHEN type = 'cni_verso' THEN 'Carte d''Identité (Verso)'
-    WHEN type = 'assurance_habitation' THEN 'Attestation d''assurance'
-    WHEN type = 'contrat_bail' THEN 'Contrat de bail'
-    WHEN type = 'edl_entree' THEN 'État des lieux d''entrée'
-    WHEN type = 'edl_sortie' THEN 'État des lieux de sortie'
-    WHEN type = 'quittance_loyer' THEN 'Quittance de loyer'
+    WHEN type = 'cni_recto' THEN 'Carte d''identité (recto)'
+    WHEN type = 'cni_verso' THEN 'Carte d''identité (verso)'
+    WHEN type IN ('attestation_assurance', 'assurance_pno') THEN 'Attestation d''assurance'
+    WHEN type IN ('bail', 'bail_signe_locataire', 'bail_signe_proprietaire') THEN 'Contrat de bail'
+    WHEN type = 'EDL_entree' THEN 'État des lieux d''entrée'
+    WHEN type = 'EDL_sortie' THEN 'État des lieux de sortie'
+    WHEN type = 'quittance' THEN 'Quittance de loyer'
     WHEN type = 'avis_imposition' THEN 'Avis d''imposition'
-    WHEN type = 'bulletin_salaire' THEN 'Bulletin de salaire'
+    WHEN type = 'bulletin_paie' THEN 'Bulletin de paie'
     WHEN type = 'dpe' THEN 'Diagnostic de performance énergétique'
     ELSE title
   END
@@ -244,23 +263,60 @@ WHERE title IS NULL
 
 ---
 
-## 9. Génération automatique de documents (à implémenter)
+## 9. Génération automatique de documents
 
-### Quittances — lib/documents/receipt-generator.ts
+### Quittances — DÉJÀ EN PRODUCTION ✅
+**Point d'entrée unique** : `lib/services/final-documents.service.ts` → `ensureReceiptDocument(supabase, paymentId)`.
+Jamais importer `lib/documents/receipt-generator.ts` (supprimé — était du code mort).
+
 ```typescript
-export async function generateReceipt(paymentId: string): Promise<Document> {
-  // 1. Charger payment + invoice + lease + tenant + owner + property
-  // 2. Générer HTML depuis template quittance
-  // 3. Créer PDF via pdf-lib (installé)
-  // 4. Upload : documents/quittances/{leaseId}/{YYYY-MM}.pdf
-  // 5. INSERT documents : type='quittance_loyer', is_generated=true, visible_tenant=true
-  // 6. Email Resend au locataire avec PDF
-  // 7. UPDATE invoices SET receipt_generated = true
-}
+import { ensureReceiptDocument } from '@/lib/services/final-documents.service'
 
-// Brancher dans app/api/webhooks/stripe/route.ts :
-// case 'payment_intent.succeeded' → generateReceipt() (non-bloquant)
+// Idempotent : si quittance existe déjà pour ce payment_id → retourne sans régénérer.
+const result = await ensureReceiptDocument(supabase, paymentId)
+// result : { created, storagePath, documentId, pdfBytes?, receiptMeta? }
+// - result.created === true uniquement au premier passage
+// - pdfBytes + receiptMeta présents uniquement si created === true
+//   (permet à l'appelant d'envoyer l'email sans relire le storage)
 ```
+
+**Flux interne** :
+1. Lookup `documents WHERE type='quittance' AND metadata->>payment_id = :pid` → short-circuit si existe
+2. Lookup même query mais par `metadata->>invoice_id` (fallback)
+3. Charge `payment -> invoice -> lease -> property` + `tenant profile` + `resolveOwnerIdentity`
+4. Génère PDF via `generateReceiptPDF()` de `lib/services/receipt-generator.ts` (605 lignes, ALUR)
+5. Upload `storage.documents/quittances/{leaseId}/{paymentId}.pdf` (cacheControl 1 an, upsert)
+6. INSERT `documents` : `type='quittance'`, `category='finance'`, `is_generated=true`, `visible_tenant=true`, metadata = `{invoice_id, payment_id, period, amount, final: true}`
+7. INSERT `receipts` (table audit trail)
+8. UPDATE `invoices` : `receipt_generated=true`, `receipt_document_id=...`, `receipt_generated_at=NOW()`
+
+**Type documents canonique** : `quittance` (pas `quittance_loyer`). Le composant tenant accepte aussi `quittance_loyer` et `receipt` en défensif (`app/tenant/documents/page.tsx:252`).
+
+**Branchements actifs** :
+| Déclencheur | Fichier | Mode |
+|-------------|---------|------|
+| `payment_intent.succeeded` (Stripe CB/SEPA) | `app/api/webhooks/stripe/route.ts:869` | fire-and-forget |
+| `checkout.session.completed` | `app/api/webhooks/stripe/route.ts:781` | await |
+| `invoice.paid` (Stripe subscription) | `app/api/webhooks/stripe/route.ts:1154` | await |
+| Paiement manuel (owner clique +Enregistrer) | `app/api/invoices/[id]/mark-paid/route.ts:260` | await |
+| Régénération manuelle owner | `app/api/leases/[id]/generate-receipt/route.ts:127` | await |
+| Download tenant (à la volée si absent) | `app/api/invoices/[id]/receipt/route.ts`, `/api/payments/[pid]/receipt` | await |
+
+**Backfill rétroactif** (paiements antérieurs au déploiement du pipeline) :
+```bash
+npx tsx scripts/backfill-receipts.ts --dry-run              # simulation
+npx tsx scripts/backfill-receipts.ts                        # toute la base
+npx tsx scripts/backfill-receipts.ts --lease-id=<uuid>      # un seul bail
+```
+
+**Email locataire** (PDF en PJ) : `lib/emails/send-receipt-email.ts`
+- Idempotency key Resend : `receipt-email/${paymentId}` → pas de doublons
+- Tags Resend : `type=receipt_email`, `payment_id=...` (analytics)
+- Mention légale art. 21 loi 89-462 inline
+
+### Edge Function Supabase Deno — DEPRECATED
+`supabase/functions/receipt-generator/index.ts` : conservé pour rétro-compat,
+mais marqué `@deprecated`. Toute nouvelle logique va dans le pipeline Node.
 
 ### Bail signé PDF — lib/documents/lease-pdf-generator.ts
 ```typescript
@@ -307,12 +363,12 @@ REQUIRED_TENANT_DOCS = [
   { type: 'bulletin_salaire', required: true },
 ]
 
-// Documents générés automatiquement
+// Documents générés automatiquement (cf. AUTO_GENERATED_DOCS dans constants.ts)
 AUTO_GENERATED_DOCS = [
-  { trigger: 'lease.signed', type: 'contrat_bail' },
-  { trigger: 'edl.signed', type: 'edl_entree' },
-  { trigger: 'payment.confirmed', type: 'quittance_loyer' },
-  { trigger: 'lease.ended', type: 'edl_sortie' },
+  { trigger: 'lease_sealed', type: 'bail' },
+  { trigger: 'payment_succeeded', type: 'quittance' },        // ACTIF en prod
+  { trigger: 'edl_signed', type: 'EDL_entree' },
+  { trigger: 'edl_sortie_signed', type: 'EDL_sortie' },
 ]
 ```
 
@@ -349,7 +405,7 @@ Le flux justificatif traverse les deux skills :
 |-----------------|--------------------------------|
 | Table `documents` (upload, metadata, storage_path) | Table `document_analyses` (OCR, confidence, suggested_account) |
 | Bucket Supabase Storage, signed URLs | Prompt `OCR_EXTRACTION_SYSTEM_PROMPT` |
-| `receipt-generator.ts` (génération quittance PDF) | Écriture auto `rent_received` déclenchée par webhook Stripe |
+| `ensureReceiptDocument` (quittance PDF ALUR) | `ensureReceiptAccountingEntry` + écriture `rent_received` double-entry |
 | SHA-256, archivage, coffre-fort | Durée conservation 10 ans (règle compta) |
 | `useGedUpload`, hooks React documents | Pas de hooks React compta (server-side only) |
 
