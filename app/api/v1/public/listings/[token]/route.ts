@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from 'next/server';
 import { getServiceClient } from '@/lib/supabase/service-client';
+import { fetchPropertyCoverUrl } from '@/lib/properties/cover-url';
 
 /**
  * GET /api/v1/public/listings/[token] — Page publique d'une annonce (pas d'auth)
@@ -21,7 +22,7 @@ export async function GET(
         id, title, description, rent_amount_cents, charges_cents,
         available_from, bail_type, photos, public_url_token, views_count,
         property:properties!inner(
-          id, adresse_complete, ville, code_postal, type, surface, nb_pieces, cover_url,
+          id, adresse_complete, ville, code_postal, type, surface, nb_pieces,
           dpe_classe, ges_classe, etage, nb_etages, balcon, terrasse, parking, cave,
           chauffage_type, chauffage_mode
         )
@@ -40,6 +41,11 @@ export async function GET(
       .from('property_listings')
       .update({ views_count: (listingData.views_count || 0) + 1 } as any)
       .eq('id', listingData.id);
+
+    // Enrichir avec cover_url (depuis la table photos)
+    if (listingData.property?.id) {
+      listingData.property.cover_url = await fetchPropertyCoverUrl(serviceClient, listingData.property.id);
+    }
 
     return NextResponse.json({ listing });
   } catch (error: unknown) {

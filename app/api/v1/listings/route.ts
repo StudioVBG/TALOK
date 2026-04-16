@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/helpers/auth-helper';
 import { createListingSchema } from '@/lib/validations/candidatures';
 import { getServiceClient } from '@/lib/supabase/service-client';
+import { fetchPropertyCoverUrls } from '@/lib/properties/cover-url';
 import { z } from 'zod';
 
 /**
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
       .select(`
         *,
         property:properties!inner(
-          id, adresse_complete, ville, code_postal, type, surface, nb_pieces, cover_url
+          id, adresse_complete, ville, code_postal, type, surface, nb_pieces
         )
       `)
       .eq('owner_id', profile.id)
@@ -58,8 +59,17 @@ export async function GET(request: Request) {
       }
     }
 
+    // Enrichir les annonces avec cover_url (depuis la table photos)
+    const propertyIds = (data || [])
+      .map((l: any) => l.property?.id)
+      .filter((id: any): id is string => !!id);
+    const coverMap = await fetchPropertyCoverUrls(serviceClient, propertyIds);
+
     const listings = (data || []).map((listing: any) => ({
       ...listing,
+      property: listing.property
+        ? { ...listing.property, cover_url: coverMap.get(listing.property.id) ?? null }
+        : listing.property,
       applications_count: applicationCounts[listing.id] || 0,
     }));
 

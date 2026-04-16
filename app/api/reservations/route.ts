@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import { fetchPropertyCoverUrls } from "@/lib/properties/cover-url";
 
 const createReservationSchema = z.object({
   listing_id: z.string().uuid(),
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
         *,
         listing:seasonal_listings!listing_id(
           id, title, property_id,
-          property:properties!property_id(id, adresse_complete, ville, cover_url)
+          property:properties!property_id(id, adresse_complete, ville)
         )
       `)
       .in("listing_id",
@@ -74,6 +75,8 @@ export async function GET(request: Request) {
 
     const { data: reservations, error: fetchError } = await query;
 
+    let rows: any[] = reservations ?? [];
+
     if (fetchError) {
       // Fallback: fetch listing IDs first, then filter
       const { data: listings } = await supabase
@@ -92,7 +95,7 @@ export async function GET(request: Request) {
           *,
           listing:seasonal_listings!listing_id(
             id, title, property_id,
-            property:properties!property_id(id, adresse_complete, ville, cover_url)
+            property:properties!property_id(id, adresse_complete, ville)
           )
         `)
         .in("listing_id", listingIds)
@@ -104,10 +107,21 @@ export async function GET(request: Request) {
       const { data: fallbackData, error: fallbackError } = await fallbackQuery;
       if (fallbackError) throw new ApiError(500, fallbackError.message);
 
-      return NextResponse.json({ reservations: fallbackData ?? [] });
+      rows = fallbackData ?? [];
     }
 
-    return NextResponse.json({ reservations: reservations ?? [] });
+    // Enrichir avec cover_url (depuis la table photos)
+    const propertyIds = rows
+      .map((r: any) => r.listing?.property?.id)
+      .filter((id: any): id is string => !!id);
+    const coverMap = await fetchPropertyCoverUrls(supabase, propertyIds);
+    for (const r of rows) {
+      if (r.listing?.property?.id) {
+        r.listing.property.cover_url = coverMap.get(r.listing.property.id) ?? null;
+      }
+    }
+
+    return NextResponse.json({ reservations: rows });
   } catch (err) {
     return handleApiError(err);
   }

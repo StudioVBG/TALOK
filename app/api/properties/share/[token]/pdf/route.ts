@@ -88,7 +88,7 @@ async function buildPropertyPdf(
     y -= 18;
   };
 
-  const type = property.type_bien ?? property.type ?? "Logement";
+  const type = property.type ?? "Logement";
   const address = `${property.adresse_complete ?? ""} ${property.code_postal ?? ""} ${property.ville ?? ""}`.trim();
   const loyer = Number(property.loyer_hc ?? 0);
   const charges = Number(property.charges_mensuelles ?? 0);
@@ -115,12 +115,12 @@ async function buildPropertyPdf(
   drawLine("Total mensuel", formatCurrency(loyer + charges));
   drawLine("Dépôt de garantie", formatCurrency(depot));
 
-  if (property.type_bien === "parking" || property.type === "parking") {
+  if (property.type === "parking") {
     y -= 6;
     drawHeading("Stationnement", 14);
-    drawLine("Type", capitalize(property.parking_details?.placement_type ?? property.gabarit ?? "N/A"));
-    drawLine("Niveau", property.niveau ?? "—");
-    drawLine("Numéro / repère", property.numero_place ?? "—");
+    drawLine("Type", capitalize(property.parking_details?.placement_type ?? property.parking_gabarit ?? "N/A"));
+    drawLine("Niveau", property.parking_niveau ?? "—");
+    drawLine("Numéro / repère", property.parking_numero ?? "—");
   }
 
   return doc.save();

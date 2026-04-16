@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import { fetchPropertyCoverUrl } from "@/lib/properties/cover-url";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -33,7 +34,7 @@ async function getReservationWithAuth(supabase: any, reservationId: string, user
     .select(`
       *,
       listing:seasonal_listings!listing_id(id, title, owner_id,
-        property:properties!property_id(id, adresse_complete, ville, cover_url)
+        property:properties!property_id(id, adresse_complete, ville)
       )
     `)
     .eq("id", reservationId)
@@ -41,6 +42,14 @@ async function getReservationWithAuth(supabase: any, reservationId: string, user
 
   if (error || !reservation) throw new ApiError(404, "Réservation non trouvée");
   if (reservation.listing?.owner_id !== profile.id) throw new ApiError(403, "Accès refusé");
+
+  // Enrichir avec cover_url (depuis la table photos)
+  if (reservation.listing?.property?.id) {
+    reservation.listing.property.cover_url = await fetchPropertyCoverUrl(
+      supabase,
+      reservation.listing.property.id,
+    );
+  }
 
   return { reservation, profile };
 }

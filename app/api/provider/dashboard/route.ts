@@ -52,7 +52,7 @@ export async function GET() {
       const [workOrdersResult, reviewsResult] = await Promise.allSettled([
         supabase
           .from("work_orders")
-          .select("id, statut, cout_estime, date_intervention_prevue, created_at, ticket:tickets(titre, priorite), property:properties(adresse, ville)")
+          .select("id, statut, cout_estime, date_intervention_prevue, created_at, ticket:tickets(titre, priorite), property:properties(adresse_complete, ville)")
           .eq("provider_id", profile.id)
           .order("created_at", { ascending: false })
           .limit(20),

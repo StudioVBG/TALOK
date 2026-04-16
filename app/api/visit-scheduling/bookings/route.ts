@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 import { createVisitBookingSchema } from "@/lib/validations";
+import { fetchPropertyCoverUrls } from "@/lib/properties/cover-url";
 
 /**
  * GET /api/visit-scheduling/bookings
@@ -59,7 +60,6 @@ export async function GET(request: Request) {
           adresse_complete,
           ville,
           code_postal,
-          cover_url,
           owner_id
         ),
         tenant:profiles!tenant_id(
@@ -125,10 +125,21 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
+    // Enrichir avec cover_url (depuis la table photos)
+    const allBookings = (bookings || []) as any[];
+    const propertyIds = allBookings
+      .map((b: any) => b.property?.id)
+      .filter((id: any): id is string => !!id);
+    const coverMap = await fetchPropertyCoverUrls(supabaseClient, propertyIds);
+    for (const b of allBookings) {
+      if (b.property?.id) {
+        b.property.cover_url = coverMap.get(b.property.id) ?? null;
+      }
+    }
+
     // Statistiques pour le propriétaire
     let stats = null;
     if (isOwner) {
-      const allBookings = bookings || [];
       stats = {
         total: allBookings.length,
         pending: allBookings.filter((b: any) => b.status === "pending").length,
@@ -140,9 +151,9 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      bookings,
+      bookings: allBookings,
       stats,
-      total: bookings?.length || 0,
+      total: allBookings.length,
     });
   } catch (error: unknown) {
     console.error("GET /api/visit-scheduling/bookings error:", error);

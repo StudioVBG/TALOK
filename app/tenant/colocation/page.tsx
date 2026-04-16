@@ -126,7 +126,6 @@ export default function TenantColocationPage() {
               nb_pieces,
               dpe_classe_energie,
               dpe_classe_climat,
-              cover_url,
               owner_id
             )
           )

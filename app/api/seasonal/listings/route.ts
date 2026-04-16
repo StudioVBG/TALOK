@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import { fetchPropertyCoverUrls } from "@/lib/properties/cover-url";
 
 const createListingSchema = z.object({
   property_id: z.string().uuid(),
@@ -47,7 +48,7 @@ export async function GET(request: Request) {
       .select(`
         *,
         property:properties!property_id(
-          id, adresse_complete, ville, code_postal, cover_url
+          id, adresse_complete, ville, code_postal
         )
       `)
       .eq("owner_id", profile.id)
@@ -55,7 +56,19 @@ export async function GET(request: Request) {
 
     if (listError) throw new ApiError(500, listError.message);
 
-    return NextResponse.json({ listings: listings ?? [] });
+    // Enrichir avec cover_url (depuis la table photos)
+    const rows = (listings ?? []) as any[];
+    const propertyIds = rows
+      .map((l: any) => l.property?.id)
+      .filter((id: any): id is string => !!id);
+    const coverMap = await fetchPropertyCoverUrls(supabase, propertyIds);
+    for (const row of rows) {
+      if (row.property?.id) {
+        row.property.cover_url = coverMap.get(row.property.id) ?? null;
+      }
+    }
+
+    return NextResponse.json({ listings: rows });
   } catch (err) {
     return handleApiError(err);
   }

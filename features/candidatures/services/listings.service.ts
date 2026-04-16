@@ -3,6 +3,7 @@
  */
 
 import { createClient } from '@/lib/supabase/client';
+import { fetchPropertyCoverUrl, fetchPropertyCoverUrls } from '@/lib/properties/cover-url';
 import type {
   PropertyListing,
   PropertyListingWithProperty,
@@ -22,13 +23,21 @@ export class ListingsService {
       .select(`
         *,
         property:properties!inner(
-          id, adresse_complete, ville, code_postal, type, surface, nb_pieces, cover_url
+          id, adresse_complete, ville, code_postal, type, surface, nb_pieces
         )
       `)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return (data as unknown as PropertyListingWithProperty[]) || [];
+    const listings = (data as unknown as PropertyListingWithProperty[]) || [];
+    const coverMap = await fetchPropertyCoverUrls(
+      this.supabase,
+      listings.map((l) => l.property?.id).filter((id): id is string => !!id),
+    );
+    for (const l of listings) {
+      if (l.property) l.property.cover_url = coverMap.get(l.property.id) ?? null;
+    }
+    return listings;
   }
 
   /**
@@ -40,7 +49,7 @@ export class ListingsService {
       .select(`
         *,
         property:properties!inner(
-          id, adresse_complete, ville, code_postal, type, surface, nb_pieces, cover_url
+          id, adresse_complete, ville, code_postal, type, surface, nb_pieces
         )
       `)
       .eq('id', id)
@@ -50,7 +59,11 @@ export class ListingsService {
       if (error.code === 'PGRST116') return null;
       throw error;
     }
-    return data as unknown as PropertyListingWithProperty;
+    const listing = data as unknown as PropertyListingWithProperty;
+    if (listing.property) {
+      listing.property.cover_url = await fetchPropertyCoverUrl(this.supabase, listing.property.id);
+    }
+    return listing;
   }
 
   /**
@@ -62,7 +75,7 @@ export class ListingsService {
       .select(`
         *,
         property:properties!inner(
-          id, adresse_complete, ville, code_postal, type, surface, nb_pieces, cover_url
+          id, adresse_complete, ville, code_postal, type, surface, nb_pieces
         )
       `)
       .eq('public_url_token', token)
@@ -73,7 +86,11 @@ export class ListingsService {
       if (error.code === 'PGRST116') return null;
       throw error;
     }
-    return data as unknown as PropertyListingWithProperty;
+    const listing = data as unknown as PropertyListingWithProperty;
+    if (listing.property) {
+      listing.property.cover_url = await fetchPropertyCoverUrl(this.supabase, listing.property.id);
+    }
+    return listing;
   }
 
   /**

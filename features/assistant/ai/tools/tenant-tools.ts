@@ -52,7 +52,7 @@ export const getMyLeaseTool = tool(
             adresse_complete,
             ville,
             code_postal,
-            type_bien,
+            type,
             surface,
             nb_pieces
           )
@@ -93,7 +93,7 @@ export const getMyLeaseTool = tool(
 🏠 **Logement :**
 - Adresse : ${property?.adresse_complete || "N/A"}
 - Ville : ${property?.code_postal || ""} ${property?.ville || "N/A"}
-- Type : ${property?.type_bien || "N/A"} de ${property?.surface || "?"}m² (${property?.nb_pieces || "?"} pièces)
+- Type : ${property?.type || "N/A"} de ${property?.surface || "?"}m² (${property?.nb_pieces || "?"} pièces)
 
 💰 **Loyer :**
 - Loyer nu : ${leaseData.loyer || 0}€

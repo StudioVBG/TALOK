@@ -202,26 +202,30 @@ export async function getDiagnosticAlerts(ownerId: string): Promise<Alert[]> {
   const alertDate = new Date();
   alertDate.setDate(alertDate.getDate() + 60);
   
+  // NOTE: la colonne réelle est `dpe_date_realisation` (date de réalisation du DPE).
+  // Le calcul ci-dessous applique la durée de validité de 10 ans.
   const { data: properties } = await supabase
     .from("properties")
     .select(`
       id,
       adresse_complete,
       ville,
-      dpe_date,
+      dpe_date_realisation,
       dpe_classe_energie
     `)
     .eq("owner_id", ownerId)
-    .not("dpe_date", "is", null);
+    .not("dpe_date_realisation", "is", null);
 
   if (properties) {
     const now = new Date();
-    
-    for (const property of properties) {
-      if (!property.dpe_date) continue;
-      
+
+    for (const propertyRaw of properties as any[]) {
+      const property = propertyRaw as { id: string; adresse_complete: string; dpe_date_realisation?: string | null };
+      const dpeDateValue = property.dpe_date_realisation;
+      if (!dpeDateValue) continue;
+
       // DPE valide 10 ans
-      const dpeDate = new Date(property.dpe_date);
+      const dpeDate = new Date(dpeDateValue);
       const expirationDate = new Date(dpeDate);
       expirationDate.setFullYear(expirationDate.getFullYear() + 10);
       

@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 import { getVisitSlotsQuerySchema, generateSlotsSchema } from "@/lib/validations";
+import { fetchPropertyCoverUrl } from "@/lib/properties/cover-url";
 
 /**
  * GET /api/visit-scheduling/slots
@@ -67,8 +68,7 @@ export async function GET(request: Request) {
           id,
           adresse_complete,
           ville,
-          code_postal,
-          cover_url
+          code_postal
         )
       `)
       .eq("property_id", queryParams.property_id as any)
@@ -88,8 +88,16 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
+    // Enrichir avec cover_url (depuis la table photos)
+    // Tous les slots concernent la même propriété : un seul lookup suffit.
+    const cover_url = await fetchPropertyCoverUrl(supabaseClient, queryParams.property_id as string);
+    const enrichedSlots = (slots || []).map((slot: any) => ({
+      ...slot,
+      property: slot.property ? { ...slot.property, cover_url } : slot.property,
+    }));
+
     // Grouper par date pour faciliter l'affichage
-    const slotsByDate = (slots || []).reduce((acc: any, slot: any) => {
+    const slotsByDate = enrichedSlots.reduce((acc: any, slot: any) => {
       const date = slot.slot_date;
       if (!acc[date]) {
         acc[date] = [];
@@ -99,9 +107,9 @@ export async function GET(request: Request) {
     }, {});
 
     return NextResponse.json({
-      slots,
+      slots: enrichedSlots,
       slotsByDate,
-      total: slots?.length || 0,
+      total: enrichedSlots.length,
     });
   } catch (error: unknown) {
     console.error("GET /api/visit-scheduling/slots error:", error);

@@ -72,14 +72,14 @@ const updatePropertySchemaV3 = z.object({
   has_cave: z.boolean().optional().nullable(),
 
   // === Publication ===
-  visibility: z.enum(["public", "private"]).optional(),
-  available_from: z.string().optional().nullable(),
+  // NOTE: `visibility`, `available_from`, `description` sont des champs UI/wizard,
+  // pas des colonnes de la table `properties`. Retirés du schéma + strip-list
+  // côté UPDATE pour éviter les erreurs Postgres "column does not exist".
   etat: z.enum(["draft", "published", "archived"]).optional(),
 
   // === Médias ===
   visite_virtuelle_url: z.string().url().optional().nullable().or(z.literal("")),
-  description: z.string().optional().nullable(),
-}).passthrough(); // SOTA 2026: Permet les champs additionnels pour compatibilité future
+}); // .passthrough() retiré pour bloquer les colonnes fantômes (audit 2026-04)
 
 // Alias pour compatibilité
 const updatePropertySchema = updatePropertySchemaV3;
@@ -246,10 +246,24 @@ export async function updateProperty(
     return { success: false, error: "Propriété non trouvée ou accès refusé" };
   }
 
-  // 5. Mettre à jour
+  // 5. Strip défensif des colonnes fantômes (au cas où zod laisserait passer
+  //    quelque chose via une évolution future du schéma).
+  const PHANTOM_FIELDS = [
+    'building_floors', 'building_units',
+    'has_ascenseur', 'has_gardien', 'has_interphone', 'has_digicode',
+    'has_local_velo', 'has_local_poubelles',
+    'mode_location', 'visibility', 'available_from', 'description',
+    'type_bien', 'surface_terrain',
+  ];
+  const safeUpdate = updateData as Record<string, unknown>;
+  for (const field of PHANTOM_FIELDS) {
+    delete safeUpdate[field];
+  }
+
+  // 6. Mettre à jour
   const { error: updateError } = await supabase
     .from("properties")
-    .update(updateData as any)
+    .update(safeUpdate as any)
     .eq("id", id);
 
   if (updateError) {

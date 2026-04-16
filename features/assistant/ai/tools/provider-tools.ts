@@ -57,9 +57,8 @@ export const getMyWorkOrdersTool = tool(
             adresse_complete,
             ville,
             code_postal,
-            type_bien,
+            type,
             etage,
-            code_acces,
             digicode
           ),
           creator:profiles!tickets_created_by_profile_id_fkey (
@@ -112,10 +111,10 @@ export const getMyWorkOrdersTool = tool(
       let details = `**#${ref}** ${priority}
 📍 ${property?.adresse_complete || "Adresse N/A"}
    ${property?.code_postal || ""} ${property?.ville || ""}
-   ${property?.type_bien || ""} ${property?.etage ? `- Étage ${property.etage}` : ""}`;
-      
-      if (property?.code_acces || property?.digicode) {
-        details += `\n   🔑 Code: ${property?.digicode || property?.code_acces}`;
+   ${property?.type || ""} ${property?.etage ? `- Étage ${property.etage}` : ""}`;
+
+      if (property?.digicode) {
+        details += `\n   🔑 Code: ${property?.digicode}`;
       }
       
       details += `\n\n🔧 **Problème:** ${ticket?.titre || "N/A"}

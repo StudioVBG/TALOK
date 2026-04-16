@@ -62,13 +62,13 @@ export async function GET(
     // 2. Récupérer les propriétés (essayer avec profile.id puis user_id)
     let { data: properties } = await supabase
       .from("properties")
-      .select("id, loyer_actuel")
+      .select("id, loyer_hc")
       .eq("owner_id", ownerId);
 
     if ((!properties || properties.length === 0) && profile.user_id) {
       const { data: propertiesByUserId } = await supabase
         .from("properties")
-        .select("id, loyer_actuel")
+        .select("id, loyer_hc")
         .eq("owner_id", profile.user_id);
       properties = propertiesByUserId;
     }
