@@ -349,7 +349,7 @@ export interface PropertyV3 {
   longitude?: number | null;
   surface: number | null;
   surface_habitable_m2?: number | null;
-  nb_pieces: number;
+  nb_pieces: number | null;
   nb_chambres?: number | null;
   etage: number | null;
   ascenseur: boolean;

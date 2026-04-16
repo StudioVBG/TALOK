@@ -37,7 +37,7 @@ export async function generateMetadata(
 
   return {
     title: `${property.adresse_complete} | Talok`,
-    description: `${property.type}${property.surface ? ` de ${property.surface}m²` : ''} avec ${property.nb_pieces} pièce(s) à ${property.ville}`,
+    description: `${property.type}${property.surface ? ` de ${property.surface}m²` : ''}${property.nb_pieces ? ` avec ${property.nb_pieces} pièce(s)` : ''} à ${property.ville}`,
   };
 }
 

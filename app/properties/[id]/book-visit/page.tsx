@@ -149,7 +149,7 @@ export default function BookVisitPage() {
               <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                 <span>{property.type}</span>
                 {property.surface != null && <span>{property.surface} m²</span>}
-                <span>{property.nb_pieces} pièces</span>
+                {property.nb_pieces != null && <span>{property.nb_pieces} pièces</span>}
                 {property.loyer_reference && (
                   <span className="font-medium text-foreground">
                     {property.loyer_reference} €/mois

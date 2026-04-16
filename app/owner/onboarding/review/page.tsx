@@ -94,13 +94,13 @@ export default function OwnerReviewPage() {
       {
         key: "coordinates",
         label: "Coordonnées et caractéristiques complètes",
-        detail: `${property.adresse_complete}${property.surface ? ` • ${property.surface} m²` : ''} • ${property.nb_pieces} pièce(s)`,
+        detail: `${property.adresse_complete}${property.surface ? ` • ${property.surface} m²` : ''}${property.nb_pieces ? ` • ${property.nb_pieces} pièce(s)` : ''}`,
         valid:
           Boolean(property.adresse_complete) &&
           Boolean(property.code_postal) &&
           Boolean(property.ville) &&
           (property.surface == null || property.surface > 0) &&
-          property.nb_pieces > 0,
+          (property.nb_pieces == null || property.nb_pieces > 0),
       },
       {
         key: "financial",
@@ -242,7 +242,7 @@ export default function OwnerReviewPage() {
           <Badge variant="outline">{property.type}</Badge>
           <Badge>{property.ville}</Badge>
           {property.surface != null && <Badge variant="outline">{property.surface} m²</Badge>}
-          <Badge variant="outline">{property.nb_pieces} pièce(s)</Badge>
+          {property.nb_pieces != null && <Badge variant="outline">{property.nb_pieces} pièce(s)</Badge>}
         </div>
       </div>
 
