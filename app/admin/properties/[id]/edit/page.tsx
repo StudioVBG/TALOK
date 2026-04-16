@@ -10,7 +10,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -34,9 +33,7 @@ interface PropertyFormData {
   surface: number;
   nb_pieces: number;
   nb_chambres?: number;
-  nb_salles_de_bain?: number;
   etage?: number;
-  description?: string;
 }
 
 const propertyTypes = [
@@ -87,9 +84,7 @@ export default function AdminPropertyEditPage() {
         surface: property.surface || 0,
         nb_pieces: property.nb_pieces || 1,
         nb_chambres: property.nb_chambres,
-        nb_salles_de_bain: property.nb_salles_de_bain,
         etage: property.etage,
-        description: property.description,
       });
       return data;
     },
@@ -266,8 +261,8 @@ export default function AdminPropertyEditPage() {
                 </div>
               </div>
 
-              {/* Chambres & SDB */}
-              <div className="grid gap-4 md:grid-cols-3">
+              {/* Chambres & Étage */}
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="nb_chambres">Chambres</Label>
                   <Input
@@ -278,21 +273,6 @@ export default function AdminPropertyEditPage() {
                     onChange={(e) =>
                       handleChange(
                         "nb_chambres",
-                        e.target.value ? parseInt(e.target.value) : undefined
-                      )
-                    }
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="nb_salles_de_bain">Salles de bain</Label>
-                  <Input
-                    id="nb_salles_de_bain"
-                    type="number"
-                    min="0"
-                    value={formData.nb_salles_de_bain || ""}
-                    onChange={(e) =>
-                      handleChange(
-                        "nb_salles_de_bain",
                         e.target.value ? parseInt(e.target.value) : undefined
                       )
                     }
@@ -313,18 +293,6 @@ export default function AdminPropertyEditPage() {
                     }
                   />
                 </div>
-              </div>
-
-              {/* Description */}
-              <div className="space-y-2">
-                <Label htmlFor="description">Description (optionnelle)</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description || ""}
-                  onChange={(e) => handleChange("description", e.target.value)}
-                  placeholder="Description du bien..."
-                  rows={4}
-                />
               </div>
             </CardContent>
           </Card>

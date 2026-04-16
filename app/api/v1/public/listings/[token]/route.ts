@@ -23,7 +23,7 @@ export async function GET(
         available_from, bail_type, photos, public_url_token, views_count,
         property:properties!inner(
           id, adresse_complete, ville, code_postal, type, surface, nb_pieces,
-          dpe_classe, ges_classe, etage, nb_etages, balcon, terrasse, parking, cave,
+          dpe_classe_energie, dpe_classe_climat, etage, balcon, terrasse, parking, cave,
           chauffage_type, chauffage_mode
         )
       `)

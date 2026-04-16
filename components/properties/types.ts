@@ -112,7 +112,6 @@ export interface PropertyData {
   surface?: number;
   nb_pieces?: number;
   nb_chambres?: number;
-  nb_salles_de_bain?: number;
   etage?: number;
   ascenseur?: boolean;
   
