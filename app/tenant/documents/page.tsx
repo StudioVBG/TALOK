@@ -49,6 +49,7 @@ import {
   FileSignature,
   Receipt,
   FileCheck,
+  ChevronRight,
 } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentGroups } from "@/components/documents/document-groups";
@@ -68,6 +69,7 @@ import { groupDocuments } from "@/lib/documents/group-documents";
 import { GroupedDocumentCard } from "@/features/documents/components/grouped-document-card";
 import Link from "next/link";
 import { useTenantPendingActions } from "@/lib/hooks/use-tenant-pending-actions";
+import { useTenantInspections } from "@/lib/hooks/queries/use-tenant-inspections";
 
 // ──────────────────────────────────────────────
 // Helpers
@@ -235,6 +237,10 @@ export default function TenantDocumentsPage() {
 
   const pendingEDLs = useMemo(() => dashboard?.pending_edls || [], [dashboard]);
 
+  // Fetch EDL data from the `edl` table — Documents Essentiels needs this because
+  // EDLs are stored in a separate table and may not exist in the `documents` table.
+  const { data: edlList = [] } = useTenantInspections();
+
   const pendingActions = useTenantPendingActions({
     dashboard,
     hasSignedLease,
@@ -293,8 +299,34 @@ export default function TenantDocumentsPage() {
       if (bail && quittance && edlEntree && assurance) break;
     }
 
+    // Fallback: if no EDL found in documents table, use the edl table data.
+    // EDLs are stored in a separate `edl` table and may not have a matching
+    // row in `documents`. We synthesize a virtual document for the card.
+    if (!edlEntree && edlList.length > 0) {
+      // Pick the most relevant EDL: prefer signed entree, then any entree, then any EDL
+      const signedEntree = edlList.find(e => e.type === "entree" && e.isSigned);
+      const anyEntree = edlList.find(e => e.type === "entree");
+      const bestEdl = signedEntree || anyEntree || edlList[0];
+      if (bestEdl) {
+        edlEntree = {
+          id: bestEdl.id,
+          type: bestEdl.type === "entree" ? "EDL_entree" : "EDL_sortie",
+          title: `État des lieux ${bestEdl.type === "entree" ? "d'entrée" : "de sortie"}`,
+          storage_path: null,
+          created_at: bestEdl.scheduled_at || bestEdl.created_at,
+          property_id: bestEdl.property?.id || null,
+          metadata: {},
+          // Flag for the card to know this is from the edl table
+          _fromEdlTable: true,
+          _edlId: bestEdl.id,
+          _edlStatus: bestEdl.status,
+          _edlIsSigned: bestEdl.isSigned,
+        };
+      }
+    }
+
     return { bail, quittance, edl: edlEntree, assurance };
-  }, [documents, BAIL_TYPES, QUITTANCE_TYPES, EDL_TYPES, ASSURANCE_TYPES]);
+  }, [documents, edlList, BAIL_TYPES, QUITTANCE_TYPES, EDL_TYPES, ASSURANCE_TYPES]);
 
   // ── Filtrage et tri des documents ──
   const filteredDocuments = useMemo(() => {
@@ -607,15 +639,35 @@ export default function TenantDocumentsPage() {
 
                 {/* EDL d'entrée */}
                 {keyDocuments.edl ? (
-                  <DocumentCard
-                    doc={keyDocuments.edl}
-                    resolvedType={detectType(keyDocuments.edl)}
-                    displayTitle={getDocumentDisplayName(keyDocuments.edl)}
-                    onPreview={handlePreview}
-                    onDownload={handleDownload}
-                    compact
-                    isNew={isRecent(keyDocuments.edl)}
-                  />
+                  keyDocuments.edl._fromEdlTable ? (
+                    // EDL from the `edl` table — link to detail page
+                    <Link href={`/tenant/inspections/${keyDocuments.edl._edlId}`}>
+                      <GlassCard className="flex items-center gap-4 p-4 border border-emerald-200 bg-emerald-50/30 hover:shadow-lg transition-all duration-200 cursor-pointer h-full">
+                        <div className="p-2.5 rounded-xl bg-emerald-100 shrink-0">
+                          <FileCheck className="h-5 w-5 text-emerald-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{keyDocuments.edl.title}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {keyDocuments.edl._edlIsSigned ? "Signé" : keyDocuments.edl._edlStatus === "in_progress" ? "En cours" : keyDocuments.edl._edlStatus}
+                            {" — "}
+                            {formatSafeDate(keyDocuments.edl.created_at)}
+                          </p>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-emerald-600 shrink-0" />
+                      </GlassCard>
+                    </Link>
+                  ) : (
+                    <DocumentCard
+                      doc={keyDocuments.edl}
+                      resolvedType={detectType(keyDocuments.edl)}
+                      displayTitle={getDocumentDisplayName(keyDocuments.edl)}
+                      onPreview={handlePreview}
+                      onDownload={handleDownload}
+                      compact
+                      isNew={isRecent(keyDocuments.edl)}
+                    />
+                  )
                 ) : (
                   <GlassCard className="flex items-center gap-4 p-4 border-dashed border-2 border-border bg-muted/30">
                     <div className="p-2.5 rounded-xl bg-muted shrink-0">
