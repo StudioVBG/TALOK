@@ -4,7 +4,7 @@ import { Suspense } from "react";
 export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { redirect, notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import TenantEDLDetailClient from "./TenantEDLDetailClient";
 
@@ -16,41 +16,43 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
 }
 
 async function fetchTenantEDL(edlId: string, profileId: string) {
-  const supabase = await createClient();
-  const serviceClient = getServiceClient(); // Pour bypass RLS sur certaines requêtes
+  const serviceClient = getServiceClient();
 
-  // Récupérer le user_id du profil pour la recherche
-  const { data: profileData } = await supabase
+  // Récupérer le user_id du profil — via serviceClient pour éviter les
+  // blocages RLS sur profiles qui rendraient userId=undefined et casseraient
+  // tous les essais de lookup de signature ci-dessous.
+  const { data: profileData } = await serviceClient
     .from("profiles")
     .select("user_id")
     .eq("id", profileId)
     .single();
-  
+
   const userId = profileData?.user_id;
 
   // Vérifier que le locataire est bien signataire de cet EDL
-  // Recherche par signer_profile_id OU signer_user_id
+  // Toutes les requêtes passent par serviceClient pour éviter les recursions
+  // RLS (42P17) — l'auth est déjà vérifiée par le layout parent.
   let mySignature = null;
-  
+
   // Essai 1: par signer_profile_id
-  const { data: sigByProfile } = await supabase
+  const { data: sigByProfile } = await serviceClient
     .from("edl_signatures")
     .select("*")
     .eq("edl_id", edlId)
     .eq("signer_profile_id", profileId)
     .maybeSingle();
-  
+
   if (sigByProfile) {
     mySignature = sigByProfile;
   } else if (userId) {
     // Essai 2: par signer_user_id
-    const { data: sigByUser } = await supabase
+    const { data: sigByUser } = await serviceClient
       .from("edl_signatures")
       .select("*")
       .eq("edl_id", edlId)
       .eq("signer_user_id", userId)
       .maybeSingle();
-    
+
     if (sigByUser) {
       mySignature = sigByUser;
     }
@@ -58,16 +60,14 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
 
   // Essai 3: Vérifier si le locataire est signataire du bail associé à l'EDL
   if (!mySignature) {
-    // Récupérer l'EDL pour avoir le lease_id
-    const { data: edlForLease } = await supabase
+    const { data: edlForLease } = await serviceClient
       .from("edl")
       .select("lease_id")
       .eq("id", edlId)
       .single();
 
     if (edlForLease?.lease_id) {
-      // Vérifier si le locataire est signataire du bail
-      const { data: leaseSigner } = await supabase
+      const { data: leaseSigner } = await serviceClient
         .from("lease_signers")
         .select("*")
         .eq("lease_id", edlForLease.lease_id)
@@ -81,31 +81,14 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
     }
   }
 
-  // Essai 4: Bypass RLS — Rechercher dans edl_signatures via serviceClient
-  // Couvre le cas où la signature via token n'a pas correctement rattaché le profil
-  if (!mySignature) {
-    const orFilters = [`signer_profile_id.eq.${profileId}`];
-    if (userId) orFilters.push(`signer_user_id.eq.${userId}`);
-
-    const { data: sigByService } = await serviceClient
-      .from("edl_signatures")
-      .select("*")
-      .eq("edl_id", edlId)
-      .or(orFilters.join(","))
-      .maybeSingle();
-
-    if (sigByService) {
-      mySignature = sigByService;
-    }
-  }
-
   if (!mySignature) {
     console.error("[fetchTenantEDL] Not a signer - access denied");
     return null;
   }
 
-  // Récupérer l'EDL complet
-  const { data: edl, error } = await supabase
+  // Récupérer l'EDL complet — via serviceClient pour éviter les recursions
+  // RLS sur les joins edl→leases→properties
+  const { data: edl, error } = await serviceClient
     .from("edl")
     .select(
       `
@@ -173,12 +156,12 @@ async function fetchTenantEDL(edlId: string, profileId: string) {
     (edl as any).lease.property = finalProperty;
   }
 
-  // Récupérer les items, médias et signatures
+  // Récupérer les items, médias et signatures — via serviceClient
   const [{ data: edl_items }, { data: edl_media }, { data: signaturesRaw }] =
     await Promise.all([
-      supabase.from("edl_items").select("*").eq("edl_id", edlId),
-      supabase.from("edl_media").select("*").eq("edl_id", edlId),
-      supabase
+      serviceClient.from("edl_items").select("*").eq("edl_id", edlId),
+      serviceClient.from("edl_media").select("*").eq("edl_id", edlId),
+      serviceClient
         .from("edl_signatures")
         .select("*, profile:signer_profile_id(*)")
         .eq("edl_id", edlId),
@@ -355,7 +338,7 @@ async function DetailContent({
   const data = await fetchTenantEDL(edlId, profileId);
 
   if (!data) {
-    notFound();
+    redirect("/tenant/inspections");
   }
 
   return <TenantEDLDetailClient data={data} profileId={profileId} />;

@@ -241,6 +241,12 @@ export default function TenantDocumentsPage() {
   // EDLs are stored in a separate table and may not exist in the `documents` table.
   const { data: edlList = [] } = useTenantInspections();
 
+  // Hydration guard: SSR renders with no EDL data, but React Query may return
+  // cached data synchronously on the client's first render, causing a mismatch.
+  // Only use edlList AFTER mount (useEffect fires after hydration is complete).
+  const [edlMounted, setEdlMounted] = useState(false);
+  useEffect(() => setEdlMounted(true), []);
+
   const pendingActions = useTenantPendingActions({
     dashboard,
     hasSignedLease,
@@ -302,7 +308,10 @@ export default function TenantDocumentsPage() {
     // Fallback: if no EDL found in documents table, use the edl table data.
     // EDLs are stored in a separate `edl` table and may not have a matching
     // row in `documents`. We synthesize a virtual document for the card.
-    if (!edlEntree && edlList.length > 0) {
+    // Guard: only use edlList AFTER mount to prevent hydration mismatch.
+    // SSR has no EDL data; React Query may have cached data on first client
+    // render. useEffect sets edlMounted=true after hydration completes.
+    if (!edlEntree && edlMounted && edlList.length > 0) {
       // Pick the most relevant EDL: prefer signed entree, then any entree, then any EDL
       const signedEntree = edlList.find(e => e.type === "entree" && e.isSigned);
       const anyEntree = edlList.find(e => e.type === "entree");
@@ -326,7 +335,7 @@ export default function TenantDocumentsPage() {
     }
 
     return { bail, quittance, edl: edlEntree, assurance };
-  }, [documents, edlList, BAIL_TYPES, QUITTANCE_TYPES, EDL_TYPES, ASSURANCE_TYPES]);
+  }, [documents, edlList, edlMounted, BAIL_TYPES, QUITTANCE_TYPES, EDL_TYPES, ASSURANCE_TYPES]);
 
   // ── Filtrage et tri des documents ──
   const filteredDocuments = useMemo(() => {
