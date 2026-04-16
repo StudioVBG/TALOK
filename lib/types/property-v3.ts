@@ -347,7 +347,7 @@ export interface PropertyV3 {
   departement: string;
   latitude?: number | null;
   longitude?: number | null;
-  surface: number;
+  surface: number | null;
   surface_habitable_m2?: number | null;
   nb_pieces: number;
   nb_chambres?: number | null;

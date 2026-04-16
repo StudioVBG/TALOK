@@ -113,13 +113,15 @@ export function PropertyCharacteristicsBadges({ property }: PropertyCharacterist
     return (
       <div className="flex flex-wrap gap-3">
         {/* Surface */}
-        <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg">
-          <span className="text-blue-600 text-lg">📐</span>
-          <div>
-            <p className="text-xs text-muted-foreground">Surface</p>
-            <p className="font-semibold text-sm">{property.local_surface_totale || property.surface} m²</p>
+        {(property.local_surface_totale || property.surface) != null && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg">
+            <span className="text-blue-600 text-lg">📐</span>
+            <div>
+              <p className="text-xs text-muted-foreground">Surface</p>
+              <p className="font-semibold text-sm">{property.local_surface_totale || property.surface} m²</p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Type de local */}
         {property.local_type && (
@@ -191,13 +193,15 @@ export function PropertyCharacteristicsBadges({ property }: PropertyCharacterist
   return (
     <div className="flex flex-wrap gap-3">
       {/* Surface */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg">
-        <span className="text-blue-600 text-lg">📐</span>
-        <div>
-          <p className="text-xs text-muted-foreground">Surface</p>
-          <p className="font-semibold text-sm">{property.surface} m²</p>
+      {property.surface != null && (
+        <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg">
+          <span className="text-blue-600 text-lg">📐</span>
+          <div>
+            <p className="text-xs text-muted-foreground">Surface</p>
+            <p className="font-semibold text-sm">{property.surface} m²</p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Pièces */}
       {property.nb_pieces && property.nb_pieces > 0 && (

@@ -45,6 +45,23 @@ export const ALL_PROPERTY_TYPES = [
 export const TYPES_WITHOUT_ROOMS_STEP = [...PARKING_TYPES] as const;
 
 /**
+ * Types de biens pour lesquels la surface n'est PAS obligatoire.
+ * Aligné avec le CHECK constraint `properties_surface_required_for_habitable` en DB.
+ */
+export const TYPES_WITHOUT_SURFACE = [
+  'parking',
+  'box',
+  'terrain_agricole',
+  'fonds_de_commerce',
+] as const;
+
+/**
+ * Retourne true si le type de bien nécessite obligatoirement une surface.
+ */
+export const requiresSurface = (type: string): boolean =>
+  !(TYPES_WITHOUT_SURFACE as readonly string[]).includes(type);
+
+/**
  * Types de biens avec étage
  */
 export const TYPES_WITH_FLOOR = [

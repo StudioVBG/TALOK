@@ -268,10 +268,12 @@ export function PropertyCard({ property, onRefresh, onRemove }: PropertyCardProp
               {property.code_postal} {property.ville}
             </span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Surface :</span>
-            <span className="font-medium">{property.surface} m²</span>
-          </div>
+          {property.surface != null && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Surface :</span>
+              <span className="font-medium">{property.surface} m²</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-muted-foreground">Pièces :</span>
             <span className="font-medium">{property.nb_pieces}</span>

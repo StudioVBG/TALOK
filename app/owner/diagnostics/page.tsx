@@ -99,7 +99,7 @@ export default async function GlobalDiagnosticsPage() {
                       <div className="flex items-center gap-3 mt-1">
                         <span className="text-sm text-muted-foreground">{property.ville}</span>
                         <div className="w-1 h-1 rounded-full bg-muted-foreground/50" />
-                        <span className="text-sm text-muted-foreground capitalize">{property.type} • {property.nb_pieces} p. • {property.surface}m²</span>
+                        <span className="text-sm text-muted-foreground capitalize">{property.type} • {property.nb_pieces} p.{property.surface ? ` • ${property.surface}m²` : ''}</span>
                       </div>
                     </div>
                     <div className="pr-6">

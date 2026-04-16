@@ -776,7 +776,7 @@ export default function TenantLeasePage() {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="p-3 rounded-xl bg-muted border border-border">
                             <p className="text-[10px] font-bold text-muted-foreground uppercase">Surface</p>
-                            <p className="font-bold text-foreground">{property?.surface || "—"} m²</p>
+                            <p className="font-bold text-foreground">{property?.surface != null ? `${property.surface} m²` : "—"}</p>
                           </div>
                           <div className="p-3 rounded-xl bg-muted border border-border">
                             <p className="text-[10px] font-bold text-muted-foreground uppercase">Pièces</p>
