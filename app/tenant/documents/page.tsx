@@ -239,7 +239,9 @@ export default function TenantDocumentsPage() {
 
   // Fetch EDL data from the `edl` table — Documents Essentiels needs this because
   // EDLs are stored in a separate table and may not exist in the `documents` table.
-  const { data: edlList = [] } = useTenantInspections();
+  // Use isLoading to prevent hydration mismatch: SSR renders with empty edlList,
+  // and we must not use cached React Query data during initial client render.
+  const { data: edlList = [], isLoading: edlListLoading } = useTenantInspections();
 
   const pendingActions = useTenantPendingActions({
     dashboard,
@@ -302,7 +304,9 @@ export default function TenantDocumentsPage() {
     // Fallback: if no EDL found in documents table, use the edl table data.
     // EDLs are stored in a separate `edl` table and may not have a matching
     // row in `documents`. We synthesize a virtual document for the card.
-    if (!edlEntree && edlList.length > 0) {
+    // Guard: only use edlList AFTER loading completes to prevent hydration
+    // mismatch (SSR has no data, client may have cached React Query data).
+    if (!edlEntree && !edlListLoading && edlList.length > 0) {
       // Pick the most relevant EDL: prefer signed entree, then any entree, then any EDL
       const signedEntree = edlList.find(e => e.type === "entree" && e.isSigned);
       const anyEntree = edlList.find(e => e.type === "entree");
@@ -326,7 +330,7 @@ export default function TenantDocumentsPage() {
     }
 
     return { bail, quittance, edl: edlEntree, assurance };
-  }, [documents, edlList, BAIL_TYPES, QUITTANCE_TYPES, EDL_TYPES, ASSURANCE_TYPES]);
+  }, [documents, edlList, edlListLoading, BAIL_TYPES, QUITTANCE_TYPES, EDL_TYPES, ASSURANCE_TYPES]);
 
   // ── Filtrage et tri des documents ──
   const filteredDocuments = useMemo(() => {
