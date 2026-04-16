@@ -95,6 +95,13 @@ export async function canCreateProperty(
 // 2. GUARD SUPPRESSION — Verification des liaisons
 // ============================================
 
+export interface DeleteGuardLotInfo {
+  id: string;
+  adresse: string | null;
+  hasActiveLease: boolean;
+  activeLeases: number;
+}
+
 export interface DeleteGuardResult {
   canDelete: boolean;
   canArchive: boolean;
@@ -107,7 +114,15 @@ export interface DeleteGuardResult {
     tickets: number;
     photos: number;
   };
+  /**
+   * Lots de l'immeuble (uniquement renseigné si la property est `type='immeuble'`).
+   * Les lots cascadent en soft-delete avec l'immeuble parent.
+   */
+  lots?: DeleteGuardLotInfo[];
 }
+
+const ACTIVE_LEASE_STATUSES = ['active', 'pending_signature', 'partially_signed', 'fully_signed'];
+const TERMINATED_LEASE_STATUSES = ['terminated', 'expired', 'cancelled'];
 
 /**
  * Verifie si un bien peut etre supprime ou archive.
@@ -116,6 +131,11 @@ export interface DeleteGuardResult {
  *  - Bail actif/en signature → BLOQUEUR (ni suppression ni archivage)
  *  - Baux termines, documents, tickets → WARNING (archivage OK, pas suppression definitive)
  *  - Aucune liaison → Suppression definitive OK
+ *
+ * Cas IMMEUBLE (type='immeuble') :
+ *  - Les lots enfants (properties.parent_property_id = immeuble.id) sont également contrôlés
+ *  - Un bail actif sur un lot bloque la suppression de l'immeuble
+ *  - La suppression cascade en soft-delete sur tous les lots
  */
 export async function canDeleteProperty(
   supabase: SupabaseClient,
@@ -125,10 +145,10 @@ export async function canDeleteProperty(
   const blockers: string[] = [];
   const warnings: string[] = [];
 
-  // Verifier ownership
+  // Verifier ownership + récupérer le type pour brancher la logique cascade
   const { data: property } = await supabase
     .from('properties')
-    .select('id, owner_id')
+    .select('id, owner_id, type')
     .eq('id', propertyId)
     .eq('owner_id', ownerId)
     .single();
@@ -164,11 +184,9 @@ export async function canDeleteProperty(
   ]);
 
   const allLeases = leasesResult.data ?? [];
-  const activeStatuses = ['active', 'pending_signature', 'partially_signed', 'fully_signed'];
-  const terminatedStatuses = ['terminated', 'expired', 'cancelled'];
 
-  const activeLeases = allLeases.filter((l: { statut: string }) => activeStatuses.includes(l.statut)).length;
-  const terminatedLeases = allLeases.filter((l: { statut: string }) => terminatedStatuses.includes(l.statut)).length;
+  let activeLeases = allLeases.filter((l: { statut: string }) => ACTIVE_LEASE_STATUSES.includes(l.statut)).length;
+  let terminatedLeases = allLeases.filter((l: { statut: string }) => TERMINATED_LEASE_STATUSES.includes(l.statut)).length;
 
   const linkedData = {
     activeLeases,
@@ -178,11 +196,95 @@ export async function canDeleteProperty(
     photos: photosResult.count ?? 0,
   };
 
-  // BLOQUEURS — empechent toute suppression/archivage
+  // BLOQUEURS — empechent toute suppression/archivage (sur la property elle-même)
   if (activeLeases > 0) {
     blockers.push(
       `Ce bien a ${activeLeases} bail${activeLeases > 1 ? 'x' : ''} actif${activeLeases > 1 ? 's' : ''} ou en cours de signature. Terminez-le${activeLeases > 1 ? 's' : ''} d'abord.`,
     );
+  }
+
+  // ============================================
+  // CASCADE IMMEUBLE — Vérifier les lots enfants
+  // ============================================
+  let lotsInfo: DeleteGuardLotInfo[] | undefined;
+
+  if (property.type === 'immeuble') {
+    // Récupérer tous les lots actifs (non soft-deleted) de l'immeuble
+    const { data: lots } = await supabase
+      .from('properties')
+      .select('id, adresse_complete, type, parent_property_id')
+      .eq('parent_property_id', propertyId)
+      .is('deleted_at', null);
+
+    const lotList = lots ?? [];
+    lotsInfo = [];
+
+    if (lotList.length > 0) {
+      // Récupérer en une seule requête tous les baux des lots
+      const lotIds = lotList.map((l: { id: string }) => l.id);
+      const { data: lotsLeases } = await supabase
+        .from('leases')
+        .select('id, statut, property_id')
+        .in('property_id', lotIds);
+
+      const allLotLeases = lotsLeases ?? [];
+
+      // Compter les liaisons agrégées (documents + tickets + photos) des lots
+      const [lotsDocsResult, lotsTicketsResult, lotsPhotosResult] = await Promise.all([
+        supabase
+          .from('documents')
+          .select('id', { count: 'exact', head: true })
+          .in('property_id', lotIds),
+        supabase
+          .from('work_orders')
+          .select('id', { count: 'exact', head: true })
+          .in('property_id', lotIds),
+        supabase
+          .from('photos')
+          .select('id', { count: 'exact', head: true })
+          .in('property_id', lotIds),
+      ]);
+
+      // Vérifier chaque lot individuellement et construire lotsInfo
+      for (const lot of lotList) {
+        const lotLeasesAll = allLotLeases.filter(
+          (l: { property_id: string }) => l.property_id === lot.id,
+        );
+        const lotActiveLeases = lotLeasesAll.filter(
+          (l: { statut: string }) => ACTIVE_LEASE_STATUSES.includes(l.statut),
+        ).length;
+        const lotTerminatedLeases = lotLeasesAll.filter(
+          (l: { statut: string }) => TERMINATED_LEASE_STATUSES.includes(l.statut),
+        ).length;
+
+        lotsInfo.push({
+          id: lot.id,
+          adresse: lot.adresse_complete ?? null,
+          hasActiveLease: lotActiveLeases > 0,
+          activeLeases: lotActiveLeases,
+        });
+
+        if (lotActiveLeases > 0) {
+          const label = lot.adresse_complete || lot.id;
+          blockers.push(
+            `Le lot "${label}" a ${lotActiveLeases} bail${lotActiveLeases > 1 ? 'x' : ''} actif${lotActiveLeases > 1 ? 's' : ''}. Résiliez-le${lotActiveLeases > 1 ? 's' : ''} d'abord.`,
+          );
+        }
+
+        // Agréger les compteurs pour les warnings
+        activeLeases += lotActiveLeases;
+        terminatedLeases += lotTerminatedLeases;
+      }
+
+      // Mettre à jour linkedData avec les totaux agrégés (immeuble + lots)
+      linkedData.activeLeases = activeLeases;
+      linkedData.terminatedLeases = terminatedLeases;
+      linkedData.documents += lotsDocsResult.count ?? 0;
+      linkedData.tickets += lotsTicketsResult.count ?? 0;
+      linkedData.photos += lotsPhotosResult.count ?? 0;
+
+      warnings.push(`${lotList.length} lot${lotList.length > 1 ? 's' : ''} ${lotList.length > 1 ? 'seront' : 'sera'} également supprimé${lotList.length > 1 ? 's' : ''}`);
+    }
   }
 
   // WARNINGS — permettent l'archivage mais pas la suppression definitive
@@ -202,6 +304,7 @@ export async function canDeleteProperty(
     blockers,
     warnings,
     linkedData,
+    ...(lotsInfo !== undefined ? { lots: lotsInfo } : {}),
   };
 }
 

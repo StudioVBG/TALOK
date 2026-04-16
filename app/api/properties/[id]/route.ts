@@ -642,13 +642,13 @@ export async function DELETE(
     });
 
     // ✅ RÉCUPÉRATION: Vérifier que l'utilisateur est propriétaire de la propriété
-    // Essayer d'abord avec etat, puis sans si la colonne n'existe pas
-    let property: { owner_id: string; etat?: string } | null = null;
+    // Essayer d'abord avec etat+type, puis sans si la colonne n'existe pas
+    let property: { owner_id: string; etat?: string; type?: string | null } | null = null;
     let propertyError: unknown = null;
-    
+
     const { data: propertyWithEtat, error: errorWithEtat } = await serviceClient
       .from("properties")
-      .select("owner_id, etat")
+      .select("owner_id, etat, type")
       .eq("id", propertyId)
       .maybeSingle();
 
@@ -660,7 +660,7 @@ export async function DELETE(
           .select("owner_id")
           .eq("id", propertyId)
           .maybeSingle();
-        
+
         if (errorWithoutEtat) {
           propertyError = errorWithoutEtat;
         } else {
@@ -668,6 +668,7 @@ export async function DELETE(
           // Si etat n'existe pas, on considère que c'est un draft par défaut
           if (property) {
             property.etat = "draft";
+            property.type = null;
           }
         }
       } else {
@@ -783,6 +784,64 @@ export async function DELETE(
       );
     }
 
+    // ✅ CASCADE IMMEUBLE: Vérifier les baux actifs sur les lots enfants
+    let lots: { id: string; adresse_complete?: string | null }[] = [];
+    if (property.type === "immeuble") {
+      const { data: childLots } = await serviceClient
+        .from("properties")
+        .select("id, adresse_complete")
+        .eq("parent_property_id", propertyId)
+        .is("deleted_at", null);
+
+      lots = childLots ?? [];
+
+      if (!isAdmin && lots.length > 0) {
+        const lotIds = lots.map((l) => l.id);
+        const { data: lotBlockingLeases } = await serviceClient
+          .from("leases")
+          .select(`
+            id,
+            statut,
+            property_id,
+            signers:lease_signers(
+              profile_id,
+              role,
+              signature_status,
+              invited_email,
+              invited_name,
+              profile:profiles(id, prenom, nom, email)
+            )
+          `)
+          .in("property_id", lotIds)
+          .not("statut", "in", '("terminated","archived","cancelled")');
+
+        if (lotBlockingLeases && lotBlockingLeases.length > 0) {
+          const lease = lotBlockingLeases[0] as any;
+          const lot = lots.find((l) => l.id === lease.property_id);
+          const lotLabel = lot?.adresse_complete || lot?.id || "un lot";
+          const tenantSigner = lease.signers?.find((s: any) =>
+            s.role === "locataire_principal" || s.role === "colocataire"
+          );
+          const tenantName = tenantSigner?.profile
+            ? `${tenantSigner.profile.prenom || ""} ${tenantSigner.profile.nom || ""}`.trim() || tenantSigner.profile.email
+            : "un locataire";
+
+          throw new ApiError(
+            400,
+            `Impossible de supprimer l'immeuble : le lot "${lotLabel}" a un bail actif avec ${tenantName}. Résiliez-le d'abord.`,
+            {
+              leaseId: lease.id,
+              leaseStatus: lease.statut,
+              lotId: lot?.id,
+              lotLabel,
+              tenantName,
+              actionHint: "terminate",
+            }
+          );
+        }
+      }
+    }
+
     // ✅ SOTA 2026: Récupérer l'adresse pour les notifications
     const { data: propertyDetails } = await serviceClient
       .from("properties")
@@ -791,10 +850,13 @@ export async function DELETE(
       .single();
 
     // ✅ SOTA 2026: Notifier les locataires des baux (même terminés) avant suppression
+    // Inclure les baux de l'immeuble parent + tous ses lots
+    const allPropertyIds = [propertyId, ...lots.map((l) => l.id)];
     const { data: allLeases } = await serviceClient
       .from("leases")
       .select(`
         id,
+        property_id,
         signers:lease_signers(
           profile_id,
           role,
@@ -802,11 +864,11 @@ export async function DELETE(
           invited_name
         )
       `)
-      .eq("property_id", propertyId);
+      .in("property_id", allPropertyIds);
 
     if (allLeases && allLeases.length > 0) {
       const tenantProfileIds = new Set<string>();
-      
+
       for (const lease of allLeases) {
         const leaseData = lease as any;
         if (leaseData.signers) {
@@ -821,7 +883,7 @@ export async function DELETE(
       // Créer les notifications pour chaque locataire
       const address = propertyDetails?.adresse_complete || "Adresse inconnue";
       const city = propertyDetails?.ville || "";
-      
+
       for (const tenantId of tenantProfileIds) {
         await serviceClient
           .from("notifications")
@@ -842,13 +904,36 @@ export async function DELETE(
       }
     }
 
+    const now = new Date().toISOString();
+
+    // ✅ CASCADE IMMEUBLE: Soft-delete les lots enfants avant l'immeuble parent
+    let lotsSoftDeleted = 0;
+    if (property.type === "immeuble" && lots.length > 0) {
+      const lotIds = lots.map((l) => l.id);
+      const { error: lotDeleteError, count } = await serviceClient
+        .from("properties")
+        .update({
+          etat: "archived",
+          deleted_at: now,
+          deleted_by: profile.id,
+        })
+        .in("id", lotIds)
+        .is("deleted_at", null);
+
+      if (lotDeleteError) {
+        console.error("[DELETE Property] Erreur soft-delete lots cascade:", lotDeleteError);
+      } else {
+        lotsSoftDeleted = count ?? lots.length;
+      }
+    }
+
     // ✅ SOTA 2026: Soft-delete au lieu de hard-delete
     // Marquer comme supprimé plutôt que supprimer définitivement
     const { data: softDeletedProperty, error: softDeleteError } = await serviceClient
       .from("properties")
       .update({
         etat: "archived",
-        deleted_at: new Date().toISOString(),
+        deleted_at: now,
         deleted_by: profile.id
       })
       .eq("id", propertyId)
@@ -858,7 +943,7 @@ export async function DELETE(
     // Si soft-delete échoue (colonne manquante), faire un hard-delete
     if (softDeleteError) {
       console.warn("[DELETE Property] Soft-delete échoué, fallback hard-delete:", softDeleteError.message);
-      
+
       const { error: deleteError } = await serviceClient
         .from("properties")
         .delete()
@@ -892,8 +977,11 @@ export async function DELETE(
     return NextResponse.json({
       success: true,
       mode: "soft_delete",
-      message: "Propriété archivée. Les locataires ont été notifiés.",
-      tenantsNotified: allLeases?.length || 0
+      message: property.type === "immeuble"
+        ? `Immeuble archivé avec ${lotsSoftDeleted} lot${lotsSoftDeleted > 1 ? "s" : ""}. Les locataires ont été notifiés.`
+        : "Propriété archivée. Les locataires ont été notifiés.",
+      tenantsNotified: allLeases?.length || 0,
+      ...(lotsSoftDeleted > 0 ? { lotsSoftDeleted } : {}),
     });
   } catch (error: unknown) {
     return handleApiError(error);
