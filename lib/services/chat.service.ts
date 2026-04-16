@@ -24,6 +24,8 @@ export interface Conversation {
   // Joined data
   owner_name?: string;
   tenant_name?: string;
+  owner_avatar?: string | null;
+  tenant_avatar?: string | null;
   property_address?: string;
 }
 
@@ -130,6 +132,8 @@ class ChatService {
       ...conv,
       owner_name: `${conv.owner?.prenom || ""} ${conv.owner?.nom || ""}`.trim(),
       tenant_name: `${conv.tenant?.prenom || ""} ${conv.tenant?.nom || ""}`.trim(),
+      owner_avatar: conv.owner?.avatar_url || null,
+      tenant_avatar: conv.tenant?.avatar_url || null,
       property_address: conv.property ? `${conv.property.adresse_complete}, ${conv.property.ville}` : "",
     }));
   }
@@ -169,6 +173,8 @@ class ChatService {
       ...data,
       owner_name: `${data.owner?.prenom || ""} ${data.owner?.nom || ""}`.trim(),
       tenant_name: `${data.tenant?.prenom || ""} ${data.tenant?.nom || ""}`.trim(),
+      owner_avatar: data.owner?.avatar_url || null,
+      tenant_avatar: data.tenant?.avatar_url || null,
       property_address: data.property ? `${data.property.adresse_complete}, ${data.property.ville}` : "",
     } as Conversation;
   }
@@ -187,6 +193,9 @@ class ChatService {
       .single();
 
     if (existing) {
+      // Re-fetch avec les données jointes (profiles, property)
+      const full = await this.getConversation(existing.id);
+      if (full) return full;
       return existing as Conversation;
     }
 
@@ -207,20 +216,15 @@ class ChatService {
 
     // Envoyer le message initial si fourni
     if (data.initial_message && newConv) {
-      const { data: profile } = await this.supabase
-        .from("profiles")
-        .select("id")
-        .eq("user_id", (await this.supabase.auth.getUser()).data.user?.id ?? "")
-        .single();
-
-      const senderRole = profile?.id === data.owner_profile_id ? "owner" : "tenant";
-
       await this.sendMessage({
         conversation_id: newConv.id,
         content: data.initial_message,
       });
     }
 
+    // Re-fetch avec les données jointes
+    const fullNew = await this.getConversation(newConv.id);
+    if (fullNew) return fullNew;
     return newConv as Conversation;
   }
 
@@ -630,7 +634,7 @@ class ChatService {
     size: number;
   }> {
     const fileName = `chat/${conversationId}/${Date.now()}_${file.name}`;
-    
+
     const { data, error } = await this.supabase.storage
       .from("documents")
       .upload(fileName, file, {
@@ -640,16 +644,31 @@ class ChatService {
 
     if (error) throw error;
 
-    const { data: urlData } = this.supabase.storage
+    // Tenter une URL signée (bucket privé) avec fallback sur URL publique
+    const { data: signedData } = await this.supabase.storage
       .from("documents")
-      .getPublicUrl(data.path);
+      .createSignedUrl(data.path, 60 * 60 * 24 * 7); // 7 jours
+
+    const url = signedData?.signedUrl
+      || this.supabase.storage.from("documents").getPublicUrl(data.path).data.publicUrl;
 
     return {
-      url: urlData.publicUrl,
+      url,
       name: file.name,
       type: file.type,
       size: file.size,
     };
+  }
+
+  /**
+   * Générer une URL signée pour un attachment existant
+   */
+  async getSignedAttachmentUrl(storagePath: string): Promise<string | null> {
+    const { data, error } = await this.supabase.storage
+      .from("documents")
+      .createSignedUrl(storagePath, 3600); // 1h
+    if (error || !data?.signedUrl) return null;
+    return data.signedUrl;
   }
 
   /**

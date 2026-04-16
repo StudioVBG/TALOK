@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -41,6 +42,8 @@ interface MessagesPageContentProps {
 }
 
 export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPageContentProps) {
+  const pathname = usePathname();
+  const currentRole: "owner" | "tenant" = pathname?.startsWith("/owner") ? "owner" : "tenant";
   const [loading, setLoading] = useState(true);
   const [currentProfileId, setCurrentProfileId] = useState<string>("");
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -317,6 +320,7 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
               </div>
               <ConversationsList
                 currentProfileId={currentProfileId}
+                currentRole={currentRole}
                 selectedId={undefined}
                 onSelect={handleSelectConversation}
               />
@@ -415,6 +419,7 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
           <div className="h-full">
             <ConversationsList
               currentProfileId={currentProfileId}
+              currentRole={currentRole}
               selectedId={selectedConversation?.id}
               onSelect={handleSelectConversation}
             />
