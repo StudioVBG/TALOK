@@ -890,6 +890,45 @@ export async function sendAccountDeletionConfirmation(
   });
 }
 
+/**
+ * Alerte propriétaire : impayé J+7 ou J+15
+ */
+export async function sendOwnerPaymentAlert(data: {
+  ownerEmail: string;
+  ownerName: string;
+  tenantName: string;
+  propertyAddress: string;
+  amount: number;
+  daysLate: number;
+  period: string;
+  invoiceId: string;
+  level: 'urgent' | 'mise-en-demeure';
+}): Promise<EmailResult> {
+  const template = emailTemplates.ownerPaymentOverdue({
+    ownerName: data.ownerName,
+    tenantName: data.tenantName,
+    propertyAddress: data.propertyAddress,
+    amount: data.amount,
+    daysLate: data.daysLate,
+    period: data.period,
+    invoiceUrl: `${process.env.NEXT_PUBLIC_APP_URL}/owner/invoices/${data.invoiceId}`,
+    level: data.level,
+  });
+
+  return sendEmail({
+    to: data.ownerEmail,
+    subject: template.subject,
+    html: template.html,
+    idempotencyKey: `owner-payment-alert/${data.invoiceId}/${data.level}`,
+    tags: [
+      { name: 'type', value: 'owner_payment_overdue' },
+      { name: 'invoice_id', value: data.invoiceId },
+      { name: 'days_late', value: String(data.daysLate) },
+      { name: 'level', value: data.level },
+    ],
+  });
+}
+
 // Export du service
 export const emailService = {
   send: sendEmail,
@@ -916,5 +955,7 @@ export const emailService = {
   sendCashReceiptSignatureRequest,
   // RGPD
   sendAccountDeletionConfirmation,
+  // Alertes propriétaire impayés
+  sendOwnerPaymentAlert,
 };
 

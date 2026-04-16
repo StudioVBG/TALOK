@@ -2296,5 +2296,53 @@ export const emailTemplates = {
       </div>
     `, 'Votre compte Talok a été supprimé conformément au RGPD'),
   }),
+
+  ownerPaymentOverdue: (data: {
+    ownerName: string;
+    tenantName: string;
+    propertyAddress: string;
+    amount: number;
+    daysLate: number;
+    period: string;
+    invoiceUrl: string;
+    level: 'urgent' | 'mise-en-demeure';
+  }) => {
+    const isUrgent = data.level === 'mise-en-demeure';
+    const levelColor = isUrgent ? COLORS.error : '#ea580c';
+    const levelLabel = isUrgent ? 'MISE EN DEMEURE' : 'IMPAYE';
+
+    return {
+      subject: `[Talok] ${isUrgent ? 'Mise en demeure' : 'Impaye'} J+${data.daysLate} — ${data.tenantName}`,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span class="badge" style="background-color: ${levelColor}20; color: ${levelColor};">${levelLabel} — J+${data.daysLate}</span>
+          </div>
+
+          <h1>Loyer impaye</h1>
+          <p>Bonjour ${escapeHtml(data.ownerName)},</p>
+          <p>Le loyer de <strong>${escapeHtml(data.tenantName)}</strong> pour le bien situe au <strong>${escapeHtml(data.propertyAddress)}</strong> est impaye depuis <strong>${data.daysLate} jours</strong>.</p>
+
+          <div class="highlight-box" style="border-left-color: ${levelColor};">
+            <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Montant impaye</p>
+            <div class="amount" style="color: ${levelColor};">${data.amount.toLocaleString('fr-FR')} \u20AC</div>
+            <p style="color: ${COLORS.gray[500]}; font-size: 14px;">Periode : ${data.period}</p>
+          </div>
+
+          ${isUrgent ? `
+          <p style="color: ${COLORS.error}; font-weight: 600;">
+            Le locataire a recu une mise en demeure par email. Si le paiement n'est pas regularise rapidement, nous vous recommandons de consulter un professionnel du recouvrement.
+          </p>
+          ` : `
+          <p>Une relance a ete envoyee au locataire. Vous pouvez suivre la situation depuis votre tableau de bord.</p>
+          `}
+
+          <div style="text-align: center;">
+            <a href="${data.invoiceUrl}" class="button" style="background-color: ${levelColor};">Voir la facture</a>
+          </div>
+        </div>
+      `, `Impaye J+${data.daysLate} — ${data.tenantName} — ${data.amount.toLocaleString('fr-FR')} \u20AC`),
+    };
+  },
 };
 
