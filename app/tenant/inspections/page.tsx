@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +11,9 @@ import {
   AlertCircle,
   Loader2,
   FileText,
-  Info
+  Info,
+  Eye,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDateShort } from "@/lib/helpers/format";
@@ -24,6 +27,41 @@ import { useTenantInspections } from "@/lib/hooks/queries/use-tenant-inspections
 
 export default function TenantInspectionsPage() {
   const { data: edlList = [], isLoading, error, refetch } = useTenantInspections();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  const handleDownloadPDF = useCallback(async (edlId: string, edlType: string) => {
+    setDownloadingId(edlId);
+    try {
+      const response = await fetch("/api/edl/pdf", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ edlId }),
+      });
+      if (!response.ok) throw new Error("Erreur génération document");
+      const { html: pdfHtml, fileName } = await response.json();
+      const html2pdf = (await import("html2pdf.js")).default;
+      const element = document.createElement("div");
+      element.innerHTML = pdfHtml;
+      element.style.position = "absolute";
+      element.style.left = "-9999px";
+      document.body.appendChild(element);
+      await html2pdf()
+        .set({
+          margin: 10,
+          filename: fileName || `edl_${edlType}_${edlId.slice(0, 8)}.pdf`,
+          image: { type: "jpeg", quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        })
+        .from(element)
+        .save();
+      document.body.removeChild(element);
+    } catch {
+      // Silent fail — user sees the button reset
+    } finally {
+      setDownloadingId(null);
+    }
+  }, []);
 
   const pendingCount = edlList.filter(e => e.needsMySignature).length;
 
@@ -143,20 +181,49 @@ export default function TenantInspectionsPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3">
-                        <Button 
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {edl.status === "signed" && (
+                          <>
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="sm"
+                              className="h-9 px-3 rounded-xl border-border hover:bg-indigo-50 hover:text-indigo-600"
+                            >
+                              <Link href={`/tenant/inspections/${edl.id}`}>
+                                <Eye className="h-4 w-4 mr-1.5" />
+                                Voir
+                              </Link>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-9 px-3 rounded-xl border-border hover:bg-emerald-50 hover:text-emerald-600"
+                              onClick={() => handleDownloadPDF(edl.id, edl.type)}
+                              disabled={downloadingId === edl.id}
+                            >
+                              {downloadingId === edl.id ? (
+                                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                              ) : (
+                                <Download className="h-4 w-4 mr-1.5" />
+                              )}
+                              {downloadingId === edl.id ? "PDF…" : "Télécharger"}
+                            </Button>
+                          </>
+                        )}
+                        <Button
                           asChild
                           variant={edl.needsMySignature ? "default" : "outline"}
                           className={cn(
-                            "h-11 px-6 font-bold shadow-lg transition-all rounded-xl",
-                            edl.needsMySignature 
-                              ? "bg-amber-500 hover:bg-amber-600 shadow-amber-100" 
+                            "h-9 px-4 font-bold shadow-sm transition-all rounded-xl",
+                            edl.needsMySignature
+                              ? "bg-amber-500 hover:bg-amber-600 shadow-amber-100"
                               : "border-border hover:bg-indigo-50 hover:text-indigo-600"
                           )}
                         >
                           <Link href={edl.needsMySignature ? `/signature-edl/${edl.invitation_token}` : `/tenant/inspections/${edl.id}`}>
                             {edl.needsMySignature ? "Signer l'EDL" : "Consulter"}
-                            <ChevronRight className="ml-2 h-4 w-4" />
+                            <ChevronRight className="ml-1.5 h-4 w-4" />
                           </Link>
                         </Button>
                       </div>
