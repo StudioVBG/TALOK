@@ -1056,7 +1056,7 @@ export async function POST(request: Request) {
     // =========================================
 
     // 1. Rate limiting (10 req/min)
-    const rateLimitResponse = await applyRateLimit(request, "scrape" as any);
+    const rateLimitResponse = applyRateLimit(request, "scrape");
     if (rateLimitResponse) {
       return rateLimitResponse;
     }
@@ -1123,7 +1123,20 @@ export async function POST(request: Request) {
     }
 
     if (!response.ok) {
-      throw new Error(`Impossible d'accéder à l'URL: ${response.status} ${response.statusText}`);
+      const statusCode = response.status;
+      if (statusCode === 403 || statusCode === 429) {
+        return NextResponse.json(
+          { error: "Le site a bloqué la requête. Réessayez plus tard ou remplissez manuellement.", code: "SCRAPE_BLOCKED" },
+          { status: 502 }
+        );
+      }
+      if (statusCode === 404) {
+        return NextResponse.json(
+          { error: "L'annonce n'a pas été trouvée. Vérifiez l'URL.", code: "SCRAPE_NOT_FOUND" },
+          { status: 404 }
+        );
+      }
+      throw new ApiError(502, `Le site a répondu avec une erreur (${statusCode})`);
     }
 
     // 7. Vérifier la taille de la réponse (max 5MB)
@@ -1230,10 +1243,26 @@ export async function POST(request: Request) {
     });
 
   } catch (error: unknown) {
-    console.error("[Scrape] ❌ Erreur:", (error as Error).message);
-    return NextResponse.json(
-      { error: "Erreur lors de l'analyse de l'annonce", details: (error as Error).message },
-      { status: 500 }
-    );
+    // Timeout du fetch externe (AbortController)
+    if (error instanceof DOMException && error.name === "AbortError") {
+      console.error("[POST /api/scrape] Timeout fetch externe");
+      return NextResponse.json(
+        { error: "Le site met trop de temps à répondre. Réessayez ou remplissez manuellement.", code: "SCRAPE_TIMEOUT" },
+        { status: 504 }
+      );
+    }
+
+    // Erreurs réseau (DNS, connexion refusée, etc.)
+    if (error instanceof TypeError && (error as Error).message?.includes("fetch")) {
+      console.error("[POST /api/scrape] Erreur réseau:", (error as Error).message);
+      return NextResponse.json(
+        { error: "Impossible d'accéder au site. Vérifiez l'URL ou réessayez.", code: "SCRAPE_NETWORK_ERROR" },
+        { status: 502 }
+      );
+    }
+
+    // Erreurs API (401, 403, etc.) via handleApiError
+    console.error("[POST /api/scrape] Erreur:", error instanceof Error ? error.message : error);
+    return handleApiError(error);
   }
 }

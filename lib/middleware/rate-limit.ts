@@ -169,6 +169,11 @@ export const rateLimitPresets = {
     windowMs: 5 * 60 * 1000, // 5 minutes
     maxRequests: 5,
   },
+  // Limite pour le scraping d'annonces (opération lourde avec fetch externe)
+  scrape: {
+    windowMs: 60 * 1000, // 1 minute
+    maxRequests: 10,
+  },
 };
 
 /**
