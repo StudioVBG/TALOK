@@ -22,22 +22,26 @@ import { fr } from "date-fns/locale";
 
 interface ConversationsListProps {
   currentProfileId: string;
+  currentRole?: "owner" | "tenant";
   selectedId?: string;
   onSelect: (conversation: Conversation) => void;
 }
 
-export function ConversationsList({ currentProfileId, selectedId, onSelect }: ConversationsListProps) {
+export function ConversationsList({ currentProfileId, currentRole, selectedId, onSelect }: ConversationsListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [usePolling, setUsePolling] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadConversations = useCallback(async () => {
     try {
+      setLoadError(null);
       const data = await chatService.getConversations();
       setConversations(data);
     } catch (error) {
       console.error("Erreur chargement conversations:", error);
+      setLoadError("Impossible de charger les conversations");
     } finally {
       setLoading(false);
     }
@@ -102,6 +106,11 @@ export function ConversationsList({ currentProfileId, selectedId, onSelect }: Co
     return isOwner ? conv.tenant_name : conv.owner_name;
   };
 
+  const getOtherAvatar = (conv: Conversation) => {
+    const isOwner = currentProfileId === conv.owner_profile_id;
+    return isOwner ? conv.tenant_avatar : conv.owner_avatar;
+  };
+
   const formatLastMessage = (dateString?: string | null) => {
     if (!dateString) return "";
     return formatDistanceToNow(new Date(dateString), { 
@@ -160,7 +169,15 @@ export function ConversationsList({ currentProfileId, selectedId, onSelect }: Co
 
       <ScrollArea className="flex-1">
         <CardContent className="p-2">
-          {filteredConversations.length === 0 ? (
+          {loadError && (
+            <div className="p-3 mb-2 text-sm text-destructive bg-destructive/10 rounded-lg">
+              {loadError}
+              <button onClick={loadConversations} className="underline ml-1 font-medium">
+                Réessayer
+              </button>
+            </div>
+          )}
+          {filteredConversations.length === 0 && !loadError ? (
             <div className="text-center py-12 px-4">
               <div className="bg-muted/50 rounded-full p-4 inline-block mb-4">
                 <MessageSquare className="h-10 w-10 text-muted-foreground/40" />
@@ -171,7 +188,9 @@ export function ConversationsList({ currentProfileId, selectedId, onSelect }: Co
               <p className="text-sm text-muted-foreground max-w-xs mx-auto">
                 {search
                   ? "Essayez un autre terme de recherche."
-                  : "Votre propriétaire n'a pas encore envoyé de message. Utilisez le bouton ci-dessus pour initier la conversation."}
+                  : currentRole === "owner"
+                    ? "Créez une conversation avec un locataire via le bouton ci-dessus."
+                    : "Votre propriétaire n'a pas encore envoyé de message. Utilisez le bouton ci-dessus pour initier la conversation."}
               </p>
             </div>
           ) : (
@@ -196,6 +215,9 @@ export function ConversationsList({ currentProfileId, selectedId, onSelect }: Co
                   >
                     <div className="flex items-start gap-3">
                       <Avatar className="h-12 w-12 flex-shrink-0">
+                        {getOtherAvatar(conversation) && (
+                          <AvatarImage src={getOtherAvatar(conversation)!} alt={getOtherName(conversation) || "Interlocuteur"} />
+                        )}
                         <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10">
                           {getOtherName(conversation)
                             ?.split(" ")

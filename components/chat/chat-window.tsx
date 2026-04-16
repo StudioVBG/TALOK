@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Send,
@@ -37,6 +36,37 @@ import { chatService, type Message, type Conversation } from "@/lib/services/cha
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 
+/** Image avec fallback en cas d'erreur de chargement */
+function MessageImage({ src, alt, fileName, isMe }: {
+  src: string;
+  alt: string;
+  fileName?: string | null;
+  isMe: boolean;
+}) {
+  const [hasError, setHasError] = useState(false);
+
+  if (hasError) {
+    return (
+      <div className={`flex items-center gap-2 text-sm ${
+        isMe ? "text-primary-foreground/80" : "text-muted-foreground"
+      }`}>
+        <Paperclip className="h-4 w-4 flex-shrink-0" />
+        <span>{fileName || "Image non disponible"}</span>
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="max-w-[280px] max-h-[280px] rounded-lg object-cover cursor-pointer"
+      onError={() => setHasError(true)}
+      loading="lazy"
+    />
+  );
+}
+
 interface ChatWindowProps {
   conversation: Conversation;
   currentProfileId: string;
@@ -61,6 +91,7 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
 
   const isOwner = currentProfileId === conversation.owner_profile_id;
   const otherName = isOwner ? conversation.tenant_name : conversation.owner_name;
+  const otherAvatar = isOwner ? conversation.tenant_avatar : conversation.owner_avatar;
 
   // Charger les messages
   useEffect(() => {
@@ -352,6 +383,7 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
             </Button>
           )}
           <Avatar className="h-10 w-10">
+            {otherAvatar && <AvatarImage src={otherAvatar} alt={otherName || "Interlocuteur"} />}
             <AvatarFallback>
               {otherName?.split(" ").map(n => n[0]).join("").toUpperCase() || "?"}
             </AvatarFallback>
@@ -363,7 +395,7 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
             </p>
           </div>
           <Badge variant="outline" className="text-xs">
-            {isOwner ? "Propriétaire" : "Locataire"}
+            {isOwner ? "Locataire" : "Propriétaire"}
           </Badge>
           {conversation.ticket_id && (
             <Badge variant="secondary" className="text-xs">
@@ -390,7 +422,7 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
       </CardHeader>
 
       {/* Messages */}
-      <ScrollArea ref={scrollRef} className="flex-1 p-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4">
         {loading ? (
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
@@ -515,19 +547,20 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
                               </div>
                             ) : (
                               <>
-                                {message.content_type === "text" && (
+                                {message.content_type === "text" && !message.attachment_url && (
                                   <p className="text-sm whitespace-pre-wrap break-words">
                                     {message.content}
                                   </p>
                                 )}
 
                                 {message.attachment_url && (
-                                  <div className="mt-2">
-                                    {message.content_type === "image" ? (
-                                      <img
+                                  <div className={message.content_type !== "text" ? "mt-0" : "mt-2"}>
+                                    {message.content_type === "image" || message.attachment_type?.startsWith("image/") ? (
+                                      <MessageImage
                                         src={message.attachment_url}
                                         alt={message.attachment_name || "Image"}
-                                        className="max-w-full rounded-lg"
+                                        fileName={message.attachment_name}
+                                        isMe={isMe}
                                       />
                                     ) : (
                                       <a
@@ -599,7 +632,7 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
             ))}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       {/* Input */}
       <div className="p-4 border-t flex-shrink-0">
