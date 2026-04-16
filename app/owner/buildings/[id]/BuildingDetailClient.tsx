@@ -72,8 +72,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { LotCharacteristicsDrawer } from "./LotCharacteristicsDrawer";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { apiClient } from "@/lib/api-client";
 import type { BuildingRow, BuildingUnitRow } from "@/lib/supabase/database.types";
+import type { DeleteGuardResult } from "@/lib/properties/guards";
 import { TYPE_TO_LABEL, type DocumentType } from "@/lib/documents/constants";
 import { SmartImageCard } from "@/components/ui/smart-image-card";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
@@ -376,6 +379,49 @@ export function BuildingDetailClient({
   const [uploading, setUploading] = useState(false);
   const [selectedDocType, setSelectedDocType] = useState<string>("assurance_pno");
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Delete building ──
+  const router = useRouter();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteGuard, setDeleteGuard] = useState<DeleteGuardResult | null>(null);
+  const [deleteGuardLoading, setDeleteGuardLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleOpenDeleteDialog = useCallback(async () => {
+    setDeleteDialogOpen(true);
+    setDeleteGuard(null);
+    setDeleteGuardLoading(true);
+    try {
+      const res = await fetch(`/api/properties/${propertyId}/can-delete`);
+      if (!res.ok) throw new Error("Erreur lors de la vérification");
+      const data: DeleteGuardResult = await res.json();
+      setDeleteGuard(data);
+    } catch {
+      setDeleteGuard({
+        canDelete: false,
+        canArchive: false,
+        blockers: ["Impossible de vérifier les dépendances. Réessayez."],
+        warnings: [],
+        linkedData: { activeLeases: 0, terminatedLeases: 0, documents: 0, tickets: 0, photos: 0 },
+      });
+    } finally {
+      setDeleteGuardLoading(false);
+    }
+  }, [propertyId]);
+
+  const handleDeleteBuilding = useCallback(async () => {
+    setDeleting(true);
+    try {
+      await apiClient.delete(`/properties/${propertyId}`);
+      toast({ title: "Immeuble supprimé avec succès" });
+      router.push("/owner/properties?tab=immeubles");
+    } catch (e) {
+      const msg = (e as Error)?.message || "Erreur lors de la suppression";
+      toast({ title: msg, variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  }, [propertyId, toast, router]);
 
   // ── Cover photo ──
   const [coverUrl, setCoverUrl] = useState<string | null>(building.cover_url);
@@ -707,8 +753,8 @@ export function BuildingDetailClient({
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-        {/* Cover photo button */}
-        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+        {/* Cover photo button + delete button */}
+        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
           <Button
             size="sm"
             variant="secondary"
@@ -721,6 +767,15 @@ export function BuildingDetailClient({
             ) : (
               <><Pencil className="h-3.5 w-3.5 mr-1.5" /> Modifier la photo</>
             )}
+          </Button>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="bg-red-600/80 hover:bg-red-700 text-white border-0 backdrop-blur-sm"
+            onClick={handleOpenDeleteDialog}
+          >
+            <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+            Supprimer
           </Button>
           <input
             ref={coverInputRef}
@@ -1580,6 +1635,95 @@ export function BuildingDetailClient({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Dialog de suppression immeuble */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => { if (!deleting) setDeleteDialogOpen(open); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-500" />
+              Supprimer l&apos;immeuble
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 pt-2">
+                {deleteGuardLoading ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Vérification des dépendances…
+                  </div>
+                ) : deleteGuard ? (
+                  <>
+                    {/* Blockers */}
+                    {deleteGuard.blockers.length > 0 && (
+                      <div className="space-y-1">
+                        {deleteGuard.blockers.map((b, i) => (
+                          <p key={i} className="text-red-500 text-sm flex items-start gap-1.5">
+                            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                            {b}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Lots cascade info */}
+                    {deleteGuard.lots && deleteGuard.lots.length > 0 && (
+                      <div className="rounded-md border p-3">
+                        <p className="font-medium text-sm text-foreground mb-2">
+                          {deleteGuard.lots.length} lot{deleteGuard.lots.length > 1 ? "s" : ""} {deleteGuard.lots.length > 1 ? "seront" : "sera"} supprimé{deleteGuard.lots.length > 1 ? "s" : ""} :
+                        </p>
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                          {deleteGuard.lots.map((lot) => (
+                            <div key={lot.id} className="flex items-center gap-2 text-sm">
+                              <Home className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                              <span className="text-foreground truncate">{lot.adresse || lot.id}</span>
+                              {lot.hasActiveLease && (
+                                <Badge variant="destructive" className="text-xs shrink-0">Bail actif</Badge>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Warnings */}
+                    {deleteGuard.warnings.length > 0 && (
+                      <div className="space-y-1">
+                        {deleteGuard.warnings.map((w, i) => (
+                          <p key={i} className="text-orange-500 text-sm flex items-start gap-1.5">
+                            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                            {w}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+
+                    <p className="text-sm text-muted-foreground">
+                      Cette action est irréversible. L&apos;immeuble et ses lots seront archivés.
+                    </p>
+                  </>
+                ) : null}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleteGuardLoading || !deleteGuard || deleteGuard.blockers.length > 0 || deleting}
+              onClick={(e) => { e.preventDefault(); handleDeleteBuilding(); }}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Suppression…
+                </>
+              ) : (
+                "Supprimer définitivement"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
