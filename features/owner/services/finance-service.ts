@@ -24,11 +24,10 @@ export async function getPropertyPerformance(propertyId: string): Promise<Proper
   const { data: property, error } = await supabase
     .from("properties")
     .select(`
-      id, 
-      nom, 
-      adresse, 
+      id,
+      adresse_complete,
       code_postal,
-      investment_price,
+      prix_achat,
       leases (
         loyer,
         charges_forfaitaires
@@ -41,24 +40,32 @@ export async function getPropertyPerformance(propertyId: string): Promise<Proper
     throw new Error("Property not found");
   }
 
-  const activeLease = property.leases?.[0]; // On prend le premier bail actif
+  const propertyData = property as unknown as {
+    id: string;
+    adresse_complete?: string | null;
+    code_postal?: string | null;
+    prix_achat?: number | null;
+    leases?: Array<{ loyer?: number | null; charges_forfaitaires?: number | null }>;
+  };
+
+  const activeLease = propertyData.leases?.[0]; // On prend le premier bail actif
   const monthlyRent = activeLease?.loyer || 0;
-  const purchasePrice = (property as any).investment_price || 0;
-  
+  const purchasePrice = propertyData.prix_achat || 0;
+
   // 2. Calculer les taxes via le moteur fiscal
-  const taxResult = calculateTaxes(monthlyRent, property.code_postal || "75000");
-  
+  const taxResult = calculateTaxes(monthlyRent, propertyData.code_postal || "75000");
+
   // 3. Calculs financiers
   const annualRent = monthlyRent * 12;
   const grossYield = purchasePrice > 0 ? (annualRent / purchasePrice) * 100 : 0;
-  
+
   // Pour le net, on retire la TVA (si refacturable) et une estimation de charges (20%)
   const annualNetRent = (taxResult.totalAmount - taxResult.tvaAmount) * 12 * 0.8;
   const netYield = purchasePrice > 0 ? (annualNetRent / purchasePrice) * 100 : 0;
-  
+
   return {
-    id: property.id,
-    name: property.nom || "Bien sans nom",
+    id: propertyData.id,
+    name: propertyData.adresse_complete || "Bien sans nom",
     grossYield: Number(grossYield.toFixed(2)),
     netYield: Number(netYield.toFixed(2)),
     cashflow: Number((annualNetRent / 12).toFixed(2)),

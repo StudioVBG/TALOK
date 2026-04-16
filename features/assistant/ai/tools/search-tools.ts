@@ -31,24 +31,24 @@ export const searchPropertiesTool = tool(
       .from("properties")
       .select(`
         id,
-        type_bien,
+        type,
         adresse_complete,
         ville,
         surface,
         loyer_base,
-        statut
+        etat
       `)
       .limit(input.limit || 10);
-    
+
     // Filtres conditionnels
     if (input.city) {
       query = query.ilike("ville", `%${input.city}%`);
     }
     if (input.type) {
-      query = query.eq("type_bien", input.type);
+      query = query.eq("type", input.type);
     }
     if (input.status) {
-      query = query.eq("statut", input.status);
+      query = query.eq("etat", input.status);
     }
     if (input.minRent) {
       query = query.gte("loyer_base", input.minRent);
@@ -59,23 +59,23 @@ export const searchPropertiesTool = tool(
     if (input.ownerId) {
       query = query.eq("owner_id", input.ownerId);
     }
-    
+
     const { data, error } = await query;
-    
+
     if (error) {
       console.error("[Assistant Tool] Error searching properties:", error);
       return [];
     }
-    
+
     return (data || []).map((p: Record<string, unknown>) => ({
       id: p.id as string,
-      title: `${p.type_bien} - ${p.ville}`,
+      title: `${p.type} - ${p.ville}`,
       address: p.adresse_complete as string,
       city: p.ville as string,
-      type: p.type_bien as string,
+      type: p.type as string,
       surface: p.surface as number,
       rent: p.loyer_base as number,
-      status: (p.statut as string) === "loue" ? "rented" : "available",
+      status: (p.etat as string) === "loue" ? "rented" : "available",
     }));
   },
   {

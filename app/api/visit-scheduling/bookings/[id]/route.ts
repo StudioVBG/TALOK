@@ -9,6 +9,7 @@ import {
   cancelVisitBookingSchema,
   visitFeedbackSchema,
 } from "@/lib/validations";
+import { fetchPropertyCoverUrl } from "@/lib/properties/cover-url";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -41,7 +42,6 @@ export async function GET(request: Request, { params }: RouteParams) {
           adresse_complete,
           ville,
           code_postal,
-          cover_url,
           owner_id
         ),
         tenant:profiles!tenant_id(
@@ -62,7 +62,13 @@ export async function GET(request: Request, { params }: RouteParams) {
       );
     }
 
-    return NextResponse.json({ booking });
+    // Enrichir avec cover_url (depuis la table photos)
+    const bookingData = booking as any;
+    if (bookingData.property?.id) {
+      bookingData.property.cover_url = await fetchPropertyCoverUrl(supabaseClient, bookingData.property.id);
+    }
+
+    return NextResponse.json({ booking: bookingData });
   } catch (error: unknown) {
     console.error("GET /api/visit-scheduling/bookings/[id] error:", error);
     return NextResponse.json(

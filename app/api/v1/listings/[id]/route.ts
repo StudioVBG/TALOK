@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/helpers/auth-helper';
 import { updateListingSchema } from '@/lib/validations/candidatures';
 import { getServiceClient } from '@/lib/supabase/service-client';
+import { fetchPropertyCoverUrl } from '@/lib/properties/cover-url';
 import { z } from 'zod';
 
 /**
@@ -27,7 +28,7 @@ export async function GET(
       .select(`
         *,
         property:properties!inner(
-          id, adresse_complete, ville, code_postal, type, surface, nb_pieces, cover_url
+          id, adresse_complete, ville, code_postal, type, surface, nb_pieces
         )
       `)
       .eq('id', id)
@@ -37,7 +38,13 @@ export async function GET(
       return NextResponse.json({ error: 'Annonce introuvable' }, { status: 404 });
     }
 
-    return NextResponse.json({ listing: data });
+    // Enrichir avec cover_url (depuis la table photos)
+    const listing: any = data;
+    if (listing.property?.id) {
+      listing.property.cover_url = await fetchPropertyCoverUrl(serviceClient, listing.property.id);
+    }
+
+    return NextResponse.json({ listing });
   } catch (error: unknown) {
     console.error('[GET /api/v1/listings/[id]] Erreur:', error);
     return NextResponse.json(

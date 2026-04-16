@@ -406,13 +406,10 @@ export function BuildingDetailClient({
         const urlData = await urlRes.json();
         const newCoverUrl = urlData.signedUrl || urlData.url;
         setCoverUrl(newCoverUrl);
-
-        // Persist cover_url on property
-        await fetch(`/api/properties/${propertyId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cover_url: newCoverUrl }),
-        }).catch(() => {});
+        // NOTE: la cover persistante est dérivée côté serveur depuis la table `photos`
+        // (ou `documents` collection=property_media is_cover=true). Aucune colonne
+        // `cover_url` n'existe sur `properties` — l'ancien PATCH ici échouait
+        // silencieusement.
       }
 
       toast({ title: "Photo mise à jour" });

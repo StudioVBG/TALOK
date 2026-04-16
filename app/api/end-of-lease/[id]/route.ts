@@ -134,13 +134,11 @@ export async function PATCH(
       throw error;
     }
 
-    // Si le statut passe à "ready_to_rent", mettre à jour le statut du logement
-    if (validatedData.status === "ready_to_rent") {
-      await supabase
-        .from("properties")
-        .update({ rental_status: "ready_to_rent" })
-        .eq("id", (process as any).property_id);
-    }
+    // TODO: phantom column removed — la colonne `rental_status` n'existe pas sur
+    // `properties`. Voir app/api/properties/[id]/status/route.ts pour le contexte.
+    // Étape sautée jusqu'à modélisation correcte.
+    void validatedData;
+    void process;
 
     return NextResponse.json({ process });
   } catch (error) {

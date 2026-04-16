@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
+import { fetchPropertyCoverUrl } from "@/lib/properties/cover-url";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -55,7 +56,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       .select(`
         *,
         property:properties!property_id(
-          id, adresse_complete, ville, code_postal, cover_url
+          id, adresse_complete, ville, code_postal
         )
       `)
       .eq("id", id)
@@ -64,7 +65,13 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     if (fetchError || !listing) throw new ApiError(404, "Annonce non trouvée");
 
-    return NextResponse.json({ listing });
+    // Enrichir avec cover_url (depuis la table photos)
+    const listingData = listing as any;
+    if (listingData.property?.id) {
+      listingData.property.cover_url = await fetchPropertyCoverUrl(supabase, listingData.property.id);
+    }
+
+    return NextResponse.json({ listing: listingData });
   } catch (err) {
     return handleApiError(err);
   }

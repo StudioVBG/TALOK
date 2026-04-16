@@ -127,7 +127,7 @@ export class UserContextService {
       .from("leases")
       .select(`
         *,
-        property:properties(adresse_complete, ville, type_bien),
+        property:properties(adresse_complete, ville, type),
         tenant:profiles!leases_tenant_id_fkey(prenom, nom, email)
       `)
       .eq("id", leaseId)
@@ -320,7 +320,7 @@ export class UserContextService {
 
   private buildPropertyContent(property: any): string {
     const parts = [
-      `Bien immobilier: ${property.type_bien || "Non spécifié"}`,
+      `Bien immobilier: ${property.type || "Non spécifié"}`,
       `Adresse: ${property.adresse_complete || "Non renseignée"}`,
       `Ville: ${property.ville || "Non renseignée"}`,
       `Surface: ${property.surface ? `${property.surface} m²` : "Non renseignée"}`,
@@ -345,7 +345,7 @@ export class UserContextService {
   }
 
   private buildPropertySummary(property: any): string {
-    return `${property.type_bien || "Bien"} à ${property.ville || "?"} - ${property.loyer_base || "?"}€`;
+    return `${property.type || "Bien"} à ${property.ville || "?"} - ${property.loyer_base || "?"}€`;
   }
 
   private buildLeaseContent(lease: any): string {

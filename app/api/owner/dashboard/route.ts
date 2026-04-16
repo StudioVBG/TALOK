@@ -39,11 +39,11 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const entityId = searchParams.get("entityId");
 
-    // 1. Récupérer les propriétés (inclure type_bien pour support V3)
+    // 1. Récupérer les propriétés
     // Utiliser serviceClient pour bypasser RLS — la sécurité est assurée par le filtre owner_id vérifié en amont
     let propertiesQuery = serviceClient
       .from("properties")
-      .select("id, type, type_bien, adresse_complete, surface, nb_pieces, legal_entity_id")
+      .select("id, type, adresse_complete, surface, nb_pieces, legal_entity_id")
       .eq("owner_id", ownerId)
       .is("deleted_at", null);
 
@@ -288,7 +288,7 @@ export async function GET(request: Request) {
       action_url: string;
     }> = [];
 
-    // Habitation & colocation - Support V3 (type_bien) et Legacy (type)
+    // Habitation & colocation
     const habitationLeases = (leases || []).filter(
       (l: any) =>
         l.type_bail === "nu" ||
@@ -297,7 +297,7 @@ export async function GET(request: Request) {
     );
     const habitationProperties = (properties || []).filter(
       (p: any) => {
-        const propertyType = p.type_bien || p.type; // Priorité à type_bien (V3)
+        const propertyType = p.type;
         return propertyType === "appartement" ||
                propertyType === "maison" ||
                propertyType === "colocation";
@@ -328,13 +328,13 @@ export async function GET(request: Request) {
       });
     }
 
-    // LCD (Location Courte Durée / Saisonnier) - Support V3 et Legacy
+    // LCD (Location Courte Durée / Saisonnier)
     const lcdLeases = (leases || []).filter(
       (l: any) => l.type_bail === "saisonnier"
     );
     const lcdProperties = (properties || []).filter(
       (p: any) => {
-        const propertyType = p.type_bien || p.type;
+        const propertyType = p.type;
         return propertyType === "saisonnier";
       }
     );
@@ -360,13 +360,13 @@ export async function GET(request: Request) {
       });
     }
 
-    // Pro & commerces - Support V3 et Legacy
+    // Pro & commerces
     const proLeases = (leases || []).filter(
       (l: any) => l.type_bail === "commercial" || l.type_bail === "professionnel"
     );
     const proProperties = (properties || []).filter(
       (p: any) => {
-        const propertyType = p.type_bien || p.type;
+        const propertyType = p.type;
         return propertyType === "local_commercial" ||
                propertyType === "bureaux" ||
                propertyType === "entrepot" ||
@@ -390,13 +390,13 @@ export async function GET(request: Request) {
       });
     }
 
-    // Parking - Support V3 et Legacy
+    // Parking
     const parkingLeases = (leases || []).filter(
       (l: any) => l.type_bail === "parking_seul"
     );
     const parkingProperties = (properties || []).filter(
       (p: any) => {
-        const propertyType = p.type_bien || p.type;
+        const propertyType = p.type;
         return propertyType === "parking" || propertyType === "box";
       }
     );

@@ -124,8 +124,7 @@ export class AccountingService {
       .from("properties")
       .select(`
         id,
-        nom,
-        type_bien,
+        type,
         adresse_complete,
         ville,
         code_postal,
@@ -205,7 +204,7 @@ export class AccountingService {
         bien: {
           id: property.id,
           reference: `LOT-${property.id.substring(0, 8).toUpperCase()}`,
-          type: property.type_bien || "appartement",
+          type: property.type || "appartement",
           adresse: property.adresse_complete || "",
           ville: property.ville || "",
           code_postal: property.code_postal || "",
@@ -868,7 +867,7 @@ export class AccountingService {
           adresse_complete,
           ville,
           code_postal,
-          type_bien
+          type
         )
       `)
       .eq("tenant_id", tenantId)
@@ -946,7 +945,7 @@ export class AccountingService {
       bien: {
         id: propertyData?.id || "",
         reference: `LOT-${(propertyData?.id || "").substring(0, 8).toUpperCase()}`,
-        type: propertyData?.type_bien || "appartement",
+        type: propertyData?.type || "appartement",
         adresse: propertyData?.adresse_complete || "",
         ville: propertyData?.ville || "",
         code_postal: propertyData?.code_postal || "",

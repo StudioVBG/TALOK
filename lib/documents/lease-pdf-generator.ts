@@ -44,7 +44,7 @@ interface PropertyDataForPDF {
   surface?: number | null;
   surface_habitable_m2?: number | null;
   nb_pieces?: number | null;
-  type_bien?: string | null;
+  type?: string | null;
   owner_id: string;
 }
 
@@ -164,7 +164,7 @@ export async function generateSignedLeasePDF(
       depot_garantie, statut, sealed_at, property_id,
       property:properties!leases_property_id_fkey(
         id, adresse_complete, ville, code_postal,
-        surface, surface_habitable_m2, nb_pieces, type_bien, owner_id
+        surface, surface_habitable_m2, nb_pieces, type, owner_id
       ),
       signers:lease_signers(
         role, signature_status, signed_at,
@@ -534,8 +534,8 @@ async function buildLeasePDF(
   if (property.nb_pieces && property.nb_pieces > 0) {
     drawKeyValue("Nombre de pièces", `${property.nb_pieces}`);
   }
-  if (property.type_bien) {
-    drawKeyValue("Type de bien", property.type_bien);
+  if (property.type) {
+    drawKeyValue("Type de bien", property.type);
   }
 
   // ======== CONDITIONS FINANCIÈRES ========

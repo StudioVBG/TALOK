@@ -127,13 +127,13 @@ export async function generateCRG(
 
   const { data: properties } = await supabase
     .from("properties")
-    .select("id, address, city, property_type")
+    .select("id, adresse_complete, ville, type")
     .eq("owner_entity_id", mandant.owner_entity_id);
 
   const propertyMap = new Map(
-    (properties ?? []).map((p: { id: string; address: string; city: string }) => [
+    (properties ?? []).map((p: { id: string; adresse_complete: string; ville: string }) => [
       p.id,
-      `${p.address}, ${p.city}`,
+      `${p.adresse_complete}, ${p.ville}`,
     ]),
   );
 

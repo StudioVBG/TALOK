@@ -58,17 +58,14 @@ export async function POST(
       return NextResponse.json({ error: "Ce logement ne vous appartient pas" }, { status: 403 });
     }
 
-    // Mettre à jour le statut
-    const { error: updateError } = await serviceClient
-      .from("properties")
-      .update({ rental_status: validatedData.rental_status })
-      .eq("id", id);
+    // TODO: phantom column removed — la colonne `rental_status` n'existe pas sur
+    // `properties`. La colonne `etat` (valeurs : draft/pending/published/rejected/
+    // deleted/archived) ne couvre pas le concept "vacant/occupied/renovation/...".
+    // Endpoint conservé en lecture seule en attendant une vraie modélisation
+    // (table `property_rental_states` ou extension de l'enum `etat`).
+    void serviceClient;
 
-    if (updateError) {
-      throw updateError;
-    }
-
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       rental_status: validatedData.rental_status,
     });

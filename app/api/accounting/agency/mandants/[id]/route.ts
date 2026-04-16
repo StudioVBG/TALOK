@@ -74,7 +74,7 @@ export async function GET(request: Request, context: Context) {
       };
     })
       .from("properties")
-      .select("id, address, city, property_type, status")
+      .select("id, adresse_complete, ville, type, etat")
       .eq("owner_entity_id", mandant.owner_entity_id as string);
 
     // Fetch recent accounting entries related to this mandant

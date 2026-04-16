@@ -10,6 +10,24 @@ import { propertyIdParamSchema } from "@/lib/validations/params";
 import type { ServiceSupabaseClient, MediaDocument, SupabaseError } from "@/lib/types/supabase-client";
 import { syncPropertyBillingToStripe } from "@/lib/stripe/sync-property-billing";
 
+// ──────────────────────────────────────────────────────────────────────────────
+// Strip-list partagé entre les handlers PATCH et PUT.
+// Ces colonnes apparaissent dans le wizard / payload UI mais n'existent PAS sur
+// la table `properties` — elles vivent ailleurs (table `buildings`, table
+// `property_listings`, ou nulle part). Les laisser passer dans l'UPDATE provoque
+// un échec Postgres "column ... does not exist".
+// ──────────────────────────────────────────────────────────────────────────────
+const PROPERTY_BUILDING_ONLY_FIELDS = [
+  'building_floors', 'building_units',
+  'has_ascenseur', 'has_gardien', 'has_interphone', 'has_digicode',
+  'has_local_velo', 'has_local_poubelles',
+] as const;
+
+const PROPERTY_NON_DB_FIELDS = [
+  'mode_location', 'visibility', 'available_from', 'description',
+  'type_bien',
+] as const;
+
 /**
  * GET /api/properties/[id] - Récupérer une propriété par ID
  * Configuration Vercel: maxDuration: 10s
@@ -310,19 +328,7 @@ export async function PATCH(
 
     const updates: Record<string, unknown> = { ...validated, updated_at: new Date().toISOString() };
 
-    // Strip champs buildings (table buildings, pas properties)
-    // Le wizard les persiste via POST /api/properties/[id]/building-units au publish.
-    const BUILDING_ONLY_FIELDS = [
-      'building_floors', 'building_units',
-      'has_ascenseur', 'has_gardien', 'has_interphone', 'has_digicode',
-      'has_local_velo', 'has_local_poubelles',
-    ];
-    // Strip champs wizard/UI qui n'existent pas dans la table properties
-    const NON_DB_FIELDS = [
-      'mode_location', 'visibility', 'available_from', 'description',
-      'type_bien',
-    ];
-    for (const field of [...BUILDING_ONLY_FIELDS, ...NON_DB_FIELDS]) {
+    for (const field of [...PROPERTY_BUILDING_ONLY_FIELDS, ...PROPERTY_NON_DB_FIELDS]) {
       delete updates[field];
     }
 
@@ -572,10 +578,16 @@ export async function PUT(
       throw new ApiError(400, "Impossible de modifier un logement en cours de validation ou publié");
     }
 
+    // ✅ STRIP des colonnes fantômes (wizard / building / listings)
+    const safeUpdate: Record<string, unknown> = { ...validated };
+    for (const field of [...PROPERTY_BUILDING_ONLY_FIELDS, ...PROPERTY_NON_DB_FIELDS]) {
+      delete safeUpdate[field];
+    }
+
     // ✅ MISE À JOUR: Mettre à jour la propriété
     const { data: updatedProperty, error: updateError } = await serviceClient
       .from("properties")
-      .update(validated)
+      .update(safeUpdate)
       .eq("id", propertyId)
       .select()
       .single();

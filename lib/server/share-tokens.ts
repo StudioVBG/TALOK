@@ -1,9 +1,16 @@
 import { getServiceRoleClient } from "./service-role-client";
 
+// NOTE: les colonnes commentées / supprimées ci-dessous sont des phantoms
+// (n'existent pas sur la table `properties`). Voir audit phantom-columns 2026-04.
+// - `type_bien`            → utiliser `type`
+// - `gabarit`              → `parking_gabarit`
+// - `numero_place`         → `parking_numero`
+// - `niveau`               → `parking_niveau`
+// - `type_location_parking`→ aucune équivalence (retiré)
+// - `charges_forfaitaires` → vit sur la table `leases`, pas `properties` (retiré)
 export const PROPERTY_SHARE_SELECT = [
   "id",
   "type",
-  "type_bien",
   "usage_principal",
   "adresse_complete",
   "code_postal",
@@ -17,14 +24,12 @@ export const PROPERTY_SHARE_SELECT = [
   "meuble",
   "parking_details",
   "parking_badge_count",
-  "gabarit",
-  "type_location_parking",
-  "numero_place",
-  "niveau",
+  "parking_gabarit",
+  "parking_numero",
+  "parking_niveau",
   "loyer_hc",
   "charges_mensuelles",
   "depot_garantie",
-  "charges_forfaitaires",
   "type_bail",
   "chauffage_type",
   "chauffage_energie",

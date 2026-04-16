@@ -81,7 +81,8 @@ function sanitizeProperty(property: Record<string, any>) {
 
   return {
     ...publicFields,
-    type_bien: property.type ?? property.type_bien,
+    // type_bien (alias V3) conservé pour rétro-compat des consumers front/PDF.
+    type_bien: property.type,
     loyer_hc: property.loyer_hc,
   };
 }

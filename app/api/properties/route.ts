@@ -161,11 +161,10 @@ export async function GET(request: Request) {
       }
 
       // ✅ FILTRES BASIQUES: Appliquer les filtres si fournis
-      if (baseQuery && queryParams.type) {
-        baseQuery = baseQuery.eq("type", queryParams.type);
-      }
-      if (baseQuery && queryParams.type_bien) {
-        baseQuery = baseQuery.eq("type_bien", queryParams.type_bien);
+      // NOTE: queryParams.type_bien est un alias V3 du wizard ; mappé sur la colonne réelle `type`.
+      const typeFilter = queryParams.type ?? queryParams.type_bien;
+      if (baseQuery && typeFilter) {
+        baseQuery = baseQuery.eq("type", typeFilter);
       }
       if (baseQuery && queryParams.etat) {
         baseQuery = baseQuery.eq("etat", queryParams.etat);

@@ -41,7 +41,7 @@ export async function GET(request: Request) {
           role,
           created_at,
           owner_profiles(type, siret, usage_strategie, tva_optionnelle, tva_taux),
-          properties(id, type, usage_principal, sous_usage, adresse_complete, surface, nb_pieces, created_at, tva_applicable)
+          properties(id, type, usage_principal, sous_usage, adresse_complete, surface, nb_pieces, created_at)
         `
         )
         .eq("role", "owner"),
@@ -65,8 +65,6 @@ export async function GET(request: Request) {
           has_irve,
           places_parking,
           parking_badge_count,
-          tva_applicable,
-          tva_taux,
           etat,
           submitted_at,
           validated_at,
@@ -191,7 +189,10 @@ export async function GET(request: Request) {
       (property) => property.usage_principal && property.usage_principal !== "habitation"
     );
 
-    const propertiesWithTva = enrichedProperties.filter((property) => property.tva_applicable);
+    // NOTE: les colonnes `tva_applicable` / `tva_taux` n'existent pas sur properties
+    // (audit phantom 2026-04). La TVA est gérée au niveau du propriétaire via
+    // `owner_profiles.tva_optionnelle` — on ne peut plus filtrer par bien ici.
+    const propertiesWithTva: typeof enrichedProperties = [];
 
     return NextResponse.json({
       owners: enrichedOwners,
