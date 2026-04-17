@@ -188,7 +188,92 @@ Pas d'accès direct à `gh` CLI dans cet environnement (restrictions repo via MC
 
 
 ## C. Pipeline Factures prestataires (work orders)
-*(Pending)*
+
+### C.1 — Schéma `work_orders`
+
+Table créée dans `20240101000000_initial_schema.sql` (minimaliste : ticket_id, provider_id, coût, statut) puis **massivement étendue** par `20260408120000_providers_module_sota.sql` (migration pending, classée 🟡 dans le backlog).
+
+**Colonnes ajoutées par providers_module_sota** (extrait migration lignes 240–285) :
+
+| Colonne | Type | Lien |
+|---------|------|------|
+| `quote_amount_cents` | INTEGER | — |
+| `quote_document_id` | UUID REFERENCES documents(id) | ✅ FK documents |
+| `invoice_amount_cents` | INTEGER | — |
+| `invoice_document_id` | UUID REFERENCES documents(id) | ✅ FK documents |
+| `payment_method` | TEXT CHECK (bank_transfer/check/cash/stripe) | — |
+| `paid_at` | TIMESTAMPTZ | — |
+| `intervention_report` | TEXT | — |
+| `intervention_photos` | JSONB | — |
+| `tenant_signature_url` | TEXT | — |
+| **`accounting_entry_id`** | **UUID** (pas de REFERENCES) | ⚠️ UUID conventionnel |
+| `is_deductible` | BOOLEAN DEFAULT true | — |
+
+**Finding 🟡** : `work_orders.accounting_entry_id` est déclaré sans FK (`UUID` seul, pas `REFERENCES accounting_entries(id)`). Pattern identique aux autres ponts document↔compta (cf. audit 1/3 §7).
+
+### C.2 — State machine et routes
+
+Routes sous `app/api/work-orders/[id]/` :
+
+| Route | Méthode | Fonction appelée (`features/providers/services/work-orders-extended.service.ts`) | Écriture compta ? |
+|-------|---------|-----------------------------------------------------------------------------------|:---:|
+| `/accept` | POST | `acceptWorkOrder` | ❌ |
+| `/approve-quote` | POST | `approveQuote` (status → 'quoted_approved') | ❌ |
+| `/reject` | POST | `rejectWorkOrder` | ❌ |
+| `/schedule` | POST | `scheduleWorkOrder` | ❌ |
+| `/start` | POST | `startWorkOrder` | ❌ |
+| `/reports` | POST | `addIntervention` | ❌ |
+| **`/invoice`** | POST | `submitInvoice(workOrderId, {invoice_amount_cents, invoice_document_id})` → UPDATE `work_orders SET status='invoiced', invoice_amount_cents, invoice_document_id` | ❌ |
+| **`/pay`** | POST | `markAsPaid(workOrderId, {payment_method})` → UPDATE `work_orders SET status='paid', payment_method, paid_at=NOW()` | ❌ |
+
+### C.3 — Chemin document → work_order
+
+Un prestataire peut uploader :
+- **Devis** via route documents standard → stocké dans `documents` (type `devis`) → renseigné dans `work_orders.quote_document_id` par `submitQuote`
+- **Facture** via route documents standard → stocké dans `documents` (type `facture`) → renseigné dans `work_orders.invoice_document_id` par `submitInvoice`
+
+Le code `submitInvoice` (`features/providers/services/work-orders-extended.service.ts:391-411`) se contente de :
+```ts
+UPDATE work_orders
+SET status='invoiced', invoice_amount_cents, invoice_document_id
+WHERE id = workOrderId
+```
+
+**Pas d'INSERT dans `expenses`. Pas d'appel à `createAutoEntry` ou `createEntry`.**
+
+### C.4 — Grep croisé
+
+```bash
+grep -rn "'supplier_invoice'\|\"supplier_invoice\"\|'supplier_payment'\|\"supplier_payment\""
+```
+Résultat : **2 hits seulement**, les deux dans `lib/accounting/engine.ts:84-85` — ce sont les **déclarations** des events dans le type `AutoEntryEvent`. **Zéro appelant**.
+
+```bash
+grep -rn "work_order" lib/accounting/ app/api/accounting/
+```
+Résultat : **aucun hit**. Le code comptable ne connaît pas les work orders.
+
+```bash
+grep -rn "accounting_entry_id" features/ app/ lib/  # hors types
+```
+Résultat : 4 hits — les 2 premiers sont des **déclarations de type** (`lib/types/providers.ts:209` + `lib/charges/types.ts:34`), les 2 autres sont dans `bank-reconciliation.service.ts:38,172` pour la table `bank_transactions.matched_entry_id` (pas `work_orders.accounting_entry_id`). **Aucun writer** sur `work_orders.accounting_entry_id`.
+
+### C.5 — Lien avec la compta
+
+**Verdict : ❌ aucun lien**
+
+- L'événement `supplier_invoice` est **défini** dans `lib/accounting/engine.ts` (builder déclaré dans `AUTO_ENTRIES`) mais **jamais déclenché**.
+- Les routes `/invoice` et `/pay` de work_orders **ne créent pas** d'écriture comptable.
+- La colonne `work_orders.accounting_entry_id` reste NULL en permanence.
+- Aucune route n'INSERT dans `expenses` depuis un work_order.
+- Aucun trigger SQL ne relie `work_orders` ↔ `accounting_entries` (cf. audit 1/3 §5).
+
+**Conséquence métier** : un propriétaire qui accepte une facture prestataire + marque comme payée dans Talok n'a **aucune trace comptable automatique**. Il doit, en plus, aller dans la section "Dépenses" (`/api/accounting/expenses`) et saisir manuellement l'entrée. Ou aller dans `/api/accounting/documents/analyze` avec le PDF de la facture → OCR → validate manuel.
+
+### C.6 — Statut global pipeline C
+
+**❌ stub quasi-complet** — la state machine work_orders est complète et fonctionnelle pour le suivi des prestataires (draft → quote → scheduled → done → invoiced → paid), **mais la comptabilisation automatique n'est pas branchée**. Les fondations DB existent (`accounting_entry_id`, events `supplier_invoice`/`supplier_payment` définis, builders dans `AUTO_ENTRIES`) — il manque 2 hooks : dans `submitInvoice` et `markAsPaid`.
+
 
 ## D. Pipeline Rapprochement bancaire Bridge
 *(Pending)*
