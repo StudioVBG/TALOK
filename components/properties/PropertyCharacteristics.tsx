@@ -275,12 +275,14 @@ function ProCharacteristics({ property }: { property: PropertyData }) {
   return (
     <div className="flex flex-wrap gap-3">
       {/* Surface */}
-      <CharacteristicBadge
-        icon={<span className="text-blue-600 text-lg">📐</span>}
-        label="Surface"
-        value={`${property.local_surface_totale || property.surface} m²`}
-        bgColor="bg-blue-50 dark:bg-blue-500/10"
-      />
+      {(property.local_surface_totale || property.surface) != null && (
+        <CharacteristicBadge
+          icon={<span className="text-blue-600 text-lg">📐</span>}
+          label="Surface"
+          value={`${property.local_surface_totale || property.surface} m²`}
+          bgColor="bg-blue-50 dark:bg-blue-500/10"
+        />
+      )}
       
       {/* Type de local */}
       {property.local_type && (

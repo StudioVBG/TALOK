@@ -261,16 +261,12 @@ export function toPropertyV3(property: Property): PropertyV3 {
     
     // Métadonnées
     unique_code: property.unique_code,
-    status: property.status,
     submitted_at: property.submitted_at,
     validated_at: property.validated_at,
     validated_by: property.validated_by,
     rejection_reason: property.rejection_reason,
     created_at: property.created_at,
     updated_at: property.updated_at,
-    
-    // Compatibilité : conserver parking_details pour migration progressive
-    parking_details: property.parking_details,
   };
 }
 

@@ -286,8 +286,7 @@ export default function AgencyPropertiesPage() {
                 </div>
 
                 <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                  <span>{property.surface} m²</span>
-                  <span>•</span>
+                  {property.surface != null && <><span>{property.surface} m²</span><span>•</span></>}
                   <span>{property.pieces} pièce{property.pieces > 1 ? "s" : ""}</span>
                 </div>
 

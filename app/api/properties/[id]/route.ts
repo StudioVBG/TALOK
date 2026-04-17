@@ -9,6 +9,7 @@ import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { propertyIdParamSchema } from "@/lib/validations/params";
 import type { ServiceSupabaseClient, MediaDocument, SupabaseError } from "@/lib/types/supabase-client";
 import { syncPropertyBillingToStripe } from "@/lib/stripe/sync-property-billing";
+import { requiresSurface, TYPES_WITHOUT_SURFACE, requiresRooms, TYPES_WITHOUT_ROOMS } from "@/lib/constants/property-types";
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Strip-list partagé entre les handlers PATCH et PUT.
@@ -324,6 +325,41 @@ export async function PATCH(
           { status: 400 }
         );
       }
+    }
+
+    // ✅ SURFACE NULLABLE: Guard aligné avec CHECK constraint DB
+    const effectiveType = ((validated as Record<string, unknown>).type ?? property.type ?? '') as string;
+
+    if (requiresSurface(effectiveType) && (validated as Record<string, unknown>).surface === null) {
+      return NextResponse.json(
+        {
+          error: 'surface_required',
+          message: 'La surface est obligatoire pour ce type de bien.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Force null pour les types sans surface (évite les 0 fantômes en DB)
+    if ((TYPES_WITHOUT_SURFACE as readonly string[]).includes(effectiveType)) {
+      (validated as Record<string, unknown>).surface = null;
+      (validated as Record<string, unknown>).surface_habitable_m2 = null;
+    }
+
+    // ✅ NB_PIECES NULLABLE: Guard aligné avec CHECK constraint DB
+    if (requiresRooms(effectiveType) && (validated as Record<string, unknown>).nb_pieces === null) {
+      return NextResponse.json(
+        {
+          error: 'nb_pieces_required',
+          message: 'Le nombre de pièces est obligatoire pour ce type de bien.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Force null pour les types sans pièces (évite les 0 fantômes en DB)
+    if ((TYPES_WITHOUT_ROOMS as readonly string[]).includes(effectiveType)) {
+      (validated as Record<string, unknown>).nb_pieces = null;
     }
 
     const updates: Record<string, unknown> = { ...validated, updated_at: new Date().toISOString() };

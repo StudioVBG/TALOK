@@ -159,14 +159,13 @@ export default function PublicListingPage() {
                       <Home className="h-4 w-4 text-muted-foreground" />
                       <span>
                         {property.etage === 0 ? "RDC" : `${property.etage}e étage`}
-                        {property.nb_etages ? ` / ${property.nb_etages}` : ""}
                       </span>
                     </div>
                   )}
-                  {property.dpe_classe && (
+                  {property.dpe_classe_energie && (
                     <div className="flex items-center gap-2">
                       <Zap className="h-4 w-4 text-muted-foreground" />
-                      <span>DPE : {property.dpe_classe}</span>
+                      <span>DPE : {property.dpe_classe_energie}</span>
                     </div>
                   )}
                   {property.chauffage_type && (

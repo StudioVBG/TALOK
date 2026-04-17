@@ -1140,7 +1140,7 @@ export function LeaseWizard({ properties, initialPropertyId, initialBuildingUnit
                         <p className="font-semibold">{selectedProperty.adresse_complete || selectedProperty.adresse}</p>
                       </div>
                       <p className="text-sm text-muted-foreground">
-                        {selectedProperty.code_postal} {selectedProperty.ville} • {selectedProperty.surface} m²
+                        {selectedProperty.code_postal} {selectedProperty.ville}{selectedProperty.surface ? ` • ${selectedProperty.surface} m²` : ''}
                       </p>
                     </div>
                   ) : (

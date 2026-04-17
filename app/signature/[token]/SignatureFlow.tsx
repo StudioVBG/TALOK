@@ -64,7 +64,7 @@ interface Lease {
     type: string;
     surface: number;
     nb_pieces: number;
-    dpe_classe?: string;
+    dpe_classe_energie?: string | null;
   };
 }
 

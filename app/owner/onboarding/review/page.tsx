@@ -94,13 +94,13 @@ export default function OwnerReviewPage() {
       {
         key: "coordinates",
         label: "Coordonnées et caractéristiques complètes",
-        detail: `${property.adresse_complete} • ${property.surface} m² • ${property.nb_pieces} pièce(s)`,
+        detail: `${property.adresse_complete}${property.surface ? ` • ${property.surface} m²` : ''}${property.nb_pieces ? ` • ${property.nb_pieces} pièce(s)` : ''}`,
         valid:
           Boolean(property.adresse_complete) &&
           Boolean(property.code_postal) &&
           Boolean(property.ville) &&
-          property.surface > 0 &&
-          property.nb_pieces > 0,
+          (property.surface == null || property.surface > 0) &&
+          (property.nb_pieces == null || property.nb_pieces > 0),
       },
       {
         key: "financial",
@@ -144,14 +144,6 @@ export default function OwnerReviewPage() {
           Boolean(property.dpe_classe_climat) &&
           property.dpe_consommation !== null &&
           property.dpe_emissions !== null,
-      },
-      {
-        key: "permis",
-        label: "Permis de louer renseigné (si requis)",
-        detail: property.permis_louer_requis
-          ? property.permis_louer_numero || "Compléter le numéro du permis de louer"
-          : "Non requis pour ce logement",
-        valid: !property.permis_louer_requis || Boolean(property.permis_louer_numero),
       },
       {
         key: "media",
@@ -241,8 +233,8 @@ export default function OwnerReviewPage() {
         <div className="flex flex-wrap items-center gap-2">
           <Badge variant="outline">{property.type}</Badge>
           <Badge>{property.ville}</Badge>
-          <Badge variant="outline">{property.surface} m²</Badge>
-          <Badge variant="outline">{property.nb_pieces} pièce(s)</Badge>
+          {property.surface != null && <Badge variant="outline">{property.surface} m²</Badge>}
+          {property.nb_pieces != null && <Badge variant="outline">{property.nb_pieces} pièce(s)</Badge>}
         </div>
       </div>
 

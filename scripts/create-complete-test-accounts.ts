@@ -475,8 +475,8 @@ async function createTestData(accounts: CreatedAccounts): Promise<void> {
         etage: 3,
         ascenseur: true,
         meuble: true,
-        dpe_classe: "C",
-        ges_classe: "B",
+        dpe_classe_energie: "C",
+        dpe_classe_climat: "B",
         loyer_reference: 1200,
         unique_code: "PROP-TEST-001",
       }, { onConflict: "unique_code" })
@@ -502,8 +502,8 @@ async function createTestData(accounts: CreatedAccounts): Promise<void> {
         nb_pieces: 5,
         jardin: true,
         parking: true,
-        dpe_classe: "D",
-        ges_classe: "C",
+        dpe_classe_energie: "D",
+        dpe_classe_climat: "C",
         loyer_reference: 2200,
         unique_code: "PROP-TEST-002",
       }, { onConflict: "unique_code" })
@@ -530,8 +530,8 @@ async function createTestData(accounts: CreatedAccounts): Promise<void> {
         etage: 5,
         ascenseur: true,
         meuble: false,
-        dpe_classe: "B",
-        ges_classe: "A",
+        dpe_classe_energie: "B",
+        dpe_classe_climat: "A",
         loyer_reference: 1800,
         unique_code: "PROP-TEST-003",
       }, { onConflict: "unique_code" })

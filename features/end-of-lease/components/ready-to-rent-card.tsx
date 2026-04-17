@@ -113,7 +113,7 @@ export function ReadyToRentCard({
               <div>
                 <h3 className="font-semibold text-lg">{property.adresse}</h3>
                 <p className="text-muted-foreground">
-                  {property.ville} • {property.surface} m² • {property.type}
+                  {property.ville}{property.surface ? ` • ${property.surface} m²` : ''} • {property.type}
                 </p>
               </div>
               <Badge className="ml-auto bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">

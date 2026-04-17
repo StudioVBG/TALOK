@@ -566,23 +566,18 @@ export interface Property {
   departement: string;
   latitude?: number | null;
   longitude?: number | null;
-  surface: number;
+  surface: number | null;
   surface_habitable_m2?: number | null;
-  nb_pieces: number;
+  nb_pieces: number | null;
   nb_chambres?: number | null;
   etage: number | null;
   ascenseur: boolean;
   meuble?: boolean;
-  energie: string | null; // Classe énergétique
-  ges: string | null; // GES
+  energie: string | null; // Classe énergétique (legacy)
+  ges: string | null; // GES (legacy)
   erp_type: string | null;
-  erp_categorie: string | null;
-  erp_accessibilite: boolean;
   plan_url: string | null;
-  has_irve: boolean;
   places_parking: number;
-  parking_badge_count: number;
-  commercial_previous_activity: string | null;
   loyer_base: number;
   loyer_hc?: number | null;
   charges_mensuelles: number;
@@ -601,22 +596,16 @@ export interface Property {
   dpe_classe_climat: "A" | "B" | "C" | "D" | "E" | "F" | "G" | null;
   dpe_consommation: number | null;
   dpe_emissions: number | null;
-  dpe_estimation_conso_min: number | null;
-  dpe_estimation_conso_max: number | null;
-  permis_louer_requis: boolean;
-  permis_louer_numero: string | null;
-  permis_louer_date: string | null;
-  parking_details: ParkingDetails | null;
   unique_code: string; // Code unique, jamais réattribué
-  visite_virtuelle_url?: string | null; // URL externe vers visite virtuelle (Matterport, Nodalview, etc.)
+  visite_virtuelle_url?: string | null;
   etat: "draft" | "pending_review" | "published" | "rejected" | "archived";
-  status?: PropertyStatus;
   submitted_at: string | null;
   validated_at: string | null;
   validated_by: string | null;
   rejection_reason: string | null;
   created_at: string;
   updated_at: string;
+  // Enrichissements API (pas des colonnes DB raw)
   cover_document_id?: string | null;
   cover_url?: string | null;
   documents_count?: number;

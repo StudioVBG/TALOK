@@ -30,8 +30,8 @@ interface Property {
   nb_pieces?: number;
   loyer_hc?: number;
   charges_forfaitaires?: number;
-  dpe_classe?: string;
-  dpe_classe_climat?: string;
+  dpe_classe_energie?: string | null;
+  dpe_classe_climat?: string | null;
 }
 
 interface PropertySelectorProps {
@@ -188,14 +188,14 @@ export function PropertySelector({ properties, selectedPropertyId, onSelect }: P
                           {property.nb_pieces} pièce{property.nb_pieces > 1 ? "s" : ""}
                         </span>
                       )}
-                      {property.dpe_classe && (
+                      {property.dpe_classe_energie && (
                         <span className="flex items-center gap-1 text-xs">
                           <Zap className="h-3 w-3 text-muted-foreground" />
                           <span className={cn(
                             "px-1.5 py-0.5 rounded text-white text-[10px] font-bold",
-                            dpeColors[property.dpe_classe] || "bg-slate-400"
+                            dpeColors[property.dpe_classe_energie] || "bg-slate-400"
                           )}>
-                            DPE {property.dpe_classe}
+                            DPE {property.dpe_classe_energie}
                           </span>
                         </span>
                       )}
