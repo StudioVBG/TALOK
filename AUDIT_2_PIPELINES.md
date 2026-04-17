@@ -276,7 +276,96 @@ Résultat : 4 hits — les 2 premiers sont des **déclarations de type** (`lib/t
 
 
 ## D. Pipeline Rapprochement bancaire Bridge
-*(Pending)*
+
+### D.1 — Tables
+
+Inventoriées en audit 1/3 §2.4 :
+
+- **`bank_connections`** : `entity_id`, `provider` CHECK IN (`nordigen`, `bridge`, `manual`), `provider_connection_id`, `iban_hash` UNIQUE, `sync_status`, `last_sync_at`, `consent_expires_at`, `is_active`.
+- **`bank_transactions`** : `connection_id` (CASCADE), `transaction_date`, `amount_cents`, `label`, `raw_label`, `counterpart_name`, `counterpart_iban`, `reconciliation_status` CHECK IN (`pending`, `matched_auto`, `matched_manual`, `suggested`, `orphan`, `ignored`), **`matched_entry_id UUID REFERENCES accounting_entries(id)`**, `match_score NUMERIC(5,2)`, `suggestion JSONB`, `is_internal_transfer`.
+
+**Finding** : `bank_transactions.matched_entry_id` est une **vraie FK** (contrairement au pattern général). Pas de colonne `matched_document_id` ni `matched_invoice_id` — le lien est **uniquement** bank_transaction ↔ accounting_entry, jamais directement bank_transaction ↔ document ou bank_transaction ↔ invoice.
+
+### D.2 — Provider réel vs doc
+
+Le schéma `bank_connections.provider` autorise `nordigen | bridge | manual` — mais **l'implémentation utilise GoCardless** (rebrand de Nordigen) :
+
+- Edge function `supabase/functions/bank-sync/index.ts` : appels API `https://bankaccountdata.gocardless.com/api/v2`, auth via `GOCARDLESS_SECRET_ID` + `GOCARDLESS_SECRET_KEY`. **Pas de Bridge API réel.**
+- `lib/services/open-banking.service.ts` (71 lignes) : c'est un **mock** — retourne des comptes en dur, URL `https://connect.bridgeapi.io/session/mock_session_123` hardcodée. Commentaire : `// In SOTA 2026, would call Bridge/Plaid API` + `// Simulation for SOTA 2026`.
+
+**Verdict provider** : le moteur réel est GoCardless / Nordigen (edge function `bank-sync`), pas Bridge. Le code frontend `open-banking.service.ts` est un stub. La mention "Bridge" dans la spec est **inexacte** côté implémentation.
+
+### D.3 — Routes API
+
+**Sous `app/api/accounting/bank/`** (11 routes) :
+
+| Route | Méthode | Rôle |
+|-------|---------|------|
+| `/institutions` | GET | Liste des banques (GoCardless) |
+| `/callback` | GET | Callback OAuth après consentement |
+| `/connections` | GET/POST | Liste + création connexions |
+| `/connections/[id]` | GET/DELETE | Détail + suppression |
+| `/sync` | POST | Déclenche sync manuelle |
+| `/import` | POST | Import CSV/OFX manuel |
+| `/reconciliation` | GET | État global rapprochement |
+| `/reconciliation/run` | POST | Lance auto-reconciliation (`reconcileTransactions`) |
+| `/reconciliation/match` | POST | Match manuel (`manualMatch(transactionId, entryId)`) |
+| `/reconciliation/categorize` | POST | Catégorisation |
+| `/reconciliation/ignore` | POST | Marque `ignored` |
+
+**Sous `app/api/accounting/reconciliation/`** (4 routes) — gère les sessions de rapprochement legacy :
+- `/reconciliation` GET/POST (liste + create)
+- `/reconciliation/[id]` GET/PATCH/DELETE
+- `/reconciliation/[id]/finalize` POST
+- `/reconciliation/[id]/match` POST
+
+Ce second groupe utilise `features/accounting/services/bank-reconciliation.service.ts` (433 lignes, classe `BankReconciliationService`) qui manipule `bank_reconciliations` (table legacy, cf. audit 1/3 §2.4 note : superseded par `bank_transactions.reconciliation_status`). **Deux systèmes de rapprochement coexistent**.
+
+### D.4 — Moteur de matching (auto)
+
+`lib/accounting/reconciliation.ts` (534 lignes) expose :
+- `reconcileTransactions(supabase, entityId, exerciseId)` (ligne 224) : fetch `bank_transactions WHERE status='pending'` + détection transferts internes + calcul suggestions + UPDATE `reconciliation_status` selon score
+- `manualMatch(supabase, transactionId, entryId)` (ligne 422) : simple UPDATE `bank_transactions SET reconciliation_status='matched_manual', matched_entry_id, match_score=100`
+- `acceptSuggestion(supabase, transactionId)` (ligne ~443) : convertit une suggestion existante en match
+
+**Algo de scoring** (via `BankReconciliationService.calculateMatchConfidence`, ligne 186+) :
+- Montant exact = 40 pts, < 1€ = 30 pts, < 10€ = 15 pts
+- Autres critères (date, référence, émetteur) ajoutent jusqu'à 60 pts
+- Seuil : `confidence >= 70` pour proposer comme suggestion
+
+### D.5 — Matching : auto OU manuel ?
+
+**Les deux**. Flow :
+1. **Auto** : `/reconciliation/run` appelle `reconcileTransactions` → score chaque transaction → si exact match, UPDATE `reconciliation_status='matched_auto'`. Si score >= 70 mais pas exact, UPDATE `status='suggested'` + stocke la suggestion dans `suggestion JSONB`.
+2. **Manuel** : via UI, l'utilisateur confirme une suggestion (`acceptSuggestion`) ou force un match (`manualMatch`).
+3. **Ignored** : `/reconciliation/ignore` marque `status='ignored'` (pas besoin de match, ex. frais bancaires).
+
+### D.6 — Lien avec les documents
+
+**Verdict : ❌ aucun lien direct bank_transactions ↔ documents**.
+
+Le rapprochement se fait entre `bank_transactions` et `accounting_entries`. Les documents (justificatifs) ne sont **pas** référencés directement.
+
+**Indirection possible** : une `accounting_entry` peut être liée à un `document_analyses` via `document_analyses.entry_id` (cf. audit 1/3 §6), qui pointe `document_analyses.document_id` (sans FK). Donc `bank_transactions.matched_entry_id` → `accounting_entries.id` ← `document_analyses.entry_id` → `document_analyses.document_id` → `documents.id` (logiquement). Chemin fonctionnel mais **non matérialisé** par une FK/vue/RPC.
+
+### D.7 — Création d'écriture depuis le matching ?
+
+**Non**. Le flow de reconciliation **n'insère pas** d'`accounting_entries`. Il UPDATE `bank_transactions` pour pointer vers des écritures **pré-existantes** créées par ailleurs (via `createAutoEntry` dans les webhooks Stripe ou via OCR validate).
+
+Si une transaction bancaire n'a pas d'écriture correspondante → statut `orphan` → remonte dans l'UI pour création manuelle (l'utilisateur doit aller en `/entries` ou `/expenses` pour saisir l'écriture, puis revenir faire le match).
+
+### D.8 — Statut global pipeline D
+
+**🟡 partiellement branché** :
+- ✅ Infrastructure DB complète (`bank_connections`, `bank_transactions` avec FK propre `matched_entry_id`)
+- ✅ Moteur de matching auto + manuel fonctionnel
+- ✅ Edge function `bank-sync` en prod (cron daily 6h)
+- ⚠️ Provider réel = GoCardless, pas Bridge (divergence spec)
+- ⚠️ `open-banking.service.ts` frontend est un mock non branché (stub Bridge/Plaid)
+- ⚠️ Double système de rapprochement (`bank_transactions.reconciliation_status` vs `bank_reconciliations` legacy)
+- ❌ Les orphelins nécessitent saisie manuelle (pas de création auto d'écriture depuis transaction bancaire)
+- ❌ Pas de lien direct bank_transaction ↔ document justificatif
+
 
 ## Synthèse
 *(À remplir en dernier)*
