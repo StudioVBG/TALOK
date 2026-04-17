@@ -7,7 +7,7 @@
 
 import {
   parsePhoneNumberWithError,
-  isValidPhoneNumber,
+  isPossiblePhoneNumber,
   type CountryCode,
 } from 'libphonenumber-js';
 
@@ -73,7 +73,9 @@ export function normalizePhoneE164(raw: string): string {
   const cleaned = stripSeparators(raw);
 
   if (cleaned.startsWith('+')) {
-    if (!isValidPhoneNumber(cleaned)) {
+    // On accepte tout E.164 "plausible" (longueur + structure). La
+    // validation fine (opérateur, portabilité) est déléguée à Twilio.
+    if (!isPossiblePhoneNumber(cleaned)) {
       throw new Error(`Numéro E.164 invalide : ${raw}`);
     }
     return parsePhoneNumberWithError(cleaned).number;
@@ -84,7 +86,7 @@ export function normalizePhoneE164(raw: string): string {
   const country: CountryCode = (territory as CountryCode) ?? 'FR';
 
   const parsed = parsePhoneNumberWithError(cleaned, country);
-  if (!parsed.isValid()) {
+  if (!parsed.isPossible()) {
     throw new Error(`Numéro invalide : ${raw}`);
   }
   return parsed.number;
