@@ -1,0 +1,9 @@
+{
+  "pendingCount": 223,
+  "byLevel": {
+    "CRITIQUE": 50,
+    "DANGEREUX": 51,
+    "MODERE": 76,
+    "SAFE": 46
+  }
+}

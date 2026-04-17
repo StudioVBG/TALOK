@@ -1,0 +1,24 @@
+{
+  "_status": "STUB - MCP Supabase non disponible dans cette session",
+  "_instructions": "Exécuter reports/sprint-a-schema-actual-queries.sql sur prod (SQL Editor, READ-ONLY) et remplacer ce fichier par le snapshot JSON consolidé.",
+  "_queries_to_run": [
+    "information_schema.columns",
+    "pg_policies",
+    "information_schema.triggers",
+    "information_schema.routines",
+    "pg_indexes",
+    "pg_extension",
+    "pg_class sizes for core tables",
+    "supabase_migrations.schema_migrations",
+    "foreign keys"
+  ],
+  "columns": [],
+  "policies": [],
+  "triggers": [],
+  "functions": [],
+  "indexes": [],
+  "extensions": [],
+  "core_table_sizes": [],
+  "migrations_applied": [],
+  "foreign_keys": []
+}

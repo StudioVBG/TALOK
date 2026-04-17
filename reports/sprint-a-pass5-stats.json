@@ -1,0 +1,11 @@
+{
+  "internalTableOscillations": 1,
+  "internalColumnOscillations": 1,
+  "internalPolicyOscillations": 1,
+  "recreatesPhoneOtp": 0,
+  "cronConflict": 0,
+  "phantomColumnsReAdded": [],
+  "propertyOwnersCreators": 0,
+  "duplicateTimestamps": 13,
+  "renameMentions": 0
+}
