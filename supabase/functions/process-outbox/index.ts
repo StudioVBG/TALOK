@@ -15,6 +15,7 @@ import {
   visitFeedbackRequest as visitFeedbackRequestTemplate,
   initialInvoiceEmail as initialInvoiceEmailTemplate,
 } from "../_shared/email-templates.ts";
+import { normalizePhoneE164, maskPhone } from "../_shared/phone.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1166,10 +1167,12 @@ async function sendSmsNotification(supabase: any, userId: string, message: strin
 
     if (prefs && prefs.sms_enabled === false) return;
 
-    // Formater le numéro (ajouter +33 si FR)
-    let phone = profile.telephone.replace(/\s/g, "");
-    if (phone.startsWith("0")) phone = "+33" + phone.slice(1);
-    if (!phone.startsWith("+")) phone = "+" + phone;
+    // Normalisation E.164 avec support DROM (MQ/GP/GF/RE/YT/PM)
+    const phone = normalizePhoneE164(profile.telephone);
+    if (!phone) {
+      console.error(`[Outbox] Numéro invalide pour user ${userId} : ${profile.telephone}`);
+      return;
+    }
 
     // Envoyer via Twilio REST API
     const formData = new URLSearchParams();
@@ -1194,7 +1197,7 @@ async function sendSmsNotification(supabase: any, userId: string, message: strin
     );
 
     if (response.ok) {
-      console.log(`[Outbox] SMS envoyé à ${phone.slice(0, 6)}***`);
+      console.log(`[Outbox] SMS envoyé à ${maskPhone(phone)}`);
     } else {
       const err = await response.text();
       console.error(`[Outbox] SMS échoué (${response.status}):`, err);
