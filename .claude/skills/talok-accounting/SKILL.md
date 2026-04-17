@@ -147,6 +147,36 @@ Validation montants : `validateOCRAmounts(extracted)` — cohérence HT + TVA = 
 **Important :** Le document physique est géré par `talok-documents-sota` (upload, storage, bucket).
 L'analyse OCR/IA et la liaison comptable sont gérées ICI via `document_analyses`.
 
+### 8.1 Auto-trigger à l'upload
+
+Depuis QW3, l'OCR comptable est **déclenché automatiquement** à l'upload pour les 6 types de pièces comptables :
+
+| `documents.type` | Déclenche OCR auto ? |
+|------------------|:---:|
+| `facture` | ✅ |
+| `devis` | ✅ |
+| `avis_imposition` | ✅ |
+| `taxe_fonciere` | ✅ |
+| `assurance_pno` | ✅ |
+| `appel_fonds` | ✅ |
+
+**Point d'entrée :** `app/api/documents/upload/route.ts` appelle `triggerAccountingOcr()` (`lib/accounting/auto-ocr.ts`) en fire-and-forget après l'insert `documents`.
+
+**Comportement quota :**
+- Plan `gratuit` ou indéfini → skip + `metadata.ocr_skipped_reason = 'plan_not_eligible'`
+- Plan `confort` quota 30/mois atteint → skip + `metadata.ocr_skipped_reason = 'quota_exceeded'`
+- Plans `pro` / `enterprise_*` → illimité, jamais skippé
+
+**Garde-fous :**
+- Re-check existence du document (race avec delete)
+- Skip si `entity_id` du document ≠ entity attendu
+- Skip si une analyse existe déjà pour ce document
+- Jamais `throw` — toutes les erreurs sont loggées
+
+**L'OCR auto n'auto-valide PAS l'écriture.** L'extraction atterrit dans `document_analyses.extracted_data` avec `processing_status='completed'`. La création de l'écriture reste déclenchée manuellement par l'utilisateur via `POST /api/accounting/documents/[id]/validate` (revue humaine obligatoire).
+
+**Extension de la liste :** pour ajouter un type au trigger auto, éditer `OCR_ACCOUNTING_DOCUMENT_TYPES` dans `lib/accounting/auto-ocr.ts` et documenter ici.
+
 ---
 
 ## 9. Feature gating comptabilité

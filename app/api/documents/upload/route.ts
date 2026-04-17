@@ -10,6 +10,10 @@ import { DOCUMENT_TYPES, ALLOWED_MIME_TYPES } from "@/lib/documents/constants";
 import { withSecurity } from "@/lib/api/with-security";
 import { withSubscriptionLimit, createSubscriptionErrorResponse } from "@/lib/middleware/subscription-check";
 import { tesseractOCRService } from "@/lib/ocr/tesseract.service";
+import {
+  shouldTriggerAccountingOcr,
+  triggerAccountingOcr,
+} from "@/lib/accounting/auto-ocr";
 import { getDisplayName } from "@/lib/documents/format-name";
 
 /**
@@ -331,6 +335,28 @@ export const POST = withSecurity(async function POST(request: Request) {
         // L'OCR est non-bloquant : si ça échoue, le document est quand même uploadé
         console.error("[POST /api/documents/upload] OCR processing failed (non-blocking):", ocrError);
       }
+    }
+
+    // OCR automatique comptable (GPT-4o-mini) pour les pièces comptables.
+    // Fire-and-forget : ne pas await, ne pas bloquer la réponse upload.
+    // Skippe silencieusement si l'owner n'est pas éligible au plan OCR ou
+    // si le quota mensuel est dépassé (flag posé dans metadata).
+    if (
+      document &&
+      shouldTriggerAccountingOcr(type) &&
+      resolvedEntityId &&
+      resolvedOwnerId
+    ) {
+      void triggerAccountingOcr(serviceClient as any, {
+        documentId: (document as any).id,
+        ownerProfileId: resolvedOwnerId,
+        entityId: resolvedEntityId,
+      }).catch((err) => {
+        console.error(
+          "[POST /api/documents/upload] accounting auto-ocr fire-and-forget failed:",
+          err
+        );
+      });
     }
 
     return NextResponse.json({ document }, { status: 201 });
