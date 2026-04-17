@@ -527,7 +527,24 @@ export async function markAsPaid(
     .single();
 
   if (error) throw error;
-  return data as WorkOrderExtended;
+
+  // Accounting auto-entry (fire-and-forget, non-blocking)
+  // Debit 401000 (Fournisseurs) / Credit 512100 (Banque)
+  const updatedWo = data as WorkOrderExtended;
+  const paymentAmountCents = updatedWo.invoice_amount_cents ?? 0;
+  if (paymentAmountCents > 0) {
+    void postWorkOrderAutoEntry(supabase, {
+      workOrder: updatedWo,
+      event: 'supplier_payment',
+      amountCents: paymentAmountCents,
+      date: new Date().toISOString().split('T')[0],
+      label: `Paiement prestataire - ${updatedWo.title ?? 'Work order'}`,
+      reference: workOrderId,
+      userId: updatedWo.owner_id ?? 'system',
+    });
+  }
+
+  return updatedWo;
 }
 
 /** Cancel a work order */
