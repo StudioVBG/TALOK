@@ -4,7 +4,18 @@ Date : 17/04/2026
 Branche : claude/audit-documents-compta-1
 
 ## 1. Résumé exécutif
-*(À remplir en dernier)*
+
+Le schéma Talok comporte ~30 tables comptables/paiements, structurées en 7 sous-groupes (coeur double-entry, OCR, dépenses, bancaire, amortissements, copro, loyers). Le pont documents ↔ compta repose sur **une seule table active** : `document_analyses`, elle-même liée à `accounting_entries` via `entry_id` (FK propre) mais à `documents` uniquement via `document_id UUID NOT NULL` **sans FK** (confirmé par grep exhaustif sur toutes les migrations).
+
+La colonne `documents.ged_ai_data` (prévue pour une classification IA GED) est **déclarée mais jamais peuplée** — aucun writer détecté dans le code. Tous les flux OCR actuels vont dans `document_analyses.extracted_data`. Les seules tables avec une vraie FK `REFERENCES documents(id)` sont `expenses.document_id`, `tax_notices.document_id` et `invoices.receipt_document_id` (toutes `ON DELETE SET NULL`).
+
+Côté orchestration, **aucun trigger DB ne crée d'écriture comptable** à partir d'un document ou d'un événement bancaire. Tout le pont "événement métier → écriture" est porté par le code TypeScript via `createAutoEntry()` (14 événements, `lib/accounting/engine.ts`) et `createEntry()` direct appelé depuis `/api/accounting/documents/[id]/validate`. Les triggers SQL sur `accounting_entries` (`trg_entry_balance`, `trg_locked_entry`, `trg_audit_entries`) sont des gardes d'intégrité et d'audit — pas de création en cascade.
+
+Le pipeline OCR (POST `/analyze` → edge function `ocr-analyze-document` → GET `/analysis` polling → POST `/validate`) est cohérent et bien délimité, mais expose un seul hook frontend (`lib/hooks/use-document-analysis.ts`) et souffre de trois fragilités de robustesse : absence de FK sur `document_id`, deux chemins d'INSERT sur `document_analyses` (pipeline vs `chart-amort-ocr.ts` direct), absence de check DB sur la correspondance `document_id`/`entity_id`.
+
+**Verdict global** : architecture claire côté SOTA Sprint 1 mais **intégrité référentielle faible** sur le pont documents ↔ compta (FK manquantes, colonne fantôme, pipelines parallèles). À consolider Sprint 2 (ajouter FK `document_analyses.document_id → documents(id) ON DELETE SET NULL`, décider de la colonne `ged_ai_data` : brancher ou supprimer, unifier les 2 INSERT paths).
+
+
 
 ## 2. Inventaire tables comptables
 
@@ -568,4 +579,42 @@ Accès filtré par `entity_id` (sûr). Mais comme il n'y a pas de check sur `doc
 
 
 ## 8. Questions ouvertes
-*(À remplir en dernier)*
+
+Points qui nécessitent un accès DB prod ou un Sprint 2 (pipelines OCR + quittances + factures + Bridge) pour trancher.
+
+1. **`document_analyses.document_id` — FK volontaire ou oubli ?**
+   Hypothèses possibles : (a) volontaire pour préserver l'analyse après soft-delete du document (audit trail), (b) oubli lors du Sprint 1 accounting, (c) défense contre un cas où l'analyse pointe vers un doc hors bucket `documents` (ex. fichier uploadé ad-hoc).
+   → À trancher avec Thomas : si (a), ajouter au moins une CHECK que le document existait au moment de l'INSERT. Si (b)/(c), ajouter FK `REFERENCES documents(id) ON DELETE SET NULL`.
+
+2. **`documents.ged_ai_data` — morte ou dormante ?**
+   Confirmer par `SELECT COUNT(*) FROM documents WHERE ged_ai_data IS NOT NULL` en prod.
+   - Si 0 → supprimer la colonne (migration propre) ou la réutiliser pour un autre usage (tags IA, résumé).
+   - Si >0 → identifier le writer manquant (script admin, migration de backfill oubliée, fonction Supabase tierce).
+
+3. **Double chemin d'INSERT sur `document_analyses`** (pipeline analyze vs `lib/accounting/chart-amort-ocr.ts:saveAnalysis()`)
+   - Quel composant appelle `saveAnalysis()` ? Grep à faire côté lib/accounting pour identifier les callers de cette fonction.
+   - Risque : divergence des invariants (pipeline insère `pending` avec extracted_data vide, `saveAnalysis` insère `completed` avec extracted_data complet).
+   - Décision à prendre : unifier via un seul chemin, ou documenter clairement les 2 cas d'usage.
+
+4. **`charge_entries.justificatif_document_id` et `charge_entries.accounting_entry_id` — pas de FK**
+   Même débat que #1. Ces colonnes UUID sans FK peuvent produire des orphelins. Priorité moins critique que #1 car volumétrie plus faible (lignes de charges réparties vs analyses OCR).
+
+5. **`lease_charge_regularizations.document_id` — pas de FK**
+   PDF du décompte. Mêmes risques. À aligner avec le sort de `charge_regularizations` (table canonique) vs `lease_charge_regularizations` (table module) — cf. migration 🔴 `20260408044152` déjà identifiée dans l'audit migrations.
+
+6. **`accounting_entries.reference` — format libre**
+   Actuellement utilisé pour stocker l'ID de `document_analyses` (cf. `/validate` route : `reference: analysis.id`). Pas de FK, pas de contrainte. Si `document_analyses` est supprimée, `reference` devient un UUID orphelin texte. À envisager : FK formelle ou colonne dédiée `document_analysis_id UUID REFERENCES document_analyses(id) ON DELETE SET NULL`.
+
+7. **Volume prod de chaque table comptable**
+   Non accessible dans cet audit (lecture seule sur migrations + code). À compléter avec `SELECT count(*) FROM <table>` pour prioriser les interventions (optimisation, backfill FK, nettoyage).
+
+8. **Cohérence `document_type`** entre `documents.type` (CHECK enum strict) et `document_analyses.document_type` (TEXT libre, valeurs du prompt GPT `facture|quittance|releve_bancaire|avis_impot|contrat|autre`)
+   Le prompt GPT utilise des valeurs **distinctes** de l'enum `documents.type` (`avis_impot` vs `avis_imposition`, `releve_bancaire` absent). À statuer : harmoniser ou documenter le mapping ?
+
+9. **Payments `cheque_photo_path` et `receipts.pdf_storage_path` — chemins Storage bruts**
+   Pas de FK `documents`. Est-ce volontaire (fichiers "hors GED" dans un bucket privé `payment-proofs`) ou un retard d'intégration (devraient remonter dans `documents` avec type `photo_cheque` ou similaire) ?
+   Conséquence UX : ces fichiers ne bénéficient pas de la GED (pas de full-text search, pas de tags, pas de versioning).
+
+10. **Feature gate `requireAccountingAccess("entries")` sur `/analyze` et `/validate`**
+    Bien appliqué côté API, mais `document_analyses` n'a pas de guard côté RLS pour empêcher un user sans plan compta d'insérer. Pas d'impact direct si le guard API tient, mais robustesse moindre.
+
