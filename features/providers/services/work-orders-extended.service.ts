@@ -387,6 +387,86 @@ export async function completeIntervention(
   return data as WorkOrderExtended;
 }
 
+/**
+ * Resolve the legal_entity_id for a work order.
+ * Prefer wo.entity_id, fall back to wo.property.legal_entity_id.
+ */
+async function resolveWorkOrderEntityId(
+  supabase: SupabaseClient,
+  wo: WorkOrderExtended,
+): Promise<string | null> {
+  if (wo.entity_id) return wo.entity_id;
+  if (!wo.property_id) return null;
+  const { data } = await supabase
+    .from('properties')
+    .select('legal_entity_id')
+    .eq('id', wo.property_id)
+    .maybeSingle();
+  return (data as { legal_entity_id?: string } | null)?.legal_entity_id ?? null;
+}
+
+/**
+ * Post an auto-entry for a work order (supplier_invoice or supplier_payment).
+ * Fire-and-forget: logs errors but never throws. Best effort.
+ * Updates work_orders.accounting_entry_id on success (supplier_invoice only).
+ */
+async function postWorkOrderAutoEntry(
+  supabase: SupabaseClient,
+  params: {
+    workOrder: WorkOrderExtended;
+    event: 'supplier_invoice' | 'supplier_payment';
+    amountCents: number;
+    date: string;
+    label: string;
+    reference?: string;
+    userId: string;
+    persistEntryIdOnWorkOrder?: boolean;
+  },
+): Promise<void> {
+  try {
+    const entityId = await resolveWorkOrderEntityId(supabase, params.workOrder);
+    if (!entityId) {
+      console.warn(
+        '[work-orders] Skipping auto-entry: no entity_id resolvable for work order',
+        params.workOrder.id,
+      );
+      return;
+    }
+
+    const { createAutoEntry } = await import('@/lib/accounting/engine');
+    const { getOrCreateCurrentExercise } = await import('@/lib/accounting/auto-exercise');
+
+    const exercise = await getOrCreateCurrentExercise(supabase, entityId);
+    if (!exercise) {
+      console.warn('[work-orders] Skipping auto-entry: no exercise for entity', entityId);
+      return;
+    }
+
+    const entry = await createAutoEntry(supabase, params.event, {
+      entityId,
+      exerciseId: exercise.id,
+      userId: params.userId,
+      amountCents: params.amountCents,
+      label: params.label,
+      date: params.date,
+      reference: params.reference,
+    });
+
+    if (params.persistEntryIdOnWorkOrder && entry?.id) {
+      await supabase
+        .from('work_orders')
+        .update({ accounting_entry_id: entry.id })
+        .eq('id', params.workOrder.id);
+    }
+  } catch (err) {
+    console.error(
+      `[work-orders] createAutoEntry(${params.event}) failed (non-blocking):`,
+      err instanceof Error ? err.message : err,
+    );
+    // Never throw — work order status change is already committed
+  }
+}
+
 /** Provider submits an invoice */
 export async function submitInvoice(
   supabase: SupabaseClient,
@@ -408,7 +488,22 @@ export async function submitInvoice(
     .single();
 
   if (error) throw error;
-  return data as WorkOrderExtended;
+
+  // Accounting auto-entry (fire-and-forget, non-blocking)
+  // Debit 615100 (Entretien) / Credit 401000 (Fournisseurs)
+  const updatedWo = data as WorkOrderExtended;
+  void postWorkOrderAutoEntry(supabase, {
+    workOrder: updatedWo,
+    event: 'supplier_invoice',
+    amountCents: input.invoice_amount_cents,
+    date: new Date().toISOString().split('T')[0],
+    label: `Facture prestataire - ${updatedWo.title ?? 'Work order'}`,
+    reference: workOrderId,
+    userId: updatedWo.owner_id ?? 'system',
+    persistEntryIdOnWorkOrder: true,
+  });
+
+  return updatedWo;
 }
 
 /** Owner marks the work order as paid */
