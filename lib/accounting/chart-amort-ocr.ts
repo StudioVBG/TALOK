@@ -25,6 +25,7 @@ export const PCG_OWNER_ACCOUNTS = [
   // Classe 4 — Tiers
   { account_number: '401000', label: 'Fournisseurs', account_type: 'liability' as const },
   { account_number: '411000', label: 'Locataires — creances', account_type: 'asset' as const },
+  { account_number: '419100', label: 'Provisions de charges recues', account_type: 'liability' as const },
   { account_number: '421000', label: 'Personnel — remuneration', account_type: 'liability' as const },
   { account_number: '431000', label: 'Securite sociale', account_type: 'liability' as const },
   { account_number: '445660', label: 'TVA deductible', account_type: 'asset' as const },
@@ -49,6 +50,7 @@ export const PCG_OWNER_ACCOUNTS = [
   { account_number: '627000', label: 'Frais bancaires', account_type: 'expense' as const },
   { account_number: '635100', label: 'Taxe fonciere', account_type: 'expense' as const },
   { account_number: '635200', label: 'TEOM', account_type: 'expense' as const },
+  { account_number: '654000', label: 'Charges recuperables non recuperees', account_type: 'expense' as const },
   { account_number: '661000', label: 'Interets emprunts', account_type: 'expense' as const },
   { account_number: '681000', label: 'Dotations amortissements', account_type: 'expense' as const },
   { account_number: '699000', label: 'Compte memo / OD', account_type: 'expense' as const },
