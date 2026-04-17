@@ -348,74 +348,88 @@ if (/^97[1-6]\d{2}$/.test(codePostal)) {
 
 ## 6. Écritures comptables
 
-### Comptes PCG à utiliser (⚠️ certains à ajouter au seed)
+### Comptes PCG à utiliser (✅ tous seedés depuis Sprint 0.b — 17/04/2026)
 
-| Compte | Libellé | Statut |
-|---|---|---|
-| 411 | Locataires (créances) | ✅ Existe |
-| 4191 | Provisions de charges reçues | ⚠️ À CRÉER |
-| 512 | Banque | ✅ Existe (+ 545 Banque mandant) |
-| 614 | Charges locatives récupérables | ⚠️ À CRÉER |
-| 654 | Charges récupérables non récupérées (renonciation) | ⚠️ À CRÉER |
-| 706 | Revenus locatifs / Loyers | ✅ Existe (706100 Honoraires) |
-| 708300 | Charges refacturées | ⚠️ À CRÉER |
+| Compte Talok | Libellé | Statut | Notes |
+|---|---|---|---|
+| 411000 | Locataires (créances) | ✅ Seedé | PCG_OWNER_ACCOUNTS |
+| 419100 | Provisions de charges reçues | ✅ Seedé (0.b) | Sous-compte de 4191 PCG théorique |
+| 512100 | Banque — compte courant | ✅ Seedé | (+ 512200, 512300) |
+| 614100 | Charges réelles récupérables | ✅ Seedé | Sous-compte de 614 PCG théorique |
+| 635200 | TEOM | ✅ Seedé | Charge TF propriétaire |
+| 654000 | Charges récupérables non récupérées | ✅ Seedé (0.b) | Sous-compte de 654 PCG théorique |
+| 706000 | Loyers | ✅ Seedé | |
+| 708000 | Charges récupérées / TEOM | ✅ Seedé | Sous-compte de 708300 PCG théorique |
 
 **Format : `accounting_entry_lines`** — toujours en **centimes INTEGER** (`debit_cents`, `credit_cents`).
+
+### Mapping PCG Talok
+
+Le plan PCG français (article 943 PCG — nomenclature ouverte) autorise explicitement la sous-classification. Talok utilise des sous-comptes à 6 chiffres (convention interne uniformisée pour FEC / amortissement / syndic). Correspondances théoriques ↔ production :
+
+| Skill (théorique) | Talok (prod) | Raison |
+|---|---|---|
+| `614` | `614100` "Charges reelles recuperables" | Sous-compte déjà utilisé par FEC / amortissement / syndic |
+| `708300` | `708000` "Charges recuperees / TEOM" | Idem cohérence module accounting |
+| `4191` | `419100` "Provisions de charges recues" | Uniformisation 6 chiffres (convention Talok) |
+| `654` | `654000` "Charges recuperables non recuperees" | Idem uniformisation |
+
+**Règle : toute écriture comptable du module Régularisation des Charges (Sprint 2 route `/apply`) DOIT référencer les sous-comptes Talok (colonne de droite), pas les racines théoriques.** La source de vérité est `PCG_OWNER_ACCOUNTS` dans `lib/accounting/chart-amort-ocr.ts`.
 
 ### Scénarios d'écritures
 
 #### A. Encaissement mensuel loyer + provisions
 
 ```
-Débit  512 (Banque)           73000  -- 730,00€
-Crédit 706 (Loyers)           65000  -- 650,00€ loyer nu
-Crédit 4191 (Provisions)       8000  -- 80,00€ provision charges
+Débit  512100 (Banque)           73000  -- 730,00€
+Crédit 706000 (Loyers)           65000  -- 650,00€ loyer nu
+Crédit 419100 (Provisions)        8000  -- 80,00€ provision charges
 ```
 
 #### B. Régularisation — locataire doit un complément (solde > 0)
 
 ```
 -- Solde des provisions
-Débit  4191 (Provisions)      96000  -- 960,00€ provisions reçues
-Crédit 614 (Charges récup)   201308  -- 2013,08€ charges réelles
+Débit  419100 (Provisions)       96000  -- 960,00€ provisions reçues
+Crédit 614100 (Charges récup)   201308  -- 2013,08€ charges réelles
 
 -- Créance régul
-Débit  411 (Locataires)      105308  -- 1053,08€ complément dû
+Débit  411000 (Locataires)      105308  -- 1053,08€ complément dû
 ```
 
 Puis à l'encaissement :
 ```
-Débit  512 (Banque)          105308
-Crédit 411 (Locataires)      105308
+Débit  512100 (Banque)          105308
+Crédit 411000 (Locataires)      105308
 ```
 
 #### C. Régularisation — trop-perçu (solde < 0)
 
 ```
-Débit  4191 (Provisions)      96000
-Crédit 614 (Charges récup)    87258  -- 872,58€
-Crédit 4191 (Trop-perçu)       8742  -- 87,42€ à rembourser
+Débit  419100 (Provisions)       96000
+Crédit 614100 (Charges récup)    87258  -- 872,58€
+Crédit 419100 (Trop-perçu)        8742  -- 87,42€ à rembourser
 ```
 
 #### D. Clause de renonciation
 
 ```
-Débit  654 (Non récupérées)  105308  -- Déductible revenus fonciers
-Débit  4191 (Provisions)      96000
-Crédit 614 (Charges récup)   201308
+Débit  654000 (Non récupérées)  105308  -- Déductible revenus fonciers
+Débit  419100 (Provisions)       96000
+Crédit 614100 (Charges récup)   201308
 ```
 
 #### E. Échelonnement 12 mois
 
 Chaque mois : fraction du solde incluse dans l'encaissement loyer.
 ```
-Débit  512 (Banque)           81776  -- 817,76€ (loyer 650 + prov 80 + régul 1/12 = 87,76)
-Crédit 706 (Loyers)           65000
-Crédit 4191 (Provisions)       8000
-Crédit 411 (Locataires)        8776  -- Fraction régul
+Débit  512100 (Banque)           81776  -- 817,76€ (loyer 650 + prov 80 + régul 1/12 = 87,76)
+Crédit 706000 (Loyers)           65000
+Crédit 419100 (Provisions)        8000
+Crédit 411000 (Locataires)        8776  -- Fraction régul
 ```
 
-**⚠️ GAP ACTUEL : aucune logique de génération automatique d'écriture comptable lors du `settle` d'une régul — ni côté API `/regularization/[id]/apply`, ni côté trigger. À implémenter.**
+**⚠️ GAP ACTUEL : aucune logique de génération automatique d'écriture comptable lors du `settle` d'une régul — ni côté API `/regularization/[id]/apply`, ni côté trigger. À implémenter au Sprint 2.**
 
 ---
 
@@ -501,18 +515,22 @@ Système de rappels à brancher sur le cron existant :
 
 ### Gaps critiques (P0)
 
-1. **Pas de lien régul → facture/paiement** : `regularization_invoice_id` manquant sur `lease_charge_regularizations` → impossible de tracer l'encaissement
-2. **Pas d'écriture comptable auto** au settle d'une régul → le module comptable ne reflète pas les réguls
-3. **Comptes PCG manquants** dans le seed : 4191, 614, 654, 708300
-4. **RLS locataire** : `WITH CHECK (status = 'sent')` empêche un locataire de passer en `contested` → à corriger
+1. ✅ **RÉSOLU Sprint 0.a (17/04/2026)** — `regularization_invoice_id` ajouté sur `lease_charge_regularizations` (migration `20260417090000_charges_reg_invoice_link.sql`).
+2. ⏳ **À TRAITER Sprint 2** — Écriture comptable auto au `settle` à implémenter dans `app/api/charges/regularization/[id]/apply/route.ts`. Comptes à utiliser : voir section "Mapping PCG Talok" ci-dessus.
+3. ✅ **RÉSOLU Sprint 0.b (17/04/2026)** — Comptes PCG seedés via substitutions Talok :
+   - `4191` → `419100` (ajouté à `PCG_OWNER_ACCOUNTS` + migration backfill `20260417090400`)
+   - `614` → `614100` (déjà présent, réutilisé)
+   - `654` → `654000` (ajouté à `PCG_OWNER_ACCOUNTS` + migration backfill `20260417090400`)
+   - `708300` → `708000` (déjà présent, réutilisé)
+4. ✅ **RÉSOLU Sprint 0.a (17/04/2026)** — Policy `lease_charge_reg_tenant_contest` réécrite avec transition stricte `sent → contested` (migration `20260417090300_fix_tenant_contest_rls.sql`). Bug détecté plus sévère qu'annoncé : la policy d'origine était complètement morte (WITH CHECK sur le NOUVEAU status empêchait toute écriture).
 
 ### Gaps importants (P1)
 
-5. **Table `tax_notices`** inexistante → pas de stockage structuré TEOM
-6. **Table `epci_reference`** inexistante → pas de matching automatique DROM
-7. **OCR avis TF** : pipeline Tesseract existe mais pas de prompt spécifique taxe foncière
-8. **Template PDF régularisation** : non créé (pdf-lib)
-9. **Rappels/crons** charges : non branchés
+5. ✅ **RÉSOLU Sprint 0.a (17/04/2026)** — Table `tax_notices` créée (migration `20260417090100_tax_notices_table.sql`).
+6. ✅ **RÉSOLU Sprint 0.b (17/04/2026)** — Table `epci_reference` créée en 0.a + seed 23 EPCI DROM-COM en 0.b (migration `20260417090500_epci_reference_seed_drom.sql`).
+7. **OCR avis TF** : pipeline Tesseract existe mais pas de prompt spécifique taxe foncière — à traiter Sprint 6
+8. **Template PDF régularisation** : non créé (pdf-lib) — à traiter Sprint 4
+9. **Rappels/crons** charges : non branchés — à traiter Sprint 7
 
 ### Améliorations (P2)
 
