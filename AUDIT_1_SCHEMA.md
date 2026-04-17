@@ -116,7 +116,133 @@ Sur les ~30 tables comptables/paiements inventoriées :
 *(Pending)*
 
 ## 6. Route /api/accounting/documents/
-*(Pending)*
+
+### 6.1 — Structure
+
+```
+app/api/accounting/documents/
+├── analyze/route.ts           (POST)
+└── [id]/
+    ├── analysis/route.ts      (GET)
+    └── validate/route.ts      (POST)
+```
+
+**Pas de `route.ts` racine** — il n'y a pas de GET `/api/accounting/documents` listant les analyses. Les 3 endpoints ci-dessous forment un pipeline séquentiel.
+
+### 6.2 — POST `/api/accounting/documents/analyze`
+
+**Fichier** : `app/api/accounting/documents/analyze/route.ts`
+
+**Input** :
+```ts
+{ documentId: z.string().uuid() }
+```
+
+**Pré-checks** (dans l'ordre) :
+1. `supabase.auth.getUser()` → sinon 401
+2. Profil existe (`profiles.user_id = auth.user.id`) → sinon 403
+3. Feature gate : `requireAccountingAccess(profile.id, "entries")` (via `lib/accounting/feature-gates.ts`)
+4. Membership : `entity_members.entity_id WHERE user_id = auth.user.id LIMIT 1` (prend la première entity → **limite** : multi-entity non supporté sur cet endpoint)
+5. Quota OCR mensuel selon plan : `OCR_QUOTAS = { confort: 30, pro: Infinity, enterprise_*: Infinity }`. Free/gratuit = 0 → 403. Comptage : `count(document_analyses WHERE entity_id=X AND created_at >= monthStart)`
+6. Document existe + `entity_id` égal à l'entity du user → sinon 404/403
+7. Détection doublon via SHA-256 : autre `documents.sha256 = X AND entity_id = Y AND id != documentId` → 409 avec `existingDocumentId`
+8. Pas d'analyse en cours : `document_analyses WHERE document_id=X AND processing_status IN ('pending','processing')` → 409
+9. Alerte exercices clôturés : si `accounting_exercises WHERE status='closed'` non vide → push alerte non bloquante
+
+**Effet en base** :
+- **INSERT** `document_analyses` : `{ document_id, entity_id, processing_status: 'pending', extracted_data: {} }` → récupère `analysis.id`
+- Lit `legal_entities.territory` (`metropole` par défaut) pour déterminer les taux TVA attendus
+- **Appel edge function** `supabase.functions.invoke("ocr-analyze-document", { body: { documentId, entityId, territory, analysisId } })`
+- Si edge function échoue : **UPDATE** `document_analyses SET processing_status='failed'` → 502
+
+**Output 202** :
+```json
+{ "success": true, "data": { "analysisId": "<uuid>", "status": "analyzing", "alerts": [...] } }
+```
+
+### 6.3 — GET `/api/accounting/documents/[id]/analysis`
+
+**Fichier** : `app/api/accounting/documents/[id]/analysis/route.ts`
+
+**Logique** : polling. Charge la ligne la plus récente :
+```ts
+.from("document_analyses").select("*").eq("document_id", id).order("created_at", desc).limit(1).single()
+```
+
+**Sécurité** : auth check mais **pas** de vérification explicite de l'ownership du `document_id` → repose sur RLS `doc_analyses_entity_access` (filtre par `entity_id IN entity_members`).
+
+**Output** : `{ success: true, data: <document_analyses row complète> }` ou 404 si aucune analyse.
+
+### 6.4 — POST `/api/accounting/documents/[id]/validate`
+
+**Fichier** : `app/api/accounting/documents/[id]/validate/route.ts`
+
+**Input** (tous optionnels — fallback sur `extracted_data` de l'analyse) :
+```ts
+{
+  journalCode?, accountNumber?, accountLabel?, amount?, entryLabel?,
+  propertyId?, entryDate?, autoValidate?: boolean = true
+}
+```
+
+**Logique** :
+1. Auth + feature gate + profile
+2. Charge dernière analyse : `document_analyses WHERE document_id=X ORDER BY created_at DESC LIMIT 1`
+3. Vérifications :
+   - `processing_status === 'completed'` → sinon 400
+   - `entry_id IS NULL` → sinon 400 "déjà validé"
+4. Merge overrides > extracted :
+   - journal : `overrides.journalCode ?? extracted.suggested_journal ?? 'ACH'`
+   - compte : `overrides.accountNumber ?? extracted.suggested_account ?? '615100'`
+   - montant : `overrides.amount ?? extracted.montant_ttc_cents ?? 0`
+   - date : `overrides.entryDate ?? extracted.date_document ?? today`
+5. `getOrCreateCurrentExercise(supabase, entityId)` (`lib/accounting/auto-exercise.ts`)
+6. **Création écriture** via `createEntry()` (`lib/accounting/engine.ts`) :
+   - Journal choisi, date, label, `source: 'ocr'`, `reference: analysis.id`
+   - 2 lignes : débit compte choisi (charge) / crédit `401000` (fournisseur générique)
+7. Si `autoValidate=true` → `validateEntry(supabase, entry.id, user.id)`
+8. **UPDATE** `document_analyses SET entry_id=<entry>, validated_by=<user>, validated_at=now, processing_status='validated'`
+9. **Apprentissage** : si `overrides.accountNumber !== extracted.suggested_account` ET `extracted.emetteur.nom` présent → `upsert ocr_category_rules { entity_id, match_type:'supplier_name', match_value: nom.toLowerCase().trim(), target_account, target_journal, hit_count:1 }` sur conflit `(entity_id, match_type, match_value)`
+
+**Output** : `{ success: true, data: { entry, validated } }`
+
+### 6.5 — Edge function `ocr-analyze-document`
+
+**Fichier** : `supabase/functions/ocr-analyze-document/index.ts`
+
+**Pipeline** :
+1. Télécharge le PDF depuis le bucket documents
+2. Appelle GPT-4o-mini avec `OCR_SYSTEM_PROMPT` strict : sortie JSON `{ document_type, emetteur, destinataire, date_document, montant_ht/tva/ttc_cents, taux_tva_percent, lignes[], suggested_account, suggested_journal, suggested_label, alerts[], confidence }`
+3. Validation TVA (cohérence HT+TVA=TTC, taux par territoire : métropole 20/10/5.5/2.1, DROM 8.5/2.1, Guyane/Mayotte 0)
+4. Validation SIRET : regex `^\d{14}$`
+5. Lookup `ocr_category_rules WHERE entity_id=X AND emetteur_pattern ILIKE '%<emetteur.nom>%' LIMIT 1` — **remplace** `suggested_account` / `suggested_journal` si règle trouvée
+6. **UPDATE** `document_analyses SET processing_status='completed', extracted_data=<gptResult>, confidence_score, suggested_account, suggested_journal, document_type, siret_verified, tva_coherent`
+7. Sur erreur : UPDATE `processing_status='failed', extracted_data={error: <message>}`
+
+### 6.6 — Appelants frontend
+
+**Fichier hook** : `lib/hooks/use-document-analysis.ts`
+
+```
+ligne 113  GET  /accounting/documents/${docId}/analysis
+ligne 178  POST /accounting/documents/analyze
+ligne 202  POST /accounting/documents/${documentId}/validate
+```
+
+C'est le **seul** hook qui consomme ce pipeline. Aucune autre route / composant ne grep `accounting/documents`.
+
+### 6.7 — Effet global sur la compta
+
+Le pipeline `analyze → analysis (polling) → validate` :
+- **Crée** une ligne `document_analyses` (pipeline status)
+- **Crée** une écriture `accounting_entries` + 2 lignes `accounting_entry_lines` (via `createEntry`) au moment du `validate`
+- **Lie** `document_analyses.entry_id = <nouvelle entry>` — c'est le **seul pont déclaré** entre un document et une écriture comptable
+- **Ne touche pas** à `documents.ged_ai_data` (cf. §3)
+- **Peut apprendre** une règle `ocr_category_rules` pour futures analyses similaires
+
+**Le lien document ↔ écriture** repose entièrement sur `document_analyses.document_id` (UUID sans FK, cf. §2.2 et §7) et `document_analyses.entry_id` (FK à accounting_entries). Aucune colonne de `accounting_entries` ne pointe directement vers `documents`.
+
+
 
 ## 7. Statut document_analyses
 *(Pending)*
