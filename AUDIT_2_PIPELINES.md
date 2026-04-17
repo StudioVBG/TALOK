@@ -5,14 +5,13 @@ Branche : claude/audit-documents-compta-1
 Précédent : AUDIT_1_SCHEMA.md
 
 ## Résumé des verdicts
-*(À remplir en dernier)*
 
-| Pipeline | Statut |
-|---|---|
-| A. OCR | *(TBD)* |
-| B. Quittances | *(TBD)* |
-| C. Factures prestataires | *(TBD)* |
-| D. Rapprochement bancaire Bridge | *(TBD)* |
+| Pipeline | Statut | Commentaire 1 ligne |
+|---|:---:|---|
+| A. OCR | 🟡 | 3 pipelines OCR coexistent ; aucun ne fait upload→OCR→écriture automatique, déclenchement manuel en 2 clics côté compta |
+| B. Quittances | ✅ | `ensureReceiptDocument` branché sur Stripe webhook + off-Stripe ; crée doc + receipt + compta (via `createAutoEntry`) ; soft blocker migrations `receipt_*` pending |
+| C. Factures prestataires | ❌ | State machine complète mais 0 appel à `createAutoEntry('supplier_invoice'|'supplier_payment')` ; `work_orders.accounting_entry_id` toujours NULL |
+| D. Rapprochement bancaire | 🟡 | Moteur auto + manuel fonctionnel (GoCardless, pas Bridge) ; matching bank↔entry OK mais pas de création d'écriture depuis orphan ni de lien direct bank↔document |
 
 ## A. Pipeline OCR
 
@@ -368,4 +367,55 @@ Si une transaction bancaire n'a pas d'écriture correspondante → statut `orpha
 
 
 ## Synthèse
-*(À remplir en dernier)*
+
+### Trous concrets identifiés
+
+1. **Pipeline C intégralement non-câblé côté compta** — c'est le trou le plus gros. Les events `supplier_invoice` et `supplier_payment` sont définis dans `lib/accounting/engine.ts` avec leur builder double-entry dans `AUTO_ENTRIES`, mais aucun appel détecté par grep. `work_orders.accounting_entry_id` (colonne UUID sans FK) est toujours NULL. Un propriétaire qui paie un prestataire dans Talok ne voit **aucune trace comptable** automatiquement.
+
+2. **Pipeline A nécessite 2 clics humains minimum** — pas de trigger OCR à l'upload pour les types "facture", "devis", "taxe_fonciere", "assurance_pno". L'utilisateur doit manuellement : (a) upload doc, (b) cliquer "Analyser" dans l'UI compta, (c) attendre la fin, (d) cliquer "Valider" avec éventuels overrides. Aucun hook automatique upload→OCR n'existe pour ces types (par contre, Tesseract CNI et LangGraph batch tournent bien en auto).
+
+3. **Double chemin d'INSERT sur `document_analyses`** (déjà noté audit 1/3) — pipeline `analyze/validate` vs `lib/accounting/chart-amort-ocr.ts:saveAnalysis()` direct. Divergence des invariants (`pending` + `extracted_data: {}` vs `completed` + `extracted_data` complet). Un seul caller identifié pour `saveAnalysis`, à auditer Sprint 3.
+
+4. **Orphans bancaires sans création auto d'écriture** — si `bank_transactions.reconciliation_status = 'orphan'`, l'utilisateur doit aller manuellement dans `/entries` ou `/expenses` pour créer l'écriture correspondante, puis revenir rapprocher. Pas de bouton "Créer l'écriture depuis cette transaction".
+
+5. **Double système de rapprochement** — `bank_transactions.reconciliation_status` (nouveau, Sprint 1 accounting) vs `bank_reconciliations` (table legacy) + `BankReconciliationService`. Les deux cohabitent avec des routes API distinctes (`/bank/reconciliation/*` vs `/reconciliation/*`).
+
+6. **Provider Bridge inexistant** — `bank_connections.provider` accepte `'bridge'` mais l'implémentation n'existe pas. Le moteur réel est GoCardless. `lib/services/open-banking.service.ts` est un stub mockés. Divergence spec/code.
+
+7. **Triple stockage documentaire pour quittances** — 1 doc dans `documents` + 1 ligne `receipts` + 3 colonnes dans `invoices` pour chaque quittance générée. Redondance sans risque de perte mais coût de maintenance.
+
+### Ponts existants qui fonctionnent
+
+1. **Webhook Stripe `payment_intent.succeeded`** → `createAutoEntry('rent_received')` + `ensureReceiptDocument` (fire-and-forget). Intégration la plus aboutie du module.
+2. **Engine double-entry SQL** — triggers `trg_entry_balance` + `trg_locked_entry` + `trg_audit_entries` garantissent l'intangibilité et l'équilibre D/C. Impossible de valider une écriture non-équilibrée.
+3. **Pipeline OCR comptable** (déclenchement manuel mis à part) — GPT-4o-mini + validations SIRET/TVA + apprentissage `ocr_category_rules` + création écriture ACH avec overrides. Techniquement complet.
+4. **Matched_entry_id FK propre** sur `bank_transactions` — seul pont bank/entry correctement matérialisé en DB.
+5. **Idempotence des quittances** — `ensureReceiptDocument` check 2 fois l'existence (par `metadata.payment_id` puis par `metadata.invoice_id`) avant de régénérer.
+
+### Quick wins (3 actions concrètes, 1-3 jours chacune)
+
+1. **Brancher `createAutoEntry('supplier_invoice')` dans `submitInvoice`** (`features/providers/services/work-orders-extended.service.ts:391`)
+   - Après l'UPDATE `work_orders`, appeler `createAutoEntry` avec l'entity de la property, le montant `invoice_amount_cents`, le compte `615100` (charges) / `401000` (fournisseur).
+   - Mettre à jour `work_orders.accounting_entry_id = <entry>.id`.
+   - ~50 lignes de code, pattern exactement comme `webhooks/stripe/route.ts:999`.
+   - Impact : comble le trou #1.
+
+2. **Brancher `createAutoEntry('supplier_payment')` dans `markAsPaid`** (`features/providers/services/work-orders-extended.service.ts:414`)
+   - Analogue, compte `401000` débité / `512` crédité.
+   - ~30 lignes.
+   - Impact : finit de combler le trou #1.
+
+3. **Auto-trigger OCR sur upload de doc comptable** — dans `app/api/documents/upload/route.ts` ou `upload-batch/route.ts`, détecter `type IN ('facture','devis','avis_imposition','taxe_fonciere','taxe_sejour','assurance_pno','appel_fonds')` + MIME PDF et invoquer en fire-and-forget `POST /api/accounting/documents/analyze` (en interne via `supabase.functions.invoke('ocr-analyze-document')` directement, pour bypasser la double-auth).
+   - ~80 lignes (incluant respect du quota).
+   - Impact : passe le pipeline A de 2 clics manuels à 1 clic (validation manuelle restante).
+
+### Gros chantier
+
+**Unification du système de rapprochement bancaire + lien bank↔document**
+- Supprimer le système legacy (`bank_reconciliations` + `BankReconciliationService`) ou le migrer vers le nouveau modèle.
+- Ajouter un bouton "Créer l'écriture depuis cette transaction bancaire" dans l'UI `/accounting/bank/reconciliation` qui pré-remplit `createEntry` avec les champs de `bank_transactions` et offre l'option de joindre un document justificatif (upload ou lien vers un doc existant).
+- Poser une FK matérielle `document_analyses.document_id → documents(id) ON DELETE SET NULL` (cf. audit 1/3 §7).
+- Envisager une table pivot `entry_documents (entry_id, document_id, relation_type)` pour les cas multi-documents par écriture.
+- **Effort estimé : 2-3 semaines** (refactor + migration data + UI + tests).
+- Impact : résout les trous #4, #5, prépare l'élimination de la colonne fantôme `ged_ai_data`, et rend le module prêt pour export FEC complet (justificatifs liés aux pièces).
+
