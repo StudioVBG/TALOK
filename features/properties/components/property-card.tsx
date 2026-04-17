@@ -295,10 +295,7 @@ export function PropertyCard({ property, onRefresh, onRemove }: PropertyCardProp
           {property.erp_type && (
             <div className="flex justify-between">
               <span className="text-muted-foreground">ERP :</span>
-              <span className="font-medium">
-                {property.erp_type}
-                {property.erp_categorie ? ` • ${property.erp_categorie}` : ""}
-              </span>
+              <span className="font-medium">{property.erp_type}</span>
             </div>
           )}
           {property.documents_count !== undefined && (
@@ -338,15 +335,6 @@ export function PropertyCard({ property, onRefresh, onRemove }: PropertyCardProp
             <div className="flex justify-between">
               <span className="text-muted-foreground">Places / boxes :</span>
               <span className="font-medium">{property.places_parking}</span>
-            </div>
-          )}
-          {(property.has_irve || (property.parking_badge_count ?? 0) > 0) && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Accès / IRVE :</span>
-              <span className="font-medium">
-                {property.has_irve ? "IRVE" : "—"}
-                {(property.parking_badge_count ?? 0) > 0 ? ` • ${property.parking_badge_count} badge(s)` : ""}
-              </span>
             </div>
           )}
           <div className="flex justify-between">

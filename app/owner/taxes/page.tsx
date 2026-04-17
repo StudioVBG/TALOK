@@ -64,7 +64,7 @@ interface PropertyTaxData {
   address: string;
   type: string;
   regime: TaxRegime;
-  is_furnished: boolean;
+  meuble: boolean;
   lmnp_status: "lmnp" | "lmp";
   // Revenus
   rental_income: number;
@@ -144,7 +144,7 @@ export default function OwnerTaxesPage() {
           ville,
           code_postal,
           type,
-          is_furnished,
+          meuble,
           leases (
             loyer,
             charges_forfaitaires,
@@ -168,7 +168,7 @@ export default function OwnerTaxesPage() {
         const taxData: PropertyTaxData[] = propertiesData.map((prop: any) => {
           // Calculer les revenus locatifs de l'année
           let rental_income = 0;
-          let isFurnished = prop.is_furnished || false;
+          let isFurnished = prop.meuble ?? false;
           let savedRegime: TaxRegime | null = null;
           let savedLmnp: "lmnp" | "lmp" = "lmnp";
 
@@ -207,7 +207,7 @@ export default function OwnerTaxesPage() {
             address: `${prop.code_postal} ${prop.ville}`,
             type: prop.type,
             regime: savedRegime || defaultRegime,
-            is_furnished: isFurnished,
+            meuble: isFurnished,
             lmnp_status: savedLmnp,
             rental_income,
             other_income: 0,
@@ -239,8 +239,8 @@ export default function OwnerTaxesPage() {
 
   const calculateSummary = (): TaxSummary => {
     // Séparer biens nus et meublés
-    const nuProperties = properties.filter(p => !p.is_furnished);
-    const furnishedProperties = properties.filter(p => p.is_furnished);
+    const nuProperties = properties.filter(p => !p.meuble);
+    const furnishedProperties = properties.filter(p => p.meuble);
 
     // Revenus fonciers (nu)
     const total_gross_income = nuProperties.reduce((sum, p) => sum + p.rental_income + p.other_income, 0);
@@ -307,7 +307,7 @@ export default function OwnerTaxesPage() {
           .from("leases")
           .update({
             tax_regime: updatedProperty.regime,
-            lmnp_status: updatedProperty.is_furnished ? updatedProperty.lmnp_status : null,
+            lmnp_status: updatedProperty.meuble ? updatedProperty.lmnp_status : null,
           } as any)
           .eq("id", leases[0].id);
       }
@@ -950,7 +950,7 @@ export default function OwnerTaxesPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {editingProperty.is_furnished ? (
+                      {editingProperty.meuble ? (
                         <>
                           <SelectItem value="micro_bic">Micro-BIC (50% d'abattement)</SelectItem>
                           <SelectItem value="reel_bic">Régime réel BIC (charges + amortissement)</SelectItem>
@@ -963,7 +963,7 @@ export default function OwnerTaxesPage() {
                       )}
                     </SelectContent>
                   </Select>
-                  {editingProperty.is_furnished && (
+                  {editingProperty.meuble && (
                     <p className="text-xs text-cyan-600 mt-1">
                       Bien meublé — régime BIC (Bénéfices Industriels et Commerciaux)
                     </p>
@@ -971,7 +971,7 @@ export default function OwnerTaxesPage() {
                 </div>
 
                 {/* BIC: Amortissements (régime réel uniquement) */}
-                {editingProperty.is_furnished && editingProperty.regime === "reel_bic" && (
+                {editingProperty.meuble && editingProperty.regime === "reel_bic" && (
                   <div className="space-y-4 p-4 rounded-lg bg-purple-50 border border-purple-200">
                     <div className="flex items-center justify-between">
                       <h5 className="text-sm font-medium text-purple-800">Amortissements (régime réel BIC)</h5>

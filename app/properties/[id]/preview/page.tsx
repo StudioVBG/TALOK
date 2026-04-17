@@ -299,7 +299,6 @@ function PreviewContent() {
 
       <ExecutiveSummary
         data={summaryData}
-        parkingDetails={property.parking_details}
         rooms={[]}
         actionSlot={
           <Button

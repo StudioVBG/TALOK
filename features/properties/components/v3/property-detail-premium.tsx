@@ -811,8 +811,8 @@ export function PropertyDetailPremium({ propertyId }: PropertyDetailPremiumProps
                       </CardContent>
                     </Card>
 
-                    {/* Paramètres professionnels */}
-                    {(property.erp_type || property.erp_categorie || property.erp_accessibilite !== null) && (
+                    {/* Paramètres professionnels — Type ERP uniquement (catégorie/accessibilité retirées : colonnes inexistantes en DB) */}
+                    {property.erp_type && (
                       <Card className={CLASSES_EXTENDED.card}>
                         <CardHeader>
                           <CardTitle className="flex items-center gap-2">
@@ -821,35 +821,10 @@ export function PropertyDetailPremium({ propertyId }: PropertyDetailPremiumProps
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {property.erp_type && (
-                              <div>
-                                <p className="text-sm font-semibold text-muted-foreground">Type ERP</p>
-                                <p className="text-base font-medium">{property.erp_type}</p>
-                              </div>
-                            )}
-                            {property.erp_categorie && (
-                              <div>
-                                <p className="text-sm font-semibold text-muted-foreground">Catégorie ERP</p>
-                                <p className="text-base font-medium">{property.erp_categorie}</p>
-                              </div>
-                            )}
+                          <div>
+                            <p className="text-sm font-semibold text-muted-foreground">Type ERP</p>
+                            <p className="text-base font-medium">{property.erp_type}</p>
                           </div>
-                          {property.erp_accessibilite !== null && (
-                            <>
-                              <Separator />
-                              <div className="flex items-center gap-2">
-                                {property.erp_accessibilite ? (
-                                  <CheckCircle2 className="h-5 w-5 text-green-500" />
-                                ) : (
-                                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                                )}
-                                <span className="text-base font-medium">
-                                  {property.erp_accessibilite ? "Accessibilité ERP conforme" : "Accessibilité ERP à vérifier"}
-                                </span>
-                              </div>
-                            </>
-                          )}
                         </CardContent>
                       </Card>
                     )}
@@ -928,35 +903,7 @@ export function PropertyDetailPremium({ propertyId }: PropertyDetailPremiumProps
                   </CardContent>
                 </Card>
 
-                {/* Permis de louer */}
-                {property.permis_louer_requis && (
-                  <Card className={CLASSES_EXTENDED.card}>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <FileCheck className="h-5 w-5 text-primary" />
-                        Permis de louer
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-5 w-5 text-green-500" />
-                        <span className="text-base font-medium">Permis requis</span>
-                      </div>
-                      {property.permis_louer_numero && (
-                        <div>
-                          <p className="text-sm font-semibold text-muted-foreground">Numéro d'autorisation</p>
-                          <p className="text-base font-medium">{property.permis_louer_numero}</p>
-                        </div>
-                      )}
-                      {property.permis_louer_date && (
-                        <div>
-                          <p className="text-sm font-semibold text-muted-foreground">Date d'obtention</p>
-                          <p className="text-base font-medium">{formatDateShort(property.permis_louer_date)}</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
+                {/* Card "Permis de louer" retirée : colonnes permis_louer_* inexistantes en DB */}
 
                 {/* Dates & Métadonnées */}
                 <Card className={CLASSES_EXTENDED.card}>

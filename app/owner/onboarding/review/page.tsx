@@ -146,14 +146,6 @@ export default function OwnerReviewPage() {
           property.dpe_emissions !== null,
       },
       {
-        key: "permis",
-        label: "Permis de louer renseigné (si requis)",
-        detail: property.permis_louer_requis
-          ? property.permis_louer_numero || "Compléter le numéro du permis de louer"
-          : "Non requis pour ce logement",
-        valid: !property.permis_louer_requis || Boolean(property.permis_louer_numero),
-      },
-      {
         key: "media",
         label: "Galerie de médias avec visuel principal",
         detail: hasMedia
