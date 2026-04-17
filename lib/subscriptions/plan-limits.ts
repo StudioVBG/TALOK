@@ -23,6 +23,12 @@ export interface PlanLimits {
   maxUsers: number;
   maxStorageMB: number;        // en Mo (-1 = illimité)
   maxSignaturesPerMonth: number; // -1 = illimité
+  /**
+   * Plafond HARD de SMS par mois calendaire.
+   * 0 = SMS non inclus dans le plan (toute demande refusée sauf
+   * add-on metered actif). -1 = illimité. Sinon quota strict.
+   */
+  maxSmsPerMonth: number;
 
   // Features booléennes
   hasRentCollection: boolean;  // Paiement en ligne (CB/SEPA)
@@ -69,6 +75,20 @@ function buildLimitsForPlan(slug: PlanSlug): PlanLimits {
   const storageGB = limits.max_documents_gb;
   const storageMB = storageGB === -1 ? -1 : Math.round(storageGB * 1024);
 
+  // Quota SMS par plan (HARD — protection coût).
+  // Au-delà, seul un add-on metered actif permet d'envoyer.
+  const smsQuotas: Record<PlanSlug, number> = {
+    gratuit: 0,
+    starter: 20,
+    confort: 100,
+    pro: 500,
+    enterprise_s: 2_000,
+    enterprise_m: 5_000,
+    enterprise_l: 10_000,
+    enterprise_xl: 25_000,
+    enterprise: 25_000,
+  };
+
   return {
     // Quantitatifs
     maxProperties: limits.max_properties,
@@ -77,6 +97,7 @@ function buildLimitsForPlan(slug: PlanSlug): PlanLimits {
     maxUsers: limits.max_users,
     maxStorageMB: storageMB,
     maxSignaturesPerMonth: limits.signatures_monthly_quota,
+    maxSmsPerMonth: smsQuotas[slug] ?? 0,
 
     // Booléens
     hasRentCollection: hasFeat('tenant_payment_online'),

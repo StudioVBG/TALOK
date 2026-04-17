@@ -170,6 +170,18 @@ export async function POST(request: NextRequest) {
     });
 
     if (!result.success) {
+      if (result.code === 'sms_quota_exceeded') {
+        return NextResponse.json(
+          {
+            success: false,
+            error: result.error,
+            code: 'sms_quota_exceeded',
+            quota: result.quota,
+            upgradeUrl: '/owner/subscription',
+          },
+          { status: 402 }
+        );
+      }
       return NextResponse.json(
         {
           success: false,

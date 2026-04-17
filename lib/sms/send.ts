@@ -8,6 +8,7 @@
 import { getTwilioClient, resolveTwilioCredentials } from './client';
 import { normalizePhoneE164, maskPhone } from './phone';
 import { recordSmsMessage, type SmsContext } from './logs';
+import { assertSmsQuota, SmsQuotaExceededError } from './usage';
 import { logger } from '@/lib/monitoring';
 
 export interface SendSmsParams {
@@ -25,8 +26,12 @@ export interface SendSmsResult {
   status?: string;
   error?: string;
   errorCode?: string | number;
+  /** Code métier pour discriminer côté appelant. */
+  code?: 'sms_quota_exceeded' | 'sms_not_configured' | 'twilio_error';
   /** Numéro E.164 effectivement utilisé. */
   to?: string;
+  /** Quota state renvoyé en cas de blocage quota. */
+  quota?: { current: number; limit: number; plan: string };
 }
 
 /**
@@ -39,6 +44,42 @@ export interface SendSmsResult {
  */
 export async function sendSMS(params: SendSmsParams): Promise<SendSmsResult> {
   const e164 = normalizePhoneE164(params.to);
+
+  // Hard monthly quota per plan (sms_quota_exceeded). Only applies to
+  // contexts liés à un profil (profileId fourni) — les envois système
+  // sans profil (ex: support admin) ne sont pas plafonnés ici.
+  if (params.context.profileId) {
+    try {
+      await assertSmsQuota(params.context.profileId);
+    } catch (err) {
+      if (err instanceof SmsQuotaExceededError) {
+        logger.warn('sms.send.quota_exceeded', {
+          profileId: params.context.profileId,
+          current: err.current,
+          limit: err.limit,
+          plan: err.plan,
+          to_masked: maskPhone(e164),
+        });
+        await recordSmsMessage({
+          sid: null,
+          to: e164,
+          body: params.body,
+          status: 'failed',
+          errorCode: 'sms_quota_exceeded',
+          errorMessage: err.message,
+          context: params.context,
+        });
+        return {
+          success: false,
+          code: 'sms_quota_exceeded',
+          error: err.message,
+          to: e164,
+          quota: { current: err.current, limit: err.limit, plan: err.plan },
+        };
+      }
+      // Erreur non-métier → on laisse passer (fail-open sur la lecture).
+    }
+  }
 
   let creds;
   try {
@@ -54,7 +95,7 @@ export async function sendSMS(params: SendSmsParams): Promise<SendSmsResult> {
       errorMessage: message,
       context: params.context,
     });
-    return { success: false, error: message, to: e164 };
+    return { success: false, code: 'sms_not_configured', error: message, to: e164 };
   }
 
   const client = await getTwilioClient();

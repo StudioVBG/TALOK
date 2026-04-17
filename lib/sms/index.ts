@@ -36,6 +36,17 @@ export { renderTemplate, SMS_TEMPLATES } from './templates';
 export type { SmsTemplateKey, TemplateData } from './templates';
 
 export {
+  getMonthlyUsage,
+  hasActiveSmsAddon,
+  getCurrentPlanSlug,
+  getSmsQuotaStatus,
+  assertSmsQuota,
+  SmsQuotaExceededError,
+  currentMonthKey,
+} from './usage';
+export type { MonthlyUsage } from './usage';
+
+export {
   getTwilioClient,
   getVerifyServiceSid,
   resolveTwilioCredentials,
