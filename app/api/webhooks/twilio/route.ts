@@ -2,151 +2,100 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * Webhook Twilio pour les statuts de livraison SMS
  * POST /api/webhooks/twilio
+ * Status callback Twilio (livraison / échec SMS).
+ * Signature validée fail-closed via twilio.validateRequest().
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { createServiceRoleClient } from "@/lib/supabase/server";
-import crypto from "crypto";
-
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+import { NextRequest, NextResponse } from 'next/server';
+import { createServiceRoleClient } from '@/lib/supabase/server';
+import { validateTwilioWebhook, formDataToObject } from '@/lib/sms/webhook';
 
 export async function POST(request: NextRequest) {
   try {
-    // Vérifier la signature Twilio
-    const twilioSignature = request.headers.get("x-twilio-signature");
-    const url = request.url;
-    const body = await request.text();
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const signature = request.headers.get('x-twilio-signature');
+    const rawBody = await request.text();
 
-    if (TWILIO_AUTH_TOKEN && twilioSignature) {
-      const isValid = verifyTwilioSignature(url, body, twilioSignature);
-      if (!isValid) {
-        console.error("Signature Twilio invalide");
-        return NextResponse.json({ error: "Signature invalide" }, { status: 401 });
-      }
+    const params = formDataToObject(rawBody);
+    const url = request.url;
+
+    const valid = validateTwilioWebhook({ url, params, signature, authToken });
+    if (!valid) {
+      return NextResponse.json({ error: 'Signature invalide' }, { status: 401 });
     }
 
-    // Parser les données du webhook
-    const params = new URLSearchParams(body);
-    const messageSid = params.get("MessageSid");
-    const messageStatus = params.get("MessageStatus");
-    const errorCode = params.get("ErrorCode");
-    const errorMessage = params.get("ErrorMessage");
+    const messageSid = params.MessageSid;
+    const messageStatus = params.MessageStatus;
+    const errorCode = params.ErrorCode || null;
+    const errorMessage = params.ErrorMessage || null;
 
     if (!messageSid || !messageStatus) {
-      return NextResponse.json(
-        { error: "Paramètres manquants" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
     }
-
 
     const supabase = createServiceRoleClient();
 
-    // Mapper le statut Twilio vers notre statut
     const statusMap: Record<string, string> = {
-      queued: "queued",
-      sending: "queued",
-      sent: "sent",
-      delivered: "delivered",
-      undelivered: "undelivered",
-      failed: "failed",
+      queued: 'queued',
+      accepted: 'queued',
+      sending: 'queued',
+      sent: 'sent',
+      delivered: 'delivered',
+      undelivered: 'undelivered',
+      failed: 'failed',
     };
+    const mappedStatus = statusMap[messageStatus] ?? messageStatus;
 
-    const mappedStatus = statusMap[messageStatus] || messageStatus;
-
-    // Mettre à jour le SMS en base
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       twilio_status: messageStatus,
       status: mappedStatus,
     };
-
-    if (messageStatus === "delivered") {
-      updateData.delivered_at = new Date().toISOString();
-    }
-
-    if (messageStatus === "sent") {
-      updateData.sent_at = new Date().toISOString();
-    }
-
+    if (messageStatus === 'delivered') updateData.delivered_at = new Date().toISOString();
+    if (messageStatus === 'sent') updateData.sent_at = new Date().toISOString();
     if (errorCode) {
       updateData.error_code = errorCode;
       updateData.error_message = errorMessage;
     }
 
     const { error: updateError } = await supabase
-      .from("sms_messages")
+      .from('sms_messages')
       .update(updateData)
-      .eq("twilio_sid", messageSid);
+      .eq('twilio_sid', messageSid);
 
     if (updateError) {
-      console.error("Erreur mise à jour SMS:", updateError);
+      console.error('[twilio-webhook] update failed:', updateError);
     }
 
-    // Gérer les erreurs spécifiques
-    if (messageStatus === "undelivered" || messageStatus === "failed") {
-      // Log pour analyse
+    // Désactiver les SMS pour ce profil sur erreur permanente (numéro mort / bloqué).
+    if (messageStatus === 'undelivered' || messageStatus === 'failed') {
       console.error(
-        `[Twilio] SMS non livré - SID: ${messageSid}, Code: ${errorCode}, Message: ${errorMessage}`
+        `[twilio-webhook] SMS non livré — sid=${messageSid} code=${errorCode} msg=${errorMessage}`
       );
 
-      // Potentiellement désactiver les SMS pour ce numéro si erreur permanente
-      const permanentErrors = ["30003", "30004", "30005", "30006", "21211"];
-      if (errorCode && permanentErrors.includes(errorCode)) {
-        // Le numéro est invalide ou bloqué
+      const permanentErrors = new Set(['30003', '30004', '30005', '30006', '21211', '21610', '21614']);
+      if (errorCode && permanentErrors.has(errorCode)) {
         const { data: smsRecord } = await supabase
-          .from("sms_messages")
-          .select("profile_id")
-          .eq("twilio_sid", messageSid)
+          .from('sms_messages')
+          .select('profile_id')
+          .eq('twilio_sid', messageSid)
           .single();
 
         if (smsRecord?.profile_id) {
           await supabase
-            .from("notification_preferences")
+            .from('notification_preferences')
             .update({ sms_enabled: false })
-            .eq("profile_id", smsRecord.profile_id);
-
+            .eq('profile_id', smsRecord.profile_id);
         }
       }
     }
 
     return NextResponse.json({ received: true });
   } catch (error: unknown) {
-    console.error("Erreur webhook Twilio:", error);
+    console.error('[twilio-webhook] error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: error instanceof Error ? error.message : 'Erreur serveur' },
       { status: 500 }
     );
   }
 }
-
-// Vérifier la signature Twilio
-function verifyTwilioSignature(
-  url: string,
-  body: string,
-  signature: string
-): boolean {
-  if (!TWILIO_AUTH_TOKEN) return false;
-
-  const params = new URLSearchParams(body);
-  const sortedParams = Array.from(params.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => key + value)
-    .join("");
-
-  const data = url + sortedParams;
-  const expectedSignature = crypto
-    .createHmac("sha1", TWILIO_AUTH_TOKEN)
-    .update(data)
-    .digest("base64");
-
-  return signature === expectedSignature;
-}
-
-
-
-
-
-
-
