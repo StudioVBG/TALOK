@@ -156,6 +156,12 @@ const ENV_VARS: EnvVar[] = [
     required: false,
     description: "Twilio Auth Token",
   },
+  {
+    name: "TWILIO_VERIFY_SERVICE_SID",
+    required: false,
+    validator: (v) => v.startsWith("VA"),
+    description: "Twilio Verify Service SID (required for phone OTP)",
+  },
 
   // OpenAI - Optionnel pour AI features
   {
