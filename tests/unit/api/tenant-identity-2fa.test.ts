@@ -48,10 +48,6 @@ vi.mock("@/lib/supabase/service-client", () => ({
   getServiceClient: vi.fn(() => mockServiceClient),
 }));
 
-vi.mock("@/lib/services/sms.service", () => ({
-  sendOTPSMS: vi.fn().mockResolvedValue({ success: true }),
-}));
-
 vi.mock("@/lib/email/send-email", () => ({
   sendEmail: vi.fn().mockResolvedValue({ success: true }),
 }));

@@ -18,7 +18,7 @@ import { verifyHandoverToken } from "../utils";
 import { getInitialInvoiceSettlement } from "@/lib/services/invoice-status.service";
 import { ensureKeyHandoverAttestation } from "@/lib/services/final-documents.service";
 import { sendKeyHandoverConfirmedNotification } from "@/lib/emails/resend.service";
-import { sendSMS } from "@/lib/services/sms.service";
+import { sendSMS } from "@/lib/sms";
 import { generateKeyHandoverPDF } from "@/lib/documents/key-handover-pdf-generator";
 
 interface RouteParams {
@@ -339,7 +339,12 @@ export async function POST(request: Request, { params }: RouteParams) {
         if (ownerProfile?.telephone) {
           await sendSMS({
             to: ownerProfile.telephone,
-            message: `[Talok] ${tenantFullName} a confirmé la réception des clefs. Consultez votre espace propriétaire.`,
+            body: `[Talok] ${tenantFullName} a confirmé la réception des clefs. Consultez votre espace propriétaire.`,
+            context: {
+              type: "notification",
+              profileId: ownerProfile.id,
+              relatedId: handover.id,
+            },
           });
         }
       } catch (smsErr) {

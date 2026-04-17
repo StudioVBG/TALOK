@@ -4,17 +4,25 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/service-client';
 import { stripe } from '@/lib/stripe';
-import { sendSMS, type SMSOptions, type SMSResult } from '@/lib/services/sms.service';
+import { sendSMS, type SendSmsParams, type SendSmsResult } from '@/lib/sms';
 
 /**
  * Send an SMS, track usage in sms_usage table, and report to Stripe metered billing.
  */
 export async function sendTrackedSMS(
   profileId: string,
-  options: SMSOptions
-): Promise<SMSResult> {
-  // 1. Send via Twilio
-  const result = await sendSMS(options);
+  options: Omit<SendSmsParams, 'context'> & { context?: Partial<SendSmsParams['context']> }
+): Promise<SendSmsResult> {
+  const result = await sendSMS({
+    to: options.to,
+    body: options.body,
+    context: {
+      type: options.context?.type ?? 'notification',
+      profileId: options.context?.profileId ?? profileId,
+      userId: options.context?.userId,
+      relatedId: options.context?.relatedId,
+    },
+  });
   if (!result.success) return result;
 
   const supabase = createServiceRoleClient();
