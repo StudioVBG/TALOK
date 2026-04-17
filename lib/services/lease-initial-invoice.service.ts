@@ -9,9 +9,9 @@ type LeaseInitialInvoiceLike = {
 
 type SupabaseLike = {
   from: (table: string) => {
-    select: (...args: unknown[]) => any;
+    select: (...args: any[]) => any;
   };
-  rpc: (fn: string, args?: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>;
+  rpc: (fn: string, args?: Record<string, unknown>) => PromiseLike<{ data: unknown; error: { message: string } | null }>;
 };
 
 export interface InitialInvoiceResolution {

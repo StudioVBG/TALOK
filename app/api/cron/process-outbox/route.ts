@@ -108,7 +108,87 @@ async function processEvent(event: any): Promise<void> {
       break;
     }
 
+    case "Inspection.Signed": {
+      await handleInspectionSigned(payload);
+      break;
+    }
+
+    case "Lease.InvoiceEngineStart": {
+      console.log(`[Outbox] Lease.InvoiceEngineStart for lease ${payload.lease_id}`);
+      break;
+    }
+
     default:
       console.warn(`[Outbox] Unknown event type: ${event_type}`);
+  }
+}
+
+/**
+ * Handle Inspection.Signed event:
+ * When an EDL d'entrée is fully signed, generate the initial invoice
+ * if the lease is in 'fully_signed' status and no initial invoice exists.
+ */
+async function handleInspectionSigned(payload: any): Promise<void> {
+  const edlId = payload.edl_id;
+  if (!edlId) {
+    console.warn("[Outbox] Inspection.Signed: missing edl_id");
+    return;
+  }
+
+  const supabase = createServiceRoleClient();
+
+  // Fetch the EDL to get lease_id and type
+  const { data: edl, error: edlError } = await supabase
+    .from("edl")
+    .select("id, type, status, lease_id")
+    .eq("id", edlId)
+    .maybeSingle();
+
+  if (edlError || !edl) {
+    console.error(`[Outbox] Inspection.Signed: EDL ${edlId} not found`, edlError);
+    return;
+  }
+
+  // Only process entry inspections (EDL d'entrée)
+  if (edl.type !== "entree") {
+    console.log(`[Outbox] Inspection.Signed: EDL ${edlId} is type '${edl.type}', skipping`);
+    return;
+  }
+
+  if (!edl.lease_id) {
+    console.warn(`[Outbox] Inspection.Signed: EDL ${edlId} has no lease_id`);
+    return;
+  }
+
+  // Check lease status
+  const { data: lease, error: leaseError } = await supabase
+    .from("leases")
+    .select("id, statut")
+    .eq("id", edl.lease_id)
+    .maybeSingle();
+
+  if (leaseError || !lease) {
+    console.error(`[Outbox] Inspection.Signed: lease ${edl.lease_id} not found`, leaseError);
+    return;
+  }
+
+  if (lease.statut !== "fully_signed") {
+    console.log(`[Outbox] Inspection.Signed: lease ${lease.id} is '${lease.statut}', not 'fully_signed'. Skipping.`);
+    return;
+  }
+
+  // Generate the initial invoice via the canonical service
+  const { ensureInitialInvoiceForLease } = await import("@/lib/services/lease-initial-invoice.service");
+
+  try {
+    const result = await ensureInitialInvoiceForLease(supabase, lease.id);
+    if (result.created) {
+      console.log(`[Outbox] Inspection.Signed: initial invoice ${result.invoiceId} created for lease ${lease.id} (amount: ${result.amount}€)`);
+    } else {
+      console.log(`[Outbox] Inspection.Signed: initial invoice ${result.invoiceId} already exists for lease ${lease.id}`);
+    }
+  } catch (err) {
+    console.error(`[Outbox] Inspection.Signed: failed to create initial invoice for lease ${lease.id}:`, err);
+    throw err; // Re-throw to trigger retry
   }
 }
