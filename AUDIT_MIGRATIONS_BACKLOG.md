@@ -9,18 +9,20 @@
 
 ## 1. Résumé exécutif
 
-- **Total migrations pending :** 215 (repo dépasse de **47** les 168 fichiers listés dans `docs/audits/pending-migrations.md` daté du 2026-04-09).
+- **Total migrations pending :** 221 (repo dépasse de **53** les 168 fichiers listés dans `docs/audits/pending-migrations.md` daté du 2026-04-09).
 - **Volume SQL :** 33,963 lignes (~157 lignes / fichier en moyenne, max 1 531).
 - **Répartition risques :**
-  - 🟢 **Safe** : 45 (20%) — pure création, additifs idempotents, DROP NOT NULL (relâchement de contrainte).
-  - 🟡 **À surveiller** : 169 (78%) — contient au moins une opération non-triviale (DML, DROP+CREATE POLICY, DROP FUNCTION/TRIGGER, CHECK, contrainte).
+  - 🟢 **Safe** : 50 (23%) — pure création, additifs idempotents, DROP NOT NULL (relâchement de contrainte).
+  - 🟡 **À surveiller** : 170 (77%) — contient au moins une opération non-triviale (DML, DROP+CREATE POLICY, DROP FUNCTION/TRIGGER, CHECK, contrainte).
   - 🔴 **Risqué** : 1 — **1 seule** (RENAME TABLE avec création de vue de compatibilité).
 
 - **Structure DB préservée :** 0 DROP TABLE, 0 DROP COLUMN, 0 ALTER COLUMN TYPE, 0 SET NOT NULL détectés. 10 DROP NOT NULL (safe, relâche une contrainte), 2 RENAME (1 column `signature_image` → `_signature_image_deprecated`, 1 table `charge_regularisations` → `_legacy` + vue de compat).
 - **Idempotence :** vaste majorité utilise `IF NOT EXISTS` / `IF EXISTS` (attesté dans doc existante `pending-migrations.md`).
 - **Estimation temps d'application :** selon `supabase/apply_scripts/README.md`, le bloc ~29 000 lignes s'applique en ~5-10 min via psql sur pooler direct, plus 1-3 min par batch de 5 000-7 000 lignes via SQL Editor Dashboard.
 
-**Verdict global :** backlog non-destructif, mais **169 migrations en 🟡** qui contiennent du DML ou des recréations de policies/triggers — l'ordre d'application importe pour les chaînes de dépendances (cf. §4).
+**Verdict global :** backlog non-destructif, mais **170 migrations en 🟡** qui contiennent du DML ou des recréations de policies/triggers — l'ordre d'application importe pour les chaînes de dépendances (cf. §4).
+
+> Note : intègre les 6 migrations Sprint 0 (20260417090000–090500) validées via PR #432, toutes classées 🟢 sauf 20260417090300 (DROP+CREATE POLICY, 🟡 safe).
 
 ---
 
