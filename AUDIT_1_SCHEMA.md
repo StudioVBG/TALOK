@@ -245,7 +245,106 @@ Le pipeline `analyze → analysis (polling) → validate` :
 
 
 ## 7. Statut document_analyses
-*(Pending)*
+
+### 7.1 — Schéma déclaré (migration `20260406210000_accounting_complete.sql` lignes 296–319, étendue par `20260407130000_ocr_category_rules.sql`)
+
+```sql
+CREATE TABLE IF NOT EXISTS document_analyses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  document_id UUID NOT NULL,                                        -- ⚠️ pas de REFERENCES
+  entity_id UUID NOT NULL REFERENCES legal_entities(id) ON DELETE CASCADE,
+  extracted_data JSONB NOT NULL DEFAULT '{}',
+  confidence_score NUMERIC(5,4),
+  suggested_account TEXT,
+  suggested_journal TEXT,
+  document_type TEXT,
+  siret_verified BOOLEAN DEFAULT false,
+  tva_coherent BOOLEAN DEFAULT false,
+  processing_status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (processing_status IN ('pending','processing','completed','failed','validated','rejected')),
+  validated_by UUID REFERENCES auth.users(id),
+  validated_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- Ajouts par 20260407130000 :
+ALTER TABLE document_analyses ADD COLUMN IF NOT EXISTS entry_id UUID REFERENCES accounting_entries(id);
+ALTER TABLE document_analyses ADD COLUMN IF NOT EXISTS raw_ocr_text TEXT;
+ALTER TABLE document_analyses ADD COLUMN IF NOT EXISTS processing_time_ms INTEGER;
+ALTER TABLE document_analyses ADD COLUMN IF NOT EXISTS suggested_entry JSONB;
+```
+
+**Vérification exhaustive** : `grep "ALTER TABLE document_analyses.*FOREIGN\|document_analyses.*REFERENCES documents"` sur toutes les migrations → **0 match**. La FK vers `documents(id)` n'a jamais été posée.
+
+### 7.2 — RLS
+
+```sql
+CREATE POLICY "doc_analyses_entity_access" ON document_analyses
+  FOR ALL TO authenticated
+  USING (entity_id IN (SELECT entity_id FROM entity_members WHERE user_id = auth.uid()))
+  WITH CHECK (entity_id IN (SELECT entity_id FROM entity_members WHERE user_id = auth.uid()));
+```
+
+Accès filtré par `entity_id` (sûr). Mais comme il n'y a pas de check sur `document_id`, un utilisateur peut techniquement INSERT `{ document_id: '<uuid quelconque>', entity_id: <sa propre entity> }` et contourner le check d'appartenance du document à l'entity. Le guard fonctionnel est appliqué **côté API** (analyze/route.ts §6.2 pré-check #6), pas côté DB.
+
+### 7.3 — Qui écrit ? (4 chemins distincts)
+
+| Fichier | Opération | Contexte |
+|---------|-----------|----------|
+| `app/api/accounting/documents/analyze/route.ts:145` | INSERT `{ document_id, entity_id, processing_status: 'pending', extracted_data: {} }` | Démarrage pipeline OCR |
+| `app/api/accounting/documents/analyze/route.ts:217` | UPDATE `processing_status='failed'` | Si edge function invoke échoue |
+| `app/api/accounting/documents/[id]/validate/route.ts:126` | UPDATE `entry_id, validated_by, validated_at, processing_status='validated'` | Après création écriture |
+| `supabase/functions/ocr-analyze-document/index.ts:216` | UPDATE `processing_status='completed', extracted_data, confidence_score, suggested_account, suggested_journal, document_type, siret_verified, tva_coherent` | Fin OCR normale |
+| `supabase/functions/ocr-analyze-document/index.ts:256` | UPDATE `processing_status='failed', extracted_data={error: ...}` | Fin OCR en erreur |
+| `lib/accounting/chart-amort-ocr.ts:639` | INSERT `{ document_id, entity_id, extracted_data, confidence_score, suggested_*, document_type, siret_verified, tva_coherent, processing_status: 'completed' }` | **Chemin parallèle** : insertion directe sans passer par le pipeline analyze (appelé par ?) |
+
+**Finding 🟡** : deux chemins d'INSERT distincts :
+- `/api/accounting/documents/analyze` insère `pending` puis laisse l'edge function compléter.
+- `lib/accounting/chart-amort-ocr.ts:saveAnalysis()` insère directement en `completed`.
+
+### 7.4 — Qui lit ?
+
+| Fichier | Opération |
+|---------|-----------|
+| `app/api/accounting/documents/[id]/analysis/route.ts:24` | SELECT le plus récent WHERE document_id=X (polling UI) |
+| `app/api/accounting/documents/[id]/validate/route.ts:54` | SELECT le plus récent WHERE document_id=X (chargement avant validation) |
+| `app/api/accounting/documents/analyze/route.ts:86` | SELECT count(*) WHERE entity_id=X AND created_at >= monthStart (quota OCR) |
+| `app/api/accounting/documents/analyze/route.ts:177` | SELECT WHERE document_id=X AND processing_status IN ('pending','processing') (anti-doublon) |
+| `supabase/functions/weekly-missing-documents/index.ts:54` | SELECT pour détecter écritures sans document_analyses lié (cron alertes) |
+| `lib/hooks/use-document-analysis.ts` | Consomme les 3 endpoints API (pas d'accès direct à la table) |
+
+### 7.5 — Conséquences de l'absence de FK
+
+**Scénarios problématiques** :
+
+1. **Document supprimé** (`DELETE FROM documents WHERE id=X`) :
+   - `document_analyses.document_id = X` devient orphelin silencieusement.
+   - Aucune cascade, aucun check. GET `/api/accounting/documents/X/analysis` retourne quand même la ligne.
+   - Impact : UI peut afficher une analyse orpheline pointant vers un document inexistant.
+
+2. **document_id fantôme à l'INSERT** :
+   - `INSERT document_analyses { document_id: '<uuid qui n'existe pas>' }` passe sans erreur DB.
+   - Seule protection : le pré-check API dans `analyze/route.ts:104` (`SELECT documents WHERE id=X`). Si on bypass l'API (ex. script, migration), rien n'empêche l'insertion.
+
+3. **Entity mismatch** :
+   - Le `document_id` et `entity_id` ne sont pas corrélés en base. L'intégrité repose sur le code API.
+
+**Pas de conséquence immédiate** en prod si les invariants sont respectés par le code, mais **robustesse faible** : un bug ou un accès direct à la DB peut créer des orphelins.
+
+### 7.6 — `document_analyses` vs `documents.ged_ai_data`
+
+| Aspect | `document_analyses` | `documents.ged_ai_data` |
+|--------|---------------------|--------------------------|
+| Déclaré dans | `20260406210000_accounting_complete.sql` | `20260201000000_ged_system.sql:148` |
+| Finalité annoncée | Pipeline OCR comptable + lien vers `accounting_entries` | "Données extraites par IA GED" (comment migration) |
+| Writers | 4 chemins (analyze/validate/edge fn/chart-amort-ocr) | **0 writer détecté** dans `app/`, `lib/`, `features/`, `supabase/functions/` |
+| Readers | 5+ chemins API + cron | `lib/hooks/use-ged-documents.ts:114,200,393` (SELECT uniquement, fallback `|| null`) + `lib/types/ged.ts:161` (type) |
+| Structure | Colonnes typées + `extracted_data JSONB` selon prompt GPT | `JSONB` libre — aucun schéma déclaré |
+| État | **Actif** | **Déclaré mais non peuplé** — colonne vide en prod |
+
+**Verdict** : `documents.ged_ai_data` est une colonne **fantôme** — prévue pour une classification IA "GED" (non-comptable) qui n'a jamais été branchée. Tous les writes OCR actuels vont dans `document_analyses.extracted_data`. La colonne peut être considérée comme *dead code* (à confirmer avec Sprint 2).
+
+
 
 ## 8. Questions ouvertes
 *(À remplir en dernier)*
