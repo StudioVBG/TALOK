@@ -6,6 +6,11 @@ import { z } from 'zod';
 import { getAuthenticatedUser } from '@/lib/helpers/auth-helper';
 import { createServiceRoleClient } from '@/lib/supabase/service-client';
 import { startVerification, normalizePhoneE164, maskPhone } from '@/lib/sms';
+import {
+  checkSmsRateLimit,
+  extractClientIp,
+  rateLimitHeaders,
+} from '@/lib/rate-limit';
 
 const schema = z.object({
   phone: z.string().min(1, 'Numéro requis'),
@@ -35,6 +40,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       { error: 'Format de numéro invalide. Exemple : +596696123456 ou 0696123456.' },
       { status: 400 }
+    );
+  }
+
+  const guard = await checkSmsRateLimit({
+    userId: user.id,
+    destinationE164: e164,
+    ip: extractClientIp(req),
+  });
+  if (!guard.allowed) {
+    return NextResponse.json(
+      {
+        error: guard.reason,
+        code: 'sms_rate_limited',
+        retryAfterSec: guard.retryAfterSec,
+      },
+      {
+        status: 429,
+        headers: rateLimitHeaders({
+          allowed: false,
+          remaining: 0,
+          resetAt: guard.resetAt,
+          retryAfterSec: guard.retryAfterSec,
+        }),
+      },
     );
   }
 

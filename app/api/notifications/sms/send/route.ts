@@ -13,8 +13,13 @@ import {
   withFeatureAccess,
   createSubscriptionErrorResponse,
 } from '@/lib/middleware/subscription-check';
-import { sendSMS } from '@/lib/sms';
+import { sendSMS, normalizePhoneE164 } from '@/lib/sms';
 import { renderTemplate, type SmsTemplateKey } from '@/lib/sms/templates';
+import {
+  checkSmsRateLimit,
+  extractClientIp,
+  rateLimitHeaders,
+} from '@/lib/rate-limit';
 
 const sendSmsSchema = z.object({
   profile_id: z.string().uuid().optional(),
@@ -120,8 +125,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let destinationE164: string;
+    try {
+      destinationE164 = normalizePhoneE164(phoneNumber!);
+    } catch {
+      return NextResponse.json(
+        { error: 'Numéro de téléphone invalide.' },
+        { status: 400 }
+      );
+    }
+
+    const guard = await checkSmsRateLimit({
+      userId: user.id,
+      destinationE164,
+      ip: extractClientIp(request),
+    });
+    if (!guard.allowed) {
+      return NextResponse.json(
+        {
+          error: guard.reason,
+          code: 'sms_rate_limited',
+          retryAfterSec: guard.retryAfterSec,
+        },
+        {
+          status: 429,
+          headers: rateLimitHeaders({
+            allowed: false,
+            remaining: 0,
+            resetAt: guard.resetAt,
+            retryAfterSec: guard.retryAfterSec,
+          }),
+        },
+      );
+    }
+
     const result = await sendSMS({
-      to: phoneNumber!,
+      to: destinationE164,
       body,
       context: {
         type: 'notification',

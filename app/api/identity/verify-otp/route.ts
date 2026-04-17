@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/helpers/auth-helper';
 import { createServiceRoleClient } from '@/lib/supabase/service-client';
 import { checkVerification, normalizePhoneE164 } from '@/lib/sms';
+import { checkOtpVerifyRateLimit, rateLimitHeaders } from '@/lib/rate-limit';
 
 /**
  * POST /api/identity/verify-otp
@@ -15,6 +16,26 @@ export async function POST(req: NextRequest) {
   const { user, error } = await getAuthenticatedUser(req);
   if (error || !user) {
     return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
+  }
+
+  const guard = await checkOtpVerifyRateLimit(user.id);
+  if (!guard.allowed) {
+    return NextResponse.json(
+      {
+        error: guard.reason,
+        code: 'otp_rate_limited',
+        retryAfterSec: guard.retryAfterSec,
+      },
+      {
+        status: 429,
+        headers: rateLimitHeaders({
+          allowed: false,
+          remaining: 0,
+          resetAt: guard.resetAt,
+          retryAfterSec: guard.retryAfterSec,
+        }),
+      },
+    );
   }
 
   const body = await req.json().catch(() => ({}));
