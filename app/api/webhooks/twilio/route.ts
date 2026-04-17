@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { validateTwilioWebhook, formDataToObject } from '@/lib/sms/webhook';
+import { trackSmsEvent } from '@/lib/sms/monitoring';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,6 +23,9 @@ export async function POST(request: NextRequest) {
 
     const valid = validateTwilioWebhook({ url, params, signature, authToken });
     if (!valid) {
+      trackSmsEvent('webhook_invalid_signature', {
+        errorCode: signature ? 'invalid_signature' : 'missing_signature',
+      });
       return NextResponse.json({ error: 'Signature invalide' }, { status: 401 });
     }
 

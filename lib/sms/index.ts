@@ -38,6 +38,9 @@ export type { SmsTemplateKey, TemplateData } from './templates';
 export { translateTwilioError, TWILIO_ERROR_MESSAGES_FR } from './errors';
 export type { TranslatedTwilioError } from './errors';
 
+export { trackSmsEvent } from './monitoring';
+export type { SmsEvent, SmsEventData } from './monitoring';
+
 export {
   getMonthlyUsage,
   hasActiveSmsAddon,

@@ -6,10 +6,11 @@
  */
 
 import { getTwilioClient, resolveTwilioCredentials } from './client';
-import { normalizePhoneE164, maskPhone } from './phone';
+import { normalizePhoneE164, maskPhone, detectTerritory } from './phone';
 import { recordSmsMessage, type SmsContext } from './logs';
 import { assertSmsQuota, SmsQuotaExceededError } from './usage';
 import { translateTwilioError } from './errors';
+import { trackSmsEvent } from './monitoring';
 import { logger } from '@/lib/monitoring';
 
 export interface SendSmsParams {
@@ -46,6 +47,8 @@ export interface SendSmsResult {
 export async function sendSMS(params: SendSmsParams): Promise<SendSmsResult> {
   const e164 = normalizePhoneE164(params.to);
 
+  const territory = detectTerritory(e164);
+
   // Hard monthly quota per plan (sms_quota_exceeded). Only applies to
   // contexts liés à un profil (profileId fourni) — les envois système
   // sans profil (ex: support admin) ne sont pas plafonnés ici.
@@ -60,6 +63,12 @@ export async function sendSMS(params: SendSmsParams): Promise<SendSmsResult> {
           limit: err.limit,
           plan: err.plan,
           to_masked: maskPhone(e164),
+        });
+        trackSmsEvent('quota_exceeded', {
+          userId: params.context.profileId,
+          territory,
+          errorCode: 'sms_quota_exceeded',
+          contextType: params.context.type,
         });
         await recordSmsMessage({
           sid: null,
@@ -102,6 +111,7 @@ export async function sendSMS(params: SendSmsParams): Promise<SendSmsResult> {
   const client = await getTwilioClient();
 
   const statusCallback = buildStatusCallback();
+  const startMs = Date.now();
 
   try {
     const msg = await client.messages.create({
@@ -112,6 +122,8 @@ export async function sendSMS(params: SendSmsParams): Promise<SendSmsResult> {
         : { from: creds.phoneNumber ?? undefined }),
       ...(statusCallback ? { statusCallback } : {}),
     });
+
+    const latencyMs = Date.now() - startMs;
 
     await recordSmsMessage({
       sid: msg.sid,
@@ -125,10 +137,19 @@ export async function sendSMS(params: SendSmsParams): Promise<SendSmsResult> {
       sid: msg.sid,
       to_masked: maskPhone(e164),
       type: params.context.type,
+      latencyMs,
+    });
+
+    trackSmsEvent('sent', {
+      userId: params.context.profileId ?? params.context.userId,
+      territory,
+      latencyMs,
+      contextType: params.context.type,
     });
 
     return { success: true, sid: msg.sid, status: msg.status, to: e164 };
   } catch (err: any) {
+    const latencyMs = Date.now() - startMs;
     const errorCode = err?.code ? String(err.code) : undefined;
     const rawMessage = err?.message ?? 'Erreur Twilio';
     const translated = translateTwilioError(err?.code ?? null);
@@ -138,6 +159,15 @@ export async function sendSMS(params: SendSmsParams): Promise<SendSmsResult> {
       error: rawMessage,
       to_masked: maskPhone(e164),
       type: params.context.type,
+      latencyMs,
+    });
+
+    trackSmsEvent('failed', {
+      userId: params.context.profileId ?? params.context.userId,
+      territory,
+      errorCode: err?.code ?? null,
+      latencyMs,
+      contextType: params.context.type,
     });
 
     await recordSmsMessage({

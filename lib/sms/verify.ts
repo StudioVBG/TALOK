@@ -8,6 +8,7 @@
 import { getTwilioClient, getVerifyServiceSid } from './client';
 import { normalizePhoneE164, maskPhone, detectTerritory } from './phone';
 import { translateTwilioError } from './errors';
+import { trackSmsEvent } from './monitoring';
 import { logger } from '@/lib/monitoring';
 
 export type VerifyChannel = 'sms' | 'call';
@@ -59,23 +60,31 @@ export async function startVerification(
         locale: 'fr',
       });
 
+    const territory = detectTerritory(e164);
     logger.info('sms.verify.start', {
       sid: v.sid,
       status: v.status,
       to_masked: maskPhone(e164),
-      territory: detectTerritory(e164),
+      territory,
       channel,
     });
+    trackSmsEvent('verify_start', { territory, contextType: 'otp' });
 
     return { success: true, status: v.status, sid: v.sid, e164 };
   } catch (err: any) {
     const errorCode = err?.code ? String(err.code) : undefined;
     const translated = translateTwilioError(err?.code ?? null);
+    const territory = detectTerritory(e164);
 
     logger.error('sms.verify.start_failed', {
       errorCode,
       error: err?.message,
       to_masked: maskPhone(e164),
+    });
+    trackSmsEvent('verify_failed', {
+      territory,
+      errorCode: err?.code ?? null,
+      contextType: 'otp',
     });
 
     return {
@@ -112,10 +121,16 @@ export async function checkVerification(
       .verificationChecks.create({ to: e164, code });
 
     const approved = check.status === 'approved';
+    const territory = detectTerritory(e164);
     logger.info('sms.verify.check', {
       status: check.status,
       approved,
       to_masked: maskPhone(e164),
+    });
+    trackSmsEvent(approved ? 'verify_ok' : 'verify_failed', {
+      territory,
+      errorCode: approved ? null : check.status,
+      contextType: 'otp',
     });
 
     return { success: true, approved, status: check.status };
@@ -128,6 +143,11 @@ export async function checkVerification(
       errorCode,
       error: err?.message,
       to_masked: maskPhone(e164),
+    });
+    trackSmsEvent('verify_failed', {
+      territory: detectTerritory(e164),
+      errorCode: err?.code ?? null,
+      contextType: 'otp',
     });
 
     return {

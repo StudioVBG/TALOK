@@ -8,6 +8,7 @@
 
 import { applyRateLimit, type RateLimitResult } from './upstash';
 import { SMS_RATE_LIMITS } from './sms-presets';
+import { trackSmsEvent } from '@/lib/sms/monitoring';
 
 export interface SmsGuardInput {
   userId: string;
@@ -61,6 +62,10 @@ export async function checkSmsRateLimit(input: SmsGuardInput): Promise<SmsGuardR
   for (const stage of stages) {
     const res: RateLimitResult = await applyRateLimit({ key: stage.key, ...stage.cfg });
     if (!res.allowed) {
+      trackSmsEvent('rate_limited', {
+        userId: input.userId,
+        rateLimitReason: stage.reasonKey,
+      });
       return {
         allowed: false,
         reason: MESSAGES[stage.reasonKey],
@@ -86,6 +91,7 @@ export async function checkOtpVerifyRateLimit(userId: string): Promise<SmsGuardR
   });
   if (res.allowed) return { allowed: true };
 
+  trackSmsEvent('rate_limited', { userId, rateLimitReason: 'verify' });
   return {
     allowed: false,
     reason: 'Trop de tentatives de vérification. Réessayez dans quelques minutes.',
