@@ -107,13 +107,234 @@ Sur les ~30 tables comptables/paiements inventoriées :
 
 
 ## 3. Pont documents.ged_ai_data
-*(Pending)*
+
+### 3.1 — Déclaration
+
+Migration `supabase/migrations/20260201000000_ged_system.sql:148` :
+```sql
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS ged_ai_data JSONB;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS ged_ai_processed_at TIMESTAMPTZ;
+```
+
+Commentaire migration : `-- Données extraites par IA GED`.
+
+### 3.2 — Structure
+
+**Aucun schéma déclaré.** Type `JSONB` libre, pas de CHECK constraint, pas de COMMENT ON COLUMN, pas de trigger de validation.
+
+Le seul document décrivant la forme attendue est le skill `.claude/skills/talok-documents-sota/SKILL.md:76` qui note simplement :
+> `ged_ai_data JSONB     -- OCR, classification IA`
+
+### 3.3 — Writers
+
+`grep -rn "ged_ai_data" app/ lib/ features/ supabase/functions/` → **aucune opération d'écriture** (INSERT / UPDATE / upsert).
+
+Les seuls usages détectés sont des **lectures** :
+
+| Fichier | Usage |
+|---------|-------|
+| `lib/hooks/use-ged-documents.ts:114` | `select("..., ged_ai_data, ged_ai_processed_at, ...")` |
+| `lib/hooks/use-ged-documents.ts:200` | idem (second appel) |
+| `lib/hooks/use-ged-documents.ts:393` | `ged_ai_data: (doc.ged_ai_data as Record<string, unknown>) \|\| null` (mapping vers type TS) |
+| `lib/types/ged.ts:161` | `ged_ai_data: Record<string, unknown> \| null;` (déclaration type) |
+
+Les batch files `supabase/apply_scripts/batch_05.sql` et `supabase/fixes/APPLY_ALL_MIGRATIONS.sql` contiennent juste le `ALTER TABLE` — pas d'INSERT non plus.
+
+### 3.4 — Échantillons réels
+
+**Impossible à produire** : aucun accès lecture DB prod autorisé dans cet audit. La colonne étant vide côté writers, les 3-5 échantillons demandés n'existent probablement pas.
+
+Pour obtenir des échantillons réels :
+```sql
+-- À exécuter côté prod uniquement (lecture seule)
+SELECT id, type, ged_ai_data, ged_ai_processed_at
+FROM documents
+WHERE ged_ai_data IS NOT NULL
+LIMIT 5;
+```
+
+Si ce SELECT retourne 0 ligne → **confirme l'hypothèse "colonne fantôme"**.
+
+Si ce SELECT retourne des lignes → révèle un writer non-détecté (à enquêter Sprint 2 — candidats : migrations de backfill, scripts admin, fonction Supabase tiers non-versionnée).
+
+### 3.5 — Hypothèse
+
+La colonne `ged_ai_data` a été **prévue** lors du Sprint GED 2026-02 pour accueillir une classification IA généraliste (détection auto du type de document, tags auto). Elle n'a pas été branchée car le pipeline OCR comptable a utilisé sa propre table `document_analyses` (créée 2 mois plus tard en `20260406210000`).
+
+**Verdict** : colonne **morte / dead code**. Le pont document ↔ compta passe **intégralement** par `document_analyses`, pas par `documents.ged_ai_data`.
+
+
 
 ## 4. Types de documents "pièces comptables"
-*(Pending)*
+
+### 4.1 — Contrainte CHECK actuelle
+
+Dernière définition trouvée : `supabase/migrations/20251228000000_documents_sota.sql` (migration `documents_type_check`, superseding `20251204230000_fix_missing_columns.sql`).
+
+```sql
+ALTER TABLE documents ADD CONSTRAINT documents_type_check CHECK (
+  type IN (
+    -- Contrats
+    'bail', 'avenant', 'engagement_garant', 'bail_signe_locataire', 'bail_signe_proprietaire',
+    -- Identité
+    'piece_identite', 'cni_recto', 'cni_verso', 'passeport', 'titre_sejour',
+    -- Finance
+    'quittance', 'facture', 'rib', 'avis_imposition', 'bulletin_paie', 'attestation_loyer',
+    -- Assurance
+    'attestation_assurance', 'assurance_pno',
+    -- Diagnostics
+    'diagnostic', 'dpe', 'diagnostic_gaz', 'diagnostic_electricite',
+    'diagnostic_plomb', 'diagnostic_amiante', 'diagnostic_termites', 'erp',
+    -- États des lieux
+    'EDL_entree', 'EDL_sortie', 'inventaire',
+    -- Candidature
+    'candidature_identite', 'candidature_revenus', 'candidature_domicile', 'candidature_garantie',
+    -- Garant
+    'garant_identite', 'garant_revenus', 'garant_domicile', 'garant_engagement',
+    -- Prestataire
+    'devis', 'ordre_mission', 'rapport_intervention',
+    -- Copropriété
+    'taxe_fonciere', 'taxe_sejour', 'copropriete', 'proces_verbal', 'appel_fonds',
+    -- Divers
+    'consentement', 'courrier', 'photo', 'justificatif_revenus', 'autre'
+  )
+);
+```
+
+### 4.2 — Sous-ensemble "pièces comptables" (= candidates à traitement OCR/écriture)
+
+| Type `documents.type` | Nature métier | Écriture attendue (journal) | Candidate OCR ? |
+|-----------------------|---------------|-----------------------------|:---:|
+| `facture` | Facture fournisseur générique | ACH (achats) | ✅ |
+| `devis` | Devis prestataire (avant facture) | — (pré-comptable) | ✅ (extraction montant prévisionnel) |
+| `ordre_mission` | Ordre de travaux prestataire | — | ❌ (contractuel) |
+| `rapport_intervention` | Compte-rendu prestataire | — | ❌ |
+| `quittance` | Quittance de loyer émise | VE (ventes) | ❌ (générée par Talok, pas OCR) |
+| `attestation_loyer` | Attestation loyers encaissés | — (doc fiscal émis) | ❌ |
+| `avis_imposition` | Avis TF / TH / autre | ACH ou OD | ✅ |
+| `taxe_fonciere` | Avis TF (stockage spécialisé via `tax_notices`) | ACH (compte 635100) + extraction TEOM | ✅ |
+| `taxe_sejour` | Avis taxe de séjour | ACH | ✅ |
+| `attestation_assurance` | Attestation assurance habitation | — (doc d'attestation) | ❌ |
+| `assurance_pno` | Facture assurance PNO propriétaire | ACH (6161 assurances) | ✅ |
+| `rib` | RIB (bancaire) | — (doc référentiel) | ❌ |
+| `bulletin_paie` | Bulletin de salaire (locataire candidature) | — (doc candidature) | ❌ |
+| `appel_fonds` | Appel de fonds syndic | ACH copro ou lié `copro_fund_calls` | ✅ |
+| `proces_verbal` | PV AG copro | — (contractuel) | ❌ |
+| `copropriete` | Doc copro divers | variable | éventuellement |
+
+**Pièces comptables strictes à OCR** (colonne ✅ ci-dessus) : `facture`, `devis`, `avis_imposition`, `taxe_fonciere`, `taxe_sejour`, `assurance_pno`, `appel_fonds` — plus éventuellement `copropriete` et la quittance locataire (mais côté tenant, pas owner).
+
+### 4.3 — Correspondance avec `OCR_SYSTEM_PROMPT`
+
+Le prompt GPT dans `supabase/functions/ocr-analyze-document/index.ts:15` attend en sortie :
+```
+"document_type": "facture|quittance|releve_bancaire|avis_impot|contrat|autre"
+```
+
+**Incohérence** : le prompt utilise `avis_impot` (pas `avis_imposition` ou `taxe_fonciere`) et `releve_bancaire` (n'existe pas dans `documents.type`). Les valeurs `document_type` dans `document_analyses` peuvent donc diverger de `documents.type` — c'est un champ de classification **parallèle**, pas contraint à matcher.
+
+### 4.4 — Colonnes de pont côté `documents`
+
+Fichiers migrations : `20260201000000_ged_system.sql` (GED) + ajouts ultérieurs.
+
+| Colonne | Source | Rôle |
+|---------|--------|------|
+| `lease_id` (initial) | Initial schema | Attache doc à un bail |
+| `property_id` (initial) | Initial schema | Attache doc à un bien |
+| `owner_id` / `tenant_id` (initial) | Initial schema | Attribution utilisateurs |
+| `entity_id UUID REFERENCES legal_entities` | 20260201000000 | **Attache à une entité juridique — pré-requis pour RLS compta** |
+| `ged_ai_data JSONB` | 20260201000000 | Colonne fantôme (cf. §3) |
+| `ged_ai_processed_at` | 20260201000000 | idem |
+| `valid_from`, `valid_until` | 20260201000000 | Validité temporelle (diags, assurance) |
+| `tags TEXT[]` | 20260201000000 | Tags libres pour recherche |
+| `category TEXT` | 20251228000000 | Catégorie de filtrage UI |
+| `sha256 TEXT` | 20251228000000 | Hash déduplication (utilisé par analyze §6.2 pré-check #7) |
+| `parent_document_id UUID REFERENCES documents(id)` | 20260201000000 | Versioning |
+| `application_id UUID REFERENCES tenant_applications` | 20251228000000 | Doc de candidature |
+| `guarantor_profile_id UUID REFERENCES profiles` | 20251228000000 | Doc de garant |
+| `original_filename`, `file_size`, `mime` | 20251228000000 | Métadonnées fichier |
+
+**Aucune colonne** `invoice_id`, `expense_id`, `transaction_id` sur `documents` : le lien inverse (compta → document) est porté par les tables comptables (`expenses.document_id`, `tax_notices.document_id`, `invoices.receipt_document_id`).
+
+Le lien **document → compta** n'est porté **que** par `document_analyses.document_id` (sans FK) + `document_analyses.entry_id` (FK).
+
+
 
 ## 5. Triggers et RPCs
-*(Pending)*
+
+### 5.1 — Triggers sur `documents`
+
+| Trigger | Événement | Fonction | Crée une entrée compta ? |
+|---------|-----------|----------|:---:|
+| `update_documents_updated_at` | BEFORE UPDATE | `update_updated_at_column()` (générique) | ❌ |
+| `trg_documents_set_default_position` | (INSERT gallery) | `documents_set_default_position()` | ❌ |
+| `trigger_update_document_ged_status` | BEFORE UPDATE WHEN (valid_until OR ged_status change) | `update_document_ged_status()` — bascule `ged_status → 'expired'` si valid_until passée | ❌ |
+| `trg_documents_search_vector` | (INSERT/UPDATE) | `documents_search_vector_update()` — maintient index full-text | ❌ |
+| `trigger_auto_fill_document_fk` | BEFORE INSERT OR UPDATE | `auto_fill_document_fk()` (migration `20260223000001`) — auto-remplit `property_id` depuis `lease_id`, `owner_id` depuis `property_id`, `tenant_id` depuis `lease_signers`. `SECURITY DEFINER`, exception handler non-bloquant. | ❌ |
+| `trigger_notify_owner_on_tenant_document` | (INSERT) | notifie proprio upload locataire | ❌ |
+| `trg_notify_tenant_document_center` | (INSERT/UPDATE) | notifie locataire | ❌ |
+
+**Verdict section 5.1** : **aucun trigger DB ne crée d'entrée comptable à partir d'un événement sur `documents`.** La création d'écriture reste exclusivement pilotée côté application (API `/validate` § 6.4 + webhooks Stripe § 5.4).
+
+### 5.2 — Triggers sur tables comptables
+
+Source : `supabase/migrations/20260406210000_accounting_complete.sql` lignes 748–850.
+
+| Trigger | Table | Événement | Fonction | Rôle |
+|---------|-------|-----------|----------|------|
+| `trg_entry_balance` | `accounting_entries` | BEFORE UPDATE | `fn_check_entry_balance()` | Vérifie `sum(debit)=sum(credit)` au moment de `is_validated=true`, puis set `is_locked=true` et `validated_at=now()` |
+| `trg_locked_entry` | `accounting_entries` | BEFORE UPDATE | `fn_locked_entry_guard()` | Empêche toute modification d'une écriture verrouillée — `RAISE EXCEPTION 'Cannot modify a locked/validated entry. Use reversal (contre-passation) instead.'` (intangibilité art. A47 LPF) |
+| `trg_audit_entries` | `accounting_entries` | AFTER INSERT OR UPDATE | `fn_audit_entry_changes()` | INSERT dans `accounting_audit_log` pour `create_entry` et `validate_entry` |
+| `trg_*_updated_at` (×12) | `chart_of_accounts`, `accounting_exercises`, `accounting_journals`, `bank_connections`, `bank_transactions`, `document_analyses`, `amortization_schedules`, `amortization_lines`, `deficit_tracking`, `charge_regularizations`, `copro_budgets`, `crg_reports` | BEFORE UPDATE | `fn_accounting_updated_at()` | maintient `updated_at` |
+| `trg_charge_categories_updated`, `trg_charge_entries_updated`, `trg_lease_charge_reg_updated` | charges locatives | BEFORE UPDATE | update_at | — |
+| `update_expenses_updated_at` | `expenses` | BEFORE UPDATE | update_at | — |
+| `trg_tax_notices_updated` | `tax_notices` | BEFORE UPDATE | update_at | — |
+
+**Verdict section 5.2** : les triggers comptables sont **exclusivement** des gardes d'intégrité (équilibre D/C, intangibilité) et d'audit (log) — **aucun** ne crée d'entrée en cascade depuis un autre événement.
+
+### 5.3 — RPC / fonctions SQL pertinentes
+
+| Nom | Déclaré dans | Rôle | Lie document ↔ compta ? |
+|-----|--------------|------|:---:|
+| `auto_fill_document_fk()` | `20260223000001_auto_fill_document_fk.sql` | Auto-remplit FK `documents` (property/owner/tenant) — trigger | ❌ (ne touche pas compta) |
+| `create_cash_receipt(...)` | `20241129000002_cash_payments.sql:321` (legacy) + `20260412000000_fix_cash_receipt_rpc_sota.sql` | Crée une quittance de caisse signée ; schéma cache RPC | ❌ (crée `cash_receipts`, pas d'entrée compta directe — l'écriture `rent_received` est faite côté code) |
+| `generate_receipt_number()` / `set_receipt_number()` | `20241129000002_cash_payments.sql:107,122` | Génère un numéro de quittance via trigger | ❌ |
+| `fn_check_entry_balance()` | `20260406210000_accounting_complete.sql:748` | Garde double-entry | ❌ |
+| `fn_locked_entry_guard()` | idem | Intangibilité | ❌ |
+| `fn_audit_entry_changes()` | idem | Audit log | ❌ |
+| `get_tenant_profile_full()` | `20241130000002` | Récupère profil complet avec docs | ❌ |
+| `get_provider_missing_documents()` | `20251205200000` | Lister docs manquants prestataires | ❌ |
+| `get_expiring_provider_documents()` | idem | Docs qui expirent | ❌ |
+| `get_or_mark_document_creation()` | `20251221000000_document_caching.sql` | Pattern idempotence création doc | ❌ |
+| `cleanup_expired_previews()` / `cleanup_old_previews_on_insert()` | idem | GC des previews | ❌ |
+| `update_preview_cache_hit()` | idem | Stats cache | ❌ |
+| `search_documents()` | `20251228000000_documents_sota.sql:298` | Full-text search owner | ❌ |
+| `tenant_document_center()` / `tenant_documents_search()` | mêmes migrations GED | Centres docs locataire | ❌ |
+
+**Aucune RPC SQL ne crée d'écriture comptable à partir d'un document.** Le pont document → écriture est **entièrement orchestré côté TypeScript** via `createEntry()` de `lib/accounting/engine.ts`.
+
+### 5.4 — Orchestration applicative (côté code, pas trigger)
+
+`lib/accounting/engine.ts` expose `createAutoEntry(event, context)` avec les 14 événements métier :
+```ts
+AutoEntryEvent =
+  | 'rent_received' | 'supplier_invoice' | 'supplier_payment'
+  | 'deposit_received' | 'deposit_returned'
+  | 'internal_transfer' | 'copro_fund_call' | 'agency_fee'
+  | 'sepa_rejected' | 'irl_revision'
+  | 'copro_works_fund' | 'copro_closing'
+  | 'teom_recovered' | 'charge_regularization';
+```
+
+Appelé depuis :
+- `app/api/webhooks/stripe/route.ts:999` → `rent_received` sur `payment_intent.succeeded`
+- `app/api/webhooks/stripe/route.ts:1098` → `sepa_rejected` sur `payment_intent.payment_failed`
+- `lib/accounting/receipt-entry.ts:153` → `rent_received` pour paiements off-Stripe (code partagé avec `app/api/payments/confirm/route.ts`, `app/api/invoices/[id]/mark-paid/route.ts`, `app/api/leases/[id]/generate-receipt/route.ts`)
+- `app/api/accounting/documents/[id]/validate/route.ts` → `createEntry()` direct (pas via `createAutoEntry`) pour OCR `supplier_invoice`
+
+**Synthèse** : tous les ponts "événement métier → écriture comptable" passent par ces deux fonctions TypeScript. Rien en SQL pur.
+
+
 
 ## 6. Route /api/accounting/documents/
 
