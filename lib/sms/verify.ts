@@ -7,6 +7,7 @@
 
 import { getTwilioClient, getVerifyServiceSid } from './client';
 import { normalizePhoneE164, maskPhone, detectTerritory } from './phone';
+import { translateTwilioError } from './errors';
 import { logger } from '@/lib/monitoring';
 
 export type VerifyChannel = 'sms' | 'call';
@@ -69,17 +70,17 @@ export async function startVerification(
     return { success: true, status: v.status, sid: v.sid, e164 };
   } catch (err: any) {
     const errorCode = err?.code ? String(err.code) : undefined;
-    const errorMessage = err?.message ?? 'Erreur Twilio Verify';
+    const translated = translateTwilioError(err?.code ?? null);
 
     logger.error('sms.verify.start_failed', {
       errorCode,
-      error: errorMessage,
+      error: err?.message,
       to_masked: maskPhone(e164),
     });
 
     return {
       success: false,
-      error: errorMessage,
+      error: translated.message,
       errorCode,
       e164,
     };
@@ -120,19 +121,19 @@ export async function checkVerification(
     return { success: true, approved, status: check.status };
   } catch (err: any) {
     const errorCode = err?.code ? String(err.code) : undefined;
-    const errorMessage = err?.message ?? 'Erreur Twilio Verify';
+    const translated = translateTwilioError(err?.code ?? null);
 
     // Code 20404 = verification not found (expiré ou déjà consommé)
     logger.warn('sms.verify.check_failed', {
       errorCode,
-      error: errorMessage,
+      error: err?.message,
       to_masked: maskPhone(e164),
     });
 
     return {
       success: false,
       approved: false,
-      error: errorMessage,
+      error: translated.message,
       errorCode,
     };
   }

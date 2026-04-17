@@ -35,6 +35,9 @@ export type { SmsContext, SmsLogRecord } from './logs';
 export { renderTemplate, SMS_TEMPLATES } from './templates';
 export type { SmsTemplateKey, TemplateData } from './templates';
 
+export { translateTwilioError, TWILIO_ERROR_MESSAGES_FR } from './errors';
+export type { TranslatedTwilioError } from './errors';
+
 export {
   getMonthlyUsage,
   hasActiveSmsAddon,

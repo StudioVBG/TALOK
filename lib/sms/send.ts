@@ -9,6 +9,7 @@ import { getTwilioClient, resolveTwilioCredentials } from './client';
 import { normalizePhoneE164, maskPhone } from './phone';
 import { recordSmsMessage, type SmsContext } from './logs';
 import { assertSmsQuota, SmsQuotaExceededError } from './usage';
+import { translateTwilioError } from './errors';
 import { logger } from '@/lib/monitoring';
 
 export interface SendSmsParams {
@@ -129,11 +130,12 @@ export async function sendSMS(params: SendSmsParams): Promise<SendSmsResult> {
     return { success: true, sid: msg.sid, status: msg.status, to: e164 };
   } catch (err: any) {
     const errorCode = err?.code ? String(err.code) : undefined;
-    const errorMessage = err?.message ?? 'Erreur Twilio';
+    const rawMessage = err?.message ?? 'Erreur Twilio';
+    const translated = translateTwilioError(err?.code ?? null);
 
     logger.error('sms.send.failed', {
       errorCode,
-      error: errorMessage,
+      error: rawMessage,
       to_masked: maskPhone(e164),
       type: params.context.type,
     });
@@ -144,13 +146,16 @@ export async function sendSMS(params: SendSmsParams): Promise<SendSmsResult> {
       body: params.body,
       status: 'failed',
       errorCode,
-      errorMessage,
+      // On conserve le message brut en DB pour le debug interne,
+      // pas côté client.
+      errorMessage: rawMessage,
       context: params.context,
     });
 
     return {
       success: false,
-      error: errorMessage,
+      code: 'twilio_error',
+      error: translated.message,
       errorCode,
       to: e164,
     };
