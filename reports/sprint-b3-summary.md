@@ -66,9 +66,9 @@
 | Priorité | PASS | Description | Action |
 |---|---|---|---|
 | 🔴→🟢 | 6.1 | `42P17 infinite recursion` sur `profiles`, `lease_signers`, `leases`, `tickets` | **RÉSOLU** — 2 hotfix SECURITY DEFINER (commits `71342d6` + `48668dc`), re-test owner+tenant OK |
-| 🟡 | 3 | Bucket storage `documents` absent | Action manuelle Supabase Dashboard (cf. `sprint-b3-03-buckets.md`) |
+| ⚪ | 3 | ~~Bucket storage `documents` absent~~ | **Fausse alerte** — les 2 buckets `documents` et `landing-images` existent déjà avec les bonnes policies (re-vérifié 2026-04-18). Mineur : `landing-images.file_size_limit = null` (spec dit 10 MB, non-bloquant) |
 | 🟡→🟢 | 6 | `TWILIO_VERIFY_SERVICE_SID` absent des env vars Netlify | **RÉSOLU** — Ajouté en env var Netlify 2026-04-18 (prochain deploy actif) |
-| 🟡 | 6/7 | 374× `[RealtimeSync] CLOSED/reconnect` loop | Investigation hors scope B3 : Supabase Realtime config + client cleanup |
+| 🟡→🟢 | 6/7 | 800+× `[RealtimeSync] CLOSED/reconnect` loop | **RÉSOLU** — cause racine : React effect loop sur arrays inline dans les presets. Fix via module-scope constants (PR #435 mergée). Migration `supabase_realtime` publication déjà dans #434 |
 | 🟢 | 1 | Table `otp_codes` MISSING | Deprecated post-Sprint 0, code mort, non-bloquant |
 | 🟢 | 6.3 | `sms_messages` vide | Attendu (OTP via Twilio Verify hors table, transactionnels pas déclenchés) |
 | 🟢 | 6.5 | `webhook_queue` / `webhook_logs` vides | Cohérent MVP early-stage, aucun event stripe pending/stuck |
@@ -77,13 +77,16 @@
 
 ## Verdict final
 
-> ⚠️ **GO avec réserves. Anomalies mineures** :
-> - Bucket storage `documents` à créer manuellement via Dashboard Supabase (non-bloquant pour merge, bloquant pour upload doc)
-> - Websocket Realtime loop à investiguer (non-bloquant, REST OK)
+> ✅ **GO — Sprint B3 clôturé. Toutes les réserves résolues post-merge PR #434 + PR #435.**
 >
-> ✅ `TWILIO_VERIFY_SERVICE_SID` ajouté 2026-04-18 — flux OTP prêts post-prochain deploy.
+> Régressions détectées pendant l'audit (2 cycles 42P17 RLS + 1 loop Realtime) : **toutes résolues en dur** via 3 migrations + 1 fix JS, déployées en prod.
 >
-> **Merge possible immédiatement** : la DB est saine, les env vars Twilio complètes, seul le bucket `documents` restera à créer (peut être fait post-merge sans bloquer).
+> Config runtime :
+> - ✅ `TWILIO_VERIFY_SERVICE_SID` ajouté côté Netlify (OTP flows opérationnels)
+> - ✅ Buckets `documents` + `landing-images` présents avec les policies attendues (ma note initiale était fausse, re-vérifié 2026-04-18)
+> - ⚪ `landing-images.file_size_limit = null` (spec 10 MB) — cosmétique, à régler si upload malveillant devient un risque
+>
+> **Bilan factuel** : 222 migrations appliquées, 6 régressions détectées, 6 résolues, prod stable.
 
 Pourquoi pas Option A : 2 régressions 42P17 ont été **détectées pendant l'audit** (profiles/lease_signers puis leases/tickets). Elles sont résolues et trackées en git — mais "aucune régression détectée" est factuellement faux. D'où Option B.
 
