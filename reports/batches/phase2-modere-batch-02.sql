@@ -165,6 +165,8 @@ DO $pre$ BEGIN RAISE NOTICE '▶ Applying 20260215200000_fix_rls_properties_tena
 
 -- 1. Supprimer l'ancienne policy restrictive
 DROP POLICY IF EXISTS "Tenants can view properties with active leases" ON properties;
+-- Idempotency guard: drop new policy if it already exists (re-run safe)
+DROP POLICY IF EXISTS "Tenants can view linked properties" ON properties;
 
 -- 2. Créer la nouvelle policy élargie
 CREATE POLICY "Tenants can view linked properties"
