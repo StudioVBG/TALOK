@@ -376,9 +376,11 @@ Le plan PCG français (article 943 PCG — nomenclature ouverte) autorise explic
 
 **Règle : toute écriture comptable du module Régularisation des Charges (Sprint 2 route `/apply`) DOIT référencer les sous-comptes Talok (colonne de droite), pas les racines théoriques.** La source de vérité est `PCG_OWNER_ACCOUNTS` dans `lib/accounting/chart-amort-ocr.ts`.
 
-### Scénarios d'écritures
+### Scénarios d'écritures — pattern canonique 3 lignes (Sprint 0.d)
 
-#### A. Encaissement mensuel loyer + provisions
+> **Source de vérité depuis Sprint 0.d** : `lib/charges/apply-engine.ts` fonction `planSettlementEntry()`. Toutes les écritures de settle sont à 3 lignes strictement balancées (SUM(D) = SUM(C)), dans le journal `OD`, source `charge_regularization_settle`.
+
+#### A. Encaissement mensuel loyer + provisions (hors settle — rappel)
 
 ```
 Débit  512100 (Banque)           73000  -- 730,00€
@@ -386,50 +388,59 @@ Crédit 706000 (Loyers)           65000  -- 650,00€ loyer nu
 Crédit 419100 (Provisions)        8000  -- 80,00€ provision charges
 ```
 
-#### B. Régularisation — locataire doit un complément (solde > 0)
+#### B. Settle — complément dû (`settlement_method ∈ {stripe, next_rent}`, balance > 0)
 
 ```
--- Solde des provisions
-Débit  419100 (Provisions)       96000  -- 960,00€ provisions reçues
-Crédit 614100 (Charges récup)   201308  -- 2013,08€ charges réelles
-
--- Créance régul
-Débit  411000 (Locataires)      105308  -- 1053,08€ complément dû
+Débit  419100 (Provisions)       96000  -- soldes des provisions reçues
+Débit  411000 (Locataires)      105308  -- créance complément
+Crédit 708000 (Charges refact.) 201308  -- refacturation totale
 ```
+SUM(D) = 96000 + 105308 = 201308 = SUM(C) ✓
 
-Puis à l'encaissement :
+Puis à l'encaissement (next_rent ou Stripe webhook) :
 ```
 Débit  512100 (Banque)          105308
 Crédit 411000 (Locataires)      105308
 ```
 
-#### C. Régularisation — trop-perçu (solde < 0)
+#### C. Settle — trop-perçu (`settlement_method = 'deduction'`, balance < 0)
 
 ```
 Débit  419100 (Provisions)       96000
-Crédit 614100 (Charges récup)    87258  -- 872,58€
-Crédit 419100 (Trop-perçu)        8742  -- 87,42€ à rembourser
+Crédit 411000 (Locataires)        8742  -- dette envers locataire (solde négatif 411)
+Crédit 708000 (Charges refact.)  87258  -- refacturation au réel
 ```
+SUM(D) = 96000 = 8742 + 87258 = SUM(C) ✓
 
-#### D. Clause de renonciation
+Puis à la déduction sur prochain loyer : DB 706000 ou 411000 selon convention.
+
+#### D. Settle — renonciation (`settlement_method = 'waived'`, balance > 0)
 
 ```
-Débit  654000 (Non récupérées)  105308  -- Déductible revenus fonciers
 Débit  419100 (Provisions)       96000
-Crédit 614100 (Charges récup)   201308
+Débit  654000 (Non récupérées)  105308  -- déductible revenus fonciers
+Crédit 708000 (Charges refact.) 201308
 ```
+SUM(D) = 96000 + 105308 = 201308 = SUM(C) ✓
 
-#### E. Échelonnement 12 mois
+#### E. Settle — échelonnement 12 mois (`settlement_method = 'installments_12'`, balance > 0)
 
-Chaque mois : fraction du solde incluse dans l'encaissement loyer.
-```
-Débit  512100 (Banque)           81776  -- 817,76€ (loyer 650 + prov 80 + régul 1/12 = 87,76)
-Crédit 706000 (Loyers)           65000
-Crédit 419100 (Provisions)        8000
-Crédit 411000 (Locataires)        8776  -- Fraction régul
-```
+Même écriture que B au settle (la dette 411000 est posée en bloc). Les 12 encaissements mensuels ultérieurs sont des écritures séparées (DB 512100 / CR 411000) à fraction du balance — **la table schedule et la logique cron sont hors périmètre Sprint 0.d.**
 
-**⚠️ GAP ACTUEL : aucune logique de génération automatique d'écriture comptable lors du `settle` d'une régul — ni côté API `/regularization/[id]/apply`, ni côté trigger. À implémenter au Sprint 2.**
+#### F. Rappel historique — pourquoi pas 4 lignes avec 614100 ?
+
+Les versions pré-Sprint 0.d du skill documentaient un pattern à 4 lignes impliquant `614100 (Charges récup)` en crédit. **Ce pattern ne balance pas** : SUM(D) = provisions + balance = actual, mais SUM(C) = 614100 actual + 708000 balance > actual. Le trigger DB `trg_entry_balance` (migration 20260406210000) le rejetterait.
+
+La version canonique Sprint 0.d laisse `614100` intact — c'est l'expense enregistré au paiement des charges pendant l'exercice (DB 614100 / CR 512100 banque à chaque règlement), rien à reclasser au settle. La partie refacturée apparaît en revenu 708000, la partie non récupérée reste dans 614100 (nette à zéro avec 708000 partiel pour les scénarios avec renonciation).
+
+**✅ Gap P0 #2 RÉSOLU Sprint 0.d (18/04/2026) — route `POST /api/charges/regularization/[id]/apply` (app/api/charges/regularization/[id]/apply/route.ts) :**
+- Pré-requis : migration `20260418160000_add_charges_reg_settlement_columns.sql` (colonnes `settlement_method`, `installment_count`, `settled_at` + 3 CHECK constraints)
+- Planner pur : `lib/charges/apply-engine.ts` → `planSettlementEntry()`
+- Helper Stripe : `lib/charges/apply-stripe.ts` → `createRegularizationStripePayment()`
+- Couvre les 5 scénarios (B stripe/next_rent, C deduction, D waived, E installments_12, + Stripe variant B/E)
+- Écriture via `createEntry()` + `validateEntry()` (balance enforced par `trg_entry_balance`)
+- Transition status : `{sent, acknowledged, contested} → settled` uniquement
+- Outbox event `ChargeRegularization.Settled` émis pour hooks aval
 
 ---
 
@@ -515,14 +526,19 @@ Système de rappels à brancher sur le cron existant :
 
 ### Gaps critiques (P0)
 
-1. ✅ **RÉSOLU Sprint 0.a (17/04/2026)** — `regularization_invoice_id` ajouté sur `lease_charge_regularizations` (migration `20260417090000_charges_reg_invoice_link.sql`).
-2. ⏳ **À TRAITER Sprint 2** — Écriture comptable auto au `settle` à implémenter dans `app/api/charges/regularization/[id]/apply/route.ts`. Comptes à utiliser : voir section "Mapping PCG Talok" ci-dessus.
-3. ✅ **RÉSOLU Sprint 0.b (17/04/2026)** — Comptes PCG seedés via substitutions Talok :
-   - `4191` → `419100` (ajouté à `PCG_OWNER_ACCOUNTS` + migration backfill `20260417090400`)
-   - `614` → `614100` (déjà présent, réutilisé)
-   - `654` → `654000` (ajouté à `PCG_OWNER_ACCOUNTS` + migration backfill `20260417090400`)
-   - `708300` → `708000` (déjà présent, réutilisé)
-4. ✅ **RÉSOLU Sprint 0.a (17/04/2026)** — Policy `lease_charge_reg_tenant_contest` réécrite avec transition stricte `sent → contested` (migration `20260417090300_fix_tenant_contest_rls.sql`). Bug détecté plus sévère qu'annoncé : la policy d'origine était complètement morte (WITH CHECK sur le NOUVEAU status empêchait toute écriture).
+1. ✅ **RÉSOLU Sprint 0.a (17/04/2026)** — `regularization_invoice_id` ajouté sur `lease_charge_regularizations` (migration `20260417090000_charges_reg_invoice_link.sql`, appliquée prod 18/04).
+2. ✅ **RÉSOLU Sprint 0.d (18/04/2026)** — Route `POST /api/charges/regularization/[id]/apply` crée l'écriture comptable double-entry automatique au settle (+ invoice Stripe si applicable). Cf section 6 "Scénarios d'écritures" ci-dessus. Code :
+   - `lib/charges/apply-engine.ts` — planner pur (5 scénarios, pattern 3 lignes balancé)
+   - `lib/charges/apply-stripe.ts` — helper invoice + PaymentIntent
+   - `app/api/charges/regularization/[id]/apply/route.ts` — route canonique
+   - Migration pré-requise : `20260418160000_add_charges_reg_settlement_columns.sql` (3 colonnes + 3 CHECK) — appliquée prod 18/04.
+3. ✅ **RÉSOLU Sprint 0.b (17/04/2026)** + **Sprint 0.c (18/04/2026)** — Comptes PCG seedés pour les 3 entities existantes :
+   - `4191` → `419100` (Sprint 0.b migration 090400)
+   - `654` → `654000` (Sprint 0.b migration 090400)
+   - `614` → `614100` (Sprint 0.c migration `20260418150100_charges_pcg_accounts_backfill_p2` — les 3 entities anciennes ne l'avaient pas via `PCG_OWNER_ACCOUNTS`)
+   - `708300` → `708000` (idem Sprint 0.c)
+   - **État prod vérifié 18/04** : 4 comptes × 3 entities = 12 rows.
+4. ✅ **RÉSOLU Sprint 0.c (18/04/2026)** — Policy `lease_charge_reg_tenant_contest` assouplie `sent → contested` + idempotent `sent → sent` (migration `20260418150000_fix_charges_contested_rls.sql` — supersede 20260417090300 qui était trop strict et n'avait jamais tourné en prod). **Appliquée prod 18/04** : USING `status='sent' AND tenant`, WITH CHECK `status IN ('sent','contested') AND tenant`.
 
 ### Gaps importants (P1)
 
