@@ -859,6 +859,26 @@ CREATE TRIGGER trg_audit_entries
   EXECUTE FUNCTION fn_audit_entry_changes();
 
 -- Trigger: updated_at auto-update
+-- patch sprint-b2: ensure all 12 target tables have updated_at column
+-- (legacy accounting_entries from migration 20260110000001 was missing it)
+DO $$
+DECLARE
+  t TEXT;
+BEGIN
+  FOR t IN SELECT unnest(ARRAY[
+    'accounting_exercises', 'accounting_entries', 'bank_connections',
+    'bank_transactions', 'document_analyses', 'amortization_schedules',
+    'deficit_tracking', 'charge_regularizations', 'copro_budgets',
+    'copro_fund_calls', 'mandant_accounts', 'crg_reports'
+  ])
+  LOOP
+    EXECUTE format(
+      'ALTER TABLE IF EXISTS public.%I ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now()',
+      t
+    );
+  END LOOP;
+END $$;
+
 CREATE OR REPLACE FUNCTION fn_accounting_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
