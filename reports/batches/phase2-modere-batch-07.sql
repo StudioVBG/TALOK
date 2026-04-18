@@ -351,42 +351,29 @@ INSERT INTO site_config (key, label, section, value) VALUES
 
 ON CONFLICT (key) DO NOTHING;
 
--- Bucket public pour les images landing
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('landing-images', 'landing-images', true)
-ON CONFLICT (id) DO NOTHING;
+-- Patch sprint-b2: storage.buckets et storage.objects nécessitent supabase_admin.
+-- Wrapped pour skip gracieusement si pas de privilèges. Action manuelle:
+-- Dashboard → Storage → Create bucket "landing-images" (public) + 3 policies.
+DO $$
+BEGIN
+  INSERT INTO storage.buckets (id, name, public)
+  VALUES ('landing-images', 'landing-images', true)
+  ON CONFLICT (id) DO NOTHING;
 
--- Politique de lecture publique sur le bucket
-DROP POLICY IF EXISTS "Public read landing images" ON storage;
-CREATE POLICY "Public read landing images"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'landing-images');
+  DROP POLICY IF EXISTS "Public read landing images" ON storage.objects;
+  EXECUTE 'CREATE POLICY "Public read landing images" ON storage.objects FOR SELECT USING (bucket_id = ''landing-images'')';
 
--- Politique d'upload admin
-DROP POLICY IF EXISTS "Admin upload landing images" ON storage;
-CREATE POLICY "Admin upload landing images"
-ON storage.objects FOR INSERT
-WITH CHECK (
-  bucket_id = 'landing-images'
-  AND EXISTS (
-    SELECT 1 FROM profiles
-    WHERE profiles.user_id = auth.uid()
-    AND profiles.role IN ('admin', 'platform_admin')
-  )
-);
+  DROP POLICY IF EXISTS "Admin upload landing images" ON storage.objects;
+  EXECUTE 'CREATE POLICY "Admin upload landing images" ON storage.objects FOR INSERT WITH CHECK (bucket_id = ''landing-images'' AND EXISTS (SELECT 1 FROM profiles WHERE profiles.user_id = auth.uid() AND profiles.role IN (''admin'', ''platform_admin'')))';
 
--- Politique de suppression admin
-DROP POLICY IF EXISTS "Admin delete landing images" ON storage;
-CREATE POLICY "Admin delete landing images"
-ON storage.objects FOR DELETE
-USING (
-  bucket_id = 'landing-images'
-  AND EXISTS (
-    SELECT 1 FROM profiles
-    WHERE profiles.user_id = auth.uid()
-    AND profiles.role IN ('admin', 'platform_admin')
-  )
-);
+  DROP POLICY IF EXISTS "Admin delete landing images" ON storage.objects;
+  EXECUTE 'CREATE POLICY "Admin delete landing images" ON storage.objects FOR DELETE USING (bucket_id = ''landing-images'' AND EXISTS (SELECT 1 FROM profiles WHERE profiles.user_id = auth.uid() AND profiles.role IN (''admin'', ''platform_admin'')))';
+
+  RAISE NOTICE 'storage bucket landing-images + 3 policies set';
+EXCEPTION
+  WHEN insufficient_privilege OR undefined_table THEN
+    RAISE NOTICE 'storage not writable from this role; configure landing-images bucket via Dashboard';
+END $$;
 
 INSERT INTO supabase_migrations.schema_migrations (version, name)
 VALUES ('20260327143000', 'add_site_config')
