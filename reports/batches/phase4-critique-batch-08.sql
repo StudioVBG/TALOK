@@ -1241,68 +1241,44 @@ ALTER TABLE public.charge_regularizations
   ADD COLUMN IF NOT EXISTS detail_charges JSONB DEFAULT '[]',
   ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id);
 
--- 1b. Migrer les données de charge_regularisations → charge_regularizations
--- Seulement les lignes qui n'existent pas déjà (idempotent via id)
-INSERT INTO public.charge_regularizations (
-  id,
-  lease_id,
-  property_id,
-  tenant_id,
-  annee,
-  period_start,
-  period_end,
-  provisions_paid_cents,
-  actual_recoverable_cents,
-  actual_non_recoverable_cents,
-  status,
-  date_emission,
-  date_echeance,
-  date_paiement,
-  nouvelle_provision,
-  notes,
-  detail_charges,
-  created_by,
-  created_at,
-  updated_at,
-  -- entity_id et exercise_id sont NULL — sera backfillé plus tard
-  entity_id
-)
-SELECT
-  cr.id,
-  cr.lease_id,
-  cr.property_id,
-  cr.tenant_id,
-  cr.annee,
-  cr.date_debut,
-  cr.date_fin,
-  -- Conversion DECIMAL euros → INTEGER cents
-  ROUND(cr.provisions_versees * 100)::INTEGER,
-  ROUND(cr.charges_reelles * 100)::INTEGER,
-  0, -- actual_non_recoverable_cents inconnu dans l'ancien schéma
-  -- Mapping statut FR → EN
-  CASE cr.statut
-    WHEN 'draft' THEN 'draft'
-    WHEN 'sent' THEN 'sent'
-    WHEN 'paid' THEN 'paid'
-    WHEN 'disputed' THEN 'draft'
-    WHEN 'cancelled' THEN 'draft'
-    ELSE 'draft'
-  END,
-  cr.date_emission,
-  cr.date_echeance,
-  cr.date_paiement,
-  cr.nouvelle_provision,
-  cr.notes,
-  cr.detail_charges,
-  cr.created_by,
-  cr.created_at,
-  cr.updated_at,
-  -- Résoudre entity_id via property → properties.legal_entity_id
-  (SELECT p.legal_entity_id FROM public.properties p WHERE p.id = cr.property_id LIMIT 1)
-FROM public.charge_regularisations cr
-WHERE NOT EXISTS (
-  SELECT 1 FROM public.charge_regularizations crz WHERE crz.id = cr.id
-);
+-- 1b. Migrer les données de charge_regularisations (FR legacy) → charge_regularizations (EN)
+-- patch sprint-b2: wrap in DO/EXCEPTION car la table legacy peut être absente
+-- ou avoir un schéma partiel selon l'historique d'application sur cet env.
+DO $$
+BEGIN
+  INSERT INTO public.charge_regularizations (
+    id, lease_id, property_id, tenant_id, annee,
+    period_start, period_end,
+    provisions_paid_cents, actual_recoverable_cents, actual_non_recoverable_cents,
+    status, date_emission, date_echeance, date_paiement,
+    nouvelle_provision, notes, detail_charges, created_by,
+    created_at, updated_at, entity_id
+  )
+  SELECT
+    cr.id, cr.lease_id, cr.property_id, cr.tenant_id, cr.annee,
+    cr.date_debut, cr.date_fin,
+    ROUND(cr.provisions_versees * 100)::INTEGER,
+    ROUND(cr.charges_reelles * 100)::INTEGER,
+    0,
+    CASE cr.statut
+      WHEN 'draft' THEN 'draft'
+      WHEN 'sent' THEN 'sent'
+      WHEN 'paid' THEN 'paid'
+      ELSE 'draft'
+    END,
+    cr.date_emission, cr.date_echeance, cr.date_paiement,
+    cr.nouvelle_provision, cr.notes, cr.detail_charges, cr.created_by,
+    cr.created_at, cr.updated_at,
+    (SELECT p.legal_entity_id FROM public.properties p WHERE p.id = cr.property_id LIMIT 1)
+  FROM public.charge_regularisations cr
+  WHERE NOT EXISTS (
+    SELECT 1 FROM public.charge_regularizations crz WHERE crz.id = cr.id
+  );
+  RAISE NOTICE 'charge_regularisations → charge_regularizations migration done';
+EXCEPTION
+  WHEN undefined_table OR undefined_column THEN
+    RAISE NOTICE 'Legacy charge_regularisations skipped (table or columns missing)';
+END $$;
 
 -- 1c. Rattacher entity_id + exercise_id sur les lignes migrées qui n'en ont pas
 -- entity_id via property
@@ -1327,9 +1303,11 @@ SET exercise_id = (
 WHERE exercise_id IS NULL AND annee IS NOT NULL;
 
 -- 1d. Renommer l'ancienne table et créer une vue de compatibilité
--- On ne DROP pas l'ancienne table pour éviter de casser du code legacy
--- qui pourrait encore la référencer via des FK ou du code direct
-ALTER TABLE public.charge_regularisations RENAME TO charge_regularisations_legacy;
+-- patch sprint-b2: wrap si la table n'existe pas (déjà renommée ou absente)
+DO $$ BEGIN
+  ALTER TABLE public.charge_regularisations RENAME TO charge_regularisations_legacy;
+EXCEPTION WHEN undefined_table THEN RAISE NOTICE 'charge_regularisations rename skipped (already legacy or missing)';
+END $$;
 
 -- Vue de compatibilité : le code qui SELECT depuis charge_regularisations
 -- continue de fonctionner, pointant vers la table normalisée
