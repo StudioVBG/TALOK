@@ -347,11 +347,13 @@ VALUES ('landing-images', 'landing-images', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Politique de lecture publique sur le bucket
+DROP POLICY IF EXISTS "Public read landing images" ON storage;
 CREATE POLICY "Public read landing images"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'landing-images');
 
 -- Politique d'upload admin
+DROP POLICY IF EXISTS "Admin upload landing images" ON storage;
 CREATE POLICY "Admin upload landing images"
 ON storage.objects FOR INSERT
 WITH CHECK (
@@ -364,6 +366,7 @@ WITH CHECK (
 );
 
 -- Politique de suppression admin
+DROP POLICY IF EXISTS "Admin delete landing images" ON storage;
 CREATE POLICY "Admin delete landing images"
 ON storage.objects FOR DELETE
 USING (

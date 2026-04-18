@@ -679,6 +679,7 @@ DO $pre$ BEGIN RAISE NOTICE '▶ Applying 20260410212232_fix_entity_members_poli
 -- 20260406200000_create_entities_view_and_members.sql:78-91 recursively
 -- references the entity_members table in its own USING clause:
 --
+--   DROP POLICY IF EXISTS "entity_members_admin_manage" ON entity_members;
 --   CREATE POLICY "entity_members_admin_manage" ON entity_members
 --     FOR ALL TO authenticated
 --     USING (

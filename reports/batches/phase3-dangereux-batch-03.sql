@@ -202,10 +202,12 @@ COMMENT ON TABLE tenant_credit_score IS 'Score de ponctualité du locataire (cac
 -- payment_reminders
 ALTER TABLE payment_reminders ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Tenants can view own reminders" ON payment_reminders;
 CREATE POLICY "Tenants can view own reminders"
   ON payment_reminders FOR SELECT
   USING (tenant_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "Owners can view reminders of own invoices" ON payment_reminders;
 CREATE POLICY "Owners can view reminders of own invoices"
   ON payment_reminders FOR SELECT
   USING (
@@ -216,6 +218,7 @@ CREATE POLICY "Owners can view reminders of own invoices"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can view all reminders" ON payment_reminders;
 CREATE POLICY "Admins can view all reminders"
   ON payment_reminders FOR SELECT
   USING (public.user_role() = 'admin');
@@ -223,6 +226,7 @@ CREATE POLICY "Admins can view all reminders"
 -- late_fees
 ALTER TABLE late_fees ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view late fees of accessible invoices" ON late_fees;
 CREATE POLICY "Users can view late fees of accessible invoices"
   ON late_fees FOR SELECT
   USING (
@@ -240,14 +244,17 @@ CREATE POLICY "Users can view late fees of accessible invoices"
 -- receipts
 ALTER TABLE receipts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Tenants can view own receipts" ON receipts;
 CREATE POLICY "Tenants can view own receipts"
   ON receipts FOR SELECT
   USING (tenant_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "Owners can view receipts of own properties" ON receipts;
 CREATE POLICY "Owners can view receipts of own properties"
   ON receipts FOR SELECT
   USING (owner_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "Admins can view all receipts" ON receipts;
 CREATE POLICY "Admins can view all receipts"
   ON receipts FOR SELECT
   USING (public.user_role() = 'admin');
@@ -255,10 +262,12 @@ CREATE POLICY "Admins can view all receipts"
 -- tenant_credit_score
 ALTER TABLE tenant_credit_score ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Tenants can view own credit score" ON tenant_credit_score;
 CREATE POLICY "Tenants can view own credit score"
   ON tenant_credit_score FOR SELECT
   USING (tenant_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "Admins can view all credit scores" ON tenant_credit_score;
 CREATE POLICY "Admins can view all credit scores"
   ON tenant_credit_score FOR SELECT
   USING (public.user_role() = 'admin');

@@ -255,6 +255,7 @@ CREATE POLICY "Users can view units of accessible properties"
 -- ============================================
 DROP POLICY IF EXISTS "Tenants can view charges of properties with active leases" ON charges;
 
+DROP POLICY IF EXISTS "Tenants can view charges of linked properties" ON charges;
 CREATE POLICY "Tenants can view charges of linked properties"
   ON charges
   FOR SELECT

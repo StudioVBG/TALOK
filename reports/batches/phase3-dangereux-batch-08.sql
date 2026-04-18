@@ -623,6 +623,7 @@ CREATE INDEX IF NOT EXISTS idx_ticket_comments_ticket_id ON ticket_comments(tick
 CREATE INDEX IF NOT EXISTS idx_ticket_comments_author_id ON ticket_comments(author_id);
 
 -- 9. RLS policies pour ticket_comments
+DROP POLICY IF EXISTS "ticket_comments_select_owner" ON ticket_comments;
 CREATE POLICY "ticket_comments_select_owner"
   ON ticket_comments FOR SELECT
   USING (
@@ -634,6 +635,7 @@ CREATE POLICY "ticket_comments_select_owner"
     )
   );
 
+DROP POLICY IF EXISTS "ticket_comments_select_creator" ON ticket_comments;
 CREATE POLICY "ticket_comments_select_creator"
   ON ticket_comments FOR SELECT
   USING (
@@ -644,6 +646,7 @@ CREATE POLICY "ticket_comments_select_creator"
     )
   );
 
+DROP POLICY IF EXISTS "ticket_comments_select_assigned" ON ticket_comments;
 CREATE POLICY "ticket_comments_select_assigned"
   ON ticket_comments FOR SELECT
   USING (
@@ -654,12 +657,14 @@ CREATE POLICY "ticket_comments_select_assigned"
     )
   );
 
+DROP POLICY IF EXISTS "ticket_comments_insert" ON ticket_comments;
 CREATE POLICY "ticket_comments_insert"
   ON ticket_comments FOR INSERT
   WITH CHECK (
     author_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "ticket_comments_select_admin" ON ticket_comments;
 CREATE POLICY "ticket_comments_select_admin"
   ON ticket_comments FOR SELECT
   USING (

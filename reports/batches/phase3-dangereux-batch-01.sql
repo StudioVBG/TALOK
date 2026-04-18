@@ -736,6 +736,7 @@ BEGIN
     SELECT 1 FROM pg_policies
     WHERE tablename = 'lease_signers' AND policyname = 'lease_signers_tenant_view_for_doc_center'
   ) THEN
+    DROP POLICY IF EXISTS "lease_signers_tenant_view_for_doc_center" ON lease_signers;
     CREATE POLICY "lease_signers_tenant_view_for_doc_center"
       ON lease_signers
       FOR SELECT
@@ -1263,6 +1264,7 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Politique upload pour utilisateurs authentifiés
 DROP POLICY IF EXISTS "Users can upload documents" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload documents" ON storage;
 CREATE POLICY "Users can upload documents"
 ON storage.objects FOR INSERT
 TO authenticated

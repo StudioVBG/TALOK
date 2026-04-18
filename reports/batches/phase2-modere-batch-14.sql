@@ -182,6 +182,7 @@ CREATE INDEX idx_cron_logs_started ON cron_logs(started_at DESC);
 -- RLS
 ALTER TABLE cron_logs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can read cron_logs" ON cron_logs;
 CREATE POLICY "Admins can read cron_logs"
   ON cron_logs FOR SELECT
   USING (
@@ -192,6 +193,7 @@ CREATE POLICY "Admins can read cron_logs"
     )
   );
 
+DROP POLICY IF EXISTS "Service role can insert cron_logs" ON cron_logs;
 CREATE POLICY "Service role can insert cron_logs"
   ON cron_logs FOR INSERT
   WITH CHECK (true);

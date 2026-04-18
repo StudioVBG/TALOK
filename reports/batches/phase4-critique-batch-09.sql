@@ -80,10 +80,12 @@ CREATE TABLE IF NOT EXISTS subscription_addons (
 ALTER TABLE subscription_addons ENABLE ROW LEVEL SECURITY;
 
 -- RLS : les utilisateurs ne voient que leurs propres add-ons
+DROP POLICY IF EXISTS "Users can view their own addons" ON subscription_addons;
 CREATE POLICY "Users can view their own addons"
   ON subscription_addons FOR SELECT
   USING (profile_id = auth.uid());
 
+DROP POLICY IF EXISTS "Service role full access on subscription_addons" ON subscription_addons;
 CREATE POLICY "Service role full access on subscription_addons"
   ON subscription_addons FOR ALL
   USING (auth.role() = 'service_role');
@@ -124,10 +126,12 @@ CREATE TABLE IF NOT EXISTS sms_usage (
 
 ALTER TABLE sms_usage ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their own sms usage" ON sms_usage;
 CREATE POLICY "Users can view their own sms usage"
   ON sms_usage FOR SELECT
   USING (profile_id = auth.uid());
 
+DROP POLICY IF EXISTS "Service role full access on sms_usage" ON sms_usage;
 CREATE POLICY "Service role full access on sms_usage"
   ON sms_usage FOR ALL
   USING (auth.role() = 'service_role');
@@ -591,6 +595,7 @@ ALTER TABLE lease_amendments ENABLE ROW LEVEL SECURITY;
 -- 3. RLS Policies
 
 -- Owner can view amendments for their leases
+DROP POLICY IF EXISTS "owner_select_amendments" ON lease_amendments;
 CREATE POLICY "owner_select_amendments"
   ON lease_amendments
   FOR SELECT
@@ -605,6 +610,7 @@ CREATE POLICY "owner_select_amendments"
   );
 
 -- Tenant can view amendments for leases they signed
+DROP POLICY IF EXISTS "tenant_select_amendments" ON lease_amendments;
 CREATE POLICY "tenant_select_amendments"
   ON lease_amendments
   FOR SELECT
@@ -618,6 +624,7 @@ CREATE POLICY "tenant_select_amendments"
   );
 
 -- Owner can create amendments for their leases
+DROP POLICY IF EXISTS "owner_insert_amendments" ON lease_amendments;
 CREATE POLICY "owner_insert_amendments"
   ON lease_amendments
   FOR INSERT
@@ -632,6 +639,7 @@ CREATE POLICY "owner_insert_amendments"
   );
 
 -- Owner can update amendments for their leases (only unsigned ones)
+DROP POLICY IF EXISTS "owner_update_amendments" ON lease_amendments;
 CREATE POLICY "owner_update_amendments"
   ON lease_amendments
   FOR UPDATE

@@ -479,6 +479,7 @@ CREATE INDEX IF NOT EXISTS idx_entity_audit_log_date ON entity_audit_log(created
 -- RLS pour entity_audit_log
 ALTER TABLE entity_audit_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
 CREATE POLICY "Users can view audit logs of their entities"
   ON entity_audit_log FOR SELECT
   USING (
@@ -492,6 +493,7 @@ CREATE POLICY "Users can view audit logs of their entities"
     )
   );
 
+DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
 CREATE POLICY "Users can insert audit logs for their entities"
   ON entity_audit_log FOR INSERT
   WITH CHECK (
@@ -505,6 +507,7 @@ CREATE POLICY "Users can insert audit logs for their entities"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can do everything on entity_audit_log" ON entity_audit_log;
 CREATE POLICY "Admins can do everything on entity_audit_log"
   ON entity_audit_log FOR ALL
   USING (

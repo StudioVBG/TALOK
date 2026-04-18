@@ -92,12 +92,14 @@ CREATE TABLE IF NOT EXISTS consent_records (
 
 ALTER TABLE consent_records ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own consent records" ON consent_records;
 CREATE POLICY "Users can view own consent records"
   ON consent_records FOR SELECT
   USING (profile_id IN (
     SELECT id FROM profiles WHERE user_id = auth.uid()
   ));
 
+DROP POLICY IF EXISTS "Users can insert own consent records" ON consent_records;
 CREATE POLICY "Users can insert own consent records"
   ON consent_records FOR INSERT
   WITH CHECK (profile_id IN (
@@ -124,18 +126,21 @@ CREATE TABLE IF NOT EXISTS data_requests (
 
 ALTER TABLE data_requests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own data requests" ON data_requests;
 CREATE POLICY "Users can view own data requests"
   ON data_requests FOR SELECT
   USING (profile_id IN (
     SELECT id FROM profiles WHERE user_id = auth.uid()
   ));
 
+DROP POLICY IF EXISTS "Users can insert own data requests" ON data_requests;
 CREATE POLICY "Users can insert own data requests"
   ON data_requests FOR INSERT
   WITH CHECK (profile_id IN (
     SELECT id FROM profiles WHERE user_id = auth.uid()
   ));
 
+DROP POLICY IF EXISTS "Users can update own pending data requests" ON data_requests;
 CREATE POLICY "Users can update own pending data requests"
   ON data_requests FOR UPDATE
   USING (
@@ -171,6 +176,7 @@ DO $pre$ BEGIN RAISE NOTICE '▶ Applying 20260409100000_add_missing_rls.sql'; E
 -- ──────────────────────────────────────────────
 ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "tenants_admin_only" ON tenants;
 CREATE POLICY "tenants_admin_only"
   ON tenants FOR ALL
   USING (false);
@@ -181,6 +187,7 @@ CREATE POLICY "tenants_admin_only"
 -- ──────────────────────────────────────────────
 ALTER TABLE two_factor_sessions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "users_own_2fa_sessions" ON two_factor_sessions;
 CREATE POLICY "users_own_2fa_sessions"
   ON two_factor_sessions FOR ALL
   USING (auth.uid() = user_id);
@@ -190,10 +197,12 @@ CREATE POLICY "users_own_2fa_sessions"
 -- ──────────────────────────────────────────────
 ALTER TABLE lease_templates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "lease_templates_read_authenticated" ON lease_templates;
 CREATE POLICY "lease_templates_read_authenticated"
   ON lease_templates FOR SELECT
   USING (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "lease_templates_write_admin_only" ON lease_templates;
 CREATE POLICY "lease_templates_write_admin_only"
   ON lease_templates FOR ALL
   USING (false);
@@ -204,6 +213,7 @@ CREATE POLICY "lease_templates_write_admin_only"
 -- ──────────────────────────────────────────────
 ALTER TABLE idempotency_keys ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "idempotency_keys_service_only" ON idempotency_keys;
 CREATE POLICY "idempotency_keys_service_only"
   ON idempotency_keys FOR ALL
   USING (false);
@@ -214,10 +224,12 @@ CREATE POLICY "idempotency_keys_service_only"
 -- ──────────────────────────────────────────────
 ALTER TABLE repair_cost_grid ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "repair_cost_grid_read_authenticated" ON repair_cost_grid;
 CREATE POLICY "repair_cost_grid_read_authenticated"
   ON repair_cost_grid FOR SELECT
   USING (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "repair_cost_grid_write_admin_only" ON repair_cost_grid;
 CREATE POLICY "repair_cost_grid_write_admin_only"
   ON repair_cost_grid FOR ALL
   USING (false);
@@ -228,10 +240,12 @@ CREATE POLICY "repair_cost_grid_write_admin_only"
 -- ──────────────────────────────────────────────
 ALTER TABLE vetuste_grid ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "vetuste_grid_read_authenticated" ON vetuste_grid;
 CREATE POLICY "vetuste_grid_read_authenticated"
   ON vetuste_grid FOR SELECT
   USING (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "vetuste_grid_write_admin_only" ON vetuste_grid;
 CREATE POLICY "vetuste_grid_write_admin_only"
   ON vetuste_grid FOR ALL
   USING (false);
@@ -247,7 +261,9 @@ END $$;
 
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vetusty_grid') THEN
+    EXECUTE 'DROP POLICY IF EXISTS "vetusty_grid_read_authenticated" ON vetusty_grid;
     EXECUTE 'CREATE POLICY "vetusty_grid_read_authenticated" ON vetusty_grid FOR SELECT USING (auth.role() = ''authenticated'')';
+    EXECUTE 'DROP POLICY IF EXISTS "vetusty_grid_write_admin_only" ON vetusty_grid;
     EXECUTE 'CREATE POLICY "vetusty_grid_write_admin_only" ON vetusty_grid FOR ALL USING (false)';
   END IF;
 END $$;
@@ -257,6 +273,7 @@ END $$;
 -- ──────────────────────────────────────────────
 ALTER TABLE api_webhook_deliveries ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "webhook_deliveries_owner_access" ON api_webhook_deliveries;
 CREATE POLICY "webhook_deliveries_owner_access"
   ON api_webhook_deliveries FOR SELECT
   USING (
@@ -269,6 +286,7 @@ CREATE POLICY "webhook_deliveries_owner_access"
     )
   );
 
+DROP POLICY IF EXISTS "webhook_deliveries_write_service_only" ON api_webhook_deliveries;
 CREATE POLICY "webhook_deliveries_write_service_only"
   ON api_webhook_deliveries FOR INSERT
   WITH CHECK (false);

@@ -35,6 +35,7 @@ BEGIN;
 
 DROP POLICY IF EXISTS "EDL signatures creator update" ON edl_signatures;
 
+DROP POLICY IF EXISTS "EDL signatures update" ON edl_signatures;
 CREATE POLICY "EDL signatures update"
   ON edl_signatures FOR UPDATE
   USING (

@@ -72,11 +72,13 @@ CREATE INDEX IF NOT EXISTS idx_fc_sessions_expires_at ON franceconnect_sessions(
 ALTER TABLE franceconnect_sessions ENABLE ROW LEVEL SECURITY;
 
 -- Les utilisateurs ne peuvent voir que leurs propres sessions
+DROP POLICY IF EXISTS "Users can view own FC sessions" ON franceconnect_sessions;
 CREATE POLICY "Users can view own FC sessions"
   ON franceconnect_sessions FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Seul le service role peut insérer/modifier (via l'API route)
+DROP POLICY IF EXISTS "Service role can manage FC sessions" ON franceconnect_sessions;
 CREATE POLICY "Service role can manage FC sessions"
   ON franceconnect_sessions FOR ALL
   USING (auth.role() = 'service_role');

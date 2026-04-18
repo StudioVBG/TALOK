@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Preventive patch: inject DROP POLICY IF EXISTS before every CREATE POLICY
-// in all remaining batch files (idempotency guard).
+// Preventive patch v2: inject DROP POLICY IF EXISTS before every CREATE POLICY,
+// supporting multi-line CREATE POLICY "name" \n ON table.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,45 +15,55 @@ for (const f of files) {
   const full = path.join(DIR, f);
   const content = fs.readFileSync(full, 'utf8');
 
-  // Match CREATE POLICY "name" ON [schema.]table — capture name, table.
-  // Allow optional newlines/whitespace between "ON" and table.
-  const re = /CREATE\s+POLICY\s+(?:IF\s+NOT\s+EXISTS\s+)?("([^"]+)"|([a-z_][a-z0-9_]*))\s+ON\s+(?:public\.)?([a-z_][a-z0-9_]*)/gi;
+  // Multi-line regex: capture full CREATE POLICY statement up to ON table.
+  // Use [\s\S]*? to allow any chars (incl newlines) between name and ON.
+  const re = /CREATE\s+POLICY\s+(?:IF\s+NOT\s+EXISTS\s+)?("[^"]+"|[a-z_][a-z0-9_]*)[\s\S]*?\s+ON\s+(?:public\.)?([a-z_][a-z0-9_]*)/gi;
+
+  // Process matches in reverse order to preserve offsets when patching
+  const matches = [];
+  let m;
+  while ((m = re.exec(content)) !== null) {
+    matches.push({
+      index: m.index,
+      length: m[0].length,
+      policyName: m[1],
+      tableName: m[2],
+    });
+  }
+
+  if (matches.length === 0) continue;
 
   let patched = content;
   let count = 0;
-  const lines = patched.split('\n');
-  const newLines = [];
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const match = line.match(/^\s*CREATE\s+POLICY\s+(?:IF\s+NOT\s+EXISTS\s+)?("[^"]+"|[a-z_][a-z0-9_]*)\s+ON\s+(?:public\.)?([a-z_][a-z0-9_]*)/i);
-    if (match) {
-      const policyName = match[1]; // includes quotes if present
-      const tableName = match[2];
-      // Check if previous non-blank line is already a DROP POLICY for the same name+table
-      let j = i - 1;
-      while (j >= 0 && lines[j].trim() === '') j--;
-      const prevLine = j >= 0 ? lines[j] : '';
-      const dropRe = new RegExp(
-        `DROP\\s+POLICY\\s+IF\\s+EXISTS\\s+${policyName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+ON\\s+(public\\.)?${tableName}`,
-        'i'
-      );
-      if (!dropRe.test(prevLine)) {
-        // Inject DROP POLICY IF EXISTS before this CREATE POLICY
-        const indent = line.match(/^\s*/)[0];
-        newLines.push(`${indent}DROP POLICY IF EXISTS ${policyName} ON ${tableName};`);
-        count++;
-      }
-    }
-    newLines.push(line);
+  // Reverse so injections don't shift earlier indices
+  for (const match of matches.reverse()) {
+    // Look back ~600 chars before the CREATE POLICY for an existing DROP POLICY IF EXISTS
+    const lookbackStart = Math.max(0, match.index - 600);
+    const lookback = patched.slice(lookbackStart, match.index);
+    const escapedName = match.policyName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const dropRe = new RegExp(
+      `DROP\\s+POLICY\\s+IF\\s+EXISTS\\s+${escapedName}\\s+ON\\s+(?:public\\.)?${match.tableName}\\s*;`,
+      'i'
+    );
+    if (dropRe.test(lookback)) continue; // already guarded
+
+    // Inject just before the CREATE POLICY line.
+    // Find the start of the line containing match.index.
+    let lineStart = match.index;
+    while (lineStart > 0 && patched[lineStart - 1] !== '\n') lineStart--;
+    const indent = patched.slice(lineStart, match.index);
+    const guard = `${indent}DROP POLICY IF EXISTS ${match.policyName} ON ${match.tableName};\n`;
+    patched = patched.slice(0, lineStart) + guard + patched.slice(lineStart);
+    count++;
   }
 
   if (count > 0) {
-    fs.writeFileSync(full, newLines.join('\n'));
-    console.log(`  ${f}: +${count} DROP POLICY IF EXISTS`);
+    fs.writeFileSync(full, patched);
+    console.log(`  ${f}: +${count} guards`);
     totalPatched += count;
     totalFiles++;
   }
 }
 
-console.log(`\nDone. ${totalFiles} files patched, ${totalPatched} guards injected.`);
+console.log(`\n${totalFiles} files patched, ${totalPatched} guards injected.`);

@@ -50,19 +50,23 @@ CREATE INDEX IF NOT EXISTS idx_active_sessions_not_revoked ON active_sessions(pr
 ALTER TABLE active_sessions ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies: Users can only see and manage their own sessions
+DROP POLICY IF EXISTS "Users can view own sessions" ON active_sessions;
 CREATE POLICY "Users can view own sessions"
   ON active_sessions FOR SELECT
   USING (profile_id = user_profile_id());
 
+DROP POLICY IF EXISTS "Users can insert own sessions" ON active_sessions;
 CREATE POLICY "Users can insert own sessions"
   ON active_sessions FOR INSERT
   WITH CHECK (profile_id = user_profile_id());
 
+DROP POLICY IF EXISTS "Users can update own sessions" ON active_sessions;
 CREATE POLICY "Users can update own sessions"
   ON active_sessions FOR UPDATE
   USING (profile_id = user_profile_id());
 
 -- Admins can view all sessions (for security audit)
+DROP POLICY IF EXISTS "Admins can view all sessions" ON active_sessions;
 CREATE POLICY "Admins can view all sessions"
   ON active_sessions FOR SELECT
   USING (user_role() = 'admin');
@@ -269,6 +273,7 @@ ALTER TABLE feature_flags ENABLE ROW LEVEL SECURITY;
 ALTER TABLE support_tickets ENABLE ROW LEVEL SECURITY;
 
 -- admin_logs: lecture/écriture pour admins uniquement
+DROP POLICY IF EXISTS "Admins can read admin_logs" ON admin_logs;
 CREATE POLICY "Admins can read admin_logs"
   ON admin_logs FOR SELECT
   USING (
@@ -278,6 +283,7 @@ CREATE POLICY "Admins can read admin_logs"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can insert admin_logs" ON admin_logs;
 CREATE POLICY "Admins can insert admin_logs"
   ON admin_logs FOR INSERT
   WITH CHECK (
@@ -288,10 +294,12 @@ CREATE POLICY "Admins can insert admin_logs"
   );
 
 -- feature_flags: lecture pour tous (utilisateurs connectes), ecriture pour admins
+DROP POLICY IF EXISTS "Authenticated users can read feature_flags" ON feature_flags;
 CREATE POLICY "Authenticated users can read feature_flags"
   ON feature_flags FOR SELECT
   USING (auth.uid() IS NOT NULL);
 
+DROP POLICY IF EXISTS "Admins can manage feature_flags" ON feature_flags;
 CREATE POLICY "Admins can manage feature_flags"
   ON feature_flags FOR ALL
   USING (
@@ -302,6 +310,7 @@ CREATE POLICY "Admins can manage feature_flags"
   );
 
 -- support_tickets: user voit ses propres tickets, admins voient tout
+DROP POLICY IF EXISTS "Users can read own support_tickets" ON support_tickets;
 CREATE POLICY "Users can read own support_tickets"
   ON support_tickets FOR SELECT
   USING (
@@ -310,6 +319,7 @@ CREATE POLICY "Users can read own support_tickets"
     )
   );
 
+DROP POLICY IF EXISTS "Users can create support_tickets" ON support_tickets;
 CREATE POLICY "Users can create support_tickets"
   ON support_tickets FOR INSERT
   WITH CHECK (
@@ -318,6 +328,7 @@ CREATE POLICY "Users can create support_tickets"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can manage all support_tickets" ON support_tickets;
 CREATE POLICY "Admins can manage all support_tickets"
   ON support_tickets FOR ALL
   USING (
@@ -848,6 +859,7 @@ CREATE TABLE IF NOT EXISTS property_diagnostics (
 ALTER TABLE property_diagnostics ENABLE ROW LEVEL SECURITY;
 
 -- Owners can manage diagnostics on their properties
+DROP POLICY IF EXISTS "property_diagnostics_owner_select" ON property_diagnostics;
 CREATE POLICY "property_diagnostics_owner_select"
   ON property_diagnostics FOR SELECT
   USING (
@@ -858,6 +870,7 @@ CREATE POLICY "property_diagnostics_owner_select"
     )
   );
 
+DROP POLICY IF EXISTS "property_diagnostics_owner_insert" ON property_diagnostics;
 CREATE POLICY "property_diagnostics_owner_insert"
   ON property_diagnostics FOR INSERT
   WITH CHECK (
@@ -868,6 +881,7 @@ CREATE POLICY "property_diagnostics_owner_insert"
     )
   );
 
+DROP POLICY IF EXISTS "property_diagnostics_owner_update" ON property_diagnostics;
 CREATE POLICY "property_diagnostics_owner_update"
   ON property_diagnostics FOR UPDATE
   USING (
@@ -878,6 +892,7 @@ CREATE POLICY "property_diagnostics_owner_update"
     )
   );
 
+DROP POLICY IF EXISTS "property_diagnostics_owner_delete" ON property_diagnostics;
 CREATE POLICY "property_diagnostics_owner_delete"
   ON property_diagnostics FOR DELETE
   USING (
@@ -889,6 +904,7 @@ CREATE POLICY "property_diagnostics_owner_delete"
   );
 
 -- Tenants can view diagnostics for their leased properties
+DROP POLICY IF EXISTS "property_diagnostics_tenant_select" ON property_diagnostics;
 CREATE POLICY "property_diagnostics_tenant_select"
   ON property_diagnostics FOR SELECT
   USING (
@@ -938,6 +954,7 @@ CREATE TABLE IF NOT EXISTS rent_control_zones (
 -- RLS: read-only for all authenticated users
 ALTER TABLE rent_control_zones ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "rent_control_zones_read" ON rent_control_zones;
 CREATE POLICY "rent_control_zones_read"
   ON rent_control_zones FOR SELECT
   USING (auth.uid() IS NOT NULL);
