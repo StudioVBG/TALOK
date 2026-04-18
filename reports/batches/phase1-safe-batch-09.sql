@@ -298,6 +298,54 @@ ON CONFLICT (version) DO NOTHING;
 DO $post$ BEGIN RAISE NOTICE '✓ Applied  20260417090400_charges_pcg_accounts_backfill.sql'; END $post$;
 
 -- --------------------------------------------------------------------
+-- Migration: 20260417090200_epci_reference_table.sql  (HOTFIX — déplacée
+--   de phase 2 MODÉRÉ vers ici car dépendance dure du seed ci-dessous.
+--   Réellement SAFE : CREATE TABLE IF NOT EXISTS + DROP/CREATE policy
+--   idempotent.)
+-- Risk: SAFE (re-classifié)
+-- --------------------------------------------------------------------
+DO $pre$ BEGIN RAISE NOTICE '▶ Applying 20260417090200_epci_reference_table.sql'; END $pre$;
+
+CREATE TABLE IF NOT EXISTS epci_reference (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code_departement TEXT NOT NULL,
+  code_postal_pattern TEXT,
+  epci_name TEXT NOT NULL,
+  syndicat_traitement TEXT,
+  waste_tax_type TEXT NOT NULL DEFAULT 'teom'
+    CHECK (waste_tax_type IN ('teom', 'reom', 'none')),
+  teom_rate_pct NUMERIC(5,2),
+  teom_rate_year INTEGER,
+  notes TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT epci_reference_dept_name_unique UNIQUE (code_departement, epci_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_epci_reference_dept ON epci_reference(code_departement);
+CREATE INDEX IF NOT EXISTS idx_epci_reference_cp ON epci_reference(code_postal_pattern)
+  WHERE code_postal_pattern IS NOT NULL;
+
+ALTER TABLE epci_reference ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "epci_reference_public_read" ON epci_reference;
+CREATE POLICY "epci_reference_public_read" ON epci_reference
+  FOR SELECT TO authenticated, anon
+  USING (true);
+
+COMMENT ON TABLE epci_reference IS
+  'Référentiel EPCI — type de taxe déchets et taux TEOM par EPCI. Focus DROM-COM au Sprint 0, métropole extensible ensuite.';
+COMMENT ON COLUMN epci_reference.waste_tax_type IS
+  'teom = taxe (intégrée taxe foncière, payée par propriétaire, récupérable sur locataire). reom = redevance (payée directement par locataire, aucune régul côté propriétaire). none = aucune taxe.';
+COMMENT ON COLUMN epci_reference.teom_rate_pct IS
+  'Taux TEOM en pourcentage (référentiel indicatif — le montant réel figure sur l''avis de taxe foncière).';
+
+INSERT INTO supabase_migrations.schema_migrations (version, name)
+VALUES ('20260417090200', 'epci_reference_table')
+ON CONFLICT (version) DO NOTHING;
+
+DO $post$ BEGIN RAISE NOTICE '✓ Applied  20260417090200_epci_reference_table.sql'; END $post$;
+
+-- --------------------------------------------------------------------
 -- Migration: 20260417090500_epci_reference_seed_drom.sql
 -- Risk: SAFE
 -- Why: Idempotent / structural only
