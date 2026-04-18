@@ -80,6 +80,9 @@ export default async function EditEntityPage({ params }: PageProps) {
     iban: (e.iban as string) || "",
     bic: (e.bic as string) || "",
     banqueNom: (e.banque_nom as string) || "",
+    premierExerciceDebut: (e.premier_exercice_debut as string) || "",
+    premierExerciceFin: (e.premier_exercice_fin as string) || "",
+    dateClotureExercice: (e.date_cloture_exercice as string) || "",
   };
 
   return (

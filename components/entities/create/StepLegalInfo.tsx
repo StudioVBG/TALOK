@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { isRegimeFiscalLocked } from "@/lib/entities/entity-form-utils";
 import { isValidSiret, siretToSiren, formatSiren } from "@/lib/entities/siret-validation";
 import type { EntityFormData } from "@/lib/entities/entity-form-utils";
+import { deriveDateCloture } from "@/lib/entities/fiscal-year-defaults";
 
 interface StepLegalInfoProps {
   formData: EntityFormData;
@@ -216,6 +217,68 @@ export function StepLegalInfo({ formData, onChange, errors }: StepLegalInfoProps
             placeholder="FR12345678901"
           />
         </div>
+      </div>
+
+      {/* Exercice fiscal — obligatoire pour la comptabilité */}
+      <div className="mt-6 rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+        <div>
+          <h3 className="text-base font-semibold">
+            Exercice fiscal <span className="text-destructive">*</span>
+          </h3>
+          <p className="text-xs text-muted-foreground mt-1">
+            {isRegimeFiscalLocked(formData.entityType)
+              ? "Régime IS : par défaut année civile, modifiable."
+              : "Régime IR : exercice = année civile (01/01 → 31/12)."}
+          </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="premierExerciceDebut">Début du 1er exercice</Label>
+            <Input
+              id="premierExerciceDebut"
+              type="date"
+              value={formData.premierExerciceDebut}
+              onChange={(e) =>
+                onChange({ premierExerciceDebut: e.target.value })
+              }
+              className={errors?.premierExerciceDebut ? "border-destructive" : ""}
+            />
+            {errors?.premierExerciceDebut && (
+              <p className="text-xs text-destructive">
+                {errors.premierExerciceDebut}
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="premierExerciceFin">Fin du 1er exercice</Label>
+            <Input
+              id="premierExerciceFin"
+              type="date"
+              value={formData.premierExerciceFin}
+              onChange={(e) => {
+                const fin = e.target.value;
+                onChange({
+                  premierExerciceFin: fin,
+                  dateClotureExercice: fin ? deriveDateCloture(fin) : "",
+                });
+              }}
+              className={errors?.premierExerciceFin ? "border-destructive" : ""}
+            />
+            {errors?.premierExerciceFin && (
+              <p className="text-xs text-destructive">
+                {errors.premierExerciceFin}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {formData.dateClotureExercice && (
+          <p className="text-xs text-muted-foreground">
+            Date de clôture annuelle : {formData.dateClotureExercice}
+          </p>
+        )}
       </div>
     </div>
   );
