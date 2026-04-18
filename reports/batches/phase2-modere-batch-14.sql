@@ -176,8 +176,8 @@ CREATE TABLE IF NOT EXISTS cron_logs (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_cron_logs_name ON cron_logs(cron_name);
-CREATE INDEX idx_cron_logs_started ON cron_logs(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cron_logs_name ON cron_logs(cron_name);
+CREATE INDEX IF NOT EXISTS idx_cron_logs_started ON cron_logs(started_at DESC);
 
 -- RLS
 ALTER TABLE cron_logs ENABLE ROW LEVEL SECURITY;

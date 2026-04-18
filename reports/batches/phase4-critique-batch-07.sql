@@ -435,9 +435,9 @@ CREATE TABLE IF NOT EXISTS entity_members (
   CONSTRAINT entity_member_unique UNIQUE (entity_id, user_id)
 );
 
-CREATE INDEX idx_entity_members_entity ON entity_members(entity_id);
-CREATE INDEX idx_entity_members_user ON entity_members(user_id);
-CREATE INDEX idx_entity_members_profile ON entity_members(profile_id) WHERE profile_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_entity_members_entity ON entity_members(entity_id);
+CREATE INDEX IF NOT EXISTS idx_entity_members_user ON entity_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_entity_members_profile ON entity_members(profile_id) WHERE profile_id IS NOT NULL;
 
 ALTER TABLE entity_members ENABLE ROW LEVEL SECURITY;
 

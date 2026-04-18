@@ -1123,7 +1123,7 @@ BEGIN
       WHERE sub.rn > 1
     );
 
-    CREATE UNIQUE INDEX uq_lease_signers_lease_profile
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_lease_signers_lease_profile
       ON lease_signers (lease_id, profile_id)
       WHERE profile_id IS NOT NULL;
 
@@ -1155,7 +1155,7 @@ BEGIN
         WHERE sub.rn > 1
       );
 
-      CREATE UNIQUE INDEX uq_roommates_lease_profile
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_roommates_lease_profile
         ON roommates (lease_id, profile_id);
 
       RAISE NOTICE 'Created index uq_roommates_lease_profile on roommates';
@@ -1187,7 +1187,7 @@ BEGIN
       WHERE sub.rn > 1
     );
 
-    CREATE UNIQUE INDEX uq_documents_storage_path
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_documents_storage_path
       ON documents (storage_path)
       WHERE storage_path IS NOT NULL;
 

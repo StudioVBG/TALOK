@@ -48,8 +48,8 @@ CREATE TABLE IF NOT EXISTS accounting_exercises (
   CONSTRAINT exercise_unique_period UNIQUE (entity_id, start_date, end_date)
 );
 
-CREATE INDEX idx_exercises_entity ON accounting_exercises(entity_id);
-CREATE INDEX idx_exercises_status ON accounting_exercises(entity_id, status);
+CREATE INDEX IF NOT EXISTS idx_exercises_entity ON accounting_exercises(entity_id);
+CREATE INDEX IF NOT EXISTS idx_exercises_status ON accounting_exercises(entity_id, status);
 
 ALTER TABLE accounting_exercises ENABLE ROW LEVEL SECURITY;
 
@@ -88,9 +88,9 @@ CREATE TABLE IF NOT EXISTS chart_of_accounts (
   CONSTRAINT account_number_entity_unique UNIQUE (entity_id, account_number)
 );
 
-CREATE INDEX idx_coa_entity ON chart_of_accounts(entity_id);
-CREATE INDEX idx_coa_number ON chart_of_accounts(entity_id, account_number);
-CREATE INDEX idx_coa_class ON chart_of_accounts(entity_id, account_class);
+CREATE INDEX IF NOT EXISTS idx_coa_entity ON chart_of_accounts(entity_id);
+CREATE INDEX IF NOT EXISTS idx_coa_number ON chart_of_accounts(entity_id, account_number);
+CREATE INDEX IF NOT EXISTS idx_coa_class ON chart_of_accounts(entity_id, account_class);
 
 ALTER TABLE chart_of_accounts ENABLE ROW LEVEL SECURITY;
 
@@ -163,9 +163,9 @@ CREATE TABLE IF NOT EXISTS accounting_entries (
   CONSTRAINT entry_number_unique UNIQUE (entity_id, exercise_id, entry_number)
 );
 
-CREATE INDEX idx_entries_exercise ON accounting_entries(exercise_id);
-CREATE INDEX idx_entries_journal ON accounting_entries(entity_id, journal_code);
-CREATE INDEX idx_entries_date ON accounting_entries(entity_id, entry_date);
+CREATE INDEX IF NOT EXISTS idx_entries_exercise ON accounting_entries(exercise_id);
+CREATE INDEX IF NOT EXISTS idx_entries_journal ON accounting_entries(entity_id, journal_code);
+CREATE INDEX IF NOT EXISTS idx_entries_date ON accounting_entries(entity_id, entry_date);
 
 ALTER TABLE accounting_entries ENABLE ROW LEVEL SECURITY;
 
@@ -202,9 +202,9 @@ CREATE TABLE IF NOT EXISTS accounting_entry_lines (
   )
 );
 
-CREATE INDEX idx_entry_lines_entry ON accounting_entry_lines(entry_id);
-CREATE INDEX idx_entry_lines_account ON accounting_entry_lines(account_number);
-CREATE INDEX idx_entry_lines_lettrage ON accounting_entry_lines(lettrage) WHERE lettrage IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_entry_lines_entry ON accounting_entry_lines(entry_id);
+CREATE INDEX IF NOT EXISTS idx_entry_lines_account ON accounting_entry_lines(account_number);
+CREATE INDEX IF NOT EXISTS idx_entry_lines_lettrage ON accounting_entry_lines(lettrage) WHERE lettrage IS NOT NULL;
 
 ALTER TABLE accounting_entry_lines ENABLE ROW LEVEL SECURITY;
 
@@ -251,7 +251,7 @@ CREATE TABLE IF NOT EXISTS bank_connections (
   CONSTRAINT iban_hash_unique UNIQUE (iban_hash)
 );
 
-CREATE INDEX idx_bank_conn_entity ON bank_connections(entity_id);
+CREATE INDEX IF NOT EXISTS idx_bank_conn_entity ON bank_connections(entity_id);
 
 ALTER TABLE bank_connections ENABLE ROW LEVEL SECURITY;
 
@@ -296,10 +296,10 @@ CREATE TABLE IF NOT EXISTS bank_transactions (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_bank_tx_connection ON bank_transactions(connection_id);
-CREATE INDEX idx_bank_tx_date ON bank_transactions(transaction_date);
-CREATE INDEX idx_bank_tx_status ON bank_transactions(reconciliation_status);
-CREATE INDEX idx_bank_tx_matched ON bank_transactions(matched_entry_id) WHERE matched_entry_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_bank_tx_connection ON bank_transactions(connection_id);
+CREATE INDEX IF NOT EXISTS idx_bank_tx_date ON bank_transactions(transaction_date);
+CREATE INDEX IF NOT EXISTS idx_bank_tx_status ON bank_transactions(reconciliation_status);
+CREATE INDEX IF NOT EXISTS idx_bank_tx_matched ON bank_transactions(matched_entry_id) WHERE matched_entry_id IS NOT NULL;
 
 ALTER TABLE bank_transactions ENABLE ROW LEVEL SECURITY;
 
@@ -346,8 +346,8 @@ CREATE TABLE IF NOT EXISTS document_analyses (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_doc_analyses_entity ON document_analyses(entity_id);
-CREATE INDEX idx_doc_analyses_status ON document_analyses(processing_status);
+CREATE INDEX IF NOT EXISTS idx_doc_analyses_entity ON document_analyses(entity_id);
+CREATE INDEX IF NOT EXISTS idx_doc_analyses_status ON document_analyses(processing_status);
 
 ALTER TABLE document_analyses ENABLE ROW LEVEL SECURITY;
 
@@ -386,7 +386,7 @@ CREATE TABLE IF NOT EXISTS amortization_schedules (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_amort_sched_entity ON amortization_schedules(entity_id);
+CREATE INDEX IF NOT EXISTS idx_amort_sched_entity ON amortization_schedules(entity_id);
 
 ALTER TABLE amortization_schedules ENABLE ROW LEVEL SECURITY;
 
@@ -460,7 +460,7 @@ CREATE TABLE IF NOT EXISTS deficit_tracking (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_deficit_entity ON deficit_tracking(entity_id);
+CREATE INDEX IF NOT EXISTS idx_deficit_entity ON deficit_tracking(entity_id);
 
 ALTER TABLE deficit_tracking ENABLE ROW LEVEL SECURITY;
 
@@ -532,7 +532,7 @@ CREATE TABLE IF NOT EXISTS ec_access (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_ec_access_entity ON ec_access(entity_id);
+CREATE INDEX IF NOT EXISTS idx_ec_access_entity ON ec_access(entity_id);
 
 ALTER TABLE ec_access ENABLE ROW LEVEL SECURITY;
 
@@ -730,9 +730,9 @@ CREATE TABLE IF NOT EXISTS accounting_audit_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_audit_entity ON accounting_audit_log(entity_id);
-CREATE INDEX idx_audit_target ON accounting_audit_log(target_type, target_id);
-CREATE INDEX idx_audit_date ON accounting_audit_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_entity ON accounting_audit_log(entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_target ON accounting_audit_log(target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_audit_date ON accounting_audit_log(created_at);
 
 ALTER TABLE accounting_audit_log ENABLE ROW LEVEL SECURITY;
 

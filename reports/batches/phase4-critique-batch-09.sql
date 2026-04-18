@@ -91,10 +91,10 @@ CREATE POLICY "Service role full access on subscription_addons"
   USING (auth.role() = 'service_role');
 
 -- Index
-CREATE INDEX idx_addons_profile ON subscription_addons(profile_id);
-CREATE INDEX idx_addons_type_status ON subscription_addons(addon_type, status);
-CREATE INDEX idx_addons_stripe_session ON subscription_addons(stripe_checkout_session_id);
-CREATE INDEX idx_addons_stripe_subscription ON subscription_addons(stripe_subscription_id);
+CREATE INDEX IF NOT EXISTS idx_addons_profile ON subscription_addons(profile_id);
+CREATE INDEX IF NOT EXISTS idx_addons_type_status ON subscription_addons(addon_type, status);
+CREATE INDEX IF NOT EXISTS idx_addons_stripe_session ON subscription_addons(stripe_checkout_session_id);
+CREATE INDEX IF NOT EXISTS idx_addons_stripe_subscription ON subscription_addons(stripe_subscription_id);
 
 -- Trigger updated_at
 CREATE OR REPLACE FUNCTION update_subscription_addons_updated_at()
@@ -136,7 +136,7 @@ CREATE POLICY "Service role full access on sms_usage"
   ON sms_usage FOR ALL
   USING (auth.role() = 'service_role');
 
-CREATE INDEX idx_sms_usage_profile_month ON sms_usage(profile_id, month);
+CREATE INDEX IF NOT EXISTS idx_sms_usage_profile_month ON sms_usage(profile_id, month);
 
 -- ============================================================
 -- RPC : Incrémenter usage SMS (upsert atomique)

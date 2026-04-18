@@ -316,7 +316,7 @@ CREATE TABLE IF NOT EXISTS copro_lots (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE(copro_entity_id, lot_number)
 );
-CREATE INDEX idx_copro_lots_entity ON copro_lots(copro_entity_id);
+CREATE INDEX IF NOT EXISTS idx_copro_lots_entity ON copro_lots(copro_entity_id);
 ALTER TABLE copro_lots ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "copro_lots_entity_access" ON copro_lots;
 CREATE POLICY "copro_lots_entity_access" ON copro_lots FOR ALL TO authenticated

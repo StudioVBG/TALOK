@@ -211,10 +211,10 @@ CREATE TABLE IF NOT EXISTS admin_logs (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_admin_logs_admin_id ON admin_logs(admin_id);
-CREATE INDEX idx_admin_logs_action ON admin_logs(action);
-CREATE INDEX idx_admin_logs_target ON admin_logs(target_type, target_id);
-CREATE INDEX idx_admin_logs_created_at ON admin_logs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_logs_admin_id ON admin_logs(admin_id);
+CREATE INDEX IF NOT EXISTS idx_admin_logs_action ON admin_logs(action);
+CREATE INDEX IF NOT EXISTS idx_admin_logs_target ON admin_logs(target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_admin_logs_created_at ON admin_logs(created_at DESC);
 
 -- ============================================
 -- 2. FEATURE_FLAGS (flags fonctionnels)
@@ -231,8 +231,8 @@ CREATE TABLE IF NOT EXISTS feature_flags (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_feature_flags_name ON feature_flags(name);
-CREATE INDEX idx_feature_flags_enabled ON feature_flags(enabled);
+CREATE INDEX IF NOT EXISTS idx_feature_flags_name ON feature_flags(name);
+CREATE INDEX IF NOT EXISTS idx_feature_flags_enabled ON feature_flags(enabled);
 
 -- ============================================
 -- 3. SUPPORT_TICKETS (tickets support)
@@ -252,11 +252,11 @@ CREATE TABLE IF NOT EXISTS support_tickets (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX idx_support_tickets_user_id ON support_tickets(user_id);
-CREATE INDEX idx_support_tickets_status ON support_tickets(status);
-CREATE INDEX idx_support_tickets_priority ON support_tickets(priority);
-CREATE INDEX idx_support_tickets_assigned_to ON support_tickets(assigned_to);
-CREATE INDEX idx_support_tickets_created_at ON support_tickets(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_user_id ON support_tickets(user_id);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_priority ON support_tickets(priority);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_assigned_to ON support_tickets(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_created_at ON support_tickets(created_at DESC);
 
 -- Trigger updated_at
 CREATE TRIGGER update_support_tickets_updated_at
@@ -427,10 +427,10 @@ CREATE TABLE IF NOT EXISTS property_listings (
 );
 
 -- Index
-CREATE INDEX idx_property_listings_property ON property_listings(property_id);
-CREATE INDEX idx_property_listings_owner ON property_listings(owner_id);
-CREATE INDEX idx_property_listings_published ON property_listings(is_published) WHERE is_published = true;
-CREATE INDEX idx_property_listings_token ON property_listings(public_url_token);
+CREATE INDEX IF NOT EXISTS idx_property_listings_property ON property_listings(property_id);
+CREATE INDEX IF NOT EXISTS idx_property_listings_owner ON property_listings(owner_id);
+CREATE INDEX IF NOT EXISTS idx_property_listings_published ON property_listings(is_published) WHERE is_published = true;
+CREATE INDEX IF NOT EXISTS idx_property_listings_token ON property_listings(public_url_token);
 
 -- RLS
 ALTER TABLE property_listings ENABLE ROW LEVEL SECURITY;
@@ -480,11 +480,11 @@ CREATE TABLE IF NOT EXISTS applications (
 );
 
 -- Index
-CREATE INDEX idx_applications_listing ON applications(listing_id);
-CREATE INDEX idx_applications_property ON applications(property_id);
-CREATE INDEX idx_applications_owner ON applications(owner_id);
-CREATE INDEX idx_applications_status ON applications(status);
-CREATE INDEX idx_applications_email ON applications(applicant_email);
+CREATE INDEX IF NOT EXISTS idx_applications_listing ON applications(listing_id);
+CREATE INDEX IF NOT EXISTS idx_applications_property ON applications(property_id);
+CREATE INDEX IF NOT EXISTS idx_applications_owner ON applications(owner_id);
+CREATE INDEX IF NOT EXISTS idx_applications_status ON applications(status);
+CREATE INDEX IF NOT EXISTS idx_applications_email ON applications(applicant_email);
 
 -- RLS
 ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
@@ -616,8 +616,8 @@ CREATE TABLE IF NOT EXISTS charge_categories (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_charge_categories_property ON charge_categories(property_id);
-CREATE INDEX idx_charge_categories_category ON charge_categories(category);
+CREATE INDEX IF NOT EXISTS idx_charge_categories_property ON charge_categories(property_id);
+CREATE INDEX IF NOT EXISTS idx_charge_categories_category ON charge_categories(category);
 
 ALTER TABLE charge_categories ENABLE ROW LEVEL SECURITY;
 
@@ -671,10 +671,10 @@ CREATE TABLE IF NOT EXISTS charge_entries (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX idx_charge_entries_property ON charge_entries(property_id);
-CREATE INDEX idx_charge_entries_category ON charge_entries(category_id);
-CREATE INDEX idx_charge_entries_fiscal_year ON charge_entries(fiscal_year);
-CREATE INDEX idx_charge_entries_date ON charge_entries(date);
+CREATE INDEX IF NOT EXISTS idx_charge_entries_property ON charge_entries(property_id);
+CREATE INDEX IF NOT EXISTS idx_charge_entries_category ON charge_entries(category_id);
+CREATE INDEX IF NOT EXISTS idx_charge_entries_fiscal_year ON charge_entries(fiscal_year);
+CREATE INDEX IF NOT EXISTS idx_charge_entries_date ON charge_entries(date);
 
 ALTER TABLE charge_entries ENABLE ROW LEVEL SECURITY;
 
@@ -738,10 +738,10 @@ CREATE TABLE IF NOT EXISTS lease_charge_regularizations (
   UNIQUE(lease_id, fiscal_year)
 );
 
-CREATE INDEX idx_lease_charge_reg_lease ON lease_charge_regularizations(lease_id);
-CREATE INDEX idx_lease_charge_reg_property ON lease_charge_regularizations(property_id);
-CREATE INDEX idx_lease_charge_reg_year ON lease_charge_regularizations(fiscal_year);
-CREATE INDEX idx_lease_charge_reg_status ON lease_charge_regularizations(status);
+CREATE INDEX IF NOT EXISTS idx_lease_charge_reg_lease ON lease_charge_regularizations(lease_id);
+CREATE INDEX IF NOT EXISTS idx_lease_charge_reg_property ON lease_charge_regularizations(property_id);
+CREATE INDEX IF NOT EXISTS idx_lease_charge_reg_year ON lease_charge_regularizations(fiscal_year);
+CREATE INDEX IF NOT EXISTS idx_lease_charge_reg_status ON lease_charge_regularizations(status);
 
 ALTER TABLE lease_charge_regularizations ENABLE ROW LEVEL SECURITY;
 
@@ -918,9 +918,9 @@ CREATE POLICY "property_diagnostics_tenant_select"
   );
 
 -- Indexes
-CREATE INDEX idx_property_diagnostics_property ON property_diagnostics(property_id);
-CREATE INDEX idx_property_diagnostics_type ON property_diagnostics(diagnostic_type);
-CREATE INDEX idx_property_diagnostics_expiry ON property_diagnostics(expiry_date) WHERE expiry_date IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_property_diagnostics_property ON property_diagnostics(property_id);
+CREATE INDEX IF NOT EXISTS idx_property_diagnostics_type ON property_diagnostics(diagnostic_type);
+CREATE INDEX IF NOT EXISTS idx_property_diagnostics_expiry ON property_diagnostics(expiry_date) WHERE expiry_date IS NOT NULL;
 
 -- Auto-update updated_at
 CREATE OR REPLACE FUNCTION update_property_diagnostics_updated_at()
@@ -960,8 +960,8 @@ CREATE POLICY "rent_control_zones_read"
   USING (auth.uid() IS NOT NULL);
 
 -- Index for fast lookups
-CREATE INDEX idx_rent_control_city_year ON rent_control_zones(city, year);
-CREATE INDEX idx_rent_control_type ON rent_control_zones(type_logement, nb_pieces);
+CREATE INDEX IF NOT EXISTS idx_rent_control_city_year ON rent_control_zones(city, year);
+CREATE INDEX IF NOT EXISTS idx_rent_control_type ON rent_control_zones(type_logement, nb_pieces);
 
 -- 3. Seed initial rent control reference data (Paris 2026 Q1 examples)
 INSERT INTO rent_control_zones (city, zone, type_logement, nb_pieces, loyer_reference, loyer_majore, loyer_minore, year, quarter) VALUES

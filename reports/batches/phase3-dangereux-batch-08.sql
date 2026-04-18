@@ -247,9 +247,9 @@ CREATE POLICY "owners_manage_own_listings" ON seasonal_listings
     SELECT id FROM profiles WHERE user_id = auth.uid()
   ));
 
-CREATE INDEX idx_seasonal_listings_property ON seasonal_listings(property_id);
-CREATE INDEX idx_seasonal_listings_owner ON seasonal_listings(owner_id);
-CREATE INDEX idx_seasonal_listings_published ON seasonal_listings(is_published) WHERE is_published = true;
+CREATE INDEX IF NOT EXISTS idx_seasonal_listings_property ON seasonal_listings(property_id);
+CREATE INDEX IF NOT EXISTS idx_seasonal_listings_owner ON seasonal_listings(owner_id);
+CREATE INDEX IF NOT EXISTS idx_seasonal_listings_published ON seasonal_listings(is_published) WHERE is_published = true;
 
 -- ============================================================
 -- 2. seasonal_rates — Tarifs par saison
@@ -278,8 +278,8 @@ CREATE POLICY "owners_manage_rates" ON seasonal_rates
     )
   ));
 
-CREATE INDEX idx_seasonal_rates_listing ON seasonal_rates(listing_id);
-CREATE INDEX idx_seasonal_rates_dates ON seasonal_rates(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_seasonal_rates_listing ON seasonal_rates(listing_id);
+CREATE INDEX IF NOT EXISTS idx_seasonal_rates_dates ON seasonal_rates(start_date, end_date);
 
 -- ============================================================
 -- 3. reservations — Réservations saisonnières
@@ -332,12 +332,12 @@ CREATE POLICY "owners_manage_reservations" ON reservations
     )
   ));
 
-CREATE INDEX idx_reservations_listing ON reservations(listing_id);
-CREATE INDEX idx_reservations_property ON reservations(property_id);
-CREATE INDEX idx_reservations_dates ON reservations(check_in, check_out);
-CREATE INDEX idx_reservations_status ON reservations(status);
-CREATE INDEX idx_reservations_source ON reservations(source);
-CREATE INDEX idx_reservations_cleaning ON reservations(cleaning_status) WHERE cleaning_status != 'done';
+CREATE INDEX IF NOT EXISTS idx_reservations_listing ON reservations(listing_id);
+CREATE INDEX IF NOT EXISTS idx_reservations_property ON reservations(property_id);
+CREATE INDEX IF NOT EXISTS idx_reservations_dates ON reservations(check_in, check_out);
+CREATE INDEX IF NOT EXISTS idx_reservations_status ON reservations(status);
+CREATE INDEX IF NOT EXISTS idx_reservations_source ON reservations(source);
+CREATE INDEX IF NOT EXISTS idx_reservations_cleaning ON reservations(cleaning_status) WHERE cleaning_status != 'done';
 
 -- ============================================================
 -- 4. seasonal_blocked_dates — Dates bloquées
@@ -362,8 +362,8 @@ CREATE POLICY "owners_manage_blocked" ON seasonal_blocked_dates
     )
   ));
 
-CREATE INDEX idx_blocked_dates_listing ON seasonal_blocked_dates(listing_id);
-CREATE INDEX idx_blocked_dates_range ON seasonal_blocked_dates(start_date, end_date);
+CREATE INDEX IF NOT EXISTS idx_blocked_dates_listing ON seasonal_blocked_dates(listing_id);
+CREATE INDEX IF NOT EXISTS idx_blocked_dates_range ON seasonal_blocked_dates(start_date, end_date);
 
 -- ============================================================
 -- 5. Triggers updated_at

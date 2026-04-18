@@ -106,8 +106,8 @@ CREATE POLICY "Users can insert own consent records"
     SELECT id FROM profiles WHERE user_id = auth.uid()
   ));
 
-CREATE INDEX idx_consent_records_profile_id ON consent_records(profile_id);
-CREATE INDEX idx_consent_records_type ON consent_records(consent_type);
+CREATE INDEX IF NOT EXISTS idx_consent_records_profile_id ON consent_records(profile_id);
+CREATE INDEX IF NOT EXISTS idx_consent_records_type ON consent_records(consent_type);
 
 -- ============================================
 -- 2. data_requests : demandes RGPD (export, suppression, rectification)
@@ -148,8 +148,8 @@ CREATE POLICY "Users can update own pending data requests"
     AND status = 'pending'
   );
 
-CREATE INDEX idx_data_requests_profile_id ON data_requests(profile_id);
-CREATE INDEX idx_data_requests_status ON data_requests(status);
+CREATE INDEX IF NOT EXISTS idx_data_requests_profile_id ON data_requests(profile_id);
+CREATE INDEX IF NOT EXISTS idx_data_requests_status ON data_requests(status);
 
 INSERT INTO supabase_migrations.schema_migrations (version, name)
 VALUES ('20260408130009', 'rgpd_consent_records_and_data_requests')

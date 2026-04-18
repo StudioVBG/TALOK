@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS owner_payment_audit_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_opal_owner_created ON owner_payment_audit_log(owner_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_opal_owner_created ON owner_payment_audit_log(owner_id, created_at DESC);
 
 COMMENT ON TABLE owner_payment_audit_log IS 'Audit trail PSD3 pour les opérations sur les moyens de paiement propriétaire (abonnement, carte, etc.)';
 
