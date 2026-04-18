@@ -398,10 +398,7 @@ BEGIN
       $cron$SELECT public.fn_cleanup_orphan_document_analyses();$cron$
     );
   ELSE
-    RAISE NOTICE 'pg_cron extension not installed; skipping schedule. '
-      'Enable pg_cron from the Supabase dashboard and run:'
-      E'\n  SELECT cron.schedule(''cleanup-orphan-analyses'', ''0 3 * * 0'', '
-      E'''SELECT public.fn_cleanup_orphan_document_analyses();'');';
+    RAISE NOTICE 'pg_cron extension not installed; skipping schedule.';
   END IF;
 END $$;
 
