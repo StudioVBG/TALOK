@@ -1,3 +1,63 @@
+# Sprint A — PASS 7 v2 : Plan d'application phasé (post Sprint B1)
+
+> ℹ️ **Cette v2 remplace la v1 initiale.** La v1 raisonnait sur 223 pending sans distinction duplicates. Sprint B1 a affiné :
+>
+> - **181** pending à timestamp unique (ordre d'application déterministe)
+> - **41** pending dans 13 groupes de timestamps dupliqués → à dédup PUIS appliquer
+> - **1** ghost (`20260208024659`) à résoudre hors plan (cf. PASS 4)
+> - **Total après dédup : 194 migrations uniques** à appliquer
+
+## Phase 0 — Pré-requis (mise à jour Sprint B1)
+
+### Pré-requis DB (Sprint B1 ➜ Sprint B2)
+- [ ] **PASS 1 Sprint B1 exécuté** : `reports/sprint-b1-schema-migrations-prod.json` peuplé avec snapshot réel
+- [ ] **Matrice de réconciliation** re-générée en mode complet (non-dégradé) :
+      ```
+      node scripts/audit/build-reconciliation-matrix.mjs
+      ```
+- [ ] **Ghost 20260208024659 traité** (Option A1/A2/A3 de `sprint-b1-reconciliation-sql.sql`)
+- [ ] **Dédup timestamps appliqué** : les 28 renames `git mv` exécutés sur branche `chore/migrations-dedup-timestamps`, mergée
+- [ ] **`schema_migrations` UPDATE** exécuté pour chaque rename qui était déjà tracké prod (section C de `sprint-b1-reconciliation-sql.sql`)
+- [ ] **HASH MISMATCH** : aucune divergence détectée ou chacune résolue manuellement
+
+### Pré-requis infra (inchangés depuis v1)
+- [ ] Backup prod (snapshot Supabase PITR) horodaté juste avant Phase 1
+- [ ] Staging Supabase disponible (cf. `sprint-a-staging-detection.md` → décision Option A/B/C)
+- [ ] Rollback script prêt : `pg_restore` depuis snapshot pour chaque phase
+- [ ] Cron secret configuré (`ALTER DATABASE postgres SET app.settings.cron_secret = ...`)
+- [ ] `app.settings.app_url` configuré
+- [ ] Extension `pg_cron` activée
+- [ ] `TWILIO_VERIFY_SERVICE_SID` configuré dans Netlify
+- [ ] Annoncer maintenance window ≥ 2h pour Phase 4 (CRITIQUE)
+
+## Révision des compteurs post-dédup
+
+| Avant Sprint B1 (v1) | Après Sprint B1 (v2) | Explication |
+|---|---|---|
+| 223 pending (dont 41 en dup) | 194 pending uniques | dédup = 13 timestamps uniques conservés, 28 renommés |
+| SAFE 46 / MODÉRÉ 76 / DANGEREUX 51 / CRITIQUE 50 | **Identique** | hash-divergent dedup → aucune migration supprimée, juste renommée |
+
+**Important** : les renames ne changent **pas** le contenu SQL ni le niveau de risque d'une migration. Ils déplacent juste son timestamp de +Ns. Chaque migration reste à appliquer.
+
+## Notes sur les duplicate groups
+
+Les 13 groupes seront appliqués dans l'ordre chronologique **après rename**. Exemple pour `20260408130000` (12 files) :
+
+```
+20260408130000_<a>.sql           (keep)
+20260408130001_<b>.sql           (rename +1s)
+20260408130002_<c>.sql           (rename +2s)
+...
+20260408130011_<l>.sql           (rename +11s)
+```
+
+Ordre alphabétique du slug détermine l'ordre d'exécution. **Attention** : si l'ordre logique attendu est différent (ex : la 3ᵉ doit passer avant la 1ʳᵉ), décider manuellement avant d'exécuter `apply-dedup-renames.sh`.
+
+---
+
+> Ce qui suit est **inchangé depuis v1** (plan Phase 1-4, candidats squash, stratégie). Lire au complet.
+
+---
 # Sprint A — PASS 7 : Plan d'application phasé
 
 Total pending : **223** (du `20260208100000_fix_data_storage_audit.sql` au `20260417110000_purge_identity_2fa_cron.sql`).
