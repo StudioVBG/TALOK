@@ -582,48 +582,11 @@ export async function POST(
         },
       } as any);
 
-      // Auto-insert signed EDL into documents table
-      const edlType = edl.type === "entree" ? "EDL_entree" : "EDL_sortie";
-      const edlLabel = edl.type === "entree" ? "d'entrée" : "de sortie";
-      try {
-        const { data: existingDoc } = await serviceClient
-          .from("documents")
-          .select("id")
-          .eq("type", edlType)
-          .eq("metadata->>edl_id", edlId)
-          .maybeSingle();
-
-        if (!existingDoc) {
-          const propertyOwnerId = (edlRow as any)?.property?.owner_id || null;
-          const tenantProfileId = !isOwner ? profile.id : null;
-          // SYSTEM DOCUMENT: Direct insert acceptable for auto-generated PDFs (no user upload flow)
-          await serviceClient.from("documents").insert({
-            type: edlType,
-            property_id: propertyId || null,
-            lease_id: edl.lease_id || null,
-            owner_id: propertyOwnerId,
-            tenant_id: tenantProfileId,
-            title: `État des lieux ${edlLabel} — Signé`,
-            storage_path: `edl/${edlId}/signed_document.html`,
-            is_archived: false,
-            visible_tenant: true,
-            metadata: {
-              edl_id: edlId,
-              signed_at: new Date().toISOString(),
-              all_signers_signed: true,
-              final: true,
-              content_type: "text/html",
-            },
-          } as any);
-        }
-      } catch (docErr) {
-        console.warn("[sign-edl] Erreur insertion document EDL (non bloquant):", docErr);
-      }
-
-      // Générer et stocker le HTML signé dans Storage
+      // Générer le PDF signé de l'EDL — INSERT/UPDATE document + upload Storage
+      // est pris en charge par generateSignedEdlPdf (idempotent, pur PDF).
       try {
         const { handleEDLFullySigned } = await import("@/lib/services/edl-post-signature.service");
-        const edlResult = await handleEDLFullySigned(edlId);
+        await handleEDLFullySigned(edlId);
       } catch (postSignErr) {
         console.warn("[sign-edl] Exception post-signature EDL (non bloquant):", String(postSignErr));
       }

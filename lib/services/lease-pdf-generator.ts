@@ -1,9 +1,8 @@
 /**
- * SOTA 2026 — Generation du document HTML signe de bail
- *
- * Utilise buildBailData() comme unique source de donnees.
- * Les signatures et le certificat sont geres directement par le template
- * via dataToVariables() (BAILLEUR_SIGNATURE_IMAGE, CERTIFICATE_HTML, etc.).
+ * @deprecated Ce module genere uniquement du HTML (pas du PDF) et n'est plus utilise
+ * dans le flux post-signature (remplace par lib/pdf/lease-signed-pdf.ts depuis avril 2026).
+ * Conserve temporairement pour compatibilite avec d'anciens appels en dehors du repo.
+ * Toute nouvelle logique doit passer par `generateSignedLeasePdf` de lib/pdf/lease-signed-pdf.ts.
  */
 
 import { getServiceClient } from "@/lib/supabase/service-client";
