@@ -247,6 +247,7 @@ DROP POLICY IF EXISTS "Owners can view own connect account" ON stripe_connect_ac
 DROP POLICY IF EXISTS "Owners can create own connect account" ON stripe_connect_accounts;
 DROP POLICY IF EXISTS "Service role full access connect" ON stripe_connect_accounts;
 
+DROP POLICY IF EXISTS "Owners can view own connect account" ON stripe_connect_accounts;
 CREATE POLICY "Owners can view own connect account" ON stripe_connect_accounts
   FOR SELECT
   USING (
@@ -254,6 +255,7 @@ CREATE POLICY "Owners can view own connect account" ON stripe_connect_accounts
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Owners can create own connect account" ON stripe_connect_accounts;
 CREATE POLICY "Owners can create own connect account" ON stripe_connect_accounts
   FOR INSERT
   WITH CHECK (
@@ -261,6 +263,7 @@ CREATE POLICY "Owners can create own connect account" ON stripe_connect_accounts
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Owners can update own connect account" ON stripe_connect_accounts;
 CREATE POLICY "Owners can update own connect account" ON stripe_connect_accounts
   FOR UPDATE
   USING (
@@ -272,6 +275,7 @@ CREATE POLICY "Owners can update own connect account" ON stripe_connect_accounts
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Service role full access connect" ON stripe_connect_accounts;
 CREATE POLICY "Service role full access connect" ON stripe_connect_accounts
   FOR ALL
   USING (auth.jwt() ->> 'role' = 'service_role')
@@ -280,6 +284,7 @@ CREATE POLICY "Service role full access connect" ON stripe_connect_accounts
 DROP POLICY IF EXISTS "Owners can view own transfers" ON stripe_transfers;
 DROP POLICY IF EXISTS "Service role full access transfers" ON stripe_transfers;
 
+DROP POLICY IF EXISTS "Owners can view own transfers" ON stripe_transfers;
 CREATE POLICY "Owners can view own transfers" ON stripe_transfers
   FOR SELECT
   USING (
@@ -294,6 +299,7 @@ CREATE POLICY "Owners can view own transfers" ON stripe_transfers
     )
   );
 
+DROP POLICY IF EXISTS "Service role full access transfers" ON stripe_transfers;
 CREATE POLICY "Service role full access transfers" ON stripe_transfers
   FOR ALL
   USING (auth.jwt() ->> 'role' = 'service_role')

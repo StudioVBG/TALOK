@@ -425,10 +425,12 @@ CREATE INDEX idx_property_listings_token ON property_listings(public_url_token);
 ALTER TABLE property_listings ENABLE ROW LEVEL SECURITY;
 
 -- Owner peut tout faire sur ses annonces
+DROP POLICY IF EXISTS property_listings_owner_all ON property_listings;
 CREATE POLICY property_listings_owner_all ON property_listings
   FOR ALL USING (owner_id = (SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1));
 
 -- Annonces publiées lisibles par tous (page publique)
+DROP POLICY IF EXISTS property_listings_public_read ON property_listings;
 CREATE POLICY property_listings_public_read ON property_listings
   FOR SELECT USING (is_published = true);
 
@@ -477,14 +479,17 @@ CREATE INDEX idx_applications_email ON applications(applicant_email);
 ALTER TABLE applications ENABLE ROW LEVEL SECURITY;
 
 -- Owner peut voir les candidatures pour ses biens
+DROP POLICY IF EXISTS applications_owner_all ON applications;
 CREATE POLICY applications_owner_all ON applications
   FOR ALL USING (owner_id = (SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1));
 
 -- Candidat authentifié peut voir ses propres candidatures
+DROP POLICY IF EXISTS applications_applicant_read ON applications;
 CREATE POLICY applications_applicant_read ON applications
   FOR SELECT USING (applicant_profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid() LIMIT 1));
 
 -- Insertion publique (candidats non authentifiés peuvent postuler)
+DROP POLICY IF EXISTS applications_public_insert ON applications;
 CREATE POLICY applications_public_insert ON applications
   FOR INSERT WITH CHECK (true);
 
@@ -605,6 +610,7 @@ CREATE INDEX idx_charge_categories_category ON charge_categories(category);
 
 ALTER TABLE charge_categories ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "charge_categories_owner_access" ON charge_categories;
 CREATE POLICY "charge_categories_owner_access" ON charge_categories
   FOR ALL TO authenticated
   USING (
@@ -623,6 +629,7 @@ CREATE POLICY "charge_categories_owner_access" ON charge_categories
   );
 
 -- Tenants can read categories for their leased properties
+DROP POLICY IF EXISTS "charge_categories_tenant_read" ON charge_categories;
 CREATE POLICY "charge_categories_tenant_read" ON charge_categories
   FOR SELECT TO authenticated
   USING (
@@ -660,6 +667,7 @@ CREATE INDEX idx_charge_entries_date ON charge_entries(date);
 
 ALTER TABLE charge_entries ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "charge_entries_owner_access" ON charge_entries;
 CREATE POLICY "charge_entries_owner_access" ON charge_entries
   FOR ALL TO authenticated
   USING (
@@ -678,6 +686,7 @@ CREATE POLICY "charge_entries_owner_access" ON charge_entries
   );
 
 -- Tenants can read recoverable entries for their leased properties
+DROP POLICY IF EXISTS "charge_entries_tenant_read" ON charge_entries;
 CREATE POLICY "charge_entries_tenant_read" ON charge_entries
   FOR SELECT TO authenticated
   USING (
@@ -726,6 +735,7 @@ CREATE INDEX idx_lease_charge_reg_status ON lease_charge_regularizations(status)
 ALTER TABLE lease_charge_regularizations ENABLE ROW LEVEL SECURITY;
 
 -- Owner full access
+DROP POLICY IF EXISTS "lease_charge_reg_owner_access" ON lease_charge_regularizations;
 CREATE POLICY "lease_charge_reg_owner_access" ON lease_charge_regularizations
   FOR ALL TO authenticated
   USING (
@@ -744,6 +754,7 @@ CREATE POLICY "lease_charge_reg_owner_access" ON lease_charge_regularizations
   );
 
 -- Tenant can read and update (for contestation) their own regularizations
+DROP POLICY IF EXISTS "lease_charge_reg_tenant_read" ON lease_charge_regularizations;
 CREATE POLICY "lease_charge_reg_tenant_read" ON lease_charge_regularizations
   FOR SELECT TO authenticated
   USING (
@@ -756,6 +767,7 @@ CREATE POLICY "lease_charge_reg_tenant_read" ON lease_charge_regularizations
     )
   );
 
+DROP POLICY IF EXISTS "lease_charge_reg_tenant_contest" ON lease_charge_regularizations;
 CREATE POLICY "lease_charge_reg_tenant_contest" ON lease_charge_regularizations
   FOR UPDATE TO authenticated
   USING (

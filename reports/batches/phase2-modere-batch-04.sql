@@ -67,14 +67,17 @@ COMMENT ON TABLE owner_payment_audit_log IS 'Audit trail PSD3 pour les opératio
 ALTER TABLE owner_payment_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Le propriétaire ne voit que ses propres logs
+DROP POLICY IF EXISTS "opal_select_own" ON owner_payment_audit_log;
 CREATE POLICY "opal_select_own" ON owner_payment_audit_log
   FOR SELECT USING (owner_id = public.user_profile_id());
 
 -- Le propriétaire peut insérer des logs pour lui-même (via l'API qui utilise son session)
+DROP POLICY IF EXISTS "opal_insert_own" ON owner_payment_audit_log;
 CREATE POLICY "opal_insert_own" ON owner_payment_audit_log
   FOR INSERT WITH CHECK (owner_id = public.user_profile_id());
 
 -- L'admin voit et gère tout (lecture seule en pratique, pas de UPDATE/DELETE prévus)
+DROP POLICY IF EXISTS "opal_admin_all" ON owner_payment_audit_log;
 CREATE POLICY "opal_admin_all" ON owner_payment_audit_log
   FOR ALL USING (public.user_role() = 'admin');
 

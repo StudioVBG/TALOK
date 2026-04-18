@@ -53,6 +53,7 @@ CREATE INDEX idx_exercises_status ON accounting_exercises(entity_id, status);
 
 ALTER TABLE accounting_exercises ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "exercises_entity_access" ON accounting_exercises;
 CREATE POLICY "exercises_entity_access" ON accounting_exercises
   FOR ALL TO authenticated
   USING (
@@ -93,6 +94,7 @@ CREATE INDEX idx_coa_class ON chart_of_accounts(entity_id, account_class);
 
 ALTER TABLE chart_of_accounts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "coa_entity_access" ON chart_of_accounts;
 CREATE POLICY "coa_entity_access" ON chart_of_accounts
   FOR ALL TO authenticated
   USING (
@@ -123,6 +125,7 @@ CREATE TABLE IF NOT EXISTS accounting_journals (
 
 ALTER TABLE accounting_journals ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "journals_entity_access" ON accounting_journals;
 CREATE POLICY "journals_entity_access" ON accounting_journals
   FOR ALL TO authenticated
   USING (
@@ -166,6 +169,7 @@ CREATE INDEX idx_entries_date ON accounting_entries(entity_id, entry_date);
 
 ALTER TABLE accounting_entries ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "entries_entity_access" ON accounting_entries;
 CREATE POLICY "entries_entity_access" ON accounting_entries
   FOR ALL TO authenticated
   USING (
@@ -204,6 +208,7 @@ CREATE INDEX idx_entry_lines_lettrage ON accounting_entry_lines(lettrage) WHERE 
 
 ALTER TABLE accounting_entry_lines ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "entry_lines_via_entry" ON accounting_entry_lines;
 CREATE POLICY "entry_lines_via_entry" ON accounting_entry_lines
   FOR ALL TO authenticated
   USING (
@@ -250,6 +255,7 @@ CREATE INDEX idx_bank_conn_entity ON bank_connections(entity_id);
 
 ALTER TABLE bank_connections ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "bank_conn_entity_access" ON bank_connections;
 CREATE POLICY "bank_conn_entity_access" ON bank_connections
   FOR ALL TO authenticated
   USING (
@@ -297,6 +303,7 @@ CREATE INDEX idx_bank_tx_matched ON bank_transactions(matched_entry_id) WHERE ma
 
 ALTER TABLE bank_transactions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "bank_tx_via_connection" ON bank_transactions;
 CREATE POLICY "bank_tx_via_connection" ON bank_transactions
   FOR ALL TO authenticated
   USING (
@@ -344,6 +351,7 @@ CREATE INDEX idx_doc_analyses_status ON document_analyses(processing_status);
 
 ALTER TABLE document_analyses ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "doc_analyses_entity_access" ON document_analyses;
 CREATE POLICY "doc_analyses_entity_access" ON document_analyses
   FOR ALL TO authenticated
   USING (
@@ -382,6 +390,7 @@ CREATE INDEX idx_amort_sched_entity ON amortization_schedules(entity_id);
 
 ALTER TABLE amortization_schedules ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "amort_sched_entity_access" ON amortization_schedules;
 CREATE POLICY "amort_sched_entity_access" ON amortization_schedules
   FOR ALL TO authenticated
   USING (
@@ -412,6 +421,7 @@ CREATE TABLE IF NOT EXISTS amortization_lines (
 
 ALTER TABLE amortization_lines ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "amort_lines_via_schedule" ON amortization_lines;
 CREATE POLICY "amort_lines_via_schedule" ON amortization_lines
   FOR ALL TO authenticated
   USING (
@@ -454,6 +464,7 @@ CREATE INDEX idx_deficit_entity ON deficit_tracking(entity_id);
 
 ALTER TABLE deficit_tracking ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "deficit_entity_access" ON deficit_tracking;
 CREATE POLICY "deficit_entity_access" ON deficit_tracking
   FOR ALL TO authenticated
   USING (
@@ -490,6 +501,7 @@ CREATE TABLE IF NOT EXISTS charge_regularizations (
 
 ALTER TABLE charge_regularizations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "charge_reg_entity_access" ON charge_regularizations;
 CREATE POLICY "charge_reg_entity_access" ON charge_regularizations
   FOR ALL TO authenticated
   USING (
@@ -524,6 +536,7 @@ CREATE INDEX idx_ec_access_entity ON ec_access(entity_id);
 
 ALTER TABLE ec_access ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "ec_access_owner" ON ec_access;
 CREATE POLICY "ec_access_owner" ON ec_access
   FOR ALL TO authenticated
   USING (
@@ -555,6 +568,7 @@ CREATE TABLE IF NOT EXISTS ec_annotations (
 
 ALTER TABLE ec_annotations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "ec_annotations_access" ON ec_annotations;
 CREATE POLICY "ec_annotations_access" ON ec_annotations
   FOR ALL TO authenticated
   USING (
@@ -585,6 +599,7 @@ CREATE TABLE IF NOT EXISTS copro_budgets (
 
 ALTER TABLE copro_budgets ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "copro_budgets_entity_access" ON copro_budgets;
 CREATE POLICY "copro_budgets_entity_access" ON copro_budgets
   FOR ALL TO authenticated
   USING (
@@ -620,6 +635,7 @@ CREATE TABLE IF NOT EXISTS copro_fund_calls (
 
 ALTER TABLE copro_fund_calls ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "copro_fund_calls_entity_access" ON copro_fund_calls;
 CREATE POLICY "copro_fund_calls_entity_access" ON copro_fund_calls
   FOR ALL TO authenticated
   USING (
@@ -649,6 +665,7 @@ CREATE TABLE IF NOT EXISTS mandant_accounts (
 
 ALTER TABLE mandant_accounts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "mandant_accounts_entity_access" ON mandant_accounts;
 CREATE POLICY "mandant_accounts_entity_access" ON mandant_accounts
   FOR ALL TO authenticated
   USING (
@@ -683,6 +700,7 @@ CREATE TABLE IF NOT EXISTS crg_reports (
 
 ALTER TABLE crg_reports ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "crg_reports_entity_access" ON crg_reports;
 CREATE POLICY "crg_reports_entity_access" ON crg_reports
   FOR ALL TO authenticated
   USING (
@@ -718,6 +736,7 @@ CREATE INDEX idx_audit_date ON accounting_audit_log(created_at);
 
 ALTER TABLE accounting_audit_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "audit_log_entity_access" ON accounting_audit_log;
 CREATE POLICY "audit_log_entity_access" ON accounting_audit_log
   FOR SELECT TO authenticated
   USING (
@@ -727,6 +746,7 @@ CREATE POLICY "audit_log_entity_access" ON accounting_audit_log
   );
 
 -- Audit log is insert-only for the system, read-only for users
+DROP POLICY IF EXISTS "audit_log_system_insert" ON accounting_audit_log;
 CREATE POLICY "audit_log_system_insert" ON accounting_audit_log
   FOR INSERT TO authenticated
   WITH CHECK (

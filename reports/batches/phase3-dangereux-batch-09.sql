@@ -86,6 +86,7 @@ CREATE INDEX IF NOT EXISTS idx_rent_payments_created_at ON rent_payments(created
 ALTER TABLE rent_payments ENABLE ROW LEVEL SECURITY;
 
 -- Owner can view rent payments for their properties
+DROP POLICY IF EXISTS "Owner can view rent_payments" ON rent_payments;
 CREATE POLICY "Owner can view rent_payments" ON rent_payments
   FOR SELECT USING (
     EXISTS (
@@ -97,6 +98,7 @@ CREATE POLICY "Owner can view rent_payments" ON rent_payments
   );
 
 -- Tenant can view their own payments
+DROP POLICY IF EXISTS "Tenant can view own rent_payments" ON rent_payments;
 CREATE POLICY "Tenant can view own rent_payments" ON rent_payments
   FOR SELECT USING (
     EXISTS (
@@ -107,6 +109,7 @@ CREATE POLICY "Tenant can view own rent_payments" ON rent_payments
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS "Admin can manage rent_payments" ON rent_payments;
 CREATE POLICY "Admin can manage rent_payments" ON rent_payments
   FOR ALL USING (
     EXISTS (
@@ -163,6 +166,7 @@ CREATE OR REPLACE TRIGGER set_updated_at_security_deposits
 ALTER TABLE security_deposits ENABLE ROW LEVEL SECURITY;
 
 -- Owner can manage deposits for their properties
+DROP POLICY IF EXISTS "Owner can manage security_deposits" ON security_deposits;
 CREATE POLICY "Owner can manage security_deposits" ON security_deposits
   FOR ALL USING (
     EXISTS (
@@ -174,12 +178,14 @@ CREATE POLICY "Owner can manage security_deposits" ON security_deposits
   );
 
 -- Tenant can view their own deposits
+DROP POLICY IF EXISTS "Tenant can view own security_deposits" ON security_deposits;
 CREATE POLICY "Tenant can view own security_deposits" ON security_deposits
   FOR SELECT USING (
     tenant_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS "Admin can manage all security_deposits" ON security_deposits;
 CREATE POLICY "Admin can manage all security_deposits" ON security_deposits
   FOR ALL USING (
     EXISTS (
@@ -443,11 +449,13 @@ DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'rgpd_consent_records') THEN
     DROP POLICY IF EXISTS "consent_records_select_own" ON rgpd_consent_records;
     DROP POLICY IF EXISTS "consent_records_insert_own" ON rgpd_consent_records;
+    DROP POLICY IF EXISTS "consent_records_select_own" ON rgpd_consent_records;
     CREATE POLICY "consent_records_select_own" ON rgpd_consent_records
       FOR SELECT TO authenticated
       USING (
         profile_id = public.get_my_profile_id()
       );
+    DROP POLICY IF EXISTS "consent_records_insert_own" ON rgpd_consent_records;
     CREATE POLICY "consent_records_insert_own" ON rgpd_consent_records
       FOR INSERT TO authenticated
       WITH CHECK (
@@ -464,16 +472,19 @@ DO $$ BEGIN
     DROP POLICY IF EXISTS "data_requests_select_own" ON rgpd_data_requests;
     DROP POLICY IF EXISTS "data_requests_insert_own" ON rgpd_data_requests;
     DROP POLICY IF EXISTS "data_requests_update_own" ON rgpd_data_requests;
+    DROP POLICY IF EXISTS "data_requests_select_own" ON rgpd_data_requests;
     CREATE POLICY "data_requests_select_own" ON rgpd_data_requests
       FOR SELECT TO authenticated
       USING (
         profile_id = public.get_my_profile_id()
       );
+    DROP POLICY IF EXISTS "data_requests_insert_own" ON rgpd_data_requests;
     CREATE POLICY "data_requests_insert_own" ON rgpd_data_requests
       FOR INSERT TO authenticated
       WITH CHECK (
         profile_id = public.get_my_profile_id()
       );
+    DROP POLICY IF EXISTS "data_requests_update_own" ON rgpd_data_requests;
     CREATE POLICY "data_requests_update_own" ON rgpd_data_requests
       FOR UPDATE TO authenticated
       USING (

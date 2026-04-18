@@ -132,6 +132,7 @@ ALTER TABLE IF EXISTS push_subscriptions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "push_subs_own_access" ON push_subscriptions;
 
 -- Policy : chaque utilisateur ne peut accéder qu'à ses propres subscriptions
+DROP POLICY IF EXISTS "push_subs_own_access" ON push_subscriptions;
 CREATE POLICY "push_subs_own_access" ON push_subscriptions
   FOR ALL TO authenticated
   USING (user_id = auth.uid())
@@ -271,6 +272,7 @@ CREATE INDEX IF NOT EXISTS idx_ocr_rules_match ON ocr_category_rules(match_type,
 
 ALTER TABLE ocr_category_rules ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "ocr_rules_entity_access" ON ocr_category_rules;
 CREATE POLICY "ocr_rules_entity_access" ON ocr_category_rules
   FOR ALL TO authenticated
   USING (entity_id IN (SELECT entity_id FROM entity_members WHERE user_id = auth.uid()))
@@ -316,6 +318,7 @@ CREATE TABLE IF NOT EXISTS copro_lots (
 );
 CREATE INDEX idx_copro_lots_entity ON copro_lots(copro_entity_id);
 ALTER TABLE copro_lots ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "copro_lots_entity_access" ON copro_lots;
 CREATE POLICY "copro_lots_entity_access" ON copro_lots FOR ALL TO authenticated
   USING (copro_entity_id IN (SELECT entity_id FROM entity_members WHERE user_id = auth.uid()))
   WITH CHECK (copro_entity_id IN (SELECT entity_id FROM entity_members WHERE user_id = auth.uid()));
@@ -355,6 +358,7 @@ CREATE TABLE IF NOT EXISTS copro_fund_call_lines (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ALTER TABLE copro_fund_call_lines ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "copro_fund_call_lines_access" ON copro_fund_call_lines;
 CREATE POLICY "copro_fund_call_lines_access" ON copro_fund_call_lines FOR ALL TO authenticated
   USING (call_id IN (SELECT id FROM copro_fund_calls WHERE entity_id IN (SELECT entity_id FROM entity_members WHERE user_id = auth.uid())));
 

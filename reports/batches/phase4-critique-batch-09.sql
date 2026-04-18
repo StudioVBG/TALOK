@@ -388,22 +388,26 @@ ADD COLUMN IF NOT EXISTS consent_data_processing_at TIMESTAMPTZ;
 ALTER TABLE guarantor_invitations ENABLE ROW LEVEL SECURITY;
 
 -- Le propriétaire qui a invité peut voir/modifier ses invitations
+DROP POLICY IF EXISTS "guarantor_invitations_owner_select" ON guarantor_invitations;
 CREATE POLICY "guarantor_invitations_owner_select" ON guarantor_invitations
   FOR SELECT USING (
     invited_by = (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "guarantor_invitations_owner_insert" ON guarantor_invitations;
 CREATE POLICY "guarantor_invitations_owner_insert" ON guarantor_invitations
   FOR INSERT WITH CHECK (
     invited_by = (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS "guarantor_invitations_owner_update" ON guarantor_invitations;
 CREATE POLICY "guarantor_invitations_owner_update" ON guarantor_invitations
   FOR UPDATE USING (
     invited_by = (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
 -- Le garant invité peut voir ses invitations (par email lié à son user)
+DROP POLICY IF EXISTS "guarantor_invitations_guarantor_select" ON guarantor_invitations;
 CREATE POLICY "guarantor_invitations_guarantor_select" ON guarantor_invitations
   FOR SELECT USING (
     guarantor_email = (
@@ -412,6 +416,7 @@ CREATE POLICY "guarantor_invitations_guarantor_select" ON guarantor_invitations
   );
 
 -- Admin peut tout
+DROP POLICY IF EXISTS "guarantor_invitations_admin_all" ON guarantor_invitations;
 CREATE POLICY "guarantor_invitations_admin_all" ON guarantor_invitations
   FOR ALL USING (
     EXISTS (SELECT 1 FROM profiles WHERE user_id = auth.uid() AND role = 'admin')

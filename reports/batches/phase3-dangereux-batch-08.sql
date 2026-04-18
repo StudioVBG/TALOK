@@ -96,6 +96,7 @@ DROP POLICY IF EXISTS insurance_owner_delete ON insurance_policies;
 DROP POLICY IF EXISTS insurance_owner_view_tenants ON insurance_policies;
 
 -- Users can manage their own policies
+DROP POLICY IF EXISTS insurance_self_select ON insurance_policies;
 CREATE POLICY insurance_self_select ON insurance_policies
   FOR SELECT TO authenticated
   USING (
@@ -103,21 +104,25 @@ CREATE POLICY insurance_self_select ON insurance_policies
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS insurance_self_insert ON insurance_policies;
 CREATE POLICY insurance_self_insert ON insurance_policies
   FOR INSERT TO authenticated
   WITH CHECK (
     profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid())
   );
 
+DROP POLICY IF EXISTS insurance_self_update ON insurance_policies;
 CREATE POLICY insurance_self_update ON insurance_policies
   FOR UPDATE TO authenticated
   USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
+DROP POLICY IF EXISTS insurance_self_delete ON insurance_policies;
 CREATE POLICY insurance_self_delete ON insurance_policies
   FOR DELETE TO authenticated
   USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
 -- Owners can view tenant insurance linked to their properties
+DROP POLICY IF EXISTS insurance_owner_view_tenants ON insurance_policies;
 CREATE POLICY insurance_owner_view_tenants ON insurance_policies
   FOR SELECT TO authenticated
   USING (
@@ -131,6 +136,7 @@ CREATE POLICY insurance_owner_view_tenants ON insurance_policies
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS insurance_admin_all ON insurance_policies;
 CREATE POLICY insurance_admin_all ON insurance_policies
   FOR ALL TO authenticated
   USING (public.user_role() = 'admin')
@@ -235,6 +241,7 @@ CREATE TABLE IF NOT EXISTS seasonal_listings (
 
 ALTER TABLE seasonal_listings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "owners_manage_own_listings" ON seasonal_listings;
 CREATE POLICY "owners_manage_own_listings" ON seasonal_listings
   FOR ALL USING (owner_id IN (
     SELECT id FROM profiles WHERE user_id = auth.uid()
@@ -263,6 +270,7 @@ CREATE TABLE IF NOT EXISTS seasonal_rates (
 
 ALTER TABLE seasonal_rates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "owners_manage_rates" ON seasonal_rates;
 CREATE POLICY "owners_manage_rates" ON seasonal_rates
   FOR ALL USING (listing_id IN (
     SELECT id FROM seasonal_listings WHERE owner_id IN (
@@ -316,6 +324,7 @@ CREATE TABLE IF NOT EXISTS reservations (
 
 ALTER TABLE reservations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "owners_manage_reservations" ON reservations;
 CREATE POLICY "owners_manage_reservations" ON reservations
   FOR ALL USING (listing_id IN (
     SELECT id FROM seasonal_listings WHERE owner_id IN (
@@ -345,6 +354,7 @@ CREATE TABLE IF NOT EXISTS seasonal_blocked_dates (
 
 ALTER TABLE seasonal_blocked_dates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "owners_manage_blocked" ON seasonal_blocked_dates;
 CREATE POLICY "owners_manage_blocked" ON seasonal_blocked_dates
   FOR ALL USING (listing_id IN (
     SELECT id FROM seasonal_listings WHERE owner_id IN (
@@ -450,6 +460,7 @@ CREATE OR REPLACE TRIGGER set_updated_at_security_deposits
 ALTER TABLE security_deposits ENABLE ROW LEVEL SECURITY;
 
 -- Politique: Le propriétaire peut gérer les dépôts de ses baux
+DROP POLICY IF EXISTS "Owner manages security_deposits" ON security_deposits;
 CREATE POLICY "Owner manages security_deposits" ON security_deposits
   FOR ALL
   USING (
@@ -462,6 +473,7 @@ CREATE POLICY "Owner manages security_deposits" ON security_deposits
   );
 
 -- Politique: Le locataire peut voir son dépôt
+DROP POLICY IF EXISTS "Tenant views own security_deposit" ON security_deposits;
 CREATE POLICY "Tenant views own security_deposit" ON security_deposits
   FOR SELECT
   USING (
@@ -469,6 +481,7 @@ CREATE POLICY "Tenant views own security_deposit" ON security_deposits
   );
 
 -- Politique: Admin peut tout gérer
+DROP POLICY IF EXISTS "Admin manages all security_deposits" ON security_deposits;
 CREATE POLICY "Admin manages all security_deposits" ON security_deposits
   FOR ALL
   USING (

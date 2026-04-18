@@ -163,6 +163,7 @@ CREATE INDEX IF NOT EXISTS idx_document_links_expires_at ON document_links(expir
 -- RLS
 ALTER TABLE document_links ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own document links" ON document_links;
 CREATE POLICY "Users can view own document links" ON document_links
   FOR SELECT TO authenticated
   USING (
@@ -175,10 +176,12 @@ CREATE POLICY "Users can view own document links" ON document_links
     )
   );
 
+DROP POLICY IF EXISTS "Users can create document links" ON document_links;
 CREATE POLICY "Users can create document links" ON document_links
   FOR INSERT TO authenticated
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Service role full access document_links" ON document_links;
 CREATE POLICY "Service role full access document_links" ON document_links
   FOR ALL TO service_role
   USING (true) WITH CHECK (true);
@@ -272,7 +275,9 @@ CREATE TABLE IF NOT EXISTS site_config (
 -- RLS : lecture publique, écriture admin uniquement
 ALTER TABLE site_config ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Public read" ON site_config;
 CREATE POLICY "Public read" ON site_config FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admin write" ON site_config;
 CREATE POLICY "Admin write" ON site_config FOR ALL
   USING (
     EXISTS (

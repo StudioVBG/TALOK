@@ -705,6 +705,7 @@ DROP POLICY IF EXISTS "notifications_insert_system" ON notifications;
 -- Le service_role bypass RLS par défaut, donc cette policy est pour les
 -- appels authentifiés qui insèrent des notifications pour eux-mêmes.
 -- Les Edge Functions (service_role) ne sont pas affectées par cette restriction.
+DROP POLICY IF EXISTS "notifications_insert_own_or_service" ON notifications;
 CREATE POLICY "notifications_insert_own_or_service" ON notifications
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -727,6 +728,7 @@ BEGIN
 
     -- Restreindre aux logs créés par l'utilisateur authentifié
     EXECUTE '
+      DROP POLICY IF EXISTS "audit_log_insert_own" ON document_ged_audit_log;
       CREATE POLICY "audit_log_insert_own" ON document_ged_audit_log
         FOR INSERT TO authenticated
         WITH CHECK (
@@ -754,6 +756,7 @@ BEGIN
 
     -- professional_orders is a read-only reference table, keep open read
     EXECUTE '
+      DROP POLICY IF EXISTS "professional_orders_select_scoped" ON professional_orders;
       CREATE POLICY "professional_orders_select_scoped" ON professional_orders
         FOR SELECT TO authenticated
         USING (TRUE)

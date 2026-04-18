@@ -1857,6 +1857,7 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 -- Politique principale : chaque utilisateur peut voir/modifier son propre profil
 -- Utilise auth.uid() directement, aucune sous-requête vers profiles
+DROP POLICY IF EXISTS "profiles_own_access" ON profiles;
 CREATE POLICY "profiles_own_access" ON profiles
 FOR ALL TO authenticated
 USING (user_id = auth.uid())
@@ -1864,12 +1865,14 @@ WITH CHECK (user_id = auth.uid());
 
 -- Politique admin : les admins peuvent voir tous les profils
 -- is_admin() est SECURITY DEFINER donc bypasse les RLS
+DROP POLICY IF EXISTS "profiles_admin_read" ON profiles;
 CREATE POLICY "profiles_admin_read" ON profiles
 FOR SELECT TO authenticated
 USING (public.is_admin());
 
 -- Politique propriétaire : peut voir les profils de ses locataires
 -- get_my_profile_id() est SECURITY DEFINER donc bypasse les RLS
+DROP POLICY IF EXISTS "profiles_owner_read_tenants" ON profiles;
 CREATE POLICY "profiles_owner_read_tenants" ON profiles
 FOR SELECT TO authenticated
 USING (

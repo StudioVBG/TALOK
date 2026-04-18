@@ -367,6 +367,7 @@ ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 -- Supporte à la fois :
 --   - Dépenses rattachées à une entité (legal_entity_id IS NOT NULL)
 --   - Dépenses en direct (owner_profile_id = profile courant)
+DROP POLICY IF EXISTS "Owners can view own expenses" ON expenses;
 CREATE POLICY "Owners can view own expenses" ON expenses
   FOR SELECT TO authenticated
   USING (
@@ -378,6 +379,7 @@ CREATE POLICY "Owners can view own expenses" ON expenses
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Owners can insert own expenses" ON expenses;
 CREATE POLICY "Owners can insert own expenses" ON expenses
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -388,6 +390,7 @@ CREATE POLICY "Owners can insert own expenses" ON expenses
     )
   );
 
+DROP POLICY IF EXISTS "Owners can update own expenses" ON expenses;
 CREATE POLICY "Owners can update own expenses" ON expenses
   FOR UPDATE TO authenticated
   USING (
@@ -405,6 +408,7 @@ CREATE POLICY "Owners can update own expenses" ON expenses
     )
   );
 
+DROP POLICY IF EXISTS "Owners can delete own expenses" ON expenses;
 CREATE POLICY "Owners can delete own expenses" ON expenses
   FOR DELETE TO authenticated
   USING (
@@ -415,6 +419,7 @@ CREATE POLICY "Owners can delete own expenses" ON expenses
     )
   );
 
+DROP POLICY IF EXISTS "Admins full access on expenses" ON expenses;
 CREATE POLICY "Admins full access on expenses" ON expenses
   FOR ALL TO authenticated
   USING (public.user_role() = 'admin')
@@ -483,15 +488,19 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_api_keys_prefix ON api_keys(key_prefix);
 CREATE INDEX IF NOT EXISTS idx_api_keys_profile ON api_keys(profile_id);
 
 -- RLS: Owner can only see/manage their own API keys
+DROP POLICY IF EXISTS "api_keys_select_own" ON api_keys;
 CREATE POLICY "api_keys_select_own" ON api_keys
   FOR SELECT USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "api_keys_insert_own" ON api_keys;
 CREATE POLICY "api_keys_insert_own" ON api_keys
   FOR INSERT WITH CHECK (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "api_keys_update_own" ON api_keys;
 CREATE POLICY "api_keys_update_own" ON api_keys
   FOR UPDATE USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "api_keys_delete_own" ON api_keys;
 CREATE POLICY "api_keys_delete_own" ON api_keys
   FOR DELETE USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
@@ -519,6 +528,7 @@ CREATE INDEX IF NOT EXISTS idx_api_logs_key ON api_logs(api_key_id, created_at D
 CREATE INDEX IF NOT EXISTS idx_api_logs_created ON api_logs(created_at DESC);
 
 -- RLS: Owner can see logs for their own API keys
+DROP POLICY IF EXISTS "api_logs_select_own" ON api_logs;
 CREATE POLICY "api_logs_select_own" ON api_logs
   FOR SELECT USING (
     api_key_id IN (
@@ -554,15 +564,19 @@ CREATE INDEX IF NOT EXISTS idx_api_webhooks_profile ON api_webhooks(profile_id);
 CREATE INDEX IF NOT EXISTS idx_api_webhooks_events ON api_webhooks USING GIN(events);
 
 -- RLS: Owner can only see/manage their own webhooks
+DROP POLICY IF EXISTS "api_webhooks_select_own" ON api_webhooks;
 CREATE POLICY "api_webhooks_select_own" ON api_webhooks
   FOR SELECT USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "api_webhooks_insert_own" ON api_webhooks;
 CREATE POLICY "api_webhooks_insert_own" ON api_webhooks
   FOR INSERT WITH CHECK (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "api_webhooks_update_own" ON api_webhooks;
 CREATE POLICY "api_webhooks_update_own" ON api_webhooks
   FOR UPDATE USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
 
+DROP POLICY IF EXISTS "api_webhooks_delete_own" ON api_webhooks;
 CREATE POLICY "api_webhooks_delete_own" ON api_webhooks
   FOR DELETE USING (profile_id = (SELECT id FROM profiles WHERE user_id = auth.uid()));
 

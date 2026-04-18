@@ -230,6 +230,7 @@ DROP POLICY IF EXISTS "tenant_insert_own_documents" ON tenant_documents;
 -- ============================================
 
 -- Le locataire peut voir ses propres documents
+DROP POLICY IF EXISTS "tenant_view_own_documents" ON tenant_documents;
 CREATE POLICY "tenant_view_own_documents" ON tenant_documents
   FOR SELECT USING (
     tenant_profile_id IN (
@@ -238,6 +239,7 @@ CREATE POLICY "tenant_view_own_documents" ON tenant_documents
   );
 
 -- Le locataire peut uploader ses documents
+DROP POLICY IF EXISTS "tenant_insert_own_documents" ON tenant_documents;
 CREATE POLICY "tenant_insert_own_documents" ON tenant_documents
   FOR INSERT WITH CHECK (
     tenant_profile_id IN (

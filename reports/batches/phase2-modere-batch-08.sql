@@ -106,9 +106,11 @@ CREATE TABLE IF NOT EXISTS site_content (
 -- RLS
 ALTER TABLE site_content ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "site_content_public_read" ON site_content;
 CREATE POLICY "site_content_public_read" ON site_content
   FOR SELECT USING (is_published = true);
 
+DROP POLICY IF EXISTS "site_content_admin_all" ON site_content;
 CREATE POLICY "site_content_admin_all" ON site_content
   FOR ALL TO authenticated
   USING (public.user_role() = 'admin');

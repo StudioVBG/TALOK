@@ -442,11 +442,13 @@ CREATE INDEX idx_entity_members_profile ON entity_members(profile_id) WHERE prof
 ALTER TABLE entity_members ENABLE ROW LEVEL SECURITY;
 
 -- Policy: un utilisateur voit ses propres memberships
+DROP POLICY IF EXISTS "entity_members_own_access" ON entity_members;
 CREATE POLICY "entity_members_own_access" ON entity_members
   FOR SELECT TO authenticated
   USING (user_id = auth.uid());
 
 -- Policy: un admin d'une entite peut gerer ses membres
+DROP POLICY IF EXISTS "entity_members_admin_manage" ON entity_members;
 CREATE POLICY "entity_members_admin_manage" ON entity_members
   FOR ALL TO authenticated
   USING (

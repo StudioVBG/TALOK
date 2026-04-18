@@ -74,6 +74,7 @@ ALTER TABLE colocation_rooms ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS idx_coloc_rooms_property ON colocation_rooms(property_id);
 
 -- RLS: owner can manage rooms, tenant can read rooms of their property
+DROP POLICY IF EXISTS coloc_rooms_owner_all ON colocation_rooms;
 CREATE POLICY coloc_rooms_owner_all ON colocation_rooms
   FOR ALL USING (
     EXISTS (
@@ -84,6 +85,7 @@ CREATE POLICY coloc_rooms_owner_all ON colocation_rooms
     )
   );
 
+DROP POLICY IF EXISTS coloc_rooms_tenant_select ON colocation_rooms;
 CREATE POLICY coloc_rooms_tenant_select ON colocation_rooms
   FOR SELECT USING (
     EXISTS (
@@ -143,6 +145,7 @@ CREATE INDEX IF NOT EXISTS idx_coloc_members_tenant ON colocation_members(tenant
 CREATE INDEX IF NOT EXISTS idx_coloc_members_status ON colocation_members(status) WHERE status = 'active';
 
 -- RLS: owner can manage members
+DROP POLICY IF EXISTS coloc_members_owner_all ON colocation_members;
 CREATE POLICY coloc_members_owner_all ON colocation_members
   FOR ALL USING (
     EXISTS (
@@ -154,6 +157,7 @@ CREATE POLICY coloc_members_owner_all ON colocation_members
   );
 
 -- RLS: tenant can read members of their colocation
+DROP POLICY IF EXISTS coloc_members_tenant_select ON colocation_members;
 CREATE POLICY coloc_members_tenant_select ON colocation_members
   FOR SELECT USING (
     EXISTS (
@@ -185,6 +189,7 @@ CREATE TABLE IF NOT EXISTS colocation_rules (
 
 ALTER TABLE colocation_rules ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS coloc_rules_owner_all ON colocation_rules;
 CREATE POLICY coloc_rules_owner_all ON colocation_rules
   FOR ALL USING (
     EXISTS (
@@ -195,6 +200,7 @@ CREATE POLICY coloc_rules_owner_all ON colocation_rules
     )
   );
 
+DROP POLICY IF EXISTS coloc_rules_tenant_select ON colocation_rules;
 CREATE POLICY coloc_rules_tenant_select ON colocation_rules
   FOR SELECT USING (
     EXISTS (
@@ -230,6 +236,7 @@ CREATE TABLE IF NOT EXISTS colocation_tasks (
 
 ALTER TABLE colocation_tasks ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS coloc_tasks_owner_all ON colocation_tasks;
 CREATE POLICY coloc_tasks_owner_all ON colocation_tasks
   FOR ALL USING (
     EXISTS (
@@ -241,6 +248,7 @@ CREATE POLICY coloc_tasks_owner_all ON colocation_tasks
   );
 
 -- Tenants can read and update tasks (mark as completed)
+DROP POLICY IF EXISTS coloc_tasks_tenant_select ON colocation_tasks;
 CREATE POLICY coloc_tasks_tenant_select ON colocation_tasks
   FOR SELECT USING (
     EXISTS (
@@ -253,6 +261,7 @@ CREATE POLICY coloc_tasks_tenant_select ON colocation_tasks
     )
   );
 
+DROP POLICY IF EXISTS coloc_tasks_tenant_update ON colocation_tasks;
 CREATE POLICY coloc_tasks_tenant_update ON colocation_tasks
   FOR UPDATE USING (
     EXISTS (
@@ -289,6 +298,7 @@ CREATE TABLE IF NOT EXISTS colocation_expenses (
 
 ALTER TABLE colocation_expenses ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS coloc_expenses_owner_all ON colocation_expenses;
 CREATE POLICY coloc_expenses_owner_all ON colocation_expenses
   FOR ALL USING (
     EXISTS (
@@ -300,6 +310,7 @@ CREATE POLICY coloc_expenses_owner_all ON colocation_expenses
   );
 
 -- Tenants can read and create expenses
+DROP POLICY IF EXISTS coloc_expenses_tenant_select ON colocation_expenses;
 CREATE POLICY coloc_expenses_tenant_select ON colocation_expenses
   FOR SELECT USING (
     EXISTS (
@@ -312,6 +323,7 @@ CREATE POLICY coloc_expenses_tenant_select ON colocation_expenses
     )
   );
 
+DROP POLICY IF EXISTS coloc_expenses_tenant_insert ON colocation_expenses;
 CREATE POLICY coloc_expenses_tenant_insert ON colocation_expenses
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -519,15 +531,19 @@ CREATE INDEX IF NOT EXISTS idx_edl_rooms_edl ON edl_rooms(edl_id);
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'edl_rooms' AND policyname = 'edl_rooms_select_policy') THEN
+        DROP POLICY IF EXISTS edl_rooms_select_policy ON edl_rooms;
         CREATE POLICY edl_rooms_select_policy ON edl_rooms FOR SELECT USING (true);
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'edl_rooms' AND policyname = 'edl_rooms_insert_policy') THEN
+        DROP POLICY IF EXISTS edl_rooms_insert_policy ON edl_rooms;
         CREATE POLICY edl_rooms_insert_policy ON edl_rooms FOR INSERT WITH CHECK (true);
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'edl_rooms' AND policyname = 'edl_rooms_update_policy') THEN
+        DROP POLICY IF EXISTS edl_rooms_update_policy ON edl_rooms;
         CREATE POLICY edl_rooms_update_policy ON edl_rooms FOR UPDATE USING (true);
     END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'edl_rooms' AND policyname = 'edl_rooms_delete_policy') THEN
+        DROP POLICY IF EXISTS edl_rooms_delete_policy ON edl_rooms;
         CREATE POLICY edl_rooms_delete_policy ON edl_rooms FOR DELETE USING (true);
     END IF;
 END $$;
@@ -1251,6 +1267,7 @@ CREATE INDEX IF NOT EXISTS idx_meter_alerts_unacked ON meter_alerts(meter_id) WH
 -- ============================================================
 
 -- property_meters: propriétaire du bien peut tout faire
+DROP POLICY IF EXISTS "property_meters_owner_select" ON property_meters;
 CREATE POLICY "property_meters_owner_select" ON property_meters
   FOR SELECT USING (
     EXISTS (
@@ -1258,6 +1275,7 @@ CREATE POLICY "property_meters_owner_select" ON property_meters
     )
   );
 
+DROP POLICY IF EXISTS "property_meters_owner_insert" ON property_meters;
 CREATE POLICY "property_meters_owner_insert" ON property_meters
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -1265,6 +1283,7 @@ CREATE POLICY "property_meters_owner_insert" ON property_meters
     )
   );
 
+DROP POLICY IF EXISTS "property_meters_owner_update" ON property_meters;
 CREATE POLICY "property_meters_owner_update" ON property_meters
   FOR UPDATE USING (
     EXISTS (
@@ -1272,6 +1291,7 @@ CREATE POLICY "property_meters_owner_update" ON property_meters
     )
   );
 
+DROP POLICY IF EXISTS "property_meters_owner_delete" ON property_meters;
 CREATE POLICY "property_meters_owner_delete" ON property_meters
   FOR DELETE USING (
     EXISTS (
@@ -1280,6 +1300,7 @@ CREATE POLICY "property_meters_owner_delete" ON property_meters
   );
 
 -- property_meters: locataire avec bail actif peut lire
+DROP POLICY IF EXISTS "property_meters_tenant_select" ON property_meters;
 CREATE POLICY "property_meters_tenant_select" ON property_meters
   FOR SELECT USING (
     EXISTS (
@@ -1292,6 +1313,7 @@ CREATE POLICY "property_meters_tenant_select" ON property_meters
   );
 
 -- property_meter_readings: propriétaire
+DROP POLICY IF EXISTS "pm_readings_owner_select" ON property_meter_readings;
 CREATE POLICY "pm_readings_owner_select" ON property_meter_readings
   FOR SELECT USING (
     EXISTS (
@@ -1299,6 +1321,7 @@ CREATE POLICY "pm_readings_owner_select" ON property_meter_readings
     )
   );
 
+DROP POLICY IF EXISTS "pm_readings_owner_insert" ON property_meter_readings;
 CREATE POLICY "pm_readings_owner_insert" ON property_meter_readings
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -1307,6 +1330,7 @@ CREATE POLICY "pm_readings_owner_insert" ON property_meter_readings
   );
 
 -- property_meter_readings: locataire avec bail actif
+DROP POLICY IF EXISTS "pm_readings_tenant_select" ON property_meter_readings;
 CREATE POLICY "pm_readings_tenant_select" ON property_meter_readings
   FOR SELECT USING (
     EXISTS (
@@ -1318,6 +1342,7 @@ CREATE POLICY "pm_readings_tenant_select" ON property_meter_readings
     )
   );
 
+DROP POLICY IF EXISTS "pm_readings_tenant_insert" ON property_meter_readings;
 CREATE POLICY "pm_readings_tenant_insert" ON property_meter_readings
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -1330,6 +1355,7 @@ CREATE POLICY "pm_readings_tenant_insert" ON property_meter_readings
   );
 
 -- meter_alerts: propriétaire
+DROP POLICY IF EXISTS "meter_alerts_owner_select" ON meter_alerts;
 CREATE POLICY "meter_alerts_owner_select" ON meter_alerts
   FOR SELECT USING (
     EXISTS (
@@ -1337,6 +1363,7 @@ CREATE POLICY "meter_alerts_owner_select" ON meter_alerts
     )
   );
 
+DROP POLICY IF EXISTS "meter_alerts_owner_update" ON meter_alerts;
 CREATE POLICY "meter_alerts_owner_update" ON meter_alerts
   FOR UPDATE USING (
     EXISTS (
@@ -1345,6 +1372,7 @@ CREATE POLICY "meter_alerts_owner_update" ON meter_alerts
   );
 
 -- meter_alerts: locataire
+DROP POLICY IF EXISTS "meter_alerts_tenant_select" ON meter_alerts;
 CREATE POLICY "meter_alerts_tenant_select" ON meter_alerts
   FOR SELECT USING (
     EXISTS (
@@ -1374,16 +1402,19 @@ CREATE TRIGGER trg_property_meters_updated_at
 -- ============================================================
 -- Service role policies (for cron sync & OAuth callbacks)
 -- ============================================================
+DROP POLICY IF EXISTS "property_meters_service_all" ON property_meters;
 CREATE POLICY "property_meters_service_all" ON property_meters
   FOR ALL USING (
     current_setting('role') = 'service_role'
   );
 
+DROP POLICY IF EXISTS "pm_readings_service_all" ON property_meter_readings;
 CREATE POLICY "pm_readings_service_all" ON property_meter_readings
   FOR ALL USING (
     current_setting('role') = 'service_role'
   );
 
+DROP POLICY IF EXISTS "meter_alerts_service_all" ON meter_alerts;
 CREATE POLICY "meter_alerts_service_all" ON meter_alerts
   FOR ALL USING (
     current_setting('role') = 'service_role'
@@ -1459,6 +1490,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_wl_agency_profile
   ON whitelabel_configs(agency_profile_id);
 
 -- RLS: agency sees own config only
+DROP POLICY IF EXISTS whitelabel_configs_select ON whitelabel_configs;
 CREATE POLICY whitelabel_configs_select ON whitelabel_configs
   FOR SELECT USING (
     agency_profile_id IN (
@@ -1466,6 +1498,7 @@ CREATE POLICY whitelabel_configs_select ON whitelabel_configs
     )
   );
 
+DROP POLICY IF EXISTS whitelabel_configs_insert ON whitelabel_configs;
 CREATE POLICY whitelabel_configs_insert ON whitelabel_configs
   FOR INSERT WITH CHECK (
     agency_profile_id IN (
@@ -1473,6 +1506,7 @@ CREATE POLICY whitelabel_configs_insert ON whitelabel_configs
     )
   );
 
+DROP POLICY IF EXISTS whitelabel_configs_update ON whitelabel_configs;
 CREATE POLICY whitelabel_configs_update ON whitelabel_configs
   FOR UPDATE USING (
     agency_profile_id IN (
@@ -1481,6 +1515,7 @@ CREATE POLICY whitelabel_configs_update ON whitelabel_configs
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS whitelabel_configs_admin ON whitelabel_configs;
 CREATE POLICY whitelabel_configs_admin ON whitelabel_configs
   FOR ALL USING (
     EXISTS (
@@ -1518,6 +1553,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_mandates_number
   ON agency_mandates(agency_profile_id, mandate_number);
 
 -- RLS: agency sees own mandates
+DROP POLICY IF EXISTS agency_mandates_agency_select ON agency_mandates;
 CREATE POLICY agency_mandates_agency_select ON agency_mandates
   FOR SELECT USING (
     agency_profile_id IN (
@@ -1526,6 +1562,7 @@ CREATE POLICY agency_mandates_agency_select ON agency_mandates
   );
 
 -- RLS: owner sees mandates where they are mandant
+DROP POLICY IF EXISTS agency_mandates_owner_select ON agency_mandates;
 CREATE POLICY agency_mandates_owner_select ON agency_mandates
   FOR SELECT USING (
     owner_profile_id IN (
@@ -1533,6 +1570,7 @@ CREATE POLICY agency_mandates_owner_select ON agency_mandates
     )
   );
 
+DROP POLICY IF EXISTS agency_mandates_insert ON agency_mandates;
 CREATE POLICY agency_mandates_insert ON agency_mandates
   FOR INSERT WITH CHECK (
     agency_profile_id IN (
@@ -1540,6 +1578,7 @@ CREATE POLICY agency_mandates_insert ON agency_mandates
     )
   );
 
+DROP POLICY IF EXISTS agency_mandates_update ON agency_mandates;
 CREATE POLICY agency_mandates_update ON agency_mandates
   FOR UPDATE USING (
     agency_profile_id IN (
@@ -1548,6 +1587,7 @@ CREATE POLICY agency_mandates_update ON agency_mandates
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS agency_mandates_admin ON agency_mandates;
 CREATE POLICY agency_mandates_admin ON agency_mandates
   FOR ALL USING (
     EXISTS (
@@ -1581,6 +1621,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_agency_crg_mandate_period
   ON agency_crg(mandate_id, period_start, period_end);
 
 -- RLS: agency sees CRGs for own mandates
+DROP POLICY IF EXISTS agency_crg_agency_select ON agency_crg;
 CREATE POLICY agency_crg_agency_select ON agency_crg
   FOR SELECT USING (
     mandate_id IN (
@@ -1591,6 +1632,7 @@ CREATE POLICY agency_crg_agency_select ON agency_crg
   );
 
 -- RLS: owner sees CRGs for their mandates
+DROP POLICY IF EXISTS agency_crg_owner_select ON agency_crg;
 CREATE POLICY agency_crg_owner_select ON agency_crg
   FOR SELECT USING (
     mandate_id IN (
@@ -1600,6 +1642,7 @@ CREATE POLICY agency_crg_owner_select ON agency_crg
     )
   );
 
+DROP POLICY IF EXISTS agency_crg_insert ON agency_crg;
 CREATE POLICY agency_crg_insert ON agency_crg
   FOR INSERT WITH CHECK (
     mandate_id IN (
@@ -1609,6 +1652,7 @@ CREATE POLICY agency_crg_insert ON agency_crg
     )
   );
 
+DROP POLICY IF EXISTS agency_crg_update ON agency_crg;
 CREATE POLICY agency_crg_update ON agency_crg
   FOR UPDATE USING (
     mandate_id IN (
@@ -1619,6 +1663,7 @@ CREATE POLICY agency_crg_update ON agency_crg
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS agency_crg_admin ON agency_crg;
 CREATE POLICY agency_crg_admin ON agency_crg
   FOR ALL USING (
     EXISTS (
@@ -1644,6 +1689,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_mandant_accounts_mandate
   ON agency_mandant_accounts(mandate_id);
 
 -- RLS: agency sees own mandant accounts
+DROP POLICY IF EXISTS mandant_accounts_agency_select ON agency_mandant_accounts;
 CREATE POLICY mandant_accounts_agency_select ON agency_mandant_accounts
   FOR SELECT USING (
     mandate_id IN (
@@ -1654,6 +1700,7 @@ CREATE POLICY mandant_accounts_agency_select ON agency_mandant_accounts
   );
 
 -- RLS: owner sees their mandant account
+DROP POLICY IF EXISTS mandant_accounts_owner_select ON agency_mandant_accounts;
 CREATE POLICY mandant_accounts_owner_select ON agency_mandant_accounts
   FOR SELECT USING (
     mandate_id IN (
@@ -1663,6 +1710,7 @@ CREATE POLICY mandant_accounts_owner_select ON agency_mandant_accounts
     )
   );
 
+DROP POLICY IF EXISTS mandant_accounts_insert ON agency_mandant_accounts;
 CREATE POLICY mandant_accounts_insert ON agency_mandant_accounts
   FOR INSERT WITH CHECK (
     mandate_id IN (
@@ -1672,6 +1720,7 @@ CREATE POLICY mandant_accounts_insert ON agency_mandant_accounts
     )
   );
 
+DROP POLICY IF EXISTS mandant_accounts_update ON agency_mandant_accounts;
 CREATE POLICY mandant_accounts_update ON agency_mandant_accounts
   FOR UPDATE USING (
     mandate_id IN (
@@ -1682,6 +1731,7 @@ CREATE POLICY mandant_accounts_update ON agency_mandant_accounts
   );
 
 -- Admin full access
+DROP POLICY IF EXISTS mandant_accounts_admin ON agency_mandant_accounts;
 CREATE POLICY mandant_accounts_admin ON agency_mandant_accounts
   FOR ALL USING (
     EXISTS (

@@ -529,30 +529,36 @@ DROP POLICY IF EXISTS "Owners can delete their building units" ON building_units
 
 -- 3. Nouvelles policies buildings (owner)
 -- ============================================
+DROP POLICY IF EXISTS "buildings_owner_select" ON buildings;
 CREATE POLICY "buildings_owner_select" ON buildings
   FOR SELECT TO authenticated
   USING (owner_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "buildings_owner_insert" ON buildings;
 CREATE POLICY "buildings_owner_insert" ON buildings
   FOR INSERT TO authenticated
   WITH CHECK (owner_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "buildings_owner_update" ON buildings;
 CREATE POLICY "buildings_owner_update" ON buildings
   FOR UPDATE TO authenticated
   USING (owner_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "buildings_owner_delete" ON buildings;
 CREATE POLICY "buildings_owner_delete" ON buildings
   FOR DELETE TO authenticated
   USING (owner_id = public.user_profile_id());
 
 -- 4. Policies buildings (admin)
 -- ============================================
+DROP POLICY IF EXISTS "buildings_admin_all" ON buildings;
 CREATE POLICY "buildings_admin_all" ON buildings
   FOR ALL TO authenticated
   USING (public.user_role() = 'admin');
 
 -- 5. Policies buildings (tenant via bail actif)
 -- ============================================
+DROP POLICY IF EXISTS "buildings_tenant_select" ON buildings;
 CREATE POLICY "buildings_tenant_select" ON buildings
   FOR SELECT TO authenticated
   USING (
@@ -569,6 +575,7 @@ CREATE POLICY "buildings_tenant_select" ON buildings
 
 -- 6. Nouvelles policies building_units (owner)
 -- ============================================
+DROP POLICY IF EXISTS "building_units_owner_select" ON building_units;
 CREATE POLICY "building_units_owner_select" ON building_units
   FOR SELECT TO authenticated
   USING (
@@ -579,6 +586,7 @@ CREATE POLICY "building_units_owner_select" ON building_units
     )
   );
 
+DROP POLICY IF EXISTS "building_units_owner_insert" ON building_units;
 CREATE POLICY "building_units_owner_insert" ON building_units
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -589,6 +597,7 @@ CREATE POLICY "building_units_owner_insert" ON building_units
     )
   );
 
+DROP POLICY IF EXISTS "building_units_owner_update" ON building_units;
 CREATE POLICY "building_units_owner_update" ON building_units
   FOR UPDATE TO authenticated
   USING (
@@ -599,6 +608,7 @@ CREATE POLICY "building_units_owner_update" ON building_units
     )
   );
 
+DROP POLICY IF EXISTS "building_units_owner_delete" ON building_units;
 CREATE POLICY "building_units_owner_delete" ON building_units
   FOR DELETE TO authenticated
   USING (
@@ -611,12 +621,14 @@ CREATE POLICY "building_units_owner_delete" ON building_units
 
 -- 7. Policies building_units (admin)
 -- ============================================
+DROP POLICY IF EXISTS "building_units_admin_all" ON building_units;
 CREATE POLICY "building_units_admin_all" ON building_units
   FOR ALL TO authenticated
   USING (public.user_role() = 'admin');
 
 -- 8. Policies building_units (tenant via bail actif)
 -- ============================================
+DROP POLICY IF EXISTS "building_units_tenant_select" ON building_units;
 CREATE POLICY "building_units_tenant_select" ON building_units
   FOR SELECT TO authenticated
   USING (

@@ -1696,12 +1696,15 @@ CREATE INDEX IF NOT EXISTS idx_user_consents_user_id ON user_consents(user_id);
 -- RLS pour user_consents
 ALTER TABLE user_consents ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "user_consents_select_own" ON user_consents;
 CREATE POLICY "user_consents_select_own" ON user_consents
   FOR SELECT USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "user_consents_insert_own" ON user_consents;
 CREATE POLICY "user_consents_insert_own" ON user_consents
   FOR INSERT WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "user_consents_update_own" ON user_consents;
 CREATE POLICY "user_consents_update_own" ON user_consents
   FOR UPDATE USING (user_id = auth.uid());
 
@@ -1830,6 +1833,7 @@ ALTER TABLE email_template_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_logs ENABLE ROW LEVEL SECURITY;
 
 -- email_templates: lecture pour les admins, écriture pour les admins
+DROP POLICY IF EXISTS "email_templates_admin_read" ON email_templates;
 CREATE POLICY "email_templates_admin_read" ON email_templates
   FOR SELECT TO authenticated
   USING (
@@ -1840,6 +1844,7 @@ CREATE POLICY "email_templates_admin_read" ON email_templates
     )
   );
 
+DROP POLICY IF EXISTS "email_templates_admin_write" ON email_templates;
 CREATE POLICY "email_templates_admin_write" ON email_templates
   FOR ALL TO authenticated
   USING (
@@ -1858,11 +1863,13 @@ CREATE POLICY "email_templates_admin_write" ON email_templates
   );
 
 -- email_templates: lecture pour le service role (envoi d'emails)
+DROP POLICY IF EXISTS "email_templates_service_read" ON email_templates;
 CREATE POLICY "email_templates_service_read" ON email_templates
   FOR SELECT TO service_role
   USING (true);
 
 -- email_template_versions: lecture pour les admins
+DROP POLICY IF EXISTS "email_template_versions_admin_read" ON email_template_versions;
 CREATE POLICY "email_template_versions_admin_read" ON email_template_versions
   FOR SELECT TO authenticated
   USING (
@@ -1874,6 +1881,7 @@ CREATE POLICY "email_template_versions_admin_read" ON email_template_versions
   );
 
 -- email_logs: lecture pour les admins
+DROP POLICY IF EXISTS "email_logs_admin_read" ON email_logs;
 CREATE POLICY "email_logs_admin_read" ON email_logs
   FOR SELECT TO authenticated
   USING (
@@ -1885,6 +1893,7 @@ CREATE POLICY "email_logs_admin_read" ON email_logs
   );
 
 -- email_logs: insertion pour service role
+DROP POLICY IF EXISTS "email_logs_service_insert" ON email_logs;
 CREATE POLICY "email_logs_service_insert" ON email_logs
   FOR INSERT TO service_role
   WITH CHECK (true);

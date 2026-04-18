@@ -104,6 +104,7 @@ CREATE TRIGGER trg_sms_messages_updated_at
 ALTER TABLE sms_messages ENABLE ROW LEVEL SECURITY;
 
 -- Admins can see all SMS
+DROP POLICY IF EXISTS sms_messages_admin_all ON sms_messages;
 CREATE POLICY sms_messages_admin_all ON sms_messages
   FOR ALL
   USING (
@@ -114,6 +115,7 @@ CREATE POLICY sms_messages_admin_all ON sms_messages
   );
 
 -- Owners can see SMS they sent (via their profile)
+DROP POLICY IF EXISTS sms_messages_owner_select ON sms_messages;
 CREATE POLICY sms_messages_owner_select ON sms_messages
   FOR SELECT
   USING (
@@ -127,6 +129,7 @@ CREATE POLICY sms_messages_owner_select ON sms_messages
 
 -- Service role inserts (API routes use service role client, bypasses RLS)
 -- No explicit INSERT policy needed for service role, but add one for completeness
+DROP POLICY IF EXISTS sms_messages_service_insert ON sms_messages;
 CREATE POLICY sms_messages_service_insert ON sms_messages
   FOR INSERT
   WITH CHECK (true);
@@ -170,11 +173,13 @@ DROP POLICY IF EXISTS "Owners can view their subscription" ON subscriptions;
 DROP POLICY IF EXISTS "Admins can view all subscriptions" ON subscriptions;
 
 -- Propriétaire voit son abonnement (utilise get_my_profile_id au lieu de sous-requête)
+DROP POLICY IF EXISTS "Owners can view their subscription" ON subscriptions;
 CREATE POLICY "Owners can view their subscription" ON subscriptions
   FOR SELECT TO authenticated
   USING (owner_id = public.get_my_profile_id());
 
 -- Admins voient tout (utilise is_admin qui est SECURITY DEFINER)
+DROP POLICY IF EXISTS "Admins can view all subscriptions" ON subscriptions;
 CREATE POLICY "Admins can view all subscriptions" ON subscriptions
   FOR ALL TO authenticated
   USING (public.is_admin());
@@ -234,6 +239,7 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- Lecture : l'utilisateur voit ses propres notifications
 -- Utilise auth.uid() directement et get_my_profile_id() pour recipient_id/profile_id
+DROP POLICY IF EXISTS "notifications_select_own" ON notifications;
 CREATE POLICY "notifications_select_own" ON notifications
   FOR SELECT TO authenticated
   USING (
@@ -243,6 +249,7 @@ CREATE POLICY "notifications_select_own" ON notifications
   );
 
 -- Mise à jour : l'utilisateur peut modifier ses propres notifications
+DROP POLICY IF EXISTS "notifications_update_own" ON notifications;
 CREATE POLICY "notifications_update_own" ON notifications
   FOR UPDATE TO authenticated
   USING (
@@ -252,6 +259,7 @@ CREATE POLICY "notifications_update_own" ON notifications
   );
 
 -- Suppression : l'utilisateur peut supprimer ses propres notifications
+DROP POLICY IF EXISTS "notifications_delete_own" ON notifications;
 CREATE POLICY "notifications_delete_own" ON notifications
   FOR DELETE TO authenticated
   USING (
@@ -261,6 +269,7 @@ CREATE POLICY "notifications_delete_own" ON notifications
   );
 
 -- Insertion : le système peut insérer des notifications
+DROP POLICY IF EXISTS "notifications_insert_system" ON notifications;
 CREATE POLICY "notifications_insert_system" ON notifications
   FOR INSERT
   WITH CHECK (true);

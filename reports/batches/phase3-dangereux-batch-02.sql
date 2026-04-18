@@ -73,18 +73,23 @@ CREATE INDEX idx_tpm_active ON tenant_payment_methods(tenant_profile_id, status)
 
 ALTER TABLE tenant_payment_methods ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "tpm_select_own" ON tenant_payment_methods;
 CREATE POLICY "tpm_select_own" ON tenant_payment_methods
   FOR SELECT USING (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "tpm_insert_own" ON tenant_payment_methods;
 CREATE POLICY "tpm_insert_own" ON tenant_payment_methods
   FOR INSERT WITH CHECK (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "tpm_update_own" ON tenant_payment_methods;
 CREATE POLICY "tpm_update_own" ON tenant_payment_methods
   FOR UPDATE USING (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "tpm_delete_own" ON tenant_payment_methods;
 CREATE POLICY "tpm_delete_own" ON tenant_payment_methods
   FOR DELETE USING (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "tpm_admin_all" ON tenant_payment_methods;
 CREATE POLICY "tpm_admin_all" ON tenant_payment_methods
   FOR ALL USING (public.user_role() = 'admin');
 
@@ -163,18 +168,23 @@ CREATE INDEX idx_sepa_mandates_next_collection ON sepa_mandates(next_collection_
 
 ALTER TABLE sepa_mandates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "sepa_select_tenant" ON sepa_mandates;
 CREATE POLICY "sepa_select_tenant" ON sepa_mandates
   FOR SELECT USING (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "sepa_select_owner" ON sepa_mandates;
 CREATE POLICY "sepa_select_owner" ON sepa_mandates
   FOR SELECT USING (owner_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "sepa_insert_tenant" ON sepa_mandates;
 CREATE POLICY "sepa_insert_tenant" ON sepa_mandates
   FOR INSERT WITH CHECK (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "sepa_update_tenant" ON sepa_mandates;
 CREATE POLICY "sepa_update_tenant" ON sepa_mandates
   FOR UPDATE USING (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "sepa_admin_all" ON sepa_mandates;
 CREATE POLICY "sepa_admin_all" ON sepa_mandates
   FOR ALL USING (public.user_role() = 'admin');
 
@@ -225,6 +235,7 @@ CREATE INDEX idx_ps_lease ON payment_schedules(lease_id);
 
 ALTER TABLE payment_schedules ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "ps_select_tenant" ON payment_schedules;
 CREATE POLICY "ps_select_tenant" ON payment_schedules
   FOR SELECT USING (
     EXISTS (
@@ -235,6 +246,7 @@ CREATE POLICY "ps_select_tenant" ON payment_schedules
     )
   );
 
+DROP POLICY IF EXISTS "ps_select_owner" ON payment_schedules;
 CREATE POLICY "ps_select_owner" ON payment_schedules
   FOR SELECT USING (
     EXISTS (
@@ -245,6 +257,7 @@ CREATE POLICY "ps_select_owner" ON payment_schedules
     )
   );
 
+DROP POLICY IF EXISTS "ps_admin_all" ON payment_schedules;
 CREATE POLICY "ps_admin_all" ON payment_schedules
   FOR ALL USING (public.user_role() = 'admin');
 
@@ -274,9 +287,11 @@ CREATE INDEX idx_pmal_pm ON payment_method_audit_log(payment_method_id, created_
 
 ALTER TABLE payment_method_audit_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "pmal_select_own" ON payment_method_audit_log;
 CREATE POLICY "pmal_select_own" ON payment_method_audit_log
   FOR SELECT USING (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "pmal_admin_all" ON payment_method_audit_log;
 CREATE POLICY "pmal_admin_all" ON payment_method_audit_log
   FOR ALL USING (public.user_role() = 'admin');
 
@@ -384,6 +399,7 @@ CREATE INDEX IF NOT EXISTS idx_key_handovers_confirmed ON key_handovers(lease_id
 ALTER TABLE key_handovers ENABLE ROW LEVEL SECURITY;
 
 -- Owner can see and create handovers for their leases
+DROP POLICY IF EXISTS "owner_key_handovers" ON key_handovers;
 CREATE POLICY "owner_key_handovers" ON key_handovers
   FOR ALL
   USING (
@@ -393,6 +409,7 @@ CREATE POLICY "owner_key_handovers" ON key_handovers
   );
 
 -- Tenant can see and confirm handovers for their leases
+DROP POLICY IF EXISTS "tenant_key_handovers" ON key_handovers;
 CREATE POLICY "tenant_key_handovers" ON key_handovers
   FOR ALL
   USING (
