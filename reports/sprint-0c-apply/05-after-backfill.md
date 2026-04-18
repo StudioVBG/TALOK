@@ -1,27 +1,17 @@
 # PASS 2 — Validation post-migration backfill PCG
 
-À remplir **après** avoir collé et Run `02-migration-backfill.sql` dans le SQL Editor prod.
+Appliqué dans Supabase SQL Editor prod le **2026-04-18**.
 
 ---
 
 ## 2.1 — Output du Run
 
-Attendu (les 2 INSERT peuvent retourner 0, 1, 2 ou 3 rows selon état AVANT) :
-
 ```
-INSERT 0 N1   -- 614100 : N1 = nombre d'entities qui n'avaient pas encore ce compte
-INSERT 0 N2   -- 708000 : N2 = nombre d'entities qui n'avaient pas encore ce compte
+INSERT 0 3
+INSERT 0 3
 ```
 
-`N1 + N2` ∈ [0, 2 × total_entities]. Pour le contexte 3 entities où l'audit indique que ni 614100 ni 708000 ne sont présents sur aucune, on attend `N1 = 3` et `N2 = 3` (soit 6 rows nettes ajoutées).
-
-> Output prod :
->
-> ```
-> (coller le résultat du Run ici)
-> ```
-
-Si erreur CHECK `account_type` → STOP. Cela signifierait une régression côté CHECK constraint. Rollback via `rollback.sql` (bloc ROLLBACK PASS 2) puis investigation.
+(3 rows × 2 INSERT = 6 rows ajoutées, une par entity pour chacun des 2 comptes.)
 
 ---
 
@@ -36,61 +26,28 @@ GROUP BY account_number, label, account_type
 ORDER BY account_number;
 ```
 
-**Attendu** :
-- **4 rows** (un par account_number)
-- chaque row avec `entity_count` = nombre total d'entities (généralement 3 selon l'audit)
-- `419100` : `'liability'`, label existant `'Provisions de charges recues'`
-- `614100` : `'expense'`, label `'Charges reelles recuperables'` (pour les rows insérées par Sprint 0.c — celles préexistantes peuvent avoir un autre label, c'est OK)
-- `654000` : `'expense'`, label existant `'Charges recuperables non recuperees'`
-- `708000` : `'income'`, label `'Charges recuperees / TEOM'` (pour les rows insérées par Sprint 0.c)
+**Output prod** :
 
-> Output prod :
->
-> ```
-> (coller le résultat ici)
-> ```
+| account_number | label | account_type | entity_count |
+|---|---|---|---|
+| 419100 | Provisions de charges recues | liability | 3 |
+| 614100 | Charges reelles recuperables | expense | 3 |
+| 654000 | Charges recuperables non recuperees | expense | 3 |
+| 708000 | Charges recuperees / TEOM | income | 3 |
 
 ### Validation fine
 
-- [ ] 4 rows exactement
-- [ ] `entity_count` identique sur les 4 rows
-- [ ] `entity_count` = valeur de `SELECT COUNT(*) FROM legal_entities`
-- [ ] `708000` a bien `account_type = 'income'` (pas `'revenue'`)
-- [ ] Aucune row de doublon `(account_number, entity_id)` :
-  ```sql
-  SELECT account_number, entity_id, COUNT(*)
-  FROM chart_of_accounts
-  WHERE account_number IN ('614100', '708000')
-  GROUP BY account_number, entity_id
-  HAVING COUNT(*) > 1;
-  -- Attendu : 0 rows
-  ```
-
-> Output doublons :
->
-> ```
-> (coller)
-> ```
+- [x] 4 rows exactement
+- [x] `entity_count = 3` sur les 4 rows
+- [x] `entity_count` = `total_entities` (= 3, cf Snapshot 2 AVANT)
+- [x] `708000` a `account_type = 'income'` (conforme à la contrainte CHECK)
+- [x] Aucun doublon `(account_number, entity_id)` — query `HAVING COUNT(*) > 1` retourne 0 rows (attendu vu `ON CONFLICT DO NOTHING`)
 
 ---
 
 ## 2.3 — Enregistrement schema_migrations
 
-```sql
-SELECT version, name
-FROM supabase_migrations.schema_migrations
-WHERE version = '20260418150100';
-```
-
-**Attendu** : 1 row avec `version = '20260418150100'` et `name` contenant `charges_pcg_accounts_backfill_p2`.
-
-> Output prod :
->
-> ```
-> (coller)
-> ```
-
-Si absent :
+Initialement 0 rows. INSERT manuel exécuté :
 
 ```sql
 INSERT INTO supabase_migrations.schema_migrations (version, name)
@@ -98,14 +55,21 @@ VALUES ('20260418150100', 'charges_pcg_accounts_backfill_p2')
 ON CONFLICT (version) DO NOTHING;
 ```
 
+**Confirmation** (re-query PASS 3) :
+
+| version | name |
+|---|---|
+| 20260418150000 | fix_charges_contested_rls |
+| 20260418150100 | charges_pcg_accounts_backfill_p2 |
+
+Les 2 versions Sprint 0.c sont enregistrées.
+
 ---
 
 ## Verdict PASS 2
 
-- [ ] ✅ Appliqué avec succès
-- [ ] ⚠️ Appliqué avec anomalie mineure (décrire)
-- [ ] 🔴 Échec — rollback PASS 2 exécuté (PASS 1 conservé)
+- [x] ✅ **Appliqué avec succès**
+- [ ] ⚠️ Appliqué avec anomalie mineure
+- [ ] 🔴 Échec — rollback PASS 2 exécuté
 
-### Anomalies / notes
-
-> (laisser vide si ✅)
+**Gap P0 #3 fermé en prod** — les 4 comptes PCG sont maintenant présents sur toutes les entities.
