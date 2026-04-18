@@ -610,7 +610,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-DO $$
+BEGIN
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'set_api_keys_updated_at') THEN
     DROP TRIGGER IF EXISTS set_api_keys_updated_at ON api_keys;
@@ -625,7 +625,7 @@ BEGIN
       BEFORE UPDATE ON api_webhooks
       FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
   END IF;
-END $$;
+END;
 
 INSERT INTO supabase_migrations.schema_migrations (version, name)
 VALUES ('20260408120000', 'api_keys_webhooks')

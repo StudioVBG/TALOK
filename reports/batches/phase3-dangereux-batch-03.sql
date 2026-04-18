@@ -566,7 +566,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Créer le trigger seulement si trigger absent ET colonne provider_id présente
 -- (patch sprint-b2: tickets.provider_id n'existe pas dans cet env, skip propre)
-DO $$
+BEGIN
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger WHERE tgname = 'trg_notify_provider_on_work_order'
@@ -898,12 +898,12 @@ CREATE TRIGGER trigger_notify_tenant_digicode_changed
 -- =====================================================
 -- Logs de la migration
 -- =====================================================
-DO $$
+BEGIN
 BEGIN
   RAISE NOTICE '=== Migration: Trigger notification changement digicode ===';
   RAISE NOTICE 'Trigger 8: notify_tenant_digicode_changed (digicode modifié)';
   RAISE NOTICE 'Notifie les locataires actifs quand le digicode est modifié';
-END $$;
+END;
 
 INSERT INTO supabase_migrations.schema_migrations (version, name)
 VALUES ('20260306200000', 'notify_tenant_digicode_changed')

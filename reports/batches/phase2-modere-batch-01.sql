@@ -1455,12 +1455,12 @@ DO $$ BEGIN
     UPDATE leases SET owner_id = NULL
     WHERE owner_id IS NOT NULL
       AND NOT EXISTS (SELECT 1 FROM profiles WHERE id = leases.owner_id);
-    DO $$ BEGIN
+    BEGIN
       ALTER TABLE leases
       ADD CONSTRAINT fk_leases_owner_id
       FOREIGN KEY (owner_id) REFERENCES profiles(id) ON DELETE SET NULL;
     EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
-    END $$;
+    END;
   END IF;
 END $$;
 
@@ -1476,12 +1476,12 @@ DO $$ BEGIN
     UPDATE tickets SET assigned_provider_id = NULL
     WHERE assigned_provider_id IS NOT NULL
       AND NOT EXISTS (SELECT 1 FROM profiles WHERE id = tickets.assigned_provider_id);
-    DO $$ BEGIN
+    BEGIN
       ALTER TABLE tickets
       ADD CONSTRAINT fk_tickets_assigned_provider_id
       FOREIGN KEY (assigned_provider_id) REFERENCES profiles(id) ON DELETE SET NULL;
     EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
-    END $$;
+    END;
   END IF;
 END $$;
 
@@ -1491,10 +1491,10 @@ DO $$ BEGIN
   AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_tickets_owner_id' AND table_name = 'tickets')
   THEN
     UPDATE tickets SET owner_id = NULL WHERE owner_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM profiles WHERE id = tickets.owner_id);
-    DO $$ BEGIN
+    BEGIN
       ALTER TABLE tickets ADD CONSTRAINT fk_tickets_owner_id FOREIGN KEY (owner_id) REFERENCES profiles(id) ON DELETE SET NULL;
     EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
-    END $$;
+    END;
   END IF;
 END $$;
 
@@ -1504,10 +1504,10 @@ DO $$ BEGIN
   AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_documents_profile_id' AND table_name = 'documents')
   THEN
     UPDATE documents SET profile_id = NULL WHERE profile_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM profiles WHERE id = documents.profile_id);
-    DO $$ BEGIN
+    BEGIN
       ALTER TABLE documents ADD CONSTRAINT fk_documents_profile_id FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE SET NULL;
     EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
-    END $$;
+    END;
   END IF;
 END $$;
 
@@ -1517,10 +1517,10 @@ DO $$ BEGIN
   AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_building_units_current_lease_id' AND table_name = 'building_units')
   THEN
     UPDATE building_units SET current_lease_id = NULL WHERE current_lease_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM leases WHERE id = building_units.current_lease_id);
-    DO $$ BEGIN
+    BEGIN
       ALTER TABLE building_units ADD CONSTRAINT fk_building_units_current_lease_id FOREIGN KEY (current_lease_id) REFERENCES leases(id) ON DELETE SET NULL;
     EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
-    END $$;
+    END;
   END IF;
 END $$;
 
@@ -1530,10 +1530,10 @@ DO $$ BEGIN
   AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_work_orders_quote_id' AND table_name = 'work_orders')
   THEN
     UPDATE work_orders SET quote_id = NULL WHERE quote_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM quotes WHERE id = work_orders.quote_id);
-    DO $$ BEGIN
+    BEGIN
       ALTER TABLE work_orders ADD CONSTRAINT fk_work_orders_quote_id FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL;
     EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
-    END $$;
+    END;
   END IF;
 END $$;
 
@@ -1543,10 +1543,10 @@ DO $$ BEGIN
   AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_work_orders_property_id' AND table_name = 'work_orders')
   THEN
     UPDATE work_orders SET property_id = NULL WHERE property_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM properties WHERE id = work_orders.property_id);
-    DO $$ BEGIN
+    BEGIN
       ALTER TABLE work_orders ADD CONSTRAINT fk_work_orders_property_id FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE SET NULL;
     EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
-    END $$;
+    END;
   END IF;
 END $$;
 

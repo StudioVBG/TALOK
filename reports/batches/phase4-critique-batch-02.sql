@@ -1340,12 +1340,13 @@ DO $$ BEGIN
       LEFT JOIN public.profiles p ON pr.owner_id = p.id
       WHERE p.id IS NULL AND pr.owner_id IS NOT NULL
     ) THEN
-      DO $$ BEGIN
+      -- patch sprint-b2: nested DO uses $inner$ delimiter (parent uses $$)
+      BEGIN
         ALTER TABLE public.properties
         ADD CONSTRAINT fk_properties_owner
         FOREIGN KEY (owner_id) REFERENCES public.profiles(id) ON DELETE RESTRICT;
       EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
-      END $$;
+      END;
       RAISE NOTICE '[H.1] FK fk_properties_owner créée';
     ELSE
       RAISE WARNING '[H.1] FK fk_properties_owner NON créée: données orphelines existantes';
@@ -1368,12 +1369,12 @@ DO $$ BEGIN
       LEFT JOIN public.properties pr ON l.property_id = pr.id
       WHERE pr.id IS NULL AND l.property_id IS NOT NULL
     ) THEN
-      DO $$ BEGIN
+      BEGIN
         ALTER TABLE public.leases
         ADD CONSTRAINT fk_leases_property
         FOREIGN KEY (property_id) REFERENCES public.properties(id) ON DELETE RESTRICT;
       EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
-      END $$;
+      END;
       RAISE NOTICE '[H.2] FK fk_leases_property créée';
     ELSE
       RAISE WARNING '[H.2] FK fk_leases_property NON créée: données orphelines';
@@ -1396,12 +1397,12 @@ DO $$ BEGIN
       LEFT JOIN public.leases l ON ls.lease_id = l.id
       WHERE l.id IS NULL AND ls.lease_id IS NOT NULL
     ) THEN
-      DO $$ BEGIN
+      BEGIN
         ALTER TABLE public.lease_signers
         ADD CONSTRAINT fk_lease_signers_lease
         FOREIGN KEY (lease_id) REFERENCES public.leases(id) ON DELETE CASCADE;
       EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
-      END $$;
+      END;
       RAISE NOTICE '[H.3] FK fk_lease_signers_lease créée';
     ELSE
       RAISE WARNING '[H.3] FK fk_lease_signers_lease NON créée: données orphelines';
@@ -1424,12 +1425,12 @@ DO $$ BEGIN
       LEFT JOIN public.profiles p ON ls.profile_id = p.id
       WHERE p.id IS NULL AND ls.profile_id IS NOT NULL
     ) THEN
-      DO $$ BEGIN
+      BEGIN
         ALTER TABLE public.lease_signers
         ADD CONSTRAINT fk_lease_signers_profile
         FOREIGN KEY (profile_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
       EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
-      END $$;
+      END;
       RAISE NOTICE '[H.4] FK fk_lease_signers_profile créée';
     ELSE
       RAISE WARNING '[H.4] FK fk_lease_signers_profile NON créée: données orphelines';
@@ -1452,12 +1453,12 @@ DO $$ BEGIN
       LEFT JOIN public.leases l ON inv.lease_id = l.id
       WHERE l.id IS NULL AND inv.lease_id IS NOT NULL
     ) THEN
-      DO $$ BEGIN
+      BEGIN
         ALTER TABLE public.invoices
         ADD CONSTRAINT fk_invoices_lease
         FOREIGN KEY (lease_id) REFERENCES public.leases(id) ON DELETE RESTRICT;
       EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
-      END $$;
+      END;
       RAISE NOTICE '[H.5] FK fk_invoices_lease créée';
     ELSE
       RAISE WARNING '[H.5] FK fk_invoices_lease NON créée: données orphelines';
