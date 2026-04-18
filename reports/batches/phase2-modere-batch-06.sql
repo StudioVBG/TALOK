@@ -1222,7 +1222,7 @@ WITH duplicates AS (
 )
 UPDATE properties
 SET deleted_at = NOW(),
-    deleted_by = 'system-dedup-migration'
+    deleted_by = NULL  -- patch sprint-b2: column is UUID, original migration tried to insert string 'system-dedup-migration'
 WHERE id IN (
   SELECT id FROM duplicates WHERE rn > 1
 );
@@ -1234,10 +1234,10 @@ DECLARE
 BEGIN
   SELECT COUNT(*) INTO dedup_count
   FROM properties
-  WHERE deleted_by = 'system-dedup-migration'
-    AND deleted_at >= NOW() - INTERVAL '1 minute';
+  WHERE deleted_at >= NOW() - INTERVAL '1 minute'
+    AND deleted_by IS NULL;
 
-  RAISE NOTICE 'Propriétés doublons soft-deleted: %', dedup_count;
+  RAISE NOTICE 'Propriétés doublons soft-deleted (last minute): %', dedup_count;
 END $$;
 
 -- ============================================================================
