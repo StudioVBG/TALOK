@@ -1258,17 +1258,20 @@ ALTER TABLE documents ADD COLUMN IF NOT EXISTS uploaded_by UUID REFERENCES profi
 -- 7. BUCKET STORAGE documents
 -- ============================================
 
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('documents', 'documents', false)
-ON CONFLICT (id) DO NOTHING;
+-- Patch sprint-b2: storage requires supabase_admin; wrap in DO/EXCEPTION.
+-- Manual: Dashboard → Storage → bucket "documents" + INSERT policy.
+DO $$
+BEGIN
+  INSERT INTO storage.buckets (id, name, public)
+  VALUES ('documents', 'documents', false)
+  ON CONFLICT (id) DO NOTHING;
 
--- Politique upload pour utilisateurs authentifiés
-DROP POLICY IF EXISTS "Users can upload documents" ON storage.objects;
-DROP POLICY IF EXISTS "Users can upload documents" ON storage;
-CREATE POLICY "Users can upload documents"
-ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (bucket_id = 'documents');
+  DROP POLICY IF EXISTS "Users can upload documents" ON storage.objects;
+  EXECUTE 'CREATE POLICY "Users can upload documents" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = ''documents'')';
+EXCEPTION
+  WHEN insufficient_privilege OR undefined_table THEN
+    RAISE NOTICE 'storage not writable from this role; configure documents bucket via Dashboard';
+END $$;
 
 -- ============================================
 -- FIN
