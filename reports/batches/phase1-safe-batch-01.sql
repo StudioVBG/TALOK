@@ -860,9 +860,15 @@ EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'copro_units.owner_profile_id FK not found, skipping drop';
 END $$;
 
-ALTER TABLE copro_units
+DO $$ BEGIN
+
+  ALTER TABLE copro_units
   ADD CONSTRAINT copro_units_owner_profile_id_fkey
   FOREIGN KEY (owner_profile_id) REFERENCES profiles(id) ON DELETE SET NULL;
+
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+
+END $$;
 
 -- 2. copro_units.property_id
 DO $$
@@ -886,9 +892,15 @@ EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'copro_units.property_id FK not found, skipping drop';
 END $$;
 
-ALTER TABLE copro_units
+DO $$ BEGIN
+
+  ALTER TABLE copro_units
   ADD CONSTRAINT copro_units_property_id_fkey
   FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE SET NULL;
+
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+
+END $$;
 
 -- 3. sites.syndic_profile_id
 DO $$
@@ -912,9 +924,15 @@ EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'sites.syndic_profile_id FK not found, skipping drop';
 END $$;
 
-ALTER TABLE sites
+DO $$ BEGIN
+
+  ALTER TABLE sites
   ADD CONSTRAINT sites_syndic_profile_id_fkey
   FOREIGN KEY (syndic_profile_id) REFERENCES profiles(id) ON DELETE SET NULL;
+
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+
+END $$;
 
 -- Log
 DO $$

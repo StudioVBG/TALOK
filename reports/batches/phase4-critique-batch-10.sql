@@ -1286,7 +1286,9 @@ END $$;
 ALTER TABLE public.profiles
   DROP CONSTRAINT IF EXISTS profiles_role_check;
 
-ALTER TABLE public.profiles
+DO $$ BEGIN
+
+  ALTER TABLE public.profiles
   ADD CONSTRAINT profiles_role_check
   CHECK (role IN (
     'admin',
@@ -1299,6 +1301,10 @@ ALTER TABLE public.profiles
     'agency',
     'coproprietaire'
   ));
+
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+
+END $$;
 
 -- Colonne email (cf. migration 20260411130000)
 ALTER TABLE public.profiles
@@ -1521,15 +1527,21 @@ CREATE TABLE IF NOT EXISTS public.onboarding_reminders (
 -- (cf. migration 20260411130300 — certains rôles introduits après 20260114)
 ALTER TABLE public.onboarding_analytics
   DROP CONSTRAINT IF EXISTS onboarding_analytics_role_check;
-ALTER TABLE public.onboarding_analytics
+DO $$ BEGIN
+  ALTER TABLE public.onboarding_analytics
   ADD CONSTRAINT onboarding_analytics_role_check
   CHECK (role IN ('owner', 'tenant', 'provider', 'guarantor', 'syndic', 'agency'));
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 ALTER TABLE public.onboarding_reminders
   DROP CONSTRAINT IF EXISTS onboarding_reminders_role_check;
-ALTER TABLE public.onboarding_reminders
+DO $$ BEGIN
+  ALTER TABLE public.onboarding_reminders
   ADD CONSTRAINT onboarding_reminders_role_check
   CHECK (role IN ('owner', 'tenant', 'provider', 'guarantor', 'syndic', 'agency'));
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 -- ============================================
 -- 7. Trigger handle_new_user — restaurer la version SOTA 2026

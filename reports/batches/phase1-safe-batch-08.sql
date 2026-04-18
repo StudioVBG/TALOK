@@ -240,9 +240,15 @@ BEGIN;
 ALTER TABLE public.payments
   DROP CONSTRAINT IF EXISTS payments_moyen_check;
 
-ALTER TABLE public.payments
+DO $$ BEGIN
+
+  ALTER TABLE public.payments
   ADD CONSTRAINT payments_moyen_check
   CHECK (moyen IN ('cb', 'virement', 'prelevement', 'especes', 'cheque', 'autre'));
+
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+
+END $$;
 
 -- ============================================
 -- 2. payments.statut — include 'cancelled' for pending cleanup
@@ -261,9 +267,15 @@ ALTER TABLE public.payments
 ALTER TABLE public.payments
   DROP CONSTRAINT IF EXISTS payments_statut_check;
 
-ALTER TABLE public.payments
+DO $$ BEGIN
+
+  ALTER TABLE public.payments
   ADD CONSTRAINT payments_statut_check
   CHECK (statut IN ('pending', 'processing', 'succeeded', 'failed', 'refunded', 'cancelled'));
+
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+
+END $$;
 
 -- ============================================
 -- 3. Reload PostgREST schema cache
@@ -357,16 +369,28 @@ DO $pre$ BEGIN RAISE NOTICE '▶ Applying 20260411130300_onboarding_role_constra
 ALTER TABLE public.onboarding_analytics
   DROP CONSTRAINT IF EXISTS onboarding_analytics_role_check;
 
-ALTER TABLE public.onboarding_analytics
+DO $$ BEGIN
+
+  ALTER TABLE public.onboarding_analytics
   ADD CONSTRAINT onboarding_analytics_role_check
   CHECK (role IN ('owner', 'tenant', 'provider', 'guarantor', 'syndic', 'agency'));
+
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+
+END $$;
 
 ALTER TABLE public.onboarding_reminders
   DROP CONSTRAINT IF EXISTS onboarding_reminders_role_check;
 
-ALTER TABLE public.onboarding_reminders
+DO $$ BEGIN
+
+  ALTER TABLE public.onboarding_reminders
   ADD CONSTRAINT onboarding_reminders_role_check
   CHECK (role IN ('owner', 'tenant', 'provider', 'guarantor', 'syndic', 'agency'));
+
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+
+END $$;
 
 INSERT INTO supabase_migrations.schema_migrations (version, name)
 VALUES ('20260411130300', 'onboarding_role_constraints_allow_syndic_agency')

@@ -630,8 +630,14 @@ BEGIN
     END IF;
 END $$;
 
-ALTER TABLE edl_items ADD CONSTRAINT edl_items_condition_check_v2
+DO $$ BEGIN
+
+  ALTER TABLE edl_items ADD CONSTRAINT edl_items_condition_check_v2
     CHECK (condition IS NULL OR condition IN ('neuf','tres_bon','bon','usage_normal','moyen','mauvais','tres_mauvais'));
+
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+
+END $$;
 
 -- Index pour room_id
 CREATE INDEX IF NOT EXISTS idx_edl_items_room_id ON edl_items(room_id);

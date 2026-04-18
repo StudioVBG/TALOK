@@ -99,7 +99,9 @@ DO $pre$ BEGIN RAISE NOTICE '▶ Applying 20260331100000_add_agricultural_proper
 ALTER TABLE properties
   DROP CONSTRAINT IF EXISTS properties_type_check;
 
-ALTER TABLE properties
+DO $$ BEGIN
+
+  ALTER TABLE properties
   ADD CONSTRAINT properties_type_check
   CHECK (type IN (
     'appartement',
@@ -117,6 +119,10 @@ ALTER TABLE properties
     'terrain_agricole',
     'exploitation_agricole'
   ));
+
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+
+END $$;
 
 INSERT INTO supabase_migrations.schema_migrations (version, name)
 VALUES ('20260331100000', 'add_agricultural_property_types')

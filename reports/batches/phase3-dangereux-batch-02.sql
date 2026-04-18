@@ -196,9 +196,12 @@ CREATE TRIGGER update_sepa_mandates_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Link tenant_payment_methods to sepa_mandates
-ALTER TABLE tenant_payment_methods
+DO $$ BEGIN
+  ALTER TABLE tenant_payment_methods
   ADD CONSTRAINT fk_tpm_sepa_mandate
   FOREIGN KEY (sepa_mandate_id) REFERENCES sepa_mandates(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 
 -- 3. TABLE : payment_schedules (échéanciers de prélèvement)
@@ -911,7 +914,8 @@ CREATE POLICY "Users can insert audit logs for their entities"
 -- ============================================================================
 
 ALTER TABLE legal_entities DROP CONSTRAINT IF EXISTS legal_entities_entity_type_check;
-ALTER TABLE legal_entities ADD CONSTRAINT legal_entities_entity_type_check CHECK (entity_type IN (
+DO $$ BEGIN
+  ALTER TABLE legal_entities ADD CONSTRAINT legal_entities_entity_type_check CHECK (entity_type IN (
   'particulier',
   'sci_ir',
   'sci_is',
@@ -930,6 +934,8 @@ ALTER TABLE legal_entities ADD CONSTRAINT legal_entities_entity_type_check CHECK
   'micro_entrepreneur',
   'association'
 ));
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 COMMIT;
 

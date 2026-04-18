@@ -606,9 +606,15 @@ BEGIN;
 ALTER TABLE public.payments
   DROP CONSTRAINT IF EXISTS payments_moyen_check;
 
-ALTER TABLE public.payments
+DO $$ BEGIN
+
+  ALTER TABLE public.payments
   ADD CONSTRAINT payments_moyen_check
   CHECK (moyen IN ('cb', 'virement', 'prelevement', 'especes', 'cheque', 'autre'));
+
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+
+END $$;
 
 -- On re-asserte aussi payments_statut_check dans la même passe : la
 -- même migration 20260411120000 l'étend à 'cancelled'. Si elle n'est
@@ -617,9 +623,15 @@ ALTER TABLE public.payments
 ALTER TABLE public.payments
   DROP CONSTRAINT IF EXISTS payments_statut_check;
 
-ALTER TABLE public.payments
+DO $$ BEGIN
+
+  ALTER TABLE public.payments
   ADD CONSTRAINT payments_statut_check
   CHECK (statut IN ('pending', 'processing', 'succeeded', 'failed', 'refunded', 'cancelled'));
+
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+
+END $$;
 
 -- ============================================================
 -- 2. Bug #2 — Récursion RLS infinie sur leases

@@ -1579,8 +1579,11 @@ DO $pre$ BEGIN RAISE NOTICE '▶ Applying 20260212000001_fix_guarantor_role_and_
 
 -- 1. Modifier le CHECK constraint de profiles.role pour inclure 'guarantor'
 ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
-ALTER TABLE profiles ADD CONSTRAINT profiles_role_check
+DO $$ BEGIN
+  ALTER TABLE profiles ADD CONSTRAINT profiles_role_check
   CHECK (role IN ('admin', 'owner', 'tenant', 'provider', 'guarantor'));
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 -- 2. Mettre à jour handle_new_user pour reconnaître 'guarantor'
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -1715,8 +1718,11 @@ UPDATE profiles SET telephone = NULL
   WHERE telephone IS NOT NULL
     AND telephone !~ '^\+[1-9]\d{1,14}$';
 ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_telephone_check;
-ALTER TABLE profiles ADD CONSTRAINT profiles_telephone_check
+DO $$ BEGIN
+  ALTER TABLE profiles ADD CONSTRAINT profiles_telephone_check
   CHECK (telephone IS NULL OR telephone ~ '^\+[1-9]\d{1,14}$');
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 INSERT INTO supabase_migrations.schema_migrations (version, name)
 VALUES ('20260212000001', 'fix_guarantor_role_and_tables')

@@ -83,8 +83,11 @@ ALTER TABLE invoices
 
 -- Étendre les statuts possibles des invoices
 ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_statut_check;
-ALTER TABLE invoices ADD CONSTRAINT invoices_statut_check
+DO $$ BEGIN
+  ALTER TABLE invoices ADD CONSTRAINT invoices_statut_check
   CHECK (statut IN ('draft', 'sent', 'paid', 'partial', 'overdue', 'unpaid', 'cancelled', 'late'));
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 -- Index pour la recherche de factures en retard
 CREATE INDEX IF NOT EXISTS idx_invoices_date_echeance ON invoices(date_echeance) WHERE statut IN ('sent', 'late', 'overdue');
@@ -99,8 +102,11 @@ ALTER TABLE payments
 
 -- Étendre les statuts possibles des payments
 ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_statut_check;
-ALTER TABLE payments ADD CONSTRAINT payments_statut_check
+DO $$ BEGIN
+  ALTER TABLE payments ADD CONSTRAINT payments_statut_check
   CHECK (statut IN ('pending', 'succeeded', 'failed', 'refunded'));
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 -- =====================
 -- 4. Table payment_reminders

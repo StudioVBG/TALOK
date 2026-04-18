@@ -284,9 +284,15 @@ COMMENT ON TABLE guarantor_invitations IS 'Invitations envoyées par les propri�
 ALTER TABLE guarantor_engagements
 DROP CONSTRAINT IF EXISTS guarantor_engagements_type_garantie_check;
 
-ALTER TABLE guarantor_engagements
+DO $$ BEGIN
+
+  ALTER TABLE guarantor_engagements
 ADD CONSTRAINT guarantor_engagements_type_garantie_check
 CHECK (type_garantie IN ('caution_simple', 'caution_solidaire', 'visale'));
+
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+
+END $$;
 
 -- Ajouter le numéro Visale
 ALTER TABLE guarantor_engagements
@@ -714,11 +720,14 @@ DO $pre$ BEGIN RAISE NOTICE '▶ Applying 20260409130000_fix_subscriptions_statu
 ALTER TABLE subscriptions DROP CONSTRAINT IF EXISTS subscriptions_status_check;
 
 -- Recreate with all valid statuses
-ALTER TABLE subscriptions ADD CONSTRAINT subscriptions_status_check
+DO $$ BEGIN
+  ALTER TABLE subscriptions ADD CONSTRAINT subscriptions_status_check
   CHECK (status IN (
     'trialing', 'active', 'past_due', 'canceled', 'unpaid',
     'paused', 'incomplete', 'expired', 'suspended'
   ));
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 -- Verification
 DO $$

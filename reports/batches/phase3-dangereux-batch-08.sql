@@ -65,14 +65,23 @@ ALTER TABLE insurance_policies ALTER COLUMN policy_number DROP NOT NULL;
 
 -- 5. Add insurance_type CHECK constraint
 ALTER TABLE insurance_policies DROP CONSTRAINT IF EXISTS insurance_policies_coverage_type_check;
-ALTER TABLE insurance_policies ADD CONSTRAINT chk_insurance_type
+DO $$ BEGIN
+  ALTER TABLE insurance_policies ADD CONSTRAINT chk_insurance_type
   CHECK (insurance_type IN ('pno', 'multirisques', 'rc_pro', 'decennale', 'garantie_financiere', 'gli'));
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 -- 6. Add business constraints
-ALTER TABLE insurance_policies ADD CONSTRAINT chk_insurance_dates
+DO $$ BEGIN
+  ALTER TABLE insurance_policies ADD CONSTRAINT chk_insurance_dates
   CHECK (end_date > start_date);
-ALTER TABLE insurance_policies ADD CONSTRAINT chk_insurance_amount_positive
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE insurance_policies ADD CONSTRAINT chk_insurance_amount_positive
   CHECK (amount_covered_cents IS NULL OR amount_covered_cents > 0);
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 -- 7. New indexes
 CREATE INDEX IF NOT EXISTS idx_insurance_profile ON insurance_policies(profile_id);
@@ -575,28 +584,40 @@ ALTER TABLE tickets ADD COLUMN IF NOT EXISTS resolution_notes TEXT;
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS satisfaction_rating INTEGER;
 
 -- 2. Contrainte satisfaction_rating
-ALTER TABLE tickets ADD CONSTRAINT tickets_satisfaction_rating_check
+DO $$ BEGIN
+  ALTER TABLE tickets ADD CONSTRAINT tickets_satisfaction_rating_check
   CHECK (satisfaction_rating IS NULL OR (satisfaction_rating >= 1 AND satisfaction_rating <= 5));
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 -- 3. Contrainte category
-ALTER TABLE tickets ADD CONSTRAINT tickets_category_check
+DO $$ BEGIN
+  ALTER TABLE tickets ADD CONSTRAINT tickets_category_check
   CHECK (category IS NULL OR category IN (
     'plomberie','electricite','serrurerie','chauffage','humidite',
     'nuisibles','bruit','parties_communes','equipement','autre'
   ));
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 -- 4. Étendre la contrainte de statut (garder paused pour backward compat)
 ALTER TABLE tickets DROP CONSTRAINT IF EXISTS tickets_statut_check;
-ALTER TABLE tickets ADD CONSTRAINT tickets_statut_check
+DO $$ BEGIN
+  ALTER TABLE tickets ADD CONSTRAINT tickets_statut_check
   CHECK (statut IN (
     'open','acknowledged','assigned','in_progress',
     'resolved','closed','rejected','reopened','paused'
   ));
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 -- 5. Étendre la contrainte de priorité (garder anciennes valeurs françaises pour compat)
 ALTER TABLE tickets DROP CONSTRAINT IF EXISTS tickets_priorite_check;
-ALTER TABLE tickets ADD CONSTRAINT tickets_priorite_check
+DO $$ BEGIN
+  ALTER TABLE tickets ADD CONSTRAINT tickets_priorite_check
   CHECK (priorite IN ('low','normal','urgent','emergency','basse','normale','haute','urgente'));
+EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+END $$;
 
 -- 6. Backfill owner_id depuis properties pour tickets existants
 UPDATE tickets t
