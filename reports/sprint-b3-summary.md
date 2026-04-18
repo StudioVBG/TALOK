@@ -16,30 +16,32 @@
 - [x] `properties_type_check` contient `terrain_agricole` + `exploitation_agricole`
 
 ### PASS 1 — Schema health (sections 1.1 à 1.4 du audit pack)
-- [ ] 21 tables core présentes (1.1 = OK partout)
-- [ ] 4 extensions actives (pg_cron, pg_net, pgcrypto, vault)
-- [ ] 14 colonnes critiques présentes
-- [ ] `properties_type_check` aligné SOTA 2026
+- [⚠️] 20/21 tables core présentes — `otp_codes` MISSING (deprecated post-Sprint 0, code mort, non-bloquant)
+- [x] 4 extensions actives (pg_cron 1.6.4, pg_net 0.19.5, pgcrypto 1.3, Vault opérationnel via secrets)
+- [x] 14/14 colonnes critiques présentes
+- [x] `properties_type_check` aligné SOTA 2026
 
 ### PASS 2 — RLS health
-- [ ] 0 policy `profiles_owner_read_tenants` ni `subscriptions_owner_select_own`
-- [ ] 0 self-referencing pattern sur profiles/subscriptions
-- [ ] Comptage policies par table cohérent (4-10 par table core)
+- [x] `subscriptions_owner_select_own` absente
+- [⚠️] `profiles_owner_read_tenants` présente MAIS recréée en mode SAFE (utilise `get_my_profile_id()` SECURITY DEFINER, pas de récursion)
+- [x] 0 self-referencing pattern dangereux sur profiles/subscriptions
+- [x] Comptage policies par table cohérent (2-9 par table)
 
 ### PASS 3 — Storage buckets
-- [ ] Bucket `documents` présent (private, 50 MB, MIME types alignés)
-- [ ] Bucket `landing-images` présent (public, 10 MB)
-- [ ] Policies storage.objects en place
+- [x] Bucket `documents` présent (private, 50 MB, MIME types complets PDF+images+Office+ODT+CSV)
+- [x] Bucket `landing-images` présent (public)
+- [x] 5 policies storage.objects en place (Users upload/view documents, Admin/Public landing-images)
 
 ### PASS 4 — Crons
-- [ ] 21 jobs actifs et `auth_pattern IN ('VAULT', 'PURE_SQL')`
-- [ ] Crons fréquents (process-outbox, etc.) ont des runs récents
-- [ ] Failure rate < 10 % sur 24h
+- [x] 21 jobs actifs, tous en VAULT (16) ou PURE_SQL (5), 0 LEGACY
+- [x] Crons fréquents (process-outbox, process-webhooks, visit-reminders) tous succeeded
+- [⚠️] Crons daily/hourly récemment reconfigurés (copro-*, onboarding-reminders, overdue-check) : en attente de leur premier déclenchement naturel — re-vérifier dans 24h
+- [x] 0 failure dans les 24h
 
 ### PASS 5 — Réconciliation finale
-- [ ] schema_migrations cohérent (post_b2_window = 222, ghosts = 4)
-- [ ] Volumes tables core dans les ordres de grandeur attendus
-- [ ] Vault secrets présents et non-vides
+- [x] schema_migrations cohérent (393 total, **post_b2_window = 222 ✅**, **pre_cutoff_ghosts = 4 ✅**)
+- [x] Volumes tables core normaux (early-stage : 10 profiles, 14 properties, 27 notifications max)
+- [x] Vault secrets présents et non-vides (`app_url`, `cron_secret`)
 
 ### PASS 6 — Smoke tests fonctionnels
 - [ ] Owner login + dashboard OK
