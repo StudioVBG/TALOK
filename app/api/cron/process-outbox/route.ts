@@ -121,6 +121,74 @@ async function processEvent(event: any): Promise<void> {
       break;
     }
 
+    case "ChargeRegularization.Paid": {
+      // Sprint 0.f — notif tenant + owner après paiement Stripe d'une régul.
+      // L'event est émis par le webhook Stripe (payment_intent.succeeded
+      // avec metadata.type='charge_regularization', cf Sprint 0.d.1).
+      const supabase = createServiceRoleClient();
+      const { sendEmail } = await import("@/lib/emails/resend.service");
+      const regId = payload.regularization_id as string | undefined;
+      const amountEur = typeof payload.amount === "number" ? payload.amount : 0;
+
+      if (!regId) {
+        console.warn("[Outbox] ChargeRegularization.Paid missing regularization_id");
+        break;
+      }
+
+      const { data: reg } = await supabase
+        .from("lease_charge_regularizations")
+        .select(
+          "fiscal_year, lease_id, leases(lease_signers!inner(role, profiles(email, prenom)))",
+        )
+        .eq("id", regId)
+        .maybeSingle();
+
+      const tenantSigner = ((reg as any)?.leases?.lease_signers ?? []).find(
+        (s: any) => s.role === "locataire_principal",
+      );
+      const tenantEmail = tenantSigner?.profiles?.email as string | undefined;
+      const tenantFirstName = (tenantSigner?.profiles?.prenom as string | undefined) ?? "";
+      const fiscalYear = (reg as any)?.fiscal_year as number | undefined;
+
+      if (!tenantEmail) {
+        console.warn(`[Outbox] ChargeRegularization.Paid ${regId} — no tenant email, skipping send`);
+        break;
+      }
+
+      const subject = `Paiement de votre régularisation de charges ${fiscalYear ?? ""} confirmé`;
+      const amountFmt = amountEur.toLocaleString("fr-FR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+      const html = `
+        <div style="font-family:'Manrope',sans-serif;max-width:600px;margin:0 auto;padding:24px">
+          <h2 style="color:#1B2A6B">Paiement confirmé</h2>
+          <p>Bonjour ${tenantFirstName},</p>
+          <p>Nous confirmons la bonne réception de votre paiement de
+          <strong>${amountFmt} €</strong> au titre de la régularisation des charges${fiscalYear ? ` ${fiscalYear}` : ""}.</p>
+          <p>Vous pouvez retrouver le détail dans votre espace Talok.</p>
+          <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.talok.fr"}/tenant/charges"
+             style="display:inline-block;background:#2563EB;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;margin-top:16px">
+            Voir mes charges
+          </a>
+          <p style="margin-top:24px;font-size:12px;color:#999">Talok — Gestion locative simplifiée</p>
+        </div>`;
+
+      const result = await sendEmail({
+        to: tenantEmail,
+        subject,
+        html,
+        idempotencyKey: `reg-paid-${regId}`,
+      });
+
+      if (!result.success) {
+        // Throw → retry (Outbox marquera retry_count + dead_letter au max).
+        throw new Error(`sendEmail failed: ${result.error ?? "unknown"}`);
+      }
+      console.log(`[Outbox] ChargeRegularization.Paid ${regId} — email sent to ${tenantEmail}`);
+      break;
+    }
+
     default:
       console.warn(`[Outbox] Unknown event type: ${event_type}`);
   }

@@ -558,7 +558,8 @@ Système de rappels à brancher sur le cron existant :
 
 - **`installments_12`** : la table `installment_schedules` n'existe pas. La route `/apply` accepte la méthode et pose `installment_count=12`, mais aucun cron n'encaisse les 12 fractions mensuelles ensuite. **À débloquer Sprint 0.e** avant exposition UI. Vérification UI réalisée 18/04 : aucun composant `.tsx` n'expose `installments_12` à un user — la route est accessible uniquement par appel API direct.
 - **Justificatif PDF "régul payée"** : le webhook skip la quittance loyer pour les régul (P2). Pas de PDF généré côté tenant après paiement Stripe. **À traiter Sprint 1** (template pdf-lib spécifique régul).
-- **Consumer email `ChargeRegularization.Paid`** : l'event est émis dans l'outbox (P3 fix), mais aucun template email Resend ne le consomme encore. **À brancher Sprint 1**.
+- **Consumer email `ChargeRegularization.Paid`** : ✅ **Branché Sprint 0.f** (`app/api/cron/process-outbox/route.ts` case `ChargeRegularization.Paid`) — envoie un email confirmation au locataire principal via Resend après paiement Stripe (ou tout autre événement settled). Idempotency key `reg-paid-{regId}`.
+- **Consumer email `ChargeRegularization.Sent`** : ⏳ pas branché. La route `/send` émet l'event mais le worker outbox n'a pas de case dédié — tombe dans le `default` warning. À brancher Sprint 1 (template `regularization-due.ts` existe déjà, manque le câblage dans `processEvent`).
 
 ### Améliorations (P2)
 
