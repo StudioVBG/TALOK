@@ -1,0 +1,162 @@
+-- =============================================================
+-- Sprint B1 — PASS 6 : Script de réconciliation schema_migrations
+-- =============================================================
+--
+-- ⚠️⚠️⚠️ CE SCRIPT N'EST PAS À EXÉCUTER AUTOMATIQUEMENT ⚠️⚠️⚠️
+--
+-- Chaque bloc doit être :
+--   1. Validé manuellement par Thomas
+--   2. Confirmé contre le snapshot réel `schema_migrations`
+--      (PASS 1 doit avoir été exécuté — cf. sprint-b1-access-errors.md)
+--   3. Précédé d'un backup :
+--        CREATE TABLE supabase_migrations.schema_migrations_backup_sprint_b1
+--          AS SELECT * FROM supabase_migrations.schema_migrations;
+--   4. Exécuté dans une transaction explicite (BEGIN/COMMIT), rollback
+--      disponible jusqu'au COMMIT final
+--
+-- Les blocs sont en 3 sections :
+--   A. GHOST 20260208024659 — 3 options, choisir UNE
+--   B. HASH MISMATCH — 0 cas détectés en mode dégradé, à relancer après
+--      PASS 1 pour identifier les vrais mismatches
+--   C. DUPLICATE TIMESTAMPS — renommages fs → besoin UPDATE si fichier
+--      source déjà dans schema_migrations
+
+-- -------------------------------------------------------------
+-- BACKUP (OBLIGATOIRE avant tout autre bloc)
+-- -------------------------------------------------------------
+-- Ne pas exécuter si le backup existe déjà pour Sprint B1.
+
+-- CREATE TABLE IF NOT EXISTS supabase_migrations.schema_migrations_backup_sprint_b1 AS
+--   SELECT *, now() AS _backup_at
+--   FROM supabase_migrations.schema_migrations;
+--
+-- -- Vérifier :
+-- SELECT count(*) FROM supabase_migrations.schema_migrations_backup_sprint_b1;
+
+-- =============================================================
+-- SECTION A — Ghost 20260208024659
+-- =============================================================
+--
+-- Contexte : le timestamp 20260208024659 apparaît UNIQUEMENT dans
+-- docs/audits/pending-migrations.md (doc du 2026-04-09). Aucun fichier
+-- .sql correspondant dans le repo. Hypothèses dans sprint-b1-ghost-migrations.md.
+--
+-- Avant de choisir une option ci-dessous, exécuter la diagnostic :
+
+-- SELECT version, name, inserted_at,
+--        array_length(statements, 1) AS n_statements,
+--        left(array_to_string(statements, E'\n'), 500) AS preview
+--   FROM supabase_migrations.schema_migrations
+--  WHERE version = '20260208024659';
+
+-- -------------------------------------------------------------
+-- Option A1 — La ligne existe avec statements non vides
+-- → Reconstruire le fichier localement
+-- -------------------------------------------------------------
+--
+-- 1. Copier le résultat de la requête ci-dessus dans un nouveau
+--    fichier supabase/migrations/20260208024659_<name>.sql
+-- 2. `git add` puis `git commit`
+-- 3. `supabase db diff --linked` doit alors retourner vide
+-- 4. AUCUNE mise à jour de schema_migrations requise
+-- 5. Mettre à jour docs/audits/pending-migrations.md en archive
+
+-- -------------------------------------------------------------
+-- Option A2 — La ligne existe avec statements vides/NULL
+-- → Laisser en place (Supabase accepte des entrées sans statements)
+-- -------------------------------------------------------------
+--
+-- Créer un placeholder pour éviter les diffs CI :
+
+-- INSERT INTO supabase_migrations.schema_migrations (version, name, statements)
+-- VALUES ('20260208024659', '_ghost_placeholder_sprint_b1', ARRAY['-- reconstructed during Sprint B1'])
+-- ON CONFLICT (version) DO UPDATE SET name = EXCLUDED.name;
+--
+-- Documenter dans un README que cette version est un ghost accepté.
+
+-- -------------------------------------------------------------
+-- Option A3 — La ligne n'existe pas (doc erroné)
+-- → Corriger docs/audits/pending-migrations.md (aucune action DB)
+-- -------------------------------------------------------------
+-- Aucun SQL. Juste supprimer/mettre à jour le doc.
+
+-- =============================================================
+-- SECTION B — HASH MISMATCH
+-- =============================================================
+--
+-- Aucun cas détecté en PASS 3 (mode dégradé — détection impossible
+-- sans snapshot prod). Re-générer la matrice après PASS 1 réel :
+--
+--   node scripts/audit/build-reconciliation-matrix.mjs
+--
+-- Si des mismatches apparaissent, pour chacun :
+--
+-- 1. Lire le fichier fs et le statements prod côte à côte
+-- 2. Décider lequel est la "vérité" (bug côté prod ? ou fs obsolète ?)
+-- 3. Si fs fait autorité : UPDATE schema_migrations.statements
+--      UPDATE supabase_migrations.schema_migrations
+--         SET statements = (le contenu du fichier fs)
+--       WHERE version = '<version>';
+--    ⚠️ Cela NE RE-EXÉCUTE PAS le SQL — juste met à jour la tracking.
+--    Si le schéma prod est réellement désaligné, prévoir une migration
+--    corrective distincte.
+-- 4. Si prod fait autorité : réécrire le fichier fs depuis statements.
+
+-- =============================================================
+-- SECTION C — Duplicate timestamps (13 groupes)
+-- =============================================================
+--
+-- Source : reports/sprint-b1-dedup-plan.json
+-- Script shell associé : scripts/audit/apply-dedup-renames.sh (non exécutable)
+--
+-- Logique : pour chaque fichier renommé localement (ts → ts+k), SI
+-- ce fichier est déjà tracké dans schema_migrations sous son ancien
+-- timestamp, il faut mettre à jour l'entrée schema_migrations pour
+-- pointer vers le nouveau timestamp. Sinon, schema_migrations
+-- référence un fichier qui n'existe plus et la CI diverge.
+--
+-- Vérifier d'abord pour chaque fichier à renommer :
+--   SELECT version, name FROM supabase_migrations.schema_migrations
+--    WHERE version IN (
+--      '20260224100000', '20260226000000', '20260306100000',
+--      '20260310200000', '20260328100000', '20260331100000',
+--      '20260401000001', '20260408100000', '20260408120000',
+--      '20260408130000', '20260411120000', '20260415140000', '20260416100000'
+--    );
+--
+-- Si aucun résultat → aucun UPDATE nécessaire (les 223 pending Sprint A
+-- ne sont PAS dans schema_migrations par définition → safe).
+--
+-- Si des résultats apparaissent → ils désignent quelle file du groupe
+-- doit garder le timestamp original. Adapter le plan dedup en
+-- conséquence AVANT d'exécuter apply-dedup-renames.sh.
+
+-- -------------------------------------------------------------
+-- Exemple d'UPDATE pour un seul rename (à ne PAS exécuter tel quel)
+-- -------------------------------------------------------------
+--
+-- Supposons que 20260224100000_add_xxx.sql soit renommé en
+-- 20260224100001_add_xxx.sql, ET que la version 20260224100000 soit
+-- déjà dans schema_migrations (= ce fichier a été appliqué en prod) :
+--
+--   BEGIN;
+--     UPDATE supabase_migrations.schema_migrations
+--        SET version = '20260224100001'
+--      WHERE version = '20260224100000'
+--        AND name = 'add_xxx';  -- précision pour éviter les doublons
+--     -- Vérifier 1 row modifiée :
+--     -- RAISE NOTICE 'Rows: %', ROW_COUNT;
+--   COMMIT;
+
+-- =============================================================
+-- PROCÉDURE FINALE (récapitulatif)
+-- =============================================================
+-- 1. Backup schema_migrations → table _backup_sprint_b1
+-- 2. Exécuter le SELECT de diagnostic Section A (ghost)
+-- 3. Choisir Option A1/A2/A3 pour le ghost
+-- 4. Re-générer matrice après avoir populé sprint-b1-schema-migrations-prod.json
+-- 5. Résoudre les éventuels HASH MISMATCH (Section B)
+-- 6. Exécuter les renames + UPDATE de Section C en 1 transaction par groupe
+-- 7. Commit le repo (branche chore/migrations-dedup-timestamps)
+-- 8. `supabase db diff --linked` → doit retourner vide ou
+--    uniquement les 181 pending (sans duplicatas)
