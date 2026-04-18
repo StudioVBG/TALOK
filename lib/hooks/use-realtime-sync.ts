@@ -59,6 +59,91 @@ const DEFAULT_QUERY_KEY_MAPPING: Record<string, string[]> = {
 const MAX_RECONNECT_ATTEMPTS = 10;
 const RECONNECT_BASE_DELAY_MS = 1000;
 
+// Module-scope presets: stable array references so useEffect([subscribe]) does
+// not re-run every render and tear down the Realtime channel (bug fixed 2026-04-18:
+// inline arrays in each preset caused 300+ reconnect/sec loop on every dashboard).
+const OWNER_TABLES = Object.freeze([
+  "properties",
+  "leases",
+  "invoices",
+  "payments",
+  "documents",
+  "notifications",
+]) as unknown as string[];
+const TENANT_TABLES = Object.freeze([
+  "leases",
+  "invoices",
+  "payments",
+  "documents",
+  "notifications",
+  "tickets",
+]) as unknown as string[];
+const ADMIN_TABLES = Object.freeze([
+  "properties",
+  "leases",
+  "profiles",
+  "invoices",
+  "payments",
+  "documents",
+  "notifications",
+  "tickets",
+]) as unknown as string[];
+const AGENCY_TABLES = Object.freeze([
+  "properties",
+  "leases",
+  "invoices",
+  "payments",
+  "notifications",
+  "tickets",
+]) as unknown as string[];
+const SYNDIC_TABLES = Object.freeze([
+  "copro_sites",
+  "copro_units",
+  "charges_copro",
+  "assemblies",
+  "notifications",
+  "tickets",
+]) as unknown as string[];
+const COPRO_TABLES = Object.freeze([
+  "copro_sites",
+  "copro_units",
+  "charges_copro",
+  "assemblies",
+  "documents",
+  "notifications",
+]) as unknown as string[];
+const GUARANTOR_TABLES = Object.freeze([
+  "leases",
+  "guarantees",
+  "notifications",
+]) as unknown as string[];
+
+const AGENCY_QUERY_KEY_MAPPING = {
+  ...DEFAULT_QUERY_KEY_MAPPING,
+  properties: ["properties", "agency:properties"],
+  leases: ["leases", "agency:leases"],
+  invoices: ["invoices", "agency:invoices"],
+  payments: ["payments", "agency:payments"],
+};
+const SYNDIC_QUERY_KEY_MAPPING = {
+  ...DEFAULT_QUERY_KEY_MAPPING,
+  copro_sites: ["copro-sites", "syndic:sites"],
+  copro_units: ["copro-units", "syndic:units"],
+  charges_copro: ["charges-copro", "syndic:charges"],
+  assemblies: ["assemblies", "syndic:assemblies"],
+};
+const COPRO_QUERY_KEY_MAPPING = {
+  ...DEFAULT_QUERY_KEY_MAPPING,
+  copro_sites: ["copro-sites", "copro:sites"],
+  copro_units: ["copro-units", "copro:units"],
+  charges_copro: ["charges-copro", "copro:charges"],
+  assemblies: ["assemblies", "copro:assemblies"],
+};
+const GUARANTOR_QUERY_KEY_MAPPING = {
+  ...DEFAULT_QUERY_KEY_MAPPING,
+  guarantees: ["guarantees", "guarantor:engagements"],
+};
+
 /**
  * Client Supabase singleton — résolu une seule fois au niveau module.
  * Cela garantit une référence stable entre les renders.
@@ -239,7 +324,7 @@ export function useRealtimeSync(config: RealtimeSyncConfig) {
  */
 export function useOwnerRealtimeSync(options?: { debug?: boolean }) {
   return useRealtimeSync({
-    tables: ["properties", "leases", "invoices", "payments", "documents", "notifications"],
+    tables: OWNER_TABLES,
     debug: options?.debug,
   });
 }
@@ -249,7 +334,7 @@ export function useOwnerRealtimeSync(options?: { debug?: boolean }) {
  */
 export function useTenantRealtimeSync(options?: { debug?: boolean }) {
   return useRealtimeSync({
-    tables: ["leases", "invoices", "payments", "documents", "notifications", "tickets"],
+    tables: TENANT_TABLES,
     debug: options?.debug,
   });
 }
@@ -259,16 +344,7 @@ export function useTenantRealtimeSync(options?: { debug?: boolean }) {
  */
 export function useAdminRealtimeSync(options?: { debug?: boolean }) {
   return useRealtimeSync({
-    tables: [
-      "properties",
-      "leases",
-      "profiles",
-      "invoices",
-      "payments",
-      "documents",
-      "notifications",
-      "tickets",
-    ],
+    tables: ADMIN_TABLES,
     debug: options?.debug,
   });
 }
@@ -278,21 +354,8 @@ export function useAdminRealtimeSync(options?: { debug?: boolean }) {
  */
 export function useAgencyRealtimeSync(options?: { debug?: boolean }) {
   return useRealtimeSync({
-    tables: [
-      "properties",
-      "leases",
-      "invoices",
-      "payments",
-      "notifications",
-      "tickets",
-    ],
-    queryKeyMapping: {
-      ...DEFAULT_QUERY_KEY_MAPPING,
-      properties: ["properties", "agency:properties"],
-      leases: ["leases", "agency:leases"],
-      invoices: ["invoices", "agency:invoices"],
-      payments: ["payments", "agency:payments"],
-    },
+    tables: AGENCY_TABLES,
+    queryKeyMapping: AGENCY_QUERY_KEY_MAPPING,
     debug: options?.debug,
   });
 }
@@ -302,21 +365,8 @@ export function useAgencyRealtimeSync(options?: { debug?: boolean }) {
  */
 export function useSyndicRealtimeSync(options?: { debug?: boolean }) {
   return useRealtimeSync({
-    tables: [
-      "copro_sites",
-      "copro_units",
-      "charges_copro",
-      "assemblies",
-      "notifications",
-      "tickets",
-    ],
-    queryKeyMapping: {
-      ...DEFAULT_QUERY_KEY_MAPPING,
-      copro_sites: ["copro-sites", "syndic:sites"],
-      copro_units: ["copro-units", "syndic:units"],
-      charges_copro: ["charges-copro", "syndic:charges"],
-      assemblies: ["assemblies", "syndic:assemblies"],
-    },
+    tables: SYNDIC_TABLES,
+    queryKeyMapping: SYNDIC_QUERY_KEY_MAPPING,
     debug: options?.debug,
   });
 }
@@ -326,21 +376,8 @@ export function useSyndicRealtimeSync(options?: { debug?: boolean }) {
  */
 export function useCoproRealtimeSync(options?: { debug?: boolean }) {
   return useRealtimeSync({
-    tables: [
-      "copro_sites",
-      "copro_units",
-      "charges_copro",
-      "assemblies",
-      "documents",
-      "notifications",
-    ],
-    queryKeyMapping: {
-      ...DEFAULT_QUERY_KEY_MAPPING,
-      copro_sites: ["copro-sites", "copro:sites"],
-      copro_units: ["copro-units", "copro:units"],
-      charges_copro: ["charges-copro", "copro:charges"],
-      assemblies: ["assemblies", "copro:assemblies"],
-    },
+    tables: COPRO_TABLES,
+    queryKeyMapping: COPRO_QUERY_KEY_MAPPING,
     debug: options?.debug,
   });
 }
@@ -350,15 +387,8 @@ export function useCoproRealtimeSync(options?: { debug?: boolean }) {
  */
 export function useGuarantorRealtimeSync(options?: { debug?: boolean }) {
   return useRealtimeSync({
-    tables: [
-      "leases",
-      "guarantees",
-      "notifications",
-    ],
-    queryKeyMapping: {
-      ...DEFAULT_QUERY_KEY_MAPPING,
-      guarantees: ["guarantees", "guarantor:engagements"],
-    },
+    tables: GUARANTOR_TABLES,
+    queryKeyMapping: GUARANTOR_QUERY_KEY_MAPPING,
     debug: options?.debug,
   });
 }
