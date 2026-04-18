@@ -1578,10 +1578,12 @@ DO $pre$ BEGIN RAISE NOTICE '▶ Applying 20260212000001_fix_guarantor_role_and_
 -- ============================================
 
 -- 1. Modifier le CHECK constraint de profiles.role pour inclure 'guarantor'
+-- patch sprint-b2: ajouter 'syndic', 'agency', 'platform_admin' (introduits par migrations
+-- ultérieures dans cette même phase). Sinon des rows existantes violent la contrainte.
 ALTER TABLE profiles DROP CONSTRAINT IF EXISTS profiles_role_check;
 DO $$ BEGIN
   ALTER TABLE profiles ADD CONSTRAINT profiles_role_check
-  CHECK (role IN ('admin', 'owner', 'tenant', 'provider', 'guarantor'));
+  CHECK (role IN ('admin', 'owner', 'tenant', 'provider', 'guarantor', 'syndic', 'agency', 'platform_admin'));
 EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
