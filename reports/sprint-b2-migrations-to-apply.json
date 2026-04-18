@@ -1,0 +1,2073 @@
+{
+  "_generated_at": "2026-04-18T02:07:30.779Z",
+  "counts": {
+    "total": 222,
+    "byLevel": {
+      "SAFE": 46,
+      "MODERE": 75,
+      "DANGEREUX": 51,
+      "CRITIQUE": 50,
+      "UNKNOWN": 0
+    },
+    "byAction": {
+      "apply": 194,
+      "rename-then-apply": 28
+    }
+  },
+  "migrations": [
+    {
+      "file": "20260208100000_fix_data_storage_audit.sql",
+      "timestamp": "20260208100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260208100000",
+      "risk": "MODERE",
+      "risk_why": "ALTER column (type/constraint)"
+    },
+    {
+      "file": "20260209100000_create_sms_messages_table.sql",
+      "timestamp": "20260209100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260209100000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260211000000_p2_unique_constraint_and_gdpr_rpc.sql",
+      "timestamp": "20260211000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260211000000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260211100000_bic_compliance_tax_regime.sql",
+      "timestamp": "20260211100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260211100000",
+      "risk": "MODERE",
+      "risk_why": "+1 triggers, UPDATE"
+    },
+    {
+      "file": "20260212000000_audit_database_integrity.sql",
+      "timestamp": "20260212000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260212000000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260212000001_fix_guarantor_role_and_tables.sql",
+      "timestamp": "20260212000001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260212000001",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260212100000_audit_v2_merge_and_prevention.sql",
+      "timestamp": "20260212100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260212100000",
+      "risk": "MODERE",
+      "risk_why": "+2 triggers, UPDATE"
+    },
+    {
+      "file": "20260212100001_email_template_system.sql",
+      "timestamp": "20260212100001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260212100001",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260212100002_email_templates_seed.sql",
+      "timestamp": "20260212100002",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260212100002",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260212200000_audit_v3_comprehensive_integrity.sql",
+      "timestamp": "20260212200000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260212200000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260213000000_fix_profiles_rls_recursion_v2.sql",
+      "timestamp": "20260213000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260213000000",
+      "risk": "MODERE",
+      "risk_why": "+3 policies"
+    },
+    {
+      "file": "20260213100000_fix_rls_all_tables_recursion.sql",
+      "timestamp": "20260213100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260213100000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : to"
+    },
+    {
+      "file": "20260215100000_signature_security_audit_fixes.sql",
+      "timestamp": "20260215100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260215100000",
+      "risk": "MODERE",
+      "risk_why": "RENAME column"
+    },
+    {
+      "file": "20260215200000_fix_rls_properties_tenant_pre_active.sql",
+      "timestamp": "20260215200000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260215200000",
+      "risk": "MODERE",
+      "risk_why": "+1 policies, -1 policies"
+    },
+    {
+      "file": "20260215200001_add_notice_given_lease_status.sql",
+      "timestamp": "20260215200001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260215200001",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260215200002_fix_rls_tenant_access_beyond_active.sql",
+      "timestamp": "20260215200002",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260215200002",
+      "risk": "MODERE",
+      "risk_why": "+4 policies, -6 policies"
+    },
+    {
+      "file": "20260215200003_fix_copro_fk_on_delete.sql",
+      "timestamp": "20260215200003",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260215200003",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260216000000_tenant_document_center.sql",
+      "timestamp": "20260216000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260216000000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : of"
+    },
+    {
+      "file": "20260216000001_document_center_notifications.sql",
+      "timestamp": "20260216000001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260216000001",
+      "risk": "MODERE",
+      "risk_why": "+1 triggers, UPDATE"
+    },
+    {
+      "file": "20260216100000_security_audit_rls_fixes.sql",
+      "timestamp": "20260216100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260216100000",
+      "risk": "MODERE",
+      "risk_why": "+3 policies, -7 policies"
+    },
+    {
+      "file": "20260216200000_auto_link_lease_signers_trigger.sql",
+      "timestamp": "20260216200000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260216200000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260216300000_fix_auth_profile_sync.sql",
+      "timestamp": "20260216300000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260216300000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260216400000_performance_indexes_rls.sql",
+      "timestamp": "20260216400000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260216400000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260216500000_fix_tenant_dashboard_complete.sql",
+      "timestamp": "20260216500000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260216500000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260216500001_enforce_unique_constraints_safety.sql",
+      "timestamp": "20260216500001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260216500001",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260217000000_data_integrity_audit_repair.sql",
+      "timestamp": "20260217000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260217000000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260218000000_audit_repair_profiles.sql",
+      "timestamp": "20260218000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260218000000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260218100000_sync_auth_email_updates.sql",
+      "timestamp": "20260218100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260218100000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260219000000_missing_tables_and_rag.sql",
+      "timestamp": "20260219000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260219000000",
+      "risk": "MODERE",
+      "risk_why": "+18 policies, -18 policies, +1 triggers, UPDATE"
+    },
+    {
+      "file": "20260219100000_auto_link_notify_owner.sql",
+      "timestamp": "20260219100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260219100000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260219200000_fix_autolink_triggers_audit.sql",
+      "timestamp": "20260219200000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260219200000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260220000000_auto_link_signer_on_insert.sql",
+      "timestamp": "20260220000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260220000000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260220100000_fix_orphan_signers_audit.sql",
+      "timestamp": "20260220100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260220100000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260221000001_auto_link_trigger_update.sql",
+      "timestamp": "20260221000001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260221000001",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260221000002_fix_edl_signatures_rls.sql",
+      "timestamp": "20260221000002",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260221000002",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260221100000_fix_tenant_dashboard_draft_visibility.sql",
+      "timestamp": "20260221100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260221100000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260221100001_auto_upgrade_draft_on_tenant_signer.sql",
+      "timestamp": "20260221100001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260221100001",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260221200000_sync_edl_signer_to_lease_signer.sql",
+      "timestamp": "20260221200000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260221200000",
+      "risk": "MODERE",
+      "risk_why": "+1 triggers"
+    },
+    {
+      "file": "20260221300000_fix_tenant_dashboard_owner_join.sql",
+      "timestamp": "20260221300000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260221300000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260222000000_fix_invitations_and_orphan_signers.sql",
+      "timestamp": "20260222000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260222000000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260222100000_repair_missing_signers_and_invitations.sql",
+      "timestamp": "20260222100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260222100000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260222200000_ensure_all_owners_have_entity.sql",
+      "timestamp": "20260222200000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260222200000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260222200001_get_entity_stats_for_store.sql",
+      "timestamp": "20260222200001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260222200001",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260223000000_fix_tenant_documents_rls.sql",
+      "timestamp": "20260223000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260223000000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260223000001_auto_fill_document_fk.sql",
+      "timestamp": "20260223000001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260223000001",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260223000002_document_access_views.sql",
+      "timestamp": "20260223000002",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260223000002",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260223000003_notify_owner_on_tenant_document.sql",
+      "timestamp": "20260223000003",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260223000003",
+      "risk": "MODERE",
+      "risk_why": "+1 triggers"
+    },
+    {
+      "file": "20260223100000_fix_entity_connections.sql",
+      "timestamp": "20260223100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260223100000",
+      "risk": "MODERE",
+      "risk_why": "+3 triggers, UPDATE"
+    },
+    {
+      "file": "20260223200000_fix_all_missing_tables_and_columns.sql",
+      "timestamp": "20260223200000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260223200000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on,own,own"
+    },
+    {
+      "file": "20260224000000_fix_tenant_sync_and_notifications.sql",
+      "timestamp": "20260224000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260224000000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260224000001_remove_yousign_sendgrid_brevo.sql",
+      "timestamp": "20260224000001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260224000001",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260224100000_fix_tenant_dashboard_notifications_query.sql",
+      "timestamp": "20260224100000",
+      "action": "apply",
+      "note": "dup group (20260224100000) — kept as-is",
+      "effective_ts": "20260224100000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260224100000_normalize_provider_names.sql",
+      "timestamp": "20260224100000",
+      "new_filename": "20260224100001_normalize_provider_names.sql",
+      "new_timestamp": "20260224100001",
+      "action": "rename-then-apply",
+      "note": "dup group (20260224100000) — rename to 20260224100001 before applying",
+      "effective_ts": "20260224100001",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260225000000_owner_payment_audit_log.sql",
+      "timestamp": "20260225000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260225000000",
+      "risk": "MODERE",
+      "risk_why": "+3 policies"
+    },
+    {
+      "file": "20260225000001_fix_furniture_vetusty_rls.sql",
+      "timestamp": "20260225000001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260225000001",
+      "risk": "MODERE",
+      "risk_why": "+11 policies, -11 policies, UPDATE"
+    },
+    {
+      "file": "20260225100000_autolink_backfill_invoices_on_profile.sql",
+      "timestamp": "20260225100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260225100000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260226000000_backfill_existing_invoices_tenant_id.sql",
+      "timestamp": "20260226000000",
+      "action": "apply",
+      "note": "dup group (20260226000000) — kept as-is",
+      "effective_ts": "20260226000000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260226000000_fix_notifications_triggers.sql",
+      "timestamp": "20260226000000",
+      "new_filename": "20260226000001_fix_notifications_triggers.sql",
+      "new_timestamp": "20260226000001",
+      "action": "rename-then-apply",
+      "note": "dup group (20260226000000) — rename to 20260226000001 before applying",
+      "effective_ts": "20260226000001",
+      "risk": "MODERE",
+      "risk_why": "+1 triggers, ALTER column (type/constraint)"
+    },
+    {
+      "file": "20260227000000_drop_auto_activate_lease_trigger.sql",
+      "timestamp": "20260227000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260227000000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260228000000_lease_signers_share_percentage.sql",
+      "timestamp": "20260228000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260228000000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260228100000_tenant_payment_methods_sota2026.sql",
+      "timestamp": "20260228100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260228100000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : using,on,of,using,on,on,invoices,of"
+    },
+    {
+      "file": "20260229100000_identity_2fa_requests.sql",
+      "timestamp": "20260229100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260229100000",
+      "risk": "MODERE",
+      "risk_why": "+1 policies, -1 policies"
+    },
+    {
+      "file": "20260230100000_create_notification_resolve_profile_id.sql",
+      "timestamp": "20260230100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260230100000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260301000000_create_key_handovers.sql",
+      "timestamp": "20260301000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260301000000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260301100000_entity_audit_and_propagation.sql",
+      "timestamp": "20260301100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260301100000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on,or"
+    },
+    {
+      "file": "20260303000000_backfill_uploaded_by.sql",
+      "timestamp": "20260303000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260303000000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260303100000_entity_rls_fix_and_optimize.sql",
+      "timestamp": "20260303100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260303100000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : their,their"
+    },
+    {
+      "file": "20260304000000_fix_invoice_generation_jour_paiement.sql",
+      "timestamp": "20260304000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260304000000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260304000001_sync_sepa_collection_day.sql",
+      "timestamp": "20260304000001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260304000001",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : of"
+    },
+    {
+      "file": "20260304100000_activate_pg_cron_schedules.sql",
+      "timestamp": "20260304100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260304100000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260304200000_auto_mark_late_invoices.sql",
+      "timestamp": "20260304200000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260304200000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260305000001_invoice_engine_fields.sql",
+      "timestamp": "20260305000001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260305000001",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260305000002_payment_crons.sql",
+      "timestamp": "20260305000002",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260305000002",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260305100000_fix_invoice_draft_notification.sql",
+      "timestamp": "20260305100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260305100000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260305100001_add_missing_notification_triggers.sql",
+      "timestamp": "20260305100001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260305100001",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : of"
+    },
+    {
+      "file": "20260306000000_lease_documents_visible_tenant.sql",
+      "timestamp": "20260306000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260306000000",
+      "risk": "MODERE",
+      "risk_why": "+1 policies, -1 policies"
+    },
+    {
+      "file": "20260306100000_add_digicode_interphone_columns.sql",
+      "timestamp": "20260306100000",
+      "action": "apply",
+      "note": "dup group (20260306100000) — kept as-is",
+      "effective_ts": "20260306100000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260306100001_backfill_initial_invoices.sql",
+      "timestamp": "20260306100001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260306100001",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260306100000_invoice_on_fully_signed.sql",
+      "timestamp": "20260306100000",
+      "new_filename": "20260306100002_invoice_on_fully_signed.sql",
+      "new_timestamp": "20260306100002",
+      "action": "rename-then-apply",
+      "note": "dup group (20260306100000) — rename to 20260306100002 before applying",
+      "effective_ts": "20260306100002",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260306200000_notify_tenant_digicode_changed.sql",
+      "timestamp": "20260306200000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260306200000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260306300000_add_owner_payment_preferences.sql",
+      "timestamp": "20260306300000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260306300000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260309000000_entity_status_and_dedup.sql",
+      "timestamp": "20260309000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260309000000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260309000001_messages_update_rls.sql",
+      "timestamp": "20260309000001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260309000001",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : own"
+    },
+    {
+      "file": "20260309000002_add_ticket_to_conversations.sql",
+      "timestamp": "20260309000002",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260309000002",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260309100000_sync_subscription_plans_features.sql",
+      "timestamp": "20260309100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260309100000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260310000000_fix_subscription_plans_display_order.sql",
+      "timestamp": "20260310000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260310000000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260310100000_fix_property_limit_enforcement.sql",
+      "timestamp": "20260310100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260310100000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : or,deleted_at"
+    },
+    {
+      "file": "20260310200000_add_signature_push_franceconnect.sql",
+      "timestamp": "20260310200000",
+      "action": "apply",
+      "note": "dup group (20260310200000) — kept as-is",
+      "effective_ts": "20260310200000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260310200000_fix_property_limit_extra_properties.sql",
+      "timestamp": "20260310200000",
+      "new_filename": "20260310200001_fix_property_limit_extra_properties.sql",
+      "new_timestamp": "20260310200001",
+      "action": "rename-then-apply",
+      "note": "dup group (20260310200000) — rename to 20260310200001 before applying",
+      "effective_ts": "20260310200001",
+      "risk": "CRITIQUE",
+      "risk_why": "ALTER/DROP sur table billing (stripe_* / subscriptions*)"
+    },
+    {
+      "file": "20260310300000_add_stripe_price_extra_property_id.sql",
+      "timestamp": "20260310300000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260310300000",
+      "risk": "CRITIQUE",
+      "risk_why": "ALTER/DROP sur table billing (stripe_* / subscriptions*)"
+    },
+    {
+      "file": "20260311100000_sync_subscription_plan_slugs.sql",
+      "timestamp": "20260311100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260311100000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260312000000_admin_dashboard_rpcs.sql",
+      "timestamp": "20260312000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260312000000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260312000001_fix_owner_subscription_defaults.sql",
+      "timestamp": "20260312000001",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260312000001",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : of"
+    },
+    {
+      "file": "20260312100000_fix_handle_new_user_all_roles.sql",
+      "timestamp": "20260312100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260312100000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260314001000_fix_stripe_connect_rls.sql",
+      "timestamp": "20260314001000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260314001000",
+      "risk": "CRITIQUE",
+      "risk_why": "ALTER/DROP sur table billing (stripe_* / subscriptions*)"
+    },
+    {
+      "file": "20260314020000_canonical_lease_activation_flow.sql",
+      "timestamp": "20260314020000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260314020000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260314030000_payments_production_hardening.sql",
+      "timestamp": "20260314030000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260314030000",
+      "risk": "CRITIQUE",
+      "risk_why": "ALTER/DROP sur table billing (stripe_* / subscriptions*)"
+    },
+    {
+      "file": "20260315090000_market_standard_subscription_alignment.sql",
+      "timestamp": "20260315090000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260315090000",
+      "risk": "CRITIQUE",
+      "risk_why": "ALTER/DROP sur table billing (stripe_* / subscriptions*)"
+    },
+    {
+      "file": "20260318000000_fix_auth_reset_template_examples.sql",
+      "timestamp": "20260318000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260318000000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260318010000_password_reset_requests.sql",
+      "timestamp": "20260318010000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260318010000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260318020000_buildings_rls_sota2026.sql",
+      "timestamp": "20260318020000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260318020000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : their,their,to"
+    },
+    {
+      "file": "20260320100000_fix_owner_id_mismatch_and_rls.sql",
+      "timestamp": "20260320100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260320100000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260321000000_drop_invoice_trigger_sota2026.sql",
+      "timestamp": "20260321000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260321000000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260321100000_fix_cron_post_refactoring_sota2026.sql",
+      "timestamp": "20260321100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260321100000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260323000000_fix_document_visibility_and_dedup.sql",
+      "timestamp": "20260323000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260323000000",
+      "risk": "MODERE",
+      "risk_why": "+1 policies, -1 policies"
+    },
+    {
+      "file": "20260324100000_prevent_duplicate_payments.sql",
+      "timestamp": "20260324100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260324100000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260326022619_fix_documents_bucket_mime.sql",
+      "timestamp": "20260326022619",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260326022619",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260326022700_migrate_tenant_documents.sql",
+      "timestamp": "20260326022700",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260326022700",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260326022800_create_document_links.sql",
+      "timestamp": "20260326022800",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260326022800",
+      "risk": "MODERE",
+      "risk_why": "+3 policies"
+    },
+    {
+      "file": "20260326023000_fix_document_titles.sql",
+      "timestamp": "20260326023000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260326023000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260326205416_add_agency_role_to_handle_new_user.sql",
+      "timestamp": "20260326205416",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260326205416",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260327143000_add_site_config.sql",
+      "timestamp": "20260327143000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260327143000",
+      "risk": "MODERE",
+      "risk_why": "+5 policies"
+    },
+    {
+      "file": "20260327200000_fix_handle_new_user_restore_email.sql",
+      "timestamp": "20260327200000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260327200000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260328000000_fix_visible_tenant_documents.sql",
+      "timestamp": "20260328000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260328000000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260328042538_update_argument_images.sql",
+      "timestamp": "20260328042538",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260328042538",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260328100000_create_site_content.sql",
+      "timestamp": "20260328100000",
+      "action": "apply",
+      "note": "dup group (20260328100000) — kept as-is",
+      "effective_ts": "20260328100000",
+      "risk": "MODERE",
+      "risk_why": "+2 policies"
+    },
+    {
+      "file": "20260328100000_fix_visible_tenant_documents.sql",
+      "timestamp": "20260328100000",
+      "new_filename": "20260328100001_fix_visible_tenant_documents.sql",
+      "new_timestamp": "20260328100001",
+      "action": "rename-then-apply",
+      "note": "dup group (20260328100000) — rename to 20260328100001 before applying",
+      "effective_ts": "20260328100001",
+      "risk": "MODERE",
+      "risk_why": "ALTER column (type/constraint), UPDATE"
+    },
+    {
+      "file": "20260329052631_fix_contrat_bail_visible_tenant.sql",
+      "timestamp": "20260329052631",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260329052631",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260329120000_add_agency_to_handle_new_user.sql",
+      "timestamp": "20260329120000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260329120000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260329164841_fix_document_titles.sql",
+      "timestamp": "20260329164841",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260329164841",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260329170000_add_punctuality_score.sql",
+      "timestamp": "20260329170000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260329170000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : of"
+    },
+    {
+      "file": "20260329180000_notify_owner_edl_signed.sql",
+      "timestamp": "20260329180000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260329180000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : of"
+    },
+    {
+      "file": "20260329190000_force_visible_tenant_generated_docs.sql",
+      "timestamp": "20260329190000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260329190000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260330100000_add_lease_cancellation_columns.sql",
+      "timestamp": "20260330100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260330100000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260331000000_add_receipt_generated_to_invoices.sql",
+      "timestamp": "20260331000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260331000000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260331100000_add_agricultural_property_types.sql",
+      "timestamp": "20260331100000",
+      "action": "apply",
+      "note": "dup group (20260331100000) — kept as-is",
+      "effective_ts": "20260331100000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260331100000_fix_document_titles_bruts.sql",
+      "timestamp": "20260331100000",
+      "new_filename": "20260331100001_fix_document_titles_bruts.sql",
+      "new_timestamp": "20260331100001",
+      "action": "rename-then-apply",
+      "note": "dup group (20260331100000) — rename to 20260331100001 before applying",
+      "effective_ts": "20260331100001",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260331120000_add_signed_pdf_generated_to_leases.sql",
+      "timestamp": "20260331120000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260331120000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260331130000_key_handovers_add_cancelled_notes.sql",
+      "timestamp": "20260331130000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260331130000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260401000000_add_identity_status_onboarding_step.sql",
+      "timestamp": "20260401000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260401000000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260401000001_add_initial_payment_confirmed_to_leases.sql",
+      "timestamp": "20260401000001",
+      "action": "apply",
+      "note": "dup group (20260401000001) — kept as-is",
+      "effective_ts": "20260401000001",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260401000001_backfill_identity_status.sql",
+      "timestamp": "20260401000001",
+      "new_filename": "20260401000002_backfill_identity_status.sql",
+      "new_timestamp": "20260401000002",
+      "action": "rename-then-apply",
+      "note": "dup group (20260401000001) — rename to 20260401000002 before applying",
+      "effective_ts": "20260401000002",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260404100000_rls_push_subscriptions.sql",
+      "timestamp": "20260404100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260404100000",
+      "risk": "MODERE",
+      "risk_why": "+1 policies, -1 policies"
+    },
+    {
+      "file": "20260404100100_fix_tenant_docs_view_visible_tenant.sql",
+      "timestamp": "20260404100100",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260404100100",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260404100200_fix_ticket_messages_rls_lease_signers.sql",
+      "timestamp": "20260404100200",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260404100200",
+      "risk": "MODERE",
+      "risk_why": "+2 policies, -2 policies"
+    },
+    {
+      "file": "20260406200000_create_entities_view_and_members.sql",
+      "timestamp": "20260406200000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260406200000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260406210000_accounting_complete.sql",
+      "timestamp": "20260406210000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260406210000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260407110000_audit_fixes_rls_indexes.sql",
+      "timestamp": "20260407110000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260407110000",
+      "risk": "CRITIQUE",
+      "risk_why": "ALTER/DROP sur table billing (stripe_* / subscriptions*)"
+    },
+    {
+      "file": "20260407120000_accounting_reconcile_schemas.sql",
+      "timestamp": "20260407120000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260407120000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260407130000_ocr_category_rules.sql",
+      "timestamp": "20260407130000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260407130000",
+      "risk": "MODERE",
+      "risk_why": "+1 policies"
+    },
+    {
+      "file": "20260408042218_create_expenses_table.sql",
+      "timestamp": "20260408042218",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260408042218",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260408044152_reconcile_charge_regularisations_and_backfill_entry_lines.sql",
+      "timestamp": "20260408044152",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260408044152",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260408100000_copro_lots.sql",
+      "timestamp": "20260408100000",
+      "action": "apply",
+      "note": "dup group (20260408100000) — kept as-is",
+      "effective_ts": "20260408100000",
+      "risk": "MODERE",
+      "risk_why": "+2 policies, ALTER column (type/constraint), UPDATE"
+    },
+    {
+      "file": "20260408100000_create_push_subscriptions.sql",
+      "timestamp": "20260408100000",
+      "new_filename": "20260408100001_create_push_subscriptions.sql",
+      "new_timestamp": "20260408100001",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408100000) — rename to 20260408100001 before applying",
+      "effective_ts": "20260408100001",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260408110000_agency_hoguet.sql",
+      "timestamp": "20260408110000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260408110000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260408120000_api_keys_webhooks.sql",
+      "timestamp": "20260408120000",
+      "action": "apply",
+      "note": "dup group (20260408120000) — kept as-is",
+      "effective_ts": "20260408120000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on,on"
+    },
+    {
+      "file": "20260408120000_colocation_module.sql",
+      "timestamp": "20260408120000",
+      "new_filename": "20260408120001_colocation_module.sql",
+      "new_timestamp": "20260408120001",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408120000) — rename to 20260408120001 before applying",
+      "effective_ts": "20260408120001",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on,on,on"
+    },
+    {
+      "file": "20260408120000_edl_sortie_workflow.sql",
+      "timestamp": "20260408120000",
+      "new_filename": "20260408120002_edl_sortie_workflow.sql",
+      "new_timestamp": "20260408120002",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408120000) — rename to 20260408120002 before applying",
+      "effective_ts": "20260408120002",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : using"
+    },
+    {
+      "file": "20260408120000_providers_module_sota.sql",
+      "timestamp": "20260408120000",
+      "new_filename": "20260408120003_providers_module_sota.sql",
+      "new_timestamp": "20260408120003",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408120000) — rename to 20260408120003 before applying",
+      "effective_ts": "20260408120003",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : own,on,on,of,of"
+    },
+    {
+      "file": "20260408120000_smart_meters_connected.sql",
+      "timestamp": "20260408120000",
+      "new_filename": "20260408120004_smart_meters_connected.sql",
+      "new_timestamp": "20260408120004",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408120000) — rename to 20260408120004 before applying",
+      "effective_ts": "20260408120004",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260408120000_subscription_addons.sql",
+      "timestamp": "20260408120000",
+      "new_filename": "20260408120005_subscription_addons.sql",
+      "new_timestamp": "20260408120005",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408120000) — rename to 20260408120005 before applying",
+      "effective_ts": "20260408120005",
+      "risk": "CRITIQUE",
+      "risk_why": "ALTER/DROP sur table billing (stripe_* / subscriptions*)"
+    },
+    {
+      "file": "20260408120000_whitelabel_agency_module.sql",
+      "timestamp": "20260408120000",
+      "new_filename": "20260408120006_whitelabel_agency_module.sql",
+      "new_timestamp": "20260408120006",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408120000) — rename to 20260408120006 before applying",
+      "effective_ts": "20260408120006",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on,on,on,on"
+    },
+    {
+      "file": "20260408130000_active_sessions.sql",
+      "timestamp": "20260408130000",
+      "action": "apply",
+      "note": "dup group (20260408130000) — kept as-is",
+      "effective_ts": "20260408130000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : own,on"
+    },
+    {
+      "file": "20260408130000_admin_panel_tables.sql",
+      "timestamp": "20260408130000",
+      "new_filename": "20260408130001_admin_panel_tables.sql",
+      "new_timestamp": "20260408130001",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408130000) — rename to 20260408130001 before applying",
+      "effective_ts": "20260408130001",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260408130000_candidatures_workflow.sql",
+      "timestamp": "20260408130000",
+      "new_filename": "20260408130002_candidatures_workflow.sql",
+      "new_timestamp": "20260408130002",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408130000) — rename to 20260408130002 before applying",
+      "effective_ts": "20260408130002",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on,on,of"
+    },
+    {
+      "file": "20260408130000_charges_locatives_module.sql",
+      "timestamp": "20260408130000",
+      "new_filename": "20260408130003_charges_locatives_module.sql",
+      "new_timestamp": "20260408130003",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408130000) — rename to 20260408130003 before applying",
+      "effective_ts": "20260408130003",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on,on,on"
+    },
+    {
+      "file": "20260408130000_diagnostics_rent_control.sql",
+      "timestamp": "20260408130000",
+      "new_filename": "20260408130004_diagnostics_rent_control.sql",
+      "new_timestamp": "20260408130004",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408130000) — rename to 20260408130004 before applying",
+      "effective_ts": "20260408130004",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260408130000_fix_subscription_plan_prices.sql",
+      "timestamp": "20260408130000",
+      "new_filename": "20260408130005_fix_subscription_plan_prices.sql",
+      "new_timestamp": "20260408130005",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408130000) — rename to 20260408130005 before applying",
+      "effective_ts": "20260408130005",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260408130000_guarantor_workflow_complete.sql",
+      "timestamp": "20260408130000",
+      "new_filename": "20260408130006_guarantor_workflow_complete.sql",
+      "new_timestamp": "20260408130006",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408130000) — rename to 20260408130006 before applying",
+      "effective_ts": "20260408130006",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260408130000_insurance_policies.sql",
+      "timestamp": "20260408130000",
+      "new_filename": "20260408130007_insurance_policies.sql",
+      "new_timestamp": "20260408130007",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408130000) — rename to 20260408130007 before applying",
+      "effective_ts": "20260408130007",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : own,on"
+    },
+    {
+      "file": "20260408130000_lease_amendments_table.sql",
+      "timestamp": "20260408130000",
+      "new_filename": "20260408130008_lease_amendments_table.sql",
+      "new_timestamp": "20260408130008",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408130000) — rename to 20260408130008 before applying",
+      "effective_ts": "20260408130008",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260408130000_rgpd_consent_records_and_data_requests.sql",
+      "timestamp": "20260408130000",
+      "new_filename": "20260408130009_rgpd_consent_records_and_data_requests.sql",
+      "new_timestamp": "20260408130009",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408130000) — rename to 20260408130009 before applying",
+      "effective_ts": "20260408130009",
+      "risk": "MODERE",
+      "risk_why": "+5 policies, UPDATE"
+    },
+    {
+      "file": "20260408130000_seasonal_rental_module.sql",
+      "timestamp": "20260408130000",
+      "new_filename": "20260408130010_seasonal_rental_module.sql",
+      "new_timestamp": "20260408130010",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408130000) — rename to 20260408130010 before applying",
+      "effective_ts": "20260408130010",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on,on"
+    },
+    {
+      "file": "20260408130000_security_deposits.sql",
+      "timestamp": "20260408130000",
+      "new_filename": "20260408130011_security_deposits.sql",
+      "new_timestamp": "20260408130011",
+      "action": "rename-then-apply",
+      "note": "dup group (20260408130000) — rename to 20260408130011 before applying",
+      "effective_ts": "20260408130011",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on,on"
+    },
+    {
+      "file": "20260408140000_tickets_module_sota.sql",
+      "timestamp": "20260408140000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260408140000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260408200000_unified_notification_system.sql",
+      "timestamp": "20260408200000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260408200000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260408220000_payment_architecture_sota.sql",
+      "timestamp": "20260408220000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260408220000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260409100000_add_missing_rls.sql",
+      "timestamp": "20260409100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260409100000",
+      "risk": "MODERE",
+      "risk_why": "+13 policies"
+    },
+    {
+      "file": "20260409110000_fix_remaining_rls_recursion.sql",
+      "timestamp": "20260409110000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260409110000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : to"
+    },
+    {
+      "file": "20260409120000_fix_subscriptions_rls_recursion.sql",
+      "timestamp": "20260409120000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260409120000",
+      "risk": "MODERE",
+      "risk_why": "+3 policies, -3 policies"
+    },
+    {
+      "file": "20260409130000_fix_subscriptions_status_check.sql",
+      "timestamp": "20260409130000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260409130000",
+      "risk": "CRITIQUE",
+      "risk_why": "ALTER/DROP sur table billing (stripe_* / subscriptions*)"
+    },
+    {
+      "file": "20260409140000_fix_addons_sms_rls_recursion.sql",
+      "timestamp": "20260409140000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260409140000",
+      "risk": "MODERE",
+      "risk_why": "+2 policies, -2 policies"
+    },
+    {
+      "file": "20260409150000_fix_signature_tracking_and_analytics.sql",
+      "timestamp": "20260409150000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260409150000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260409160000_building_unit_lease_document_fk.sql",
+      "timestamp": "20260409160000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260409160000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260409170000_backfill_building_unit_properties.sql",
+      "timestamp": "20260409170000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260409170000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on,on"
+    },
+    {
+      "file": "20260409180000_buildings_site_id_nullable.sql",
+      "timestamp": "20260409180000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260409180000",
+      "risk": "MODERE",
+      "risk_why": "ALTER column (type/constraint)"
+    },
+    {
+      "file": "20260410100000_accounting_missing_indexes.sql",
+      "timestamp": "20260410100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260410100000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260410110000_cleanup_orphan_analyses.sql",
+      "timestamp": "20260410110000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260410110000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260410180000_fix_invoice_generation_sota.sql",
+      "timestamp": "20260410180000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260410180000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260410204528_extend_invoices_rls_for_sci_access.sql",
+      "timestamp": "20260410204528",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260410204528",
+      "risk": "MODERE",
+      "risk_why": "+3 policies, -3 policies"
+    },
+    {
+      "file": "20260410210000_fix_protected_document_visibility.sql",
+      "timestamp": "20260410210000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260410210000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260410210341_fix_notify_tenant_invoice_created_user_id.sql",
+      "timestamp": "20260410210341",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260410210341",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260410210342_fix_generate_monthly_invoices_fields.sql",
+      "timestamp": "20260410210342",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260410210342",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260410212232_fix_entity_members_policy_recursion.sql",
+      "timestamp": "20260410212232",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260410212232",
+      "risk": "MODERE",
+      "risk_why": "+4 policies, -4 policies"
+    },
+    {
+      "file": "20260410213940_fix_properties_tenant_policy_recursion.sql",
+      "timestamp": "20260410213940",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260410213940",
+      "risk": "MODERE",
+      "risk_why": "+1 policies, -1 policies"
+    },
+    {
+      "file": "20260410220000_cash_receipt_two_step_signature.sql",
+      "timestamp": "20260410220000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260410220000",
+      "risk": "MODERE",
+      "risk_why": "ALTER column (type/constraint), UPDATE"
+    },
+    {
+      "file": "20260411000000_create_cash_receipt_function.sql",
+      "timestamp": "20260411000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260411000000",
+      "risk": "MODERE",
+      "risk_why": "ALTER column (type/constraint)"
+    },
+    {
+      "file": "20260411100000_fix_work_orders_policy_recursion.sql",
+      "timestamp": "20260411100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260411100000",
+      "risk": "MODERE",
+      "risk_why": "+1 policies, -1 policies"
+    },
+    {
+      "file": "20260411120000_harden_payments_check_constraints.sql",
+      "timestamp": "20260411120000",
+      "action": "apply",
+      "note": "dup group (20260411120000) — kept as-is",
+      "effective_ts": "20260411120000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260411120000_schedule_onboarding_reminders_cron.sql",
+      "timestamp": "20260411120000",
+      "new_filename": "20260411120001_schedule_onboarding_reminders_cron.sql",
+      "new_timestamp": "20260411120001",
+      "action": "rename-then-apply",
+      "note": "dup group (20260411120000) — rename to 20260411120001 before applying",
+      "effective_ts": "20260411120001",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260411130000_restore_handle_new_user_sota.sql",
+      "timestamp": "20260411130000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260411130000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260411130100_agency_profiles_raison_sociale_nullable.sql",
+      "timestamp": "20260411130100",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260411130100",
+      "risk": "MODERE",
+      "risk_why": "ALTER column (type/constraint)"
+    },
+    {
+      "file": "20260411130200_create_syndic_profiles.sql",
+      "timestamp": "20260411130200",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260411130200",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260411130300_onboarding_role_constraints_allow_syndic_agency.sql",
+      "timestamp": "20260411130300",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260411130300",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260411140000_copro_assemblies_module.sql",
+      "timestamp": "20260411140000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260411140000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260411140100_copro_governance_module.sql",
+      "timestamp": "20260411140100",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260411140100",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260412000000_fix_cash_receipt_rpc_sota.sql",
+      "timestamp": "20260412000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260412000000",
+      "risk": "MODERE",
+      "risk_why": "+6 policies, -6 policies, ALTER column (type/constraint), UPDATE"
+    },
+    {
+      "file": "20260412100000_stripe_connect_multi_entity.sql",
+      "timestamp": "20260412100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260412100000",
+      "risk": "CRITIQUE",
+      "risk_why": "ALTER/DROP sur table billing (stripe_* / subscriptions*)"
+    },
+    {
+      "file": "20260412110000_documents_copro_fk.sql",
+      "timestamp": "20260412110000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260412110000",
+      "risk": "MODERE",
+      "risk_why": "+4 policies, -4 policies, UPDATE"
+    },
+    {
+      "file": "20260412120000_copro_fund_call_lines_reminder_tracking.sql",
+      "timestamp": "20260412120000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260412120000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260412130000_copro_cron_schedules.sql",
+      "timestamp": "20260412130000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260412130000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260412140000_close_admin_self_elevation.sql",
+      "timestamp": "20260412140000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260412140000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260412150000_create_cron_logs.sql",
+      "timestamp": "20260412150000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260412150000",
+      "risk": "MODERE",
+      "risk_why": "+2 policies"
+    },
+    {
+      "file": "20260415000000_signup_integrity_guard.sql",
+      "timestamp": "20260415000000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260415000000",
+      "risk": "CRITIQUE",
+      "risk_why": "Touche auth.users"
+    },
+    {
+      "file": "20260415121706_harden_sign_cash_receipt_as_tenant.sql",
+      "timestamp": "20260415121706",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260415121706",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260415124844_add_cheque_photo_to_payments.sql",
+      "timestamp": "20260415124844",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260415124844",
+      "risk": "MODERE",
+      "risk_why": "-2 policies"
+    },
+    {
+      "file": "20260415130000_fix_tenant_accessible_property_ids_security_definer.sql",
+      "timestamp": "20260415130000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260415130000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260415140000_buildings_sota_fix_wave1.sql",
+      "timestamp": "20260415140000",
+      "action": "apply",
+      "note": "dup group (20260415140000) — kept as-is",
+      "effective_ts": "20260415140000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on,to"
+    },
+    {
+      "file": "20260415140000_fix_tenant_payment_signing_and_leases_recursion.sql",
+      "timestamp": "20260415140000",
+      "new_filename": "20260415140001_fix_tenant_payment_signing_and_leases_recursion.sql",
+      "new_timestamp": "20260415140001",
+      "action": "rename-then-apply",
+      "note": "dup group (20260415140000) — rename to 20260415140001 before applying",
+      "effective_ts": "20260415140001",
+      "risk": "MODERE",
+      "risk_why": "+1 policies, -2 policies"
+    },
+    {
+      "file": "20260415150000_upsert_building_with_units_rpc.sql",
+      "timestamp": "20260415150000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260415150000",
+      "risk": "MODERE",
+      "risk_why": "UPDATE"
+    },
+    {
+      "file": "20260415160000_buildings_rls_entity_members_support.sql",
+      "timestamp": "20260415160000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260415160000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : to"
+    },
+    {
+      "file": "20260415230000_enforce_invoice_paid_has_payment.sql",
+      "timestamp": "20260415230000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260415230000",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : of"
+    },
+    {
+      "file": "20260416100000_fix_messages_conversation_trigger.sql",
+      "timestamp": "20260416100000",
+      "action": "apply",
+      "note": "dup group (20260416100000) — kept as-is",
+      "effective_ts": "20260416100000",
+      "risk": "MODERE",
+      "risk_why": "+1 triggers, UPDATE"
+    },
+    {
+      "file": "20260416100000_fix_tickets_rls_recursion.sql",
+      "timestamp": "20260416100000",
+      "new_filename": "20260416100001_fix_tickets_rls_recursion.sql",
+      "new_timestamp": "20260416100001",
+      "action": "rename-then-apply",
+      "note": "dup group (20260416100000) — rename to 20260416100001 before applying",
+      "effective_ts": "20260416100001",
+      "risk": "MODERE",
+      "risk_why": "+2 policies, -4 policies"
+    },
+    {
+      "file": "20260417090000_charges_reg_invoice_link.sql",
+      "timestamp": "20260417090000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260417090000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260417090100_tax_notices_table.sql",
+      "timestamp": "20260417090100",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260417090100",
+      "risk": "DANGEREUX",
+      "risk_why": "UPDATE sans WHERE : on"
+    },
+    {
+      "file": "20260417090200_epci_reference_table.sql",
+      "timestamp": "20260417090200",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260417090200",
+      "risk": "MODERE",
+      "risk_why": "+1 policies, -1 policies"
+    },
+    {
+      "file": "20260417090300_fix_tenant_contest_rls.sql",
+      "timestamp": "20260417090300",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260417090300",
+      "risk": "MODERE",
+      "risk_why": "+1 policies, -1 policies, UPDATE"
+    },
+    {
+      "file": "20260417090400_charges_pcg_accounts_backfill.sql",
+      "timestamp": "20260417090400",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260417090400",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260417090500_epci_reference_seed_drom.sql",
+      "timestamp": "20260417090500",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260417090500",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    },
+    {
+      "file": "20260417100000_drop_phone_otp_codes_refs.sql",
+      "timestamp": "20260417100000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260417100000",
+      "risk": "DANGEREUX",
+      "risk_why": "DROP TABLE : phone_otp_codes"
+    },
+    {
+      "file": "20260417110000_purge_identity_2fa_cron.sql",
+      "timestamp": "20260417110000",
+      "action": "apply",
+      "note": "unique timestamp — apply directly",
+      "effective_ts": "20260417110000",
+      "risk": "SAFE",
+      "risk_why": "Idempotent / structural only"
+    }
+  ]
+}
