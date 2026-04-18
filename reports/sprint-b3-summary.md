@@ -11,9 +11,9 @@
 > ⏳ Cocher au fur et à mesure, remplir avec résultats utilisateur.
 
 ### PASS 0 — Correctif INSERT
-- [ ] PASS 0 exécuté (INSERT version=`20260331100000`)
-- [ ] COUNT post-B2 = **222** confirmé
-- [ ] `properties_type_check` contient `terrain_agricole` + `exploitation_agricole`
+- [x] PASS 0 exécuté (INSERT version=`20260331100000`)
+- [x] COUNT post-B2 = **222** confirmé
+- [x] `properties_type_check` contient `terrain_agricole` + `exploitation_agricole`
 
 ### PASS 1 — Schema health (sections 1.1 à 1.4 du audit pack)
 - [ ] 21 tables core présentes (1.1 = OK partout)
