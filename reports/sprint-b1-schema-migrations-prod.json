@@ -1,0 +1,8 @@
+{
+  "_status": "STUB - not populated",
+  "_reason": "PASS 1 blocked: no Supabase MCP and no DB credentials available in this session",
+  "_instructions": "Run reports/sprint-b1-schema-migrations-query.sql in prod (SQL Editor), export result as JSON into this file, then re-run scripts/audit/build-reconciliation-matrix.mjs to update PASS 3.",
+  "_assumed_cutoff_from_sprint_a": "20260208024659",
+  "_assumption_used_by_pass_3": "every file with timestamp <= cutoff is MATCHED, every file with timestamp > cutoff is PENDING, the cutoff itself is GHOST APPLIED (no matching file exists).",
+  "migrations": []
+}
