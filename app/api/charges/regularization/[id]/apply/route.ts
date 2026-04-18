@@ -8,17 +8,24 @@ import {
   planSettlementEntry,
   SettlementEntryValidationError,
 } from "@/lib/charges/apply-engine";
+import {
+  createRegularizationStripePayment,
+  StripeRegularizationError,
+} from "@/lib/charges/apply-stripe";
 import type { SettlementMethod } from "@/lib/charges/types";
 import { handleApiError } from "@/lib/helpers/api-error";
-import { createClient } from "@/lib/supabase/server";
+import {
+  createClient,
+  createServiceRoleClient,
+} from "@/lib/supabase/server";
 
 /**
  * POST /api/charges/regularization/[id]/apply
  *
  * Settle a regularization : generate the accounting entry, persist the
  * settlement_method + installment_count + settled_at, emit an outbox
- * event. Stripe scenario (creating the invoice + PaymentIntent) is
- * handled in a follow-up commit — currently returns 501 for method='stripe'.
+ * event. If settlement_method='stripe', also creates an invoice +
+ * PaymentIntent and returns the client_secret for the frontend.
  *
  * Payload :
  *   {
@@ -102,14 +109,6 @@ export async function POST(
       settlementMethod === "installments_12"
         ? (payload.installment_count ?? 12)
         : 1;
-
-    // Stripe scenario requires invoice + PaymentIntent — deferred to next commit.
-    if (settlementMethod === "stripe") {
-      return NextResponse.json(
-        { error: "settlement_method='stripe' pas encore implémenté (Sprint 0.d commit 3)" },
-        { status: 501 },
-      );
-    }
 
     // 3. Fetch regularization
     const { data: regRow, error: regFetchError } = await supabase
@@ -240,16 +239,56 @@ export async function POST(
 
     await validateEntry(supabase, entry.id, user.id);
 
-    // 9. Update regularization record
+    // 8b. Stripe-only side-effect : create invoice + PaymentIntent.
+    // Run AFTER the accounting entry is booked : if Stripe fails, the entry
+    // is contre-passable mais au moins la régul n'est pas marquée settled.
+    let stripeResult: {
+      invoiceId: string;
+      paymentIntentId: string;
+      clientSecret: string | null;
+    } | null = null;
+    if (settlementMethod === "stripe") {
+      try {
+        stripeResult = await createRegularizationStripePayment({
+          serviceClient: createServiceRoleClient(),
+          regularizationId: reg.id,
+          leaseId: reg.lease_id,
+          propertyId: reg.property_id,
+          fiscalYear: reg.fiscal_year,
+          balanceCents: reg.balance_cents,
+        });
+      } catch (e) {
+        if (e instanceof StripeRegularizationError) {
+          // Accounting entry is booked but no Stripe payment. Return 502 +
+          // accounting_entry_id for manual contre-passation or retry.
+          return NextResponse.json(
+            {
+              error: e.message,
+              accounting_entry_id: entry.id,
+              hint:
+                "L'écriture comptable a été créée mais Stripe a échoué. Contre-passer l'écriture ou réessayer via un autre settlement_method.",
+            },
+            { status: 502 },
+          );
+        }
+        throw e;
+      }
+    }
+
+    // 9. Update regularization record (incl. regularization_invoice_id si Stripe)
+    const updatePayload: Record<string, unknown> = {
+      status: "settled",
+      settlement_method: settlementMethod,
+      installment_count: installmentCount,
+      settled_at: new Date().toISOString(),
+      notes: payload.notes ?? null,
+    };
+    if (stripeResult) {
+      updatePayload.regularization_invoice_id = stripeResult.invoiceId;
+    }
     const { error: updateError } = await supabase
       .from("lease_charge_regularizations")
-      .update({
-        status: "settled",
-        settlement_method: settlementMethod,
-        installment_count: installmentCount,
-        settled_at: new Date().toISOString(),
-        notes: payload.notes ?? null,
-      } as never)
+      .update(updatePayload as never)
       .eq("id", id);
 
     if (updateError) {
@@ -292,6 +331,13 @@ export async function POST(
       settlement_method: settlementMethod,
       installment_count: installmentCount,
       requires_installment_schedule: plan.requiresInstallmentSchedule,
+      ...(stripeResult && {
+        stripe: {
+          invoice_id: stripeResult.invoiceId,
+          payment_intent_id: stripeResult.paymentIntentId,
+          client_secret: stripeResult.clientSecret,
+        },
+      }),
     });
   } catch (error: unknown) {
     return handleApiError(error);
