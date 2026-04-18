@@ -1046,12 +1046,12 @@ SET
 WHERE entry_number IS NULL AND ecriture_num IS NOT NULL;
 
 -- Add the unique constraint for new entry numbering (if not exists)
-BEGIN
+-- patch sprint-b2: restored DO $$ structure after patcher cascade
+DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'entry_number_unique'
   ) THEN
-    -- Only add if no duplicates exist
     IF (SELECT COUNT(*) FROM (
       SELECT entity_id, exercise_id, entry_number
       FROM public.accounting_entries
@@ -1059,11 +1059,14 @@ BEGIN
       GROUP BY entity_id, exercise_id, entry_number
       HAVING COUNT(*) > 1
     ) dups) = 0 THEN
-      ALTER TABLE public.accounting_entries
-        ADD CONSTRAINT entry_number_unique UNIQUE (entity_id, exercise_id, entry_number);
+      BEGIN
+        ALTER TABLE public.accounting_entries
+          ADD CONSTRAINT entry_number_unique UNIQUE (entity_id, exercise_id, entry_number);
+      EXCEPTION WHEN duplicate_object OR duplicate_table THEN NULL;
+      END;
     END IF;
   END IF;
-END;
+END $$;
 
 -- =====================================================
 -- 3. Extend mandant_accounts with entity support
