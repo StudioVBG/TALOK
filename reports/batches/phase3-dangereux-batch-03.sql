@@ -564,17 +564,23 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Créer le trigger seulement s'il n'existe pas déjà
+-- Créer le trigger seulement si trigger absent ET colonne provider_id présente
+-- (patch sprint-b2: tickets.provider_id n'existe pas dans cet env, skip propre)
 DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger WHERE tgname = 'trg_notify_provider_on_work_order'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'tickets' AND column_name = 'provider_id'
   ) THEN
     DROP TRIGGER IF EXISTS trg_notify_provider_on_work_order ON tickets;
     CREATE TRIGGER trg_notify_provider_on_work_order
       AFTER INSERT OR UPDATE OF provider_id ON tickets
       FOR EACH ROW
       EXECUTE FUNCTION notify_provider_on_work_order();
+  ELSE
+    RAISE NOTICE 'trg_notify_provider_on_work_order skipped (column tickets.provider_id missing or trigger exists)';
   END IF;
 END;
 $$;
