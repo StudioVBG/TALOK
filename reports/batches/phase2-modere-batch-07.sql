@@ -112,21 +112,31 @@ DO $post$ BEGIN RAISE NOTICE '✓ Applied  20260323000000_fix_document_visibilit
 DO $pre$ BEGIN RAISE NOTICE '▶ Applying 20260326022619_fix_documents_bucket_mime.sql'; END $pre$;
 
 -- Fix: Aligner les MIME types du bucket storage avec lib/documents/constants.ts
--- Bug: Word/Excel etaient acceptes par le code mais rejetes par le bucket
-
-UPDATE storage.buckets
-SET allowed_mime_types = ARRAY[
-  'application/pdf',
-  'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.oasis.opendocument.text',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'text/plain', 'text/csv'
-]::text[],
-file_size_limit = 52428800  -- 50 Mo
-WHERE id = 'documents';
+-- Patch sprint-b2: storage.buckets requires supabase_admin role; wrapped in
+-- a graceful skip block so the rest of the batch continues.
+-- Manual action required after migrations: configurer le bucket via
+-- Supabase Dashboard → Storage → documents → Settings (allowed MIME types
+-- + file_size_limit 50 MB).
+DO $$
+BEGIN
+  UPDATE storage.buckets
+  SET allowed_mime_types = ARRAY[
+    'application/pdf',
+    'image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.oasis.opendocument.text',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain', 'text/csv'
+  ]::text[],
+  file_size_limit = 52428800
+  WHERE id = 'documents';
+  RAISE NOTICE 'storage.buckets updated for "documents"';
+EXCEPTION
+  WHEN insufficient_privilege OR undefined_table THEN
+    RAISE NOTICE 'storage.buckets not writable from this role; configure via Dashboard';
+END $$;
 
 INSERT INTO supabase_migrations.schema_migrations (version, name)
 VALUES ('20260326022619', 'fix_documents_bucket_mime')
