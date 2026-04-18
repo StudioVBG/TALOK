@@ -2,7 +2,32 @@
 
 ## Statut
 
-⏳ **En attente d'exécution utilisateur** — Chrome MCP indisponible dans cette session, tests à dérouler manuellement (browser ou DevTools).
+🟢 **Exécuté 2026-04-18 post-hotfix RLS** — tous les sous-flows critiques OK, 2 réserves mineures.
+
+### Résumé par sous-flow
+
+| Sous-flow | Verdict | Note |
+|---|---|---|
+| 6.1 Owner/Admin dashboard | 🟢 OK | "Thomas Admin" — 11 users, 13 logements, 1 bail actif, MRR 69€, 0 erreur 42P17 |
+| 6.2 Tenant dashboard | 🟢 OK | "Thomas locataire" — impayés 70€, bail Fort-de-France, badge Live Realtime, 0 erreur 42P17 |
+| 6.3 SMS `sms_messages` | 🟡 Empty | 0 ligne — aucun SMS transactionnel envoyé récemment (flux OTP passent par Twilio Verify, pas stocké côté Talok — comportement attendu post-Sprint 0) |
+| 6.4 Upload document | ⏭️ Skipped | Bucket `documents` pas encore créé (cf. PASS 3 — action manuelle Dashboard Supabase pendante) |
+| 6.5 Stripe webhooks | 🟢 OK | `webhook_queue` / `webhook_logs` vides — cohérent MVP early-stage, aucun event stripe pending/stuck |
+
+### Anomalies observées (non-bloquantes)
+
+1. **374× `[RealtimeSync] Connection lost (CLOSED), scheduling reconnect...`** en console owner+tenant. Websocket Realtime se déconnecte/reconnecte en boucle. Pas d'impact REST (data charge normalement). À investiguer hors scope B3 : check Supabase Realtime dashboard + client config (peut-être un channel qui re-subscribe sans cleanup).
+2. **2 erreurs React `#425`/`#422` (hydration mismatch)** sur dashboard — non-bloquant UI, page s'affiche quand même.
+3. **`TWILIO_VERIFY_SERVICE_SID` absent** des env vars Netlify — les flux OTP (signature bail + 2FA) retourneront erreur "credentials missing" jusqu'à configuration. Non-régression Sprint B2, config manquante depuis Sprint 0.
+
+### Hotfix RLS appliqués pendant PASS 6
+
+PASS 6.1 initial a déclenché le circuit-breaker (`42P17 infinite recursion` sur `profiles`, `lease_signers`, `leases`, `tickets`). 2 migrations correctives ont été rédigées, appliquées en prod via SQL Editor, puis committées sur la branche :
+
+- `20260418120000_fix_lease_signers_recursion.sql` (commit `71342d6`)
+- `20260418130000_fix_leases_tickets_rls_recursion.sql` (commit `48668dc`)
+
+Incident documenté dans `sprint-b3-08-rollback-incident.md`.
 
 ## Pré-requis
 

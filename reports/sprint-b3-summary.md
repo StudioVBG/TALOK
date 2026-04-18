@@ -44,38 +44,49 @@
 - [x] Vault secrets présents et non-vides (`app_url`, `cron_secret`)
 
 ### PASS 6 — Smoke tests fonctionnels
-- [ ] Owner login + dashboard OK
-- [ ] Owner properties / leases / subscription OK
-- [ ] Tenant login + dashboard OK
-- [ ] Tenant accès bail + Document Center OK
-- [ ] SMS (Vérification DB ou e2e) OK
-- [ ] Upload document OK (si bucket créé)
-- [ ] Stripe webhook queue OK
+- [x] Owner/Admin login + dashboard OK (11 users, 13 logements, MRR 69€ affichés)
+- [⚠️] Owner properties / leases / subscription : circuit-breaker déclenché (42P17 recursion) → 2 hotfix appliqués (commits 71342d6 + 48668dc) → re-test OK
+- [x] Tenant login + dashboard OK (impayés 70€, bail Fort-de-France, badge Live)
+- [x] Tenant accès bail (da2eb9da-1ff1-4020-8682-5f993aa6fde7) OK post-hotfix
+- [⚠️] SMS : `sms_messages` vide (0 ligne) — OTP via Twilio Verify (hors table), transactionnels attendent un event eligible. **Non-bloquant**
+- [⏭️] Upload document skippé (bucket `documents` non créé, cf. PASS 3)
+- [x] Stripe webhook queue + logs vides (= aucun event stuck) — cohérent MVP early-stage
 
 ### PASS 7 — Monitoring
-- [ ] Pas de pic d'erreurs Sentry post-B2
-- [ ] 0 erreur 42P17 RLS recursion
-- [ ] SMS Sentry events stables
-- [ ] Pas de `relation X does not exist` répété
-- [ ] Latence p95 routes critiques stable
+- [x] 0 erreur `42P17` en console live post-hotfix (owner + tenant testés)
+- [⚠️] 374× `[RealtimeSync] Connection lost (CLOSED)` en loop — websocket, non-bloquant (REST charge normalement)
+- [⚠️] 2× React error #425/#422 (hydration mismatch) — non-bloquant, page s'affiche
+- [⏭️] Sentry UI non vérifié (pas de MCP en session, console live clean → à valider post-merge)
+- [x] Pas de `relation X does not exist`
 
 ---
 
 ## Anomalies détectées
 
-**À remplir au fur et à mesure** :
-
 | Priorité | PASS | Description | Action |
 |---|---|---|---|
-| _____ | _____ | _____ | _____ |
+| 🔴→🟢 | 6.1 | `42P17 infinite recursion` sur `profiles`, `lease_signers`, `leases`, `tickets` | **RÉSOLU** — 2 hotfix SECURITY DEFINER (commits `71342d6` + `48668dc`), re-test owner+tenant OK |
+| 🟡 | 3 | Bucket storage `documents` absent | Action manuelle Supabase Dashboard (cf. `sprint-b3-03-buckets.md`) |
+| 🟡 | 6 | `TWILIO_VERIFY_SERVICE_SID` absent des env vars Netlify | Post-merge : créer Verify Service + ajouter `VA...` SID dans Netlify env |
+| 🟡 | 6/7 | 374× `[RealtimeSync] CLOSED/reconnect` loop | Investigation hors scope B3 : Supabase Realtime config + client cleanup |
+| 🟢 | 1 | Table `otp_codes` MISSING | Deprecated post-Sprint 0, code mort, non-bloquant |
+| 🟢 | 6.3 | `sms_messages` vide | Attendu (OTP via Twilio Verify hors table, transactionnels pas déclenchés) |
+| 🟢 | 6.5 | `webhook_queue` / `webhook_logs` vides | Cohérent MVP early-stage, aucun event stripe pending/stuck |
 
 ---
 
 ## Verdict final
 
-**À remplir après dépouillement complet** :
+> ⚠️ **GO avec réserves. Anomalies mineures** :
+> - Buckets storage `documents` (et `landing-images` à vérifier) à créer manuellement via Dashboard Supabase (non-bloquant pour merge, bloquant pour upload doc)
+> - `TWILIO_VERIFY_SERVICE_SID` à ajouter dans Netlify env vars (bloquant pour flux OTP : signature bail + 2FA)
+> - Websocket Realtime loop à investiguer (non-bloquant, REST OK)
+>
+> **Merge possible après ces 2 ajouts config (bucket + Twilio Verify SID)**, ou merge d'abord et fix config en post-merge puisque la DB elle-même est saine.
 
-> ⚠️ **PENDING — exécution utilisateur des PASS 0-7 requise avant verdict.**
+Pourquoi pas Option A : 2 régressions 42P17 ont été **détectées pendant l'audit** (profiles/lease_signers puis leases/tickets). Elles sont résolues et trackées en git — mais "aucune régression détectée" est factuellement faux. D'où Option B.
+
+Pourquoi pas Option C : toutes les régressions détectées sont résolues, tous les smoke tests critiques passent, aucun blocker résiduel.
 
 ### Phrases acceptables (à choisir une fois tous les checks faits)
 
@@ -125,16 +136,23 @@ Exemple liste typique :
 81c8b3f docs(sprint-b3): PASS 6 — smoke test protocol
 6a6782d docs(sprint-b3): PASS 7 — Sentry/monitoring queries
 1a7ebbd docs(sprint-b3): PASS 8 — dormant rollback plan
+c0693d9 docs(sprint-b3): PASS 9 — executive summary scaffold + 22-item checklist
+06d2867 docs(sprint-b3): PASS 0 validated — COUNT=222 + agricultural types in constraint
+253d1aa fix(sprint-b3): audit pack section 3.2 — storage.policies removed in modern Supabase
+7a16c16 docs(sprint-b3): PASS 1-5 results — 2 minor flags, no blockers
+71342d6 fix(rls): break profiles/lease_signers 42P17 recursion (Sprint B3 PASS 6.1)
+48668dc fix(rls): break leases<->units and tickets<->work_orders 42P17 cycles
 ```
 
 ---
 
-## Prochaine étape utilisateur
+## Prochaines étapes utilisateur (post-verdict)
 
-1. Exécuter `reports/sprint-b3-00-correctif-insert.md` (1 min, INSERT correctif)
-2. Exécuter `reports/sprint-b3-audit-pack.sql` (1 min, output 14 sections)
-3. Coller les résultats dans le chat
-4. Je consolide → mise à jour de ce summary avec verdict final
-5. Si GO : créer la PR `audit/migrations-168-pending` → `main`
-6. Si GO avec réserves : appliquer les fix minimaux puis merge
-7. Si NO-GO : choisir option de PASS 8 et exécuter rollback
+1. **Avant merge PR #434** (optionnel, peut aussi se faire post-merge) :
+   - Créer le bucket `documents` via Supabase Dashboard (private, 50 MB, MIME PDF+images+Office) + les policies storage (cf. `sprint-b3-03-buckets.md`)
+   - Créer un Twilio Verify Service (console.twilio.com → Verify → Services) + ajouter `TWILIO_VERIFY_SERVICE_SID` dans Netlify env vars
+2. **Merger PR #434** (`audit/migrations-168-pending` → `main`) — les 2 hotfix RLS sont inclus et idempotents
+3. **Post-merge** :
+   - Investiguer la boucle Realtime reconnect (Supabase Dashboard → Realtime logs + client cleanup de channels)
+   - Smoke test e2e OTP (envoyer un SMS signature bail) une fois Verify SID configuré
+   - Vérifier Sentry UI dashboard window 4h post-merge pour confirmer 0 régression résiduelle

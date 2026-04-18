@@ -84,15 +84,44 @@ COMMIT;
 
 ---
 
-## Validation post-fix
+## Seconde itération — récursions cascadantes `leases` + `tickets`
+
+Le premier hotfix a résolu profiles/lease_signers mais a révélé **2 autres cycles** côté tenant :
+
+### Cycle A — `leases` ↔ `units`
+- `leases."Owners can view leases of own properties"` USING fait `EXISTS (FROM units u JOIN properties p ...)`
+- `units."Users can view units of accessible properties"` USING fait `EXISTS (FROM leases l JOIN lease_signers ls ...)`
+- **Évaluation croisée** : lecture leases déclenche évaluation units → re-déclenche évaluation leases → recursion.
+
+### Cycle B — `tickets` ↔ `work_orders`
+- `tickets."Users can view tickets of accessible properties"` USING fait `EXISTS (FROM work_orders wo WHERE provider_id)`
+- `work_orders.owners_view_work_orders` et `tenants_view_work_orders` USING font `EXISTS (FROM tickets ...)`
+- Mêmes symptômes.
+
+### Fix cycle A + B (migration `20260418130000_fix_leases_tickets_rls_recursion.sql`)
+
+- **4 helpers SECURITY DEFINER créés** : `is_unit_accessible_to_tenant`, `is_ticket_provider`, `work_order_is_for_my_property`, `work_order_ticket_created_by_me`.
+- **Policies réécrites** : `units "Users can view units..."`, `tickets "Users can view tickets..."` + `"Users can create tickets..."`, `work_orders.owners_view/update/create_work_orders`, `work_orders.tenants_view_work_orders`.
+
+Commit `48668dc` sur `audit/migrations-168-pending`. Appliqué en prod via SQL Editor.
+
+---
+
+## Validation post-fix (2026-04-18)
 
 | Check | Attendu | Résultat |
 |---|---|---|
-| `SELECT FROM profiles WHERE user_id = X` en mode authenticated | 1 row, pas de 42P17 | ⏳ test e2e |
-| `SELECT FROM lease_signers WHERE profile_id = X` en mode authenticated | N rows, pas de 42P17 | ⏳ test e2e |
-| Login owner → `/owner` dashboard | 200 OK, pas d'erreur console | ⏳ test e2e |
-| Login tenant → `/tenant` dashboard + accès bail | 200 OK | ⏳ test e2e |
-| Sentry post-fix window 1h | 0 erreur 42P17 | ⏳ |
+| `SELECT FROM profiles WHERE user_id = X` en mode authenticated | 1 row, pas de 42P17 | ✅ owner admin dashboard OK |
+| `SELECT FROM lease_signers WHERE profile_id = X` en mode authenticated | N rows, pas de 42P17 | ✅ tenant dashboard charge son bail |
+| Login owner → `/owner` dashboard | 200 OK, pas d'erreur console | ✅ "Thomas Admin" - 11 users, 13 logements, MRR 69€ |
+| Login tenant → `/tenant` dashboard + accès bail | 200 OK | ✅ "Thomas locataire" - bail Fort-de-France, impayés 70€, badge Live |
+| Console live post-fix | 0 erreur 42P17 | ✅ uniquement warnings Realtime reconnect (non-bloquant) |
+
+## Statut final incident
+
+🟢 **RÉSOLU** — 2 cycles RLS 42P17 détectés pendant PASS 6.1, fix appliqué via 2 migrations chirurgicales (pattern Talok SECURITY DEFINER helpers), validation e2e owner+tenant OK.
+
+Verdict Sprint B3 : **Option B (GO avec réserves)** — merge possible, l'incident étant résolu dans le scope du sprint et tracké par 2 migrations idempotentes.
 
 ---
 
