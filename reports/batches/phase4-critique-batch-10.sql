@@ -950,14 +950,14 @@ BEGIN
   EXCEPTION
     WHEN syntax_error THEN
       -- PostgreSQL < 15 : fallback via index unique partiel.
-      -- Deux index : un pour (profile_id) où entity_id IS NULL,
-      -- et un autre pour (profile_id, entity_id) où entity_id IS NOT NULL.
       CREATE UNIQUE INDEX IF NOT EXISTS stripe_connect_unique_profile_personal
         ON public.stripe_connect_accounts (profile_id)
         WHERE entity_id IS NULL;
       CREATE UNIQUE INDEX IF NOT EXISTS stripe_connect_unique_profile_entity
         ON public.stripe_connect_accounts (profile_id, entity_id)
         WHERE entity_id IS NOT NULL;
+    -- patch sprint-b2: catch already-exists case (re-run idempotency)
+    WHEN duplicate_object OR duplicate_table THEN NULL;
   END;
 END $$;
 
