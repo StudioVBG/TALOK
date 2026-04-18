@@ -26,22 +26,18 @@ export {
   type EmailResult,
 } from "./email-service";
 
-// Service SMS (Twilio)
+// Service SMS (Twilio) — moved to @/lib/sms
 export {
   sendSMS,
-  sendSMS as sendSms, // Backward compatibility alias
-  sendOTPSMS,
-  sendOTPSMS as sendOtpSms, // Backward compatibility alias
-  sendNotificationSMS,
-  isSMSServiceAvailable,
+  startVerification,
+  checkVerification,
+  normalizePhoneE164,
   detectTerritory,
-  smsUtils,
-  type SMSOptions,
-  type SMSOptions as SmsOptions, // Backward compatibility alias
-  type SMSResult,
-  type SMSResult as SmsResult, // Backward compatibility alias
-  type SMSProvider,
-} from "./sms.service";
+  maskPhone,
+  type SendSmsParams,
+  type SendSmsResult,
+  type Territory,
+} from "@/lib/sms";
 
 // Service OTP (codes de vérification)
 export {
@@ -164,33 +160,3 @@ export {
 // Default export from primary notification service
 export { default as notificationService } from "./notification-service";
 
-// =============================================================================
-// Service Notifications Push/SMS (DEPRECATED - notification.service.ts)
-// =============================================================================
-// @deprecated - Use notification-service.ts for in-app notifications
-// @deprecated - Use sms.service.ts for SMS functionality
-// These exports are maintained for backward compatibility only
-
-// Push notification functions (deprecated)
-export {
-  sendPushNotification,
-  sendPushToMultiple,
-  type NotificationPayload,
-  type PushSubscription as WebPushSubscription,
-} from "./notification.service";
-
-// Notification templates (deprecated but still useful)
-export {
-  NOTIFICATION_TEMPLATES,
-  generateNotificationContent,
-  type NotificationOptions as LegacyNotificationOptions,
-} from "./notification.service";
-
-// Deprecated service object - use notificationService from notification-service.ts instead
-export { notificationService as legacyNotificationService } from "./notification.service";
-
-// Backward compatibility aliases for notification.service.ts
-// @deprecated - formatPhoneNumber: Use smsUtils.formatPhoneNumber from sms.service.ts
-export { formatPhoneNumber as formatPhoneNumberLegacy } from "./notification.service";
-// @deprecated - notifyUser: Use createNotification from notification-service.ts
-export { notifyUser } from "./notification.service";

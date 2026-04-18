@@ -1,0 +1,276 @@
+{
+  "unparseable_timestamps": [
+    "20260101000002a_add_invited_email_to_signers.sql",
+    "20260221_fix_owner_data_chain.sql"
+  ],
+  "timestamp_format_variants": {
+    "14-digit": 408,
+    "12-digit": 32,
+    "unknown": 2
+  },
+  "duplicate_names_across_different_ts": [
+    {
+      "name": "fix_edl_signatures_schema",
+      "count": 2,
+      "files": [
+        "20251231000008_fix_edl_signatures_schema.sql",
+        "20260102000006_fix_edl_signatures_schema.sql"
+      ]
+    },
+    {
+      "name": "fix_document_titles",
+      "count": 2,
+      "files": [
+        "20260326023000_fix_document_titles.sql",
+        "20260329164841_fix_document_titles.sql"
+      ]
+    },
+    {
+      "name": "fix_visible_tenant_documents",
+      "count": 2,
+      "files": [
+        "20260328000000_fix_visible_tenant_documents.sql",
+        "20260328100000_fix_visible_tenant_documents.sql"
+      ]
+    }
+  ],
+  "gaps_between_migrations": [
+    {
+      "from": "20240101000026_fix_provider_rls.sql",
+      "to": "202411140001_fix_auth_helper_functions.sql",
+      "days": 318
+    },
+    {
+      "from": "202411151200_property_share_tokens.sql",
+      "to": "20241128000001_scoring_and_automations.sql",
+      "days": 12.5
+    },
+    {
+      "from": "20241201000003_quotes_table.sql",
+      "to": "20250101000001_owner_dashboard_rpc.sql",
+      "days": 31
+    },
+    {
+      "from": "20250101000001_owner_dashboard_rpc.sql",
+      "to": "20250114120000_add_guarantor_role.sql",
+      "days": 13.5
+    },
+    {
+      "from": "202501200000_fix_leases_rls_infinite_recursion.sql",
+      "to": "20250204000000_add_property_investment_fields.sql",
+      "days": 15
+    },
+    {
+      "from": "20250204000000_add_property_investment_fields.sql",
+      "to": "202502141000_property_rooms_photos.sql",
+      "days": 10.4
+    },
+    {
+      "from": "20250220000000_add_open_banking_tables.sql",
+      "to": "20250601000000_legal_protocol_tracking.sql",
+      "days": 101
+    },
+    {
+      "from": "20250601000000_legal_protocol_tracking.sql",
+      "to": "20251119060000_property_details_rpc.sql",
+      "days": 171.3
+    },
+    {
+      "from": "20251119093000_admin_stats_rpc_v2.sql",
+      "to": "20251130000001_edl_media_section.sql",
+      "days": 10.6
+    },
+    {
+      "from": "20251210100000_add_lease_payment_fields.sql",
+      "to": "20251221000000_document_caching.sql",
+      "days": 10.6
+    }
+  ],
+  "files_added_post_doc_date": [
+    "20260409100000_add_missing_rls.sql",
+    "20260409110000_fix_remaining_rls_recursion.sql",
+    "20260409120000_fix_subscriptions_rls_recursion.sql",
+    "20260409130000_fix_subscriptions_status_check.sql",
+    "20260409140000_fix_addons_sms_rls_recursion.sql",
+    "20260409150000_fix_signature_tracking_and_analytics.sql",
+    "20260409160000_building_unit_lease_document_fk.sql",
+    "20260409170000_backfill_building_unit_properties.sql",
+    "20260409180000_buildings_site_id_nullable.sql",
+    "20260410100000_accounting_missing_indexes.sql",
+    "20260410110000_cleanup_orphan_analyses.sql",
+    "20260410180000_fix_invoice_generation_sota.sql",
+    "20260410204528_extend_invoices_rls_for_sci_access.sql",
+    "20260410210000_fix_protected_document_visibility.sql",
+    "20260410210341_fix_notify_tenant_invoice_created_user_id.sql",
+    "20260410210342_fix_generate_monthly_invoices_fields.sql",
+    "20260410212232_fix_entity_members_policy_recursion.sql",
+    "20260410213940_fix_properties_tenant_policy_recursion.sql",
+    "20260410220000_cash_receipt_two_step_signature.sql",
+    "20260411000000_create_cash_receipt_function.sql",
+    "20260411100000_fix_work_orders_policy_recursion.sql",
+    "20260411120000_harden_payments_check_constraints.sql",
+    "20260411120000_schedule_onboarding_reminders_cron.sql",
+    "20260411130000_restore_handle_new_user_sota.sql",
+    "20260411130100_agency_profiles_raison_sociale_nullable.sql",
+    "20260411130200_create_syndic_profiles.sql",
+    "20260411130300_onboarding_role_constraints_allow_syndic_agency.sql",
+    "20260411140000_copro_assemblies_module.sql",
+    "20260411140100_copro_governance_module.sql",
+    "20260412000000_fix_cash_receipt_rpc_sota.sql",
+    "20260412100000_stripe_connect_multi_entity.sql",
+    "20260412110000_documents_copro_fk.sql",
+    "20260412120000_copro_fund_call_lines_reminder_tracking.sql",
+    "20260412130000_copro_cron_schedules.sql",
+    "20260412140000_close_admin_self_elevation.sql",
+    "20260412150000_create_cron_logs.sql",
+    "20260415000000_signup_integrity_guard.sql",
+    "20260415121706_harden_sign_cash_receipt_as_tenant.sql",
+    "20260415124844_add_cheque_photo_to_payments.sql",
+    "20260415130000_fix_tenant_accessible_property_ids_security_definer.sql",
+    "20260415140000_buildings_sota_fix_wave1.sql",
+    "20260415140000_fix_tenant_payment_signing_and_leases_recursion.sql",
+    "20260415150000_upsert_building_with_units_rpc.sql",
+    "20260415160000_buildings_rls_entity_members_support.sql",
+    "20260415230000_enforce_invoice_paid_has_payment.sql",
+    "20260416100000_fix_messages_conversation_trigger.sql",
+    "20260416100000_fix_tickets_rls_recursion.sql",
+    "20260417090000_charges_reg_invoice_link.sql",
+    "20260417090100_tax_notices_table.sql",
+    "20260417090200_epci_reference_table.sql",
+    "20260417090300_fix_tenant_contest_rls.sql",
+    "20260417090400_charges_pcg_accounts_backfill.sql",
+    "20260417090500_epci_reference_seed_drom.sql",
+    "20260417100000_drop_phone_otp_codes_refs.sql",
+    "20260417110000_purge_identity_2fa_cron.sql"
+  ],
+  "suspect_filenames": [
+    {
+      "file": "202411140001_fix_auth_helper_functions.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202411140100_expand_commercial_capabilities.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202411140210_property_workflow_status.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202411140220_property_financial_diagnostics.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202411140221_fix_property_status_enum.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202411140230_documents_gallery.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202411140500_parking_details.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202411151200_property_share_tokens.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202411290001_add_etudiant_lease_type.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202411290002_add_studio_box_property_types.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202411290003_add_banking_columns.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202501170000_fix_lease_signers_recursion.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202501170001_fix_tenant_profiles_rls_recursion.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202501170002_fix_roommates_rls_recursion.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202501180000_normalize_existing_emails.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202501200000_fix_leases_rls_infinite_recursion.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502141000_property_rooms_photos.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502150000_property_model_v3.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502150001_property_photos_storage_policies.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502160000_fix_supabase_advisors_issues.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502170000_optimize_generate_unique_code.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502180000_rls_properties_units.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502180001_fix_rls_conflicts.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502180002_fix_rls_conflicts_final.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502180003_ensure_user_profile_id_works.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502190000_diagnostic_owner_id.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502190001_fix_owner_id_mismatch.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502190002_fix_existing_owner_id.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502190003_diagnostic_owner_id_quick.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502191200_document_verification.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502191300_ticket_maintenance_ai.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    },
+    {
+      "file": "202502191400_fix_property_details_rpc.sql",
+      "reason": "12-digit timestamp (expected 14)"
+    }
+  ]
+}

@@ -1,0 +1,389 @@
+{
+  "_generated_at": "2026-04-18T00:34:54.143Z",
+  "plan": [
+    {
+      "timestamp": "20260224100000",
+      "file": "20260224100000_fix_tenant_dashboard_notifications_query.sql",
+      "new_filename": null,
+      "action": "keep",
+      "reason": "Alphabetically first — keeps the base timestamp",
+      "hash_prefix": "b862393da0da"
+    },
+    {
+      "timestamp": "20260224100000",
+      "file": "20260224100000_normalize_provider_names.sql",
+      "new_timestamp": "20260224100001",
+      "new_filename": "20260224100001_normalize_provider_names.sql",
+      "offset_seconds": 1,
+      "action": "rename",
+      "reason": "Alphabetical position #2 — shifted by +1s",
+      "hash_prefix": "dd491df0273f"
+    },
+    {
+      "timestamp": "20260226000000",
+      "file": "20260226000000_backfill_existing_invoices_tenant_id.sql",
+      "new_filename": null,
+      "action": "keep",
+      "reason": "Alphabetically first — keeps the base timestamp",
+      "hash_prefix": "8da7b09dbcd1"
+    },
+    {
+      "timestamp": "20260226000000",
+      "file": "20260226000000_fix_notifications_triggers.sql",
+      "new_timestamp": "20260226000001",
+      "new_filename": "20260226000001_fix_notifications_triggers.sql",
+      "offset_seconds": 1,
+      "action": "rename",
+      "reason": "Alphabetical position #2 — shifted by +1s",
+      "hash_prefix": "94f6b20dde56"
+    },
+    {
+      "timestamp": "20260306100000",
+      "file": "20260306100000_add_digicode_interphone_columns.sql",
+      "new_filename": null,
+      "action": "keep",
+      "reason": "Alphabetically first — keeps the base timestamp",
+      "hash_prefix": "73b1f1a118ba"
+    },
+    {
+      "timestamp": "20260306100000",
+      "file": "20260306100000_invoice_on_fully_signed.sql",
+      "new_timestamp": "20260306100002",
+      "new_filename": "20260306100002_invoice_on_fully_signed.sql",
+      "offset_seconds": 2,
+      "action": "rename",
+      "reason": "Alphabetical position #2 — shifted by +2s",
+      "hash_prefix": "5b7d5d373fe8"
+    },
+    {
+      "timestamp": "20260310200000",
+      "file": "20260310200000_add_signature_push_franceconnect.sql",
+      "new_filename": null,
+      "action": "keep",
+      "reason": "Alphabetically first — keeps the base timestamp",
+      "hash_prefix": "3c64db87b7e4"
+    },
+    {
+      "timestamp": "20260310200000",
+      "file": "20260310200000_fix_property_limit_extra_properties.sql",
+      "new_timestamp": "20260310200001",
+      "new_filename": "20260310200001_fix_property_limit_extra_properties.sql",
+      "offset_seconds": 1,
+      "action": "rename",
+      "reason": "Alphabetical position #2 — shifted by +1s",
+      "hash_prefix": "c9577440057d"
+    },
+    {
+      "timestamp": "20260328100000",
+      "file": "20260328100000_create_site_content.sql",
+      "new_filename": null,
+      "action": "keep",
+      "reason": "Alphabetically first — keeps the base timestamp",
+      "hash_prefix": "88932cd764b5"
+    },
+    {
+      "timestamp": "20260328100000",
+      "file": "20260328100000_fix_visible_tenant_documents.sql",
+      "new_timestamp": "20260328100001",
+      "new_filename": "20260328100001_fix_visible_tenant_documents.sql",
+      "offset_seconds": 1,
+      "action": "rename",
+      "reason": "Alphabetical position #2 — shifted by +1s",
+      "hash_prefix": "0723d1a0671a"
+    },
+    {
+      "timestamp": "20260331100000",
+      "file": "20260331100000_add_agricultural_property_types.sql",
+      "new_filename": null,
+      "action": "keep",
+      "reason": "Alphabetically first — keeps the base timestamp",
+      "hash_prefix": "46243cb1d5b5"
+    },
+    {
+      "timestamp": "20260331100000",
+      "file": "20260331100000_fix_document_titles_bruts.sql",
+      "new_timestamp": "20260331100001",
+      "new_filename": "20260331100001_fix_document_titles_bruts.sql",
+      "offset_seconds": 1,
+      "action": "rename",
+      "reason": "Alphabetical position #2 — shifted by +1s",
+      "hash_prefix": "111702102b57"
+    },
+    {
+      "timestamp": "20260401000001",
+      "file": "20260401000001_add_initial_payment_confirmed_to_leases.sql",
+      "new_filename": null,
+      "action": "keep",
+      "reason": "Alphabetically first — keeps the base timestamp",
+      "hash_prefix": "6c5f8cfaacd4"
+    },
+    {
+      "timestamp": "20260401000001",
+      "file": "20260401000001_backfill_identity_status.sql",
+      "new_timestamp": "20260401000002",
+      "new_filename": "20260401000002_backfill_identity_status.sql",
+      "offset_seconds": 1,
+      "action": "rename",
+      "reason": "Alphabetical position #2 — shifted by +1s",
+      "hash_prefix": "40fd9e214dff"
+    },
+    {
+      "timestamp": "20260408100000",
+      "file": "20260408100000_copro_lots.sql",
+      "new_filename": null,
+      "action": "keep",
+      "reason": "Alphabetically first — keeps the base timestamp",
+      "hash_prefix": "97ef6b234a76"
+    },
+    {
+      "timestamp": "20260408100000",
+      "file": "20260408100000_create_push_subscriptions.sql",
+      "new_timestamp": "20260408100001",
+      "new_filename": "20260408100001_create_push_subscriptions.sql",
+      "offset_seconds": 1,
+      "action": "rename",
+      "reason": "Alphabetical position #2 — shifted by +1s",
+      "hash_prefix": "171db7e6077f"
+    },
+    {
+      "timestamp": "20260408120000",
+      "file": "20260408120000_api_keys_webhooks.sql",
+      "new_filename": null,
+      "action": "keep",
+      "reason": "Alphabetically first — keeps the base timestamp",
+      "hash_prefix": "b0af5a52014f"
+    },
+    {
+      "timestamp": "20260408120000",
+      "file": "20260408120000_colocation_module.sql",
+      "new_timestamp": "20260408120001",
+      "new_filename": "20260408120001_colocation_module.sql",
+      "offset_seconds": 1,
+      "action": "rename",
+      "reason": "Alphabetical position #2 — shifted by +1s",
+      "hash_prefix": "e26e563fe912"
+    },
+    {
+      "timestamp": "20260408120000",
+      "file": "20260408120000_edl_sortie_workflow.sql",
+      "new_timestamp": "20260408120002",
+      "new_filename": "20260408120002_edl_sortie_workflow.sql",
+      "offset_seconds": 2,
+      "action": "rename",
+      "reason": "Alphabetical position #3 — shifted by +2s",
+      "hash_prefix": "9caabed1dc8e"
+    },
+    {
+      "timestamp": "20260408120000",
+      "file": "20260408120000_providers_module_sota.sql",
+      "new_timestamp": "20260408120003",
+      "new_filename": "20260408120003_providers_module_sota.sql",
+      "offset_seconds": 3,
+      "action": "rename",
+      "reason": "Alphabetical position #4 — shifted by +3s",
+      "hash_prefix": "758a53936ba8"
+    },
+    {
+      "timestamp": "20260408120000",
+      "file": "20260408120000_smart_meters_connected.sql",
+      "new_timestamp": "20260408120004",
+      "new_filename": "20260408120004_smart_meters_connected.sql",
+      "offset_seconds": 4,
+      "action": "rename",
+      "reason": "Alphabetical position #5 — shifted by +4s",
+      "hash_prefix": "60c898664e34"
+    },
+    {
+      "timestamp": "20260408120000",
+      "file": "20260408120000_subscription_addons.sql",
+      "new_timestamp": "20260408120005",
+      "new_filename": "20260408120005_subscription_addons.sql",
+      "offset_seconds": 5,
+      "action": "rename",
+      "reason": "Alphabetical position #6 — shifted by +5s",
+      "hash_prefix": "9522c3a88616"
+    },
+    {
+      "timestamp": "20260408120000",
+      "file": "20260408120000_whitelabel_agency_module.sql",
+      "new_timestamp": "20260408120006",
+      "new_filename": "20260408120006_whitelabel_agency_module.sql",
+      "offset_seconds": 6,
+      "action": "rename",
+      "reason": "Alphabetical position #7 — shifted by +6s",
+      "hash_prefix": "8fdbe8a013f4"
+    },
+    {
+      "timestamp": "20260408130000",
+      "file": "20260408130000_active_sessions.sql",
+      "new_filename": null,
+      "action": "keep",
+      "reason": "Alphabetically first — keeps the base timestamp",
+      "hash_prefix": "082b0efd85df"
+    },
+    {
+      "timestamp": "20260408130000",
+      "file": "20260408130000_admin_panel_tables.sql",
+      "new_timestamp": "20260408130001",
+      "new_filename": "20260408130001_admin_panel_tables.sql",
+      "offset_seconds": 1,
+      "action": "rename",
+      "reason": "Alphabetical position #2 — shifted by +1s",
+      "hash_prefix": "b737e2cbc4f4"
+    },
+    {
+      "timestamp": "20260408130000",
+      "file": "20260408130000_candidatures_workflow.sql",
+      "new_timestamp": "20260408130002",
+      "new_filename": "20260408130002_candidatures_workflow.sql",
+      "offset_seconds": 2,
+      "action": "rename",
+      "reason": "Alphabetical position #3 — shifted by +2s",
+      "hash_prefix": "a1fb98f13259"
+    },
+    {
+      "timestamp": "20260408130000",
+      "file": "20260408130000_charges_locatives_module.sql",
+      "new_timestamp": "20260408130003",
+      "new_filename": "20260408130003_charges_locatives_module.sql",
+      "offset_seconds": 3,
+      "action": "rename",
+      "reason": "Alphabetical position #4 — shifted by +3s",
+      "hash_prefix": "cd52e4788d84"
+    },
+    {
+      "timestamp": "20260408130000",
+      "file": "20260408130000_diagnostics_rent_control.sql",
+      "new_timestamp": "20260408130004",
+      "new_filename": "20260408130004_diagnostics_rent_control.sql",
+      "offset_seconds": 4,
+      "action": "rename",
+      "reason": "Alphabetical position #5 — shifted by +4s",
+      "hash_prefix": "94e2ee0ad523"
+    },
+    {
+      "timestamp": "20260408130000",
+      "file": "20260408130000_fix_subscription_plan_prices.sql",
+      "new_timestamp": "20260408130005",
+      "new_filename": "20260408130005_fix_subscription_plan_prices.sql",
+      "offset_seconds": 5,
+      "action": "rename",
+      "reason": "Alphabetical position #6 — shifted by +5s",
+      "hash_prefix": "ddd4b72a5e3c"
+    },
+    {
+      "timestamp": "20260408130000",
+      "file": "20260408130000_guarantor_workflow_complete.sql",
+      "new_timestamp": "20260408130006",
+      "new_filename": "20260408130006_guarantor_workflow_complete.sql",
+      "offset_seconds": 6,
+      "action": "rename",
+      "reason": "Alphabetical position #7 — shifted by +6s",
+      "hash_prefix": "9c559d9f792a"
+    },
+    {
+      "timestamp": "20260408130000",
+      "file": "20260408130000_insurance_policies.sql",
+      "new_timestamp": "20260408130007",
+      "new_filename": "20260408130007_insurance_policies.sql",
+      "offset_seconds": 7,
+      "action": "rename",
+      "reason": "Alphabetical position #8 — shifted by +7s",
+      "hash_prefix": "3e72af2f0d7f"
+    },
+    {
+      "timestamp": "20260408130000",
+      "file": "20260408130000_lease_amendments_table.sql",
+      "new_timestamp": "20260408130008",
+      "new_filename": "20260408130008_lease_amendments_table.sql",
+      "offset_seconds": 8,
+      "action": "rename",
+      "reason": "Alphabetical position #9 — shifted by +8s",
+      "hash_prefix": "1f93a06d2e1d"
+    },
+    {
+      "timestamp": "20260408130000",
+      "file": "20260408130000_rgpd_consent_records_and_data_requests.sql",
+      "new_timestamp": "20260408130009",
+      "new_filename": "20260408130009_rgpd_consent_records_and_data_requests.sql",
+      "offset_seconds": 9,
+      "action": "rename",
+      "reason": "Alphabetical position #10 — shifted by +9s",
+      "hash_prefix": "e0f4c36875ce"
+    },
+    {
+      "timestamp": "20260408130000",
+      "file": "20260408130000_seasonal_rental_module.sql",
+      "new_timestamp": "20260408130010",
+      "new_filename": "20260408130010_seasonal_rental_module.sql",
+      "offset_seconds": 10,
+      "action": "rename",
+      "reason": "Alphabetical position #11 — shifted by +10s",
+      "hash_prefix": "ac03ecbaa8f7"
+    },
+    {
+      "timestamp": "20260408130000",
+      "file": "20260408130000_security_deposits.sql",
+      "new_timestamp": "20260408130011",
+      "new_filename": "20260408130011_security_deposits.sql",
+      "offset_seconds": 11,
+      "action": "rename",
+      "reason": "Alphabetical position #12 — shifted by +11s",
+      "hash_prefix": "7e0e7e2cd0fb"
+    },
+    {
+      "timestamp": "20260411120000",
+      "file": "20260411120000_harden_payments_check_constraints.sql",
+      "new_filename": null,
+      "action": "keep",
+      "reason": "Alphabetically first — keeps the base timestamp",
+      "hash_prefix": "61afd7d30974"
+    },
+    {
+      "timestamp": "20260411120000",
+      "file": "20260411120000_schedule_onboarding_reminders_cron.sql",
+      "new_timestamp": "20260411120001",
+      "new_filename": "20260411120001_schedule_onboarding_reminders_cron.sql",
+      "offset_seconds": 1,
+      "action": "rename",
+      "reason": "Alphabetical position #2 — shifted by +1s",
+      "hash_prefix": "d97f98a08d13"
+    },
+    {
+      "timestamp": "20260415140000",
+      "file": "20260415140000_buildings_sota_fix_wave1.sql",
+      "new_filename": null,
+      "action": "keep",
+      "reason": "Alphabetically first — keeps the base timestamp",
+      "hash_prefix": "c734324cf4eb"
+    },
+    {
+      "timestamp": "20260415140000",
+      "file": "20260415140000_fix_tenant_payment_signing_and_leases_recursion.sql",
+      "new_timestamp": "20260415140001",
+      "new_filename": "20260415140001_fix_tenant_payment_signing_and_leases_recursion.sql",
+      "offset_seconds": 1,
+      "action": "rename",
+      "reason": "Alphabetical position #2 — shifted by +1s",
+      "hash_prefix": "6f9291bfeb18"
+    },
+    {
+      "timestamp": "20260416100000",
+      "file": "20260416100000_fix_messages_conversation_trigger.sql",
+      "new_filename": null,
+      "action": "keep",
+      "reason": "Alphabetically first — keeps the base timestamp",
+      "hash_prefix": "fa033399a566"
+    },
+    {
+      "timestamp": "20260416100000",
+      "file": "20260416100000_fix_tickets_rls_recursion.sql",
+      "new_timestamp": "20260416100001",
+      "new_filename": "20260416100001_fix_tickets_rls_recursion.sql",
+      "offset_seconds": 1,
+      "action": "rename",
+      "reason": "Alphabetical position #2 — shifted by +1s",
+      "hash_prefix": "dcad7ec93f37"
+    }
+  ]
+}

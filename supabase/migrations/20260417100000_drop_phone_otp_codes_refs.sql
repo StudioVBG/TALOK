@@ -1,0 +1,36 @@
+-- Migration: Drop phone_otp_codes + enrich sms_messages (2026-04-17)
+--
+-- Sprint 0 (SMS unification + Twilio Verify):
+--   - phone_otp_codes: table orpheline (aucune migration ne la créait).
+--     Référencée uniquement par lib/identity/identity-verification.service.ts
+--     (supprimée dans le même sprint). On drop pour nettoyer les
+--     environnements où elle aurait été créée à la main.
+--   - sms_messages: ajout de `territory` (analytics DROM) et
+--     `verify_sid` (lien vers les verifications Twilio Verify).
+
+-- ============================================================
+-- 1. Drop phone_otp_codes (dead table)
+-- ============================================================
+
+DROP TABLE IF EXISTS public.phone_otp_codes CASCADE;
+
+-- ============================================================
+-- 2. sms_messages: add territory + verify_sid columns
+-- ============================================================
+
+ALTER TABLE public.sms_messages
+  ADD COLUMN IF NOT EXISTS territory text,
+  ADD COLUMN IF NOT EXISTS verify_sid text;
+
+COMMENT ON COLUMN public.sms_messages.territory
+  IS 'Code ISO du territoire (FR, MQ, GP, GF, RE, YT, PM, ...) déduit du numéro';
+COMMENT ON COLUMN public.sms_messages.verify_sid
+  IS 'SID de vérification Twilio Verify (VE...) pour les envois OTP';
+
+CREATE INDEX IF NOT EXISTS sms_messages_territory_idx
+  ON public.sms_messages (territory)
+  WHERE territory IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS sms_messages_verify_sid_idx
+  ON public.sms_messages (verify_sid)
+  WHERE verify_sid IS NOT NULL;

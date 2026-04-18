@@ -1,0 +1,2446 @@
+{
+  "_generated_at": "2026-04-18T00:31:47.852Z",
+  "_degraded": true,
+  "_cutoff_used": "20260208024659",
+  "counts": {
+    "matched": 218,
+    "ghostApplied": 1,
+    "pending": 181,
+    "hashMismatch": 0,
+    "duplicateTs": 41
+  },
+  "categories": {
+    "matched": [
+      {
+        "filename": "20240100099999_grant_auth_permissions.sql",
+        "timestamp": "20240100099999",
+        "sha256": "828d7a8e6eaa4e44b3160163095e0ad83a574e73dc1e8f93ab91d7f20d9bfc71",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000000_initial_schema.sql",
+        "timestamp": "20240101000000",
+        "sha256": "c034abcd187cce07f684587c2cd200d84d54332621cefdd37dd4f682f4a3c144",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000001_rls_policies.sql",
+        "timestamp": "20240101000001",
+        "sha256": "da10c6c93cfda0ea56bfe41a32dadf6f6460089698812b3e37d0a8f08aad4de1",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000002_functions.sql",
+        "timestamp": "20240101000002",
+        "sha256": "03ea3f853c213bca5dc7228c93ff653d15bb97a2bc29e0b5bbf2774af35f293e",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000003_storage_bucket.sql",
+        "timestamp": "20240101000003",
+        "sha256": "c320280c4b5ab9c5fdbe19e4954d3fb7d1df65fa01271fdde64532fe01b98e80",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000004_onboarding_tables.sql",
+        "timestamp": "20240101000004",
+        "sha256": "154f3c15cc86f8abcdd8b1d64b7ff9a1e0b21f9ae0a418c4398b0bae330d6722",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000005_resend_invitation_function.sql",
+        "timestamp": "20240101000005",
+        "sha256": "683d51c6ea8553f8fc701ac872f30105f92101fa40dd53ef9d16761ca9f30c93",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000006_fix_rls_recursion.sql",
+        "timestamp": "20240101000006",
+        "sha256": "944a8fbfcd4a82d0adeca6a9ae4e58575a1a30e946b1cdc66b098e3799b0ad77",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000007_admin_architecture.sql",
+        "timestamp": "20240101000007",
+        "sha256": "c1c7af411a2cd8236ad5cba019df3baa7e88e1ddd8c0757f63e22db351012845",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000008_admin_rls.sql",
+        "timestamp": "20240101000008",
+        "sha256": "ad8d890c1fadea6fe2c19e55cc0244341ce291c346dbf0e21ada0a53a73725e8",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000009_tenant_advanced.sql",
+        "timestamp": "20240101000009",
+        "sha256": "82657a7b7851909f1b6b2f95177fe8a1c88617581a33e05aa6e408435d6715d9",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000010_tenant_rls.sql",
+        "timestamp": "20240101000010",
+        "sha256": "5dab5b33c20f405b7973e1114845d3b6237413c14b31c187ffd797c345dd3d99",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000011_fix_properties_rls_recursion.sql",
+        "timestamp": "20240101000011",
+        "sha256": "01b07d7917e5503e2f6fb44c15b5cdb6e592d691937909f8e52466c74f76b4ed",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000012_fix_specialized_profiles_rls.sql",
+        "timestamp": "20240101000012",
+        "sha256": "dc81d960f4f16b8f78680dc58636c8bea3d25446cca92fdd3c06099229638f9c",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000013_fix_leases_rls.sql",
+        "timestamp": "20240101000013",
+        "sha256": "71b8d9b948b55e26e149f6b58993c595c5216c44564ffa7cf1404ee50f86142f",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000014_fix_leases_policy_functions.sql",
+        "timestamp": "20240101000014",
+        "sha256": "64b33762db6cfe7dd74ca63b374f00983a7c5733f36aaa2ee2a40544c8b5f816",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000015_fix_leases_rls_recursion.sql",
+        "timestamp": "20240101000015",
+        "sha256": "d1cd88881ddf7b033e70cf4997b76f9783d0d6b1b658ccbc5098257f34354fc8",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000016_tenant_missing_tables.sql",
+        "timestamp": "20240101000016",
+        "sha256": "c73aad73f4dae089ab6016c13cd9c85e9fa349e9542162595cb7f8cd137e41ef",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000017_tenant_missing_rls.sql",
+        "timestamp": "20240101000017",
+        "sha256": "8dc92627bca71f6f5f9baefb8d244b45cafebd55dd59b663896714a8f08194a5",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000018_missing_core_tables.sql",
+        "timestamp": "20240101000018",
+        "sha256": "6d0fe16133e33aef61eff79de0976c0b95699e696d59c360433c8a8f3e450e53",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000019_missing_rls.sql",
+        "timestamp": "20240101000019",
+        "sha256": "db84d062cde7be7b95d3d851408eec6e5f29c834941731ab40e4bd01ef101912",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000020_add_paused_status_tickets.sql",
+        "timestamp": "20240101000020",
+        "sha256": "fff0127d43ea5232d116a35eb7a99756aec6dd290ebce911d2f223c69689b7eb",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000021_add_notifications_table.sql",
+        "timestamp": "20240101000021",
+        "sha256": "38a24f2a652437a23be18ed0ba538572387d95273d9eba1833ec9234463471ca",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000022_add_lease_states.sql",
+        "timestamp": "20240101000022",
+        "sha256": "e2eebd354ac693076af1767fad1ddb09ca89684dcb3a8a456d3d847220000a07",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000023_idempotency_and_2fa.sql",
+        "timestamp": "20240101000023",
+        "sha256": "3167dcd7dc59f39caab2bfdee50efc29bbe5c13e146fbdec36b5909bec5cd5a1",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000024_update_api_credentials_table.sql",
+        "timestamp": "20240101000024",
+        "sha256": "3eb8ce537be128f32316e1ea7a27822ad5c062fd058b1d860348ff51df34568f",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000025_add_provider_validation.sql",
+        "timestamp": "20240101000025",
+        "sha256": "1d0fe9d9bff2126f912298f9de058fade8c1300495b6ef44c6b4e15c80a498c9",
+        "_degraded": true
+      },
+      {
+        "filename": "20240101000026_fix_provider_rls.sql",
+        "timestamp": "20240101000026",
+        "sha256": "48dcf01fb162724a6e184ed21708610718d26100f35a540abde20140307626d6",
+        "_degraded": true
+      },
+      {
+        "filename": "202411140001_fix_auth_helper_functions.sql",
+        "timestamp": "20241114000100",
+        "sha256": "4c2306965e9ab73b02ea5005851334dad6e51bd68175a3ebf26f86d19c3efc3c",
+        "_degraded": true
+      },
+      {
+        "filename": "202411140100_expand_commercial_capabilities.sql",
+        "timestamp": "20241114010000",
+        "sha256": "07a9b293db87a9268535b63853c019503f2ce3a2cb33d5961812fba616e763b7",
+        "_degraded": true
+      },
+      {
+        "filename": "202411140210_property_workflow_status.sql",
+        "timestamp": "20241114021000",
+        "sha256": "007c7519c00c92a247a7a6022a29d21231397455354ef131337c813a7ef16e6c",
+        "_degraded": true
+      },
+      {
+        "filename": "202411140220_property_financial_diagnostics.sql",
+        "timestamp": "20241114022000",
+        "sha256": "1e3ba1627541a04071b764e9f11b1de83d84a1574f2b95d0d22b837ba202db00",
+        "_degraded": true
+      },
+      {
+        "filename": "202411140221_fix_property_status_enum.sql",
+        "timestamp": "20241114022100",
+        "sha256": "716521f3ce07f181a88e5e7a514b6c9709d5fe8b586133885e308385b8b8847c",
+        "_degraded": true
+      },
+      {
+        "filename": "202411140230_documents_gallery.sql",
+        "timestamp": "20241114023000",
+        "sha256": "0eafb63d8755b07d471919f1bb0c67b910d2856578a20b06967b21a787c4ad56",
+        "_degraded": true
+      },
+      {
+        "filename": "202411140500_parking_details.sql",
+        "timestamp": "20241114050000",
+        "sha256": "8e317b453f44bbf190f359384482773215dd2c56e80d3b7464a27558fc82741c",
+        "_degraded": true
+      },
+      {
+        "filename": "202411151200_property_share_tokens.sql",
+        "timestamp": "20241115120000",
+        "sha256": "56ae8886918b55b0c4d9e3f6485a69d5af0f51d804adb376be1695d4c1910a9c",
+        "_degraded": true
+      },
+      {
+        "filename": "20241128000001_scoring_and_automations.sql",
+        "timestamp": "20241128000001",
+        "sha256": "5085f2d4355ec512d20f51100fe81554eb1381701b46ee9f248dfd2bc29eb288",
+        "_degraded": true
+      },
+      {
+        "filename": "20241128000002_api_keys_management.sql",
+        "timestamp": "20241128000002",
+        "sha256": "ab7f855421e9b573491ae68394c13b25f09e57f125860976b02f8a25e4f049de",
+        "_degraded": true
+      },
+      {
+        "filename": "20241129000001_subscriptions.sql",
+        "timestamp": "20241129000001",
+        "sha256": "5e4dc3649fa8cad0947eaa54d12dc3fa4b7167507e73fa2d915650d97b79a868",
+        "_degraded": true
+      },
+      {
+        "filename": "20241129000002_cash_payments.sql",
+        "timestamp": "20241129000002",
+        "sha256": "277e1f98e17367a3bc92a5477b72e74c6694a9203fef18b734bc355cddd7407c",
+        "_degraded": true
+      },
+      {
+        "filename": "202411290001_add_etudiant_lease_type.sql",
+        "timestamp": "20241129000100",
+        "sha256": "c586999b8129d8ca831f90bd4331663a6ab3812c735ffc7157b7e049a20e60d2",
+        "_degraded": true
+      },
+      {
+        "filename": "202411290002_add_studio_box_property_types.sql",
+        "timestamp": "20241129000200",
+        "sha256": "9e7b0daf04eef7872935cac1b649127d622c7c0a3890e3ca0dd6b6ba94fd6601",
+        "_degraded": true
+      },
+      {
+        "filename": "202411290003_add_banking_columns.sql",
+        "timestamp": "20241129000300",
+        "sha256": "bed7336b41e8002941e6e11e7e290a41294888ae2aba4c17866196f62331ddd3",
+        "_degraded": true
+      },
+      {
+        "filename": "20241130000001_add_lease_invite_columns.sql",
+        "timestamp": "20241130000001",
+        "sha256": "907a7615357ca9050c1f2a17fcb76557316f821764bd522424d98806fb4c9271",
+        "_degraded": true
+      },
+      {
+        "filename": "20241130000002_add_tenant_identity_documents.sql",
+        "timestamp": "20241130000002",
+        "sha256": "aedb92a70256bd5c2606a0834ed8741fdc0a7021baef7160728613ff8d9c8064",
+        "_degraded": true
+      },
+      {
+        "filename": "20241130000003_fix_profiles_rls.sql",
+        "timestamp": "20241130000003",
+        "sha256": "d8d6e24bc8432f911c7a1081ad37e4aabd1fcd7f9d8fbc165a34bafaa16a6581",
+        "_degraded": true
+      },
+      {
+        "filename": "20241130000004_fix_leases_rls_simple.sql",
+        "timestamp": "20241130000004",
+        "sha256": "acc4963c343cb2053de1cef2656d9c945423cf162ed95cd55239fa4c2fd7ae3a",
+        "_degraded": true
+      },
+      {
+        "filename": "20241130000010_add_external_api_keys.sql",
+        "timestamp": "20241130000010",
+        "sha256": "c0be9b816e01f95362c0c222a270f28c05a49a486ac21d6f1ee1d433ee34c180",
+        "_degraded": true
+      },
+      {
+        "filename": "20241201000001_performance_indexes.sql",
+        "timestamp": "20241201000001",
+        "sha256": "fa949b389d0bc849adf59cbb700e3d0b3fca9ef55b71e6a1545748aaf71b1881",
+        "_degraded": true
+      },
+      {
+        "filename": "20241201000002_otp_codes_table.sql",
+        "timestamp": "20241201000002",
+        "sha256": "55a00607c89e3955d8e18d7cda8d1b7461efa657e9c19c26cae97aa4e97ef4a5",
+        "_degraded": true
+      },
+      {
+        "filename": "20241201000003_quotes_table.sql",
+        "timestamp": "20241201000003",
+        "sha256": "870230100b5edac8f4539fc3341adf43f70c61094ea754b2bbbd995ac9aa6c3a",
+        "_degraded": true
+      },
+      {
+        "filename": "20250101000001_owner_dashboard_rpc.sql",
+        "timestamp": "20250101000001",
+        "sha256": "3de6cc79ba4f85a19a481fb8cd330f9bdd3c852d6852ed9a66ca96c502df0eba",
+        "_degraded": true
+      },
+      {
+        "filename": "20250114120000_add_guarantor_role.sql",
+        "timestamp": "20250114120000",
+        "sha256": "e4f646c3b68ad6099c04a144d2f7f11405ee8698fb125f738ce15950c32aaa88",
+        "_degraded": true
+      },
+      {
+        "filename": "20250114120500_create_avatars_bucket.sql",
+        "timestamp": "20250114120500",
+        "sha256": "3b76b80a2e814f1c63ed7363c048227e931d39e584b986adbef4229be86efe71",
+        "_degraded": true
+      },
+      {
+        "filename": "202501170000_fix_lease_signers_recursion.sql",
+        "timestamp": "20250117000000",
+        "sha256": "9d6ee63c5c219cba047c38c90bd6cbe771360254ddf6e96c2b067a7105055842",
+        "_degraded": true
+      },
+      {
+        "filename": "202501170001_fix_tenant_profiles_rls_recursion.sql",
+        "timestamp": "20250117000100",
+        "sha256": "8f6ef72ddea0dd425d6b6144e50e459cd13dddd4797c256592df50253db7d780",
+        "_degraded": true
+      },
+      {
+        "filename": "202501170002_fix_roommates_rls_recursion.sql",
+        "timestamp": "20250117000200",
+        "sha256": "a12d509da487ba505b3c2b6cad8f87c6c142beac97d05d86bdcecee42ab60a7c",
+        "_degraded": true
+      },
+      {
+        "filename": "202501180000_normalize_existing_emails.sql",
+        "timestamp": "20250118000000",
+        "sha256": "1619b7b749c6eb5e6e33357569d80e5d3c9f9f6a4a2fc0fa4dd73afb2cc20b5a",
+        "_degraded": true
+      },
+      {
+        "filename": "202501200000_fix_leases_rls_infinite_recursion.sql",
+        "timestamp": "20250120000000",
+        "sha256": "507def7cab957ce0502ec30ac03aea0eb4b6099da388f9a656b5b18427d9b30e",
+        "_degraded": true
+      },
+      {
+        "filename": "20250204000000_add_property_investment_fields.sql",
+        "timestamp": "20250204000000",
+        "sha256": "19ebe190f162e85c26ad87c7efc51dbf63f2123088f006ba993a0a110dd7e4c7",
+        "_degraded": true
+      },
+      {
+        "filename": "202502141000_property_rooms_photos.sql",
+        "timestamp": "20250214100000",
+        "sha256": "2ff8e80c22cfd06f23e7e748a649b2005e048afc014bfeec6c0c7693a2ed1c1b",
+        "_degraded": true
+      },
+      {
+        "filename": "202502150000_property_model_v3.sql",
+        "timestamp": "20250215000000",
+        "sha256": "3179d6eaede6a541ea002423fbca3d3e4aa8cad9d6e3221f30d41c79a4986a57",
+        "_degraded": true
+      },
+      {
+        "filename": "202502150001_property_photos_storage_policies.sql",
+        "timestamp": "20250215000100",
+        "sha256": "ecaf3a122034d95dea80c0a7e87754e23f16ce5b23ae2185b464f14c5af93d82",
+        "_degraded": true
+      },
+      {
+        "filename": "202502160000_fix_supabase_advisors_issues.sql",
+        "timestamp": "20250216000000",
+        "sha256": "edfda62b493b34a27609f9b63c7db10ec15b7ceb0205647bb616c46b487c8124",
+        "_degraded": true
+      },
+      {
+        "filename": "202502170000_optimize_generate_unique_code.sql",
+        "timestamp": "20250217000000",
+        "sha256": "d56bea0225a56ca7e372dc3e5e94c7ac1fb1296a97e59f9d1d4595d833c2a09f",
+        "_degraded": true
+      },
+      {
+        "filename": "202502180000_rls_properties_units.sql",
+        "timestamp": "20250218000000",
+        "sha256": "c9df87b220a823026143bf71d011b70a023482d878f0c3e067f96828e193b33c",
+        "_degraded": true
+      },
+      {
+        "filename": "202502180001_fix_rls_conflicts.sql",
+        "timestamp": "20250218000100",
+        "sha256": "dc961b148daa5e0d36d7a78c20e3e514b3bcdd5331a79ddc4933ee76f559afc5",
+        "_degraded": true
+      },
+      {
+        "filename": "202502180002_fix_rls_conflicts_final.sql",
+        "timestamp": "20250218000200",
+        "sha256": "f0d65e26703b5b16d0d92fd7329138ccf0f9a25f87a984a4584ca50e734fe75a",
+        "_degraded": true
+      },
+      {
+        "filename": "202502180003_ensure_user_profile_id_works.sql",
+        "timestamp": "20250218000300",
+        "sha256": "5e0f6d1d00f0929bbd0c520b7355100d5494aef00d60715cc1875007d98c0fa8",
+        "_degraded": true
+      },
+      {
+        "filename": "202502190000_diagnostic_owner_id.sql",
+        "timestamp": "20250219000000",
+        "sha256": "0f87329ca8898681c2cb09edf6efc12152f05bd4e5b78dc03e6f2025d86ef4d8",
+        "_degraded": true
+      },
+      {
+        "filename": "202502190001_fix_owner_id_mismatch.sql",
+        "timestamp": "20250219000100",
+        "sha256": "73e301a26be51a4eed0d72e271665009d22ff741761e9fa8cb6875d26c483481",
+        "_degraded": true
+      },
+      {
+        "filename": "202502190002_fix_existing_owner_id.sql",
+        "timestamp": "20250219000200",
+        "sha256": "3607a7edcbfb0c9795ffa1579fa8e24e1d2b5424b91a0db590d271c36ca66c19",
+        "_degraded": true
+      },
+      {
+        "filename": "202502190003_diagnostic_owner_id_quick.sql",
+        "timestamp": "20250219000300",
+        "sha256": "26e523a5224351bb37ab959891e0c7a1ad4137eb0479f9c26db38da1a628241b",
+        "_degraded": true
+      },
+      {
+        "filename": "202502191200_document_verification.sql",
+        "timestamp": "20250219120000",
+        "sha256": "3c358ea2be68de2760ef9cc3fdcb797d7c662cbd7f9e5bba2ab7efaf87a49ab3",
+        "_degraded": true
+      },
+      {
+        "filename": "202502191300_ticket_maintenance_ai.sql",
+        "timestamp": "20250219130000",
+        "sha256": "d7578187c3671a069df07a7315a14b37c9ce20a9298f5ce9cde65b4438d200e5",
+        "_degraded": true
+      },
+      {
+        "filename": "202502191400_fix_property_details_rpc.sql",
+        "timestamp": "20250219140000",
+        "sha256": "3a429e4410220ea4d003f901be19943b3de265de30036ea37f0d70a24f1524b3",
+        "_degraded": true
+      },
+      {
+        "filename": "20250220000000_add_open_banking_tables.sql",
+        "timestamp": "20250220000000",
+        "sha256": "b13f87e385e50c3f3348d1e1e79d8a805b0122763e13ca9cae458cf0180d51c7",
+        "_degraded": true
+      },
+      {
+        "filename": "20250601000000_legal_protocol_tracking.sql",
+        "timestamp": "20250601000000",
+        "sha256": "139f1f9d1bac56ce71da3a6b5cd130bddcfe43cd6238e4c6789da5584efd6f85",
+        "_degraded": true
+      },
+      {
+        "filename": "20251119060000_property_details_rpc.sql",
+        "timestamp": "20251119060000",
+        "sha256": "e18eaab17933733dfb39ce8222cc62025a836a3d7e2d29869e97c4a403ee7605",
+        "_degraded": true
+      },
+      {
+        "filename": "20251119070000_lease_details_rpc.sql",
+        "timestamp": "20251119070000",
+        "sha256": "22c4b9b3e4aa9ec3c82add64739d9dbb281e891b40b0c890bb8e4387392f4348",
+        "_degraded": true
+      },
+      {
+        "filename": "20251119080000_tenant_dashboard_rpc.sql",
+        "timestamp": "20251119080000",
+        "sha256": "3c69cea39ed7b52e3a2a7302fec1e0dbcbd22dd5fcf09b06f35d1e4dac209e73",
+        "_degraded": true
+      },
+      {
+        "filename": "20251119090000_admin_stats_rpc.sql",
+        "timestamp": "20251119090000",
+        "sha256": "d9fc34694310481d982ee33a5d0427a6f6ae0bd3fbe3a12c23e3014e4233e25b",
+        "_degraded": true
+      },
+      {
+        "filename": "20251119093000_admin_stats_rpc_v2.sql",
+        "timestamp": "20251119093000",
+        "sha256": "dbabedcb10510573e4503dae1e28307536d1bdb220517ecc5179c3e1d48199e3",
+        "_degraded": true
+      },
+      {
+        "filename": "20251130000001_edl_media_section.sql",
+        "timestamp": "20251130000001",
+        "sha256": "473d84295f22500800973d863755c56eb80cccd02f11aeeb38a7c3b5529b56cd",
+        "_degraded": true
+      },
+      {
+        "filename": "20251204100000_unified_pricing_plans.sql",
+        "timestamp": "20251204100000",
+        "sha256": "51542ad7225b51cb96b8fb77f6564db187c98c84b91947210b6e8da587a48075",
+        "_degraded": true
+      },
+      {
+        "filename": "20251204200000_ensure_documents_bucket.sql",
+        "timestamp": "20251204200000",
+        "sha256": "943e5427704fe685b837d34f45afc2842bc97fb538a1aa3bac074c3dab8cf8e9",
+        "_degraded": true
+      },
+      {
+        "filename": "20251204210000_cni_expiry_management.sql",
+        "timestamp": "20251204210000",
+        "sha256": "c49f5ac8665faaa1c3cbbe08284e3b5b94988e63d04d72d5e46a690369eaa40c",
+        "_degraded": true
+      },
+      {
+        "filename": "20251204220000_add_cni_document_types.sql",
+        "timestamp": "20251204220000",
+        "sha256": "ffbee1adad3d5a30f1c579e3aaf856b130db618e6fa99eb735f97d6257177d19",
+        "_degraded": true
+      },
+      {
+        "filename": "20251204230000_fix_missing_columns.sql",
+        "timestamp": "20251204230000",
+        "sha256": "9e02ffa52206b650c6ff9ee326716ef95abdcb5ad8675840443c777fe3404c73",
+        "_degraded": true
+      },
+      {
+        "filename": "20251204300000_complete_optimization.sql",
+        "timestamp": "20251204300000",
+        "sha256": "41d1a5ee0592a87b524c5401e13e3a14bf917cdf66b4b0b2cfb71af3b00bb513",
+        "_degraded": true
+      },
+      {
+        "filename": "20251204400000_ensure_profiles_email.sql",
+        "timestamp": "20251204400000",
+        "sha256": "1b30e70b0f378d10fd1e92f843c60018af264a67be946dab1f557c4a288696bc",
+        "_degraded": true
+      },
+      {
+        "filename": "20251204500000_fix_rls_recursion_urgent.sql",
+        "timestamp": "20251204500000",
+        "sha256": "c5c6b2d32a8cc72a0e713798fc84ffb70cf58a045841daf79b6a1ca36e735dc9",
+        "_degraded": true
+      },
+      {
+        "filename": "20251204600000_update_trial_30_days.sql",
+        "timestamp": "20251204600000",
+        "sha256": "1e99aa8c2c97fd388b8ec07328b8851e999b0fd75eab72f6b33abc86f8627f83",
+        "_degraded": true
+      },
+      {
+        "filename": "20251204700000_fix_notifications_and_functions.sql",
+        "timestamp": "20251204700000",
+        "sha256": "e7dbdcece88e575020e15925fc69e652f35ddeecd4aeefac2dff16aa9c5739cb",
+        "_degraded": true
+      },
+      {
+        "filename": "20251204800000_fix_remaining_issues.sql",
+        "timestamp": "20251204800000",
+        "sha256": "1899763b1182c79118fc37438366f32b33e3bd30511f004e9ac7d5e6d5e28649",
+        "_degraded": true
+      },
+      {
+        "filename": "20251205000001_notification_triggers.sql",
+        "timestamp": "20251205000001",
+        "sha256": "7afe8fe2b61e7f7b6d9302c625d8e0709065348e8de125d67172ace6b84d13c8",
+        "_degraded": true
+      },
+      {
+        "filename": "20251205100000_notifications_system.sql",
+        "timestamp": "20251205100000",
+        "sha256": "217dbf381dc9169f818e53dac5e119e97d4c1ff2983f5fdbd25de42ab8e6ad58",
+        "_degraded": true
+      },
+      {
+        "filename": "20251205200000_provider_compliance_sota.sql",
+        "timestamp": "20251205200000",
+        "sha256": "146f0845d37bb82f4728143068002fe4beb524ce8e42e219a6a1c33b0a75d7c7",
+        "_degraded": true
+      },
+      {
+        "filename": "20251205300000_work_order_reports.sql",
+        "timestamp": "20251205300000",
+        "sha256": "b0d90eb3b851fb6dbe36df87bef15f7e00908674ff36211dda83c54dbc535ee4",
+        "_degraded": true
+      },
+      {
+        "filename": "20251205400000_provider_analytics_dashboard.sql",
+        "timestamp": "20251205400000",
+        "sha256": "c344a350c19832ac7805dcc39b60c9d77d4008cf628687e937e9bd8f8fdafd98",
+        "_degraded": true
+      },
+      {
+        "filename": "20251205500000_invoicing_professional.sql",
+        "timestamp": "20251205500000",
+        "sha256": "ce1f990aaf9fa1565f16eb5e807cbda86f4a5c089aa62bcf8113fc6886210a65",
+        "_degraded": true
+      },
+      {
+        "filename": "20251205600000_notifications_centralized.sql",
+        "timestamp": "20251205600000",
+        "sha256": "8b6a15a49aef1df56ddf5c8d7b16ff5726c9aaa8b211af235333310771a95c68",
+        "_degraded": true
+      },
+      {
+        "filename": "20251205700000_provider_missing_tables.sql",
+        "timestamp": "20251205700000",
+        "sha256": "818b7195864ba2f1d44156429348aed4e19e588964f1eb741634f3dbb7553976",
+        "_degraded": true
+      },
+      {
+        "filename": "20251205800000_intervention_flow_complete.sql",
+        "timestamp": "20251205800000",
+        "sha256": "fa21759f9829642c85f6e58e8cb2d31298390d0c07ae3484e9e3cc8909b228ef",
+        "_degraded": true
+      },
+      {
+        "filename": "20251206100000_vigilance_audit_log.sql",
+        "timestamp": "20251206100000",
+        "sha256": "b67f73bf4f08675ac69d1034784b69a8c96b0ad11c6b3e609c7d9c11a71f6a06",
+        "_degraded": true
+      },
+      {
+        "filename": "20251206200000_provider_portfolio.sql",
+        "timestamp": "20251206200000",
+        "sha256": "4eeeabcd9d0726118149fec6a191d8207f05b8c6a2ba14d30ddc079713b546b3",
+        "_degraded": true
+      },
+      {
+        "filename": "20251206300000_enterprise_tiers.sql",
+        "timestamp": "20251206300000",
+        "sha256": "302c70947c7d5bc11cf182c545fb426884bff5da891e9b668016e684f6789c3c",
+        "_degraded": true
+      },
+      {
+        "filename": "20251206400000_pricing_option_b.sql",
+        "timestamp": "20251206400000",
+        "sha256": "9767afeb5386211b45d415183c533b7b5913d2e57f04feda2f01474b8504676f",
+        "_degraded": true
+      },
+      {
+        "filename": "20251206500000_fix_lease_end_processes.sql",
+        "timestamp": "20251206500000",
+        "sha256": "19130e2ad2466cbad43dcdf2096b5b9ae3b1ac67ad5daaadd89081e423bd3189",
+        "_degraded": true
+      },
+      {
+        "filename": "20251206550000_impersonation_sessions.sql",
+        "timestamp": "20251206550000",
+        "sha256": "c9fa12229fa52825ad680adc87111b8774c256d18a733d674e7059e66fa3ed1c",
+        "_degraded": true
+      },
+      {
+        "filename": "20251206600000_analytics_materialized_views.sql",
+        "timestamp": "20251206600000",
+        "sha256": "df1801f9229a67e3a079f54a22bfeaa2f05a87d4bbd73df2fcac45b4a4a70247",
+        "_degraded": true
+      },
+      {
+        "filename": "20251206700000_agency_module.sql",
+        "timestamp": "20251206700000",
+        "sha256": "de588a6da159101f6dfd67af917113413d85bdf5ec41c32a7bb1ab36553d9af6",
+        "_degraded": true
+      },
+      {
+        "filename": "20251206750000_fix_all_missing_tables.sql",
+        "timestamp": "20251206750000",
+        "sha256": "c6891ab0ec5c00229a02d92002c11c5800b1a9872e15652f56b6c926298ffad3",
+        "_degraded": true
+      },
+      {
+        "filename": "20251206800000_assistant_ai_tables.sql",
+        "timestamp": "20251206800000",
+        "sha256": "182a04db9cb8e20234368272ce5f9d20fe8a09785ac4ceaa7962e220a230c314",
+        "_degraded": true
+      },
+      {
+        "filename": "20251207000000_colocation_advanced.sql",
+        "timestamp": "20251207000000",
+        "sha256": "3b88983b7ecbae066c2f9cf4d74431de98a7b19d23e49db638e6fa2ae01c1479",
+        "_degraded": true
+      },
+      {
+        "filename": "20251207231451_add_visite_virtuelle_url.sql",
+        "timestamp": "20251207231451",
+        "sha256": "0b12358d47482d9073e4de239ab0f1ce17a1688014226a2a1afcf39174386dc3",
+        "_degraded": true
+      },
+      {
+        "filename": "20251208000000_fix_all_roles_complete.sql",
+        "timestamp": "20251208000000",
+        "sha256": "416c844652e01cbfccddd4dc153fdca0e3295c3274e447700966ce5659474829",
+        "_degraded": true
+      },
+      {
+        "filename": "20251210100000_add_lease_payment_fields.sql",
+        "timestamp": "20251210100000",
+        "sha256": "93301fef6542f9ea10d11c91cd4d1e78d5a20b0e1249b642273c784991ffc893",
+        "_degraded": true
+      },
+      {
+        "filename": "20251221000000_document_caching.sql",
+        "timestamp": "20251221000000",
+        "sha256": "36c6898d231756a26af2166c61df90b18fa94d19eab443ef317f6231f9e90d3d",
+        "_degraded": true
+      },
+      {
+        "filename": "20251221000001_deposit_refunds.sql",
+        "timestamp": "20251221000001",
+        "sha256": "229ac50f43b8b3b236e8e7657d8e30a94ee51e857760d33ab4d18238b99894ed",
+        "_degraded": true
+      },
+      {
+        "filename": "20251221000002_lease_signers_invited_email.sql",
+        "timestamp": "20251221000002",
+        "sha256": "362d9e0a5f1ff87e2a75c4b1691c2894ae4932da99f78351a84c0a412184217a",
+        "_degraded": true
+      },
+      {
+        "filename": "20251221000003_fix_lease_signers_nullable.sql",
+        "timestamp": "20251221000003",
+        "sha256": "5e52118b91b194936164f6c89b80782b95f0b04cfe0b70a8d053e1b4749b7242",
+        "_degraded": true
+      },
+      {
+        "filename": "20251222000000_add_profile_columns.sql",
+        "timestamp": "20251222000000",
+        "sha256": "c6fc847b65c9d2430df1175d5148d471f8ca88a276e461ca9feb914e7c614d6e",
+        "_degraded": true
+      },
+      {
+        "filename": "20251222000001_signature_image.sql",
+        "timestamp": "20251222000001",
+        "sha256": "6b67f3371ea98ccb9886626fed465ac45bb1f75bcb16c588523439eca660ccb6",
+        "_degraded": true
+      },
+      {
+        "filename": "20251228000000_documents_sota.sql",
+        "timestamp": "20251228000000",
+        "sha256": "4108710eebc6388d2021e24f2d0878c27be64ea89d454fd2a004207d64af1431",
+        "_degraded": true
+      },
+      {
+        "filename": "20251228000001_edl_before_activation.sql",
+        "timestamp": "20251228000001",
+        "sha256": "fc3e50cc0b418c24eda2f6e94d5c50c406036f15bb9d80eb8b27855e6b024434",
+        "_degraded": true
+      },
+      {
+        "filename": "20251228100000_sealed_lease_pdf.sql",
+        "timestamp": "20251228100000",
+        "sha256": "b5f616379aef2e9fcec082e42db4fac8446ab5ad01ab5343cad2f8c00f469869",
+        "_degraded": true
+      },
+      {
+        "filename": "20251228200000_fix_lease_status_trigger.sql",
+        "timestamp": "20251228200000",
+        "sha256": "b6af04129e9a29ffade4d03086a3da6ef27ff86358a27bc3f6314d995a9fc3aa",
+        "_degraded": true
+      },
+      {
+        "filename": "20251228210000_dpe_management_system.sql",
+        "timestamp": "20251228210000",
+        "sha256": "948d1e49213e43327905c1a5e00379a8a0f639bfb31d24d3b0be22cb673f004c",
+        "_degraded": true
+      },
+      {
+        "filename": "20251228220000_fix_meters_rls_and_nullability.sql",
+        "timestamp": "20251228220000",
+        "sha256": "e909aa0a2617c0fb92b70ad89d589f46c42beadc6d245613581d1639a84f84c2",
+        "_degraded": true
+      },
+      {
+        "filename": "20251228230000_definitive_rls_fix.sql",
+        "timestamp": "20251228230000",
+        "sha256": "c588d3f28b30abc7b3fe4ab4a8b3912e0d30919eafcc160f8e8731097bf0490d",
+        "_degraded": true
+      },
+      {
+        "filename": "20251229000001_fix_existing_lease_statuses.sql",
+        "timestamp": "20251229000001",
+        "sha256": "56aaae62e13b564de4e6355923519ea526e0f6872e253e94600db969f09e7f7f",
+        "_degraded": true
+      },
+      {
+        "filename": "20251231000000_advanced_signatures.sql",
+        "timestamp": "20251231000000",
+        "sha256": "a978c1ffac4eb9c8a8113e0b2697bb6ea132ef7a4a22bbd6a2b4f1b8daea8e43",
+        "_degraded": true
+      },
+      {
+        "filename": "20251231000001_fix_owner_dashboard_rpc.sql",
+        "timestamp": "20251231000001",
+        "sha256": "9a4402e83693b158b39bf0e4fb7c73e5dcb0f78af70381b1f5dfcdfc49e400b8",
+        "_degraded": true
+      },
+      {
+        "filename": "20251231000002_agency_dashboard_rpc.sql",
+        "timestamp": "20251231000002",
+        "sha256": "8c60d82f0d32402fcbec399cbddad727aa9e77cc6d0318dd9ec67a6fecd72b94",
+        "_degraded": true
+      },
+      {
+        "filename": "20251231000003_enhance_tenant_dashboard_rpc.sql",
+        "timestamp": "20251231000003",
+        "sha256": "ff39819dfa6dc41d17df63afe165dec10c6df99aee040b142280c3c52e76b954",
+        "_degraded": true
+      },
+      {
+        "filename": "20251231000004_fix_admin_stats_rpc.sql",
+        "timestamp": "20251231000004",
+        "sha256": "66c4b58566f1ea19df535e21ce58c903d483fb96facea3c7da0b924f7d636737",
+        "_degraded": true
+      },
+      {
+        "filename": "20251231000005_finalize_owner_dashboard_rpc.sql",
+        "timestamp": "20251231000005",
+        "sha256": "7ad66e7d966bdf33a1af8bfc8448da9beb5f36d2eae5194e897addaf35993dee",
+        "_degraded": true
+      },
+      {
+        "filename": "20251231000006_automated_billing.sql",
+        "timestamp": "20251231000006",
+        "sha256": "3f41df65d8262740b9bdf2d2b007aab553b3682f248c85bb4851c5a7eee28652",
+        "_degraded": true
+      },
+      {
+        "filename": "20251231000007_invoices_stripe_fields.sql",
+        "timestamp": "20251231000007",
+        "sha256": "65cbd880c0c4192d26f4d52d71591e9db58e6193c17c3fe4ca60ec8e7f1c8f77",
+        "_degraded": true
+      },
+      {
+        "filename": "20251231000008_fix_edl_signatures_schema.sql",
+        "timestamp": "20251231000008",
+        "sha256": "fb8c60dd4eabffd024c7edc41e1646528cafe5e27b9b8335412543fd88eb63e7",
+        "_degraded": true
+      },
+      {
+        "filename": "20251231000009_tenant_housing_passport.sql",
+        "timestamp": "20251231000009",
+        "sha256": "15474fb1ce472ca53be0d74b3d026044be0525719318073a0671ae7e577c5b5f",
+        "_degraded": true
+      },
+      {
+        "filename": "20251231000010_export_system.sql",
+        "timestamp": "20251231000010",
+        "sha256": "44e09296efd344e2122650c8bf4d6df9b1a884474a4715a2c8c0c693fbfe29b1",
+        "_degraded": true
+      },
+      {
+        "filename": "20251231000011_export_cleanup.sql",
+        "timestamp": "20251231000011",
+        "sha256": "bc234fc25535f824f4fa38a2460a560c0846139504c7490f49fe818953faea86",
+        "_degraded": true
+      },
+      {
+        "filename": "20260101000002_fix_tenant_dashboard_signers.sql",
+        "timestamp": "20260101000002",
+        "sha256": "d39b940f3f95289228180aabf4266b88f88178630e3a41b2edf8cc9aa6cc524e",
+        "_degraded": true
+      },
+      {
+        "filename": "20260101000003_make_lease_signers_profile_nullable.sql",
+        "timestamp": "20260101000003",
+        "sha256": "5f0188fa23488804f425fa6b693307560e3feaeec988f44f9c343979fde9ba97",
+        "_degraded": true
+      },
+      {
+        "filename": "20260101000004_add_edl_signatures_email.sql",
+        "timestamp": "20260101000004",
+        "sha256": "bb8cdbe112859be2d51b611d0c7bf555ba4372a30305c0c04d65b07a539119ff",
+        "_degraded": true
+      },
+      {
+        "filename": "20260101000005_edl_signatures_invited_columns.sql",
+        "timestamp": "20260101000005",
+        "sha256": "5683e874e5abcd99816fe5592afec2455caebe756a18ba7bbf3ef128074792c1",
+        "_degraded": true
+      },
+      {
+        "filename": "20260102000006_fix_edl_signatures_schema.sql",
+        "timestamp": "20260102000006",
+        "sha256": "4bb5cfa0a477ff708aa22409d1baece156da69871b2fe81c38803098927e47f0",
+        "_degraded": true
+      },
+      {
+        "filename": "20260102000007_auto_activate_leases.sql",
+        "timestamp": "20260102000007",
+        "sha256": "84d3bae44c7082758a14f7b9d5c8f720ed649be1eeda996cbad8c7767dbcc7e5",
+        "_degraded": true
+      },
+      {
+        "filename": "20260102000020_fix_pending_edls_query.sql",
+        "timestamp": "20260102000020",
+        "sha256": "6dff9711a285b36e5e78e5e806fd519266b60a6c5a4d63a1ec30537821f806cc",
+        "_degraded": true
+      },
+      {
+        "filename": "20260103000005_enhance_owner_dashboard_edl.sql",
+        "timestamp": "20260103000005",
+        "sha256": "71bf7ac633c54e2dfde9d4af69f25b68da823ba8ab718bea5c0e0885a3e94226",
+        "_degraded": true
+      },
+      {
+        "filename": "20260103000010_fix_tenant_dashboard_email_search.sql",
+        "timestamp": "20260103000010",
+        "sha256": "94974293333e303466928dca64311edf1e8440a9a6e0d314f2dfef15ec2badb5",
+        "_degraded": true
+      },
+      {
+        "filename": "20260104000000_add_kyc_status_and_fix_signature_logic.sql",
+        "timestamp": "20260104000000",
+        "sha256": "202242df0b0d207f18f88f21d4377c5d0ddd2fbcd8c5b657eb339293943a90f8",
+        "_degraded": true
+      },
+      {
+        "filename": "20260104000001_lease_auto_activation_trigger.sql",
+        "timestamp": "20260104000001",
+        "sha256": "17fe58ba9a5f76d281b5f98c2114c0b871ab99c86f4751df2086424cf40d9516",
+        "_degraded": true
+      },
+      {
+        "filename": "20260104000002_edl_finalization_and_lease_activation.sql",
+        "timestamp": "20260104000002",
+        "sha256": "4eca6f929ba9341018478193414e770b8b38ed25b1d1f5901a2c5ef884f60789",
+        "_degraded": true
+      },
+      {
+        "filename": "20260104000003_enrich_edl_schema.sql",
+        "timestamp": "20260104000003",
+        "sha256": "8ef6f586cad8f77818230c702964db7ce8cb58aec9926c8a947bd1b30861e8e0",
+        "_degraded": true
+      },
+      {
+        "filename": "20260104000004_ensure_meter_columns.sql",
+        "timestamp": "20260104000004",
+        "sha256": "b4f4a443b6c9deeaa975ce4ff06e7b379e9f4d221fc025b689164d598ab3fcb7",
+        "_degraded": true
+      },
+      {
+        "filename": "20260105000001_add_neuf_condition.sql",
+        "timestamp": "20260105000001",
+        "sha256": "2493c1dea30821fe3061240635d3164e0f337ede53a378267788c29351f9e513",
+        "_degraded": true
+      },
+      {
+        "filename": "20260105000002_edl_lease_sync_triggers.sql",
+        "timestamp": "20260105000002",
+        "sha256": "b8c33425fd44993fe1e1319e4bf62708b5c53d0b91f6b42c23b4ac0a97d65674",
+        "_degraded": true
+      },
+      {
+        "filename": "20260105000003_add_leases_missing_columns.sql",
+        "timestamp": "20260105000003",
+        "sha256": "dfb71d06a453c3e4e6bc66b9c1fd69e6213cb69e9fda759479ce6005d5d96f58",
+        "_degraded": true
+      },
+      {
+        "filename": "20260105100001_fix_handle_new_user_with_metadata.sql",
+        "timestamp": "20260105100001",
+        "sha256": "b79def3068cc93d1d3492ad1b02aa5e205cddb602c15ecf1b8ee701a32f0b273",
+        "_degraded": true
+      },
+      {
+        "filename": "20260105100002_update_rooms_type_piece_constraint.sql",
+        "timestamp": "20260105100002",
+        "sha256": "d37b63e566dae2511711cfb940ab42e3d14bad77063c83edd06c40f15333f878",
+        "_degraded": true
+      },
+      {
+        "filename": "20260105100003_lease_notices.sql",
+        "timestamp": "20260105100003",
+        "sha256": "dc5dcdefcab67c2043dd563019267d6e5a37519fc7c55dd7e58cbc93020442ce",
+        "_degraded": true
+      },
+      {
+        "filename": "20260107000000_building_support.sql",
+        "timestamp": "20260107000000",
+        "sha256": "cd2e6bebf74e32159d740728237bb44d76a5030fe097366bf5edd989744b8ff4",
+        "_degraded": true
+      },
+      {
+        "filename": "20260107000001_sota_lease_status_constraint.sql",
+        "timestamp": "20260107000001",
+        "sha256": "5803267ffb914f1ead64a5de707ae6298a52e10c88a101a02c9438ff7c6d5eef",
+        "_degraded": true
+      },
+      {
+        "filename": "20260107000002_fix_existing_lease_statuses_sota.sql",
+        "timestamp": "20260107000002",
+        "sha256": "3c596d0c2bab703c53e5ab7549c62e257bab37cf87f4fd6159c4efa722f70040",
+        "_degraded": true
+      },
+      {
+        "filename": "20260107010000_rebranding_to_talok.sql",
+        "timestamp": "20260107010000",
+        "sha256": "ee2dc9c42d7ef177412e973672ec07e2cbc528019d8a2d69b2f8f33d3a44ec31",
+        "_degraded": true
+      },
+      {
+        "filename": "20260107100000_fix_auth_500_database_error.sql",
+        "timestamp": "20260107100000",
+        "sha256": "27aba5ff67e7a7773b0e74064cbf5fdbfcaa32911dd9f35742e8f3d35e5f663b",
+        "_degraded": true
+      },
+      {
+        "filename": "20260107150000_fix_profiles_rls_recursion.sql",
+        "timestamp": "20260107150000",
+        "sha256": "11a01d1e5c1bd82128cd5ee5b16396a0d8ec07be91709bbccdde4ef0c60819f3",
+        "_degraded": true
+      },
+      {
+        "filename": "20260108000000_normalize_signer_roles.sql",
+        "timestamp": "20260108000000",
+        "sha256": "cbc0277090a7b4fe767ce1bdb02091a68636c5c224e0e15ed03497f0587d5526",
+        "_degraded": true
+      },
+      {
+        "filename": "20260108100000_fix_depot_garantie_auto.sql",
+        "timestamp": "20260108100000",
+        "sha256": "bf940f513bde8d338caa797c305f97984d04f6d4ce883d1a7d6075751cdd1361",
+        "_degraded": true
+      },
+      {
+        "filename": "20260108200000_tenant_notification_triggers.sql",
+        "timestamp": "20260108200000",
+        "sha256": "ed3f6517d4438e508bc027fb4cfdb31ecf87985246b372bef72d24d813aef3ac",
+        "_degraded": true
+      },
+      {
+        "filename": "20260108300000_property_soft_delete.sql",
+        "timestamp": "20260108300000",
+        "sha256": "f1b6837f858eeb45d4f7723b461a0479acb5b8b6532406e92c5692b557572da5",
+        "_degraded": true
+      },
+      {
+        "filename": "20260108400000_lease_lifecycle_sota2026.sql",
+        "timestamp": "20260108400000",
+        "sha256": "f8eebf7a88a45ef13ac5369624c3b6b4398c952d0f766544a6970b9f1f395d69",
+        "_degraded": true
+      },
+      {
+        "filename": "20260108500000_orphan_cleanup_sota2026.sql",
+        "timestamp": "20260108500000",
+        "sha256": "c895e001ab8642f93943ed4576dc31f38545262d4f8e8fe7185c9c1f693db50b",
+        "_degraded": true
+      },
+      {
+        "filename": "20260108600000_security_enhancements.sql",
+        "timestamp": "20260108600000",
+        "sha256": "a78fa7e4ff43c4fa8ecbb319ca11069a2ca5818c8078be264e078d97c044f935",
+        "_degraded": true
+      },
+      {
+        "filename": "20260109000000_fix_property_deleted_at.sql",
+        "timestamp": "20260109000000",
+        "sha256": "079a7155100cc5a2ec47cd89bec60ff009e89cafc1eb13669cfbc75de154643c",
+        "_degraded": true
+      },
+      {
+        "filename": "20260109100000_signature_tracking_enhanced.sql",
+        "timestamp": "20260109100000",
+        "sha256": "a2cfa15af7dbbd53e88eea81af6ef70f5132da25f0861dc56cbde2463eb76046",
+        "_degraded": true
+      },
+      {
+        "filename": "20260110000000_admin_dashboard_sota2026.sql",
+        "timestamp": "20260110000000",
+        "sha256": "eb166797a13825382d26846a0e8dd4357f52988914ff336bbb273760c60f4a58",
+        "_degraded": true
+      },
+      {
+        "filename": "20260110000001_accounting_tables.sql",
+        "timestamp": "20260110000001",
+        "sha256": "d4522044c2e913c6701d0a0ab28f96591e48aa31a35ea8f9e5c7ed4b480958d8",
+        "_degraded": true
+      },
+      {
+        "filename": "20260110010001_passkeys_and_2fa_sota.sql",
+        "timestamp": "20260110010001",
+        "sha256": "018ff51a65d9085980dd5b177a557dc9c50043f914c465b6532c2f1687e2f3fe",
+        "_degraded": true
+      },
+      {
+        "filename": "20260110100000_fix_accounting_schema_gaps.sql",
+        "timestamp": "20260110100000",
+        "sha256": "c4f0652c56ad0f7a1a5755716125c4dede8948110af5a5a4f8c0322316727851",
+        "_degraded": true
+      },
+      {
+        "filename": "20260110100001_init_historical_accounting_data.sql",
+        "timestamp": "20260110100001",
+        "sha256": "063ca45c07fa7a53869dcc78b4021aaeaa321e9d30ef6a1a826a571a6e29d2a4",
+        "_degraded": true
+      },
+      {
+        "filename": "20260110500000_subscription_limits_enforcement.sql",
+        "timestamp": "20260110500000",
+        "sha256": "a29ba8dff18590768c3aea89bd7276a20284fad375b79efd01cbba1aac505887",
+        "_degraded": true
+      },
+      {
+        "filename": "20260111000000_tax_verification_logs.sql",
+        "timestamp": "20260111000000",
+        "sha256": "ba11d86e543f0e09f60b0400febfae45a4b92353a7d25074cea8d8d5f8028c68",
+        "_degraded": true
+      },
+      {
+        "filename": "20260111010000_visit_scheduling_sota2026.sql",
+        "timestamp": "20260111010000",
+        "sha256": "2fa996acc479abc44382d60c2282b769c8ebd7b8fa4d7d9f0cc3b0240db113e1",
+        "_degraded": true
+      },
+      {
+        "filename": "20260114000000_first_login_and_onboarding_tracking.sql",
+        "timestamp": "20260114000000",
+        "sha256": "1f294566c515882d6178718cd9f93ffcc628650fb7d0037a30424f7bec132b6f",
+        "_degraded": true
+      },
+      {
+        "filename": "20260115000000_create_edl_meter_readings.sql",
+        "timestamp": "20260115000000",
+        "sha256": "f25b9b741516f3971dcea00f244c6a068b762cc67a0bdb3fb431739e8f9b6cba",
+        "_degraded": true
+      },
+      {
+        "filename": "20260115000001_add_performance_indexes.sql",
+        "timestamp": "20260115000001",
+        "sha256": "258f1e3f27c6da10cffd2eb478ab5bfcc71d4ae566da6c4266c465c1e2a6588f",
+        "_degraded": true
+      },
+      {
+        "filename": "20260115010000_multi_entity_architecture.sql",
+        "timestamp": "20260115010000",
+        "sha256": "d2628a1f8150a1b6dcffde17e1222256ecb85f3866a929394950d4e4999f095b",
+        "_degraded": true
+      },
+      {
+        "filename": "20260115010001_fix_edl_meter_readings_nullable.sql",
+        "timestamp": "20260115010001",
+        "sha256": "c991a472e24d324d814f639401586c36d5284552247fb0430e80baac93b221fe",
+        "_degraded": true
+      },
+      {
+        "filename": "20260115020000_white_label_system.sql",
+        "timestamp": "20260115020000",
+        "sha256": "90105c3245c2cb540fd1580ecc4bc343585b9162e7cf4208432a0696711d7ff6",
+        "_degraded": true
+      },
+      {
+        "filename": "20260119000000_fix_edl_meter_readings_rls.sql",
+        "timestamp": "20260119000000",
+        "sha256": "4a223781e4dafdb8865f3b452aafb569f4f8362b588464848037136366a79453",
+        "_degraded": true
+      },
+      {
+        "filename": "20260121000001_unified_signature_system.sql",
+        "timestamp": "20260121000001",
+        "sha256": "7919691a5e964641669a1a3175635425933ade2b637599da5d5368ca49ef8470",
+        "_degraded": true
+      },
+      {
+        "filename": "20260121000002_naming_normalization_fr_to_en.sql",
+        "timestamp": "20260121000002",
+        "sha256": "d405e603c441e5c6e317185c21db0daf463988c1b15d53a1191fd78672d1a035",
+        "_degraded": true
+      },
+      {
+        "filename": "20260121000003_event_sourcing_audit_system.sql",
+        "timestamp": "20260121000003",
+        "sha256": "159baa27b0eeccdd95bb6bba0b4ee7c08510e0f8dd00b5442fe28d5995a43e0c",
+        "_degraded": true
+      },
+      {
+        "filename": "20260122000000_receipt_performance_indexes.sql",
+        "timestamp": "20260122000000",
+        "sha256": "b6c0f5c19366d1c394e30fd665b00d7077c132edb77a62718b180e5ad9a001f2",
+        "_degraded": true
+      },
+      {
+        "filename": "20260127000000_lease_types_and_inventory.sql",
+        "timestamp": "20260127000000",
+        "sha256": "88aab22ec9d0b2feea9c99f450604fc745110776cb30868e6aa6f718a28acb41",
+        "_degraded": true
+      },
+      {
+        "filename": "20260127000001_gap001_block_dg_bail_mobilite.sql",
+        "timestamp": "20260127000001",
+        "sha256": "84094aef2405c34b93ac57350a51ccd2dc8cf67fcfe2dfbb61d40cae0743ef0f",
+        "_degraded": true
+      },
+      {
+        "filename": "20260127000002_gap002_furniture_inventory.sql",
+        "timestamp": "20260127000002",
+        "sha256": "8a2ace21d3b4832d415e93b8ca09fe5675b509cfa403063f71e3c23d9851681d",
+        "_degraded": true
+      },
+      {
+        "filename": "20260127000003_commercial_lease_types.sql",
+        "timestamp": "20260127000003",
+        "sha256": "5b17e82acfcdf94da424862231be687dc1c169245c353337ad4e746b5c19b9be",
+        "_degraded": true
+      },
+      {
+        "filename": "20260127000004_professional_lease_types.sql",
+        "timestamp": "20260127000004",
+        "sha256": "f20bb3b55bedc2061fd79643c4d179506f0f01371ea0dd25c0bad4fc0db8f959",
+        "_degraded": true
+      },
+      {
+        "filename": "20260127000005_edl_commercial.sql",
+        "timestamp": "20260127000005",
+        "sha256": "7d12da7ba1388ba506a15fe601f18141a3fa2a7d91e54787696428944f74d9d8",
+        "_degraded": true
+      },
+      {
+        "filename": "20260127000006_location_gerance.sql",
+        "timestamp": "20260127000006",
+        "sha256": "4ae6703592d5e288a4cb134b8bac9a5f84083b2c68c4bc446912e62cecc1713e",
+        "_degraded": true
+      },
+      {
+        "filename": "20260127000007_taxe_sejour.sql",
+        "timestamp": "20260127000007",
+        "sha256": "9a3b8de2c9b283e77825c34fbe28d40e8f60b551df19c9d687e71a4540468835",
+        "_degraded": true
+      },
+      {
+        "filename": "20260127000008_diagnostics_dom_tom.sql",
+        "timestamp": "20260127000008",
+        "sha256": "e78297e51eada938185f64adcbc165484a1dcd73b70711322bfcf864e55138c9",
+        "_degraded": true
+      },
+      {
+        "filename": "20260127010000_stripe_connect_accounts.sql",
+        "timestamp": "20260127010000",
+        "sha256": "edbfa331bb4c423565082ffa267ecae4283412f4466cc6951a8c0255a1f0c837",
+        "_degraded": true
+      },
+      {
+        "filename": "20260127010002_vetusty_grid_tables.sql",
+        "timestamp": "20260127010002",
+        "sha256": "b712e4f12d34e324ea65680bba162b636c5b44bc22dbebe17fdcaa0eec253e44",
+        "_degraded": true
+      },
+      {
+        "filename": "20260128000000_surface_carrez_rent_control.sql",
+        "timestamp": "20260128000000",
+        "sha256": "364523daa815f25e896ff9cd0abab5d1f69e9526d40f99204b3cece882b16c06",
+        "_degraded": true
+      },
+      {
+        "filename": "20260128000001_fix_edl_schema_500.sql",
+        "timestamp": "20260128000001",
+        "sha256": "6512be524c047930f1f58b0d4799a3e224b505d592d5226f9c625efcad261f42",
+        "_degraded": true
+      },
+      {
+        "filename": "20260128010001_webhook_queue.sql",
+        "timestamp": "20260128010001",
+        "sha256": "c8f366bbc5d5f00c0c314cd0ca6d6b27729824d6d0c7a0142c7941969dabceda",
+        "_degraded": true
+      },
+      {
+        "filename": "20260201000000_ged_system.sql",
+        "timestamp": "20260201000000",
+        "sha256": "e2c101fc510fe2997976e3ca6943954c6c1e1ea12a614f4bc890346133db3476",
+        "_degraded": true
+      },
+      {
+        "filename": "20260205000001_fix_edl_signatures_insert_rls.sql",
+        "timestamp": "20260205000001",
+        "sha256": "78dd06d788226224d32c166a825ebb81255c68c44259fc543ab0bd47f3e68491",
+        "_degraded": true
+      },
+      {
+        "filename": "20260206000000_migrate_owner_profiles_to_legal_entities.sql",
+        "timestamp": "20260206000000",
+        "sha256": "3699d07d62429f0b85f1a7f36ee79c6979b9824957f08716ba72fb060f0243f8",
+        "_degraded": true
+      },
+      {
+        "filename": "20260207000000_apply_legal_entities_consolidated.sql",
+        "timestamp": "20260207000000",
+        "sha256": "1ac8135e7ed46d7aa3d66268e3cb979ed5b9664b5541d59ecec16216e1bb1c55",
+        "_degraded": true
+      },
+      {
+        "filename": "20260207100000_fix_audit_critical_issues.sql",
+        "timestamp": "20260207100000",
+        "sha256": "0bb8a8814a7d45ccf743bd4537cf5096b7586c462d903384ee78fd420c1410b8",
+        "_degraded": true
+      },
+      {
+        "filename": "20260207200000_audit_improvements_phase2.sql",
+        "timestamp": "20260207200000",
+        "sha256": "d77a2df8d54eb03271a9b78faa9bd1150a8d8edba30f7549cf88c784e45db4bc",
+        "_degraded": true
+      }
+    ],
+    "ghostApplied": [
+      {
+        "version": "20260208024659",
+        "name": "(unknown — assumption from Sprint A prompt)",
+        "_degraded": true
+      }
+    ],
+    "pending": [
+      {
+        "filename": "20260208100000_fix_data_storage_audit.sql",
+        "timestamp": "20260208100000",
+        "sha256": "861d7a22bc632ceed02872871bd72c345cd701aa25b1708f4e31feecec51481a"
+      },
+      {
+        "filename": "20260209100000_create_sms_messages_table.sql",
+        "timestamp": "20260209100000",
+        "sha256": "5c360344dff008de43791267626042198eadf07acd61421a23740bb7b9e40db7"
+      },
+      {
+        "filename": "20260211000000_p2_unique_constraint_and_gdpr_rpc.sql",
+        "timestamp": "20260211000000",
+        "sha256": "5a671770abfba0f8696dc8f4ec5291654620c8a98db1172be9119a4303a56728"
+      },
+      {
+        "filename": "20260211100000_bic_compliance_tax_regime.sql",
+        "timestamp": "20260211100000",
+        "sha256": "fe7f2e0c3226ab8e604e53f792b422921521eace9445cf137af21cdee6496682"
+      },
+      {
+        "filename": "20260212000000_audit_database_integrity.sql",
+        "timestamp": "20260212000000",
+        "sha256": "21143d6c2b915a35785ba3073e9d6a66c09453b4582cc6bdc2bcaee43eb2cff1"
+      },
+      {
+        "filename": "20260212000001_fix_guarantor_role_and_tables.sql",
+        "timestamp": "20260212000001",
+        "sha256": "8a16322e38400ebdd9e672b81eea50a1dbc61ec560fec32633e20ad69378cb40"
+      },
+      {
+        "filename": "20260212100000_audit_v2_merge_and_prevention.sql",
+        "timestamp": "20260212100000",
+        "sha256": "94da1eeda000939061c88aeb438bd0e84ddd89c137da471c789473317d253b89"
+      },
+      {
+        "filename": "20260212100001_email_template_system.sql",
+        "timestamp": "20260212100001",
+        "sha256": "b15ed3b46320d6eb85bc9a7cf4a34d9eb754eb916f9e261db7421c3eaa2f2f1b"
+      },
+      {
+        "filename": "20260212100002_email_templates_seed.sql",
+        "timestamp": "20260212100002",
+        "sha256": "9a513eab9440c44a82210fe5453bef12956cc630ff609a52809df4c2f054f78b"
+      },
+      {
+        "filename": "20260212200000_audit_v3_comprehensive_integrity.sql",
+        "timestamp": "20260212200000",
+        "sha256": "094f97f7f1f2dbedca7d1eec03a14dcd752702956db46a064b7b5163f9204043"
+      },
+      {
+        "filename": "20260213000000_fix_profiles_rls_recursion_v2.sql",
+        "timestamp": "20260213000000",
+        "sha256": "2ab5e1cd4b16aaee866285544c83e5340238802e3ed7bc249467d152d612adae"
+      },
+      {
+        "filename": "20260213100000_fix_rls_all_tables_recursion.sql",
+        "timestamp": "20260213100000",
+        "sha256": "a6b6d114748a732ae77ce9956b6c6df7f58c2344781fef5ce48713b47f9d0fd6"
+      },
+      {
+        "filename": "20260215100000_signature_security_audit_fixes.sql",
+        "timestamp": "20260215100000",
+        "sha256": "e571c7b1dbd233c340de0c2d5897efa680ea656b6715b88da6c2e785a9af3a7c"
+      },
+      {
+        "filename": "20260215200000_fix_rls_properties_tenant_pre_active.sql",
+        "timestamp": "20260215200000",
+        "sha256": "5d5f8620305cd59f30381ca9439f082714dd8726a74a2e487823b0a0f4d4fd0c"
+      },
+      {
+        "filename": "20260215200001_add_notice_given_lease_status.sql",
+        "timestamp": "20260215200001",
+        "sha256": "ccf28779588ac274a04290457cf6582c38ae496de00c29a5f410ed0bbcda529f"
+      },
+      {
+        "filename": "20260215200002_fix_rls_tenant_access_beyond_active.sql",
+        "timestamp": "20260215200002",
+        "sha256": "ddbda624df81f640fcd857c7a9d2d78f47d8996f8489e9c285d7b017b2608793"
+      },
+      {
+        "filename": "20260215200003_fix_copro_fk_on_delete.sql",
+        "timestamp": "20260215200003",
+        "sha256": "9a02e61a13b006123966f90c87c26e6760c6911b564df7149dbdbe189495624d"
+      },
+      {
+        "filename": "20260216000000_tenant_document_center.sql",
+        "timestamp": "20260216000000",
+        "sha256": "4b6c13de2e8f83b5a1d35b94954a8ed62801c8ea4226d078f277610469a8765b"
+      },
+      {
+        "filename": "20260216000001_document_center_notifications.sql",
+        "timestamp": "20260216000001",
+        "sha256": "fa7d15c5a2da1c88eb2cd0947c95f7437d0ccebc1b4ee214118056f6943d279b"
+      },
+      {
+        "filename": "20260216100000_security_audit_rls_fixes.sql",
+        "timestamp": "20260216100000",
+        "sha256": "c5ab5fe5a778bbe84ae0271603d5e8fb22a20d199b69a20ba85c40511897f7ae"
+      },
+      {
+        "filename": "20260216200000_auto_link_lease_signers_trigger.sql",
+        "timestamp": "20260216200000",
+        "sha256": "1c8a5a7f563bcfdfd35c09799166032148d5e7e6502ad379d279bd2c23b521b5"
+      },
+      {
+        "filename": "20260216300000_fix_auth_profile_sync.sql",
+        "timestamp": "20260216300000",
+        "sha256": "55c9a89e6a60bc47c46c186247fd121bea82343be5447b16a180620348fb9e96"
+      },
+      {
+        "filename": "20260216400000_performance_indexes_rls.sql",
+        "timestamp": "20260216400000",
+        "sha256": "93eed5bc978d026ec6739e49814a5ed81fe515a3700a2fd48443bf627802e214"
+      },
+      {
+        "filename": "20260216500000_fix_tenant_dashboard_complete.sql",
+        "timestamp": "20260216500000",
+        "sha256": "2e9dcafd9d2a60ebde26482786975b37d94895354bd25b0ecf8fb6604f302e4d"
+      },
+      {
+        "filename": "20260216500001_enforce_unique_constraints_safety.sql",
+        "timestamp": "20260216500001",
+        "sha256": "03ef9ad2193610f561d19c57f21fe2f1d17e06c3ccbd466036e30be83121d491"
+      },
+      {
+        "filename": "20260217000000_data_integrity_audit_repair.sql",
+        "timestamp": "20260217000000",
+        "sha256": "b96ebd096adcb6213b59b1d8d720e24c117109288eb9d3c2e00fed2d9c87966e"
+      },
+      {
+        "filename": "20260218000000_audit_repair_profiles.sql",
+        "timestamp": "20260218000000",
+        "sha256": "6671815bf05c3cac04b955818643675b5dfb69c5352965bc95b748b72c95fe37"
+      },
+      {
+        "filename": "20260218100000_sync_auth_email_updates.sql",
+        "timestamp": "20260218100000",
+        "sha256": "37e5eea54ffe5f76ea96b268e1e4d2701083ef3715044c65e1a811f4fcc7b38e"
+      },
+      {
+        "filename": "20260219000000_missing_tables_and_rag.sql",
+        "timestamp": "20260219000000",
+        "sha256": "1f6cb6ee4702ebd093d583b543e8e464166068e0f7c2bb70283cfc3a680a5901"
+      },
+      {
+        "filename": "20260219100000_auto_link_notify_owner.sql",
+        "timestamp": "20260219100000",
+        "sha256": "549ecc4a521908391dc7dae1766c4c1d439a5c92b4a5570f13a20c660ab80844"
+      },
+      {
+        "filename": "20260219200000_fix_autolink_triggers_audit.sql",
+        "timestamp": "20260219200000",
+        "sha256": "e9d6b02407ba4c8821d92ca95f9089d2ae0ab284dc6611323d6a912b8c9daf7f"
+      },
+      {
+        "filename": "20260220000000_auto_link_signer_on_insert.sql",
+        "timestamp": "20260220000000",
+        "sha256": "4ff29ce735dbbb9f94925c1182e664435ce57e135c494f948e135a1238c1ed23"
+      },
+      {
+        "filename": "20260220100000_fix_orphan_signers_audit.sql",
+        "timestamp": "20260220100000",
+        "sha256": "da0ec55e9dd5c6d64052ae375a71e4acd5e0f3139892990aaacabec9db71bca3"
+      },
+      {
+        "filename": "20260221000001_auto_link_trigger_update.sql",
+        "timestamp": "20260221000001",
+        "sha256": "89849fbd6c0087769cd84954c071e7c21c8768a4136cea7216cb05ec31a15dd1"
+      },
+      {
+        "filename": "20260221000002_fix_edl_signatures_rls.sql",
+        "timestamp": "20260221000002",
+        "sha256": "89919c62838e5ed65ccf74c7a9be9c9b7c27b5186d0c67e0abc0416d9d408972"
+      },
+      {
+        "filename": "20260221100000_fix_tenant_dashboard_draft_visibility.sql",
+        "timestamp": "20260221100000",
+        "sha256": "7124b29e4d3321a679e406caaff188ef9cf58b94b265fdfc6a86cbb3b34c9275"
+      },
+      {
+        "filename": "20260221100001_auto_upgrade_draft_on_tenant_signer.sql",
+        "timestamp": "20260221100001",
+        "sha256": "a7f173170545defe434b5065d8f8c44381ffe28e97bbf1424bbb750ad19054e3"
+      },
+      {
+        "filename": "20260221200000_sync_edl_signer_to_lease_signer.sql",
+        "timestamp": "20260221200000",
+        "sha256": "2413323f4742e5f257787af1b735267f5152eaa9b23a089f95b5ef36ca3362c7"
+      },
+      {
+        "filename": "20260221300000_fix_tenant_dashboard_owner_join.sql",
+        "timestamp": "20260221300000",
+        "sha256": "c37fea2cebd22dd99afd02d894ca22796c717d93af6f7a186e595960cdac88d5"
+      },
+      {
+        "filename": "20260222000000_fix_invitations_and_orphan_signers.sql",
+        "timestamp": "20260222000000",
+        "sha256": "dc3dffae409455123b311f808a1b0e46904c99dd98148794331c9eef478bfc61"
+      },
+      {
+        "filename": "20260222100000_repair_missing_signers_and_invitations.sql",
+        "timestamp": "20260222100000",
+        "sha256": "93f2290de6647d6772dbf2026a259e3fbc887acf26e2c148ad8f84a35bc5ab29"
+      },
+      {
+        "filename": "20260222200000_ensure_all_owners_have_entity.sql",
+        "timestamp": "20260222200000",
+        "sha256": "46a8cac9027d884440e14a87c29e65e549f88435d38172bafce09fe0d9cd7fe3"
+      },
+      {
+        "filename": "20260222200001_get_entity_stats_for_store.sql",
+        "timestamp": "20260222200001",
+        "sha256": "660a6ba188b848c15d338bdd7fb82695df23f4ae7b5a34c3836157c23b4acb3d"
+      },
+      {
+        "filename": "20260223000000_fix_tenant_documents_rls.sql",
+        "timestamp": "20260223000000",
+        "sha256": "612b4eca7b8fe8dc81e3669b778f63eb4cbbff4801a7596b8ddcf1b73742905f"
+      },
+      {
+        "filename": "20260223000001_auto_fill_document_fk.sql",
+        "timestamp": "20260223000001",
+        "sha256": "45d687a774bf7b7f5e3917a1d429a877c75314890078bcebca28bb364dc32ba9"
+      },
+      {
+        "filename": "20260223000002_document_access_views.sql",
+        "timestamp": "20260223000002",
+        "sha256": "e7ee6c8ff62061479b965a9325beb4c53d4c004c28e99f9f821a8f686097ae55"
+      },
+      {
+        "filename": "20260223000003_notify_owner_on_tenant_document.sql",
+        "timestamp": "20260223000003",
+        "sha256": "d2b5f6677e46f472b389cc95cdef5993760d8b53bb96fef378bbf234e2b60eaa"
+      },
+      {
+        "filename": "20260223100000_fix_entity_connections.sql",
+        "timestamp": "20260223100000",
+        "sha256": "cb197c6e5eda4997d419cd3cc4ab69f1fb909d7af4adfb1d31523dcb730aaef5"
+      },
+      {
+        "filename": "20260223200000_fix_all_missing_tables_and_columns.sql",
+        "timestamp": "20260223200000",
+        "sha256": "8cea1fa37c825a814561f9f7d625988cceceaf9253efa86a388de1927cd832eb"
+      },
+      {
+        "filename": "20260224000000_fix_tenant_sync_and_notifications.sql",
+        "timestamp": "20260224000000",
+        "sha256": "65b4d1b33e7fbb2132ba288ef9dfd371a09b3852e616b8728e797c1c7106b782"
+      },
+      {
+        "filename": "20260224000001_remove_yousign_sendgrid_brevo.sql",
+        "timestamp": "20260224000001",
+        "sha256": "61b4ed236fd433538745630633e225d71506d40cd5cee7d95fd4a6ebb897b68e"
+      },
+      {
+        "filename": "20260225000000_owner_payment_audit_log.sql",
+        "timestamp": "20260225000000",
+        "sha256": "a8a5e6540983d8de3447ceb2b7966fcb4c1d3c6402bc105e2476c8bf87f38b86"
+      },
+      {
+        "filename": "20260225000001_fix_furniture_vetusty_rls.sql",
+        "timestamp": "20260225000001",
+        "sha256": "5015f0cefcdbc18484c649261f8a4098b9f5713a0391c7b52b2e55933f553a95"
+      },
+      {
+        "filename": "20260225100000_autolink_backfill_invoices_on_profile.sql",
+        "timestamp": "20260225100000",
+        "sha256": "ab2673f665e54d7fa12204d2e27830bc5cdd5b06cc69bad2bb9cdc0014dfff42"
+      },
+      {
+        "filename": "20260227000000_drop_auto_activate_lease_trigger.sql",
+        "timestamp": "20260227000000",
+        "sha256": "308e404ebde2128b71c6d929fd827e26881854cb45f569b0c3b8e050cc45ad7c"
+      },
+      {
+        "filename": "20260228000000_lease_signers_share_percentage.sql",
+        "timestamp": "20260228000000",
+        "sha256": "c1dd05f6daf735daab44565c6824cf0b59c3e3112f5c242f66f783e0434e8199"
+      },
+      {
+        "filename": "20260228100000_tenant_payment_methods_sota2026.sql",
+        "timestamp": "20260228100000",
+        "sha256": "add0fae628eafff0a30cea10cb3d97963dad1300c3b4cb3631ba05f947b93bed"
+      },
+      {
+        "filename": "20260229100000_identity_2fa_requests.sql",
+        "timestamp": "20260229100000",
+        "sha256": "e200518e415c79693333defe52044cc8c11ca86467ec763539e7cea9684b0d75"
+      },
+      {
+        "filename": "20260230100000_create_notification_resolve_profile_id.sql",
+        "timestamp": "20260230100000",
+        "sha256": "b5ee9d0a53633fc1cc34e3fb2cad0907f61a2cd0479e302c216cc9edde4553b4"
+      },
+      {
+        "filename": "20260301000000_create_key_handovers.sql",
+        "timestamp": "20260301000000",
+        "sha256": "ece6ab2c589a7236c47f2f20bac54e9631a1f9410ff6af6e832dc77b7df3613c"
+      },
+      {
+        "filename": "20260301100000_entity_audit_and_propagation.sql",
+        "timestamp": "20260301100000",
+        "sha256": "f1211a4a5c9b08a3a9da33ecee46cc8df8026f49eb272745271b0f3506d1e674"
+      },
+      {
+        "filename": "20260303000000_backfill_uploaded_by.sql",
+        "timestamp": "20260303000000",
+        "sha256": "151e17adda0701fd4205d8d11765538dac7da05c27a88f91671f042b390427d5"
+      },
+      {
+        "filename": "20260303100000_entity_rls_fix_and_optimize.sql",
+        "timestamp": "20260303100000",
+        "sha256": "6a7a2ba149808d2753837c0e9ea4d7c5402ab37e6f30f4c5a699741541f1d56d"
+      },
+      {
+        "filename": "20260304000000_fix_invoice_generation_jour_paiement.sql",
+        "timestamp": "20260304000000",
+        "sha256": "14dbf8ed30fcf6e5d2d05ee3ab79d2c9461c0c487b349db135ec12fefd5e8ada"
+      },
+      {
+        "filename": "20260304000001_sync_sepa_collection_day.sql",
+        "timestamp": "20260304000001",
+        "sha256": "c3d31994b15d991e7a449e9839c5820f4c480641ff6813088a8edfe96f44b80a"
+      },
+      {
+        "filename": "20260304100000_activate_pg_cron_schedules.sql",
+        "timestamp": "20260304100000",
+        "sha256": "586cfff1928daab65dc20b5492100eace1430b4e7dc0c3ac85ab97c2f4c16b06"
+      },
+      {
+        "filename": "20260304200000_auto_mark_late_invoices.sql",
+        "timestamp": "20260304200000",
+        "sha256": "93a3b60021ec35e04ce4f27d128fe284327ef64c025d009f11ff8bf6ffbe5540"
+      },
+      {
+        "filename": "20260305000001_invoice_engine_fields.sql",
+        "timestamp": "20260305000001",
+        "sha256": "f19ad78c5ba82466d87e95cfb673e78c5c274f4ae7a434e8617057535fdc94a0"
+      },
+      {
+        "filename": "20260305000002_payment_crons.sql",
+        "timestamp": "20260305000002",
+        "sha256": "7e30ea9850bea9c04a1555f70d534cbce3a16aba883a013ded1af85ca51944e1"
+      },
+      {
+        "filename": "20260305100000_fix_invoice_draft_notification.sql",
+        "timestamp": "20260305100000",
+        "sha256": "5ad677f85237188cc70c5b9ee7a5733907cb7519a5e931afc02f97a1b7673d4d"
+      },
+      {
+        "filename": "20260305100001_add_missing_notification_triggers.sql",
+        "timestamp": "20260305100001",
+        "sha256": "5f281e42e2889147aa9e3eee8e8c23725f421f74265e25dd889a12c5cb917e6d"
+      },
+      {
+        "filename": "20260306000000_lease_documents_visible_tenant.sql",
+        "timestamp": "20260306000000",
+        "sha256": "5300f795fc12219589b7a57bc8b42821b96bd679321a583a6235a76f4a6a253a"
+      },
+      {
+        "filename": "20260306100001_backfill_initial_invoices.sql",
+        "timestamp": "20260306100001",
+        "sha256": "43ef13cb343f115897421ff3004f38d5010a851578cbb41c71f195bcd1e2b2e4"
+      },
+      {
+        "filename": "20260306200000_notify_tenant_digicode_changed.sql",
+        "timestamp": "20260306200000",
+        "sha256": "b0942569976c879bd30df231e25bd12b477f8c54fa54b465c7477cc5ba3aa4a0"
+      },
+      {
+        "filename": "20260306300000_add_owner_payment_preferences.sql",
+        "timestamp": "20260306300000",
+        "sha256": "dbb5ac2f211f2316b8ae27e35131c68c3e5fd9df457631b6cefbe220c9334824"
+      },
+      {
+        "filename": "20260309000000_entity_status_and_dedup.sql",
+        "timestamp": "20260309000000",
+        "sha256": "37e6750463d23e2d1b5e6bec04f2871d46ef34196d7c086baa81898e4c07c014"
+      },
+      {
+        "filename": "20260309000001_messages_update_rls.sql",
+        "timestamp": "20260309000001",
+        "sha256": "9395e358f8f2de7ab65da0bf440ee0a92ba2fd59061fb3a3207cf63bc088d690"
+      },
+      {
+        "filename": "20260309000002_add_ticket_to_conversations.sql",
+        "timestamp": "20260309000002",
+        "sha256": "bfecbee256f3c912d195a5a52a98c5855ab01497da2031a62c1f9e5f5ac7036f"
+      },
+      {
+        "filename": "20260309100000_sync_subscription_plans_features.sql",
+        "timestamp": "20260309100000",
+        "sha256": "6fd1c9a6609edd04cafef641dba0763ff8decd6803f83e48d814c47d10c8480b"
+      },
+      {
+        "filename": "20260310000000_fix_subscription_plans_display_order.sql",
+        "timestamp": "20260310000000",
+        "sha256": "a1f67ca734a0a72e53f4db4a4ad7b98d10554c40832baa2dde1c096593cbc0f9"
+      },
+      {
+        "filename": "20260310100000_fix_property_limit_enforcement.sql",
+        "timestamp": "20260310100000",
+        "sha256": "7e9274543e75ce8cb80f9fbc1b1a7dd4b1e7a9cdc083943a0c06491cf3eb9920"
+      },
+      {
+        "filename": "20260310300000_add_stripe_price_extra_property_id.sql",
+        "timestamp": "20260310300000",
+        "sha256": "8cf8c64d3893698ccc89979cb05174f16951ecfe20de80c83f1666216cb67dce"
+      },
+      {
+        "filename": "20260311100000_sync_subscription_plan_slugs.sql",
+        "timestamp": "20260311100000",
+        "sha256": "9ff2da409544b8a8c0e5b5f80e19380ddf253cb80f655c243480b1776642185f"
+      },
+      {
+        "filename": "20260312000000_admin_dashboard_rpcs.sql",
+        "timestamp": "20260312000000",
+        "sha256": "337731049a3352dbe6f7d8ff829a7ef75a41ad5bc209164e5de5208d20b0008e"
+      },
+      {
+        "filename": "20260312000001_fix_owner_subscription_defaults.sql",
+        "timestamp": "20260312000001",
+        "sha256": "d17a54d1a5d4ca6478d34e37047da7e78b7805530dacfcd693ce13794f0448f9"
+      },
+      {
+        "filename": "20260312100000_fix_handle_new_user_all_roles.sql",
+        "timestamp": "20260312100000",
+        "sha256": "4629748204352c1d84be6aaf016f39131cba520a7c1b1376d5e20cecea53d3dc"
+      },
+      {
+        "filename": "20260314001000_fix_stripe_connect_rls.sql",
+        "timestamp": "20260314001000",
+        "sha256": "41f91f9d7f1f109bc2e675e722316aeb489c5e1b7aff56115ba238019b4043b3"
+      },
+      {
+        "filename": "20260314020000_canonical_lease_activation_flow.sql",
+        "timestamp": "20260314020000",
+        "sha256": "1d3225b257c5920aad2f7763c66356c49d3fc42af4ca3b5ff5fc038b3c1971f2"
+      },
+      {
+        "filename": "20260314030000_payments_production_hardening.sql",
+        "timestamp": "20260314030000",
+        "sha256": "9240fd6662ab337049cf04915bc8496676356e517434f52bafd4a312dbb3c9e4"
+      },
+      {
+        "filename": "20260315090000_market_standard_subscription_alignment.sql",
+        "timestamp": "20260315090000",
+        "sha256": "675d229436afbb0a4735bd24331a8dc72a40a0b875de650407c9fd57bbd6dfd5"
+      },
+      {
+        "filename": "20260318000000_fix_auth_reset_template_examples.sql",
+        "timestamp": "20260318000000",
+        "sha256": "bac9cf2e20dbb1d7b8d7d0439a023b1971e28cc2cdc882c46ec28103df5474fc"
+      },
+      {
+        "filename": "20260318010000_password_reset_requests.sql",
+        "timestamp": "20260318010000",
+        "sha256": "a23892a9bc82fb41b14be43b36023b2906de4a926826942867acf38e9718547d"
+      },
+      {
+        "filename": "20260318020000_buildings_rls_sota2026.sql",
+        "timestamp": "20260318020000",
+        "sha256": "db6f7c6b65cf1ec2fc9a2a973360c445838c087d87d649d3358033bd40887aba"
+      },
+      {
+        "filename": "20260320100000_fix_owner_id_mismatch_and_rls.sql",
+        "timestamp": "20260320100000",
+        "sha256": "9acf3c066b63a40a9e1c266e08efeb162421ffd72a6686008fb2919c24c5d94b"
+      },
+      {
+        "filename": "20260321000000_drop_invoice_trigger_sota2026.sql",
+        "timestamp": "20260321000000",
+        "sha256": "d97f10b16a2e34dc15b7d412d506f05c6144dc5f9fe251b105d3dc3395bb5d2c"
+      },
+      {
+        "filename": "20260321100000_fix_cron_post_refactoring_sota2026.sql",
+        "timestamp": "20260321100000",
+        "sha256": "8e14533e1d1535d1d67e077249fda280e369e2ff995738490b749c3e7f57446a"
+      },
+      {
+        "filename": "20260323000000_fix_document_visibility_and_dedup.sql",
+        "timestamp": "20260323000000",
+        "sha256": "41782ee14ae6d37339e25c8267326db82e617fc06edbe667eba7472491964c21"
+      },
+      {
+        "filename": "20260324100000_prevent_duplicate_payments.sql",
+        "timestamp": "20260324100000",
+        "sha256": "f9e163d66e10e3cc91c18282cd51a4bd8198994816e2e54c11c52eb90ca11432"
+      },
+      {
+        "filename": "20260326022619_fix_documents_bucket_mime.sql",
+        "timestamp": "20260326022619",
+        "sha256": "1007d6e97e8e8b0fa18c63c8adb48b7a234e263ca532dd52142c9f4ca34e28b9"
+      },
+      {
+        "filename": "20260326022700_migrate_tenant_documents.sql",
+        "timestamp": "20260326022700",
+        "sha256": "a5dfedf437d78a33e04024d49fb1076173db6bd1970625ea2ad37772ae53af8e"
+      },
+      {
+        "filename": "20260326022800_create_document_links.sql",
+        "timestamp": "20260326022800",
+        "sha256": "6db60dec8e5c2b4aa660c1f32558234922edbdf30fe8919419b8f0b0ad9ad693"
+      },
+      {
+        "filename": "20260326023000_fix_document_titles.sql",
+        "timestamp": "20260326023000",
+        "sha256": "44e487c16b969cf5d26efe4ce0cb8853e515ec59119c6e07c8740f19809a73a0"
+      },
+      {
+        "filename": "20260326205416_add_agency_role_to_handle_new_user.sql",
+        "timestamp": "20260326205416",
+        "sha256": "47d312082acddaeb92074a5cdbb3e176246897b9bc7db0d5717ef6cd3d750c87"
+      },
+      {
+        "filename": "20260327143000_add_site_config.sql",
+        "timestamp": "20260327143000",
+        "sha256": "1486d0bff31834862f434b00e4f791a6baabc40066074bb975ce58c203ce91b3"
+      },
+      {
+        "filename": "20260327200000_fix_handle_new_user_restore_email.sql",
+        "timestamp": "20260327200000",
+        "sha256": "f3708d1300e30b85aef3404f410bf02d87d30dda769dfa3c53582c87c19a6c29"
+      },
+      {
+        "filename": "20260328000000_fix_visible_tenant_documents.sql",
+        "timestamp": "20260328000000",
+        "sha256": "4ff5bd6ecc4b08eb63d3153cc100a96b0e9859e1e0f5593a0f9e2c6104cf554c"
+      },
+      {
+        "filename": "20260328042538_update_argument_images.sql",
+        "timestamp": "20260328042538",
+        "sha256": "0784a43d2080584378261e2abac0cf03a5e3a5943979634cf05ea1a2d94d576a"
+      },
+      {
+        "filename": "20260329052631_fix_contrat_bail_visible_tenant.sql",
+        "timestamp": "20260329052631",
+        "sha256": "e3bd739b6f4b5c9bae9546f8ae07206594452672d517ca8a884398a3478eb061"
+      },
+      {
+        "filename": "20260329120000_add_agency_to_handle_new_user.sql",
+        "timestamp": "20260329120000",
+        "sha256": "00877f887cbbd1332e12384f1aa1aa4d4f08907f0a0a2af7ab7886402efd4dd1"
+      },
+      {
+        "filename": "20260329164841_fix_document_titles.sql",
+        "timestamp": "20260329164841",
+        "sha256": "599d64725fa63791d413b6be124da2fcd6e670f0e73486074436b59713aecffe"
+      },
+      {
+        "filename": "20260329170000_add_punctuality_score.sql",
+        "timestamp": "20260329170000",
+        "sha256": "8ed421ceac85e559527b2ae9b47be5772e167959b79b51801a7b389eacab4ef5"
+      },
+      {
+        "filename": "20260329180000_notify_owner_edl_signed.sql",
+        "timestamp": "20260329180000",
+        "sha256": "0ec85585ec6de7ac383b124cabdee9c386132a317d4a54232491cf772f067b50"
+      },
+      {
+        "filename": "20260329190000_force_visible_tenant_generated_docs.sql",
+        "timestamp": "20260329190000",
+        "sha256": "4eed2a350a7f93f952785260b402bc4d72aee341983e6a84f758620464bc22ad"
+      },
+      {
+        "filename": "20260330100000_add_lease_cancellation_columns.sql",
+        "timestamp": "20260330100000",
+        "sha256": "6f28f91984b11fd3075a1a892736e11e3ca30bdb0a23665191e95c3ee83e77a3"
+      },
+      {
+        "filename": "20260331000000_add_receipt_generated_to_invoices.sql",
+        "timestamp": "20260331000000",
+        "sha256": "f29906b18dd38ad96810a0798b5cef3b9ba0c377f301c3d97adbe64f62ff317e"
+      },
+      {
+        "filename": "20260331120000_add_signed_pdf_generated_to_leases.sql",
+        "timestamp": "20260331120000",
+        "sha256": "6784a49380ae2746bfe9157d8a9d5a81b5160afa565e0a15220c9af5a1b064e9"
+      },
+      {
+        "filename": "20260331130000_key_handovers_add_cancelled_notes.sql",
+        "timestamp": "20260331130000",
+        "sha256": "b8dc50117f6477fef52b2ff8d9ff732f6f0a5cd0893e182b3f9062ecd90de2ec"
+      },
+      {
+        "filename": "20260401000000_add_identity_status_onboarding_step.sql",
+        "timestamp": "20260401000000",
+        "sha256": "f605cd699d369ecedbd57f1465d284de7592b30b569875880813419270ae25af"
+      },
+      {
+        "filename": "20260404100000_rls_push_subscriptions.sql",
+        "timestamp": "20260404100000",
+        "sha256": "258dfcf89a740f3056c071fda15faf9b0c1430b9757cf4071fe6044bb5656be3"
+      },
+      {
+        "filename": "20260404100100_fix_tenant_docs_view_visible_tenant.sql",
+        "timestamp": "20260404100100",
+        "sha256": "994d7b51289d99fce0ebfaf260a4acf675ecccafaa9f89dbdff3f89a364d461e"
+      },
+      {
+        "filename": "20260404100200_fix_ticket_messages_rls_lease_signers.sql",
+        "timestamp": "20260404100200",
+        "sha256": "244395f9cac80cc09f02bbbd484fd1b597b4c3a872e8a48474e81cc142164973"
+      },
+      {
+        "filename": "20260406200000_create_entities_view_and_members.sql",
+        "timestamp": "20260406200000",
+        "sha256": "7e0306e9e0833ede497a8510e0b75bbbc8d7b22ab7d3476b9c9680e6d050ee8a"
+      },
+      {
+        "filename": "20260406210000_accounting_complete.sql",
+        "timestamp": "20260406210000",
+        "sha256": "8049d87885a614eec51229c49446f4ac982308371131bbd52bd381f3f665a46e"
+      },
+      {
+        "filename": "20260407110000_audit_fixes_rls_indexes.sql",
+        "timestamp": "20260407110000",
+        "sha256": "85b476c040a691e3694e07e19ea14a3449f5f974c7f73ee5791103ad7efe67eb"
+      },
+      {
+        "filename": "20260407120000_accounting_reconcile_schemas.sql",
+        "timestamp": "20260407120000",
+        "sha256": "b69be837f93f4240c6c997d8eb150b5d1ca4ddcbca8e5874eb7ee21a6dfb0557"
+      },
+      {
+        "filename": "20260407130000_ocr_category_rules.sql",
+        "timestamp": "20260407130000",
+        "sha256": "8ad815faa0929d99d3be5f9b98f538f8f18470abb0805983af3e2df7bb7ba788"
+      },
+      {
+        "filename": "20260408042218_create_expenses_table.sql",
+        "timestamp": "20260408042218",
+        "sha256": "92f08be49745b2e97788a83cd1648d3aa6ef53742c9ea160073ee220c190a5aa"
+      },
+      {
+        "filename": "20260408044152_reconcile_charge_regularisations_and_backfill_entry_lines.sql",
+        "timestamp": "20260408044152",
+        "sha256": "29d00eb670895f4cc63dc76c2d69cb28607aa935318f034952d11c24cf3a1c1e"
+      },
+      {
+        "filename": "20260408110000_agency_hoguet.sql",
+        "timestamp": "20260408110000",
+        "sha256": "b3caee3100d4964e5961112e98dac041dced95a8bebf44a2713da6c0148704e2"
+      },
+      {
+        "filename": "20260408140000_tickets_module_sota.sql",
+        "timestamp": "20260408140000",
+        "sha256": "b707e39e161225c19818e9f8c40805356947130c62a30d4eeb53eb7fc5a800b3"
+      },
+      {
+        "filename": "20260408200000_unified_notification_system.sql",
+        "timestamp": "20260408200000",
+        "sha256": "aa2182dcbe60069f98e917f0e42053fc535ce39f24e2edf919d6cd202120d80d"
+      },
+      {
+        "filename": "20260408220000_payment_architecture_sota.sql",
+        "timestamp": "20260408220000",
+        "sha256": "782f72822fb3b9a47385342e470598dadd1cce034656319dea0ef73ffd7c46d6"
+      },
+      {
+        "filename": "20260409100000_add_missing_rls.sql",
+        "timestamp": "20260409100000",
+        "sha256": "d0be4dd57173ffe348d1c0d7a366f2bc5c957215ff57e54b34a52624722b1b2e"
+      },
+      {
+        "filename": "20260409110000_fix_remaining_rls_recursion.sql",
+        "timestamp": "20260409110000",
+        "sha256": "5a223226a04269b6e1716d9d0bafe4b7931d145372b89015a8ba092d0bcd5085"
+      },
+      {
+        "filename": "20260409120000_fix_subscriptions_rls_recursion.sql",
+        "timestamp": "20260409120000",
+        "sha256": "a9cd22eb9893f78c10c03fd7491c4658a0f76c59f32fa3b9b1c9c9fc85ebe4b7"
+      },
+      {
+        "filename": "20260409130000_fix_subscriptions_status_check.sql",
+        "timestamp": "20260409130000",
+        "sha256": "dbeab04c2867432c071a366f4a7fb2ad9552df0f70e203a0c0b659ee2db4c442"
+      },
+      {
+        "filename": "20260409140000_fix_addons_sms_rls_recursion.sql",
+        "timestamp": "20260409140000",
+        "sha256": "b8977a708a84d33f8a10472d9cfdcbc8b4acab97bb46f9e94ab234e5b4570fbe"
+      },
+      {
+        "filename": "20260409150000_fix_signature_tracking_and_analytics.sql",
+        "timestamp": "20260409150000",
+        "sha256": "38c548adf2aa31b1e957dc0a9dc0b78ff82f62e0500c6e0359c3883b4fff3236"
+      },
+      {
+        "filename": "20260409160000_building_unit_lease_document_fk.sql",
+        "timestamp": "20260409160000",
+        "sha256": "abf515237c09aa535da7747838c2a8b23619bd37c277e120d45e34cba417599b"
+      },
+      {
+        "filename": "20260409170000_backfill_building_unit_properties.sql",
+        "timestamp": "20260409170000",
+        "sha256": "1d6653bb10586cd65f1c35fed7fac88ef6ccab76adcc9d3f7386bbff3a1bd1c7"
+      },
+      {
+        "filename": "20260409180000_buildings_site_id_nullable.sql",
+        "timestamp": "20260409180000",
+        "sha256": "ee83735d6a20bbeaf39dbc4448bd3d9ada68ba047e4112666f6b7f6a7a8e8b3b"
+      },
+      {
+        "filename": "20260410100000_accounting_missing_indexes.sql",
+        "timestamp": "20260410100000",
+        "sha256": "51b2f38b82ec7d3225fa4330d9260520841a047c98ebae091397d7603be88944"
+      },
+      {
+        "filename": "20260410110000_cleanup_orphan_analyses.sql",
+        "timestamp": "20260410110000",
+        "sha256": "845a36295dfe740ffa52a3e218e846f854a73314964f9d8d6965b2112942ff97"
+      },
+      {
+        "filename": "20260410180000_fix_invoice_generation_sota.sql",
+        "timestamp": "20260410180000",
+        "sha256": "72b6b0b7fd7b1adf48df37f66798edd9bde0ce50518d88bc2bece25eeff857c3"
+      },
+      {
+        "filename": "20260410204528_extend_invoices_rls_for_sci_access.sql",
+        "timestamp": "20260410204528",
+        "sha256": "62282a4dc9fc310686922d3c18376b948d78dcec4549c6503f4653200bee5609"
+      },
+      {
+        "filename": "20260410210000_fix_protected_document_visibility.sql",
+        "timestamp": "20260410210000",
+        "sha256": "5818c3290fb7eee8053bd3fab6634f9bd0676bf9edb6d4fb49fcd3ef1bf1feba"
+      },
+      {
+        "filename": "20260410210341_fix_notify_tenant_invoice_created_user_id.sql",
+        "timestamp": "20260410210341",
+        "sha256": "96f287fcbec6f60c51ae8c6e210591f67768f53c558002bd8ebc0d88450d3b00"
+      },
+      {
+        "filename": "20260410210342_fix_generate_monthly_invoices_fields.sql",
+        "timestamp": "20260410210342",
+        "sha256": "9d93662539344adfeae514e6a4a9cc43b8154b1377eb95a1c7653c696fba1f07"
+      },
+      {
+        "filename": "20260410212232_fix_entity_members_policy_recursion.sql",
+        "timestamp": "20260410212232",
+        "sha256": "3a05bb70f576f67aadd65bf026cc97ed697709aa619eead503b69554d42145d6"
+      },
+      {
+        "filename": "20260410213940_fix_properties_tenant_policy_recursion.sql",
+        "timestamp": "20260410213940",
+        "sha256": "ceb2f0e42267ab858da7f6246d33d4d78a3138a2d9d640e1aff0488696238bc1"
+      },
+      {
+        "filename": "20260410220000_cash_receipt_two_step_signature.sql",
+        "timestamp": "20260410220000",
+        "sha256": "969308d049cc824e4fb0aee87cacbce1b39b8254f7c2e698a40149988dfb4329"
+      },
+      {
+        "filename": "20260411000000_create_cash_receipt_function.sql",
+        "timestamp": "20260411000000",
+        "sha256": "1114454e756971535b1cec9ffe620a8863066de07dbd2ac9a70df22be492cfb1"
+      },
+      {
+        "filename": "20260411100000_fix_work_orders_policy_recursion.sql",
+        "timestamp": "20260411100000",
+        "sha256": "7eb5004e5ccf5fd1146a62412b48872a7c15b0aaf14e204ba9916fb123cca9e5"
+      },
+      {
+        "filename": "20260411130000_restore_handle_new_user_sota.sql",
+        "timestamp": "20260411130000",
+        "sha256": "6807fd07d593070b69f505c55cbe055544085f8d2d63deb9b62a963aef363a9a"
+      },
+      {
+        "filename": "20260411130100_agency_profiles_raison_sociale_nullable.sql",
+        "timestamp": "20260411130100",
+        "sha256": "291189e7950b56400788bc056f31b724388c67536621cfc81b6ca61415f54afa"
+      },
+      {
+        "filename": "20260411130200_create_syndic_profiles.sql",
+        "timestamp": "20260411130200",
+        "sha256": "ef19df1e6dab99f0d922217924aec377ad317f6f88708eeec301ae73dbfe691e"
+      },
+      {
+        "filename": "20260411130300_onboarding_role_constraints_allow_syndic_agency.sql",
+        "timestamp": "20260411130300",
+        "sha256": "f820013744557cab58aa6efd0706ce5664bcf0b5459b1272a1b9134c9ab438e7"
+      },
+      {
+        "filename": "20260411140000_copro_assemblies_module.sql",
+        "timestamp": "20260411140000",
+        "sha256": "94ce5f4e665945779bf5ff69680e8e0a4301279d0bcaa1624ecdacb5cdaa47a1"
+      },
+      {
+        "filename": "20260411140100_copro_governance_module.sql",
+        "timestamp": "20260411140100",
+        "sha256": "f8fd4e674fafb903227495dc711a77fb51a7a54e743c9274bfb6bc3bbf532fe3"
+      },
+      {
+        "filename": "20260412000000_fix_cash_receipt_rpc_sota.sql",
+        "timestamp": "20260412000000",
+        "sha256": "dc4529fab40a28629e3e489f1107af3e47a63deaa3f595d4bc397f696d52794e"
+      },
+      {
+        "filename": "20260412100000_stripe_connect_multi_entity.sql",
+        "timestamp": "20260412100000",
+        "sha256": "22755667cc4af04f8c991e39e5ec9f39610136f9e044a5242929a456298d08fe"
+      },
+      {
+        "filename": "20260412110000_documents_copro_fk.sql",
+        "timestamp": "20260412110000",
+        "sha256": "8a637248f52cd66574054fcbe9b621d3e2d592d9a39d9abec5b3ed62d616bd30"
+      },
+      {
+        "filename": "20260412120000_copro_fund_call_lines_reminder_tracking.sql",
+        "timestamp": "20260412120000",
+        "sha256": "372b9d99f1a9b9f6bb6f4bdd3d772ccd096ac2e6d327e225ba146335dff71b7a"
+      },
+      {
+        "filename": "20260412130000_copro_cron_schedules.sql",
+        "timestamp": "20260412130000",
+        "sha256": "acb23cf9f16d5ac6b9701dc34c2ff5d36f6b5ae9cbce473d440855760d193c25"
+      },
+      {
+        "filename": "20260412140000_close_admin_self_elevation.sql",
+        "timestamp": "20260412140000",
+        "sha256": "3e93e7f9f0859930d1e67e5fa42ade84e13e7a2bfa8744006bd85eb62bdcccbc"
+      },
+      {
+        "filename": "20260412150000_create_cron_logs.sql",
+        "timestamp": "20260412150000",
+        "sha256": "321c08876e5d68c9455fd85b1dc033a0f6160bf4380f4f7ef5a197dbcbeb8800"
+      },
+      {
+        "filename": "20260415000000_signup_integrity_guard.sql",
+        "timestamp": "20260415000000",
+        "sha256": "bdb1b3359bba710c3a483a08ecb28256b7a65e7f5a2546773596cef1184fe01a"
+      },
+      {
+        "filename": "20260415121706_harden_sign_cash_receipt_as_tenant.sql",
+        "timestamp": "20260415121706",
+        "sha256": "1cae3ff3beb694f4f043aa7782d0e8ad4da2a1ad802b854d9a1363e3726fefd0"
+      },
+      {
+        "filename": "20260415124844_add_cheque_photo_to_payments.sql",
+        "timestamp": "20260415124844",
+        "sha256": "3dcedece941a1564c2b1daec5f8fe7a7ac5a32ba3017fdbf293e69c2c1f5805d"
+      },
+      {
+        "filename": "20260415130000_fix_tenant_accessible_property_ids_security_definer.sql",
+        "timestamp": "20260415130000",
+        "sha256": "9f40da5fe5e1cc5998aa294e2380d5699c260d603c00ebd80975d10eef01cf8c"
+      },
+      {
+        "filename": "20260415150000_upsert_building_with_units_rpc.sql",
+        "timestamp": "20260415150000",
+        "sha256": "b02754956a4ca914c784e8c3e6626298c564cc26f4c5b9b3f6ee8aa736ec77cb"
+      },
+      {
+        "filename": "20260415160000_buildings_rls_entity_members_support.sql",
+        "timestamp": "20260415160000",
+        "sha256": "b953ba1c0cb1a9b41e8ca8fde75a40d64128dfad6e2c8780666870f0a696c33d"
+      },
+      {
+        "filename": "20260415230000_enforce_invoice_paid_has_payment.sql",
+        "timestamp": "20260415230000",
+        "sha256": "c5d69e17c4efccd127efb8330cee89fab1c7d871810d335c76d0eebf791c2b11"
+      },
+      {
+        "filename": "20260417090000_charges_reg_invoice_link.sql",
+        "timestamp": "20260417090000",
+        "sha256": "958a5c51a6ffb9d7aee25402d5d6e02c7761cfba1716576bfc70a23228cb23b0"
+      },
+      {
+        "filename": "20260417090100_tax_notices_table.sql",
+        "timestamp": "20260417090100",
+        "sha256": "20ff1d0b464f9f212c8ac385520941869db122d1008fc55c7590d431376ee965"
+      },
+      {
+        "filename": "20260417090200_epci_reference_table.sql",
+        "timestamp": "20260417090200",
+        "sha256": "618be9f0edaa5103cd9da825a842d037013c11b8d6b71621d372c79a944ebb16"
+      },
+      {
+        "filename": "20260417090300_fix_tenant_contest_rls.sql",
+        "timestamp": "20260417090300",
+        "sha256": "e7944afde170f59bb5bd5905438679d43e11673b0288f931f5cf7e6a7631ab3e"
+      },
+      {
+        "filename": "20260417090400_charges_pcg_accounts_backfill.sql",
+        "timestamp": "20260417090400",
+        "sha256": "db5af56d7d59a4c7789e066544cbcbf8f49d717f5e48a8b18385b54574d5d838"
+      },
+      {
+        "filename": "20260417090500_epci_reference_seed_drom.sql",
+        "timestamp": "20260417090500",
+        "sha256": "f3000131342046b7e7e915f9d6a41e7dec9f7c4f2ce01e4c0a30c3f954b51659"
+      },
+      {
+        "filename": "20260417100000_drop_phone_otp_codes_refs.sql",
+        "timestamp": "20260417100000",
+        "sha256": "d52e225dbe0cd7fd7dad255ace2d52ca9fc58ca884db3b65fe1361c1685f979a"
+      },
+      {
+        "filename": "20260417110000_purge_identity_2fa_cron.sql",
+        "timestamp": "20260417110000",
+        "sha256": "6b645233470b5d9122ea252155aba3b422e1142525115c6364f3cb48e123d025"
+      }
+    ],
+    "hashMismatch": [],
+    "duplicateTs": [
+      {
+        "filename": "20260224100000_fix_tenant_dashboard_notifications_query.sql",
+        "timestamp": "20260224100000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260224100000_normalize_provider_names.sql",
+        "timestamp": "20260224100000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260226000000_backfill_existing_invoices_tenant_id.sql",
+        "timestamp": "20260226000000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260226000000_fix_notifications_triggers.sql",
+        "timestamp": "20260226000000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260306100000_add_digicode_interphone_columns.sql",
+        "timestamp": "20260306100000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260306100000_invoice_on_fully_signed.sql",
+        "timestamp": "20260306100000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260310200000_add_signature_push_franceconnect.sql",
+        "timestamp": "20260310200000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260310200000_fix_property_limit_extra_properties.sql",
+        "timestamp": "20260310200000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260328100000_create_site_content.sql",
+        "timestamp": "20260328100000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260328100000_fix_visible_tenant_documents.sql",
+        "timestamp": "20260328100000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260331100000_add_agricultural_property_types.sql",
+        "timestamp": "20260331100000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260331100000_fix_document_titles_bruts.sql",
+        "timestamp": "20260331100000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260401000001_add_initial_payment_confirmed_to_leases.sql",
+        "timestamp": "20260401000001",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260401000001_backfill_identity_status.sql",
+        "timestamp": "20260401000001",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260408100000_copro_lots.sql",
+        "timestamp": "20260408100000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260408100000_create_push_subscriptions.sql",
+        "timestamp": "20260408100000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260408120000_api_keys_webhooks.sql",
+        "timestamp": "20260408120000",
+        "note": "7 files share this timestamp"
+      },
+      {
+        "filename": "20260408120000_colocation_module.sql",
+        "timestamp": "20260408120000",
+        "note": "7 files share this timestamp"
+      },
+      {
+        "filename": "20260408120000_edl_sortie_workflow.sql",
+        "timestamp": "20260408120000",
+        "note": "7 files share this timestamp"
+      },
+      {
+        "filename": "20260408120000_providers_module_sota.sql",
+        "timestamp": "20260408120000",
+        "note": "7 files share this timestamp"
+      },
+      {
+        "filename": "20260408120000_smart_meters_connected.sql",
+        "timestamp": "20260408120000",
+        "note": "7 files share this timestamp"
+      },
+      {
+        "filename": "20260408120000_subscription_addons.sql",
+        "timestamp": "20260408120000",
+        "note": "7 files share this timestamp"
+      },
+      {
+        "filename": "20260408120000_whitelabel_agency_module.sql",
+        "timestamp": "20260408120000",
+        "note": "7 files share this timestamp"
+      },
+      {
+        "filename": "20260408130000_active_sessions.sql",
+        "timestamp": "20260408130000",
+        "note": "12 files share this timestamp"
+      },
+      {
+        "filename": "20260408130000_admin_panel_tables.sql",
+        "timestamp": "20260408130000",
+        "note": "12 files share this timestamp"
+      },
+      {
+        "filename": "20260408130000_candidatures_workflow.sql",
+        "timestamp": "20260408130000",
+        "note": "12 files share this timestamp"
+      },
+      {
+        "filename": "20260408130000_charges_locatives_module.sql",
+        "timestamp": "20260408130000",
+        "note": "12 files share this timestamp"
+      },
+      {
+        "filename": "20260408130000_diagnostics_rent_control.sql",
+        "timestamp": "20260408130000",
+        "note": "12 files share this timestamp"
+      },
+      {
+        "filename": "20260408130000_fix_subscription_plan_prices.sql",
+        "timestamp": "20260408130000",
+        "note": "12 files share this timestamp"
+      },
+      {
+        "filename": "20260408130000_guarantor_workflow_complete.sql",
+        "timestamp": "20260408130000",
+        "note": "12 files share this timestamp"
+      },
+      {
+        "filename": "20260408130000_insurance_policies.sql",
+        "timestamp": "20260408130000",
+        "note": "12 files share this timestamp"
+      },
+      {
+        "filename": "20260408130000_lease_amendments_table.sql",
+        "timestamp": "20260408130000",
+        "note": "12 files share this timestamp"
+      },
+      {
+        "filename": "20260408130000_rgpd_consent_records_and_data_requests.sql",
+        "timestamp": "20260408130000",
+        "note": "12 files share this timestamp"
+      },
+      {
+        "filename": "20260408130000_seasonal_rental_module.sql",
+        "timestamp": "20260408130000",
+        "note": "12 files share this timestamp"
+      },
+      {
+        "filename": "20260408130000_security_deposits.sql",
+        "timestamp": "20260408130000",
+        "note": "12 files share this timestamp"
+      },
+      {
+        "filename": "20260411120000_harden_payments_check_constraints.sql",
+        "timestamp": "20260411120000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260411120000_schedule_onboarding_reminders_cron.sql",
+        "timestamp": "20260411120000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260415140000_buildings_sota_fix_wave1.sql",
+        "timestamp": "20260415140000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260415140000_fix_tenant_payment_signing_and_leases_recursion.sql",
+        "timestamp": "20260415140000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260416100000_fix_messages_conversation_trigger.sql",
+        "timestamp": "20260416100000",
+        "note": "2 files share this timestamp"
+      },
+      {
+        "filename": "20260416100000_fix_tickets_rls_recursion.sql",
+        "timestamp": "20260416100000",
+        "note": "2 files share this timestamp"
+      }
+    ]
+  }
+}

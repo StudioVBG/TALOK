@@ -1,0 +1,443 @@
+filename,timestamp,date_readable,size_lines,size_bytes,applied_status,risk_level,ops_detected,summary
+20240100099999_grant_auth_permissions.sql,20240100099999,2024-01-00 09:99:99,9,376,applied,SAFE,GRANT,Ensure local roles can manage objects inside the auth schema before
+20240101000000_initial_schema.sql,20240101000000,2024-01-01 00:00:00,306,13496,applied,CRITIQUE,CREATE EXTENSION|CREATE TABLE|CREATE INDEX,Migration initiale : création du schéma de base
+20240101000001_rls_policies.sql,20240101000001,2024-01-01 00:00:01,495,14690,applied,DANGEREUX,ALTER TABLE|CREATE FUNCTION|CREATE POLICY|UPDATE,Migration : Row Level Security (RLS) policies
+20240101000002_functions.sql,20240101000002,2024-01-01 00:00:02,137,4092,applied,CRITIQUE,CREATE FUNCTION|INSERT|CREATE TRIGGER,Migration : Fonctions utilitaires et triggers
+20240101000003_storage_bucket.sql,20240101000003,2024-01-01 00:00:03,65,1841,applied,DANGEREUX,INSERT|CREATE POLICY,Migration : Configuration du bucket Storage pour les documents
+20240101000004_onboarding_tables.sql,20240101000004,2024-01-01 00:00:04,122,4828,applied,CRITIQUE,CREATE TABLE|CREATE INDEX,Migration : Tables pour l'onboarding et les invitations
+20240101000005_resend_invitation_function.sql,20240101000005,2024-01-01 00:00:05,47,1401,applied,MODERE,CREATE FUNCTION|UPDATE,Migration : Fonction RPC pour renvoyer une invitation
+20240101000006_fix_rls_recursion.sql,20240101000006,2024-01-01 00:00:06,23,1142,applied,SAFE,CREATE FUNCTION,Migration : Correction de la récursion infinie dans user_profile_id
+20240101000007_admin_architecture.sql,20240101000007,2024-01-01 00:00:07,372,15372,applied,CRITIQUE,CREATE TABLE,Migration : Architecture Admin complète
+20240101000008_admin_rls.sql,20240101000008,2024-01-01 00:00:08,232,6328,applied,DANGEREUX,ALTER TABLE|CREATE POLICY,Migration : RLS Policies pour l'architecture Admin
+20240101000009_tenant_advanced.sql,20240101000009,2024-01-01 00:00:09,576,25894,applied,CRITIQUE,CREATE TABLE|CREATE INDEX,Migration : Architecture Locataire avancée
+20240101000010_tenant_rls.sql,20240101000010,2024-01-01 00:00:10,487,14569,applied,DANGEREUX,ALTER TABLE|CREATE POLICY|UPDATE,Migration : RLS Policies pour l'architecture Locataire
+20240101000011_fix_properties_rls_recursion.sql,20240101000011,2024-01-01 00:00:11,77,3315,applied,DANGEREUX,CREATE FUNCTION|ALTER TABLE|DROP POLICY|UPDATE|CREATE POLICY,Migration : Correction définitive de la récursion infinie dans les politiques RLS
+20240101000012_fix_specialized_profiles_rls.sql,20240101000012,2024-01-01 00:00:12,88,3577,applied,DANGEREUX,DROP POLICY|UPDATE|CREATE POLICY,Migration : Correction des politiques RLS pour owner_profiles et tenant_profiles
+20240101000013_fix_leases_rls.sql,20240101000013,2024-01-01 00:00:13,150,4912,applied,DANGEREUX,DROP POLICY|UPDATE|CREATE POLICY,Migration : Correction des politiques RLS pour leases et lease_signers
+20240101000014_fix_leases_policy_functions.sql,20240101000014,2024-01-01 00:00:14,23,740,applied,DANGEREUX,DROP POLICY|CREATE POLICY,Migration : S'assurer que les politiques utilisent public.user_profile_id() explicitement
+20240101000015_fix_leases_rls_recursion.sql,20240101000015,2024-01-01 00:00:15,36,1219,applied,DANGEREUX,DROP POLICY|CREATE POLICY,Migration : Correction de la récursion infinie dans les politiques RLS pour leases
+20240101000016_tenant_missing_tables.sql,20240101000016,2024-01-01 00:00:16,233,10376,applied,CRITIQUE,CREATE TABLE|CREATE INDEX,Migration : Tables manquantes pour compte Locataire
+20240101000017_tenant_missing_rls.sql,20240101000017,2024-01-01 00:00:17,222,6267,applied,DANGEREUX,ALTER TABLE|CREATE POLICY,Migration : RLS Policies pour les nouvelles tables Locataire
+20240101000018_missing_core_tables.sql,20240101000018,2024-01-01 00:00:18,234,10518,applied,CRITIQUE,CREATE TABLE|CREATE INDEX|CREATE VIEW,Migration : Tables manquantes pour fonctionnalités critiques
+20240101000019_missing_rls.sql,20240101000019,2024-01-01 00:00:19,297,8735,applied,DANGEREUX,ALTER TABLE|CREATE POLICY,Migration : RLS Policies pour les nouvelles tables
+20240101000020_add_paused_status_tickets.sql,20240101000020,2024-01-01 00:00:20,11,262,applied,SAFE,ALTER TABLE,Migration : Ajouter le statut 'paused' aux tickets
+20240101000021_add_notifications_table.sql,20240101000021,2024-01-01 00:00:21,46,1643,applied,CRITIQUE,CREATE TABLE|ALTER TABLE|CREATE INDEX|DROP POLICY|CREATE POLICY|UPDATE|CREATE TRIGGER,Migration : Table notifications pour le worker event bus
+20240101000022_add_lease_states.sql,20240101000022,2024-01-01 00:00:22,35,1050,applied,DANGEREUX,ALTER TABLE|CREATE INDEX,Migration : Ajouter les états manquants pour les baux
+20240101000023_idempotency_and_2fa.sql,20240101000023,2024-01-01 00:00:23,36,1467,applied,CRITIQUE,CREATE TABLE|CREATE INDEX|DELETE|ALTER TABLE,Migration : Table pour idempotency keys et colonnes 2FA
+20240101000024_update_api_credentials_table.sql,20240101000024,2024-01-01 00:00:24,42,2175,applied,CRITIQUE,ALTER TABLE|CREATE INDEX,Migration : Mise à jour de la table api_credentials pour ajouter les colonnes nécessaires
+20240101000025_add_provider_validation.sql,20240101000025,2024-01-01 00:00:25,84,2985,applied,CRITIQUE,ALTER TABLE|CREATE INDEX|DROP POLICY|CREATE POLICY,Migration : Ajout du système de validation des prestataires
+20240101000026_fix_provider_rls.sql,20240101000026,2024-01-01 00:00:26,43,1224,applied,DANGEREUX,DROP POLICY|CREATE POLICY|UPDATE,Migration de correction : Fix de la politique RLS pour les admins sur provider_profiles
+202411140001_fix_auth_helper_functions.sql,202411140001,2024-11-14 00:01:00,95,2090,applied,SAFE,CREATE FUNCTION,Migration : sécuriser public.user_profile_id() et public.user_role()
+202411140100_expand_commercial_capabilities.sql,202411140100,2024-11-14 01:00:00,295,8788,applied,DANGEREUX,ALTER TABLE,Migration : extension du modèle pour les baux commerciaux et professionnels
+202411140210_property_workflow_status.sql,202411140210,2024-11-14 02:10:00,36,928,applied,DANGEREUX,ALTER TABLE|UPDATE|CREATE INDEX,Migration : workflow de validation des logements
+202411140220_property_financial_diagnostics.sql,202411140220,2024-11-14 02:20:00,59,2047,applied,DANGEREUX,ALTER TABLE|CREATE INDEX,"Migration : informations financières, encadrement des loyers et diagnostics"
+202411140221_fix_property_status_enum.sql,202411140221,2024-11-14 02:21:00,24,388,applied,DANGEREUX,UPDATE|ALTER TABLE,Migration : aligner les statuts des propriétés (published vs approved)
+202411140230_documents_gallery.sql,202411140230,2024-11-14 02:30:00,152,4523,applied,DANGEREUX,ALTER TABLE|CREATE INDEX|UPDATE,"Migration : galerie de documents (multi-upload, tri, cover)"
+202411140500_parking_details.sql,202411140500,2024-11-14 05:00:00,9,251,applied,DANGEREUX,ALTER TABLE|CREATE INDEX,Ajout des détails dédiés aux biens de type parking
+202411151200_property_share_tokens.sql,202411151200,2024-11-15 12:00:00,40,1304,applied,DANGEREUX,CREATE TABLE|CREATE INDEX|ALTER TABLE|CREATE POLICY,
+20241128000001_scoring_and_automations.sql,20241128000001,2024-11-28 00:00:01,192,6552,applied,DANGEREUX,CREATE TABLE|CREATE INDEX,Migration: Scoring de solvabilité et Automations
+20241128000002_api_keys_management.sql,20241128000002,2024-11-28 00:00:02,269,13074,applied,CRITIQUE,CREATE TABLE|CREATE INDEX|ALTER TABLE,Migration: Gestion des clés API par l'admin
+20241129000001_subscriptions.sql,20241129000001,2024-11-29 00:00:01,464,14474,applied,CRITIQUE,CREATE TABLE,Migration: Système d'abonnement et monétisation
+20241129000002_cash_payments.sql,20241129000002,2024-11-29 00:00:02,421,12130,applied,DANGEREUX,ALTER TABLE|CREATE TABLE,Migration: Paiement en espèces avec signature tactile
+202411290001_add_etudiant_lease_type.sql,202411290001,2024-11-29 00:01:00,33,819,applied,DANGEREUX,ALTER TABLE|CREATE INDEX,Migration : ajout du type de bail étudiant
+202411290002_add_studio_box_property_types.sql,202411290002,2024-11-29 00:02:00,50,1164,applied,DANGEREUX,ALTER TABLE,Migration : ajout des types de propriété studio et box
+202411290003_add_banking_columns.sql,202411290003,2024-11-29 00:03:00,20,752,applied,SAFE,ALTER TABLE,Migration : ajout des colonnes bancaires au profil propriétaire
+20241130000001_add_lease_invite_columns.sql,20241130000001,2024-11-30 00:00:01,71,3595,applied,DANGEREUX,ALTER TABLE|CREATE INDEX|CREATE FUNCTION,Migration: Ajouter les colonnes pour le système d'invitation locataire
+20241130000002_add_tenant_identity_documents.sql,20241130000002,2024-11-30 00:00:02,259,9532,applied,DANGEREUX,ALTER TABLE,Migration: Ajouter les colonnes pour les documents d'identité des locataires
+20241130000003_fix_profiles_rls.sql,20241130000003,2024-11-30 00:00:03,45,1607,applied,DANGEREUX,DROP POLICY|CREATE POLICY|UPDATE|ALTER TABLE,Migration: Corriger les RLS policies sur la table profiles
+20241130000004_fix_leases_rls_simple.sql,20241130000004,2024-11-30 00:00:04,49,2080,applied,DANGEREUX,DROP POLICY|UPDATE|ALTER TABLE|CREATE POLICY,Migration : Correction simple de la récursion infinie pour leases
+20241130000010_add_external_api_keys.sql,20241130000010,2024-11-30 00:00:10,134,5287,applied,CRITIQUE,INSERT|UPDATE|ALTER TABLE,Migration : Amélioration du système de gestion des clés API externes
+20241201000001_performance_indexes.sql,20241201000001,2024-12-01 00:00:01,186,7291,applied,SAFE,CREATE INDEX,=====================================================
+20241201000002_otp_codes_table.sql,20241201000002,2024-12-01 00:00:02,80,2310,applied,CRITIQUE,CREATE TABLE|CREATE INDEX|ALTER TABLE|CREATE POLICY,=====================================================
+20241201000003_quotes_table.sql,20241201000003,2024-12-01 00:00:03,150,6181,applied,DANGEREUX,CREATE TABLE|ALTER TABLE,=====================================================
+20250101000001_owner_dashboard_rpc.sql,20250101000001,2025-01-01 00:00:01,219,6507,applied,SAFE,CREATE FUNCTION,Migration : Fonctions RPC pour optimiser les requêtes Owner
+20250114120000_add_guarantor_role.sql,20250114120000,2025-01-14 12:00:00,21,504,applied,DANGEREUX,ALTER TABLE|UPDATE,"Migration : prise en charge du rôle ""guarantor"" (garant)"
+20250114120500_create_avatars_bucket.sql,20250114120500,2025-01-14 12:05:00,25,529,applied,MODERE,INSERT|CREATE POLICY,Migration : bucket Storage pour les avatars utilisateurs
+202501170000_fix_lease_signers_recursion.sql,202501170000,2025-01-17 00:00:00,65,2935,applied,DANGEREUX,DROP POLICY|UPDATE|CREATE POLICY,Migration : Correction définitive de la récursion infinie dans les politiques RLS pour lease_signers
+202501170001_fix_tenant_profiles_rls_recursion.sql,202501170001,2025-01-17 00:01:00,49,1636,applied,DANGEREUX,DROP POLICY|CREATE FUNCTION|CREATE POLICY,Migration : Correction de la récursion dans les politiques RLS pour tenant_profiles
+202501170002_fix_roommates_rls_recursion.sql,202501170002,2025-01-17 00:02:00,31,997,applied,DANGEREUX,DROP POLICY|CREATE FUNCTION|CREATE POLICY,Migration : Correction de la récursion dans les politiques RLS pour roommates
+202501180000_normalize_existing_emails.sql,202501180000,2025-01-18 00:00:00,97,2730,applied,CRITIQUE,CREATE FUNCTION|UPDATE,Migration : Normaliser les emails existants dans auth.users
+202501200000_fix_leases_rls_infinite_recursion.sql,202501200000,2025-01-20 00:00:00,207,7708,applied,DANGEREUX,DROP POLICY|UPDATE|CREATE POLICY,Migration : Correction définitive de la récursion infinie dans les politiques RLS pour leases
+20250204000000_add_property_investment_fields.sql,20250204000000,2025-02-04 00:00:00,85,2972,applied,DANGEREUX,ALTER TABLE,============================================
+202502141000_property_rooms_photos.sql,202502141000,2025-02-14 10:00:00,200,6533,applied,DANGEREUX,ALTER TABLE|UPDATE,Migration : données logement appartement + pièces/photos
+202502150000_property_model_v3.sql,202502150000,2025-02-15 00:00:00,262,9664,applied,DANGEREUX,ALTER TABLE,Migration : Modèle de données Property V3
+202502150001_property_photos_storage_policies.sql,202502150001,2025-02-15 00:01:00,99,2897,applied,DANGEREUX,CREATE POLICY,Migration : Policies RLS pour le bucket Storage property-photos
+202502160000_fix_supabase_advisors_issues.sql,202502160000,2025-02-16 00:00:00,422,11080,applied,DANGEREUX,CREATE VIEW,Migration : Correction des problèmes identifiés par Supabase Advisors
+202502170000_optimize_generate_unique_code.sql,202502170000,2025-02-17 00:00:00,50,1809,applied,SAFE,CREATE FUNCTION,Migration: Optimiser generate_unique_code pour retourner PROP-XXXX-XXXX directement
+202502180000_rls_properties_units.sql,202502180000,2025-02-18 00:00:00,72,1988,applied,DANGEREUX,ALTER TABLE|DROP POLICY|CREATE POLICY,Migration : RLS pour properties et units
+202502180001_fix_rls_conflicts.sql,202502180001,2025-02-18 00:01:00,57,2038,applied,DANGEREUX,DROP POLICY|UPDATE|CREATE POLICY,Migration : Correction des conflits de politiques RLS sur properties
+202502180002_fix_rls_conflicts_final.sql,202502180002,2025-02-18 00:02:00,74,2934,applied,DANGEREUX,DROP POLICY|UPDATE|CREATE POLICY,Migration : Correction FINALE des conflits de politiques RLS sur properties
+202502180003_ensure_user_profile_id_works.sql,202502180003,2025-02-18 00:03:00,138,3022,applied,DANGEREUX,CREATE FUNCTION,Migration : S'assurer que user_profile_id() fonctionne correctement
+202502190000_diagnostic_owner_id.sql,202502190000,2025-02-19 00:00:00,7,338,applied,SAFE,,Migration de diagnostic : Cette migration était utilisée pour le diagnostic uniquement.
+202502190001_fix_owner_id_mismatch.sql,202502190001,2025-02-19 00:01:00,42,1588,applied,MODERE,UPDATE,Migration : Corriger les propriétés avec owner_id = profiles.user_id au lieu de profiles.id
+202502190002_fix_existing_owner_id.sql,202502190002,2025-02-19 00:02:00,77,2553,applied,MODERE,UPDATE,Migration : Corriger les owner_id des propriétés existantes
+202502190003_diagnostic_owner_id_quick.sql,202502190003,2025-02-19 00:03:00,56,1806,applied,SAFE,,Script de diagnostic rapide : Vérifier l'état actuel des owner_id
+202502191200_document_verification.sql,202502191200,2025-02-19 12:00:00,23,798,applied,MODERE,ALTER TABLE|UPDATE,Migration: Ajout des champs de vérification IA pour les documents
+202502191300_ticket_maintenance_ai.sql,202502191300,2025-02-19 13:00:00,12,313,applied,SAFE,ALTER TABLE,Migration: Ajout des champs IA pour la maintenance sur les tickets
+202502191400_fix_property_details_rpc.sql,202502191400,2025-02-19 14:00:00,82,2271,applied,SAFE,CREATE FUNCTION,Migration: Création de la fonction RPC property_details pour le dashboard propriétaire
+20250220000000_add_open_banking_tables.sql,20250220000000,2025-02-20 00:00:00,84,3005,applied,CRITIQUE,ALTER TABLE|CREATE TABLE|CREATE POLICY|UPDATE,Enable RLS
+20250601000000_legal_protocol_tracking.sql,20250601000000,2025-06-01 00:00:00,83,3144,applied,CRITIQUE,CREATE TABLE|CREATE INDEX|ALTER TABLE|CREATE POLICY|UPDATE,Migration: Suivi de progression des protocoles juridiques
+20251119060000_property_details_rpc.sql,20251119060000,2025-11-19 06:00:00,103,3102,applied,CRITIQUE,CREATE FUNCTION,RPC pour récupérer tous les détails d'une propriété en un seul appel
+20251119070000_lease_details_rpc.sql,20251119070000,2025-11-19 07:00:00,94,2590,applied,CRITIQUE,CREATE FUNCTION,RPC pour récupérer tous les détails d'un bail en un seul appel
+20251119080000_tenant_dashboard_rpc.sql,20251119080000,2025-11-19 08:00:00,86,2402,applied,SAFE,CREATE FUNCTION,RPC pour le dashboard locataire
+20251119090000_admin_stats_rpc.sql,20251119090000,2025-11-19 09:00:00,77,2149,applied,SAFE,CREATE FUNCTION,RPC pour les statistiques Admin
+20251119093000_admin_stats_rpc_v2.sql,20251119093000,2025-11-19 09:30:00,127,4023,applied,SAFE,CREATE FUNCTION,RPC pour les statistiques Admin (Enrichie)
+20251130000001_edl_media_section.sql,20251130000001,2025-11-30 00:00:01,18,552,applied,SAFE,ALTER TABLE|CREATE INDEX,Migration : Ajouter le champ section à edl_media pour lier les photos aux pièces
+20251204100000_unified_pricing_plans.sql,20251204100000,2025-12-04 10:00:00,376,10972,applied,DANGEREUX,DELETE|INSERT,Migration: Grille tarifaire unifiée 2025
+20251204200000_ensure_documents_bucket.sql,20251204200000,2025-12-04 20:00:00,121,3764,applied,DANGEREUX,INSERT|UPDATE|DROP POLICY|CREATE POLICY,"Migration : S'assurer que le bucket ""documents"" existe avec les bonnes policies"
+20251204210000_cni_expiry_management.sql,20251204210000,2025-12-04 21:00:00,226,7892,applied,DANGEREUX,ALTER TABLE|CREATE INDEX,Migration : Gestion de l'expiration des CNI
+20251204220000_add_cni_document_types.sql,20251204220000,2025-12-04 22:00:00,52,1374,applied,SAFE,ALTER TABLE,Migration : Ajouter les types de documents CNI
+20251204230000_fix_missing_columns.sql,20251204230000,2025-12-04 23:00:00,158,4353,applied,CRITIQUE,ALTER TABLE|UPDATE,Migration : Corriger les colonnes manquantes
+20251204300000_complete_optimization.sql,20251204300000,2025-12-04 30:00:00,462,15492,applied,DANGEREUX,CREATE VIEW|CREATE FUNCTION,Migration complète d'optimisation
+20251204400000_ensure_profiles_email.sql,20251204400000,2025-12-04 40:00:00,87,2504,applied,CRITIQUE,ALTER TABLE|CREATE INDEX|CREATE FUNCTION,============================================
+20251204500000_fix_rls_recursion_urgent.sql,20251204500000,2025-12-04 50:00:00,169,5572,applied,CRITIQUE,DROP POLICY|CREATE FUNCTION,============================================
+20251204600000_update_trial_30_days.sql,20251204600000,2025-12-04 60:00:00,131,3657,applied,CRITIQUE,ALTER TABLE|UPDATE|CREATE FUNCTION,Migration: Mise à jour période d'essai de 14 à 30 jours (1er mois offert)
+20251204700000_fix_notifications_and_functions.sql,20251204700000,2025-12-04 70:00:00,112,4310,applied,DANGEREUX,ALTER TABLE|UPDATE|CREATE INDEX|CREATE FUNCTION|CREATE TABLE,Migration: Corrections notifications et fonctions manquantes
+20251204800000_fix_remaining_issues.sql,20251204800000,2025-12-04 80:00:00,282,11376,applied,DANGEREUX,UPDATE|CREATE TABLE|ALTER TABLE,============================================
+20251205000001_notification_triggers.sql,20251205000001,2025-12-05 00:00:01,419,13675,applied,DANGEREUX,CREATE TABLE|CREATE INDEX|ALTER TABLE|DROP POLICY|CREATE POLICY|UPDATE,=====================================================
+20251205100000_notifications_system.sql,20251205100000,2025-12-05 10:00:00,284,9113,applied,DANGEREUX,ALTER TABLE,=====================================================
+20251205200000_provider_compliance_sota.sql,20251205200000,2025-12-05 20:00:00,605,21768,applied,CRITIQUE,CREATE TABLE,=====================================================
+20251205300000_work_order_reports.sql,20251205300000,2025-12-05 30:00:00,526,20256,applied,CRITIQUE,CREATE TABLE|CREATE INDEX,=====================================================
+20251205400000_provider_analytics_dashboard.sql,20251205400000,2025-12-05 40:00:00,97,3843,applied,DANGEREUX,ALTER TABLE|CREATE FUNCTION,=====================================================
+20251205500000_invoicing_professional.sql,20251205500000,2025-12-05 50:00:00,675,24791,applied,CRITIQUE,DROP TABLE|CREATE TABLE,=====================================================
+20251205600000_notifications_centralized.sql,20251205600000,2025-12-05 60:00:00,69,2813,applied,DANGEREUX,ALTER TABLE|CREATE INDEX|CREATE TABLE,=====================================================
+20251205700000_provider_missing_tables.sql,20251205700000,2025-12-05 70:00:00,443,15399,applied,DANGEREUX,CREATE TABLE|CREATE INDEX,=====================================================
+20251205800000_intervention_flow_complete.sql,20251205800000,2025-12-05 80:00:00,590,19716,applied,CRITIQUE,ALTER TABLE,=====================================================
+20251206100000_vigilance_audit_log.sql,20251206100000,2025-12-06 10:00:00,147,4993,applied,DANGEREUX,CREATE TABLE,=====================================================
+20251206200000_provider_portfolio.sql,20251206200000,2025-12-06 20:00:00,256,8407,applied,CRITIQUE,CREATE TABLE,=====================================================
+20251206300000_enterprise_tiers.sql,20251206300000,2025-12-06 30:00:00,655,19343,applied,SAFE,INSERT,Migration: Grille tarifaire Enterprise optimisée
+20251206400000_pricing_option_b.sql,20251206400000,2025-12-06 40:00:00,394,11369,applied,MODERE,UPDATE,Migration: Grille tarifaire Option B (Aggressive)
+20251206500000_fix_lease_end_processes.sql,20251206500000,2025-12-06 50:00:00,437,15804,applied,CRITIQUE,CREATE TABLE,============================================
+20251206550000_impersonation_sessions.sql,20251206550000,2025-12-06 55:00:00,107,3191,applied,CRITIQUE,CREATE TABLE|CREATE INDEX|ALTER TABLE|CREATE POLICY,Migration: Table de tracking des sessions d'impersonation
+20251206600000_analytics_materialized_views.sql,20251206600000,2025-12-06 60:00:00,205,8174,applied,SAFE,,Migration: Materialized Views pour Analytics
+20251206700000_agency_module.sql,20251206700000,2025-12-06 70:00:00,365,13813,applied,DANGEREUX,ALTER TABLE|CREATE TABLE,Migration : Module Agence / Conciergerie
+20251206750000_fix_all_missing_tables.sql,20251206750000,2025-12-06 75:00:00,682,23418,applied,CRITIQUE,CREATE TABLE|ALTER TABLE,=====================================================
+20251206800000_assistant_ai_tables.sql,20251206800000,2025-12-06 80:00:00,188,6769,applied,CRITIQUE,CREATE TABLE|CREATE INDEX,============================================
+20251207000000_colocation_advanced.sql,20251207000000,2025-12-07 00:00:00,575,19226,applied,CRITIQUE,ALTER TABLE|CREATE TABLE,============================================
+20251207231451_add_visite_virtuelle_url.sql,20251207231451,2025-12-07 23:14:51,9,209,applied,DANGEREUX,ALTER TABLE,"Migration : Ajout de la colonne visite_virtuelle_url pour les visites virtuelles (Matterport, Nodalview, etc.)"
+20251208000000_fix_all_roles_complete.sql,20251208000000,2025-12-08 00:00:00,604,20653,applied,CRITIQUE,ALTER TABLE|CREATE TABLE,============================================
+20251210100000_add_lease_payment_fields.sql,20251210100000,2025-12-10 10:00:00,28,1313,applied,DANGEREUX,ALTER TABLE,Migration: Ajouter les champs de paiement et révision au bail
+20251221000000_document_caching.sql,20251221000000,2025-12-21 00:00:00,344,10977,applied,SAFE,ALTER TABLE,=====================================================
+20251221000001_deposit_refunds.sql,20251221000001,2025-12-21 00:00:01,168,5401,applied,CRITIQUE,CREATE TABLE|CREATE INDEX|CREATE TRIGGER|UPDATE,=====================================================
+20251221000002_lease_signers_invited_email.sql,20251221000002,2025-12-21 00:00:02,34,1035,applied,SAFE,ALTER TABLE|CREATE INDEX,=====================================================
+20251221000003_fix_lease_signers_nullable.sql,20251221000003,2025-12-21 00:00:03,70,2202,applied,SAFE,ALTER TABLE,=====================================================
+20251222000000_add_profile_columns.sql,20251222000000,2025-12-22 00:00:00,65,1581,applied,DANGEREUX,ALTER TABLE,=====================================================
+20251222000001_signature_image.sql,20251222000001,2025-12-22 00:00:01,28,852,applied,SAFE,ALTER TABLE|CREATE INDEX,Migration: Ajouter la colonne signature_image à lease_signers
+20251228000000_documents_sota.sql,20251228000000,2025-12-28 00:00:00,352,12540,applied,DANGEREUX,ALTER TABLE,Migration : Documents SOTA 2025
+20251228000001_edl_before_activation.sql,20251228000001,2025-12-28 00:00:01,192,6231,applied,DANGEREUX,ALTER TABLE|CREATE INDEX,============================================
+20251228100000_sealed_lease_pdf.sql,20251228100000,2025-12-28 10:00:00,119,3633,applied,DANGEREUX,ALTER TABLE|CREATE INDEX|CREATE FUNCTION,============================================
+20251228200000_fix_lease_status_trigger.sql,20251228200000,2025-12-28 20:00:00,70,2655,applied,DANGEREUX,CREATE FUNCTION|UPDATE,Migration : Mise à jour automatique du statut du bail lors des signatures
+20251228210000_dpe_management_system.sql,20251228210000,2025-12-28 21:00:00,152,5895,applied,CRITIQUE,CREATE TABLE|CREATE INDEX,1) Enums pour le cycle de vie de la demande DPE
+20251228220000_fix_meters_rls_and_nullability.sql,20251228220000,2025-12-28 22:00:00,105,3106,applied,DANGEREUX,ALTER TABLE|DROP POLICY|CREATE POLICY,Migration : Rendre lease_id nullable dans meters et ajouter RLS propriétaire
+20251228230000_definitive_rls_fix.sql,20251228230000,2025-12-28 23:00:00,230,7145,applied,DANGEREUX,CREATE FUNCTION,MASTER FIX: Éradication de la récursion infinie RLS
+20251229000001_fix_existing_lease_statuses.sql,20251229000001,2025-12-29 00:00:01,87,2898,applied,DANGEREUX,UPDATE|CREATE FUNCTION,============================================================================
+20251231000000_advanced_signatures.sql,20251231000000,2025-12-31 00:00:00,38,1878,applied,SAFE,ALTER TABLE|CREATE INDEX,============================================
+20251231000001_fix_owner_dashboard_rpc.sql,20251231000001,2025-12-31 00:00:01,135,3660,applied,SAFE,CREATE FUNCTION,Fix owner_dashboard RPC to use 'etat' instead of 'statut' for properties
+20251231000002_agency_dashboard_rpc.sql,20251231000002,2025-12-31 00:00:02,151,5266,applied,SAFE,CREATE FUNCTION,RPC pour le dashboard agence
+20251231000003_enhance_tenant_dashboard_rpc.sql,20251231000003,2025-12-31 00:00:03,151,4741,applied,SAFE,CREATE FUNCTION,Amélioration du RPC tenant_dashboard pour supporter multi-baux
+20251231000004_fix_admin_stats_rpc.sql,20251231000004,2025-12-31 00:00:04,141,4521,applied,SAFE,CREATE FUNCTION,Mise à jour admin_stats pour inclure tous les rôles et corriger les agrégats
+20251231000005_finalize_owner_dashboard_rpc.sql,20251231000005,2025-12-31 00:00:05,151,4450,applied,SAFE,CREATE FUNCTION,Final fix for owner_dashboard RPC: include recent activity
+20251231000006_automated_billing.sql,20251231000006,2025-12-31 00:00:06,80,2165,applied,SAFE,CREATE FUNCTION|INSERT,============================================
+20251231000007_invoices_stripe_fields.sql,20251231000007,2025-12-31 00:00:07,24,1293,applied,CRITIQUE,ALTER TABLE|CREATE INDEX,============================================
+20251231000008_fix_edl_signatures_schema.sql,20251231000008,2025-12-31 00:00:08,32,1406,applied,DANGEREUX,ALTER TABLE|UPDATE,============================================
+20251231000009_tenant_housing_passport.sql,20251231000009,2025-12-31 00:00:09,223,7897,applied,DANGEREUX,ALTER TABLE|CREATE FUNCTION,Refonte de la RPC tenant_dashboard pour inclure le Passeport du Logement (Fiche Technique)
+20251231000010_export_system.sql,20251231000010,2025-12-31 00:00:10,58,2047,applied,CRITIQUE,CREATE TABLE|CREATE INDEX|ALTER TABLE|DROP POLICY|CREATE POLICY,Migration: 20251231000010_export_system.sql
+20251231000011_export_cleanup.sql,20251231000011,2025-12-31 00:00:11,21,678,applied,MODERE,CREATE FUNCTION|UPDATE|pg_cron schedule,Migration: 20251231000011_export_cleanup.sql
+20260101000002_fix_tenant_dashboard_signers.sql,20260101000002,2026-01-01 00:00:02,220,7060,applied,SAFE,CREATE FUNCTION,Migration: Mise à jour de la RPC tenant_dashboard pour inclure les signataires des baux
+20260101000002a_add_invited_email_to_signers.sql,20260101000002a,2026-01-01 00:00:02,78,2990,applied,CRITIQUE,ALTER TABLE|CREATE INDEX|DROP POLICY|CREATE POLICY,Migration : Ajouter les colonnes invited_email et invited_name à lease_signers
+20260101000003_make_lease_signers_profile_nullable.sql,20260101000003,2026-01-01 00:00:03,55,1754,applied,SAFE,ALTER TABLE|CREATE INDEX,=====================================================
+20260101000004_add_edl_signatures_email.sql,20260101000004,2026-01-01 00:00:04,105,3593,applied,CRITIQUE,ALTER TABLE,=====================================================
+20260101000005_edl_signatures_invited_columns.sql,20260101000005,2026-01-01 00:00:05,76,2548,applied,SAFE,ALTER TABLE,=====================================================
+20260102000006_fix_edl_signatures_schema.sql,20260102000006,2026-01-02 00:00:06,31,1434,applied,DANGEREUX,ALTER TABLE|CREATE INDEX|DROP POLICY|CREATE POLICY,Migration : Correction du schéma edl_signatures pour supporter les invitations et le profil
+20260102000007_auto_activate_leases.sql,20260102000007,2026-01-02 00:00:07,66,1809,applied,DANGEREUX,CREATE FUNCTION|UPDATE|CREATE TRIGGER,Migration : Activation automatique des baux et synchronisation finale
+20260102000020_fix_pending_edls_query.sql,20260102000020,2026-01-02 00:00:20,286,10217,applied,CRITIQUE,CREATE FUNCTION,Migration: Corriger la requête pending_edls dans tenant_dashboard
+20260103000005_enhance_owner_dashboard_edl.sql,20260103000005,2026-01-03 00:00:05,168,5020,applied,SAFE,CREATE FUNCTION,Enhance owner_dashboard RPC to include EDL stats and pending signatures for the owner
+20260103000010_fix_tenant_dashboard_email_search.sql,20260103000010,2026-01-03 00:00:10,300,10779,applied,CRITIQUE,CREATE FUNCTION,Migration: Corriger la RPC tenant_dashboard pour chercher par email si profile_id non lié
+20260104000000_add_kyc_status_and_fix_signature_logic.sql,20260104000000,2026-01-04 00:00:00,84,3193,applied,CRITIQUE,ALTER TABLE|UPDATE|CREATE FUNCTION,============================================================================
+20260104000001_lease_auto_activation_trigger.sql,20260104000001,2026-01-04 00:00:01,47,1441,applied,DANGEREUX,CREATE FUNCTION|UPDATE|CREATE TRIGGER,Migration : Activer l'auto-activation du bail après signature de l'EDL
+20260104000002_edl_finalization_and_lease_activation.sql,20260104000002,2026-01-04 00:00:02,80,2859,applied,DANGEREUX,CREATE FUNCTION|UPDATE|INSERT,Migration pour automatiser la finalisation de l'EDL et l'activation du bail
+20260104000003_enrich_edl_schema.sql,20260104000003,2026-01-04 00:00:03,39,1790,applied,SAFE,ALTER TABLE|CREATE INDEX,============================================================================
+20260104000004_ensure_meter_columns.sql,20260104000004,2026-01-04 00:00:04,27,1227,applied,MODERE,ALTER TABLE|UPDATE,"Migration: S'assurer que les colonnes meter_number, serial_number et location existent sur la table meters"
+20260105000001_add_neuf_condition.sql,20260105000001,2026-01-05 00:00:01,31,1348,applied,SAFE,ALTER TABLE,"Migration: Ajouter l'état ""neuf"" aux conditions d'éléments EDL"
+20260105000002_edl_lease_sync_triggers.sql,20260105000002,2026-01-05 00:00:02,172,5998,applied,DANGEREUX,CREATE FUNCTION|UPDATE,Migration: Triggers de synchronisation EDL/Bail
+20260105000003_add_leases_missing_columns.sql,20260105000003,2026-01-05 00:00:03,37,1561,applied,DANGEREUX,ALTER TABLE|CREATE INDEX,============================================
+20260105100001_fix_handle_new_user_with_metadata.sql,20260105100001,2026-01-05 10:00:01,57,1845,applied,MODERE,CREATE FUNCTION|INSERT|UPDATE,============================================
+20260105100002_update_rooms_type_piece_constraint.sql,20260105100002,2026-01-05 10:00:02,43,1064,applied,SAFE,ALTER TABLE,============================================
+20260105100003_lease_notices.sql,20260105100003,2026-01-05 10:00:03,205,7285,applied,CRITIQUE,CREATE TABLE|CREATE INDEX,Migration: Table des congés locataires
+20260107000000_building_support.sql,20260107000000,2026-01-07 00:00:00,379,13709,applied,DANGEREUX,ALTER TABLE|CREATE TABLE,============================================
+20260107000001_sota_lease_status_constraint.sql,20260107000001,2026-01-07 00:00:01,45,1995,applied,DANGEREUX,ALTER TABLE|CREATE INDEX,=====================================================
+20260107000002_fix_existing_lease_statuses_sota.sql,20260107000002,2026-01-07 00:00:02,101,3294,applied,MODERE,UPDATE,=====================================================
+20260107010000_rebranding_to_talok.sql,20260107010000,2026-01-07 01:00:00,89,2745,applied,MODERE,UPDATE|CREATE FUNCTION,Migration : Rebranding global vers Talok
+20260107100000_fix_auth_500_database_error.sql,20260107100000,2026-01-07 10:00:00,85,2494,applied,DANGEREUX,CREATE FUNCTION|ALTER TABLE,=====================================================
+20260107150000_fix_profiles_rls_recursion.sql,20260107150000,2026-01-07 15:00:00,174,5398,applied,DANGEREUX,ALTER TABLE|DROP POLICY|CREATE FUNCTION,=====================================================
+20260108000000_normalize_signer_roles.sql,20260108000000,2026-01-08 00:00:00,69,2733,applied,MODERE,UPDATE|ALTER TABLE,============================================
+20260108100000_fix_depot_garantie_auto.sql,20260108100000,2026-01-08 10:00:00,61,1830,applied,MODERE,UPDATE,============================================
+20260108200000_tenant_notification_triggers.sql,20260108200000,2026-01-08 20:00:00,457,15405,applied,DANGEREUX,CREATE FUNCTION,=====================================================
+20260108300000_property_soft_delete.sql,20260108300000,2026-01-08 30:00:00,201,6708,applied,DANGEREUX,ALTER TABLE|CREATE INDEX|CREATE FUNCTION,=====================================================
+20260108400000_lease_lifecycle_sota2026.sql,20260108400000,2026-01-08 40:00:00,281,8934,applied,DANGEREUX,ALTER TABLE|CREATE FUNCTION,============================================
+20260108500000_orphan_cleanup_sota2026.sql,20260108500000,2026-01-08 50:00:00,533,16401,applied,DANGEREUX,DELETE|UPDATE,============================================
+20260108600000_security_enhancements.sql,20260108600000,2026-01-08 60:00:00,277,10465,applied,CRITIQUE,ALTER TABLE|CREATE INDEX|CREATE TABLE,============================================
+20260109000000_fix_property_deleted_at.sql,20260109000000,2026-01-09 00:00:00,36,1234,applied,DANGEREUX,ALTER TABLE|CREATE INDEX,============================================
+20260109100000_signature_tracking_enhanced.sql,20260109100000,2026-01-09 10:00:00,251,6867,applied,SAFE,CREATE VIEW|CREATE FUNCTION,Migration: Amélioration du tracking des signatures
+20260110000000_admin_dashboard_sota2026.sql,20260110000000,2026-01-10 00:00:00,722,29010,applied,CRITIQUE,CREATE TABLE|CREATE INDEX,============================================================================
+20260110000001_accounting_tables.sql,20260110000001,2026-01-10 00:00:01,517,19743,applied,CRITIQUE,CREATE TABLE|INSERT,============================================================================
+20260110010001_passkeys_and_2fa_sota.sql,20260110010001,2026-01-10 01:00:01,172,6841,applied,CRITIQUE,CREATE TABLE|CREATE INDEX,Migration: Passkeys (WebAuthn) et 2FA SOTA 2026
+20260110100000_fix_accounting_schema_gaps.sql,20260110100000,2026-01-10 10:00:00,402,14822,applied,DANGEREUX,ALTER TABLE|CREATE INDEX,============================================================================
+20260110100001_init_historical_accounting_data.sql,20260110100001,2026-01-10 10:00:01,368,11907,applied,DANGEREUX,INSERT|CREATE FUNCTION,============================================================================
+20260110500000_subscription_limits_enforcement.sql,20260110500000,2026-01-10 50:00:00,251,8690,applied,DANGEREUX,CREATE FUNCTION|CREATE TRIGGER,=====================================================
+20260111000000_tax_verification_logs.sql,20260111000000,2026-01-11 00:00:00,128,4602,applied,CRITIQUE,CREATE TABLE,Migration: Table de logs pour la vérification d'avis d'imposition
+20260111010000_visit_scheduling_sota2026.sql,20260111010000,2026-01-11 01:00:00,617,22376,applied,DANGEREUX,CREATE TABLE|CREATE INDEX,============================================
+20260114000000_first_login_and_onboarding_tracking.sql,20260114000000,2026-01-14 00:00:00,453,16155,applied,CRITIQUE,ALTER TABLE|CREATE INDEX|CREATE TABLE,Migration : Ajout du suivi de première connexion et complétion d'onboarding
+20260115000000_create_edl_meter_readings.sql,20260115000000,2026-01-15 00:00:00,175,6124,applied,CRITIQUE,CREATE TABLE|CREATE INDEX|CREATE FUNCTION,Migration: Créer la table edl_meter_readings
+20260115000001_add_performance_indexes.sql,20260115000001,2026-01-15 00:00:01,59,2491,applied,SAFE,CREATE INDEX,Migration: Add performance indexes for frequent queries
+20260115010000_multi_entity_architecture.sql,20260115010000,2026-01-15 01:00:00,712,23045,applied,DANGEREUX,CREATE TABLE,Migration: Architecture Multi-Entités pour gestion multi-SCI/sociétés
+20260115010001_fix_edl_meter_readings_nullable.sql,20260115010001,2026-01-15 01:00:01,50,2665,applied,CRITIQUE,ALTER TABLE,Migration: Rendre photo_path nullable dans edl_meter_readings
+20260115020000_white_label_system.sql,20260115020000,2026-01-15 02:00:00,569,17879,applied,CRITIQUE,CREATE TABLE|CREATE INDEX,============================================
+20260119000000_fix_edl_meter_readings_rls.sql,20260119000000,2026-01-19 00:00:00,74,2672,applied,DANGEREUX,DROP POLICY|CREATE POLICY,Migration: Corriger les RLS policies pour edl_meter_readings
+20260121000001_unified_signature_system.sql,20260121000001,2026-01-21 00:00:01,678,22701,applied,DANGEREUX,,============================================================================
+20260121000002_naming_normalization_fr_to_en.sql,20260121000002,2026-01-21 00:00:02,496,17815,applied,SAFE,CREATE VIEW,============================================================================
+20260121000003_event_sourcing_audit_system.sql,20260121000003,2026-01-21 00:00:03,748,24958,applied,DANGEREUX,CREATE TABLE,============================================================================
+20260122000000_receipt_performance_indexes.sql,20260122000000,2026-01-22 00:00:00,77,3300,applied,SAFE,CREATE INDEX,============================================
+20260127000000_lease_types_and_inventory.sql,20260127000000,2026-01-27 00:00:00,415,13677,applied,DANGEREUX,ALTER TABLE|CREATE TABLE,============================================
+20260127000001_gap001_block_dg_bail_mobilite.sql,20260127000001,2026-01-27 00:00:01,34,1304,applied,DANGEREUX,ALTER TABLE|UPDATE,============================================
+20260127000002_gap002_furniture_inventory.sql,20260127000002,2026-01-27 00:00:02,214,7454,applied,DANGEREUX,CREATE TABLE,============================================
+20260127000003_commercial_lease_types.sql,20260127000003,2026-01-27 00:00:03,468,15320,applied,DANGEREUX,CREATE TABLE,Migration: Ajout des types de baux commerciaux
+20260127000004_professional_lease_types.sql,20260127000004,2026-01-27 00:00:04,332,12470,applied,DANGEREUX,CREATE TABLE,Migration: Ajout du bail professionnel
+20260127000005_edl_commercial.sql,20260127000005,2026-01-27 00:00:05,814,28867,applied,CRITIQUE,CREATE TABLE,Migration: État des lieux commercial et professionnel
+20260127000006_location_gerance.sql,20260127000006,2026-01-27 00:00:06,750,25407,applied,CRITIQUE,CREATE TABLE,Migration: Location-Gérance (Gérance Libre de Fonds de Commerce)
+20260127000007_taxe_sejour.sql,20260127000007,2026-01-27 00:00:07,712,25371,applied,DANGEREUX,,============================================
+20260127000008_diagnostics_dom_tom.sql,20260127000008,2026-01-27 00:00:08,580,19308,applied,DANGEREUX,,============================================
+20260127010000_stripe_connect_accounts.sql,20260127010000,2026-01-27 01:00:00,147,5555,applied,CRITIQUE,CREATE TABLE|CREATE INDEX,Migration: Stripe Connect pour les reversements aux propriétaires
+20260127010002_vetusty_grid_tables.sql,20260127010002,2026-01-27 01:00:02,273,9924,applied,DANGEREUX,CREATE TABLE|CREATE INDEX,============================================================================
+20260128000000_surface_carrez_rent_control.sql,20260128000000,2026-01-28 00:00:00,104,4645,applied,DANGEREUX,ALTER TABLE|CREATE VIEW,Migration : Surface Carrez et encadrement des loyers SOTA 2026
+20260128000001_fix_edl_schema_500.sql,20260128000001,2026-01-28 00:00:01,119,4327,applied,DANGEREUX,ALTER TABLE,============================================================================
+20260128010001_webhook_queue.sql,20260128010001,2026-01-28 01:00:01,93,3525,applied,SAFE,CREATE TABLE|CREATE INDEX,Migration: Create webhook_queue table for retry service
+20260201000000_ged_system.sql,20260201000000,2026-02-01 00:00:00,458,20970,applied,CRITIQUE,CREATE TABLE|INSERT,Migration: Système GED (Gestion Électronique des Documents)
+20260205000001_fix_edl_signatures_insert_rls.sql,20260205000001,2026-02-05 00:00:01,65,1975,applied,DANGEREUX,DROP POLICY|CREATE POLICY|UPDATE,Migration: Fix edl_signatures INSERT RLS policy
+20260206000000_migrate_owner_profiles_to_legal_entities.sql,20260206000000,2026-02-06 00:00:00,96,2917,applied,SAFE,INSERT,Migration: owner_profiles société data → legal_entities
+20260207000000_apply_legal_entities_consolidated.sql,20260207000000,2026-02-07 00:00:00,127,3588,applied,DANGEREUX,ALTER TABLE|CREATE INDEX|UPDATE|INSERT,Migration consolidée: Legal Entities - Application et cohérence
+20260207100000_fix_audit_critical_issues.sql,20260207100000,2026-02-07 10:00:00,490,22778,applied,DANGEREUX,ALTER TABLE|CREATE INDEX|UPDATE,=============================================================================
+20260207200000_audit_improvements_phase2.sql,20260207200000,2026-02-07 20:00:00,158,9222,applied,DANGEREUX,ALTER TABLE,=============================================================================
+20260208100000_fix_data_storage_audit.sql,20260208100000,2026-02-08 10:00:00,75,3683,pending,DANGEREUX,ALTER TABLE,Migration: Fix data storage issues found during route audit (2026-02-08)
+20260209100000_create_sms_messages_table.sql,20260209100000,2026-02-09 10:00:00,109,4021,pending,DANGEREUX,CREATE TABLE|CREATE INDEX,Migration: Create sms_messages table for Twilio SMS tracking (2026-02-09)
+20260211000000_p2_unique_constraint_and_gdpr_rpc.sql,20260211000000,2026-02-11 00:00:00,281,10287,pending,DANGEREUX,CREATE FUNCTION,=====================================================
+20260211100000_bic_compliance_tax_regime.sql,20260211100000,2026-02-11 10:00:00,99,3564,pending,DANGEREUX,ALTER TABLE,============================================
+20260212000000_audit_database_integrity.sql,20260212000000,2026-02-12 00:00:00,1531,64951,pending,CRITIQUE,CREATE FUNCTION,============================================================================
+20260212000001_fix_guarantor_role_and_tables.sql,20260212000001,2026-02-12 00:00:01,149,5450,pending,CRITIQUE,ALTER TABLE|CREATE FUNCTION|INSERT|UPDATE,============================================
+20260212100000_audit_v2_merge_and_prevention.sql,20260212100000,2026-02-12 10:00:00,1210,45854,pending,DANGEREUX,CREATE TABLE|CREATE INDEX|CREATE FUNCTION,============================================================================
+20260212100001_email_template_system.sql,20260212100001,2026-02-12 10:00:01,161,5404,pending,CRITIQUE,CREATE TABLE|CREATE INDEX,============================================================
+20260212100002_email_templates_seed.sql,20260212100002,2026-02-12 10:00:02,703,49303,pending,SAFE,INSERT,============================================================
+20260212200000_audit_v3_comprehensive_integrity.sql,20260212200000,2026-02-12 20:00:00,754,25849,pending,CRITIQUE,CREATE FUNCTION,============================================================================
+20260213000000_fix_profiles_rls_recursion_v2.sql,20260213000000,2026-02-13 00:00:00,167,5057,pending,DANGEREUX,ALTER TABLE|DROP POLICY|CREATE FUNCTION,=====================================================
+20260213100000_fix_rls_all_tables_recursion.sql,20260213100000,2026-02-13 10:00:00,136,5388,pending,DANGEREUX,ALTER TABLE|DROP POLICY|CREATE POLICY,=====================================================
+20260215100000_signature_security_audit_fixes.sql,20260215100000,2026-02-15 10:00:00,116,4612,pending,DANGEREUX,ALTER TABLE,============================================================================
+20260215200000_fix_rls_properties_tenant_pre_active.sql,20260215200000,2026-02-15 20:00:00,39,1796,pending,DANGEREUX,DROP POLICY|CREATE POLICY,============================================================================
+20260215200001_add_notice_given_lease_status.sql,20260215200001,2026-02-15 20:00:01,72,3074,pending,DANGEREUX,ALTER TABLE,============================================================================
+20260215200002_fix_rls_tenant_access_beyond_active.sql,20260215200002,2026-02-15 20:00:02,164,5163,pending,DANGEREUX,DROP POLICY|CREATE POLICY,============================================================================
+20260215200003_fix_copro_fk_on_delete.sql,20260215200003,2026-02-15 20:00:03,99,3493,pending,DANGEREUX,ALTER TABLE,============================================================================
+20260216000000_tenant_document_center.sql,20260216000000,2026-02-16 00:00:00,518,18112,pending,DANGEREUX,CREATE INDEX|CREATE VIEW,=============================================================================
+20260216000001_document_center_notifications.sql,20260216000001,2026-02-16 00:00:01,255,9212,pending,DANGEREUX,UPDATE,=============================================================================
+20260216100000_security_audit_rls_fixes.sql,20260216100000,2026-02-16 10:00:00,141,5570,pending,DANGEREUX,DROP POLICY,=====================================================
+20260216200000_auto_link_lease_signers_trigger.sql,20260216200000,2026-02-16 20:00:00,161,5145,pending,CRITIQUE,CREATE FUNCTION|UPDATE,=====================================================
+20260216300000_fix_auth_profile_sync.sql,20260216300000,2026-02-16 30:00:00,347,11111,pending,CRITIQUE,CREATE FUNCTION,=====================================================
+20260216400000_performance_indexes_rls.sql,20260216400000,2026-02-16 40:00:00,110,3730,pending,SAFE,CREATE INDEX,=====================================================
+20260216500000_fix_tenant_dashboard_complete.sql,20260216500000,2026-02-16 50:00:00,327,11960,pending,CRITIQUE,CREATE FUNCTION,============================================================================
+20260216500001_enforce_unique_constraints_safety.sql,20260216500001,2026-02-16 50:00:01,141,4536,pending,DANGEREUX,DELETE|ALTER TABLE,Migration: Enforce unique constraints safety net
+20260217000000_data_integrity_audit_repair.sql,20260217000000,2026-02-17 00:00:00,841,31749,pending,CRITIQUE,CREATE TABLE,============================================================================
+20260218000000_audit_repair_profiles.sql,20260218000000,2026-02-18 00:00:00,79,2820,pending,CRITIQUE,CREATE TABLE|INSERT|UPDATE,============================================================================
+20260218100000_sync_auth_email_updates.sql,20260218100000,2026-02-18 10:00:00,139,4353,pending,CRITIQUE,UPDATE|CREATE FUNCTION,=====================================================
+20260219000000_missing_tables_and_rag.sql,20260219000000,2026-02-19 00:00:00,459,19490,pending,DANGEREUX,CREATE TABLE|CREATE INDEX|ALTER TABLE|DROP POLICY|CREATE POLICY,=====================================================
+20260219100000_auto_link_notify_owner.sql,20260219100000,2026-02-19 10:00:00,102,3152,pending,CRITIQUE,CREATE FUNCTION|UPDATE,=====================================================
+20260219200000_fix_autolink_triggers_audit.sql,20260219200000,2026-02-19 20:00:00,324,10626,pending,CRITIQUE,CREATE FUNCTION|UPDATE,=====================================================
+20260220000000_auto_link_signer_on_insert.sql,20260220000000,2026-02-20 00:00:00,132,4710,pending,CRITIQUE,CREATE FUNCTION,=====================================================
+20260220100000_fix_orphan_signers_audit.sql,20260220100000,2026-02-20 10:00:00,111,3857,pending,CRITIQUE,UPDATE|CREATE INDEX,=====================================================
+20260221000001_auto_link_trigger_update.sql,20260221000001,2026-02-21 00:00:01,53,1622,pending,CRITIQUE,CREATE FUNCTION|UPDATE|CREATE TRIGGER,=====================================================
+20260221000002_fix_edl_signatures_rls.sql,20260221000002,2026-02-21 00:00:02,33,1384,pending,CRITIQUE,UPDATE|DROP POLICY|CREATE POLICY,=====================================================
+20260221100000_fix_tenant_dashboard_draft_visibility.sql,20260221100000,2026-02-21 10:00:00,332,12242,pending,CRITIQUE,CREATE FUNCTION,============================================================================
+20260221100001_auto_upgrade_draft_on_tenant_signer.sql,20260221100001,2026-02-21 10:00:01,196,7062,pending,CRITIQUE,CREATE FUNCTION|UPDATE|CREATE TRIGGER,=====================================================
+20260221200000_sync_edl_signer_to_lease_signer.sql,20260221200000,2026-02-21 20:00:00,89,3259,pending,SAFE,CREATE FUNCTION,=====================================================
+20260221300000_fix_tenant_dashboard_owner_join.sql,20260221300000,2026-02-21 30:00:00,345,12823,pending,CRITIQUE,CREATE FUNCTION,============================================================================
+20260221_fix_owner_data_chain.sql,20260221,2026-02-21 00:00:00,157,5712,pending,MODERE,CREATE FUNCTION|INSERT|UPDATE,============================================
+20260222000000_fix_invitations_and_orphan_signers.sql,20260222000000,2026-02-22 00:00:00,62,2170,pending,CRITIQUE,UPDATE|INSERT,=====================================================
+20260222100000_repair_missing_signers_and_invitations.sql,20260222100000,2026-02-22 10:00:00,176,7584,pending,CRITIQUE,INSERT,=====================================================
+20260222200000_ensure_all_owners_have_entity.sql,20260222200000,2026-02-22 20:00:00,33,1289,pending,MODERE,INSERT|UPDATE,============================================
+20260222200001_get_entity_stats_for_store.sql,20260222200001,2026-02-22 20:00:01,66,2223,pending,SAFE,CREATE FUNCTION,============================================
+20260223000000_fix_tenant_documents_rls.sql,20260223000000,2026-02-23 00:00:00,61,2385,pending,CRITIQUE,DROP POLICY|CREATE POLICY|UPDATE,Migration : Corriger les politiques RLS sur tenant_documents
+20260223000001_auto_fill_document_fk.sql,20260223000001,2026-02-23 00:00:01,195,6365,pending,DANGEREUX,UPDATE|CREATE FUNCTION,=====================================================
+20260223000002_document_access_views.sql,20260223000002,2026-02-23 00:00:02,85,3335,pending,SAFE,CREATE VIEW,=====================================================
+20260223000003_notify_owner_on_tenant_document.sql,20260223000003,2026-02-23 00:00:03,95,3343,pending,DANGEREUX,CREATE FUNCTION,=====================================================
+20260223100000_fix_entity_connections.sql,20260223100000,2026-02-23 10:00:00,276,8776,pending,DANGEREUX,UPDATE,============================================================================
+20260223200000_fix_all_missing_tables_and_columns.sql,20260223200000,2026-02-23 20:00:00,231,8877,pending,DANGEREUX,ALTER TABLE|CREATE FUNCTION|CREATE TABLE,============================================================================
+20260224000000_fix_tenant_sync_and_notifications.sql,20260224000000,2026-02-24 00:00:00,108,4019,pending,CRITIQUE,UPDATE|INSERT,=====================================================
+20260224000001_remove_yousign_sendgrid_brevo.sql,20260224000001,2026-02-24 00:00:01,12,389,pending,SAFE,DELETE,"Suppression des providers Yousign, SendGrid et Brevo (signature/email intégrés ou non utilisés)"
+20260224100000_fix_tenant_dashboard_notifications_query.sql,20260224100000,2026-02-24 10:00:00,331,12215,pending,CRITIQUE,CREATE FUNCTION,============================================================================
+20260224100000_normalize_provider_names.sql,20260224100000,2026-02-24 10:00:00,8,443,pending,MODERE,UPDATE,"Normalise les noms des providers pour correspondre au code (Twilio, Stripe, etc.)"
+20260225000000_owner_payment_audit_log.sql,20260225000000,2026-02-25 00:00:00,34,1509,pending,DANGEREUX,CREATE TABLE|CREATE INDEX|ALTER TABLE|CREATE POLICY,============================================================
+20260225000001_fix_furniture_vetusty_rls.sql,20260225000001,2026-02-25 00:00:01,184,6309,pending,DANGEREUX,DROP POLICY|CREATE POLICY,============================================================================
+20260225100000_autolink_backfill_invoices_on_profile.sql,20260225100000,2026-02-25 10:00:00,66,2230,pending,CRITIQUE,CREATE FUNCTION|UPDATE,=====================================================
+20260226000000_backfill_existing_invoices_tenant_id.sql,20260226000000,2026-02-26 00:00:00,33,1142,pending,MODERE,UPDATE,=====================================================
+20260226000000_fix_notifications_triggers.sql,20260226000000,2026-02-26 00:00:00,168,4816,pending,DANGEREUX,ALTER TABLE|CREATE FUNCTION,=====================================================
+20260227000000_drop_auto_activate_lease_trigger.sql,20260227000000,2026-02-27 00:00:00,5,264,pending,SAFE,,Fix: Le trigger auto_activate_lease_on_edl n'a pas été supprimé
+20260228000000_lease_signers_share_percentage.sql,20260228000000,2026-02-28 00:00:00,8,514,pending,SAFE,ALTER TABLE,SOTA 2026: part de répartition par signataire (colocation).
+20260228100000_tenant_payment_methods_sota2026.sql,20260228100000,2026-02-28 10:00:00,304,11099,pending,CRITIQUE,CREATE TABLE|CREATE INDEX|ALTER TABLE,============================================================
+20260229100000_identity_2fa_requests.sql,20260229100000,2026-02-29 10:00:00,35,1570,pending,DANGEREUX,CREATE TABLE|CREATE INDEX|ALTER TABLE|DROP POLICY|CREATE POLICY,Migration: Table pour les demandes 2FA (SMS + email) lors des changements d'identité
+20260230100000_create_notification_resolve_profile_id.sql,20260230100000,2026-02-30 10:00:00,93,2439,pending,DANGEREUX,CREATE FUNCTION|INSERT,=====================================================
+20260301000000_create_key_handovers.sql,20260301000000,2026-03-01 00:00:00,75,2286,pending,DANGEREUX,CREATE TABLE|CREATE INDEX|ALTER TABLE|CREATE POLICY,Migration: Create key_handovers table for digital key handover with QR code proof
+20260301100000_entity_audit_and_propagation.sql,20260301100000,2026-03-01 10:00:00,313,12880,pending,DANGEREUX,UPDATE|CREATE TABLE|CREATE INDEX|ALTER TABLE|CREATE POLICY,============================================================================
+20260303000000_backfill_uploaded_by.sql,20260303000000,2026-03-03 00:00:00,68,2590,pending,MODERE,UPDATE,=====================================================
+20260303100000_entity_rls_fix_and_optimize.sql,20260303100000,2026-03-03 10:00:00,155,5941,pending,DANGEREUX,CREATE FUNCTION|DROP POLICY|CREATE POLICY,============================================================================
+20260304000000_fix_invoice_generation_jour_paiement.sql,20260304000000,2026-03-04 00:00:00,96,3001,pending,SAFE,CREATE FUNCTION,============================================
+20260304000001_sync_sepa_collection_day.sql,20260304000001,2026-03-04 00:00:01,34,1200,pending,DANGEREUX,CREATE FUNCTION|UPDATE|CREATE TRIGGER,============================================
+20260304100000_activate_pg_cron_schedules.sql,20260304100000,2026-03-04 10:00:00,132,4816,pending,SAFE,CREATE EXTENSION|pg_cron schedule,============================================
+20260304200000_auto_mark_late_invoices.sql,20260304200000,2026-03-04 20:00:00,48,1418,pending,MODERE,CREATE FUNCTION|UPDATE|pg_cron schedule,============================================
+20260305000001_invoice_engine_fields.sql,20260305000001,2026-03-05 00:00:01,398,14842,pending,CRITIQUE,ALTER TABLE,============================================
+20260305000002_payment_crons.sql,20260305000002,2026-03-05 00:00:02,22,827,pending,SAFE,pg_cron schedule,============================================
+20260305100000_fix_invoice_draft_notification.sql,20260305100000,2026-03-05 10:00:00,62,1864,pending,SAFE,CREATE FUNCTION|INSERT,=====================================================
+20260305100001_add_missing_notification_triggers.sql,20260305100001,2026-03-05 10:00:01,129,3669,pending,SAFE,CREATE FUNCTION|INSERT,=====================================================
+20260306000000_lease_documents_visible_tenant.sql,20260306000000,2026-03-06 00:00:00,39,1405,pending,DANGEREUX,ALTER TABLE|CREATE INDEX|DROP POLICY|CREATE POLICY,Migration: Add visible_tenant column to documents table
+20260306100000_add_digicode_interphone_columns.sql,20260306100000,2026-03-06 10:00:00,9,412,pending,DANGEREUX,ALTER TABLE,Add digicode and interphone text columns to properties table
+20260306100000_invoice_on_fully_signed.sql,20260306100000,2026-03-06 10:00:00,234,8142,pending,DANGEREUX,CREATE FUNCTION,============================================
+20260306100001_backfill_initial_invoices.sql,20260306100001,2026-03-06 10:00:01,72,2121,pending,SAFE,,============================================
+20260306200000_notify_tenant_digicode_changed.sql,20260306200000,2026-03-06 20:00:00,59,2046,pending,DANGEREUX,CREATE FUNCTION|CREATE TRIGGER|UPDATE,=====================================================
+20260306300000_add_owner_payment_preferences.sql,20260306300000,2026-03-06 30:00:00,27,1758,pending,SAFE,ALTER TABLE,Migration : Ajouter les colonnes de préférences financières et d'automatisation au profil propriétaire
+20260309000000_entity_status_and_dedup.sql,20260309000000,2026-03-09 00:00:00,155,5221,pending,DANGEREUX,ALTER TABLE|UPDATE|CREATE INDEX|CREATE FUNCTION,============================================
+20260309000001_messages_update_rls.sql,20260309000001,2026-03-09 00:00:01,19,686,pending,DANGEREUX,UPDATE|DROP POLICY|CREATE POLICY,Migration: Allow users to update their own messages (edit + soft-delete)
+20260309000002_add_ticket_to_conversations.sql,20260309000002,2026-03-09 00:00:02,5,273,pending,SAFE,ALTER TABLE|CREATE INDEX,Migration: Add ticket_id to conversations table for ticket-chat integration
+20260309100000_sync_subscription_plans_features.sql,20260309100000,2026-03-09 10:00:00,820,24210,pending,SAFE,INSERT,=====================================================
+20260310000000_fix_subscription_plans_display_order.sql,20260310000000,2026-03-10 00:00:00,22,1193,pending,MODERE,UPDATE,=====================================================
+20260310100000_fix_property_limit_enforcement.sql,20260310100000,2026-03-10 10:00:00,184,6585,pending,DANGEREUX,UPDATE|CREATE FUNCTION,=====================================================
+20260310200000_add_signature_push_franceconnect.sql,20260310200000,2026-03-10 20:00:00,86,3676,pending,CRITIQUE,ALTER TABLE|CREATE TABLE|CREATE INDEX,"Migration: Ajout colonnes signatures (Yousign), table franceconnect_sessions,"
+20260310200000_fix_property_limit_extra_properties.sql,20260310200000,2026-03-10 20:00:00,78,3265,pending,DANGEREUX,ALTER TABLE|UPDATE|CREATE FUNCTION,=====================================================
+20260310300000_add_stripe_price_extra_property_id.sql,20260310300000,2026-03-10 30:00:00,9,391,pending,CRITIQUE,ALTER TABLE,Add stripe_price_extra_property_id column to subscription_plans
+20260311100000_sync_subscription_plan_slugs.sql,20260311100000,2026-03-11 10:00:00,47,1657,pending,DANGEREUX,UPDATE|CREATE FUNCTION|CREATE TRIGGER,=====================================================
+20260312000000_admin_dashboard_rpcs.sql,20260312000000,2026-03-12 00:00:00,113,3369,pending,SAFE,CREATE FUNCTION,============================================================================
+20260312000001_fix_owner_subscription_defaults.sql,20260312000001,2026-03-12 00:00:01,183,5926,pending,DANGEREUX,CREATE FUNCTION,=====================================================
+20260312100000_fix_handle_new_user_all_roles.sql,20260312100000,2026-03-12 10:00:00,55,1909,pending,MODERE,CREATE FUNCTION|INSERT|UPDATE,============================================
+20260314001000_fix_stripe_connect_rls.sql,20260314001000,2026-03-14 00:10:00,66,2023,pending,CRITIQUE,ALTER TABLE|DROP POLICY|CREATE POLICY|UPDATE,Migration: corriger la RLS Stripe Connect avec profiles.id
+20260314020000_canonical_lease_activation_flow.sql,20260314020000,2026-03-14 02:00:00,206,6180,pending,DANGEREUX,CREATE FUNCTION|UPDATE,Migration: recentrer le flux bail sur un parcours canonique
+20260314030000_payments_production_hardening.sql,20260314030000,2026-03-14 03:00:00,150,5415,pending,CRITIQUE,CREATE FUNCTION|UPDATE|ALTER TABLE,Migration: hardening production paiements
+20260315090000_market_standard_subscription_alignment.sql,20260315090000,2026-03-15 09:00:00,82,2460,pending,CRITIQUE,ALTER TABLE|CREATE INDEX|UPDATE,
+20260318000000_fix_auth_reset_template_examples.sql,20260318000000,2026-03-18 00:00:00,30,1145,pending,MODERE,UPDATE,=============================================================================
+20260318010000_password_reset_requests.sql,20260318010000,2026-03-18 01:00:00,53,1876,pending,CRITIQUE,CREATE TABLE|CREATE INDEX|CREATE FUNCTION|CREATE TRIGGER|UPDATE|ALTER TABLE,=============================================================================
+20260318020000_buildings_rls_sota2026.sql,20260318020000,2026-03-18 02:00:00,128,4425,pending,DANGEREUX,DROP POLICY|UPDATE|CREATE POLICY,============================================
+20260320100000_fix_owner_id_mismatch_and_rls.sql,20260320100000,2026-03-20 10:00:00,111,3777,pending,MODERE,UPDATE|CREATE FUNCTION,============================================================================
+20260321000000_drop_invoice_trigger_sota2026.sql,20260321000000,2026-03-21 00:00:00,10,494,pending,DANGEREUX,,SOTA 2026: Supprimer le trigger SQL redondant pour la facture initiale.
+20260321100000_fix_cron_post_refactoring_sota2026.sql,20260321100000,2026-03-21 10:00:00,22,847,pending,SAFE,pg_cron schedule,============================================
+20260323000000_fix_document_visibility_and_dedup.sql,20260323000000,2026-03-23 00:00:00,76,2920,pending,DANGEREUX,DROP POLICY|CREATE POLICY,Migration: Fix document visibility RLS + add deduplication constraint
+20260324100000_prevent_duplicate_payments.sql,20260324100000,2026-03-24 10:00:00,16,673,pending,SAFE,,============================================
+20260326022619_fix_documents_bucket_mime.sql,20260326022619,2026-03-26 02:26:19,17,650,pending,MODERE,UPDATE,Fix: Aligner les MIME types du bucket storage avec lib/documents/constants.ts
+20260326022700_migrate_tenant_documents.sql,20260326022700,2026-03-26 02:27:00,80,2851,pending,SAFE,INSERT,Migration: Unifier tenant_documents dans la table documents
+20260326022800_create_document_links.sql,20260326022800,2026-03-26 02:28:00,42,1678,pending,DANGEREUX,CREATE TABLE|CREATE INDEX|ALTER TABLE|CREATE POLICY,Table document_links: liens de partage temporaires
+20260326023000_fix_document_titles.sql,20260326023000,2026-03-26 02:30:00,51,2514,pending,MODERE,UPDATE,"Fix document titles for existing records with NULL, screenshot names, or raw technical names"
+20260326205416_add_agency_role_to_handle_new_user.sql,20260326205416,2026-03-26 20:54:16,55,1885,pending,MODERE,CREATE FUNCTION|INSERT|UPDATE,============================================
+20260327143000_add_site_config.sql,20260327143000,2026-03-27 14:30:00,110,3311,pending,DANGEREUX,CREATE TABLE|ALTER TABLE|CREATE POLICY|INSERT,Table de configuration du site vitrine
+20260327200000_fix_handle_new_user_restore_email.sql,20260327200000,2026-03-27 20:00:00,99,3464,pending,CRITIQUE,CREATE FUNCTION|INSERT|UPDATE,============================================
+20260328000000_fix_visible_tenant_documents.sql,20260328000000,2026-03-28 00:00:00,10,387,pending,MODERE,UPDATE,FIX 4: Ensure mandatory lease documents are visible to tenants
+20260328042538_update_argument_images.sql,20260328042538,2026-03-28 04:25:38,13,626,pending,MODERE,UPDATE,Mise à jour des images par défaut des 4 cartes Arguments
+20260328100000_create_site_content.sql,20260328100000,2026-03-28 10:00:00,49,1334,pending,DANGEREUX,CREATE TABLE|ALTER TABLE|CREATE POLICY|CREATE INDEX,============================================
+20260328100000_fix_visible_tenant_documents.sql,20260328100000,2026-03-28 10:00:00,19,911,pending,MODERE,UPDATE|ALTER TABLE,Migration: Ensure key lease documents are visible to tenants
+20260329052631_fix_contrat_bail_visible_tenant.sql,20260329052631,2026-03-29 05:26:31,22,711,pending,MODERE,UPDATE,Migration: Rendre les documents de bail visibles aux locataires
+20260329120000_add_agency_to_handle_new_user.sql,20260329120000,2026-03-29 12:00:00,55,1907,pending,MODERE,CREATE FUNCTION|INSERT|UPDATE,============================================
+20260329164841_fix_document_titles.sql,20260329164841,2026-03-29 16:48:41,45,2279,pending,MODERE,UPDATE,Migration: Corriger les titres bruts/manquants des documents existants
+20260329170000_add_punctuality_score.sql,20260329170000,2026-03-29 17:00:00,88,2453,pending,DANGEREUX,ALTER TABLE|CREATE FUNCTION,Migration: Ajouter le score de ponctualité sur les baux
+20260329180000_notify_owner_edl_signed.sql,20260329180000,2026-03-29 18:00:00,85,3077,pending,DANGEREUX,CREATE FUNCTION,Migration: Notification propriétaire quand un EDL est signé par les deux parties
+20260329190000_force_visible_tenant_generated_docs.sql,20260329190000,2026-03-29 19:00:00,35,1552,pending,MODERE,UPDATE|CREATE FUNCTION|CREATE TRIGGER,Migration: Backfill visible_tenant for generated documents + trigger guard
+20260330100000_add_lease_cancellation_columns.sql,20260330100000,2026-03-30 10:00:00,62,2625,pending,CRITIQUE,ALTER TABLE|CREATE INDEX,============================================
+20260331000000_add_receipt_generated_to_invoices.sql,20260331000000,2026-03-31 00:00:00,25,801,pending,DANGEREUX,ALTER TABLE|UPDATE,Add receipt_generated flag to invoices table
+20260331100000_add_agricultural_property_types.sql,20260331100000,2026-03-31 10:00:00,28,695,pending,DANGEREUX,ALTER TABLE,============================================
+20260331100000_fix_document_titles_bruts.sql,20260331100000,2026-03-31 10:00:00,35,1480,pending,MODERE,UPDATE,B7: Corriger les titres bruts des anciens documents
+20260331120000_add_signed_pdf_generated_to_leases.sql,20260331120000,2026-03-31 12:00:00,21,629,pending,DANGEREUX,ALTER TABLE|UPDATE|CREATE INDEX,Migration: Ajouter colonne signed_pdf_generated à la table leases
+20260331130000_key_handovers_add_cancelled_notes.sql,20260331130000,2026-03-31 13:00:00,16,721,pending,SAFE,ALTER TABLE|CREATE INDEX,Migration: Améliorer la table key_handovers
+20260401000000_add_identity_status_onboarding_step.sql,20260401000000,2026-04-01 00:00:00,47,1718,pending,DANGEREUX,ALTER TABLE|CREATE INDEX,Migration: Ajout identity_status et onboarding_step sur profiles
+20260401000001_add_initial_payment_confirmed_to_leases.sql,20260401000001,2026-04-01 00:00:01,27,1019,pending,DANGEREUX,ALTER TABLE|UPDATE|CREATE INDEX,Migration: Ajouter initial_payment_confirmed sur leases
+20260401000001_backfill_identity_status.sql,20260401000001,2026-04-01 00:00:01,78,3025,pending,MODERE,UPDATE,Migration: Backfill identity_status pour les profils existants
+20260404100000_rls_push_subscriptions.sql,20260404100000,2026-04-04 10:00:00,26,1087,pending,DANGEREUX,ALTER TABLE|DROP POLICY|CREATE POLICY,=====================================================
+20260404100100_fix_tenant_docs_view_visible_tenant.sql,20260404100100,2026-04-04 10:01:00,50,2064,pending,SAFE,CREATE VIEW,=====================================================
+20260404100200_fix_ticket_messages_rls_lease_signers.sql,20260404100200,2026-04-04 10:02:00,79,2426,pending,DANGEREUX,DROP POLICY|CREATE POLICY,=====================================================
+20260406200000_create_entities_view_and_members.sql,20260406200000,2026-04-06 20:00:00,183,6350,pending,CRITIQUE,CREATE VIEW,=====================================================
+20260406210000_accounting_complete.sql,20260406210000,2026-04-06 21:00:00,881,30636,pending,CRITIQUE,CREATE TABLE|CREATE INDEX|ALTER TABLE|CREATE POLICY,=====================================================
+20260407110000_audit_fixes_rls_indexes.sql,20260407110000,2026-04-07 11:00:00,43,1730,pending,DANGEREUX,CREATE INDEX|ALTER TABLE,"Migration: Audit fixes — missing indexes, CHECK constraints, and RLS"
+20260407120000_accounting_reconcile_schemas.sql,20260407120000,2026-04-07 12:00:00,186,7424,pending,CRITIQUE,ALTER TABLE|UPDATE,=====================================================
+20260407130000_ocr_category_rules.sql,20260407130000,2026-04-07 13:00:00,37,1719,pending,MODERE,CREATE TABLE|CREATE INDEX|ALTER TABLE|CREATE POLICY,=====================================================
+20260408042218_create_expenses_table.sql,20260408042218,2026-04-08 04:22:18,170,6154,pending,DANGEREUX,CREATE TABLE,Migration: Table expenses (dépenses/travaux propriétaire)
+20260408044152_reconcile_charge_regularisations_and_backfill_entry_lines.sql,20260408044152,2026-04-08 04:41:52,307,10212,pending,CRITIQUE,ALTER TABLE|INSERT,=====================================================
+20260408100000_copro_lots.sql,20260408100000,2026-04-08 10:00:00,63,3570,pending,DANGEREUX,CREATE TABLE|CREATE INDEX|ALTER TABLE|CREATE POLICY|UPDATE,Sprint 5: Copropriété lots + fund call lines
+20260408100000_create_push_subscriptions.sql,20260408100000,2026-04-08 10:00:00,57,1906,pending,CRITIQUE,CREATE TABLE|CREATE INDEX|ALTER TABLE|DROP POLICY,=====================================================
+20260408110000_agency_hoguet.sql,20260408110000,2026-04-08 11:00:00,22,1231,pending,SAFE,ALTER TABLE|CREATE INDEX,============================================================================
+20260408120000_api_keys_webhooks.sql,20260408120000,2026-04-08 12:00:00,158,6639,pending,DANGEREUX,CREATE TABLE|ALTER TABLE|CREATE INDEX|CREATE POLICY|UPDATE,============================================================================
+20260408120000_colocation_module.sql,20260408120000,2026-04-08 12:00:00,398,13459,pending,CRITIQUE,ALTER TABLE|CREATE TABLE|CREATE INDEX,============================================================
+20260408120000_edl_sortie_workflow.sql,20260408120000,2026-04-08 12:00:00,227,11492,pending,SAFE,ALTER TABLE,============================================================================
+20260408120000_providers_module_sota.sql,20260408120000,2026-04-08 12:00:00,444,17621,pending,DANGEREUX,CREATE TABLE,=====================================================
+20260408120000_smart_meters_connected.sql,20260408120000,2026-04-08 12:00:00,255,9369,pending,DANGEREUX,CREATE TABLE|ALTER TABLE|CREATE INDEX,"Migration : Compteurs connectés — Enedis SGE, GRDF ADICT, alertes conso"
+20260408120000_subscription_addons.sql,20260408120000,2026-04-08 12:00:00,173,4863,pending,CRITIQUE,CREATE TABLE,============================================================
+20260408120000_whitelabel_agency_module.sql,20260408120000,2026-04-08 12:00:00,356,11894,pending,DANGEREUX,CREATE TABLE|ALTER TABLE,============================================================================
+20260408130000_active_sessions.sql,20260408130000,2026-04-08 13:00:00,153,4462,pending,DANGEREUX,CREATE TABLE|CREATE INDEX|ALTER TABLE|CREATE POLICY|UPDATE|CREATE TRIGGER,============================================================
+20260408130000_admin_panel_tables.sql,20260408130000,2026-04-08 13:00:00,186,6347,pending,DANGEREUX,CREATE TABLE|CREATE INDEX,"Migration: Admin Panel — admin_logs, feature_flags, support_tickets"
+20260408130000_candidatures_workflow.sql,20260408130000,2026-04-08 13:00:00,171,6300,pending,DANGEREUX,CREATE TABLE|CREATE INDEX|ALTER TABLE|CREATE POLICY|CREATE TRIGGER|UPDATE,Migration : Workflow Candidatures Locatives
+20260408130000_charges_locatives_module.sql,20260408130000,2026-04-08 13:00:00,219,7549,pending,DANGEREUX,CREATE TABLE|CREATE INDEX|ALTER TABLE|CREATE POLICY,=====================================================
+20260408130000_diagnostics_rent_control.sql,20260408130000,2026-04-08 13:00:00,151,5562,pending,DANGEREUX,CREATE TABLE|ALTER TABLE|CREATE POLICY,=============================================================================
+20260408130000_fix_subscription_plan_prices.sql,20260408130000,2026-04-08 13:00:00,32,1172,pending,MODERE,UPDATE,=====================================================
+20260408130000_guarantor_workflow_complete.sql,20260408130000,2026-04-08 13:00:00,324,11055,pending,CRITIQUE,CREATE TABLE,============================================
+20260408130000_insurance_policies.sql,20260408130000,2026-04-08 13:00:00,164,6473,pending,DANGEREUX,ALTER TABLE|UPDATE,=============================================
+20260408130000_lease_amendments_table.sql,20260408130000,2026-04-08 13:00:00,124,3962,pending,CRITIQUE,CREATE TABLE|ALTER TABLE|CREATE POLICY,============================================================================
+20260408130000_rgpd_consent_records_and_data_requests.sql,20260408130000,2026-04-08 13:00:00,77,2772,pending,DANGEREUX,CREATE TABLE|ALTER TABLE|CREATE POLICY|CREATE INDEX,Migration RGPD : consent_records (historique granulaire) + data_requests (demandes export/suppression)
+20260408130000_seasonal_rental_module.sql,20260408130000,2026-04-08 13:00:00,173,7457,pending,CRITIQUE,CREATE EXTENSION|CREATE TABLE|ALTER TABLE|CREATE POLICY|CREATE INDEX,============================================================
+20260408130000_security_deposits.sql,20260408130000,2026-04-08 13:00:00,138,4545,pending,DANGEREUX,CREATE TABLE|CREATE INDEX,=====================================================
+20260408140000_tickets_module_sota.sql,20260408140000,2026-04-08 14:00:00,131,5056,pending,DANGEREUX,ALTER TABLE|UPDATE,=============================================
+20260408200000_unified_notification_system.sql,20260408200000,2026-04-08 20:00:00,92,3982,pending,DANGEREUX,ALTER TABLE|CREATE INDEX|CREATE TABLE,=====================================================
+20260408220000_payment_architecture_sota.sql,20260408220000,2026-04-08 22:00:00,361,12868,pending,CRITIQUE,CREATE TABLE,=====================================================
+20260409100000_add_missing_rls.sql,20260409100000,2026-04-09 10:00:00,115,5600,pending,DANGEREUX,ALTER TABLE|CREATE POLICY,==========================================================
+20260409110000_fix_remaining_rls_recursion.sql,20260409110000,2026-04-09 11:00:00,110,4776,pending,DANGEREUX,DROP POLICY|CREATE POLICY,=====================================================
+20260409120000_fix_subscriptions_rls_recursion.sql,20260409120000,2026-04-09 12:00:00,46,2219,pending,DANGEREUX,UPDATE|DROP POLICY|CREATE POLICY,=====================================================
+20260409130000_fix_subscriptions_status_check.sql,20260409130000,2026-04-09 13:00:00,26,1084,pending,DANGEREUX,ALTER TABLE,=====================================================
+20260409140000_fix_addons_sms_rls_recursion.sql,20260409140000,2026-04-09 14:00:00,39,1721,pending,DANGEREUX,DROP POLICY|CREATE POLICY,=====================================================
+20260409150000_fix_signature_tracking_and_analytics.sql,20260409150000,2026-04-09 15:00:00,171,5407,pending,DANGEREUX,CREATE FUNCTION,=====================================================
+20260409160000_building_unit_lease_document_fk.sql,20260409160000,2026-04-09 16:00:00,76,2925,pending,DANGEREUX,ALTER TABLE|CREATE INDEX|CREATE FUNCTION,============================================
+20260409170000_backfill_building_unit_properties.sql,20260409170000,2026-04-09 17:00:00,214,9337,pending,DANGEREUX,ALTER TABLE|CREATE INDEX|CREATE TABLE,============================================
+20260409180000_buildings_site_id_nullable.sql,20260409180000,2026-04-09 18:00:00,11,453,pending,SAFE,ALTER TABLE,============================================
+20260410100000_accounting_missing_indexes.sql,20260410100000,2026-04-10 10:00:00,67,3067,pending,SAFE,CREATE INDEX|CREATE EXTENSION,=====================================================
+20260410110000_cleanup_orphan_analyses.sql,20260410110000,2026-04-10 11:00:00,84,3346,pending,DANGEREUX,pg_cron schedule|CREATE FUNCTION|DELETE,=====================================================
+20260410180000_fix_invoice_generation_sota.sql,20260410180000,2026-04-10 18:00:00,461,18023,pending,DANGEREUX,CREATE FUNCTION,=====================================================
+20260410204528_extend_invoices_rls_for_sci_access.sql,20260410204528,2026-04-10 20:45:28,137,5299,pending,DANGEREUX,UPDATE|DROP POLICY|CREATE POLICY,=====================================================
+20260410210000_fix_protected_document_visibility.sql,20260410210000,2026-04-10 21:00:00,417,14795,pending,DANGEREUX,UPDATE|CREATE FUNCTION,=============================================================================
+20260410210341_fix_notify_tenant_invoice_created_user_id.sql,20260410210341,2026-04-10 21:03:41,102,3525,pending,SAFE,INSERT|CREATE FUNCTION,=====================================================
+20260410210342_fix_generate_monthly_invoices_fields.sql,20260410210342,2026-04-10 21:03:42,146,4723,pending,MODERE,UPDATE|CREATE FUNCTION,=====================================================
+20260410212232_fix_entity_members_policy_recursion.sql,20260410212232,2026-04-10 21:22:32,172,6341,pending,DANGEREUX,CREATE POLICY,=====================================================
+20260410213940_fix_properties_tenant_policy_recursion.sql,20260410213940,2026-04-10 21:39:40,82,3520,pending,DANGEREUX,DROP POLICY|CREATE FUNCTION,=====================================================
+20260410220000_cash_receipt_two_step_signature.sql,20260410220000,2026-04-10 22:00:00,213,7007,pending,DANGEREUX,ALTER TABLE,=====================================================
+20260411000000_create_cash_receipt_function.sql,20260411000000,2026-04-11 00:00:00,231,7884,pending,DANGEREUX,ALTER TABLE,=====================================================
+20260411100000_fix_work_orders_policy_recursion.sql,20260411100000,2026-04-11 10:00:00,85,3896,pending,DANGEREUX,DROP POLICY|CREATE FUNCTION,=====================================================
+20260411120000_harden_payments_check_constraints.sql,20260411120000,2026-04-11 12:00:00,94,3855,pending,MODERE,UPDATE,=====================================================
+20260411120000_schedule_onboarding_reminders_cron.sql,20260411120000,2026-04-11 12:00:00,33,1401,pending,SAFE,pg_cron schedule,============================================
+20260411130000_restore_handle_new_user_sota.sql,20260411130000,2026-04-11 13:00:00,98,3294,pending,CRITIQUE,CREATE FUNCTION|INSERT|UPDATE,============================================
+20260411130100_agency_profiles_raison_sociale_nullable.sql,20260411130100,2026-04-11 13:01:00,19,826,pending,SAFE,ALTER TABLE,============================================
+20260411130200_create_syndic_profiles.sql,20260411130200,2026-04-11 13:02:00,118,3988,pending,DANGEREUX,CREATE TABLE,============================================
+20260411130300_onboarding_role_constraints_allow_syndic_agency.sql,20260411130300,2026-04-11 13:03:00,33,1475,pending,SAFE,ALTER TABLE,============================================
+20260411140000_copro_assemblies_module.sql,20260411140000,2026-04-11 14:00:00,497,20205,pending,CRITIQUE,CREATE TABLE,============================================
+20260411140100_copro_governance_module.sql,20260411140100,2026-04-11 14:01:00,332,13678,pending,CRITIQUE,CREATE TABLE,============================================
+20260412000000_fix_cash_receipt_rpc_sota.sql,20260412000000,2026-04-12 00:00:00,365,12706,pending,DANGEREUX,CREATE TABLE,=====================================================
+20260412100000_stripe_connect_multi_entity.sql,20260412100000,2026-04-12 10:00:00,245,9005,pending,CRITIQUE,ALTER TABLE,=====================================================
+20260412110000_documents_copro_fk.sql,20260412110000,2026-04-12 11:00:00,125,4559,pending,DANGEREUX,ALTER TABLE|CREATE INDEX|DROP POLICY|CREATE POLICY,=====================================================
+20260412120000_copro_fund_call_lines_reminder_tracking.sql,20260412120000,2026-04-12 12:00:00,41,1705,pending,SAFE,ALTER TABLE|CREATE INDEX,=====================================================
+20260412130000_copro_cron_schedules.sql,20260412130000,2026-04-12 13:00:00,91,3834,pending,SAFE,pg_cron schedule,============================================================
+20260412140000_close_admin_self_elevation.sql,20260412140000,2026-04-12 14:00:00,104,4018,pending,CRITIQUE,UPDATE|CREATE FUNCTION,============================================
+20260412150000_create_cron_logs.sql,20260412150000,2026-04-12 15:00:00,36,1060,pending,DANGEREUX,CREATE TABLE|CREATE INDEX|ALTER TABLE|CREATE POLICY,=====================================================
+20260415000000_signup_integrity_guard.sql,20260415000000,2026-04-15 00:00:00,376,13297,pending,CRITIQUE,ALTER TABLE,============================================
+20260415121706_harden_sign_cash_receipt_as_tenant.sql,20260415121706,2026-04-15 12:17:06,187,6968,pending,DANGEREUX,GRANT,=====================================================
+20260415124844_add_cheque_photo_to_payments.sql,20260415124844,2026-04-15 12:48:44,83,3322,pending,SAFE,ALTER TABLE|INSERT,=====================================================
+20260415130000_fix_tenant_accessible_property_ids_security_definer.sql,20260415130000,2026-04-15 13:00:00,84,3508,pending,SAFE,REVOKE|GRANT|CREATE FUNCTION,=====================================================
+20260415140000_buildings_sota_fix_wave1.sql,20260415140000,2026-04-15 14:00:00,445,17534,pending,DANGEREUX,DROP POLICY|ALTER TABLE,============================================================================
+20260415140000_fix_tenant_payment_signing_and_leases_recursion.sql,20260415140000,2026-04-15 14:00:00,198,9084,pending,DANGEREUX,,=====================================================
+20260415150000_upsert_building_with_units_rpc.sql,20260415150000,2026-04-15 15:00:00,320,13108,pending,DANGEREUX,UPDATE|CREATE FUNCTION,============================================================================
+20260415160000_buildings_rls_entity_members_support.sql,20260415160000,2026-04-15 16:00:00,172,6039,pending,DANGEREUX,CREATE FUNCTION|DROP POLICY|CREATE POLICY,============================================================================
+20260415230000_enforce_invoice_paid_has_payment.sql,20260415230000,2026-04-15 23:00:00,177,6967,pending,DANGEREUX,CREATE FUNCTION,=============================================================================
+20260416100000_fix_messages_conversation_trigger.sql,20260416100000,2026-04-16 10:00:00,70,2209,pending,MODERE,UPDATE|CREATE FUNCTION|CREATE TRIGGER,Migration: Fix Messages Module
+20260416100000_fix_tickets_rls_recursion.sql,20260416100000,2026-04-16 10:00:00,166,6286,pending,DANGEREUX,DROP POLICY|CREATE FUNCTION,=====================================================
+20260417090000_charges_reg_invoice_link.sql,20260417090000,2026-04-17 09:00:00,23,1002,pending,DANGEREUX,ALTER TABLE|CREATE INDEX,=====================================================
+20260417090100_tax_notices_table.sql,20260417090100,2026-04-17 09:01:00,72,3439,pending,DANGEREUX,CREATE TABLE|DROP POLICY|CREATE POLICY|CREATE INDEX|ALTER TABLE,=====================================================
+20260417090200_epci_reference_table.sql,20260417090200,2026-04-17 09:02:00,51,2357,pending,DANGEREUX,CREATE TABLE|CREATE INDEX|ALTER TABLE|DROP POLICY|CREATE POLICY,=====================================================
+20260417090300_fix_tenant_contest_rls.sql,20260417090300,2026-04-17 09:03:00,49,1969,pending,DANGEREUX,UPDATE|CREATE POLICY|DROP POLICY,=====================================================
+20260417090400_charges_pcg_accounts_backfill.sql,20260417090400,2026-04-17 09:04:00,32,1441,pending,SAFE,INSERT,=====================================================
+20260417090500_epci_reference_seed_drom.sql,20260417090500,2026-04-17 09:05:00,93,5215,pending,SAFE,INSERT,=====================================================
+20260417100000_drop_phone_otp_codes_refs.sql,20260417100000,2026-04-17 10:00:00,37,1564,pending,DANGEREUX,DROP TABLE|ALTER TABLE|CREATE INDEX,Migration: Drop phone_otp_codes + enrich sms_messages (2026-04-17)
+20260417110000_purge_identity_2fa_cron.sql,20260417110000,2026-04-17 11:00:00,66,2342,pending,DANGEREUX,CREATE FUNCTION|DELETE|REVOKE|GRANT,Migration: Cron quotidien de purge des demandes 2FA identité expirées

@@ -17,7 +17,7 @@ import { NextResponse } from "next/server";
 import { cashReceiptInputSchema } from "@/lib/validations";
 import { sendCashReceiptSignatureRequest } from "@/lib/emails/resend.service";
 import { sendPushNotification } from "@/lib/push/send";
-import { sendSMS } from "@/lib/services/sms.service";
+import { sendSMS } from "@/lib/sms";
 
 export async function POST(request: Request) {
   try {
@@ -249,7 +249,12 @@ export async function POST(request: Request) {
               const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
               await sendSMS({
                 to: tenantTelephone,
-                message: `[Talok] ${ownerFullName} a enregistré votre paiement de ${Number(amount).toLocaleString("fr-FR")} €. Contresignez votre reçu : ${appUrl}${actionUrl}`,
+                body: `[Talok] ${ownerFullName} a enregistré votre paiement de ${Number(amount).toLocaleString("fr-FR")} €. Contresignez votre reçu : ${appUrl}${actionUrl}`,
+                context: {
+                  type: "notification",
+                  profileId: tenantProfileId,
+                  relatedId: receipt.id,
+                },
               });
             } catch (smsErr) {
               console.error("[cash-receipt] SMS notification failed:", smsErr);

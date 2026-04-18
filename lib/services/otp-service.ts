@@ -3,8 +3,13 @@
  * Utilisé pour la vérification par SMS lors des signatures électroniques
  */
 
+/**
+ * @deprecated Pour les OTP téléphone utiliser `startVerification` /
+ * `checkVerification` de `@/lib/sms` (Twilio Verify). Ce service reste
+ * pour compatibilité mais n'est référencé par aucun chemin actif.
+ */
 import { createClient } from "@/lib/supabase/server";
-import { sendOTPSMS, type SMSResult } from "./sms.service";
+import { sendSMS } from "@/lib/sms";
 import { logger } from "@/lib/monitoring";
 import crypto from "crypto";
 
@@ -114,8 +119,16 @@ export async function sendOtp(
       };
     }
 
-    // Envoyer le SMS
-    const smsResult = await sendOTPSMS(phoneNumber, code);
+    // Envoyer le SMS (code OTP inclus directement dans le body)
+    const smsResult = await sendSMS({
+      to: phoneNumber,
+      body: `Talok : votre code de vérification est ${code}. Valable ${OTP_EXPIRY_MINUTES} minutes. Ne le partagez avec personne.`,
+      context: {
+        type: "otp",
+        userId: context.userId,
+        relatedId: context.leaseId,
+      },
+    });
 
     if (!smsResult.success) {
       logger.error("Failed to send OTP SMS", { error: smsResult.error as string });
@@ -128,14 +141,11 @@ export async function sendOtp(
     logger.info("OTP sent successfully", {
       phoneNumber: phoneNumber.slice(0, 6) + "****",
       leaseId: context.leaseId,
-      simulated: smsResult.simulated,
     });
 
     return {
       success: true,
-      message: smsResult.simulated
-        ? `Code de test : ${code} (mode développement)`
-        : "Un code de vérification a été envoyé par SMS.",
+      message: "Un code de vérification a été envoyé par SMS.",
       expiresAt,
     };
   } catch (error) {

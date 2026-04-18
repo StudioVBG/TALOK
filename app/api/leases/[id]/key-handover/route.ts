@@ -15,7 +15,7 @@ import { randomUUID } from "crypto";
 import { createHmac } from "crypto";
 import { getInitialInvoiceSettlement } from "@/lib/services/invoice-status.service";
 import { sendKeyHandoverScanRequest } from "@/lib/emails/resend.service";
-import { sendSMS } from "@/lib/services/sms.service";
+import { sendSMS } from "@/lib/sms";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -385,7 +385,12 @@ export async function POST(request: Request, { params }: RouteParams) {
           if (tenant.telephone) {
             await sendSMS({
               to: tenant.telephone,
-              message: `[Talok] Votre propriétaire attend que vous confirmiez la remise des clefs. Ouvrez l'app Talok pour scanner le QR code. Support : support@talok.fr`,
+              body: `[Talok] Votre propriétaire attend que vous confirmiez la remise des clefs. Ouvrez l'app Talok pour scanner le QR code. Support : support@talok.fr`,
+              context: {
+                type: "notification",
+                profileId: tenant.id,
+                relatedId: handover.id,
+              },
             });
           }
         } catch (smsError) {

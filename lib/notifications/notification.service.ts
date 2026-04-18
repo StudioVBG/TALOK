@@ -20,7 +20,7 @@
 
 import { createServiceRoleClient } from '@/lib/supabase/server';
 import { sendPushNotification } from '@/lib/push/send';
-import { sendNotificationSMS, isSMSServiceAvailable } from '@/lib/services/sms.service';
+import { sendSMS, resolveTwilioCredentials } from '@/lib/sms';
 import { sendEmail } from '@/lib/emails/resend.service';
 import { notificationEmailTemplates } from './email-templates';
 import {
@@ -113,22 +113,29 @@ export async function notify(
   // 5. SMS (only if service is available — add-on payant)
   if (channels.includes('sms')) {
     try {
-      const smsAvailable = await isSMSServiceAvailable();
-      if (smsAvailable) {
-        const phone = await getRecipientPhone(recipientId);
-        if (phone) {
-          const result = await sendNotificationSMS(phone, title, body);
-          if (result.success) {
-            channelsSent.push('sms');
-          } else {
-            errors.push({ channel: 'sms', error: result.error || 'SMS send failed' });
-          }
+      // Quick credential check to avoid unnecessary work if Twilio isn't set up.
+      await resolveTwilioCredentials();
+      const phone = await getRecipientPhone(recipientId);
+      if (phone) {
+        const smsBody = `${title}\n${body}`.slice(0, 320);
+        const result = await sendSMS({
+          to: phone,
+          body: smsBody,
+          context: { type: 'notification', profileId: recipientId, relatedId: event },
+        });
+        if (result.success) {
+          channelsSent.push('sms');
+        } else {
+          errors.push({ channel: 'sms', error: result.error || 'SMS send failed' });
         }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
-      console.error(`[notify] sms failed for ${event}:`, msg);
-      errors.push({ channel: 'sms', error: msg });
+      // Pas de credential Twilio = non-bloquant, on n'enregistre pas d'erreur bruyante
+      if (!msg.includes('credentials missing')) {
+        console.error(`[notify] sms failed for ${event}:`, msg);
+        errors.push({ channel: 'sms', error: msg });
+      }
     }
   }
 
