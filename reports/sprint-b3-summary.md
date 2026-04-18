@@ -67,7 +67,7 @@
 |---|---|---|---|
 | 🔴→🟢 | 6.1 | `42P17 infinite recursion` sur `profiles`, `lease_signers`, `leases`, `tickets` | **RÉSOLU** — 2 hotfix SECURITY DEFINER (commits `71342d6` + `48668dc`), re-test owner+tenant OK |
 | 🟡 | 3 | Bucket storage `documents` absent | Action manuelle Supabase Dashboard (cf. `sprint-b3-03-buckets.md`) |
-| 🟡 | 6 | `TWILIO_VERIFY_SERVICE_SID` absent des env vars Netlify | Post-merge : créer Verify Service + ajouter `VA...` SID dans Netlify env |
+| 🟡→🟢 | 6 | `TWILIO_VERIFY_SERVICE_SID` absent des env vars Netlify | **RÉSOLU** — Ajouté en env var Netlify 2026-04-18 (prochain deploy actif) |
 | 🟡 | 6/7 | 374× `[RealtimeSync] CLOSED/reconnect` loop | Investigation hors scope B3 : Supabase Realtime config + client cleanup |
 | 🟢 | 1 | Table `otp_codes` MISSING | Deprecated post-Sprint 0, code mort, non-bloquant |
 | 🟢 | 6.3 | `sms_messages` vide | Attendu (OTP via Twilio Verify hors table, transactionnels pas déclenchés) |
@@ -78,11 +78,12 @@
 ## Verdict final
 
 > ⚠️ **GO avec réserves. Anomalies mineures** :
-> - Buckets storage `documents` (et `landing-images` à vérifier) à créer manuellement via Dashboard Supabase (non-bloquant pour merge, bloquant pour upload doc)
-> - `TWILIO_VERIFY_SERVICE_SID` à ajouter dans Netlify env vars (bloquant pour flux OTP : signature bail + 2FA)
+> - Bucket storage `documents` à créer manuellement via Dashboard Supabase (non-bloquant pour merge, bloquant pour upload doc)
 > - Websocket Realtime loop à investiguer (non-bloquant, REST OK)
 >
-> **Merge possible après ces 2 ajouts config (bucket + Twilio Verify SID)**, ou merge d'abord et fix config en post-merge puisque la DB elle-même est saine.
+> ✅ `TWILIO_VERIFY_SERVICE_SID` ajouté 2026-04-18 — flux OTP prêts post-prochain deploy.
+>
+> **Merge possible immédiatement** : la DB est saine, les env vars Twilio complètes, seul le bucket `documents` restera à créer (peut être fait post-merge sans bloquer).
 
 Pourquoi pas Option A : 2 régressions 42P17 ont été **détectées pendant l'audit** (profiles/lease_signers puis leases/tickets). Elles sont résolues et trackées en git — mais "aucune régression détectée" est factuellement faux. D'où Option B.
 
