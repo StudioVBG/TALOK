@@ -156,16 +156,26 @@ FROM storage.buckets
 ORDER BY id;
 
 -- ====================================================================
--- PASS 3.2 — Storage policies on documents/landing-images
+-- PASS 3.2 — Storage policies on storage.objects (filter buckets at policy level)
+-- (storage.policies n'existe plus en SQL direct depuis ~mid-2024 — utiliser pg_policies)
 -- ====================================================================
 SELECT
   '3.2_storage_policies' AS check_name,
-  bucket_id,
-  name,
-  COALESCE(definition, '(no definition column)') AS definition
-FROM storage.policies
-WHERE bucket_id IN ('documents', 'landing-images')
-ORDER BY bucket_id, name;
+  policyname,
+  cmd,
+  CASE
+    WHEN qual ILIKE '%documents%' OR with_check ILIKE '%documents%' THEN 'documents'
+    WHEN qual ILIKE '%landing-images%' OR with_check ILIKE '%landing-images%' THEN 'landing-images'
+    ELSE 'other_or_unscoped'
+  END AS targets_bucket,
+  COALESCE(qual, with_check) AS definition
+FROM pg_policies
+WHERE schemaname = 'storage' AND tablename = 'objects'
+  AND (
+    qual ILIKE '%documents%' OR with_check ILIKE '%documents%'
+    OR qual ILIKE '%landing-images%' OR with_check ILIKE '%landing-images%'
+  )
+ORDER BY targets_bucket, policyname;
 
 -- ====================================================================
 -- PASS 4.1 — Cron jobs actifs
