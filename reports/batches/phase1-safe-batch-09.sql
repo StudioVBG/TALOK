@@ -111,7 +111,7 @@ SELECT cron.schedule('copro-pv-distribution', '0 10 * * *',
 );
 
 -- ============================================================
-COMMENT ON SCHEMA cron IS 'pg_cron schedules including 5 copro cron jobs: convocation-reminders (9h daily), fund-call-reminders (8h daily), overdue-alerts (8h Monday), assembly-countdown (7h daily), pv-distribution (10h daily)';
+-- (removed) COMMENT ON SCHEMA cron IS '...' — requires supabase_admin ownership, skipped for SQL Editor execution
 
 INSERT INTO supabase_migrations.schema_migrations (version, name)
 VALUES ('20260412130000', 'copro_cron_schedules')
