@@ -5,6 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Loader2,
   ArrowLeft,
@@ -14,6 +17,7 @@ import {
   AlertTriangle,
   Euro,
   FileText,
+  Lock,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { PageTransition } from "@/components/ui/page-transition";
@@ -73,6 +77,13 @@ export default function OwnerRegularizationPage() {
   const [isCalculating, setIsCalculating] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [showSendDialog, setShowSendDialog] = useState(false);
+  // Sprint 0.e — Settle UI
+  const [showSettleDialog, setShowSettleDialog] = useState(false);
+  const [isSettling, setIsSettling] = useState(false);
+  const [settleMethod, setSettleMethod] = useState<
+    "next_rent" | "deduction" | "waived" | "installments_12" | "stripe"
+  >("next_rent");
+  const [settleNotes, setSettleNotes] = useState("");
 
   const fetchLeases = useCallback(async () => {
     try {
@@ -190,8 +201,65 @@ export default function OwnerRegularizationPage() {
     }
   };
 
+  const handleSettle = async () => {
+    if (!currentCalc) return;
+    setIsSettling(true);
+    try {
+      const res = await fetch(
+        `/api/charges/regularization/${currentCalc.id}/apply`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            settlement_method: settleMethod,
+            ...(settleMethod === "installments_12"
+              ? { installment_count: 12 }
+              : {}),
+            ...(settleNotes ? { notes: settleNotes } : {}),
+          }),
+        },
+      );
+      if (res.ok) {
+        toast({ title: "Régularisation clôturée" });
+        setShowSettleDialog(false);
+        setSettleNotes("");
+        fetchRegularizations();
+      } else {
+        const err = await res.json();
+        toast({
+          title: "Erreur de clôture",
+          description: err.error,
+          variant: "destructive",
+        });
+      }
+    } catch {
+      toast({ title: "Erreur de clôture", variant: "destructive" });
+    } finally {
+      setIsSettling(false);
+    }
+  };
+
   const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - 1 - i);
   const details = (currentCalc?.detail_per_category || []) as CategoryDetailItem[];
+
+  // Sprint 0.e — UI Settle : méthodes autorisées selon balance + dispo MVP
+  const balance = currentCalc?.balance_cents ?? 0;
+  const canSettle =
+    !!currentCalc &&
+    (currentCalc.status === "sent" ||
+      currentCalc.status === "acknowledged" ||
+      currentCalc.status === "contested");
+
+  // Méthodes désactivées dans le MVP (Sprint 0.e)
+  // - stripe : nécessite UI tenant (Stripe Elements + flow paiement) — Sprint 1
+  // - installments_12 : nécessite table installment_schedules + cron — Sprint 0.f
+  const SETTLE_DISABLED: Record<string, string | null> = {
+    next_rent: balance > 0 ? null : "Disponible si complément dû (balance > 0)",
+    deduction: balance < 0 ? null : "Disponible si trop-perçu (balance < 0)",
+    waived: balance > 0 ? null : "Disponible si complément dû (balance > 0)",
+    installments_12: "Disponible bientôt (échelonnement automatique)",
+    stripe: "Disponible bientôt (paiement par le locataire via UI tenant)",
+  };
 
   return (
     <PageTransition>
@@ -377,6 +445,19 @@ export default function OwnerRegularizationPage() {
                       locataire
                     </Button>
                   )}
+                  {canSettle && (
+                    <Button
+                      onClick={() => {
+                        // Pré-sélection de la méthode cohérente avec le signe du balance
+                        if (balance < 0) setSettleMethod("deduction");
+                        else setSettleMethod("next_rent");
+                        setShowSettleDialog(true);
+                      }}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" /> Clôturer
+                    </Button>
+                  )}
                 </div>
               </div>
               {currentCalc.contest_reason && (
@@ -512,6 +593,119 @@ export default function OwnerRegularizationPage() {
             </p>
           </GlassCard>
         )}
+
+        {/* Sprint 0.e — Settle Dialog */}
+        <Dialog open={showSettleDialog} onOpenChange={setShowSettleDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Clôturer la régularisation</DialogTitle>
+              <DialogDescription>
+                Sélectionnez la méthode de règlement. L&apos;écriture
+                comptable sera générée automatiquement et la régularisation
+                passera en statut « Soldée ».
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              {currentCalc && (
+                <div className="flex items-center justify-between p-3 bg-muted/40 rounded-lg">
+                  <span className="text-sm text-muted-foreground">
+                    {balance > 0 ? "Complément dû" : balance < 0 ? "Trop-perçu" : "Solde"}
+                  </span>
+                  <span
+                    className={cn(
+                      "font-bold text-lg",
+                      balance > 0 ? "text-amber-600" : balance < 0 ? "text-green-600" : "text-foreground",
+                    )}
+                  >
+                    {formatCurrency(Math.abs(balance) / 100)}
+                  </span>
+                </div>
+              )}
+              <RadioGroup
+                value={settleMethod}
+                onValueChange={(v) => setSettleMethod(v as typeof settleMethod)}
+                className="space-y-2"
+              >
+                {(
+                  [
+                    { value: "next_rent", label: "Ajouter à la prochaine quittance" },
+                    { value: "deduction", label: "Déduire du prochain loyer" },
+                    { value: "waived", label: "Renoncer (déductible revenus fonciers)" },
+                    { value: "installments_12", label: "Échelonnement 12 mois" },
+                    { value: "stripe", label: "Paiement Stripe par le locataire" },
+                  ] as const
+                ).map((opt) => {
+                  const disabledReason = SETTLE_DISABLED[opt.value];
+                  return (
+                    <div
+                      key={opt.value}
+                      className={cn(
+                        "flex items-start gap-3 rounded-lg border border-border p-3",
+                        disabledReason ? "opacity-50" : "hover:bg-muted/30",
+                      )}
+                    >
+                      <RadioGroupItem
+                        value={opt.value}
+                        id={`settle-${opt.value}`}
+                        disabled={!!disabledReason}
+                        className="mt-0.5"
+                      />
+                      <div className="flex-1">
+                        <Label
+                          htmlFor={`settle-${opt.value}`}
+                          className="text-sm font-medium text-foreground cursor-pointer"
+                        >
+                          {opt.label}
+                        </Label>
+                        {disabledReason && (
+                          <p className="mt-1 text-xs text-muted-foreground flex items-center gap-1">
+                            <Lock className="h-3 w-3" />
+                            {disabledReason}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </RadioGroup>
+              <div>
+                <Label htmlFor="settle-notes" className="text-sm">
+                  Notes (optionnel)
+                </Label>
+                <Textarea
+                  id="settle-notes"
+                  value={settleNotes}
+                  onChange={(e) => setSettleNotes(e.target.value)}
+                  placeholder="Ex: Échange courrier du 15/04, accord oral du locataire..."
+                  className="mt-1"
+                  rows={2}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowSettleDialog(false)}
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={handleSettle}
+                disabled={
+                  isSettling || !!SETTLE_DISABLED[settleMethod]
+                }
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isSettling ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                )}
+                Confirmer la clôture
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Send Confirmation Dialog */}
         <Dialog open={showSendDialog} onOpenChange={setShowSendDialog}>
