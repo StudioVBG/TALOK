@@ -542,6 +542,40 @@ async function emitPaymentSucceededEvent(
 }
 
 /**
+ * Sprint 0.d.1 — variant pour les paiements de régularisation des charges.
+ *
+ * Émet un event `ChargeRegularization.Paid` distinct de `Payment.Succeeded`
+ * pour que les consumers email/notif sachent envoyer un message adapté
+ * (« votre régul a été payée », pas « votre loyer a été payé »).
+ *
+ * Pas de génération de quittance loyer ni d'écriture comptable — l'écriture
+ * a déjà été créée au settle dans /api/charges/regularization/[id]/apply.
+ */
+async function emitChargeRegularizationPaidEvent(
+  supabase: any,
+  args: {
+    paymentId: string;
+    invoiceId: string;
+    regularizationId: string | null;
+    amount: number;
+  },
+) {
+  try {
+    await supabase.from("outbox").insert({
+      event_type: "ChargeRegularization.Paid",
+      payload: {
+        payment_id: args.paymentId,
+        invoice_id: args.invoiceId,
+        regularization_id: args.regularizationId,
+        amount: args.amount,
+      },
+    });
+  } catch (error) {
+    console.error("[ChargeRegularization] Error emitting paid event:", error);
+  }
+}
+
+/**
  * Gère les notifications et relances suite à un échec de paiement.
  * - Notifie le locataire et le propriétaire (notifications in-app)
  * - Envoie un email de rappel au locataire
@@ -886,6 +920,12 @@ export async function POST(request: NextRequest) {
         }
 
         if (invoiceId) {
+          // Sprint 0.d.1 — route les side-effects spécifiques loyer pour
+          // ne pas dupliquer l'écriture compta + ne pas générer une
+          // quittance loyer + ne pas envoyer un email "loyer payé" alors
+          // que c'est une régul charges.
+          const isChargeRegularization =
+            paymentIntent.metadata?.type === "charge_regularization";
           const paidAt = new Date().toISOString();
           const paymentMethod = paymentIntent.payment_method_types?.[0] || "cb";
           const paymentResult = await upsertPaymentAttempt(supabase, {
@@ -937,8 +977,10 @@ export async function POST(request: NextRequest) {
 
           if (paymentId && paymentResult.newlySucceeded) {
             const sourceTransactionId = await resolveSourceTransactionId(stripe, paymentIntent.id);
-            const receiptGenerated = !!settlement?.isSettled;
-            if (settlement?.isSettled) {
+            const receiptGenerated = !isChargeRegularization && !!settlement?.isSettled;
+            // P2 — skip la quittance loyer pour les régul charges
+            // (TODO Sprint 1 : générer un justificatif PDF spécifique régul)
+            if (settlement?.isSettled && !isChargeRegularization) {
               // Fire-and-forget : ne pas bloquer la réponse webhook (200 immédiat)
               processReceiptGeneration(
                 supabase,
@@ -949,10 +991,20 @@ export async function POST(request: NextRequest) {
                 console.error("[receipt-gen] fire-and-forget failed:", err?.message ?? err)
               );
             }
-            await emitPaymentSucceededEvent(supabase, paymentId, invoiceId, paymentIntent.amount / 100, {
-              invoiceSettled: settlement?.isSettled ?? false,
-              receiptGenerated,
-            });
+            // P3 — event distinct pour les régul charges
+            if (isChargeRegularization) {
+              await emitChargeRegularizationPaidEvent(supabase, {
+                paymentId,
+                invoiceId,
+                regularizationId: paymentIntent.metadata?.regularization_id ?? null,
+                amount: paymentIntent.amount / 100,
+              });
+            } else {
+              await emitPaymentSucceededEvent(supabase, paymentId, invoiceId, paymentIntent.amount / 100, {
+                invoiceSettled: settlement?.isSettled ?? false,
+                receiptGenerated,
+              });
+            }
 
             await reconcileOwnerTransfer(supabase as any, {
               paymentId,
@@ -964,52 +1016,55 @@ export async function POST(request: NextRequest) {
             });
           }
 
-          // --- Accounting auto-entry (non-blocking) ---
-          try {
-            const { createAutoEntry } = await import('@/lib/accounting/engine');
-            const { getOrCreateCurrentExercise } = await import('@/lib/accounting/auto-exercise');
+          // P1 — Accounting auto-entry (non-blocking) — skip pour régul
+          // charges car l'écriture a déjà été créée au settle via /apply.
+          if (!isChargeRegularization) {
+            try {
+              const { createAutoEntry } = await import('@/lib/accounting/engine');
+              const { getOrCreateCurrentExercise } = await import('@/lib/accounting/auto-exercise');
 
-            // Resolve entity: invoice → lease → property → legal_entity_id
-            const { data: invoiceForEntity } = await supabase
-              .from('invoices')
-              .select(`
-                lease:leases (
-                  property:properties (
-                    legal_entity_id,
-                    adresse_complete
+              // Resolve entity: invoice → lease → property → legal_entity_id
+              const { data: invoiceForEntity } = await supabase
+                .from('invoices')
+                .select(`
+                  lease:leases (
+                    property:properties (
+                      legal_entity_id,
+                      adresse_complete
+                    )
+                  ),
+                  tenant:profiles!invoices_tenant_id_fkey (
+                    prenom,
+                    nom
                   )
-                ),
-                tenant:profiles!invoices_tenant_id_fkey (
-                  prenom,
-                  nom
-                )
-              `)
-              .eq('id', invoiceId)
-              .maybeSingle();
+                `)
+                .eq('id', invoiceId)
+                .maybeSingle();
 
-            const entityId = invoiceForEntity?.lease?.property?.legal_entity_id;
-            if (entityId) {
-              const exercise = await getOrCreateCurrentExercise(supabase, entityId);
-              if (exercise) {
-                const tenantName = invoiceForEntity?.tenant
-                  ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
-                  : '';
-                const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
+              const entityId = invoiceForEntity?.lease?.property?.legal_entity_id;
+              if (entityId) {
+                const exercise = await getOrCreateCurrentExercise(supabase, entityId);
+                if (exercise) {
+                  const tenantName = invoiceForEntity?.tenant
+                    ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
+                    : '';
+                  const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
 
-                await createAutoEntry(supabase, 'rent_received', {
-                  entityId,
-                  exerciseId: exercise.id,
-                  userId: 'system',
-                  amountCents: paymentIntent.amount, // already in cents from Stripe
-                  label: `Loyer ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
-                  date: new Date().toISOString().split('T')[0],
-                  reference: paymentIntent.id,
-                });
+                  await createAutoEntry(supabase, 'rent_received', {
+                    entityId,
+                    exerciseId: exercise.id,
+                    userId: 'system',
+                    amountCents: paymentIntent.amount, // already in cents from Stripe
+                    label: `Loyer ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
+                    date: new Date().toISOString().split('T')[0],
+                    reference: paymentIntent.id,
+                  });
+                }
               }
+            } catch (accountingError) {
+              console.error('[ACCOUNTING] Auto-entry failed (non-blocking):', accountingError);
+              // Never throw — payment is already confirmed
             }
-          } catch (accountingError) {
-            console.error('[ACCOUNTING] Auto-entry failed (non-blocking):', accountingError);
-            // Never throw — payment is already confirmed
           }
         }
         break;

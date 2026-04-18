@@ -529,9 +529,15 @@ Système de rappels à brancher sur le cron existant :
 1. ✅ **RÉSOLU Sprint 0.a (17/04/2026)** — `regularization_invoice_id` ajouté sur `lease_charge_regularizations` (migration `20260417090000_charges_reg_invoice_link.sql`, appliquée prod 18/04).
 2. ✅ **RÉSOLU Sprint 0.d (18/04/2026)** — Route `POST /api/charges/regularization/[id]/apply` crée l'écriture comptable double-entry automatique au settle (+ invoice Stripe si applicable). Cf section 6 "Scénarios d'écritures" ci-dessus. Code :
    - `lib/charges/apply-engine.ts` — planner pur (5 scénarios, pattern 3 lignes balancé)
-   - `lib/charges/apply-stripe.ts` — helper invoice + PaymentIntent
+   - `lib/charges/apply-stripe.ts` — helper invoice + PaymentIntent (metadata `type: 'charge_regularization'`)
    - `app/api/charges/regularization/[id]/apply/route.ts` — route canonique
    - Migration pré-requise : `20260418160000_add_charges_reg_settlement_columns.sql` (3 colonnes + 3 CHECK) — appliquée prod 18/04.
+
+   **Webhook Stripe (Sprint 0.d.1)** : `app/api/webhooks/stripe/route.ts` handler `payment_intent.succeeded` route les side-effects via `paymentIntent.metadata?.type === 'charge_regularization'` :
+   - **Skip** `createAutoEntry('rent_received')` — l'écriture est déjà créée au settle dans /apply (sinon doublon comptable P1).
+   - **Skip** `processReceiptGeneration` — pas de quittance loyer pour une régul (P2). TODO Sprint 1 : générer un justificatif PDF spécifique.
+   - **Émet** `ChargeRegularization.Paid` au lieu de `Payment.Succeeded` dans l'outbox — pour que le consumer email envoie un message adapté (P3).
+   - Toutes les autres actions génériques (upsertPaymentAttempt, UPDATE invoice paid_at, syncInvoiceStatusFromPayments, reconcileOwnerTransfer) restent appliquées — comportement OK pour la régul.
 3. ✅ **RÉSOLU Sprint 0.b (17/04/2026)** + **Sprint 0.c (18/04/2026)** — Comptes PCG seedés pour les 3 entities existantes :
    - `4191` → `419100` (Sprint 0.b migration 090400)
    - `654` → `654000` (Sprint 0.b migration 090400)
@@ -548,12 +554,18 @@ Système de rappels à brancher sur le cron existant :
 8. **Template PDF régularisation** : non créé (pdf-lib) — à traiter Sprint 4
 9. **Rappels/crons** charges : non branchés — à traiter Sprint 7
 
+### Limitations connues post-Sprint 0.d
+
+- **`installments_12`** : la table `installment_schedules` n'existe pas. La route `/apply` accepte la méthode et pose `installment_count=12`, mais aucun cron n'encaisse les 12 fractions mensuelles ensuite. **À débloquer Sprint 0.e** avant exposition UI. Vérification UI réalisée 18/04 : aucun composant `.tsx` n'expose `installments_12` à un user — la route est accessible uniquement par appel API direct.
+- **Justificatif PDF "régul payée"** : le webhook skip la quittance loyer pour les régul (P2). Pas de PDF généré côté tenant après paiement Stripe. **À traiter Sprint 1** (template pdf-lib spécifique régul).
+- **Consumer email `ChargeRegularization.Paid`** : l'event est émis dans l'outbox (P3 fix), mais aucun template email Resend ne le consomme encore. **À brancher Sprint 1**.
+
 ### Améliorations (P2)
 
 10. **Bridge copro** : `copro_services` → `charge_entries` pas automatisé
 11. **Dashboard locataire charges** : page `/tenant/charges` existe mais contenu à enrichir
 12. **Historique régul** : pas de vue comparaison N vs N-1
-13. **Tests** : aucun test sur `engine.ts` ni `charge-regularization.service.ts`
+13. **Tests** : `apply-engine.ts` couvert (19 tests, Sprint 0.d). Reste : `engine.ts` (calcul prorata/régul) et `charge-regularization.service.ts` (legacy, à déprécier).
 
 ---
 
