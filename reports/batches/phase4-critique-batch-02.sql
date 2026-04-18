@@ -1340,7 +1340,7 @@ DO $$ BEGIN
       LEFT JOIN public.profiles p ON pr.owner_id = p.id
       WHERE p.id IS NULL AND pr.owner_id IS NOT NULL
     ) THEN
-      -- patch sprint-b2: nested DO uses $inner$ delimiter (parent uses $$)
+      -- patch sprint-b2: plain BEGIN block (no nested dollar-tag inside DO body)
       BEGIN
         ALTER TABLE public.properties
         ADD CONSTRAINT fk_properties_owner
