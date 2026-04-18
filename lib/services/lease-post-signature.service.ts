@@ -13,7 +13,7 @@
  */
 
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { generateSignedLeasePDF } from "@/lib/services/lease-pdf-generator";
+import { generateSignedLeasePdf } from "@/lib/pdf/lease-signed-pdf";
 import { ensureInitialInvoiceForLease } from "@/lib/services/lease-initial-invoice.service";
 
 // ─── Types ───────────────────────────────────────────────────────────
@@ -93,86 +93,21 @@ export async function handleLeaseFullySigned(
     return result;
   }
 
-  // ── 2. Générer le document HTML signé ─────────────────────────────
-  const sealedDocPath = `bails/${leaseId}/signed_final.html`;
-
+  // ── 2. Générer le PDF signé (rendu Puppeteer, typographie Manrope justifiée) ──
+  let sealedDocPath: string | null = null;
   try {
-    const { html } = await generateSignedLeasePDF(leaseId);
-    const htmlBuffer = Buffer.from(html, "utf-8");
-
-    const { error: uploadErr } = await serviceClient.storage
-      .from("documents")
-      .upload(sealedDocPath, htmlBuffer, {
-        contentType: "text/html",
-        upsert: true,
-        cacheControl: "31536000",
-      });
-
-    if (uploadErr) {
-      console.warn("[post-signature] Erreur upload HTML:", uploadErr.message);
-    } else {
-      result.pdfStored = true;
-      result.pdfPath = sealedDocPath;
-      // ── 3. Upsert document bail_signe en DB ─────────────────────────
-      const { data: existingDoc } = await serviceClient
-        .from("documents")
-        .select("id")
-        .eq("type", "bail_signe")
-        .eq("lease_id", leaseId)
-        .maybeSingle();
-
-      const docMetadata = {
-        sealed: true,
-        sealed_at: new Date().toISOString(),
-        size_bytes: htmlBuffer.length,
-        content_type: "text/html",
-      };
-
-      if (existingDoc) {
-        await serviceClient
-          .from("documents")
-          .update({
-            storage_path: sealedDocPath,
-            metadata: docMetadata,
-            updated_at: new Date().toISOString(),
-          } as any)
-          .eq("id", existingDoc.id);
-      } else {
-        const { data: leaseForProperty } = await serviceClient
-          .from("leases")
-          .select("property_id, properties(owner_id, adresse_complete)")
-          .eq("id", leaseId)
-          .single();
-
-        const prop = (leaseForProperty as any)?.properties;
-
-        // Récupérer le tenant_id depuis les signataires
-        const { data: tenantSigner } = await serviceClient
-          .from("lease_signers")
-          .select("profile_id")
-          .eq("lease_id", leaseId)
-          .in("role", ["locataire_principal", "locataire", "tenant", "principal"] as any)
-          .limit(1)
-          .maybeSingle();
-
-        await serviceClient.from("documents").insert({
-          type: "bail_signe",
-          title: `Bail signé - ${prop?.adresse_complete || leaseId.slice(0, 8)}`,
-          owner_id: prop?.owner_id,
-          tenant_id: tenantSigner?.profile_id || null,
-          property_id: (leaseForProperty as any)?.property_id,
-          lease_id: leaseId,
-          storage_path: sealedDocPath,
-          metadata: docMetadata,
-        } as any);
-      }
-    }
+    const generated = await generateSignedLeasePdf(leaseId, { force });
+    sealedDocPath = generated.storagePath;
+    result.pdfStored = true;
+    result.pdfPath = generated.storagePath;
   } catch (pdfErr) {
-    console.warn("[post-signature] Exception génération document (non bloquant):", String(pdfErr));
+    console.warn("[post-signature] Exception génération PDF (non bloquant):", String(pdfErr));
   }
 
-  // ── 4. Sceller le bail (seal_lease RPC) ────────────────────────────
-  const finalPdfPath = result.pdfStored ? sealedDocPath : `pending_generation_${Date.now()}`;
+  // ── 3. Sceller le bail (seal_lease RPC) ────────────────────────────
+  const finalPdfPath = result.pdfStored && sealedDocPath
+    ? sealedDocPath
+    : `pending_generation_${Date.now()}`;
 
   try {
     const { error: sealError } = await serviceClient.rpc("seal_lease", {

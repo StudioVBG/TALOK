@@ -1,10 +1,8 @@
 /**
- * Générateur PDF de contrat de bail signé
- *
- * Génère un PDF conforme avec pdf-lib, l'uploade dans Supabase Storage
- * et crée l'entrée dans la table documents.
- *
- * Idempotent : ne génère pas si un document bail/is_generated existe déjà.
+ * @deprecated Ancienne implementation pdf-lib (Helvetica, typographie pauvre).
+ * Remplace par `generateSignedLeasePdf` dans lib/pdf/lease-signed-pdf.ts
+ * (rendu Puppeteer + Manrope + justification).
+ * Conserve temporairement — a supprimer apres backfill complet (avril 2026).
  */
 
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from "pdf-lib";

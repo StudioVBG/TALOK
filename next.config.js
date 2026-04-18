@@ -106,7 +106,15 @@ const nextConfig = {
   // Optimisations expérimentales pour améliorer les performances
   experimental: {
     // Packages à ne pas bundler côté serveur (résout les problèmes de syntaxe moderne)
-    serverComponentsExternalPackages: ['cheerio', 'undici'],
+    serverComponentsExternalPackages: [
+      'cheerio',
+      'undici',
+      // puppeteer-core + @sparticuz/chromium utilisent du JS moderne (champs privés ES2022)
+      // et embarquent des binaires Chromium : ils doivent être chargés via require()
+      // natif et ne jamais passer par le bundler webpack.
+      'puppeteer-core',
+      '@sparticuz/chromium',
+    ],
     
     // Optimiser le tree-shaking et réduire la taille des bundles
     optimizePackageImports: [

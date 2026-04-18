@@ -93,12 +93,25 @@ async function processEvent(event: any): Promise<void> {
       // Générer le PDF signé du bail (non-bloquant — fire-and-forget)
       const fullySignedLeaseId = payload.lease_id;
       if (fullySignedLeaseId) {
-        const { generateSignedLeasePDF } = await import("@/lib/documents/lease-pdf-generator");
-        generateSignedLeasePDF(fullySignedLeaseId).catch((err) =>
-          console.error("[cron/process-outbox] generateSignedLeasePDF failed:", err)
+        const { generateSignedLeasePdf } = await import("@/lib/pdf/lease-signed-pdf");
+        generateSignedLeasePdf(fullySignedLeaseId).catch((err) =>
+          console.error("[cron/process-outbox] generateSignedLeasePdf failed:", err)
         );
       }
       console.log(`[Outbox] Lease.FullySigned for ${payload.lease_id} — PDF generation triggered`);
+      break;
+    }
+
+    case "Inspection.Signed": {
+      // Générer le PDF signé de l'EDL (non-bloquant — fire-and-forget)
+      const edlId = payload.edl_id;
+      if (edlId) {
+        const { generateSignedEdlPdf } = await import("@/lib/pdf/edl-signed-pdf");
+        generateSignedEdlPdf(edlId).catch((err) =>
+          console.error("[cron/process-outbox] generateSignedEdlPdf failed:", err)
+        );
+      }
+      console.log(`[Outbox] Inspection.Signed for ${edlId} — EDL PDF generation triggered`);
       break;
     }
 

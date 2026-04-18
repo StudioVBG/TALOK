@@ -248,43 +248,8 @@ export async function POST(
         },
       } as any);
 
-      // Auto-insert signed EDL into documents table
-      const edlData = signatureEntry.edl as any;
-      const edlType = edlData?.type === "entree" ? "EDL_entree" : "EDL_sortie";
-      const edlLabel = edlData?.type === "entree" ? "d'entrée" : "de sortie";
-      try {
-        const { data: existingDoc } = await serviceClient
-          .from("documents")
-          .select("id")
-          .eq("type", edlType)
-          .eq("metadata->>edl_id", signatureEntry.edl_id)
-          .maybeSingle();
-
-        if (!existingDoc) {
-          // SYSTEM DOCUMENT: Direct insert acceptable for auto-generated PDFs (no user upload flow)
-          await serviceClient.from("documents").insert({
-            type: edlType,
-            property_id: propertyId || null,
-            lease_id: edlData?.lease_id || null,
-            owner_id: edlData?.lease?.property?.owner_id || (edlData as any)?.property?.owner_id || null,
-            tenant_id: signerProfileId || null,
-            title: `État des lieux ${edlLabel} — Signé`,
-            storage_path: `edl/${signatureEntry.edl_id}/signed_document.html`,
-            is_archived: false,
-            metadata: {
-              edl_id: signatureEntry.edl_id,
-              signed_at: new Date().toISOString(),
-              all_signers_signed: true,
-              final: true,
-              content_type: "text/html",
-            },
-          } as any);
-        }
-      } catch (docErr) {
-        log.warn("Erreur insertion document EDL (non bloquant)", { error: String(docErr) });
-      }
-
-      // Générer et stocker le HTML signé dans Storage
+      // Générer le PDF signé de l'EDL — INSERT/UPDATE document + upload Storage
+      // est pris en charge par generateSignedEdlPdf (idempotent, pur PDF).
       try {
         const { handleEDLFullySigned } = await import("@/lib/services/edl-post-signature.service");
         const edlResult = await handleEDLFullySigned(signatureEntry.edl_id);
@@ -294,7 +259,7 @@ export async function POST(
       }
 
       // Générer la facture initiale pour le bail (si pas encore créée)
-      const leaseId = edlData?.lease_id;
+      const leaseId = (signatureEntry.edl as any)?.lease_id;
       if (leaseId) {
         try {
           const { ensureInitialInvoiceForLease } = await import("@/lib/services/lease-initial-invoice.service");
