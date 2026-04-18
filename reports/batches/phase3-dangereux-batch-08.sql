@@ -168,7 +168,10 @@ CREATE TRIGGER trg_insurance_updated_at
   EXECUTE FUNCTION update_insurance_policies_updated_at();
 
 -- 10. View: assurances expirant bientot
-CREATE OR REPLACE VIEW insurance_expiring_soon AS
+-- patch sprint-b2: DROP first to allow column rename (CREATE OR REPLACE
+-- doesn't allow changing column names — see PG error 42P16).
+DROP VIEW IF EXISTS insurance_expiring_soon CASCADE;
+CREATE VIEW insurance_expiring_soon AS
 SELECT
   ip.id,
   ip.profile_id,
