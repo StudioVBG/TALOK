@@ -1,0 +1,5195 @@
+{
+  "_generated_at": "2026-04-18T00:30:34.130Z",
+  "_source": "supabase/migrations/*.sql",
+  "total_files": 442,
+  "unique_timestamps": 412,
+  "duplicates_count": 13,
+  "duplicates": [
+    {
+      "timestamp": "20260224100000",
+      "count": 2,
+      "files": [
+        "20260224100000_fix_tenant_dashboard_notifications_query.sql",
+        "20260224100000_normalize_provider_names.sql"
+      ],
+      "all_hashes_identical": false,
+      "hashes": [
+        {
+          "file": "20260224100000_fix_tenant_dashboard_notifications_query.sql",
+          "sha256": "b862393da0da48f38aab515987bfaeda3f09f17942399f70b9bd149b4b6d7fae"
+        },
+        {
+          "file": "20260224100000_normalize_provider_names.sql",
+          "sha256": "dd491df0273fd3a0abc4af58c004349a23b1ad29e686a0e0c3c690d161b50ac8"
+        }
+      ]
+    },
+    {
+      "timestamp": "20260226000000",
+      "count": 2,
+      "files": [
+        "20260226000000_backfill_existing_invoices_tenant_id.sql",
+        "20260226000000_fix_notifications_triggers.sql"
+      ],
+      "all_hashes_identical": false,
+      "hashes": [
+        {
+          "file": "20260226000000_backfill_existing_invoices_tenant_id.sql",
+          "sha256": "8da7b09dbcd1ffb1d29bce8cf3ecbe9df36a42bd04718ce9e4800a1777c45570"
+        },
+        {
+          "file": "20260226000000_fix_notifications_triggers.sql",
+          "sha256": "94f6b20dde5635c033c6bd972e9380d2440ea78f2e690ec59ab6120c680a4479"
+        }
+      ]
+    },
+    {
+      "timestamp": "20260306100000",
+      "count": 2,
+      "files": [
+        "20260306100000_add_digicode_interphone_columns.sql",
+        "20260306100000_invoice_on_fully_signed.sql"
+      ],
+      "all_hashes_identical": false,
+      "hashes": [
+        {
+          "file": "20260306100000_add_digicode_interphone_columns.sql",
+          "sha256": "73b1f1a118ba98f2b586bc31208aeab8c7a7cae9f6bd8da55cb4c7c2c94e0872"
+        },
+        {
+          "file": "20260306100000_invoice_on_fully_signed.sql",
+          "sha256": "5b7d5d373fe83b6630f1500ca1e682601ab3f9c0f8e400e7728c7c3124699587"
+        }
+      ]
+    },
+    {
+      "timestamp": "20260310200000",
+      "count": 2,
+      "files": [
+        "20260310200000_add_signature_push_franceconnect.sql",
+        "20260310200000_fix_property_limit_extra_properties.sql"
+      ],
+      "all_hashes_identical": false,
+      "hashes": [
+        {
+          "file": "20260310200000_add_signature_push_franceconnect.sql",
+          "sha256": "3c64db87b7e429fcd54df1daa240bfe04b68aae657ee8787f2d25ae9db69fe3c"
+        },
+        {
+          "file": "20260310200000_fix_property_limit_extra_properties.sql",
+          "sha256": "c9577440057db008bda9aefdfe5d9eef497fcf218cdf00c2eebc35af5674cfd3"
+        }
+      ]
+    },
+    {
+      "timestamp": "20260328100000",
+      "count": 2,
+      "files": [
+        "20260328100000_create_site_content.sql",
+        "20260328100000_fix_visible_tenant_documents.sql"
+      ],
+      "all_hashes_identical": false,
+      "hashes": [
+        {
+          "file": "20260328100000_create_site_content.sql",
+          "sha256": "88932cd764b57b9a4a22294a887571514bb438878a81518ed5086a3310131337"
+        },
+        {
+          "file": "20260328100000_fix_visible_tenant_documents.sql",
+          "sha256": "0723d1a0671af453becc005d52e83923edad9a03cd086016a69d1437a8b30933"
+        }
+      ]
+    },
+    {
+      "timestamp": "20260331100000",
+      "count": 2,
+      "files": [
+        "20260331100000_add_agricultural_property_types.sql",
+        "20260331100000_fix_document_titles_bruts.sql"
+      ],
+      "all_hashes_identical": false,
+      "hashes": [
+        {
+          "file": "20260331100000_add_agricultural_property_types.sql",
+          "sha256": "46243cb1d5b57eaefafb3152287ea74514f01c67c368f56166ce6ba3757dd506"
+        },
+        {
+          "file": "20260331100000_fix_document_titles_bruts.sql",
+          "sha256": "111702102b57bd10aa60b4f022942058395f422b4bf6bfcce369a7d91f273e18"
+        }
+      ]
+    },
+    {
+      "timestamp": "20260401000001",
+      "count": 2,
+      "files": [
+        "20260401000001_add_initial_payment_confirmed_to_leases.sql",
+        "20260401000001_backfill_identity_status.sql"
+      ],
+      "all_hashes_identical": false,
+      "hashes": [
+        {
+          "file": "20260401000001_add_initial_payment_confirmed_to_leases.sql",
+          "sha256": "6c5f8cfaacd4486704231d0b73a3e804a0d482f4ea0c270b222d1ccfff7b5faa"
+        },
+        {
+          "file": "20260401000001_backfill_identity_status.sql",
+          "sha256": "40fd9e214dffd27ceea53a7ec564f2cf4e03fdcaae69f0e1c722706185dfaecf"
+        }
+      ]
+    },
+    {
+      "timestamp": "20260408100000",
+      "count": 2,
+      "files": [
+        "20260408100000_copro_lots.sql",
+        "20260408100000_create_push_subscriptions.sql"
+      ],
+      "all_hashes_identical": false,
+      "hashes": [
+        {
+          "file": "20260408100000_copro_lots.sql",
+          "sha256": "97ef6b234a7663228f218b3b59d59c580442035cd6ddcb4b58ce8f5165c8c2e1"
+        },
+        {
+          "file": "20260408100000_create_push_subscriptions.sql",
+          "sha256": "171db7e6077f1c1a05935c974cc520fb6cc93d856bbd6557a704ce2162c48beb"
+        }
+      ]
+    },
+    {
+      "timestamp": "20260408120000",
+      "count": 7,
+      "files": [
+        "20260408120000_api_keys_webhooks.sql",
+        "20260408120000_colocation_module.sql",
+        "20260408120000_edl_sortie_workflow.sql",
+        "20260408120000_providers_module_sota.sql",
+        "20260408120000_smart_meters_connected.sql",
+        "20260408120000_subscription_addons.sql",
+        "20260408120000_whitelabel_agency_module.sql"
+      ],
+      "all_hashes_identical": false,
+      "hashes": [
+        {
+          "file": "20260408120000_api_keys_webhooks.sql",
+          "sha256": "b0af5a52014f6e508ed03301428301674c1411ed8607c510fe49badec44f7236"
+        },
+        {
+          "file": "20260408120000_colocation_module.sql",
+          "sha256": "e26e563fe91275194efa1ddd60482b947736538031acffb6a56c8f2169b88e47"
+        },
+        {
+          "file": "20260408120000_edl_sortie_workflow.sql",
+          "sha256": "9caabed1dc8ef7682ca6503fa085590e22eedd6eb080f7e0a8a45a858a3267a0"
+        },
+        {
+          "file": "20260408120000_providers_module_sota.sql",
+          "sha256": "758a53936ba8d5f132040f86081065326e6ba5fa6d11e3b60f23774742ac0f87"
+        },
+        {
+          "file": "20260408120000_smart_meters_connected.sql",
+          "sha256": "60c898664e342755c230c6385b7914e91282140757fcf5b4a30d50b76181baeb"
+        },
+        {
+          "file": "20260408120000_subscription_addons.sql",
+          "sha256": "9522c3a88616e5734020689e9c3e942f387c10575567ab122325d9e1c787b0ac"
+        },
+        {
+          "file": "20260408120000_whitelabel_agency_module.sql",
+          "sha256": "8fdbe8a013f44916acf9dfdef744cc15ad315c3906c3180e33c82b222a821926"
+        }
+      ]
+    },
+    {
+      "timestamp": "20260408130000",
+      "count": 12,
+      "files": [
+        "20260408130000_active_sessions.sql",
+        "20260408130000_admin_panel_tables.sql",
+        "20260408130000_candidatures_workflow.sql",
+        "20260408130000_charges_locatives_module.sql",
+        "20260408130000_diagnostics_rent_control.sql",
+        "20260408130000_fix_subscription_plan_prices.sql",
+        "20260408130000_guarantor_workflow_complete.sql",
+        "20260408130000_insurance_policies.sql",
+        "20260408130000_lease_amendments_table.sql",
+        "20260408130000_rgpd_consent_records_and_data_requests.sql",
+        "20260408130000_seasonal_rental_module.sql",
+        "20260408130000_security_deposits.sql"
+      ],
+      "all_hashes_identical": false,
+      "hashes": [
+        {
+          "file": "20260408130000_active_sessions.sql",
+          "sha256": "082b0efd85df9195c7570f8926d3a9b228ebfb37104728884cb2b38f8054e72b"
+        },
+        {
+          "file": "20260408130000_admin_panel_tables.sql",
+          "sha256": "b737e2cbc4f4b7a9681bbc7b7b3433b987136c9c44aaf2c61528cde634917551"
+        },
+        {
+          "file": "20260408130000_candidatures_workflow.sql",
+          "sha256": "a1fb98f13259157491fe6a3ed9d2a660d9cd64ddbba0dd4a68fe982575637585"
+        },
+        {
+          "file": "20260408130000_charges_locatives_module.sql",
+          "sha256": "cd52e4788d84a9c0108b3a5d5591cd94abcb44851f0a08e05c9038d537dcf0e5"
+        },
+        {
+          "file": "20260408130000_diagnostics_rent_control.sql",
+          "sha256": "94e2ee0ad52367afeacfb9c55f1ec75f853e401a7cbe73f9aaa16238d9fddbf2"
+        },
+        {
+          "file": "20260408130000_fix_subscription_plan_prices.sql",
+          "sha256": "ddd4b72a5e3cd3f0a12ffc7fec45ac7548cb60d485eb3f7e054fffa7c7626141"
+        },
+        {
+          "file": "20260408130000_guarantor_workflow_complete.sql",
+          "sha256": "9c559d9f792ae82d035e5a2de6b8ae3d67104512a1422087d4187f2dc547388b"
+        },
+        {
+          "file": "20260408130000_insurance_policies.sql",
+          "sha256": "3e72af2f0d7fb11e02f06b1eb0bcdea9e015ab90d1addf7536ebc2ca616c9d00"
+        },
+        {
+          "file": "20260408130000_lease_amendments_table.sql",
+          "sha256": "1f93a06d2e1d1c08cffdacccc80e120c0a79683fbba6766f81ee6eeab203420f"
+        },
+        {
+          "file": "20260408130000_rgpd_consent_records_and_data_requests.sql",
+          "sha256": "e0f4c36875ceb7a4f1a12bac6875bb421d5590f8b6d60b508fb86dc90eabb3ef"
+        },
+        {
+          "file": "20260408130000_seasonal_rental_module.sql",
+          "sha256": "ac03ecbaa8f72b15d02c5b8e3fc6f3cf1af9ae5c04fdb365ade081165a109112"
+        },
+        {
+          "file": "20260408130000_security_deposits.sql",
+          "sha256": "7e0e7e2cd0fb69796869ef2cce4e8d93808f29ddee54506fa7025900af248545"
+        }
+      ]
+    },
+    {
+      "timestamp": "20260411120000",
+      "count": 2,
+      "files": [
+        "20260411120000_harden_payments_check_constraints.sql",
+        "20260411120000_schedule_onboarding_reminders_cron.sql"
+      ],
+      "all_hashes_identical": false,
+      "hashes": [
+        {
+          "file": "20260411120000_harden_payments_check_constraints.sql",
+          "sha256": "61afd7d30974e73ecffd2ca8373924b8855c6dc5d81fd9777e60d8c5f8b9c924"
+        },
+        {
+          "file": "20260411120000_schedule_onboarding_reminders_cron.sql",
+          "sha256": "d97f98a08d13019d5ede3ca5cfc0df564f07d86f5dcbcd93c5766fb25c08a4ae"
+        }
+      ]
+    },
+    {
+      "timestamp": "20260415140000",
+      "count": 2,
+      "files": [
+        "20260415140000_buildings_sota_fix_wave1.sql",
+        "20260415140000_fix_tenant_payment_signing_and_leases_recursion.sql"
+      ],
+      "all_hashes_identical": false,
+      "hashes": [
+        {
+          "file": "20260415140000_buildings_sota_fix_wave1.sql",
+          "sha256": "c734324cf4eb925eeefbafbca0cda660c1e76217a6e01bc7ad99030237d1f039"
+        },
+        {
+          "file": "20260415140000_fix_tenant_payment_signing_and_leases_recursion.sql",
+          "sha256": "6f9291bfeb1804bfb62401e93c58653b78ced5d16556608d03173fe10a82db8e"
+        }
+      ]
+    },
+    {
+      "timestamp": "20260416100000",
+      "count": 2,
+      "files": [
+        "20260416100000_fix_messages_conversation_trigger.sql",
+        "20260416100000_fix_tickets_rls_recursion.sql"
+      ],
+      "all_hashes_identical": false,
+      "hashes": [
+        {
+          "file": "20260416100000_fix_messages_conversation_trigger.sql",
+          "sha256": "fa033399a566b4b89954975c6a7015bd5c5303698db54c6a44ec4175ec35cd6e"
+        },
+        {
+          "file": "20260416100000_fix_tickets_rls_recursion.sql",
+          "sha256": "dcad7ec93f372ba7707e245c6f10f70b7547c0faa218df778900b8a4a0484685"
+        }
+      ]
+    }
+  ],
+  "migrations": [
+    {
+      "filename": "20240100099999_grant_auth_permissions.sql",
+      "timestamp": "20240100099999",
+      "timestamp_raw": "20240100099999",
+      "ts_format": "14-digit",
+      "name": "grant_auth_permissions",
+      "size_bytes": 376,
+      "size_lines": 9,
+      "sha256": "828d7a8e6eaa4e44b3160163095e0ad83a574e73dc1e8f93ab91d7f20d9bfc71",
+      "first_operation": "GRANT USAGE"
+    },
+    {
+      "filename": "20240101000000_initial_schema.sql",
+      "timestamp": "20240101000000",
+      "timestamp_raw": "20240101000000",
+      "ts_format": "14-digit",
+      "name": "initial_schema",
+      "size_bytes": 13496,
+      "size_lines": 306,
+      "sha256": "c034abcd187cce07f684587c2cd200d84d54332621cefdd37dd4f682f4a3c144",
+      "first_operation": "CREATE EXTENSION IF NOT"
+    },
+    {
+      "filename": "20240101000001_rls_policies.sql",
+      "timestamp": "20240101000001",
+      "timestamp_raw": "20240101000001",
+      "ts_format": "14-digit",
+      "name": "rls_policies",
+      "size_bytes": 14690,
+      "size_lines": 495,
+      "sha256": "da10c6c93cfda0ea56bfe41a32dadf6f6460089698812b3e37d0a8f08aad4de1",
+      "first_operation": "ALTER TABLE PROFILES ENABLE"
+    },
+    {
+      "filename": "20240101000002_functions.sql",
+      "timestamp": "20240101000002",
+      "timestamp_raw": "20240101000002",
+      "ts_format": "14-digit",
+      "name": "functions",
+      "size_bytes": 4092,
+      "size_lines": 137,
+      "sha256": "03ea3f853c213bca5dc7228c93ff653d15bb97a2bc29e0b5bbf2774af35f293e",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20240101000003_storage_bucket.sql",
+      "timestamp": "20240101000003",
+      "timestamp_raw": "20240101000003",
+      "ts_format": "14-digit",
+      "name": "storage_bucket",
+      "size_bytes": 1841,
+      "size_lines": 65,
+      "sha256": "c320280c4b5ab9c5fdbe19e4954d3fb7d1df65fa01271fdde64532fe01b98e80",
+      "first_operation": "INSERT INTO STORAGE"
+    },
+    {
+      "filename": "20240101000004_onboarding_tables.sql",
+      "timestamp": "20240101000004",
+      "timestamp_raw": "20240101000004",
+      "ts_format": "14-digit",
+      "name": "onboarding_tables",
+      "size_bytes": 4828,
+      "size_lines": 122,
+      "sha256": "154f3c15cc86f8abcdd8b1d64b7ff9a1e0b21f9ae0a418c4398b0bae330d6722",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20240101000005_resend_invitation_function.sql",
+      "timestamp": "20240101000005",
+      "timestamp_raw": "20240101000005",
+      "ts_format": "14-digit",
+      "name": "resend_invitation_function",
+      "size_bytes": 1401,
+      "size_lines": 47,
+      "sha256": "683d51c6ea8553f8fc701ac872f30105f92101fa40dd53ef9d16761ca9f30c93",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20240101000006_fix_rls_recursion.sql",
+      "timestamp": "20240101000006",
+      "timestamp_raw": "20240101000006",
+      "ts_format": "14-digit",
+      "name": "fix_rls_recursion",
+      "size_bytes": 1142,
+      "size_lines": 23,
+      "sha256": "944a8fbfcd4a82d0adeca6a9ae4e58575a1a30e946b1cdc66b098e3799b0ad77",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20240101000007_admin_architecture.sql",
+      "timestamp": "20240101000007",
+      "timestamp_raw": "20240101000007",
+      "ts_format": "14-digit",
+      "name": "admin_architecture",
+      "size_bytes": 15372,
+      "size_lines": 372,
+      "sha256": "c1c7af411a2cd8236ad5cba019df3baa7e88e1ddd8c0757f63e22db351012845",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20240101000008_admin_rls.sql",
+      "timestamp": "20240101000008",
+      "timestamp_raw": "20240101000008",
+      "ts_format": "14-digit",
+      "name": "admin_rls",
+      "size_bytes": 6328,
+      "size_lines": 232,
+      "sha256": "ad8d890c1fadea6fe2c19e55cc0244341ce291c346dbf0e21ada0a53a73725e8",
+      "first_operation": "ALTER TABLE ROLES ENABLE"
+    },
+    {
+      "filename": "20240101000009_tenant_advanced.sql",
+      "timestamp": "20240101000009",
+      "timestamp_raw": "20240101000009",
+      "ts_format": "14-digit",
+      "name": "tenant_advanced",
+      "size_bytes": 25894,
+      "size_lines": 576,
+      "sha256": "82657a7b7851909f1b6b2f95177fe8a1c88617581a33e05aa6e408435d6715d9",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20240101000010_tenant_rls.sql",
+      "timestamp": "20240101000010",
+      "timestamp_raw": "20240101000010",
+      "ts_format": "14-digit",
+      "name": "tenant_rls",
+      "size_bytes": 14569,
+      "size_lines": 487,
+      "sha256": "5dab5b33c20f405b7973e1114845d3b6237413c14b31c187ffd797c345dd3d99",
+      "first_operation": "ALTER TABLE ROOMMATES ENABLE"
+    },
+    {
+      "filename": "20240101000011_fix_properties_rls_recursion.sql",
+      "timestamp": "20240101000011",
+      "timestamp_raw": "20240101000011",
+      "ts_format": "14-digit",
+      "name": "fix_properties_rls_recursion",
+      "size_bytes": 3315,
+      "size_lines": 77,
+      "sha256": "01b07d7917e5503e2f6fb44c15b5cdb6e592d691937909f8e52466c74f76b4ed",
+      "first_operation": "DROP FUNCTION IF EXISTS"
+    },
+    {
+      "filename": "20240101000012_fix_specialized_profiles_rls.sql",
+      "timestamp": "20240101000012",
+      "timestamp_raw": "20240101000012",
+      "ts_format": "14-digit",
+      "name": "fix_specialized_profiles_rls",
+      "size_bytes": 3577,
+      "size_lines": 88,
+      "sha256": "dc81d960f4f16b8f78680dc58636c8bea3d25446cca92fdd3c06099229638f9c",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20240101000013_fix_leases_rls.sql",
+      "timestamp": "20240101000013",
+      "timestamp_raw": "20240101000013",
+      "ts_format": "14-digit",
+      "name": "fix_leases_rls",
+      "size_bytes": 4912,
+      "size_lines": 150,
+      "sha256": "71b8d9b948b55e26e149f6b58993c595c5216c44564ffa7cf1404ee50f86142f",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20240101000014_fix_leases_policy_functions.sql",
+      "timestamp": "20240101000014",
+      "timestamp_raw": "20240101000014",
+      "ts_format": "14-digit",
+      "name": "fix_leases_policy_functions",
+      "size_bytes": 740,
+      "size_lines": 23,
+      "sha256": "64b33762db6cfe7dd74ca63b374f00983a7c5733f36aaa2ee2a40544c8b5f816",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20240101000015_fix_leases_rls_recursion.sql",
+      "timestamp": "20240101000015",
+      "timestamp_raw": "20240101000015",
+      "ts_format": "14-digit",
+      "name": "fix_leases_rls_recursion",
+      "size_bytes": 1219,
+      "size_lines": 36,
+      "sha256": "d1cd88881ddf7b033e70cf4997b76f9783d0d6b1b658ccbc5098257f34354fc8",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20240101000016_tenant_missing_tables.sql",
+      "timestamp": "20240101000016",
+      "timestamp_raw": "20240101000016",
+      "ts_format": "14-digit",
+      "name": "tenant_missing_tables",
+      "size_bytes": 10376,
+      "size_lines": 233,
+      "sha256": "c73aad73f4dae089ab6016c13cd9c85e9fa349e9542162595cb7f8cd137e41ef",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20240101000017_tenant_missing_rls.sql",
+      "timestamp": "20240101000017",
+      "timestamp_raw": "20240101000017",
+      "ts_format": "14-digit",
+      "name": "tenant_missing_rls",
+      "size_bytes": 6267,
+      "size_lines": 222,
+      "sha256": "8dc92627bca71f6f5f9baefb8d244b45cafebd55dd59b663896714a8f08194a5",
+      "first_operation": "ALTER TABLE OUTBOX ENABLE"
+    },
+    {
+      "filename": "20240101000018_missing_core_tables.sql",
+      "timestamp": "20240101000018",
+      "timestamp_raw": "20240101000018",
+      "ts_format": "14-digit",
+      "name": "missing_core_tables",
+      "size_bytes": 10518,
+      "size_lines": 234,
+      "sha256": "6d0fe16133e33aef61eff79de0976c0b95699e696d59c360433c8a8f3e450e53",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20240101000019_missing_rls.sql",
+      "timestamp": "20240101000019",
+      "timestamp_raw": "20240101000019",
+      "ts_format": "14-digit",
+      "name": "missing_rls",
+      "size_bytes": 8735,
+      "size_lines": 297,
+      "sha256": "db84d062cde7be7b95d3d851408eec6e5f29c834941731ab40e4bd01ef101912",
+      "first_operation": "ALTER TABLE DEPOSIT"
+    },
+    {
+      "filename": "20240101000020_add_paused_status_tickets.sql",
+      "timestamp": "20240101000020",
+      "timestamp_raw": "20240101000020",
+      "ts_format": "14-digit",
+      "name": "add_paused_status_tickets",
+      "size_bytes": 262,
+      "size_lines": 11,
+      "sha256": "fff0127d43ea5232d116a35eb7a99756aec6dd290ebce911d2f223c69689b7eb",
+      "first_operation": "ALTER TABLE TICKETS DROP"
+    },
+    {
+      "filename": "20240101000021_add_notifications_table.sql",
+      "timestamp": "20240101000021",
+      "timestamp_raw": "20240101000021",
+      "ts_format": "14-digit",
+      "name": "add_notifications_table",
+      "size_bytes": 1643,
+      "size_lines": 46,
+      "sha256": "38a24f2a652437a23be18ed0ba538572387d95273d9eba1833ec9234463471ca",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20240101000022_add_lease_states.sql",
+      "timestamp": "20240101000022",
+      "timestamp_raw": "20240101000022",
+      "ts_format": "14-digit",
+      "name": "add_lease_states",
+      "size_bytes": 1050,
+      "size_lines": 35,
+      "sha256": "e2eebd354ac693076af1767fad1ddb09ca89684dcb3a8a456d3d847220000a07",
+      "first_operation": "ALTER TABLE LEASES"
+    },
+    {
+      "filename": "20240101000023_idempotency_and_2fa.sql",
+      "timestamp": "20240101000023",
+      "timestamp_raw": "20240101000023",
+      "ts_format": "14-digit",
+      "name": "idempotency_and_2fa",
+      "size_bytes": 1467,
+      "size_lines": 36,
+      "sha256": "3167dcd7dc59f39caab2bfdee50efc29bbe5c13e146fbdec36b5909bec5cd5a1",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20240101000024_update_api_credentials_table.sql",
+      "timestamp": "20240101000024",
+      "timestamp_raw": "20240101000024",
+      "ts_format": "14-digit",
+      "name": "update_api_credentials_table",
+      "size_bytes": 2175,
+      "size_lines": 42,
+      "sha256": "3eb8ce537be128f32316e1ea7a27822ad5c062fd058b1d860348ff51df34568f",
+      "first_operation": "ALTER TABLE API"
+    },
+    {
+      "filename": "20240101000025_add_provider_validation.sql",
+      "timestamp": "20240101000025",
+      "timestamp_raw": "20240101000025",
+      "ts_format": "14-digit",
+      "name": "add_provider_validation",
+      "size_bytes": 2985,
+      "size_lines": 84,
+      "sha256": "1d0fe9d9bff2126f912298f9de058fade8c1300495b6ef44c6b4e15c80a498c9",
+      "first_operation": "ALTER TABLE PROVIDER"
+    },
+    {
+      "filename": "20240101000026_fix_provider_rls.sql",
+      "timestamp": "20240101000026",
+      "timestamp_raw": "20240101000026",
+      "ts_format": "14-digit",
+      "name": "fix_provider_rls",
+      "size_bytes": 1224,
+      "size_lines": 43,
+      "sha256": "48dcf01fb162724a6e184ed21708610718d26100f35a540abde20140307626d6",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "202411140001_fix_auth_helper_functions.sql",
+      "timestamp": "20241114000100",
+      "timestamp_raw": "202411140001",
+      "ts_format": "12-digit",
+      "name": "fix_auth_helper_functions",
+      "size_bytes": 2090,
+      "size_lines": 95,
+      "sha256": "4c2306965e9ab73b02ea5005851334dad6e51bd68175a3ebf26f86d19c3efc3c",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "202411140100_expand_commercial_capabilities.sql",
+      "timestamp": "20241114010000",
+      "timestamp_raw": "202411140100",
+      "ts_format": "12-digit",
+      "name": "expand_commercial_capabilities",
+      "size_bytes": 8788,
+      "size_lines": 295,
+      "sha256": "07a9b293db87a9268535b63853c019503f2ce3a2cb33d5961812fba616e763b7",
+      "first_operation": "ALTER TABLE PROPERTIES"
+    },
+    {
+      "filename": "202411140210_property_workflow_status.sql",
+      "timestamp": "20241114021000",
+      "timestamp_raw": "202411140210",
+      "ts_format": "12-digit",
+      "name": "property_workflow_status",
+      "size_bytes": 928,
+      "size_lines": 36,
+      "sha256": "007c7519c00c92a247a7a6022a29d21231397455354ef131337c813a7ef16e6c",
+      "first_operation": "ALTER TABLE PROPERTIES"
+    },
+    {
+      "filename": "202411140220_property_financial_diagnostics.sql",
+      "timestamp": "20241114022000",
+      "timestamp_raw": "202411140220",
+      "ts_format": "12-digit",
+      "name": "property_financial_diagnostics",
+      "size_bytes": 2047,
+      "size_lines": 59,
+      "sha256": "1e3ba1627541a04071b764e9f11b1de83d84a1574f2b95d0d22b837ba202db00",
+      "first_operation": "ALTER TABLE PROPERTIES"
+    },
+    {
+      "filename": "202411140221_fix_property_status_enum.sql",
+      "timestamp": "20241114022100",
+      "timestamp_raw": "202411140221",
+      "ts_format": "12-digit",
+      "name": "fix_property_status_enum",
+      "size_bytes": 388,
+      "size_lines": 24,
+      "sha256": "716521f3ce07f181a88e5e7a514b6c9709d5fe8b586133885e308385b8b8847c",
+      "first_operation": "UPDATE PROPERTIES"
+    },
+    {
+      "filename": "202411140230_documents_gallery.sql",
+      "timestamp": "20241114023000",
+      "timestamp_raw": "202411140230",
+      "ts_format": "12-digit",
+      "name": "documents_gallery",
+      "size_bytes": 4523,
+      "size_lines": 152,
+      "sha256": "0eafb63d8755b07d471919f1bb0c67b910d2856578a20b06967b21a787c4ad56",
+      "first_operation": "ALTER TABLE DOCUMENTS"
+    },
+    {
+      "filename": "202411140500_parking_details.sql",
+      "timestamp": "20241114050000",
+      "timestamp_raw": "202411140500",
+      "ts_format": "12-digit",
+      "name": "parking_details",
+      "size_bytes": 251,
+      "size_lines": 9,
+      "sha256": "8e317b453f44bbf190f359384482773215dd2c56e80d3b7464a27558fc82741c",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "202411151200_property_share_tokens.sql",
+      "timestamp": "20241115120000",
+      "timestamp_raw": "202411151200",
+      "ts_format": "12-digit",
+      "name": "property_share_tokens",
+      "size_bytes": 1304,
+      "size_lines": 40,
+      "sha256": "56ae8886918b55b0c4d9e3f6485a69d5af0f51d804adb376be1695d4c1910a9c",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20241128000001_scoring_and_automations.sql",
+      "timestamp": "20241128000001",
+      "timestamp_raw": "20241128000001",
+      "ts_format": "14-digit",
+      "name": "scoring_and_automations",
+      "size_bytes": 6552,
+      "size_lines": 192,
+      "sha256": "5085f2d4355ec512d20f51100fe81554eb1381701b46ee9f248dfd2bc29eb288",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20241128000002_api_keys_management.sql",
+      "timestamp": "20241128000002",
+      "timestamp_raw": "20241128000002",
+      "ts_format": "14-digit",
+      "name": "api_keys_management",
+      "size_bytes": 13074,
+      "size_lines": 269,
+      "sha256": "ab7f855421e9b573491ae68394c13b25f09e57f125860976b02f8a25e4f049de",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20241129000001_subscriptions.sql",
+      "timestamp": "20241129000001",
+      "timestamp_raw": "20241129000001",
+      "ts_format": "14-digit",
+      "name": "subscriptions",
+      "size_bytes": 14474,
+      "size_lines": 464,
+      "sha256": "5e4dc3649fa8cad0947eaa54d12dc3fa4b7167507e73fa2d915650d97b79a868",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20241129000002_cash_payments.sql",
+      "timestamp": "20241129000002",
+      "timestamp_raw": "20241129000002",
+      "ts_format": "14-digit",
+      "name": "cash_payments",
+      "size_bytes": 12130,
+      "size_lines": 421,
+      "sha256": "277e1f98e17367a3bc92a5477b72e74c6694a9203fef18b734bc355cddd7407c",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "202411290001_add_etudiant_lease_type.sql",
+      "timestamp": "20241129000100",
+      "timestamp_raw": "202411290001",
+      "ts_format": "12-digit",
+      "name": "add_etudiant_lease_type",
+      "size_bytes": 819,
+      "size_lines": 33,
+      "sha256": "c586999b8129d8ca831f90bd4331663a6ab3812c735ffc7157b7e049a20e60d2",
+      "first_operation": "ALTER TABLE LEASES"
+    },
+    {
+      "filename": "202411290002_add_studio_box_property_types.sql",
+      "timestamp": "20241129000200",
+      "timestamp_raw": "202411290002",
+      "ts_format": "12-digit",
+      "name": "add_studio_box_property_types",
+      "size_bytes": 1164,
+      "size_lines": 50,
+      "sha256": "9e7b0daf04eef7872935cac1b649127d622c7c0a3890e3ca0dd6b6ba94fd6601",
+      "first_operation": "ALTER TABLE PROPERTIES"
+    },
+    {
+      "filename": "202411290003_add_banking_columns.sql",
+      "timestamp": "20241129000300",
+      "timestamp_raw": "202411290003",
+      "ts_format": "12-digit",
+      "name": "add_banking_columns",
+      "size_bytes": 752,
+      "size_lines": 20,
+      "sha256": "bed7336b41e8002941e6e11e7e290a41294888ae2aba4c17866196f62331ddd3",
+      "first_operation": "ALTER TABLE OWNER"
+    },
+    {
+      "filename": "20241130000001_add_lease_invite_columns.sql",
+      "timestamp": "20241130000001",
+      "timestamp_raw": "20241130000001",
+      "ts_format": "14-digit",
+      "name": "add_lease_invite_columns",
+      "size_bytes": 3595,
+      "size_lines": 71,
+      "sha256": "907a7615357ca9050c1f2a17fcb76557316f821764bd522424d98806fb4c9271",
+      "first_operation": "ALTER TABLE LEASES ADD"
+    },
+    {
+      "filename": "20241130000002_add_tenant_identity_documents.sql",
+      "timestamp": "20241130000002",
+      "timestamp_raw": "20241130000002",
+      "ts_format": "14-digit",
+      "name": "add_tenant_identity_documents",
+      "size_bytes": 9532,
+      "size_lines": 259,
+      "sha256": "aedb92a70256bd5c2606a0834ed8741fdc0a7021baef7160728613ff8d9c8064",
+      "first_operation": "ALTER TABLE TENANT"
+    },
+    {
+      "filename": "20241130000003_fix_profiles_rls.sql",
+      "timestamp": "20241130000003",
+      "timestamp_raw": "20241130000003",
+      "ts_format": "14-digit",
+      "name": "fix_profiles_rls",
+      "size_bytes": 1607,
+      "size_lines": 45,
+      "sha256": "d8d6e24bc8432f911c7a1081ad37e4aabd1fcd7f9d8fbc165a34bafaa16a6581",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20241130000004_fix_leases_rls_simple.sql",
+      "timestamp": "20241130000004",
+      "timestamp_raw": "20241130000004",
+      "ts_format": "14-digit",
+      "name": "fix_leases_rls_simple",
+      "size_bytes": 2080,
+      "size_lines": 49,
+      "sha256": "acc4963c343cb2053de1cef2656d9c945423cf162ed95cd55239fa4c2fd7ae3a",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20241130000010_add_external_api_keys.sql",
+      "timestamp": "20241130000010",
+      "timestamp_raw": "20241130000010",
+      "ts_format": "14-digit",
+      "name": "add_external_api_keys",
+      "size_bytes": 5287,
+      "size_lines": 134,
+      "sha256": "c0be9b816e01f95362c0c222a270f28c05a49a486ac21d6f1ee1d433ee34c180",
+      "first_operation": "INSERT INTO API"
+    },
+    {
+      "filename": "20241201000001_performance_indexes.sql",
+      "timestamp": "20241201000001",
+      "timestamp_raw": "20241201000001",
+      "ts_format": "14-digit",
+      "name": "performance_indexes",
+      "size_bytes": 7291,
+      "size_lines": 186,
+      "sha256": "fa949b389d0bc849adf59cbb700e3d0b3fca9ef55b71e6a1545748aaf71b1881",
+      "first_operation": "CREATE INDEX IF NOT"
+    },
+    {
+      "filename": "20241201000002_otp_codes_table.sql",
+      "timestamp": "20241201000002",
+      "timestamp_raw": "20241201000002",
+      "ts_format": "14-digit",
+      "name": "otp_codes_table",
+      "size_bytes": 2310,
+      "size_lines": 80,
+      "sha256": "55a00607c89e3955d8e18d7cda8d1b7461efa657e9c19c26cae97aa4e97ef4a5",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20241201000003_quotes_table.sql",
+      "timestamp": "20241201000003",
+      "timestamp_raw": "20241201000003",
+      "ts_format": "14-digit",
+      "name": "quotes_table",
+      "size_bytes": 6181,
+      "size_lines": 150,
+      "sha256": "870230100b5edac8f4539fc3341adf43f70c61094ea754b2bbbd995ac9aa6c3a",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20250101000001_owner_dashboard_rpc.sql",
+      "timestamp": "20250101000001",
+      "timestamp_raw": "20250101000001",
+      "ts_format": "14-digit",
+      "name": "owner_dashboard_rpc",
+      "size_bytes": 6507,
+      "size_lines": 219,
+      "sha256": "3de6cc79ba4f85a19a481fb8cd330f9bdd3c852d6852ed9a66ca96c502df0eba",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20250114120000_add_guarantor_role.sql",
+      "timestamp": "20250114120000",
+      "timestamp_raw": "20250114120000",
+      "ts_format": "14-digit",
+      "name": "add_guarantor_role",
+      "size_bytes": 504,
+      "size_lines": 21,
+      "sha256": "e4f646c3b68ad6099c04a144d2f7f11405ee8698fb125f738ce15950c32aaa88",
+      "first_operation": "ALTER TABLE PROFILES"
+    },
+    {
+      "filename": "20250114120500_create_avatars_bucket.sql",
+      "timestamp": "20250114120500",
+      "timestamp_raw": "20250114120500",
+      "ts_format": "14-digit",
+      "name": "create_avatars_bucket",
+      "size_bytes": 529,
+      "size_lines": 25,
+      "sha256": "3b76b80a2e814f1c63ed7363c048227e931d39e584b986adbef4229be86efe71",
+      "first_operation": "INSERT INTO STORAGE"
+    },
+    {
+      "filename": "202501170000_fix_lease_signers_recursion.sql",
+      "timestamp": "20250117000000",
+      "timestamp_raw": "202501170000",
+      "ts_format": "12-digit",
+      "name": "fix_lease_signers_recursion",
+      "size_bytes": 2935,
+      "size_lines": 65,
+      "sha256": "9d6ee63c5c219cba047c38c90bd6cbe771360254ddf6e96c2b067a7105055842",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "202501170001_fix_tenant_profiles_rls_recursion.sql",
+      "timestamp": "20250117000100",
+      "timestamp_raw": "202501170001",
+      "ts_format": "12-digit",
+      "name": "fix_tenant_profiles_rls_recursion",
+      "size_bytes": 1636,
+      "size_lines": 49,
+      "sha256": "8f6ef72ddea0dd425d6b6144e50e459cd13dddd4797c256592df50253db7d780",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "202501170002_fix_roommates_rls_recursion.sql",
+      "timestamp": "20250117000200",
+      "timestamp_raw": "202501170002",
+      "ts_format": "12-digit",
+      "name": "fix_roommates_rls_recursion",
+      "size_bytes": 997,
+      "size_lines": 31,
+      "sha256": "a12d509da487ba505b3c2b6cad8f87c6c142beac97d05d86bdcecee42ab60a7c",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "202501180000_normalize_existing_emails.sql",
+      "timestamp": "20250118000000",
+      "timestamp_raw": "202501180000",
+      "ts_format": "12-digit",
+      "name": "normalize_existing_emails",
+      "size_bytes": 2730,
+      "size_lines": 97,
+      "sha256": "1619b7b749c6eb5e6e33357569d80e5d3c9f9f6a4a2fc0fa4dd73afb2cc20b5a",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "202501200000_fix_leases_rls_infinite_recursion.sql",
+      "timestamp": "20250120000000",
+      "timestamp_raw": "202501200000",
+      "ts_format": "12-digit",
+      "name": "fix_leases_rls_infinite_recursion",
+      "size_bytes": 7708,
+      "size_lines": 207,
+      "sha256": "507def7cab957ce0502ec30ac03aea0eb4b6099da388f9a656b5b18427d9b30e",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20250204000000_add_property_investment_fields.sql",
+      "timestamp": "20250204000000",
+      "timestamp_raw": "20250204000000",
+      "ts_format": "14-digit",
+      "name": "add_property_investment_fields",
+      "size_bytes": 2972,
+      "size_lines": 85,
+      "sha256": "19ebe190f162e85c26ad87c7efc51dbf63f2123088f006ba993a0a110dd7e4c7",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "202502141000_property_rooms_photos.sql",
+      "timestamp": "20250214100000",
+      "timestamp_raw": "202502141000",
+      "ts_format": "12-digit",
+      "name": "property_rooms_photos",
+      "size_bytes": 6533,
+      "size_lines": 200,
+      "sha256": "2ff8e80c22cfd06f23e7e748a649b2005e048afc014bfeec6c0c7693a2ed1c1b",
+      "first_operation": "ALTER TABLE PROPERTIES"
+    },
+    {
+      "filename": "202502150000_property_model_v3.sql",
+      "timestamp": "20250215000000",
+      "timestamp_raw": "202502150000",
+      "ts_format": "12-digit",
+      "name": "property_model_v3",
+      "size_bytes": 9664,
+      "size_lines": 262,
+      "sha256": "3179d6eaede6a541ea002423fbca3d3e4aa8cad9d6e3221f30d41c79a4986a57",
+      "first_operation": "ALTER TABLE PROPERTIES"
+    },
+    {
+      "filename": "202502150001_property_photos_storage_policies.sql",
+      "timestamp": "20250215000100",
+      "timestamp_raw": "202502150001",
+      "ts_format": "12-digit",
+      "name": "property_photos_storage_policies",
+      "size_bytes": 2897,
+      "size_lines": 99,
+      "sha256": "ecaf3a122034d95dea80c0a7e87754e23f16ce5b23ae2185b464f14c5af93d82",
+      "first_operation": "CREATE POLICY"
+    },
+    {
+      "filename": "202502160000_fix_supabase_advisors_issues.sql",
+      "timestamp": "20250216000000",
+      "timestamp_raw": "202502160000",
+      "ts_format": "12-digit",
+      "name": "fix_supabase_advisors_issues",
+      "size_bytes": 11080,
+      "size_lines": 422,
+      "sha256": "edfda62b493b34a27609f9b63c7db10ec15b7ceb0205647bb616c46b487c8124",
+      "first_operation": "CREATE VIEW PAYMENT"
+    },
+    {
+      "filename": "202502170000_optimize_generate_unique_code.sql",
+      "timestamp": "20250217000000",
+      "timestamp_raw": "202502170000",
+      "ts_format": "12-digit",
+      "name": "optimize_generate_unique_code",
+      "size_bytes": 1809,
+      "size_lines": 50,
+      "sha256": "d56bea0225a56ca7e372dc3e5e94c7ac1fb1296a97e59f9d1d4595d833c2a09f",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "202502180000_rls_properties_units.sql",
+      "timestamp": "20250218000000",
+      "timestamp_raw": "202502180000",
+      "ts_format": "12-digit",
+      "name": "rls_properties_units",
+      "size_bytes": 1988,
+      "size_lines": 72,
+      "sha256": "c9df87b220a823026143bf71d011b70a023482d878f0c3e067f96828e193b33c",
+      "first_operation": "ALTER TABLE PROPERTIES ENABLE"
+    },
+    {
+      "filename": "202502180001_fix_rls_conflicts.sql",
+      "timestamp": "20250218000100",
+      "timestamp_raw": "202502180001",
+      "ts_format": "12-digit",
+      "name": "fix_rls_conflicts",
+      "size_bytes": 2038,
+      "size_lines": 57,
+      "sha256": "dc961b148daa5e0d36d7a78c20e3e514b3bcdd5331a79ddc4933ee76f559afc5",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "202502180002_fix_rls_conflicts_final.sql",
+      "timestamp": "20250218000200",
+      "timestamp_raw": "202502180002",
+      "ts_format": "12-digit",
+      "name": "fix_rls_conflicts_final",
+      "size_bytes": 2934,
+      "size_lines": 74,
+      "sha256": "f0d65e26703b5b16d0d92fd7329138ccf0f9a25f87a984a4584ca50e734fe75a",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "202502180003_ensure_user_profile_id_works.sql",
+      "timestamp": "20250218000300",
+      "timestamp_raw": "202502180003",
+      "ts_format": "12-digit",
+      "name": "ensure_user_profile_id_works",
+      "size_bytes": 3022,
+      "size_lines": 138,
+      "sha256": "5e0f6d1d00f0929bbd0c520b7355100d5494aef00d60715cc1875007d98c0fa8",
+      "first_operation": "DROP FUNCTION IF EXISTS"
+    },
+    {
+      "filename": "202502190000_diagnostic_owner_id.sql",
+      "timestamp": "20250219000000",
+      "timestamp_raw": "202502190000",
+      "ts_format": "12-digit",
+      "name": "diagnostic_owner_id",
+      "size_bytes": 338,
+      "size_lines": 7,
+      "sha256": "0f87329ca8898681c2cb09edf6efc12152f05bd4e5b78dc03e6f2025d86ef4d8",
+      "first_operation": "UNKNOWN"
+    },
+    {
+      "filename": "202502190001_fix_owner_id_mismatch.sql",
+      "timestamp": "20250219000100",
+      "timestamp_raw": "202502190001",
+      "ts_format": "12-digit",
+      "name": "fix_owner_id_mismatch",
+      "size_bytes": 1588,
+      "size_lines": 42,
+      "sha256": "73e301a26be51a4eed0d72e271665009d22ff741761e9fa8cb6875d26c483481",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "202502190002_fix_existing_owner_id.sql",
+      "timestamp": "20250219000200",
+      "timestamp_raw": "202502190002",
+      "ts_format": "12-digit",
+      "name": "fix_existing_owner_id",
+      "size_bytes": 2553,
+      "size_lines": 77,
+      "sha256": "3607a7edcbfb0c9795ffa1579fa8e24e1d2b5424b91a0db590d271c36ca66c19",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "202502190003_diagnostic_owner_id_quick.sql",
+      "timestamp": "20250219000300",
+      "timestamp_raw": "202502190003",
+      "ts_format": "12-digit",
+      "name": "diagnostic_owner_id_quick",
+      "size_bytes": 1806,
+      "size_lines": 56,
+      "sha256": "26e523a5224351bb37ab959891e0c7a1ad4137eb0479f9c26db38da1a628241b",
+      "first_operation": "UNKNOWN"
+    },
+    {
+      "filename": "202502191200_document_verification.sql",
+      "timestamp": "20250219120000",
+      "timestamp_raw": "202502191200",
+      "ts_format": "12-digit",
+      "name": "document_verification",
+      "size_bytes": 798,
+      "size_lines": 23,
+      "sha256": "3c358ea2be68de2760ef9cc3fdcb797d7c662cbd7f9e5bba2ab7efaf87a49ab3",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "202502191300_ticket_maintenance_ai.sql",
+      "timestamp": "20250219130000",
+      "timestamp_raw": "202502191300",
+      "ts_format": "12-digit",
+      "name": "ticket_maintenance_ai",
+      "size_bytes": 313,
+      "size_lines": 12,
+      "sha256": "d7578187c3671a069df07a7315a14b37c9ce20a9298f5ce9cde65b4438d200e5",
+      "first_operation": "ALTER TABLE TICKETS"
+    },
+    {
+      "filename": "202502191400_fix_property_details_rpc.sql",
+      "timestamp": "20250219140000",
+      "timestamp_raw": "202502191400",
+      "ts_format": "12-digit",
+      "name": "fix_property_details_rpc",
+      "size_bytes": 2271,
+      "size_lines": 82,
+      "sha256": "3a429e4410220ea4d003f901be19943b3de265de30036ea37f0d70a24f1524b3",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20250220000000_add_open_banking_tables.sql",
+      "timestamp": "20250220000000",
+      "timestamp_raw": "20250220000000",
+      "ts_format": "14-digit",
+      "name": "add_open_banking_tables",
+      "size_bytes": 3005,
+      "size_lines": 84,
+      "sha256": "b13f87e385e50c3f3348d1e1e79d8a805b0122763e13ca9cae458cf0180d51c7",
+      "first_operation": "ALTER TABLE IF EXISTS"
+    },
+    {
+      "filename": "20250601000000_legal_protocol_tracking.sql",
+      "timestamp": "20250601000000",
+      "timestamp_raw": "20250601000000",
+      "ts_format": "14-digit",
+      "name": "legal_protocol_tracking",
+      "size_bytes": 3144,
+      "size_lines": 83,
+      "sha256": "139f1f9d1bac56ce71da3a6b5cd130bddcfe43cd6238e4c6789da5584efd6f85",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20251119060000_property_details_rpc.sql",
+      "timestamp": "20251119060000",
+      "timestamp_raw": "20251119060000",
+      "ts_format": "14-digit",
+      "name": "property_details_rpc",
+      "size_bytes": 3102,
+      "size_lines": 103,
+      "sha256": "e18eaab17933733dfb39ce8222cc62025a836a3d7e2d29869e97c4a403ee7605",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20251119070000_lease_details_rpc.sql",
+      "timestamp": "20251119070000",
+      "timestamp_raw": "20251119070000",
+      "ts_format": "14-digit",
+      "name": "lease_details_rpc",
+      "size_bytes": 2590,
+      "size_lines": 94,
+      "sha256": "22c4b9b3e4aa9ec3c82add64739d9dbb281e891b40b0c890bb8e4387392f4348",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20251119080000_tenant_dashboard_rpc.sql",
+      "timestamp": "20251119080000",
+      "timestamp_raw": "20251119080000",
+      "ts_format": "14-digit",
+      "name": "tenant_dashboard_rpc",
+      "size_bytes": 2402,
+      "size_lines": 86,
+      "sha256": "3c69cea39ed7b52e3a2a7302fec1e0dbcbd22dd5fcf09b06f35d1e4dac209e73",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20251119090000_admin_stats_rpc.sql",
+      "timestamp": "20251119090000",
+      "timestamp_raw": "20251119090000",
+      "ts_format": "14-digit",
+      "name": "admin_stats_rpc",
+      "size_bytes": 2149,
+      "size_lines": 77,
+      "sha256": "d9fc34694310481d982ee33a5d0427a6f6ae0bd3fbe3a12c23e3014e4233e25b",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20251119093000_admin_stats_rpc_v2.sql",
+      "timestamp": "20251119093000",
+      "timestamp_raw": "20251119093000",
+      "ts_format": "14-digit",
+      "name": "admin_stats_rpc_v2",
+      "size_bytes": 4023,
+      "size_lines": 127,
+      "sha256": "dbabedcb10510573e4503dae1e28307536d1bdb220517ecc5179c3e1d48199e3",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20251130000001_edl_media_section.sql",
+      "timestamp": "20251130000001",
+      "timestamp_raw": "20251130000001",
+      "ts_format": "14-digit",
+      "name": "edl_media_section",
+      "size_bytes": 552,
+      "size_lines": 18,
+      "sha256": "473d84295f22500800973d863755c56eb80cccd02f11aeeb38a7c3b5529b56cd",
+      "first_operation": "ALTER TABLE EDL"
+    },
+    {
+      "filename": "20251204100000_unified_pricing_plans.sql",
+      "timestamp": "20251204100000",
+      "timestamp_raw": "20251204100000",
+      "ts_format": "14-digit",
+      "name": "unified_pricing_plans",
+      "size_bytes": 10972,
+      "size_lines": 376,
+      "sha256": "51542ad7225b51cb96b8fb77f6564db187c98c84b91947210b6e8da587a48075",
+      "first_operation": "DELETE FROM SUBSCRIPTION"
+    },
+    {
+      "filename": "20251204200000_ensure_documents_bucket.sql",
+      "timestamp": "20251204200000",
+      "timestamp_raw": "20251204200000",
+      "ts_format": "14-digit",
+      "name": "ensure_documents_bucket",
+      "size_bytes": 3764,
+      "size_lines": 121,
+      "sha256": "943e5427704fe685b837d34f45afc2842bc97fb538a1aa3bac074c3dab8cf8e9",
+      "first_operation": "INSERT INTO STORAGE"
+    },
+    {
+      "filename": "20251204210000_cni_expiry_management.sql",
+      "timestamp": "20251204210000",
+      "timestamp_raw": "20251204210000",
+      "ts_format": "14-digit",
+      "name": "cni_expiry_management",
+      "size_bytes": 7892,
+      "size_lines": 226,
+      "sha256": "c49f5ac8665faaa1c3cbbe08284e3b5b94988e63d04d72d5e46a690369eaa40c",
+      "first_operation": "ALTER TABLE DOCUMENTS ADD"
+    },
+    {
+      "filename": "20251204220000_add_cni_document_types.sql",
+      "timestamp": "20251204220000",
+      "timestamp_raw": "20251204220000",
+      "ts_format": "14-digit",
+      "name": "add_cni_document_types",
+      "size_bytes": 1374,
+      "size_lines": 52,
+      "sha256": "ffbee1adad3d5a30f1c579e3aaf856b130db618e6fa99eb735f97d6257177d19",
+      "first_operation": "ALTER TABLE DOCUMENTS"
+    },
+    {
+      "filename": "20251204230000_fix_missing_columns.sql",
+      "timestamp": "20251204230000",
+      "timestamp_raw": "20251204230000",
+      "ts_format": "14-digit",
+      "name": "fix_missing_columns",
+      "size_bytes": 4353,
+      "size_lines": 158,
+      "sha256": "9e02ffa52206b650c6ff9ee326716ef95abdcb5ad8675840443c777fe3404c73",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20251204300000_complete_optimization.sql",
+      "timestamp": "20251204300000",
+      "timestamp_raw": "20251204300000",
+      "ts_format": "14-digit",
+      "name": "complete_optimization",
+      "size_bytes": 15492,
+      "size_lines": 462,
+      "sha256": "41d1a5ee0592a87b524c5401e13e3a14bf917cdf66b4b0b2cfb71af3b00bb513",
+      "first_operation": "CREATE OR REPLACE VIEW"
+    },
+    {
+      "filename": "20251204400000_ensure_profiles_email.sql",
+      "timestamp": "20251204400000",
+      "timestamp_raw": "20251204400000",
+      "ts_format": "14-digit",
+      "name": "ensure_profiles_email",
+      "size_bytes": 2504,
+      "size_lines": 87,
+      "sha256": "1b30e70b0f378d10fd1e92f843c60018af264a67be946dab1f557c4a288696bc",
+      "first_operation": "ALTER TABLE PROFILES ADD"
+    },
+    {
+      "filename": "20251204500000_fix_rls_recursion_urgent.sql",
+      "timestamp": "20251204500000",
+      "timestamp_raw": "20251204500000",
+      "ts_format": "14-digit",
+      "name": "fix_rls_recursion_urgent",
+      "size_bytes": 5572,
+      "size_lines": 169,
+      "sha256": "c5c6b2d32a8cc72a0e713798fc84ffb70cf58a045841daf79b6a1ca36e735dc9",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20251204600000_update_trial_30_days.sql",
+      "timestamp": "20251204600000",
+      "timestamp_raw": "20251204600000",
+      "ts_format": "14-digit",
+      "name": "update_trial_30_days",
+      "size_bytes": 3657,
+      "size_lines": 131,
+      "sha256": "1e99aa8c2c97fd388b8ec07328b8851e999b0fd75eab72f6b33abc86f8627f83",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20251204700000_fix_notifications_and_functions.sql",
+      "timestamp": "20251204700000",
+      "timestamp_raw": "20251204700000",
+      "ts_format": "14-digit",
+      "name": "fix_notifications_and_functions",
+      "size_bytes": 4310,
+      "size_lines": 112,
+      "sha256": "e7dbdcece88e575020e15925fc69e652f35ddeecd4aeefac2dff16aa9c5739cb",
+      "first_operation": "ALTER TABLE NOTIFICATIONS ADD"
+    },
+    {
+      "filename": "20251204800000_fix_remaining_issues.sql",
+      "timestamp": "20251204800000",
+      "timestamp_raw": "20251204800000",
+      "ts_format": "14-digit",
+      "name": "fix_remaining_issues",
+      "size_bytes": 11376,
+      "size_lines": 282,
+      "sha256": "1899763b1182c79118fc37438366f32b33e3bd30511f004e9ac7d5e6d5e28649",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20251205000001_notification_triggers.sql",
+      "timestamp": "20251205000001",
+      "timestamp_raw": "20251205000001",
+      "ts_format": "14-digit",
+      "name": "notification_triggers",
+      "size_bytes": 13675,
+      "size_lines": 419,
+      "sha256": "7afe8fe2b61e7f7b6d9302c625d8e0709065348e8de125d67172ace6b84d13c8",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20251205100000_notifications_system.sql",
+      "timestamp": "20251205100000",
+      "timestamp_raw": "20251205100000",
+      "ts_format": "14-digit",
+      "name": "notifications_system",
+      "size_bytes": 9113,
+      "size_lines": 284,
+      "sha256": "217dbf381dc9169f818e53dac5e119e97d4c1ff2983f5fdbd25de42ab8e6ad58",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20251205200000_provider_compliance_sota.sql",
+      "timestamp": "20251205200000",
+      "timestamp_raw": "20251205200000",
+      "ts_format": "14-digit",
+      "name": "provider_compliance_sota",
+      "size_bytes": 21768,
+      "size_lines": 605,
+      "sha256": "146f0845d37bb82f4728143068002fe4beb524ce8e42e219a6a1c33b0a75d7c7",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20251205300000_work_order_reports.sql",
+      "timestamp": "20251205300000",
+      "timestamp_raw": "20251205300000",
+      "ts_format": "14-digit",
+      "name": "work_order_reports",
+      "size_bytes": 20256,
+      "size_lines": 526,
+      "sha256": "b0d90eb3b851fb6dbe36df87bef15f7e00908674ff36211dda83c54dbc535ee4",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20251205400000_provider_analytics_dashboard.sql",
+      "timestamp": "20251205400000",
+      "timestamp_raw": "20251205400000",
+      "ts_format": "14-digit",
+      "name": "provider_analytics_dashboard",
+      "size_bytes": 3843,
+      "size_lines": 97,
+      "sha256": "c344a350c19832ac7805dcc39b60c9d77d4008cf628687e937e9bd8f8fdafd98",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20251205500000_invoicing_professional.sql",
+      "timestamp": "20251205500000",
+      "timestamp_raw": "20251205500000",
+      "ts_format": "14-digit",
+      "name": "invoicing_professional",
+      "size_bytes": 24791,
+      "size_lines": 675,
+      "sha256": "ce1f990aaf9fa1565f16eb5e807cbda86f4a5c089aa62bcf8113fc6886210a65",
+      "first_operation": "DROP TABLE IF EXISTS"
+    },
+    {
+      "filename": "20251205600000_notifications_centralized.sql",
+      "timestamp": "20251205600000",
+      "timestamp_raw": "20251205600000",
+      "ts_format": "14-digit",
+      "name": "notifications_centralized",
+      "size_bytes": 2813,
+      "size_lines": 69,
+      "sha256": "8b6a15a49aef1df56ddf5c8d7b16ff5726c9aaa8b211af235333310771a95c68",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20251205700000_provider_missing_tables.sql",
+      "timestamp": "20251205700000",
+      "timestamp_raw": "20251205700000",
+      "ts_format": "14-digit",
+      "name": "provider_missing_tables",
+      "size_bytes": 15399,
+      "size_lines": 443,
+      "sha256": "818b7195864ba2f1d44156429348aed4e19e588964f1eb741634f3dbb7553976",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20251205800000_intervention_flow_complete.sql",
+      "timestamp": "20251205800000",
+      "timestamp_raw": "20251205800000",
+      "ts_format": "14-digit",
+      "name": "intervention_flow_complete",
+      "size_bytes": 19716,
+      "size_lines": 590,
+      "sha256": "fa21759f9829642c85f6e58e8cb2d31298390d0c07ae3484e9e3cc8909b228ef",
+      "first_operation": "ALTER TABLE WORK"
+    },
+    {
+      "filename": "20251206100000_vigilance_audit_log.sql",
+      "timestamp": "20251206100000",
+      "timestamp_raw": "20251206100000",
+      "ts_format": "14-digit",
+      "name": "vigilance_audit_log",
+      "size_bytes": 4993,
+      "size_lines": 147,
+      "sha256": "b67f73bf4f08675ac69d1034784b69a8c96b0ad11c6b3e609c7d9c11a71f6a06",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20251206200000_provider_portfolio.sql",
+      "timestamp": "20251206200000",
+      "timestamp_raw": "20251206200000",
+      "ts_format": "14-digit",
+      "name": "provider_portfolio",
+      "size_bytes": 8407,
+      "size_lines": 256,
+      "sha256": "4eeeabcd9d0726118149fec6a191d8207f05b8c6a2ba14d30ddc079713b546b3",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20251206300000_enterprise_tiers.sql",
+      "timestamp": "20251206300000",
+      "timestamp_raw": "20251206300000",
+      "ts_format": "14-digit",
+      "name": "enterprise_tiers",
+      "size_bytes": 19343,
+      "size_lines": 655,
+      "sha256": "302c70947c7d5bc11cf182c545fb426884bff5da891e9b668016e684f6789c3c",
+      "first_operation": "INSERT INTO SUBSCRIPTION"
+    },
+    {
+      "filename": "20251206400000_pricing_option_b.sql",
+      "timestamp": "20251206400000",
+      "timestamp_raw": "20251206400000",
+      "ts_format": "14-digit",
+      "name": "pricing_option_b",
+      "size_bytes": 11369,
+      "size_lines": 394,
+      "sha256": "9767afeb5386211b45d415183c533b7b5913d2e57f04feda2f01474b8504676f",
+      "first_operation": "UPDATE SUBSCRIPTION"
+    },
+    {
+      "filename": "20251206500000_fix_lease_end_processes.sql",
+      "timestamp": "20251206500000",
+      "timestamp_raw": "20251206500000",
+      "ts_format": "14-digit",
+      "name": "fix_lease_end_processes",
+      "size_bytes": 15804,
+      "size_lines": 437,
+      "sha256": "19130e2ad2466cbad43dcdf2096b5b9ae3b1ac67ad5daaadd89081e423bd3189",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20251206550000_impersonation_sessions.sql",
+      "timestamp": "20251206550000",
+      "timestamp_raw": "20251206550000",
+      "ts_format": "14-digit",
+      "name": "impersonation_sessions",
+      "size_bytes": 3191,
+      "size_lines": 107,
+      "sha256": "c9fa12229fa52825ad680adc87111b8774c256d18a733d674e7059e66fa3ed1c",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20251206600000_analytics_materialized_views.sql",
+      "timestamp": "20251206600000",
+      "timestamp_raw": "20251206600000",
+      "ts_format": "14-digit",
+      "name": "analytics_materialized_views",
+      "size_bytes": 8174,
+      "size_lines": 205,
+      "sha256": "df1801f9229a67e3a079f54a22bfeaa2f05a87d4bbd73df2fcac45b4a4a70247",
+      "first_operation": "CREATE INDEX IF NOT"
+    },
+    {
+      "filename": "20251206700000_agency_module.sql",
+      "timestamp": "20251206700000",
+      "timestamp_raw": "20251206700000",
+      "ts_format": "14-digit",
+      "name": "agency_module",
+      "size_bytes": 13813,
+      "size_lines": 365,
+      "sha256": "de588a6da159101f6dfd67af917113413d85bdf5ec41c32a7bb1ab36553d9af6",
+      "first_operation": "ALTER TABLE PROFILES"
+    },
+    {
+      "filename": "20251206750000_fix_all_missing_tables.sql",
+      "timestamp": "20251206750000",
+      "timestamp_raw": "20251206750000",
+      "ts_format": "14-digit",
+      "name": "fix_all_missing_tables",
+      "size_bytes": 23418,
+      "size_lines": 682,
+      "sha256": "c6891ab0ec5c00229a02d92002c11c5800b1a9872e15652f56b6c926298ffad3",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20251206800000_assistant_ai_tables.sql",
+      "timestamp": "20251206800000",
+      "timestamp_raw": "20251206800000",
+      "ts_format": "14-digit",
+      "name": "assistant_ai_tables",
+      "size_bytes": 6769,
+      "size_lines": 188,
+      "sha256": "182a04db9cb8e20234368272ce5f9d20fe8a09785ac4ceaa7962e220a230c314",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20251207000000_colocation_advanced.sql",
+      "timestamp": "20251207000000",
+      "timestamp_raw": "20251207000000",
+      "ts_format": "14-digit",
+      "name": "colocation_advanced",
+      "size_bytes": 19226,
+      "size_lines": 575,
+      "sha256": "3b88983b7ecbae066c2f9cf4d74431de98a7b19d23e49db638e6fa2ae01c1479",
+      "first_operation": "ALTER TABLE LEASES ADD"
+    },
+    {
+      "filename": "20251207231451_add_visite_virtuelle_url.sql",
+      "timestamp": "20251207231451",
+      "timestamp_raw": "20251207231451",
+      "ts_format": "14-digit",
+      "name": "add_visite_virtuelle_url",
+      "size_bytes": 209,
+      "size_lines": 9,
+      "sha256": "0b12358d47482d9073e4de239ab0f1ce17a1688014226a2a1afcf39174386dc3",
+      "first_operation": "ALTER TABLE PROPERTIES"
+    },
+    {
+      "filename": "20251208000000_fix_all_roles_complete.sql",
+      "timestamp": "20251208000000",
+      "timestamp_raw": "20251208000000",
+      "ts_format": "14-digit",
+      "name": "fix_all_roles_complete",
+      "size_bytes": 20653,
+      "size_lines": 604,
+      "sha256": "416c844652e01cbfccddd4dc153fdca0e3295c3274e447700966ce5659474829",
+      "first_operation": "ALTER TABLE PROFILES"
+    },
+    {
+      "filename": "20251210100000_add_lease_payment_fields.sql",
+      "timestamp": "20251210100000",
+      "timestamp_raw": "20251210100000",
+      "ts_format": "14-digit",
+      "name": "add_lease_payment_fields",
+      "size_bytes": 1313,
+      "size_lines": 28,
+      "sha256": "93301fef6542f9ea10d11c91cd4d1e78d5a20b0e1249b642273c784991ffc893",
+      "first_operation": "ALTER TABLE LEASES"
+    },
+    {
+      "filename": "20251221000000_document_caching.sql",
+      "timestamp": "20251221000000",
+      "timestamp_raw": "20251221000000",
+      "ts_format": "14-digit",
+      "name": "document_caching",
+      "size_bytes": 10977,
+      "size_lines": 344,
+      "sha256": "36c6898d231756a26af2166c61df90b18fa94d19eab443ef317f6231f9e90d3d",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20251221000001_deposit_refunds.sql",
+      "timestamp": "20251221000001",
+      "timestamp_raw": "20251221000001",
+      "ts_format": "14-digit",
+      "name": "deposit_refunds",
+      "size_bytes": 5401,
+      "size_lines": 168,
+      "sha256": "229ac50f43b8b3b236e8e7657d8e30a94ee51e857760d33ab4d18238b99894ed",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20251221000002_lease_signers_invited_email.sql",
+      "timestamp": "20251221000002",
+      "timestamp_raw": "20251221000002",
+      "ts_format": "14-digit",
+      "name": "lease_signers_invited_email",
+      "size_bytes": 1035,
+      "size_lines": 34,
+      "sha256": "362d9e0a5f1ff87e2a75c4b1691c2894ae4932da99f78351a84c0a412184217a",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20251221000003_fix_lease_signers_nullable.sql",
+      "timestamp": "20251221000003",
+      "timestamp_raw": "20251221000003",
+      "ts_format": "14-digit",
+      "name": "fix_lease_signers_nullable",
+      "size_bytes": 2202,
+      "size_lines": 70,
+      "sha256": "5e52118b91b194936164f6c89b80782b95f0b04cfe0b70a8d053e1b4749b7242",
+      "first_operation": "ALTER TABLE LEASE"
+    },
+    {
+      "filename": "20251222000000_add_profile_columns.sql",
+      "timestamp": "20251222000000",
+      "timestamp_raw": "20251222000000",
+      "ts_format": "14-digit",
+      "name": "add_profile_columns",
+      "size_bytes": 1581,
+      "size_lines": 65,
+      "sha256": "c6fc847b65c9d2430df1175d5148d471f8ca88a276e461ca9feb914e7c614d6e",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20251222000001_signature_image.sql",
+      "timestamp": "20251222000001",
+      "timestamp_raw": "20251222000001",
+      "ts_format": "14-digit",
+      "name": "signature_image",
+      "size_bytes": 852,
+      "size_lines": 28,
+      "sha256": "6b67f3371ea98ccb9886626fed465ac45bb1f75bcb16c588523439eca660ccb6",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20251228000000_documents_sota.sql",
+      "timestamp": "20251228000000",
+      "timestamp_raw": "20251228000000",
+      "ts_format": "14-digit",
+      "name": "documents_sota",
+      "size_bytes": 12540,
+      "size_lines": 352,
+      "sha256": "4108710eebc6388d2021e24f2d0878c27be64ea89d454fd2a004207d64af1431",
+      "first_operation": "ALTER TABLE DOCUMENTS DROP"
+    },
+    {
+      "filename": "20251228000001_edl_before_activation.sql",
+      "timestamp": "20251228000001",
+      "timestamp_raw": "20251228000001",
+      "ts_format": "14-digit",
+      "name": "edl_before_activation",
+      "size_bytes": 6231,
+      "size_lines": 192,
+      "sha256": "fc3e50cc0b418c24eda2f6e94d5c50c406036f15bb9d80eb8b27855e6b024434",
+      "first_operation": "ALTER TABLE LEASES"
+    },
+    {
+      "filename": "20251228100000_sealed_lease_pdf.sql",
+      "timestamp": "20251228100000",
+      "timestamp_raw": "20251228100000",
+      "ts_format": "14-digit",
+      "name": "sealed_lease_pdf",
+      "size_bytes": 3633,
+      "size_lines": 119,
+      "sha256": "b5f616379aef2e9fcec082e42db4fac8446ab5ad01ab5343cad2f8c00f469869",
+      "first_operation": "ALTER TABLE LEASES"
+    },
+    {
+      "filename": "20251228200000_fix_lease_status_trigger.sql",
+      "timestamp": "20251228200000",
+      "timestamp_raw": "20251228200000",
+      "ts_format": "14-digit",
+      "name": "fix_lease_status_trigger",
+      "size_bytes": 2655,
+      "size_lines": 70,
+      "sha256": "b6af04129e9a29ffade4d03086a3da6ef27ff86358a27bc3f6314d995a9fc3aa",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20251228210000_dpe_management_system.sql",
+      "timestamp": "20251228210000",
+      "timestamp_raw": "20251228210000",
+      "ts_format": "14-digit",
+      "name": "dpe_management_system",
+      "size_bytes": 5895,
+      "size_lines": 152,
+      "sha256": "948d1e49213e43327905c1a5e00379a8a0f639bfb31d24d3b0be22cb673f004c",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20251228220000_fix_meters_rls_and_nullability.sql",
+      "timestamp": "20251228220000",
+      "timestamp_raw": "20251228220000",
+      "ts_format": "14-digit",
+      "name": "fix_meters_rls_and_nullability",
+      "size_bytes": 3106,
+      "size_lines": 105,
+      "sha256": "e909aa0a2617c0fb92b70ad89d589f46c42beadc6d245613581d1639a84f84c2",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20251228230000_definitive_rls_fix.sql",
+      "timestamp": "20251228230000",
+      "timestamp_raw": "20251228230000",
+      "ts_format": "14-digit",
+      "name": "definitive_rls_fix",
+      "size_bytes": 7145,
+      "size_lines": 230,
+      "sha256": "c588d3f28b30abc7b3fe4ab4a8b3912e0d30919eafcc160f8e8731097bf0490d",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20251229000001_fix_existing_lease_statuses.sql",
+      "timestamp": "20251229000001",
+      "timestamp_raw": "20251229000001",
+      "ts_format": "14-digit",
+      "name": "fix_existing_lease_statuses",
+      "size_bytes": 2898,
+      "size_lines": 87,
+      "sha256": "56aaae62e13b564de4e6355923519ea526e0f6872e253e94600db969f09e7f7f",
+      "first_operation": "UPDATE LEASES L"
+    },
+    {
+      "filename": "20251231000000_advanced_signatures.sql",
+      "timestamp": "20251231000000",
+      "timestamp_raw": "20251231000000",
+      "ts_format": "14-digit",
+      "name": "advanced_signatures",
+      "size_bytes": 1878,
+      "size_lines": 38,
+      "sha256": "a978c1ffac4eb9c8a8113e0b2697bb6ea132ef7a4a22bbd6a2b4f1b8daea8e43",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20251231000001_fix_owner_dashboard_rpc.sql",
+      "timestamp": "20251231000001",
+      "timestamp_raw": "20251231000001",
+      "ts_format": "14-digit",
+      "name": "fix_owner_dashboard_rpc",
+      "size_bytes": 3660,
+      "size_lines": 135,
+      "sha256": "9a4402e83693b158b39bf0e4fb7c73e5dcb0f78af70381b1f5dfcdfc49e400b8",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20251231000002_agency_dashboard_rpc.sql",
+      "timestamp": "20251231000002",
+      "timestamp_raw": "20251231000002",
+      "ts_format": "14-digit",
+      "name": "agency_dashboard_rpc",
+      "size_bytes": 5266,
+      "size_lines": 151,
+      "sha256": "8c60d82f0d32402fcbec399cbddad727aa9e77cc6d0318dd9ec67a6fecd72b94",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20251231000003_enhance_tenant_dashboard_rpc.sql",
+      "timestamp": "20251231000003",
+      "timestamp_raw": "20251231000003",
+      "ts_format": "14-digit",
+      "name": "enhance_tenant_dashboard_rpc",
+      "size_bytes": 4741,
+      "size_lines": 151,
+      "sha256": "ff39819dfa6dc41d17df63afe165dec10c6df99aee040b142280c3c52e76b954",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20251231000004_fix_admin_stats_rpc.sql",
+      "timestamp": "20251231000004",
+      "timestamp_raw": "20251231000004",
+      "ts_format": "14-digit",
+      "name": "fix_admin_stats_rpc",
+      "size_bytes": 4521,
+      "size_lines": 141,
+      "sha256": "66c4b58566f1ea19df535e21ce58c903d483fb96facea3c7da0b924f7d636737",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20251231000005_finalize_owner_dashboard_rpc.sql",
+      "timestamp": "20251231000005",
+      "timestamp_raw": "20251231000005",
+      "ts_format": "14-digit",
+      "name": "finalize_owner_dashboard_rpc",
+      "size_bytes": 4450,
+      "size_lines": 151,
+      "sha256": "7ad66e7d966bdf33a1af8bfc8448da9beb5f36d2eae5194e897addaf35993dee",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20251231000006_automated_billing.sql",
+      "timestamp": "20251231000006",
+      "timestamp_raw": "20251231000006",
+      "ts_format": "14-digit",
+      "name": "automated_billing",
+      "size_bytes": 2165,
+      "size_lines": 80,
+      "sha256": "3f41df65d8262740b9bdf2d2b007aab553b3682f248c85bb4851c5a7eee28652",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20251231000007_invoices_stripe_fields.sql",
+      "timestamp": "20251231000007",
+      "timestamp_raw": "20251231000007",
+      "ts_format": "14-digit",
+      "name": "invoices_stripe_fields",
+      "size_bytes": 1293,
+      "size_lines": 24,
+      "sha256": "65cbd880c0c4192d26f4d52d71591e9db58e6193c17c3fe4ca60ec8e7f1c8f77",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20251231000008_fix_edl_signatures_schema.sql",
+      "timestamp": "20251231000008",
+      "timestamp_raw": "20251231000008",
+      "ts_format": "14-digit",
+      "name": "fix_edl_signatures_schema",
+      "size_bytes": 1406,
+      "size_lines": 32,
+      "sha256": "fb8c60dd4eabffd024c7edc41e1646528cafe5e27b9b8335412543fd88eb63e7",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20251231000009_tenant_housing_passport.sql",
+      "timestamp": "20251231000009",
+      "timestamp_raw": "20251231000009",
+      "ts_format": "14-digit",
+      "name": "tenant_housing_passport",
+      "size_bytes": 7897,
+      "size_lines": 223,
+      "sha256": "15474fb1ce472ca53be0d74b3d026044be0525719318073a0671ae7e577c5b5f",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20251231000010_export_system.sql",
+      "timestamp": "20251231000010",
+      "timestamp_raw": "20251231000010",
+      "ts_format": "14-digit",
+      "name": "export_system",
+      "size_bytes": 2047,
+      "size_lines": 58,
+      "sha256": "44e09296efd344e2122650c8bf4d6df9b1a884474a4715a2c8c0c693fbfe29b1",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20251231000011_export_cleanup.sql",
+      "timestamp": "20251231000011",
+      "timestamp_raw": "20251231000011",
+      "ts_format": "14-digit",
+      "name": "export_cleanup",
+      "size_bytes": 678,
+      "size_lines": 21,
+      "sha256": "bc234fc25535f824f4fa38a2460a560c0846139504c7490f49fe818953faea86",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260101000002_fix_tenant_dashboard_signers.sql",
+      "timestamp": "20260101000002",
+      "timestamp_raw": "20260101000002",
+      "ts_format": "14-digit",
+      "name": "fix_tenant_dashboard_signers",
+      "size_bytes": 7060,
+      "size_lines": 220,
+      "sha256": "d39b940f3f95289228180aabf4266b88f88178630e3a41b2edf8cc9aa6cc524e",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260101000002a_add_invited_email_to_signers.sql",
+      "timestamp": null,
+      "timestamp_raw": null,
+      "ts_format": "unknown",
+      "name": "20260101000002a_add_invited_email_to_signers",
+      "size_bytes": 2990,
+      "size_lines": 78,
+      "sha256": "6e2ce8b22a1e2f9661d8777590cf171597b1325c1bb355b21d2a8f0fa7293ae2",
+      "first_operation": "ALTER TABLE LEASE"
+    },
+    {
+      "filename": "20260101000003_make_lease_signers_profile_nullable.sql",
+      "timestamp": "20260101000003",
+      "timestamp_raw": "20260101000003",
+      "ts_format": "14-digit",
+      "name": "make_lease_signers_profile_nullable",
+      "size_bytes": 1754,
+      "size_lines": 55,
+      "sha256": "5f0188fa23488804f425fa6b693307560e3feaeec988f44f9c343979fde9ba97",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260101000004_add_edl_signatures_email.sql",
+      "timestamp": "20260101000004",
+      "timestamp_raw": "20260101000004",
+      "ts_format": "14-digit",
+      "name": "add_edl_signatures_email",
+      "size_bytes": 3593,
+      "size_lines": 105,
+      "sha256": "bb8cdbe112859be2d51b611d0c7bf555ba4372a30305c0c04d65b07a539119ff",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260101000005_edl_signatures_invited_columns.sql",
+      "timestamp": "20260101000005",
+      "timestamp_raw": "20260101000005",
+      "ts_format": "14-digit",
+      "name": "edl_signatures_invited_columns",
+      "size_bytes": 2548,
+      "size_lines": 76,
+      "sha256": "5683e874e5abcd99816fe5592afec2455caebe756a18ba7bbf3ef128074792c1",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20260102000006_fix_edl_signatures_schema.sql",
+      "timestamp": "20260102000006",
+      "timestamp_raw": "20260102000006",
+      "ts_format": "14-digit",
+      "name": "fix_edl_signatures_schema",
+      "size_bytes": 1434,
+      "size_lines": 31,
+      "sha256": "4bb5cfa0a477ff708aa22409d1baece156da69871b2fe81c38803098927e47f0",
+      "first_operation": "ALTER TABLE EDL"
+    },
+    {
+      "filename": "20260102000007_auto_activate_leases.sql",
+      "timestamp": "20260102000007",
+      "timestamp_raw": "20260102000007",
+      "ts_format": "14-digit",
+      "name": "auto_activate_leases",
+      "size_bytes": 1809,
+      "size_lines": 66,
+      "sha256": "84d3bae44c7082758a14f7b9d5c8f720ed649be1eeda996cbad8c7767dbcc7e5",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260102000020_fix_pending_edls_query.sql",
+      "timestamp": "20260102000020",
+      "timestamp_raw": "20260102000020",
+      "ts_format": "14-digit",
+      "name": "fix_pending_edls_query",
+      "size_bytes": 10217,
+      "size_lines": 286,
+      "sha256": "6dff9711a285b36e5e78e5e806fd519266b60a6c5a4d63a1ec30537821f806cc",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260103000005_enhance_owner_dashboard_edl.sql",
+      "timestamp": "20260103000005",
+      "timestamp_raw": "20260103000005",
+      "ts_format": "14-digit",
+      "name": "enhance_owner_dashboard_edl",
+      "size_bytes": 5020,
+      "size_lines": 168,
+      "sha256": "71bf7ac633c54e2dfde9d4af69f25b68da823ba8ab718bea5c0e0885a3e94226",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260103000010_fix_tenant_dashboard_email_search.sql",
+      "timestamp": "20260103000010",
+      "timestamp_raw": "20260103000010",
+      "ts_format": "14-digit",
+      "name": "fix_tenant_dashboard_email_search",
+      "size_bytes": 10779,
+      "size_lines": 300,
+      "sha256": "94974293333e303466928dca64311edf1e8440a9a6e0d314f2dfef15ec2badb5",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260104000000_add_kyc_status_and_fix_signature_logic.sql",
+      "timestamp": "20260104000000",
+      "timestamp_raw": "20260104000000",
+      "ts_format": "14-digit",
+      "name": "add_kyc_status_and_fix_signature_logic",
+      "size_bytes": 3193,
+      "size_lines": 84,
+      "sha256": "202242df0b0d207f18f88f21d4377c5d0ddd2fbcd8c5b657eb339293943a90f8",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260104000001_lease_auto_activation_trigger.sql",
+      "timestamp": "20260104000001",
+      "timestamp_raw": "20260104000001",
+      "ts_format": "14-digit",
+      "name": "lease_auto_activation_trigger",
+      "size_bytes": 1441,
+      "size_lines": 47,
+      "sha256": "17fe58ba9a5f76d281b5f98c2114c0b871ab99c86f4751df2086424cf40d9516",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260104000002_edl_finalization_and_lease_activation.sql",
+      "timestamp": "20260104000002",
+      "timestamp_raw": "20260104000002",
+      "ts_format": "14-digit",
+      "name": "edl_finalization_and_lease_activation",
+      "size_bytes": 2859,
+      "size_lines": 80,
+      "sha256": "4eca6f929ba9341018478193414e770b8b38ed25b1d1f5901a2c5ef884f60789",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260104000003_enrich_edl_schema.sql",
+      "timestamp": "20260104000003",
+      "timestamp_raw": "20260104000003",
+      "ts_format": "14-digit",
+      "name": "enrich_edl_schema",
+      "size_bytes": 1790,
+      "size_lines": 39,
+      "sha256": "8ef6f586cad8f77818230c702964db7ce8cb58aec9926c8a947bd1b30861e8e0",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260104000004_ensure_meter_columns.sql",
+      "timestamp": "20260104000004",
+      "timestamp_raw": "20260104000004",
+      "ts_format": "14-digit",
+      "name": "ensure_meter_columns",
+      "size_bytes": 1227,
+      "size_lines": 27,
+      "sha256": "b4f4a443b6c9deeaa975ce4ff06e7b379e9f4d221fc025b689164d598ab3fcb7",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260105000001_add_neuf_condition.sql",
+      "timestamp": "20260105000001",
+      "timestamp_raw": "20260105000001",
+      "ts_format": "14-digit",
+      "name": "add_neuf_condition",
+      "size_bytes": 1348,
+      "size_lines": 31,
+      "sha256": "2493c1dea30821fe3061240635d3164e0f337ede53a378267788c29351f9e513",
+      "first_operation": "ALTER TABLE EDL"
+    },
+    {
+      "filename": "20260105000002_edl_lease_sync_triggers.sql",
+      "timestamp": "20260105000002",
+      "timestamp_raw": "20260105000002",
+      "ts_format": "14-digit",
+      "name": "edl_lease_sync_triggers",
+      "size_bytes": 5998,
+      "size_lines": 172,
+      "sha256": "b8c33425fd44993fe1e1319e4bf62708b5c53d0b91f6b42c23b4ac0a97d65674",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260105000003_add_leases_missing_columns.sql",
+      "timestamp": "20260105000003",
+      "timestamp_raw": "20260105000003",
+      "ts_format": "14-digit",
+      "name": "add_leases_missing_columns",
+      "size_bytes": 1561,
+      "size_lines": 37,
+      "sha256": "dfb71d06a453c3e4e6bc66b9c1fd69e6213cb69e9fda759479ce6005d5d96f58",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260105100001_fix_handle_new_user_with_metadata.sql",
+      "timestamp": "20260105100001",
+      "timestamp_raw": "20260105100001",
+      "ts_format": "14-digit",
+      "name": "fix_handle_new_user_with_metadata",
+      "size_bytes": 1845,
+      "size_lines": 57,
+      "sha256": "b79def3068cc93d1d3492ad1b02aa5e205cddb602c15ecf1b8ee701a32f0b273",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260105100002_update_rooms_type_piece_constraint.sql",
+      "timestamp": "20260105100002",
+      "timestamp_raw": "20260105100002",
+      "ts_format": "14-digit",
+      "name": "update_rooms_type_piece_constraint",
+      "size_bytes": 1064,
+      "size_lines": 43,
+      "sha256": "d37b63e566dae2511711cfb940ab42e3d14bad77063c83edd06c40f15333f878",
+      "first_operation": "ALTER TABLE ROOMS DROP"
+    },
+    {
+      "filename": "20260105100003_lease_notices.sql",
+      "timestamp": "20260105100003",
+      "timestamp_raw": "20260105100003",
+      "ts_format": "14-digit",
+      "name": "lease_notices",
+      "size_bytes": 7285,
+      "size_lines": 205,
+      "sha256": "dc5dcdefcab67c2043dd563019267d6e5a37519fc7c55dd7e58cbc93020442ce",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260107000000_building_support.sql",
+      "timestamp": "20260107000000",
+      "timestamp_raw": "20260107000000",
+      "ts_format": "14-digit",
+      "name": "building_support",
+      "size_bytes": 13709,
+      "size_lines": 379,
+      "sha256": "cd2e6bebf74e32159d740728237bb44d76a5030fe097366bf5edd989744b8ff4",
+      "first_operation": "ALTER TABLE PROPERTIES"
+    },
+    {
+      "filename": "20260107000001_sota_lease_status_constraint.sql",
+      "timestamp": "20260107000001",
+      "timestamp_raw": "20260107000001",
+      "ts_format": "14-digit",
+      "name": "sota_lease_status_constraint",
+      "size_bytes": 1995,
+      "size_lines": 45,
+      "sha256": "5803267ffb914f1ead64a5de707ae6298a52e10c88a101a02c9438ff7c6d5eef",
+      "first_operation": "ALTER TABLE LEASES DROP"
+    },
+    {
+      "filename": "20260107000002_fix_existing_lease_statuses_sota.sql",
+      "timestamp": "20260107000002",
+      "timestamp_raw": "20260107000002",
+      "ts_format": "14-digit",
+      "name": "fix_existing_lease_statuses_sota",
+      "size_bytes": 3294,
+      "size_lines": 101,
+      "sha256": "3c596d0c2bab703c53e5ab7549c62e257bab37cf87f4fd6159c4efa722f70040",
+      "first_operation": "UPDATE LEASES SET"
+    },
+    {
+      "filename": "20260107010000_rebranding_to_talok.sql",
+      "timestamp": "20260107010000",
+      "timestamp_raw": "20260107010000",
+      "ts_format": "14-digit",
+      "name": "rebranding_to_talok",
+      "size_bytes": 2745,
+      "size_lines": 89,
+      "sha256": "ee2dc9c42d7ef177412e973672ec07e2cbc528019d8a2d69b2f8f33d3a44ec31",
+      "first_operation": "UPDATE SUBSCRIPTION"
+    },
+    {
+      "filename": "20260107100000_fix_auth_500_database_error.sql",
+      "timestamp": "20260107100000",
+      "timestamp_raw": "20260107100000",
+      "ts_format": "14-digit",
+      "name": "fix_auth_500_database_error",
+      "size_bytes": 2494,
+      "size_lines": 85,
+      "sha256": "27aba5ff67e7a7773b0e74064cbf5fdbfcaa32911dd9f35742e8f3d35e5f663b",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260107150000_fix_profiles_rls_recursion.sql",
+      "timestamp": "20260107150000",
+      "timestamp_raw": "20260107150000",
+      "ts_format": "14-digit",
+      "name": "fix_profiles_rls_recursion",
+      "size_bytes": 5398,
+      "size_lines": 174,
+      "sha256": "11a01d1e5c1bd82128cd5ee5b16396a0d8ec07be91709bbccdde4ef0c60819f3",
+      "first_operation": "ALTER TABLE PROFILES DISABLE"
+    },
+    {
+      "filename": "20260108000000_normalize_signer_roles.sql",
+      "timestamp": "20260108000000",
+      "timestamp_raw": "20260108000000",
+      "ts_format": "14-digit",
+      "name": "normalize_signer_roles",
+      "size_bytes": 2733,
+      "size_lines": 69,
+      "sha256": "cbc0277090a7b4fe767ce1bdb02091a68636c5c224e0e15ed03497f0587d5526",
+      "first_operation": "UPDATE LEASE"
+    },
+    {
+      "filename": "20260108100000_fix_depot_garantie_auto.sql",
+      "timestamp": "20260108100000",
+      "timestamp_raw": "20260108100000",
+      "ts_format": "14-digit",
+      "name": "fix_depot_garantie_auto",
+      "size_bytes": 1830,
+      "size_lines": 61,
+      "sha256": "bf940f513bde8d338caa797c305f97984d04f6d4ce883d1a7d6075751cdd1361",
+      "first_operation": "UPDATE LEASES"
+    },
+    {
+      "filename": "20260108200000_tenant_notification_triggers.sql",
+      "timestamp": "20260108200000",
+      "timestamp_raw": "20260108200000",
+      "ts_format": "14-digit",
+      "name": "tenant_notification_triggers",
+      "size_bytes": 15405,
+      "size_lines": 457,
+      "sha256": "ed3f6517d4438e508bc027fb4cfdb31ecf87985246b372bef72d24d813aef3ac",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260108300000_property_soft_delete.sql",
+      "timestamp": "20260108300000",
+      "timestamp_raw": "20260108300000",
+      "ts_format": "14-digit",
+      "name": "property_soft_delete",
+      "size_bytes": 6708,
+      "size_lines": 201,
+      "sha256": "f1b6837f858eeb45d4f7723b461a0479acb5b8b6532406e92c5692b557572da5",
+      "first_operation": "ALTER TABLE PROPERTIES"
+    },
+    {
+      "filename": "20260108400000_lease_lifecycle_sota2026.sql",
+      "timestamp": "20260108400000",
+      "timestamp_raw": "20260108400000",
+      "ts_format": "14-digit",
+      "name": "lease_lifecycle_sota2026",
+      "size_bytes": 8934,
+      "size_lines": 281,
+      "sha256": "f8eebf7a88a45ef13ac5369624c3b6b4398c952d0f766544a6970b9f1f395d69",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260108500000_orphan_cleanup_sota2026.sql",
+      "timestamp": "20260108500000",
+      "timestamp_raw": "20260108500000",
+      "ts_format": "14-digit",
+      "name": "orphan_cleanup_sota2026",
+      "size_bytes": 16401,
+      "size_lines": 533,
+      "sha256": "c895e001ab8642f93943ed4576dc31f38545262d4f8e8fe7185c9c1f693db50b",
+      "first_operation": "DELETE FROM LEASE"
+    },
+    {
+      "filename": "20260108600000_security_enhancements.sql",
+      "timestamp": "20260108600000",
+      "timestamp_raw": "20260108600000",
+      "ts_format": "14-digit",
+      "name": "security_enhancements",
+      "size_bytes": 10465,
+      "size_lines": 277,
+      "sha256": "a78fa7e4ff43c4fa8ecbb319ca11069a2ca5818c8078be264e078d97c044f935",
+      "first_operation": "ALTER TABLE OWNER"
+    },
+    {
+      "filename": "20260109000000_fix_property_deleted_at.sql",
+      "timestamp": "20260109000000",
+      "timestamp_raw": "20260109000000",
+      "ts_format": "14-digit",
+      "name": "fix_property_deleted_at",
+      "size_bytes": 1234,
+      "size_lines": 36,
+      "sha256": "079a7155100cc5a2ec47cd89bec60ff009e89cafc1eb13669cfbc75de154643c",
+      "first_operation": "ALTER TABLE PROPERTIES"
+    },
+    {
+      "filename": "20260109100000_signature_tracking_enhanced.sql",
+      "timestamp": "20260109100000",
+      "timestamp_raw": "20260109100000",
+      "ts_format": "14-digit",
+      "name": "signature_tracking_enhanced",
+      "size_bytes": 6867,
+      "size_lines": 251,
+      "sha256": "a2cfa15af7dbbd53e88eea81af6ef70f5132da25f0861dc56cbde2463eb76046",
+      "first_operation": "CREATE OR REPLACE VIEW"
+    },
+    {
+      "filename": "20260110000000_admin_dashboard_sota2026.sql",
+      "timestamp": "20260110000000",
+      "timestamp_raw": "20260110000000",
+      "ts_format": "14-digit",
+      "name": "admin_dashboard_sota2026",
+      "size_bytes": 29010,
+      "size_lines": 722,
+      "sha256": "eb166797a13825382d26846a0e8dd4357f52988914ff336bbb273760c60f4a58",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260110000001_accounting_tables.sql",
+      "timestamp": "20260110000001",
+      "timestamp_raw": "20260110000001",
+      "ts_format": "14-digit",
+      "name": "accounting_tables",
+      "size_bytes": 19743,
+      "size_lines": 517,
+      "sha256": "d4522044c2e913c6701d0a0ab28f96591e48aa31a35ea8f9e5c7ed4b480958d8",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260110010001_passkeys_and_2fa_sota.sql",
+      "timestamp": "20260110010001",
+      "timestamp_raw": "20260110010001",
+      "ts_format": "14-digit",
+      "name": "passkeys_and_2fa_sota",
+      "size_bytes": 6841,
+      "size_lines": 172,
+      "sha256": "018ff51a65d9085980dd5b177a557dc9c50043f914c465b6532c2f1687e2f3fe",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260110100000_fix_accounting_schema_gaps.sql",
+      "timestamp": "20260110100000",
+      "timestamp_raw": "20260110100000",
+      "ts_format": "14-digit",
+      "name": "fix_accounting_schema_gaps",
+      "size_bytes": 14822,
+      "size_lines": 402,
+      "sha256": "c4f0652c56ad0f7a1a5755716125c4dede8948110af5a5a4f8c0322316727851",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20260110100001_init_historical_accounting_data.sql",
+      "timestamp": "20260110100001",
+      "timestamp_raw": "20260110100001",
+      "ts_format": "14-digit",
+      "name": "init_historical_accounting_data",
+      "size_bytes": 11907,
+      "size_lines": 368,
+      "sha256": "063ca45c07fa7a53869dcc78b4021aaeaa321e9d30ef6a1a826a571a6e29d2a4",
+      "first_operation": "INSERT INTO PUBLIC"
+    },
+    {
+      "filename": "20260110500000_subscription_limits_enforcement.sql",
+      "timestamp": "20260110500000",
+      "timestamp_raw": "20260110500000",
+      "ts_format": "14-digit",
+      "name": "subscription_limits_enforcement",
+      "size_bytes": 8690,
+      "size_lines": 251,
+      "sha256": "a29ba8dff18590768c3aea89bd7276a20284fad375b79efd01cbba1aac505887",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260111000000_tax_verification_logs.sql",
+      "timestamp": "20260111000000",
+      "timestamp_raw": "20260111000000",
+      "ts_format": "14-digit",
+      "name": "tax_verification_logs",
+      "size_bytes": 4602,
+      "size_lines": 128,
+      "sha256": "ba11d86e543f0e09f60b0400febfae45a4b92353a7d25074cea8d8d5f8028c68",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260111010000_visit_scheduling_sota2026.sql",
+      "timestamp": "20260111010000",
+      "timestamp_raw": "20260111010000",
+      "ts_format": "14-digit",
+      "name": "visit_scheduling_sota2026",
+      "size_bytes": 22376,
+      "size_lines": 617,
+      "sha256": "2fa996acc479abc44382d60c2282b769c8ebd7b8fa4d7d9f0cc3b0240db113e1",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260114000000_first_login_and_onboarding_tracking.sql",
+      "timestamp": "20260114000000",
+      "timestamp_raw": "20260114000000",
+      "ts_format": "14-digit",
+      "name": "first_login_and_onboarding_tracking",
+      "size_bytes": 16155,
+      "size_lines": 453,
+      "sha256": "1f294566c515882d6178718cd9f93ffcc628650fb7d0037a30424f7bec132b6f",
+      "first_operation": "ALTER TABLE PROFILES"
+    },
+    {
+      "filename": "20260115000000_create_edl_meter_readings.sql",
+      "timestamp": "20260115000000",
+      "timestamp_raw": "20260115000000",
+      "ts_format": "14-digit",
+      "name": "create_edl_meter_readings",
+      "size_bytes": 6124,
+      "size_lines": 175,
+      "sha256": "f25b9b741516f3971dcea00f244c6a068b762cc67a0bdb3fb431739e8f9b6cba",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260115000001_add_performance_indexes.sql",
+      "timestamp": "20260115000001",
+      "timestamp_raw": "20260115000001",
+      "ts_format": "14-digit",
+      "name": "add_performance_indexes",
+      "size_bytes": 2491,
+      "size_lines": 59,
+      "sha256": "258f1e3f27c6da10cffd2eb478ab5bfcc71d4ae566da6c4266c465c1e2a6588f",
+      "first_operation": "CREATE INDEX IF NOT"
+    },
+    {
+      "filename": "20260115010000_multi_entity_architecture.sql",
+      "timestamp": "20260115010000",
+      "timestamp_raw": "20260115010000",
+      "ts_format": "14-digit",
+      "name": "multi_entity_architecture",
+      "size_bytes": 23045,
+      "size_lines": 712,
+      "sha256": "d2628a1f8150a1b6dcffde17e1222256ecb85f3866a929394950d4e4999f095b",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260115010001_fix_edl_meter_readings_nullable.sql",
+      "timestamp": "20260115010001",
+      "timestamp_raw": "20260115010001",
+      "ts_format": "14-digit",
+      "name": "fix_edl_meter_readings_nullable",
+      "size_bytes": 2665,
+      "size_lines": 50,
+      "sha256": "c991a472e24d324d814f639401586c36d5284552247fb0430e80baac93b221fe",
+      "first_operation": "ALTER TABLE EDL"
+    },
+    {
+      "filename": "20260115020000_white_label_system.sql",
+      "timestamp": "20260115020000",
+      "timestamp_raw": "20260115020000",
+      "ts_format": "14-digit",
+      "name": "white_label_system",
+      "size_bytes": 17879,
+      "size_lines": 569,
+      "sha256": "90105c3245c2cb540fd1580ecc4bc343585b9162e7cf4208432a0696711d7ff6",
+      "first_operation": "CREATE TYPE WHITE"
+    },
+    {
+      "filename": "20260119000000_fix_edl_meter_readings_rls.sql",
+      "timestamp": "20260119000000",
+      "timestamp_raw": "20260119000000",
+      "ts_format": "14-digit",
+      "name": "fix_edl_meter_readings_rls",
+      "size_bytes": 2672,
+      "size_lines": 74,
+      "sha256": "4a223781e4dafdb8865f3b452aafb569f4f8362b588464848037136366a79453",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260121000001_unified_signature_system.sql",
+      "timestamp": "20260121000001",
+      "timestamp_raw": "20260121000001",
+      "ts_format": "14-digit",
+      "name": "unified_signature_system",
+      "size_bytes": 22701,
+      "size_lines": 678,
+      "sha256": "7919691a5e964641669a1a3175635425933ade2b637599da5d5368ca49ef8470",
+      "first_operation": "CREATE TYPE SIGNATURE"
+    },
+    {
+      "filename": "20260121000002_naming_normalization_fr_to_en.sql",
+      "timestamp": "20260121000002",
+      "timestamp_raw": "20260121000002",
+      "ts_format": "14-digit",
+      "name": "naming_normalization_fr_to_en",
+      "size_bytes": 17815,
+      "size_lines": 496,
+      "sha256": "d405e603c441e5c6e317185c21db0daf463988c1b15d53a1191fd78672d1a035",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260121000003_event_sourcing_audit_system.sql",
+      "timestamp": "20260121000003",
+      "timestamp_raw": "20260121000003",
+      "ts_format": "14-digit",
+      "name": "event_sourcing_audit_system",
+      "size_bytes": 24958,
+      "size_lines": 748,
+      "sha256": "159baa27b0eeccdd95bb6bba0b4ee7c08510e0f8dd00b5442fe28d5995a43e0c",
+      "first_operation": "CREATE TYPE AUDIT"
+    },
+    {
+      "filename": "20260122000000_receipt_performance_indexes.sql",
+      "timestamp": "20260122000000",
+      "timestamp_raw": "20260122000000",
+      "ts_format": "14-digit",
+      "name": "receipt_performance_indexes",
+      "size_bytes": 3300,
+      "size_lines": 77,
+      "sha256": "b6c0f5c19366d1c394e30fd665b00d7077c132edb77a62718b180e5ad9a001f2",
+      "first_operation": "CREATE INDEX IF NOT"
+    },
+    {
+      "filename": "20260127000000_lease_types_and_inventory.sql",
+      "timestamp": "20260127000000",
+      "timestamp_raw": "20260127000000",
+      "ts_format": "14-digit",
+      "name": "lease_types_and_inventory",
+      "size_bytes": 13677,
+      "size_lines": 415,
+      "sha256": "88aab22ec9d0b2feea9c99f450604fc745110776cb30868e6aa6f718a28acb41",
+      "first_operation": "ALTER TABLE LEASES DROP"
+    },
+    {
+      "filename": "20260127000001_gap001_block_dg_bail_mobilite.sql",
+      "timestamp": "20260127000001",
+      "timestamp_raw": "20260127000001",
+      "ts_format": "14-digit",
+      "name": "gap001_block_dg_bail_mobilite",
+      "size_bytes": 1304,
+      "size_lines": 34,
+      "sha256": "84094aef2405c34b93ac57350a51ccd2dc8cf67fcfe2dfbb61d40cae0743ef0f",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260127000002_gap002_furniture_inventory.sql",
+      "timestamp": "20260127000002",
+      "timestamp_raw": "20260127000002",
+      "ts_format": "14-digit",
+      "name": "gap002_furniture_inventory",
+      "size_bytes": 7454,
+      "size_lines": 214,
+      "sha256": "8a2ace21d3b4832d415e93b8ca09fe5675b509cfa403063f71e3c23d9851681d",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260127000003_commercial_lease_types.sql",
+      "timestamp": "20260127000003",
+      "timestamp_raw": "20260127000003",
+      "ts_format": "14-digit",
+      "name": "commercial_lease_types",
+      "size_bytes": 15320,
+      "size_lines": 468,
+      "sha256": "5b17e82acfcdf94da424862231be687dc1c169245c353337ad4e746b5c19b9be",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260127000004_professional_lease_types.sql",
+      "timestamp": "20260127000004",
+      "timestamp_raw": "20260127000004",
+      "ts_format": "14-digit",
+      "name": "professional_lease_types",
+      "size_bytes": 12470,
+      "size_lines": 332,
+      "sha256": "f20bb3b55bedc2061fd79643c4d179506f0f01371ea0dd25c0bad4fc0db8f959",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260127000005_edl_commercial.sql",
+      "timestamp": "20260127000005",
+      "timestamp_raw": "20260127000005",
+      "ts_format": "14-digit",
+      "name": "edl_commercial",
+      "size_bytes": 28867,
+      "size_lines": 814,
+      "sha256": "7d12da7ba1388ba506a15fe601f18141a3fa2a7d91e54787696428944f74d9d8",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260127000006_location_gerance.sql",
+      "timestamp": "20260127000006",
+      "timestamp_raw": "20260127000006",
+      "ts_format": "14-digit",
+      "name": "location_gerance",
+      "size_bytes": 25407,
+      "size_lines": 750,
+      "sha256": "4ae6703592d5e288a4cb134b8bac9a5f84083b2c68c4bc446912e62cecc1713e",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260127000007_taxe_sejour.sql",
+      "timestamp": "20260127000007",
+      "timestamp_raw": "20260127000007",
+      "ts_format": "14-digit",
+      "name": "taxe_sejour",
+      "size_bytes": 25371,
+      "size_lines": 712,
+      "sha256": "9a3b8de2c9b283e77825c34fbe28d40e8f60b551df19c9d687e71a4540468835",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260127000008_diagnostics_dom_tom.sql",
+      "timestamp": "20260127000008",
+      "timestamp_raw": "20260127000008",
+      "ts_format": "14-digit",
+      "name": "diagnostics_dom_tom",
+      "size_bytes": 19308,
+      "size_lines": 580,
+      "sha256": "e78297e51eada938185f64adcbc165484a1dcd73b70711322bfcf864e55138c9",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260127010000_stripe_connect_accounts.sql",
+      "timestamp": "20260127010000",
+      "timestamp_raw": "20260127010000",
+      "ts_format": "14-digit",
+      "name": "stripe_connect_accounts",
+      "size_bytes": 5555,
+      "size_lines": 147,
+      "sha256": "edbfa331bb4c423565082ffa267ecae4283412f4466cc6951a8c0255a1f0c837",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260127010002_vetusty_grid_tables.sql",
+      "timestamp": "20260127010002",
+      "timestamp_raw": "20260127010002",
+      "ts_format": "14-digit",
+      "name": "vetusty_grid_tables",
+      "size_bytes": 9924,
+      "size_lines": 273,
+      "sha256": "b712e4f12d34e324ea65680bba162b636c5b44bc22dbebe17fdcaa0eec253e44",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260128000000_surface_carrez_rent_control.sql",
+      "timestamp": "20260128000000",
+      "timestamp_raw": "20260128000000",
+      "ts_format": "14-digit",
+      "name": "surface_carrez_rent_control",
+      "size_bytes": 4645,
+      "size_lines": 104,
+      "sha256": "364523daa815f25e896ff9cd0abab5d1f69e9526d40f99204b3cece882b16c06",
+      "first_operation": "ALTER TABLE PROPERTIES"
+    },
+    {
+      "filename": "20260128000001_fix_edl_schema_500.sql",
+      "timestamp": "20260128000001",
+      "timestamp_raw": "20260128000001",
+      "ts_format": "14-digit",
+      "name": "fix_edl_schema_500",
+      "size_bytes": 4327,
+      "size_lines": 119,
+      "sha256": "6512be524c047930f1f58b0d4799a3e224b505d592d5226f9c625efcad261f42",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260128010001_webhook_queue.sql",
+      "timestamp": "20260128010001",
+      "timestamp_raw": "20260128010001",
+      "ts_format": "14-digit",
+      "name": "webhook_queue",
+      "size_bytes": 3525,
+      "size_lines": 93,
+      "sha256": "c8f366bbc5d5f00c0c314cd0ca6d6b27729824d6d0c7a0142c7941969dabceda",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260201000000_ged_system.sql",
+      "timestamp": "20260201000000",
+      "timestamp_raw": "20260201000000",
+      "ts_format": "14-digit",
+      "name": "ged_system",
+      "size_bytes": 20970,
+      "size_lines": 458,
+      "sha256": "e2c101fc510fe2997976e3ca6943954c6c1e1ea12a614f4bc890346133db3476",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260205000001_fix_edl_signatures_insert_rls.sql",
+      "timestamp": "20260205000001",
+      "timestamp_raw": "20260205000001",
+      "ts_format": "14-digit",
+      "name": "fix_edl_signatures_insert_rls",
+      "size_bytes": 1975,
+      "size_lines": 65,
+      "sha256": "78dd06d788226224d32c166a825ebb81255c68c44259fc543ab0bd47f3e68491",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260206000000_migrate_owner_profiles_to_legal_entities.sql",
+      "timestamp": "20260206000000",
+      "timestamp_raw": "20260206000000",
+      "ts_format": "14-digit",
+      "name": "migrate_owner_profiles_to_legal_entities",
+      "size_bytes": 2917,
+      "size_lines": 96,
+      "sha256": "3699d07d62429f0b85f1a7f36ee79c6979b9824957f08716ba72fb060f0243f8",
+      "first_operation": "INSERT INTO LEGAL"
+    },
+    {
+      "filename": "20260207000000_apply_legal_entities_consolidated.sql",
+      "timestamp": "20260207000000",
+      "timestamp_raw": "20260207000000",
+      "ts_format": "14-digit",
+      "name": "apply_legal_entities_consolidated",
+      "size_bytes": 3588,
+      "size_lines": 127,
+      "sha256": "1ac8135e7ed46d7aa3d66268e3cb979ed5b9664b5541d59ecec16216e1bb1c55",
+      "first_operation": "ALTER TABLE DOCUMENTS ADD"
+    },
+    {
+      "filename": "20260207100000_fix_audit_critical_issues.sql",
+      "timestamp": "20260207100000",
+      "timestamp_raw": "20260207100000",
+      "ts_format": "14-digit",
+      "name": "fix_audit_critical_issues",
+      "size_bytes": 22778,
+      "size_lines": 490,
+      "sha256": "0bb8a8814a7d45ccf743bd4537cf5096b7586c462d903384ee78fd420c1410b8",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260207200000_audit_improvements_phase2.sql",
+      "timestamp": "20260207200000",
+      "timestamp_raw": "20260207200000",
+      "ts_format": "14-digit",
+      "name": "audit_improvements_phase2",
+      "size_bytes": 9222,
+      "size_lines": 158,
+      "sha256": "d77a2df8d54eb03271a9b78faa9bd1150a8d8edba30f7549cf88c784e45db4bc",
+      "first_operation": "DROP FUNCTION IF EXISTS"
+    },
+    {
+      "filename": "20260208100000_fix_data_storage_audit.sql",
+      "timestamp": "20260208100000",
+      "timestamp_raw": "20260208100000",
+      "ts_format": "14-digit",
+      "name": "fix_data_storage_audit",
+      "size_bytes": 3683,
+      "size_lines": 75,
+      "sha256": "861d7a22bc632ceed02872871bd72c345cd701aa25b1708f4e31feecec51481a",
+      "first_operation": "ALTER TABLE ROOMMATES ALTER"
+    },
+    {
+      "filename": "20260209100000_create_sms_messages_table.sql",
+      "timestamp": "20260209100000",
+      "timestamp_raw": "20260209100000",
+      "ts_format": "14-digit",
+      "name": "create_sms_messages_table",
+      "size_bytes": 4021,
+      "size_lines": 109,
+      "sha256": "5c360344dff008de43791267626042198eadf07acd61421a23740bb7b9e40db7",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260211000000_p2_unique_constraint_and_gdpr_rpc.sql",
+      "timestamp": "20260211000000",
+      "timestamp_raw": "20260211000000",
+      "ts_format": "14-digit",
+      "name": "p2_unique_constraint_and_gdpr_rpc",
+      "size_bytes": 10287,
+      "size_lines": 281,
+      "sha256": "5a671770abfba0f8696dc8f4ec5291654620c8a98db1172be9119a4303a56728",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260211100000_bic_compliance_tax_regime.sql",
+      "timestamp": "20260211100000",
+      "timestamp_raw": "20260211100000",
+      "ts_format": "14-digit",
+      "name": "bic_compliance_tax_regime",
+      "size_bytes": 3564,
+      "size_lines": 99,
+      "sha256": "fe7f2e0c3226ab8e604e53f792b422921521eace9445cf137af21cdee6496682",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260212000000_audit_database_integrity.sql",
+      "timestamp": "20260212000000",
+      "timestamp_raw": "20260212000000",
+      "ts_format": "14-digit",
+      "name": "audit_database_integrity",
+      "size_bytes": 64951,
+      "size_lines": 1531,
+      "sha256": "21143d6c2b915a35785ba3073e9d6a66c09453b4582cc6bdc2bcaee43eb2cff1",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260212000001_fix_guarantor_role_and_tables.sql",
+      "timestamp": "20260212000001",
+      "timestamp_raw": "20260212000001",
+      "ts_format": "14-digit",
+      "name": "fix_guarantor_role_and_tables",
+      "size_bytes": 5450,
+      "size_lines": 149,
+      "sha256": "8a16322e38400ebdd9e672b81eea50a1dbc61ec560fec32633e20ad69378cb40",
+      "first_operation": "ALTER TABLE PROFILES DROP"
+    },
+    {
+      "filename": "20260212100000_audit_v2_merge_and_prevention.sql",
+      "timestamp": "20260212100000",
+      "timestamp_raw": "20260212100000",
+      "ts_format": "14-digit",
+      "name": "audit_v2_merge_and_prevention",
+      "size_bytes": 45854,
+      "size_lines": 1210,
+      "sha256": "94da1eeda000939061c88aeb438bd0e84ddd89c137da471c789473317d253b89",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260212100001_email_template_system.sql",
+      "timestamp": "20260212100001",
+      "timestamp_raw": "20260212100001",
+      "ts_format": "14-digit",
+      "name": "email_template_system",
+      "size_bytes": 5404,
+      "size_lines": 161,
+      "sha256": "b15ed3b46320d6eb85bc9a7cf4a34d9eb754eb916f9e261db7421c3eaa2f2f1b",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260212100002_email_templates_seed.sql",
+      "timestamp": "20260212100002",
+      "timestamp_raw": "20260212100002",
+      "ts_format": "14-digit",
+      "name": "email_templates_seed",
+      "size_bytes": 49303,
+      "size_lines": 703,
+      "sha256": "9a513eab9440c44a82210fe5453bef12956cc630ff609a52809df4c2f054f78b",
+      "first_operation": "INSERT INTO EMAIL"
+    },
+    {
+      "filename": "20260212200000_audit_v3_comprehensive_integrity.sql",
+      "timestamp": "20260212200000",
+      "timestamp_raw": "20260212200000",
+      "ts_format": "14-digit",
+      "name": "audit_v3_comprehensive_integrity",
+      "size_bytes": 25849,
+      "size_lines": 754,
+      "sha256": "094f97f7f1f2dbedca7d1eec03a14dcd752702956db46a064b7b5163f9204043",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260213000000_fix_profiles_rls_recursion_v2.sql",
+      "timestamp": "20260213000000",
+      "timestamp_raw": "20260213000000",
+      "ts_format": "14-digit",
+      "name": "fix_profiles_rls_recursion_v2",
+      "size_bytes": 5057,
+      "size_lines": 167,
+      "sha256": "2ab5e1cd4b16aaee866285544c83e5340238802e3ed7bc249467d152d612adae",
+      "first_operation": "ALTER TABLE PROFILES DISABLE"
+    },
+    {
+      "filename": "20260213100000_fix_rls_all_tables_recursion.sql",
+      "timestamp": "20260213100000",
+      "timestamp_raw": "20260213100000",
+      "ts_format": "14-digit",
+      "name": "fix_rls_all_tables_recursion",
+      "size_bytes": 5388,
+      "size_lines": 136,
+      "sha256": "a6b6d114748a732ae77ce9956b6c6df7f58c2344781fef5ce48713b47f9d0fd6",
+      "first_operation": "ALTER TABLE PROFILES NO"
+    },
+    {
+      "filename": "20260215100000_signature_security_audit_fixes.sql",
+      "timestamp": "20260215100000",
+      "timestamp_raw": "20260215100000",
+      "ts_format": "14-digit",
+      "name": "signature_security_audit_fixes",
+      "size_bytes": 4612,
+      "size_lines": 116,
+      "sha256": "e571c7b1dbd233c340de0c2d5897efa680ea656b6715b88da6c2e785a9af3a7c",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260215200000_fix_rls_properties_tenant_pre_active.sql",
+      "timestamp": "20260215200000",
+      "timestamp_raw": "20260215200000",
+      "ts_format": "14-digit",
+      "name": "fix_rls_properties_tenant_pre_active",
+      "size_bytes": 1796,
+      "size_lines": 39,
+      "sha256": "5d5f8620305cd59f30381ca9439f082714dd8726a74a2e487823b0a0f4d4fd0c",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260215200001_add_notice_given_lease_status.sql",
+      "timestamp": "20260215200001",
+      "timestamp_raw": "20260215200001",
+      "ts_format": "14-digit",
+      "name": "add_notice_given_lease_status",
+      "size_bytes": 3074,
+      "size_lines": 72,
+      "sha256": "ccf28779588ac274a04290457cf6582c38ae496de00c29a5f410ed0bbcda529f",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260215200002_fix_rls_tenant_access_beyond_active.sql",
+      "timestamp": "20260215200002",
+      "timestamp_raw": "20260215200002",
+      "ts_format": "14-digit",
+      "name": "fix_rls_tenant_access_beyond_active",
+      "size_bytes": 5163,
+      "size_lines": 164,
+      "sha256": "ddbda624df81f640fcd857c7a9d2d78f47d8996f8489e9c285d7b017b2608793",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260215200003_fix_copro_fk_on_delete.sql",
+      "timestamp": "20260215200003",
+      "timestamp_raw": "20260215200003",
+      "ts_format": "14-digit",
+      "name": "fix_copro_fk_on_delete",
+      "size_bytes": 3493,
+      "size_lines": 99,
+      "sha256": "9a02e61a13b006123966f90c87c26e6760c6911b564df7149dbdbe189495624d",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260216000000_tenant_document_center.sql",
+      "timestamp": "20260216000000",
+      "timestamp_raw": "20260216000000",
+      "ts_format": "14-digit",
+      "name": "tenant_document_center",
+      "size_bytes": 18112,
+      "size_lines": 518,
+      "sha256": "4b6c13de2e8f83b5a1d35b94954a8ed62801c8ea4226d078f277610469a8765b",
+      "first_operation": "CREATE INDEX IF NOT"
+    },
+    {
+      "filename": "20260216000001_document_center_notifications.sql",
+      "timestamp": "20260216000001",
+      "timestamp_raw": "20260216000001",
+      "ts_format": "14-digit",
+      "name": "document_center_notifications",
+      "size_bytes": 9212,
+      "size_lines": 255,
+      "sha256": "fa7d15c5a2da1c88eb2cd0947c95f7437d0ccebc1b4ee214118056f6943d279b",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260216100000_security_audit_rls_fixes.sql",
+      "timestamp": "20260216100000",
+      "timestamp_raw": "20260216100000",
+      "ts_format": "14-digit",
+      "name": "security_audit_rls_fixes",
+      "size_bytes": 5570,
+      "size_lines": 141,
+      "sha256": "c5ab5fe5a778bbe84ae0271603d5e8fb22a20d199b69a20ba85c40511897f7ae",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260216200000_auto_link_lease_signers_trigger.sql",
+      "timestamp": "20260216200000",
+      "timestamp_raw": "20260216200000",
+      "ts_format": "14-digit",
+      "name": "auto_link_lease_signers_trigger",
+      "size_bytes": 5145,
+      "size_lines": 161,
+      "sha256": "1c8a5a7f563bcfdfd35c09799166032148d5e7e6502ad379d279bd2c23b521b5",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260216300000_fix_auth_profile_sync.sql",
+      "timestamp": "20260216300000",
+      "timestamp_raw": "20260216300000",
+      "ts_format": "14-digit",
+      "name": "fix_auth_profile_sync",
+      "size_bytes": 11111,
+      "size_lines": 347,
+      "sha256": "55c9a89e6a60bc47c46c186247fd121bea82343be5447b16a180620348fb9e96",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260216400000_performance_indexes_rls.sql",
+      "timestamp": "20260216400000",
+      "timestamp_raw": "20260216400000",
+      "ts_format": "14-digit",
+      "name": "performance_indexes_rls",
+      "size_bytes": 3730,
+      "size_lines": 110,
+      "sha256": "93eed5bc978d026ec6739e49814a5ed81fe515a3700a2fd48443bf627802e214",
+      "first_operation": "CREATE INDEX IF NOT"
+    },
+    {
+      "filename": "20260216500000_fix_tenant_dashboard_complete.sql",
+      "timestamp": "20260216500000",
+      "timestamp_raw": "20260216500000",
+      "ts_format": "14-digit",
+      "name": "fix_tenant_dashboard_complete",
+      "size_bytes": 11960,
+      "size_lines": 327,
+      "sha256": "2e9dcafd9d2a60ebde26482786975b37d94895354bd25b0ecf8fb6604f302e4d",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260216500001_enforce_unique_constraints_safety.sql",
+      "timestamp": "20260216500001",
+      "timestamp_raw": "20260216500001",
+      "ts_format": "14-digit",
+      "name": "enforce_unique_constraints_safety",
+      "size_bytes": 4536,
+      "size_lines": 141,
+      "sha256": "03ef9ad2193610f561d19c57f21fe2f1d17e06c3ccbd466036e30be83121d491",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260217000000_data_integrity_audit_repair.sql",
+      "timestamp": "20260217000000",
+      "timestamp_raw": "20260217000000",
+      "ts_format": "14-digit",
+      "name": "data_integrity_audit_repair",
+      "size_bytes": 31749,
+      "size_lines": 841,
+      "sha256": "b96ebd096adcb6213b59b1d8d720e24c117109288eb9d3c2e00fed2d9c87966e",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260218000000_audit_repair_profiles.sql",
+      "timestamp": "20260218000000",
+      "timestamp_raw": "20260218000000",
+      "ts_format": "14-digit",
+      "name": "audit_repair_profiles",
+      "size_bytes": 2820,
+      "size_lines": 79,
+      "sha256": "6671815bf05c3cac04b955818643675b5dfb69c5352965bc95b748b72c95fe37",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260218100000_sync_auth_email_updates.sql",
+      "timestamp": "20260218100000",
+      "timestamp_raw": "20260218100000",
+      "ts_format": "14-digit",
+      "name": "sync_auth_email_updates",
+      "size_bytes": 4353,
+      "size_lines": 139,
+      "sha256": "37e5eea54ffe5f76ea96b268e1e4d2701083ef3715044c65e1a811f4fcc7b38e",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260219000000_missing_tables_and_rag.sql",
+      "timestamp": "20260219000000",
+      "timestamp_raw": "20260219000000",
+      "ts_format": "14-digit",
+      "name": "missing_tables_and_rag",
+      "size_bytes": 19490,
+      "size_lines": 459,
+      "sha256": "1f6cb6ee4702ebd093d583b543e8e464166068e0f7c2bb70283cfc3a680a5901",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260219100000_auto_link_notify_owner.sql",
+      "timestamp": "20260219100000",
+      "timestamp_raw": "20260219100000",
+      "ts_format": "14-digit",
+      "name": "auto_link_notify_owner",
+      "size_bytes": 3152,
+      "size_lines": 102,
+      "sha256": "549ecc4a521908391dc7dae1766c4c1d439a5c92b4a5570f13a20c660ab80844",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260219200000_fix_autolink_triggers_audit.sql",
+      "timestamp": "20260219200000",
+      "timestamp_raw": "20260219200000",
+      "ts_format": "14-digit",
+      "name": "fix_autolink_triggers_audit",
+      "size_bytes": 10626,
+      "size_lines": 324,
+      "sha256": "e9d6b02407ba4c8821d92ca95f9089d2ae0ab284dc6611323d6a912b8c9daf7f",
+      "first_operation": "DROP FUNCTION IF EXISTS"
+    },
+    {
+      "filename": "20260220000000_auto_link_signer_on_insert.sql",
+      "timestamp": "20260220000000",
+      "timestamp_raw": "20260220000000",
+      "ts_format": "14-digit",
+      "name": "auto_link_signer_on_insert",
+      "size_bytes": 4710,
+      "size_lines": 132,
+      "sha256": "4ff29ce735dbbb9f94925c1182e664435ce57e135c494f948e135a1238c1ed23",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260220100000_fix_orphan_signers_audit.sql",
+      "timestamp": "20260220100000",
+      "timestamp_raw": "20260220100000",
+      "ts_format": "14-digit",
+      "name": "fix_orphan_signers_audit",
+      "size_bytes": 3857,
+      "size_lines": 111,
+      "sha256": "da0ec55e9dd5c6d64052ae375a71e4acd5e0f3139892990aaacabec9db71bca3",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260221000001_auto_link_trigger_update.sql",
+      "timestamp": "20260221000001",
+      "timestamp_raw": "20260221000001",
+      "ts_format": "14-digit",
+      "name": "auto_link_trigger_update",
+      "size_bytes": 1622,
+      "size_lines": 53,
+      "sha256": "89849fbd6c0087769cd84954c071e7c21c8768a4136cea7216cb05ec31a15dd1",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260221000002_fix_edl_signatures_rls.sql",
+      "timestamp": "20260221000002",
+      "timestamp_raw": "20260221000002",
+      "ts_format": "14-digit",
+      "name": "fix_edl_signatures_rls",
+      "size_bytes": 1384,
+      "size_lines": 33,
+      "sha256": "89919c62838e5ed65ccf74c7a9be9c9b7c27b5186d0c67e0abc0416d9d408972",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260221100000_fix_tenant_dashboard_draft_visibility.sql",
+      "timestamp": "20260221100000",
+      "timestamp_raw": "20260221100000",
+      "ts_format": "14-digit",
+      "name": "fix_tenant_dashboard_draft_visibility",
+      "size_bytes": 12242,
+      "size_lines": 332,
+      "sha256": "7124b29e4d3321a679e406caaff188ef9cf58b94b265fdfc6a86cbb3b34c9275",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260221100001_auto_upgrade_draft_on_tenant_signer.sql",
+      "timestamp": "20260221100001",
+      "timestamp_raw": "20260221100001",
+      "ts_format": "14-digit",
+      "name": "auto_upgrade_draft_on_tenant_signer",
+      "size_bytes": 7062,
+      "size_lines": 196,
+      "sha256": "a7f173170545defe434b5065d8f8c44381ffe28e97bbf1424bbb750ad19054e3",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260221200000_sync_edl_signer_to_lease_signer.sql",
+      "timestamp": "20260221200000",
+      "timestamp_raw": "20260221200000",
+      "ts_format": "14-digit",
+      "name": "sync_edl_signer_to_lease_signer",
+      "size_bytes": 3259,
+      "size_lines": 89,
+      "sha256": "2413323f4742e5f257787af1b735267f5152eaa9b23a089f95b5ef36ca3362c7",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260221300000_fix_tenant_dashboard_owner_join.sql",
+      "timestamp": "20260221300000",
+      "timestamp_raw": "20260221300000",
+      "ts_format": "14-digit",
+      "name": "fix_tenant_dashboard_owner_join",
+      "size_bytes": 12823,
+      "size_lines": 345,
+      "sha256": "c37fea2cebd22dd99afd02d894ca22796c717d93af6f7a186e595960cdac88d5",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260221_fix_owner_data_chain.sql",
+      "timestamp": null,
+      "timestamp_raw": null,
+      "ts_format": "unknown",
+      "name": "20260221_fix_owner_data_chain",
+      "size_bytes": 5712,
+      "size_lines": 157,
+      "sha256": "8ed7132aa2293e23d5069d9312a97d0f418723d29ed80104e8a00d1aef3c0255",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260222000000_fix_invitations_and_orphan_signers.sql",
+      "timestamp": "20260222000000",
+      "timestamp_raw": "20260222000000",
+      "ts_format": "14-digit",
+      "name": "fix_invitations_and_orphan_signers",
+      "size_bytes": 2170,
+      "size_lines": 62,
+      "sha256": "dc3dffae409455123b311f808a1b0e46904c99dd98148794331c9eef478bfc61",
+      "first_operation": "UPDATE PUBLIC"
+    },
+    {
+      "filename": "20260222100000_repair_missing_signers_and_invitations.sql",
+      "timestamp": "20260222100000",
+      "timestamp_raw": "20260222100000",
+      "ts_format": "14-digit",
+      "name": "repair_missing_signers_and_invitations",
+      "size_bytes": 7584,
+      "size_lines": 176,
+      "sha256": "93f2290de6647d6772dbf2026a259e3fbc887acf26e2c148ad8f84a35bc5ab29",
+      "first_operation": "INSERT INTO PUBLIC"
+    },
+    {
+      "filename": "20260222200000_ensure_all_owners_have_entity.sql",
+      "timestamp": "20260222200000",
+      "timestamp_raw": "20260222200000",
+      "ts_format": "14-digit",
+      "name": "ensure_all_owners_have_entity",
+      "size_bytes": 1289,
+      "size_lines": 33,
+      "sha256": "46a8cac9027d884440e14a87c29e65e549f88435d38172bafce09fe0d9cd7fe3",
+      "first_operation": "INSERT INTO LEGAL"
+    },
+    {
+      "filename": "20260222200001_get_entity_stats_for_store.sql",
+      "timestamp": "20260222200001",
+      "timestamp_raw": "20260222200001",
+      "ts_format": "14-digit",
+      "name": "get_entity_stats_for_store",
+      "size_bytes": 2223,
+      "size_lines": 66,
+      "sha256": "660a6ba188b848c15d338bdd7fb82695df23f4ae7b5a34c3836157c23b4acb3d",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260223000000_fix_tenant_documents_rls.sql",
+      "timestamp": "20260223000000",
+      "timestamp_raw": "20260223000000",
+      "ts_format": "14-digit",
+      "name": "fix_tenant_documents_rls",
+      "size_bytes": 2385,
+      "size_lines": 61,
+      "sha256": "612b4eca7b8fe8dc81e3669b778f63eb4cbbff4801a7596b8ddcf1b73742905f",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260223000001_auto_fill_document_fk.sql",
+      "timestamp": "20260223000001",
+      "timestamp_raw": "20260223000001",
+      "ts_format": "14-digit",
+      "name": "auto_fill_document_fk",
+      "size_bytes": 6365,
+      "size_lines": 195,
+      "sha256": "45d687a774bf7b7f5e3917a1d429a877c75314890078bcebca28bb364dc32ba9",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260223000002_document_access_views.sql",
+      "timestamp": "20260223000002",
+      "timestamp_raw": "20260223000002",
+      "ts_format": "14-digit",
+      "name": "document_access_views",
+      "size_bytes": 3335,
+      "size_lines": 85,
+      "sha256": "e7ee6c8ff62061479b965a9325beb4c53d4c004c28e99f9f821a8f686097ae55",
+      "first_operation": "CREATE OR REPLACE VIEW"
+    },
+    {
+      "filename": "20260223000003_notify_owner_on_tenant_document.sql",
+      "timestamp": "20260223000003",
+      "timestamp_raw": "20260223000003",
+      "ts_format": "14-digit",
+      "name": "notify_owner_on_tenant_document",
+      "size_bytes": 3343,
+      "size_lines": 95,
+      "sha256": "d2b5f6677e46f472b389cc95cdef5993760d8b53bb96fef378bbf234e2b60eaa",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260223100000_fix_entity_connections.sql",
+      "timestamp": "20260223100000",
+      "timestamp_raw": "20260223100000",
+      "ts_format": "14-digit",
+      "name": "fix_entity_connections",
+      "size_bytes": 8776,
+      "size_lines": 276,
+      "sha256": "cb197c6e5eda4997d419cd3cc4ab69f1fb909d7af4adfb1d31523dcb730aaef5",
+      "first_operation": "UPDATE PROPERTIES P"
+    },
+    {
+      "filename": "20260223200000_fix_all_missing_tables_and_columns.sql",
+      "timestamp": "20260223200000",
+      "timestamp_raw": "20260223200000",
+      "ts_format": "14-digit",
+      "name": "fix_all_missing_tables_and_columns",
+      "size_bytes": 8877,
+      "size_lines": 231,
+      "sha256": "8cea1fa37c825a814561f9f7d625988cceceaf9253efa86a388de1927cd832eb",
+      "first_operation": "ALTER TABLE TENANT"
+    },
+    {
+      "filename": "20260224000000_fix_tenant_sync_and_notifications.sql",
+      "timestamp": "20260224000000",
+      "timestamp_raw": "20260224000000",
+      "ts_format": "14-digit",
+      "name": "fix_tenant_sync_and_notifications",
+      "size_bytes": 4019,
+      "size_lines": 108,
+      "sha256": "65b4d1b33e7fbb2132ba288ef9dfd371a09b3852e616b8728e797c1c7106b782",
+      "first_operation": "UPDATE PUBLIC"
+    },
+    {
+      "filename": "20260224000001_remove_yousign_sendgrid_brevo.sql",
+      "timestamp": "20260224000001",
+      "timestamp_raw": "20260224000001",
+      "ts_format": "14-digit",
+      "name": "remove_yousign_sendgrid_brevo",
+      "size_bytes": 389,
+      "size_lines": 12,
+      "sha256": "61b4ed236fd433538745630633e225d71506d40cd5cee7d95fd4a6ebb897b68e",
+      "first_operation": "DELETE FROM API"
+    },
+    {
+      "filename": "20260224100000_fix_tenant_dashboard_notifications_query.sql",
+      "timestamp": "20260224100000",
+      "timestamp_raw": "20260224100000",
+      "ts_format": "14-digit",
+      "name": "fix_tenant_dashboard_notifications_query",
+      "size_bytes": 12215,
+      "size_lines": 331,
+      "sha256": "b862393da0da48f38aab515987bfaeda3f09f17942399f70b9bd149b4b6d7fae",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260224100000_normalize_provider_names.sql",
+      "timestamp": "20260224100000",
+      "timestamp_raw": "20260224100000",
+      "ts_format": "14-digit",
+      "name": "normalize_provider_names",
+      "size_bytes": 443,
+      "size_lines": 8,
+      "sha256": "dd491df0273fd3a0abc4af58c004349a23b1ad29e686a0e0c3c690d161b50ac8",
+      "first_operation": "UPDATE API"
+    },
+    {
+      "filename": "20260225000000_owner_payment_audit_log.sql",
+      "timestamp": "20260225000000",
+      "timestamp_raw": "20260225000000",
+      "ts_format": "14-digit",
+      "name": "owner_payment_audit_log",
+      "size_bytes": 1509,
+      "size_lines": 34,
+      "sha256": "a8a5e6540983d8de3447ceb2b7966fcb4c1d3c6402bc105e2476c8bf87f38b86",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260225000001_fix_furniture_vetusty_rls.sql",
+      "timestamp": "20260225000001",
+      "timestamp_raw": "20260225000001",
+      "ts_format": "14-digit",
+      "name": "fix_furniture_vetusty_rls",
+      "size_bytes": 6309,
+      "size_lines": 184,
+      "sha256": "5015f0cefcdbc18484c649261f8a4098b9f5713a0391c7b52b2e55933f553a95",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260225100000_autolink_backfill_invoices_on_profile.sql",
+      "timestamp": "20260225100000",
+      "timestamp_raw": "20260225100000",
+      "ts_format": "14-digit",
+      "name": "autolink_backfill_invoices_on_profile",
+      "size_bytes": 2230,
+      "size_lines": 66,
+      "sha256": "ab2673f665e54d7fa12204d2e27830bc5cdd5b06cc69bad2bb9cdc0014dfff42",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260226000000_backfill_existing_invoices_tenant_id.sql",
+      "timestamp": "20260226000000",
+      "timestamp_raw": "20260226000000",
+      "ts_format": "14-digit",
+      "name": "backfill_existing_invoices_tenant_id",
+      "size_bytes": 1142,
+      "size_lines": 33,
+      "sha256": "8da7b09dbcd1ffb1d29bce8cf3ecbe9df36a42bd04718ce9e4800a1777c45570",
+      "first_operation": "UPDATE PUBLIC"
+    },
+    {
+      "filename": "20260226000000_fix_notifications_triggers.sql",
+      "timestamp": "20260226000000",
+      "timestamp_raw": "20260226000000",
+      "ts_format": "14-digit",
+      "name": "fix_notifications_triggers",
+      "size_bytes": 4816,
+      "size_lines": 168,
+      "sha256": "94f6b20dde5635c033c6bd972e9380d2440ea78f2e690ec59ab6120c680a4479",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260227000000_drop_auto_activate_lease_trigger.sql",
+      "timestamp": "20260227000000",
+      "timestamp_raw": "20260227000000",
+      "ts_format": "14-digit",
+      "name": "drop_auto_activate_lease_trigger",
+      "size_bytes": 264,
+      "size_lines": 5,
+      "sha256": "308e404ebde2128b71c6d929fd827e26881854cb45f569b0c3b8e050cc45ad7c",
+      "first_operation": "DROP FUNCTION IF EXISTS"
+    },
+    {
+      "filename": "20260228000000_lease_signers_share_percentage.sql",
+      "timestamp": "20260228000000",
+      "timestamp_raw": "20260228000000",
+      "ts_format": "14-digit",
+      "name": "lease_signers_share_percentage",
+      "size_bytes": 514,
+      "size_lines": 8,
+      "sha256": "c1dd05f6daf735daab44565c6824cf0b59c3e3112f5c242f66f783e0434e8199",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20260228100000_tenant_payment_methods_sota2026.sql",
+      "timestamp": "20260228100000",
+      "timestamp_raw": "20260228100000",
+      "ts_format": "14-digit",
+      "name": "tenant_payment_methods_sota2026",
+      "size_bytes": 11099,
+      "size_lines": 304,
+      "sha256": "add0fae628eafff0a30cea10cb3d97963dad1300c3b4cb3631ba05f947b93bed",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260229100000_identity_2fa_requests.sql",
+      "timestamp": "20260229100000",
+      "timestamp_raw": "20260229100000",
+      "ts_format": "14-digit",
+      "name": "identity_2fa_requests",
+      "size_bytes": 1570,
+      "size_lines": 35,
+      "sha256": "e200518e415c79693333defe52044cc8c11ca86467ec763539e7cea9684b0d75",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260230100000_create_notification_resolve_profile_id.sql",
+      "timestamp": "20260230100000",
+      "timestamp_raw": "20260230100000",
+      "ts_format": "14-digit",
+      "name": "create_notification_resolve_profile_id",
+      "size_bytes": 2439,
+      "size_lines": 93,
+      "sha256": "b5ee9d0a53633fc1cc34e3fb2cad0907f61a2cd0479e302c216cc9edde4553b4",
+      "first_operation": "DROP FUNCTION IF EXISTS"
+    },
+    {
+      "filename": "20260301000000_create_key_handovers.sql",
+      "timestamp": "20260301000000",
+      "timestamp_raw": "20260301000000",
+      "ts_format": "14-digit",
+      "name": "create_key_handovers",
+      "size_bytes": 2286,
+      "size_lines": 75,
+      "sha256": "ece6ab2c589a7236c47f2f20bac54e9631a1f9410ff6af6e832dc77b7df3613c",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260301100000_entity_audit_and_propagation.sql",
+      "timestamp": "20260301100000",
+      "timestamp_raw": "20260301100000",
+      "ts_format": "14-digit",
+      "name": "entity_audit_and_propagation",
+      "size_bytes": 12880,
+      "size_lines": 313,
+      "sha256": "f1211a4a5c9b08a3a9da33ecee46cc8df8026f49eb272745271b0f3506d1e674",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260303000000_backfill_uploaded_by.sql",
+      "timestamp": "20260303000000",
+      "timestamp_raw": "20260303000000",
+      "ts_format": "14-digit",
+      "name": "backfill_uploaded_by",
+      "size_bytes": 2590,
+      "size_lines": 68,
+      "sha256": "151e17adda0701fd4205d8d11765538dac7da05c27a88f91671f042b390427d5",
+      "first_operation": "UPDATE PUBLIC"
+    },
+    {
+      "filename": "20260303100000_entity_rls_fix_and_optimize.sql",
+      "timestamp": "20260303100000",
+      "timestamp_raw": "20260303100000",
+      "ts_format": "14-digit",
+      "name": "entity_rls_fix_and_optimize",
+      "size_bytes": 5941,
+      "size_lines": 155,
+      "sha256": "6a7a2ba149808d2753837c0e9ea4d7c5402ab37e6f30f4c5a699741541f1d56d",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260304000000_fix_invoice_generation_jour_paiement.sql",
+      "timestamp": "20260304000000",
+      "timestamp_raw": "20260304000000",
+      "ts_format": "14-digit",
+      "name": "fix_invoice_generation_jour_paiement",
+      "size_bytes": 3001,
+      "size_lines": 96,
+      "sha256": "14dbf8ed30fcf6e5d2d05ee3ab79d2c9461c0c487b349db135ec12fefd5e8ada",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260304000001_sync_sepa_collection_day.sql",
+      "timestamp": "20260304000001",
+      "timestamp_raw": "20260304000001",
+      "ts_format": "14-digit",
+      "name": "sync_sepa_collection_day",
+      "size_bytes": 1200,
+      "size_lines": 34,
+      "sha256": "c3d31994b15d991e7a449e9839c5820f4c480641ff6813088a8edfe96f44b80a",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260304100000_activate_pg_cron_schedules.sql",
+      "timestamp": "20260304100000",
+      "timestamp_raw": "20260304100000",
+      "ts_format": "14-digit",
+      "name": "activate_pg_cron_schedules",
+      "size_bytes": 4816,
+      "size_lines": 132,
+      "sha256": "586cfff1928daab65dc20b5492100eace1430b4e7dc0c3ac85ab97c2f4c16b06",
+      "first_operation": "CREATE EXTENSION IF NOT"
+    },
+    {
+      "filename": "20260304200000_auto_mark_late_invoices.sql",
+      "timestamp": "20260304200000",
+      "timestamp_raw": "20260304200000",
+      "ts_format": "14-digit",
+      "name": "auto_mark_late_invoices",
+      "size_bytes": 1418,
+      "size_lines": 48,
+      "sha256": "93a3b60021ec35e04ce4f27d128fe284327ef64c025d009f11ff8bf6ffbe5540",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260305000001_invoice_engine_fields.sql",
+      "timestamp": "20260305000001",
+      "timestamp_raw": "20260305000001",
+      "ts_format": "14-digit",
+      "name": "invoice_engine_fields",
+      "size_bytes": 14842,
+      "size_lines": 398,
+      "sha256": "f19ad78c5ba82466d87e95cfb673e78c5c274f4ae7a434e8617057535fdc94a0",
+      "first_operation": "ALTER TABLE LEASES"
+    },
+    {
+      "filename": "20260305000002_payment_crons.sql",
+      "timestamp": "20260305000002",
+      "timestamp_raw": "20260305000002",
+      "ts_format": "14-digit",
+      "name": "payment_crons",
+      "size_bytes": 827,
+      "size_lines": 22,
+      "sha256": "7e30ea9850bea9c04a1555f70d534cbce3a16aba883a013ded1af85ca51944e1",
+      "first_operation": "SELECT CRON"
+    },
+    {
+      "filename": "20260305100000_fix_invoice_draft_notification.sql",
+      "timestamp": "20260305100000",
+      "timestamp_raw": "20260305100000",
+      "ts_format": "14-digit",
+      "name": "fix_invoice_draft_notification",
+      "size_bytes": 1864,
+      "size_lines": 62,
+      "sha256": "5ad677f85237188cc70c5b9ee7a5733907cb7519a5e931afc02f97a1b7673d4d",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260305100001_add_missing_notification_triggers.sql",
+      "timestamp": "20260305100001",
+      "timestamp_raw": "20260305100001",
+      "ts_format": "14-digit",
+      "name": "add_missing_notification_triggers",
+      "size_bytes": 3669,
+      "size_lines": 129,
+      "sha256": "5f281e42e2889147aa9e3eee8e8c23725f421f74265e25dd889a12c5cb917e6d",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260306000000_lease_documents_visible_tenant.sql",
+      "timestamp": "20260306000000",
+      "timestamp_raw": "20260306000000",
+      "ts_format": "14-digit",
+      "name": "lease_documents_visible_tenant",
+      "size_bytes": 1405,
+      "size_lines": 39,
+      "sha256": "5300f795fc12219589b7a57bc8b42821b96bd679321a583a6235a76f4a6a253a",
+      "first_operation": "ALTER TABLE DOCUMENTS ADD"
+    },
+    {
+      "filename": "20260306100000_add_digicode_interphone_columns.sql",
+      "timestamp": "20260306100000",
+      "timestamp_raw": "20260306100000",
+      "ts_format": "14-digit",
+      "name": "add_digicode_interphone_columns",
+      "size_bytes": 412,
+      "size_lines": 9,
+      "sha256": "73b1f1a118ba98f2b586bc31208aeab8c7a7cae9f6bd8da55cb4c7c2c94e0872",
+      "first_operation": "ALTER TABLE PROPERTIES ADD"
+    },
+    {
+      "filename": "20260306100000_invoice_on_fully_signed.sql",
+      "timestamp": "20260306100000",
+      "timestamp_raw": "20260306100000",
+      "ts_format": "14-digit",
+      "name": "invoice_on_fully_signed",
+      "size_bytes": 8142,
+      "size_lines": 234,
+      "sha256": "5b7d5d373fe83b6630f1500ca1e682601ab3f9c0f8e400e7728c7c3124699587",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260306100001_backfill_initial_invoices.sql",
+      "timestamp": "20260306100001",
+      "timestamp_raw": "20260306100001",
+      "ts_format": "14-digit",
+      "name": "backfill_initial_invoices",
+      "size_bytes": 2121,
+      "size_lines": 72,
+      "sha256": "43ef13cb343f115897421ff3004f38d5010a851578cbb41c71f195bcd1e2b2e4",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260306200000_notify_tenant_digicode_changed.sql",
+      "timestamp": "20260306200000",
+      "timestamp_raw": "20260306200000",
+      "ts_format": "14-digit",
+      "name": "notify_tenant_digicode_changed",
+      "size_bytes": 2046,
+      "size_lines": 59,
+      "sha256": "b0942569976c879bd30df231e25bd12b477f8c54fa54b465c7477cc5ba3aa4a0",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260306300000_add_owner_payment_preferences.sql",
+      "timestamp": "20260306300000",
+      "timestamp_raw": "20260306300000",
+      "ts_format": "14-digit",
+      "name": "add_owner_payment_preferences",
+      "size_bytes": 1758,
+      "size_lines": 27,
+      "sha256": "dbb5ac2f211f2316b8ae27e35131c68c3e5fd9df457631b6cefbe220c9334824",
+      "first_operation": "ALTER TABLE OWNER"
+    },
+    {
+      "filename": "20260309000000_entity_status_and_dedup.sql",
+      "timestamp": "20260309000000",
+      "timestamp_raw": "20260309000000",
+      "ts_format": "14-digit",
+      "name": "entity_status_and_dedup",
+      "size_bytes": 5221,
+      "size_lines": 155,
+      "sha256": "37e6750463d23e2d1b5e6bec04f2871d46ef34196d7c086baa81898e4c07c014",
+      "first_operation": "ALTER TABLE LEGAL"
+    },
+    {
+      "filename": "20260309000001_messages_update_rls.sql",
+      "timestamp": "20260309000001",
+      "timestamp_raw": "20260309000001",
+      "ts_format": "14-digit",
+      "name": "messages_update_rls",
+      "size_bytes": 686,
+      "size_lines": 19,
+      "sha256": "9395e358f8f2de7ab65da0bf440ee0a92ba2fd59061fb3a3207cf63bc088d690",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260309000002_add_ticket_to_conversations.sql",
+      "timestamp": "20260309000002",
+      "timestamp_raw": "20260309000002",
+      "ts_format": "14-digit",
+      "name": "add_ticket_to_conversations",
+      "size_bytes": 273,
+      "size_lines": 5,
+      "sha256": "bfecbee256f3c912d195a5a52a98c5855ab01497da2031a62c1f9e5f5ac7036f",
+      "first_operation": "ALTER TABLE CONVERSATIONS ADD"
+    },
+    {
+      "filename": "20260309100000_sync_subscription_plans_features.sql",
+      "timestamp": "20260309100000",
+      "timestamp_raw": "20260309100000",
+      "ts_format": "14-digit",
+      "name": "sync_subscription_plans_features",
+      "size_bytes": 24210,
+      "size_lines": 820,
+      "sha256": "6fd1c9a6609edd04cafef641dba0763ff8decd6803f83e48d814c47d10c8480b",
+      "first_operation": "INSERT INTO SUBSCRIPTION"
+    },
+    {
+      "filename": "20260310000000_fix_subscription_plans_display_order.sql",
+      "timestamp": "20260310000000",
+      "timestamp_raw": "20260310000000",
+      "ts_format": "14-digit",
+      "name": "fix_subscription_plans_display_order",
+      "size_bytes": 1193,
+      "size_lines": 22,
+      "sha256": "a1f67ca734a0a72e53f4db4a4ad7b98d10554c40832baa2dde1c096593cbc0f9",
+      "first_operation": "UPDATE SUBSCRIPTION"
+    },
+    {
+      "filename": "20260310100000_fix_property_limit_enforcement.sql",
+      "timestamp": "20260310100000",
+      "timestamp_raw": "20260310100000",
+      "ts_format": "14-digit",
+      "name": "fix_property_limit_enforcement",
+      "size_bytes": 6585,
+      "size_lines": 184,
+      "sha256": "7e9274543e75ce8cb80f9fbc1b1a7dd4b1e7a9cdc083943a0c06491cf3eb9920",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260310200000_add_signature_push_franceconnect.sql",
+      "timestamp": "20260310200000",
+      "timestamp_raw": "20260310200000",
+      "ts_format": "14-digit",
+      "name": "add_signature_push_franceconnect",
+      "size_bytes": 3676,
+      "size_lines": 86,
+      "sha256": "3c64db87b7e429fcd54df1daa240bfe04b68aae657ee8787f2d25ae9db69fe3c",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260310200000_fix_property_limit_extra_properties.sql",
+      "timestamp": "20260310200000",
+      "timestamp_raw": "20260310200000",
+      "ts_format": "14-digit",
+      "name": "fix_property_limit_extra_properties",
+      "size_bytes": 3265,
+      "size_lines": 78,
+      "sha256": "c9577440057db008bda9aefdfe5d9eef497fcf218cdf00c2eebc35af5674cfd3",
+      "first_operation": "ALTER TABLE SUBSCRIPTION"
+    },
+    {
+      "filename": "20260310300000_add_stripe_price_extra_property_id.sql",
+      "timestamp": "20260310300000",
+      "timestamp_raw": "20260310300000",
+      "ts_format": "14-digit",
+      "name": "add_stripe_price_extra_property_id",
+      "size_bytes": 391,
+      "size_lines": 9,
+      "sha256": "8cf8c64d3893698ccc89979cb05174f16951ecfe20de80c83f1666216cb67dce",
+      "first_operation": "ALTER TABLE SUBSCRIPTION"
+    },
+    {
+      "filename": "20260311100000_sync_subscription_plan_slugs.sql",
+      "timestamp": "20260311100000",
+      "timestamp_raw": "20260311100000",
+      "ts_format": "14-digit",
+      "name": "sync_subscription_plan_slugs",
+      "size_bytes": 1657,
+      "size_lines": 47,
+      "sha256": "9ff2da409544b8a8c0e5b5f80e19380ddf253cb80f655c243480b1776642185f",
+      "first_operation": "UPDATE SUBSCRIPTIONS S"
+    },
+    {
+      "filename": "20260312000000_admin_dashboard_rpcs.sql",
+      "timestamp": "20260312000000",
+      "timestamp_raw": "20260312000000",
+      "ts_format": "14-digit",
+      "name": "admin_dashboard_rpcs",
+      "size_bytes": 3369,
+      "size_lines": 113,
+      "sha256": "337731049a3352dbe6f7d8ff829a7ef75a41ad5bc209164e5de5208d20b0008e",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260312000001_fix_owner_subscription_defaults.sql",
+      "timestamp": "20260312000001",
+      "timestamp_raw": "20260312000001",
+      "ts_format": "14-digit",
+      "name": "fix_owner_subscription_defaults",
+      "size_bytes": 5926,
+      "size_lines": 183,
+      "sha256": "d17a54d1a5d4ca6478d34e37047da7e78b7805530dacfcd693ce13794f0448f9",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260312100000_fix_handle_new_user_all_roles.sql",
+      "timestamp": "20260312100000",
+      "timestamp_raw": "20260312100000",
+      "ts_format": "14-digit",
+      "name": "fix_handle_new_user_all_roles",
+      "size_bytes": 1909,
+      "size_lines": 55,
+      "sha256": "4629748204352c1d84be6aaf016f39131cba520a7c1b1376d5e20cecea53d3dc",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260314001000_fix_stripe_connect_rls.sql",
+      "timestamp": "20260314001000",
+      "timestamp_raw": "20260314001000",
+      "ts_format": "14-digit",
+      "name": "fix_stripe_connect_rls",
+      "size_bytes": 2023,
+      "size_lines": 66,
+      "sha256": "41f91f9d7f1f109bc2e675e722316aeb489c5e1b7aff56115ba238019b4043b3",
+      "first_operation": "ALTER TABLE STRIPE"
+    },
+    {
+      "filename": "20260314020000_canonical_lease_activation_flow.sql",
+      "timestamp": "20260314020000",
+      "timestamp_raw": "20260314020000",
+      "ts_format": "14-digit",
+      "name": "canonical_lease_activation_flow",
+      "size_bytes": 6180,
+      "size_lines": 206,
+      "sha256": "1d3225b257c5920aad2f7763c66356c49d3fc42af4ca3b5ff5fc038b3c1971f2",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260314030000_payments_production_hardening.sql",
+      "timestamp": "20260314030000",
+      "timestamp_raw": "20260314030000",
+      "ts_format": "14-digit",
+      "name": "payments_production_hardening",
+      "size_bytes": 5415,
+      "size_lines": 150,
+      "sha256": "9240fd6662ab337049cf04915bc8496676356e517434f52bafd4a312dbb3c9e4",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260315090000_market_standard_subscription_alignment.sql",
+      "timestamp": "20260315090000",
+      "timestamp_raw": "20260315090000",
+      "ts_format": "14-digit",
+      "name": "market_standard_subscription_alignment",
+      "size_bytes": 2460,
+      "size_lines": 82,
+      "sha256": "675d229436afbb0a4735bd24331a8dc72a40a0b875de650407c9fd57bbd6dfd5",
+      "first_operation": "ALTER TABLE SUBSCRIPTIONS"
+    },
+    {
+      "filename": "20260318000000_fix_auth_reset_template_examples.sql",
+      "timestamp": "20260318000000",
+      "timestamp_raw": "20260318000000",
+      "ts_format": "14-digit",
+      "name": "fix_auth_reset_template_examples",
+      "size_bytes": 1145,
+      "size_lines": 30,
+      "sha256": "bac9cf2e20dbb1d7b8d7d0439a023b1971e28cc2cdc882c46ec28103df5474fc",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260318010000_password_reset_requests.sql",
+      "timestamp": "20260318010000",
+      "timestamp_raw": "20260318010000",
+      "ts_format": "14-digit",
+      "name": "password_reset_requests",
+      "size_bytes": 1876,
+      "size_lines": 53,
+      "sha256": "a23892a9bc82fb41b14be43b36023b2906de4a926826942867acf38e9718547d",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260318020000_buildings_rls_sota2026.sql",
+      "timestamp": "20260318020000",
+      "timestamp_raw": "20260318020000",
+      "ts_format": "14-digit",
+      "name": "buildings_rls_sota2026",
+      "size_bytes": 4425,
+      "size_lines": 128,
+      "sha256": "db6f7c6b65cf1ec2fc9a2a973360c445838c087d87d649d3358033bd40887aba",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260320100000_fix_owner_id_mismatch_and_rls.sql",
+      "timestamp": "20260320100000",
+      "timestamp_raw": "20260320100000",
+      "ts_format": "14-digit",
+      "name": "fix_owner_id_mismatch_and_rls",
+      "size_bytes": 3777,
+      "size_lines": 111,
+      "sha256": "9acf3c066b63a40a9e1c266e08efeb162421ffd72a6686008fb2919c24c5d94b",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260321000000_drop_invoice_trigger_sota2026.sql",
+      "timestamp": "20260321000000",
+      "timestamp_raw": "20260321000000",
+      "ts_format": "14-digit",
+      "name": "drop_invoice_trigger_sota2026",
+      "size_bytes": 494,
+      "size_lines": 10,
+      "sha256": "d97f10b16a2e34dc15b7d412d506f05c6144dc5f9fe251b105d3dc3395bb5d2c",
+      "first_operation": "DROP FUNCTION IF EXISTS"
+    },
+    {
+      "filename": "20260321100000_fix_cron_post_refactoring_sota2026.sql",
+      "timestamp": "20260321100000",
+      "timestamp_raw": "20260321100000",
+      "ts_format": "14-digit",
+      "name": "fix_cron_post_refactoring_sota2026",
+      "size_bytes": 847,
+      "size_lines": 22,
+      "sha256": "8e14533e1d1535d1d67e077249fda280e369e2ff995738490b749c3e7f57446a",
+      "first_operation": "SELECT CRON"
+    },
+    {
+      "filename": "20260323000000_fix_document_visibility_and_dedup.sql",
+      "timestamp": "20260323000000",
+      "timestamp_raw": "20260323000000",
+      "ts_format": "14-digit",
+      "name": "fix_document_visibility_and_dedup",
+      "size_bytes": 2920,
+      "size_lines": 76,
+      "sha256": "41782ee14ae6d37339e25c8267326db82e617fc06edbe667eba7472491964c21",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260324100000_prevent_duplicate_payments.sql",
+      "timestamp": "20260324100000",
+      "timestamp_raw": "20260324100000",
+      "ts_format": "14-digit",
+      "name": "prevent_duplicate_payments",
+      "size_bytes": 673,
+      "size_lines": 16,
+      "sha256": "f9e163d66e10e3cc91c18282cd51a4bd8198994816e2e54c11c52eb90ca11432",
+      "first_operation": "UNKNOWN"
+    },
+    {
+      "filename": "20260326022619_fix_documents_bucket_mime.sql",
+      "timestamp": "20260326022619",
+      "timestamp_raw": "20260326022619",
+      "ts_format": "14-digit",
+      "name": "fix_documents_bucket_mime",
+      "size_bytes": 650,
+      "size_lines": 17,
+      "sha256": "1007d6e97e8e8b0fa18c63c8adb48b7a234e263ca532dd52142c9f4ca34e28b9",
+      "first_operation": "UPDATE STORAGE"
+    },
+    {
+      "filename": "20260326022700_migrate_tenant_documents.sql",
+      "timestamp": "20260326022700",
+      "timestamp_raw": "20260326022700",
+      "ts_format": "14-digit",
+      "name": "migrate_tenant_documents",
+      "size_bytes": 2851,
+      "size_lines": 80,
+      "sha256": "a5dfedf437d78a33e04024d49fb1076173db6bd1970625ea2ad37772ae53af8e",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260326022800_create_document_links.sql",
+      "timestamp": "20260326022800",
+      "timestamp_raw": "20260326022800",
+      "ts_format": "14-digit",
+      "name": "create_document_links",
+      "size_bytes": 1678,
+      "size_lines": 42,
+      "sha256": "6db60dec8e5c2b4aa660c1f32558234922edbdf30fe8919419b8f0b0ad9ad693",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260326023000_fix_document_titles.sql",
+      "timestamp": "20260326023000",
+      "timestamp_raw": "20260326023000",
+      "ts_format": "14-digit",
+      "name": "fix_document_titles",
+      "size_bytes": 2514,
+      "size_lines": 51,
+      "sha256": "44e487c16b969cf5d26efe4ce0cb8853e515ec59119c6e07c8740f19809a73a0",
+      "first_operation": "UPDATE DOCUMENTS SET TITLE"
+    },
+    {
+      "filename": "20260326205416_add_agency_role_to_handle_new_user.sql",
+      "timestamp": "20260326205416",
+      "timestamp_raw": "20260326205416",
+      "ts_format": "14-digit",
+      "name": "add_agency_role_to_handle_new_user",
+      "size_bytes": 1885,
+      "size_lines": 55,
+      "sha256": "47d312082acddaeb92074a5cdbb3e176246897b9bc7db0d5717ef6cd3d750c87",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260327143000_add_site_config.sql",
+      "timestamp": "20260327143000",
+      "timestamp_raw": "20260327143000",
+      "ts_format": "14-digit",
+      "name": "add_site_config",
+      "size_bytes": 3311,
+      "size_lines": 110,
+      "sha256": "1486d0bff31834862f434b00e4f791a6baabc40066074bb975ce58c203ce91b3",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260327200000_fix_handle_new_user_restore_email.sql",
+      "timestamp": "20260327200000",
+      "timestamp_raw": "20260327200000",
+      "ts_format": "14-digit",
+      "name": "fix_handle_new_user_restore_email",
+      "size_bytes": 3464,
+      "size_lines": 99,
+      "sha256": "f3708d1300e30b85aef3404f410bf02d87d30dda769dfa3c53582c87c19a6c29",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260328000000_fix_visible_tenant_documents.sql",
+      "timestamp": "20260328000000",
+      "timestamp_raw": "20260328000000",
+      "ts_format": "14-digit",
+      "name": "fix_visible_tenant_documents",
+      "size_bytes": 387,
+      "size_lines": 10,
+      "sha256": "4ff5bd6ecc4b08eb63d3153cc100a96b0e9859e1e0f5593a0f9e2c6104cf554c",
+      "first_operation": "UPDATE DOCUMENTS"
+    },
+    {
+      "filename": "20260328042538_update_argument_images.sql",
+      "timestamp": "20260328042538",
+      "timestamp_raw": "20260328042538",
+      "ts_format": "14-digit",
+      "name": "update_argument_images",
+      "size_bytes": 626,
+      "size_lines": 13,
+      "sha256": "0784a43d2080584378261e2abac0cf03a5e3a5943979634cf05ea1a2d94d576a",
+      "first_operation": "UPDATE SITE"
+    },
+    {
+      "filename": "20260328100000_create_site_content.sql",
+      "timestamp": "20260328100000",
+      "timestamp_raw": "20260328100000",
+      "ts_format": "14-digit",
+      "name": "create_site_content",
+      "size_bytes": 1334,
+      "size_lines": 49,
+      "sha256": "88932cd764b57b9a4a22294a887571514bb438878a81518ed5086a3310131337",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260328100000_fix_visible_tenant_documents.sql",
+      "timestamp": "20260328100000",
+      "timestamp_raw": "20260328100000",
+      "ts_format": "14-digit",
+      "name": "fix_visible_tenant_documents",
+      "size_bytes": 911,
+      "size_lines": 19,
+      "sha256": "0723d1a0671af453becc005d52e83923edad9a03cd086016a69d1437a8b30933",
+      "first_operation": "UPDATE DOCUMENTS"
+    },
+    {
+      "filename": "20260329052631_fix_contrat_bail_visible_tenant.sql",
+      "timestamp": "20260329052631",
+      "timestamp_raw": "20260329052631",
+      "ts_format": "14-digit",
+      "name": "fix_contrat_bail_visible_tenant",
+      "size_bytes": 711,
+      "size_lines": 22,
+      "sha256": "e3bd739b6f4b5c9bae9546f8ae07206594452672d517ca8a884398a3478eb061",
+      "first_operation": "UPDATE DOCUMENTS"
+    },
+    {
+      "filename": "20260329120000_add_agency_to_handle_new_user.sql",
+      "timestamp": "20260329120000",
+      "timestamp_raw": "20260329120000",
+      "ts_format": "14-digit",
+      "name": "add_agency_to_handle_new_user",
+      "size_bytes": 1907,
+      "size_lines": 55,
+      "sha256": "00877f887cbbd1332e12384f1aa1aa4d4f08907f0a0a2af7ab7886402efd4dd1",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260329164841_fix_document_titles.sql",
+      "timestamp": "20260329164841",
+      "timestamp_raw": "20260329164841",
+      "ts_format": "14-digit",
+      "name": "fix_document_titles",
+      "size_bytes": 2279,
+      "size_lines": 45,
+      "sha256": "599d64725fa63791d413b6be124da2fcd6e670f0e73486074436b59713aecffe",
+      "first_operation": "UPDATE DOCUMENTS SET"
+    },
+    {
+      "filename": "20260329170000_add_punctuality_score.sql",
+      "timestamp": "20260329170000",
+      "timestamp_raw": "20260329170000",
+      "ts_format": "14-digit",
+      "name": "add_punctuality_score",
+      "size_bytes": 2453,
+      "size_lines": 88,
+      "sha256": "8ed421ceac85e559527b2ae9b47be5772e167959b79b51801a7b389eacab4ef5",
+      "first_operation": "ALTER TABLE LEASES"
+    },
+    {
+      "filename": "20260329180000_notify_owner_edl_signed.sql",
+      "timestamp": "20260329180000",
+      "timestamp_raw": "20260329180000",
+      "ts_format": "14-digit",
+      "name": "notify_owner_edl_signed",
+      "size_bytes": 3077,
+      "size_lines": 85,
+      "sha256": "0ec85585ec6de7ac383b124cabdee9c386132a317d4a54232491cf772f067b50",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260329190000_force_visible_tenant_generated_docs.sql",
+      "timestamp": "20260329190000",
+      "timestamp_raw": "20260329190000",
+      "ts_format": "14-digit",
+      "name": "force_visible_tenant_generated_docs",
+      "size_bytes": 1552,
+      "size_lines": 35,
+      "sha256": "4eed2a350a7f93f952785260b402bc4d72aee341983e6a84f758620464bc22ad",
+      "first_operation": "UPDATE DOCUMENTS"
+    },
+    {
+      "filename": "20260330100000_add_lease_cancellation_columns.sql",
+      "timestamp": "20260330100000",
+      "timestamp_raw": "20260330100000",
+      "ts_format": "14-digit",
+      "name": "add_lease_cancellation_columns",
+      "size_bytes": 2625,
+      "size_lines": 62,
+      "sha256": "6f28f91984b11fd3075a1a892736e11e3ca30bdb0a23665191e95c3ee83e77a3",
+      "first_operation": "ALTER TABLE LEASES ADD"
+    },
+    {
+      "filename": "20260331000000_add_receipt_generated_to_invoices.sql",
+      "timestamp": "20260331000000",
+      "timestamp_raw": "20260331000000",
+      "ts_format": "14-digit",
+      "name": "add_receipt_generated_to_invoices",
+      "size_bytes": 801,
+      "size_lines": 25,
+      "sha256": "f29906b18dd38ad96810a0798b5cef3b9ba0c377f301c3d97adbe64f62ff317e",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260331100000_add_agricultural_property_types.sql",
+      "timestamp": "20260331100000",
+      "timestamp_raw": "20260331100000",
+      "ts_format": "14-digit",
+      "name": "add_agricultural_property_types",
+      "size_bytes": 695,
+      "size_lines": 28,
+      "sha256": "46243cb1d5b57eaefafb3152287ea74514f01c67c368f56166ce6ba3757dd506",
+      "first_operation": "ALTER TABLE PROPERTIES"
+    },
+    {
+      "filename": "20260331100000_fix_document_titles_bruts.sql",
+      "timestamp": "20260331100000",
+      "timestamp_raw": "20260331100000",
+      "ts_format": "14-digit",
+      "name": "fix_document_titles_bruts",
+      "size_bytes": 1480,
+      "size_lines": 35,
+      "sha256": "111702102b57bd10aa60b4f022942058395f422b4bf6bfcce369a7d91f273e18",
+      "first_operation": "UPDATE DOCUMENTS SET TITLE"
+    },
+    {
+      "filename": "20260331120000_add_signed_pdf_generated_to_leases.sql",
+      "timestamp": "20260331120000",
+      "timestamp_raw": "20260331120000",
+      "ts_format": "14-digit",
+      "name": "add_signed_pdf_generated_to_leases",
+      "size_bytes": 629,
+      "size_lines": 21,
+      "sha256": "6784a49380ae2746bfe9157d8a9d5a81b5160afa565e0a15220c9af5a1b064e9",
+      "first_operation": "ALTER TABLE LEASES"
+    },
+    {
+      "filename": "20260331130000_key_handovers_add_cancelled_notes.sql",
+      "timestamp": "20260331130000",
+      "timestamp_raw": "20260331130000",
+      "ts_format": "14-digit",
+      "name": "key_handovers_add_cancelled_notes",
+      "size_bytes": 721,
+      "size_lines": 16,
+      "sha256": "b8dc50117f6477fef52b2ff8d9ff732f6f0a5cd0893e182b3f9062ecd90de2ec",
+      "first_operation": "ALTER TABLE KEY"
+    },
+    {
+      "filename": "20260401000000_add_identity_status_onboarding_step.sql",
+      "timestamp": "20260401000000",
+      "timestamp_raw": "20260401000000",
+      "ts_format": "14-digit",
+      "name": "add_identity_status_onboarding_step",
+      "size_bytes": 1718,
+      "size_lines": 47,
+      "sha256": "f605cd699d369ecedbd57f1465d284de7592b30b569875880813419270ae25af",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260401000001_add_initial_payment_confirmed_to_leases.sql",
+      "timestamp": "20260401000001",
+      "timestamp_raw": "20260401000001",
+      "ts_format": "14-digit",
+      "name": "add_initial_payment_confirmed_to_leases",
+      "size_bytes": 1019,
+      "size_lines": 27,
+      "sha256": "6c5f8cfaacd4486704231d0b73a3e804a0d482f4ea0c270b222d1ccfff7b5faa",
+      "first_operation": "ALTER TABLE LEASES"
+    },
+    {
+      "filename": "20260401000001_backfill_identity_status.sql",
+      "timestamp": "20260401000001",
+      "timestamp_raw": "20260401000001",
+      "ts_format": "14-digit",
+      "name": "backfill_identity_status",
+      "size_bytes": 3025,
+      "size_lines": 78,
+      "sha256": "40fd9e214dffd27ceea53a7ec564f2cf4e03fdcaae69f0e1c722706185dfaecf",
+      "first_operation": "UPDATE PROFILES SET"
+    },
+    {
+      "filename": "20260404100000_rls_push_subscriptions.sql",
+      "timestamp": "20260404100000",
+      "timestamp_raw": "20260404100000",
+      "ts_format": "14-digit",
+      "name": "rls_push_subscriptions",
+      "size_bytes": 1087,
+      "size_lines": 26,
+      "sha256": "258dfcf89a740f3056c071fda15faf9b0c1430b9757cf4071fe6044bb5656be3",
+      "first_operation": "ALTER TABLE IF EXISTS"
+    },
+    {
+      "filename": "20260404100100_fix_tenant_docs_view_visible_tenant.sql",
+      "timestamp": "20260404100100",
+      "timestamp_raw": "20260404100100",
+      "ts_format": "14-digit",
+      "name": "fix_tenant_docs_view_visible_tenant",
+      "size_bytes": 2064,
+      "size_lines": 50,
+      "sha256": "994d7b51289d99fce0ebfaf260a4acf675ecccafaa9f89dbdff3f89a364d461e",
+      "first_operation": "CREATE OR REPLACE VIEW"
+    },
+    {
+      "filename": "20260404100200_fix_ticket_messages_rls_lease_signers.sql",
+      "timestamp": "20260404100200",
+      "timestamp_raw": "20260404100200",
+      "ts_format": "14-digit",
+      "name": "fix_ticket_messages_rls_lease_signers",
+      "size_bytes": 2426,
+      "size_lines": 79,
+      "sha256": "244395f9cac80cc09f02bbbd484fd1b597b4c3a872e8a48474e81cc142164973",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260406200000_create_entities_view_and_members.sql",
+      "timestamp": "20260406200000",
+      "timestamp_raw": "20260406200000",
+      "ts_format": "14-digit",
+      "name": "create_entities_view_and_members",
+      "size_bytes": 6350,
+      "size_lines": 183,
+      "sha256": "7e0306e9e0833ede497a8510e0b75bbbc8d7b22ab7d3476b9c9680e6d050ee8a",
+      "first_operation": "CREATE OR REPLACE VIEW"
+    },
+    {
+      "filename": "20260406210000_accounting_complete.sql",
+      "timestamp": "20260406210000",
+      "timestamp_raw": "20260406210000",
+      "ts_format": "14-digit",
+      "name": "accounting_complete",
+      "size_bytes": 30636,
+      "size_lines": 881,
+      "sha256": "8049d87885a614eec51229c49446f4ac982308371131bbd52bd381f3f665a46e",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260407110000_audit_fixes_rls_indexes.sql",
+      "timestamp": "20260407110000",
+      "timestamp_raw": "20260407110000",
+      "ts_format": "14-digit",
+      "name": "audit_fixes_rls_indexes",
+      "size_bytes": 1730,
+      "size_lines": 43,
+      "sha256": "85b476c040a691e3694e07e19ea14a3449f5f974c7f73ee5791103ad7efe67eb",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260407120000_accounting_reconcile_schemas.sql",
+      "timestamp": "20260407120000",
+      "timestamp_raw": "20260407120000",
+      "ts_format": "14-digit",
+      "name": "accounting_reconcile_schemas",
+      "size_bytes": 7424,
+      "size_lines": 186,
+      "sha256": "b69be837f93f4240c6c997d8eb150b5d1ca4ddcbca8e5874eb7ee21a6dfb0557",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20260407130000_ocr_category_rules.sql",
+      "timestamp": "20260407130000",
+      "timestamp_raw": "20260407130000",
+      "ts_format": "14-digit",
+      "name": "ocr_category_rules",
+      "size_bytes": 1719,
+      "size_lines": 37,
+      "sha256": "8ad815faa0929d99d3be5f9b98f538f8f18470abb0805983af3e2df7bb7ba788",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408042218_create_expenses_table.sql",
+      "timestamp": "20260408042218",
+      "timestamp_raw": "20260408042218",
+      "ts_format": "14-digit",
+      "name": "create_expenses_table",
+      "size_bytes": 6154,
+      "size_lines": 170,
+      "sha256": "92f08be49745b2e97788a83cd1648d3aa6ef53742c9ea160073ee220c190a5aa",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408044152_reconcile_charge_regularisations_and_backfill_entry_lines.sql",
+      "timestamp": "20260408044152",
+      "timestamp_raw": "20260408044152",
+      "ts_format": "14-digit",
+      "name": "reconcile_charge_regularisations_and_backfill_entry_lines",
+      "size_bytes": 10212,
+      "size_lines": 307,
+      "sha256": "29d00eb670895f4cc63dc76c2d69cb28607aa935318f034952d11c24cf3a1c1e",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20260408100000_copro_lots.sql",
+      "timestamp": "20260408100000",
+      "timestamp_raw": "20260408100000",
+      "ts_format": "14-digit",
+      "name": "copro_lots",
+      "size_bytes": 3570,
+      "size_lines": 63,
+      "sha256": "97ef6b234a7663228f218b3b59d59c580442035cd6ddcb4b58ce8f5165c8c2e1",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408100000_create_push_subscriptions.sql",
+      "timestamp": "20260408100000",
+      "timestamp_raw": "20260408100000",
+      "ts_format": "14-digit",
+      "name": "create_push_subscriptions",
+      "size_bytes": 1906,
+      "size_lines": 57,
+      "sha256": "171db7e6077f1c1a05935c974cc520fb6cc93d856bbd6557a704ce2162c48beb",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408110000_agency_hoguet.sql",
+      "timestamp": "20260408110000",
+      "timestamp_raw": "20260408110000",
+      "ts_format": "14-digit",
+      "name": "agency_hoguet",
+      "size_bytes": 1231,
+      "size_lines": 22,
+      "sha256": "b3caee3100d4964e5961112e98dac041dced95a8bebf44a2713da6c0148704e2",
+      "first_operation": "ALTER TABLE LEGAL"
+    },
+    {
+      "filename": "20260408120000_api_keys_webhooks.sql",
+      "timestamp": "20260408120000",
+      "timestamp_raw": "20260408120000",
+      "ts_format": "14-digit",
+      "name": "api_keys_webhooks",
+      "size_bytes": 6639,
+      "size_lines": 158,
+      "sha256": "b0af5a52014f6e508ed03301428301674c1411ed8607c510fe49badec44f7236",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408120000_colocation_module.sql",
+      "timestamp": "20260408120000",
+      "timestamp_raw": "20260408120000",
+      "ts_format": "14-digit",
+      "name": "colocation_module",
+      "size_bytes": 13459,
+      "size_lines": 398,
+      "sha256": "e26e563fe91275194efa1ddd60482b947736538031acffb6a56c8f2169b88e47",
+      "first_operation": "ALTER TABLE PROPERTIES ADD"
+    },
+    {
+      "filename": "20260408120000_edl_sortie_workflow.sql",
+      "timestamp": "20260408120000",
+      "timestamp_raw": "20260408120000",
+      "ts_format": "14-digit",
+      "name": "edl_sortie_workflow",
+      "size_bytes": 11492,
+      "size_lines": 227,
+      "sha256": "9caabed1dc8ef7682ca6503fa085590e22eedd6eb080f7e0a8a45a858a3267a0",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260408120000_providers_module_sota.sql",
+      "timestamp": "20260408120000",
+      "timestamp_raw": "20260408120000",
+      "ts_format": "14-digit",
+      "name": "providers_module_sota",
+      "size_bytes": 17621,
+      "size_lines": 444,
+      "sha256": "758a53936ba8d5f132040f86081065326e6ba5fa6d11e3b60f23774742ac0f87",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408120000_smart_meters_connected.sql",
+      "timestamp": "20260408120000",
+      "timestamp_raw": "20260408120000",
+      "ts_format": "14-digit",
+      "name": "smart_meters_connected",
+      "size_bytes": 9369,
+      "size_lines": 255,
+      "sha256": "60c898664e342755c230c6385b7914e91282140757fcf5b4a30d50b76181baeb",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408120000_subscription_addons.sql",
+      "timestamp": "20260408120000",
+      "timestamp_raw": "20260408120000",
+      "ts_format": "14-digit",
+      "name": "subscription_addons",
+      "size_bytes": 4863,
+      "size_lines": 173,
+      "sha256": "9522c3a88616e5734020689e9c3e942f387c10575567ab122325d9e1c787b0ac",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408120000_whitelabel_agency_module.sql",
+      "timestamp": "20260408120000",
+      "timestamp_raw": "20260408120000",
+      "ts_format": "14-digit",
+      "name": "whitelabel_agency_module",
+      "size_bytes": 11894,
+      "size_lines": 356,
+      "sha256": "8fdbe8a013f44916acf9dfdef744cc15ad315c3906c3180e33c82b222a821926",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408130000_active_sessions.sql",
+      "timestamp": "20260408130000",
+      "timestamp_raw": "20260408130000",
+      "ts_format": "14-digit",
+      "name": "active_sessions",
+      "size_bytes": 4462,
+      "size_lines": 153,
+      "sha256": "082b0efd85df9195c7570f8926d3a9b228ebfb37104728884cb2b38f8054e72b",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408130000_admin_panel_tables.sql",
+      "timestamp": "20260408130000",
+      "timestamp_raw": "20260408130000",
+      "ts_format": "14-digit",
+      "name": "admin_panel_tables",
+      "size_bytes": 6347,
+      "size_lines": 186,
+      "sha256": "b737e2cbc4f4b7a9681bbc7b7b3433b987136c9c44aaf2c61528cde634917551",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408130000_candidatures_workflow.sql",
+      "timestamp": "20260408130000",
+      "timestamp_raw": "20260408130000",
+      "ts_format": "14-digit",
+      "name": "candidatures_workflow",
+      "size_bytes": 6300,
+      "size_lines": 171,
+      "sha256": "a1fb98f13259157491fe6a3ed9d2a660d9cd64ddbba0dd4a68fe982575637585",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408130000_charges_locatives_module.sql",
+      "timestamp": "20260408130000",
+      "timestamp_raw": "20260408130000",
+      "ts_format": "14-digit",
+      "name": "charges_locatives_module",
+      "size_bytes": 7549,
+      "size_lines": 219,
+      "sha256": "cd52e4788d84a9c0108b3a5d5591cd94abcb44851f0a08e05c9038d537dcf0e5",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408130000_diagnostics_rent_control.sql",
+      "timestamp": "20260408130000",
+      "timestamp_raw": "20260408130000",
+      "ts_format": "14-digit",
+      "name": "diagnostics_rent_control",
+      "size_bytes": 5562,
+      "size_lines": 151,
+      "sha256": "94e2ee0ad52367afeacfb9c55f1ec75f853e401a7cbe73f9aaa16238d9fddbf2",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408130000_fix_subscription_plan_prices.sql",
+      "timestamp": "20260408130000",
+      "timestamp_raw": "20260408130000",
+      "ts_format": "14-digit",
+      "name": "fix_subscription_plan_prices",
+      "size_bytes": 1172,
+      "size_lines": 32,
+      "sha256": "ddd4b72a5e3cd3f0a12ffc7fec45ac7548cb60d485eb3f7e054fffa7c7626141",
+      "first_operation": "UPDATE SUBSCRIPTION"
+    },
+    {
+      "filename": "20260408130000_guarantor_workflow_complete.sql",
+      "timestamp": "20260408130000",
+      "timestamp_raw": "20260408130000",
+      "ts_format": "14-digit",
+      "name": "guarantor_workflow_complete",
+      "size_bytes": 11055,
+      "size_lines": 324,
+      "sha256": "9c559d9f792ae82d035e5a2de6b8ae3d67104512a1422087d4187f2dc547388b",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408130000_insurance_policies.sql",
+      "timestamp": "20260408130000",
+      "timestamp_raw": "20260408130000",
+      "ts_format": "14-digit",
+      "name": "insurance_policies",
+      "size_bytes": 6473,
+      "size_lines": 164,
+      "sha256": "3e72af2f0d7fb11e02f06b1eb0bcdea9e015ab90d1addf7536ebc2ca616c9d00",
+      "first_operation": "ALTER TABLE INSURANCE"
+    },
+    {
+      "filename": "20260408130000_lease_amendments_table.sql",
+      "timestamp": "20260408130000",
+      "timestamp_raw": "20260408130000",
+      "ts_format": "14-digit",
+      "name": "lease_amendments_table",
+      "size_bytes": 3962,
+      "size_lines": 124,
+      "sha256": "1f93a06d2e1d1c08cffdacccc80e120c0a79683fbba6766f81ee6eeab203420f",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408130000_rgpd_consent_records_and_data_requests.sql",
+      "timestamp": "20260408130000",
+      "timestamp_raw": "20260408130000",
+      "ts_format": "14-digit",
+      "name": "rgpd_consent_records_and_data_requests",
+      "size_bytes": 2772,
+      "size_lines": 77,
+      "sha256": "e0f4c36875ceb7a4f1a12bac6875bb421d5590f8b6d60b508fb86dc90eabb3ef",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408130000_seasonal_rental_module.sql",
+      "timestamp": "20260408130000",
+      "timestamp_raw": "20260408130000",
+      "ts_format": "14-digit",
+      "name": "seasonal_rental_module",
+      "size_bytes": 7457,
+      "size_lines": 173,
+      "sha256": "ac03ecbaa8f72b15d02c5b8e3fc6f3cf1af9ae5c04fdb365ade081165a109112",
+      "first_operation": "CREATE EXTENSION IF NOT"
+    },
+    {
+      "filename": "20260408130000_security_deposits.sql",
+      "timestamp": "20260408130000",
+      "timestamp_raw": "20260408130000",
+      "ts_format": "14-digit",
+      "name": "security_deposits",
+      "size_bytes": 4545,
+      "size_lines": 138,
+      "sha256": "7e0e7e2cd0fb69796869ef2cce4e8d93808f29ddee54506fa7025900af248545",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260408140000_tickets_module_sota.sql",
+      "timestamp": "20260408140000",
+      "timestamp_raw": "20260408140000",
+      "ts_format": "14-digit",
+      "name": "tickets_module_sota",
+      "size_bytes": 5056,
+      "size_lines": 131,
+      "sha256": "b707e39e161225c19818e9f8c40805356947130c62a30d4eeb53eb7fc5a800b3",
+      "first_operation": "ALTER TABLE TICKETS ADD"
+    },
+    {
+      "filename": "20260408200000_unified_notification_system.sql",
+      "timestamp": "20260408200000",
+      "timestamp_raw": "20260408200000",
+      "ts_format": "14-digit",
+      "name": "unified_notification_system",
+      "size_bytes": 3982,
+      "size_lines": 92,
+      "sha256": "aa2182dcbe60069f98e917f0e42053fc535ce39f24e2edf919d6cd202120d80d",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260408220000_payment_architecture_sota.sql",
+      "timestamp": "20260408220000",
+      "timestamp_raw": "20260408220000",
+      "ts_format": "14-digit",
+      "name": "payment_architecture_sota",
+      "size_bytes": 12868,
+      "size_lines": 361,
+      "sha256": "782f72822fb3b9a47385342e470598dadd1cce034656319dea0ef73ffd7c46d6",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260409100000_add_missing_rls.sql",
+      "timestamp": "20260409100000",
+      "timestamp_raw": "20260409100000",
+      "ts_format": "14-digit",
+      "name": "add_missing_rls",
+      "size_bytes": 5600,
+      "size_lines": 115,
+      "sha256": "d0be4dd57173ffe348d1c0d7a366f2bc5c957215ff57e54b34a52624722b1b2e",
+      "first_operation": "ALTER TABLE TENANTS ENABLE"
+    },
+    {
+      "filename": "20260409110000_fix_remaining_rls_recursion.sql",
+      "timestamp": "20260409110000",
+      "timestamp_raw": "20260409110000",
+      "ts_format": "14-digit",
+      "name": "fix_remaining_rls_recursion",
+      "size_bytes": 4776,
+      "size_lines": 110,
+      "sha256": "5a223226a04269b6e1716d9d0bafe4b7931d145372b89015a8ba092d0bcd5085",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260409120000_fix_subscriptions_rls_recursion.sql",
+      "timestamp": "20260409120000",
+      "timestamp_raw": "20260409120000",
+      "ts_format": "14-digit",
+      "name": "fix_subscriptions_rls_recursion",
+      "size_bytes": 2219,
+      "size_lines": 46,
+      "sha256": "a9cd22eb9893f78c10c03fd7491c4658a0f76c59f32fa3b9b1c9c9fc85ebe4b7",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260409130000_fix_subscriptions_status_check.sql",
+      "timestamp": "20260409130000",
+      "timestamp_raw": "20260409130000",
+      "ts_format": "14-digit",
+      "name": "fix_subscriptions_status_check",
+      "size_bytes": 1084,
+      "size_lines": 26,
+      "sha256": "dbeab04c2867432c071a366f4a7fb2ad9552df0f70e203a0c0b659ee2db4c442",
+      "first_operation": "ALTER TABLE SUBSCRIPTIONS DROP"
+    },
+    {
+      "filename": "20260409140000_fix_addons_sms_rls_recursion.sql",
+      "timestamp": "20260409140000",
+      "timestamp_raw": "20260409140000",
+      "ts_format": "14-digit",
+      "name": "fix_addons_sms_rls_recursion",
+      "size_bytes": 1721,
+      "size_lines": 39,
+      "sha256": "b8977a708a84d33f8a10472d9cfdcbc8b4acab97bb46f9e94ab234e5b4570fbe",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260409150000_fix_signature_tracking_and_analytics.sql",
+      "timestamp": "20260409150000",
+      "timestamp_raw": "20260409150000",
+      "ts_format": "14-digit",
+      "name": "fix_signature_tracking_and_analytics",
+      "size_bytes": 5407,
+      "size_lines": 171,
+      "sha256": "38c548adf2aa31b1e957dc0a9dc0b78ff82f62e0500c6e0359c3883b4fff3236",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260409160000_building_unit_lease_document_fk.sql",
+      "timestamp": "20260409160000",
+      "timestamp_raw": "20260409160000",
+      "ts_format": "14-digit",
+      "name": "building_unit_lease_document_fk",
+      "size_bytes": 2925,
+      "size_lines": 76,
+      "sha256": "abf515237c09aa535da7747838c2a8b23619bd37c277e120d45e34cba417599b",
+      "first_operation": "ALTER TABLE LEASES"
+    },
+    {
+      "filename": "20260409170000_backfill_building_unit_properties.sql",
+      "timestamp": "20260409170000",
+      "timestamp_raw": "20260409170000",
+      "ts_format": "14-digit",
+      "name": "backfill_building_unit_properties",
+      "size_bytes": 9337,
+      "size_lines": 214,
+      "sha256": "1d6653bb10586cd65f1c35fed7fac88ef6ccab76adcc9d3f7386bbff3a1bd1c7",
+      "first_operation": "ALTER TABLE BUILDINGS ADD"
+    },
+    {
+      "filename": "20260409180000_buildings_site_id_nullable.sql",
+      "timestamp": "20260409180000",
+      "timestamp_raw": "20260409180000",
+      "ts_format": "14-digit",
+      "name": "buildings_site_id_nullable",
+      "size_bytes": 453,
+      "size_lines": 11,
+      "sha256": "ee83735d6a20bbeaf39dbc4448bd3d9ada68ba047e4112666f6b7f6a7a8e8b3b",
+      "first_operation": "ALTER TABLE BUILDINGS ALTER"
+    },
+    {
+      "filename": "20260410100000_accounting_missing_indexes.sql",
+      "timestamp": "20260410100000",
+      "timestamp_raw": "20260410100000",
+      "ts_format": "14-digit",
+      "name": "accounting_missing_indexes",
+      "size_bytes": 3067,
+      "size_lines": 67,
+      "sha256": "51b2f38b82ec7d3225fa4330d9260520841a047c98ebae091397d7603be88944",
+      "first_operation": "CREATE INDEX IF NOT"
+    },
+    {
+      "filename": "20260410110000_cleanup_orphan_analyses.sql",
+      "timestamp": "20260410110000",
+      "timestamp_raw": "20260410110000",
+      "ts_format": "14-digit",
+      "name": "cleanup_orphan_analyses",
+      "size_bytes": 3346,
+      "size_lines": 84,
+      "sha256": "845a36295dfe740ffa52a3e218e846f854a73314964f9d8d6965b2112942ff97",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260410180000_fix_invoice_generation_sota.sql",
+      "timestamp": "20260410180000",
+      "timestamp_raw": "20260410180000",
+      "ts_format": "14-digit",
+      "name": "fix_invoice_generation_sota",
+      "size_bytes": 18023,
+      "size_lines": 461,
+      "sha256": "72b6b0b7fd7b1adf48df37f66798edd9bde0ce50518d88bc2bece25eeff857c3",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260410204528_extend_invoices_rls_for_sci_access.sql",
+      "timestamp": "20260410204528",
+      "timestamp_raw": "20260410204528",
+      "ts_format": "14-digit",
+      "name": "extend_invoices_rls_for_sci_access",
+      "size_bytes": 5299,
+      "size_lines": 137,
+      "sha256": "62282a4dc9fc310686922d3c18376b948d78dcec4549c6503f4653200bee5609",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260410210000_fix_protected_document_visibility.sql",
+      "timestamp": "20260410210000",
+      "timestamp_raw": "20260410210000",
+      "ts_format": "14-digit",
+      "name": "fix_protected_document_visibility",
+      "size_bytes": 14795,
+      "size_lines": 417,
+      "sha256": "5818c3290fb7eee8053bd3fab6634f9bd0676bf9edb6d4fb49fcd3ef1bf1feba",
+      "first_operation": "UPDATE DOCUMENTS"
+    },
+    {
+      "filename": "20260410210341_fix_notify_tenant_invoice_created_user_id.sql",
+      "timestamp": "20260410210341",
+      "timestamp_raw": "20260410210341",
+      "ts_format": "14-digit",
+      "name": "fix_notify_tenant_invoice_created_user_id",
+      "size_bytes": 3525,
+      "size_lines": 102,
+      "sha256": "96f287fcbec6f60c51ae8c6e210591f67768f53c558002bd8ebc0d88450d3b00",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260410210342_fix_generate_monthly_invoices_fields.sql",
+      "timestamp": "20260410210342",
+      "timestamp_raw": "20260410210342",
+      "ts_format": "14-digit",
+      "name": "fix_generate_monthly_invoices_fields",
+      "size_bytes": 4723,
+      "size_lines": 146,
+      "sha256": "9d93662539344adfeae514e6a4a9cc43b8154b1377eb95a1c7653c696fba1f07",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260410212232_fix_entity_members_policy_recursion.sql",
+      "timestamp": "20260410212232",
+      "timestamp_raw": "20260410212232",
+      "ts_format": "14-digit",
+      "name": "fix_entity_members_policy_recursion",
+      "size_bytes": 6341,
+      "size_lines": 172,
+      "sha256": "3a05bb70f576f67aadd65bf026cc97ed697709aa619eead503b69554d42145d6",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260410213940_fix_properties_tenant_policy_recursion.sql",
+      "timestamp": "20260410213940",
+      "timestamp_raw": "20260410213940",
+      "ts_format": "14-digit",
+      "name": "fix_properties_tenant_policy_recursion",
+      "size_bytes": 3520,
+      "size_lines": 82,
+      "sha256": "ceb2f0e42267ab858da7f6246d33d4d78a3138a2d9d640e1aff0488696238bc1",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260410220000_cash_receipt_two_step_signature.sql",
+      "timestamp": "20260410220000",
+      "timestamp_raw": "20260410220000",
+      "ts_format": "14-digit",
+      "name": "cash_receipt_two_step_signature",
+      "size_bytes": 7007,
+      "size_lines": 213,
+      "sha256": "969308d049cc824e4fb0aee87cacbce1b39b8254f7c2e698a40149988dfb4329",
+      "first_operation": "ALTER TABLE CASH"
+    },
+    {
+      "filename": "20260411000000_create_cash_receipt_function.sql",
+      "timestamp": "20260411000000",
+      "timestamp_raw": "20260411000000",
+      "ts_format": "14-digit",
+      "name": "create_cash_receipt_function",
+      "size_bytes": 7884,
+      "size_lines": 231,
+      "sha256": "1114454e756971535b1cec9ffe620a8863066de07dbd2ac9a70df22be492cfb1",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20260411100000_fix_work_orders_policy_recursion.sql",
+      "timestamp": "20260411100000",
+      "timestamp_raw": "20260411100000",
+      "ts_format": "14-digit",
+      "name": "fix_work_orders_policy_recursion",
+      "size_bytes": 3896,
+      "size_lines": 85,
+      "sha256": "7eb5004e5ccf5fd1146a62412b48872a7c15b0aaf14e204ba9916fb123cca9e5",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260411120000_harden_payments_check_constraints.sql",
+      "timestamp": "20260411120000",
+      "timestamp_raw": "20260411120000",
+      "ts_format": "14-digit",
+      "name": "harden_payments_check_constraints",
+      "size_bytes": 3855,
+      "size_lines": 94,
+      "sha256": "61afd7d30974e73ecffd2ca8373924b8855c6dc5d81fd9777e60d8c5f8b9c924",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20260411120000_schedule_onboarding_reminders_cron.sql",
+      "timestamp": "20260411120000",
+      "timestamp_raw": "20260411120000",
+      "ts_format": "14-digit",
+      "name": "schedule_onboarding_reminders_cron",
+      "size_bytes": 1401,
+      "size_lines": 33,
+      "sha256": "d97f98a08d13019d5ede3ca5cfc0df564f07d86f5dcbcd93c5766fb25c08a4ae",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260411130000_restore_handle_new_user_sota.sql",
+      "timestamp": "20260411130000",
+      "timestamp_raw": "20260411130000",
+      "ts_format": "14-digit",
+      "name": "restore_handle_new_user_sota",
+      "size_bytes": 3294,
+      "size_lines": 98,
+      "sha256": "6807fd07d593070b69f505c55cbe055544085f8d2d63deb9b62a963aef363a9a",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260411130100_agency_profiles_raison_sociale_nullable.sql",
+      "timestamp": "20260411130100",
+      "timestamp_raw": "20260411130100",
+      "ts_format": "14-digit",
+      "name": "agency_profiles_raison_sociale_nullable",
+      "size_bytes": 826,
+      "size_lines": 19,
+      "sha256": "291189e7950b56400788bc056f31b724388c67536621cfc81b6ca61415f54afa",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20260411130200_create_syndic_profiles.sql",
+      "timestamp": "20260411130200",
+      "timestamp_raw": "20260411130200",
+      "ts_format": "14-digit",
+      "name": "create_syndic_profiles",
+      "size_bytes": 3988,
+      "size_lines": 118,
+      "sha256": "ef19df1e6dab99f0d922217924aec377ad317f6f88708eeec301ae73dbfe691e",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260411130300_onboarding_role_constraints_allow_syndic_agency.sql",
+      "timestamp": "20260411130300",
+      "timestamp_raw": "20260411130300",
+      "ts_format": "14-digit",
+      "name": "onboarding_role_constraints_allow_syndic_agency",
+      "size_bytes": 1475,
+      "size_lines": 33,
+      "sha256": "f820013744557cab58aa6efd0706ce5664bcf0b5459b1272a1b9134c9ab438e7",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20260411140000_copro_assemblies_module.sql",
+      "timestamp": "20260411140000",
+      "timestamp_raw": "20260411140000",
+      "ts_format": "14-digit",
+      "name": "copro_assemblies_module",
+      "size_bytes": 20205,
+      "size_lines": 497,
+      "sha256": "94ce5f4e665945779bf5ff69680e8e0a4301279d0bcaa1624ecdacb5cdaa47a1",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260411140100_copro_governance_module.sql",
+      "timestamp": "20260411140100",
+      "timestamp_raw": "20260411140100",
+      "ts_format": "14-digit",
+      "name": "copro_governance_module",
+      "size_bytes": 13678,
+      "size_lines": 332,
+      "sha256": "f8fd4e674fafb903227495dc711a77fb51a7a54e743c9274bfb6bc3bbf532fe3",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260412000000_fix_cash_receipt_rpc_sota.sql",
+      "timestamp": "20260412000000",
+      "timestamp_raw": "20260412000000",
+      "ts_format": "14-digit",
+      "name": "fix_cash_receipt_rpc_sota",
+      "size_bytes": 12706,
+      "size_lines": 365,
+      "sha256": "dc4529fab40a28629e3e489f1107af3e47a63deaa3f595d4bc397f696d52794e",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260412100000_stripe_connect_multi_entity.sql",
+      "timestamp": "20260412100000",
+      "timestamp_raw": "20260412100000",
+      "ts_format": "14-digit",
+      "name": "stripe_connect_multi_entity",
+      "size_bytes": 9005,
+      "size_lines": 245,
+      "sha256": "22755667cc4af04f8c991e39e5ec9f39610136f9e044a5242929a456298d08fe",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20260412110000_documents_copro_fk.sql",
+      "timestamp": "20260412110000",
+      "timestamp_raw": "20260412110000",
+      "ts_format": "14-digit",
+      "name": "documents_copro_fk",
+      "size_bytes": 4559,
+      "size_lines": 125,
+      "sha256": "8a637248f52cd66574054fcbe9b621d3e2d592d9a39d9abec5b3ed62d616bd30",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20260412120000_copro_fund_call_lines_reminder_tracking.sql",
+      "timestamp": "20260412120000",
+      "timestamp_raw": "20260412120000",
+      "ts_format": "14-digit",
+      "name": "copro_fund_call_lines_reminder_tracking",
+      "size_bytes": 1705,
+      "size_lines": 41,
+      "sha256": "372b9d99f1a9b9f6bb6f4bdd3d772ccd096ac2e6d327e225ba146335dff71b7a",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20260412130000_copro_cron_schedules.sql",
+      "timestamp": "20260412130000",
+      "timestamp_raw": "20260412130000",
+      "ts_format": "14-digit",
+      "name": "copro_cron_schedules",
+      "size_bytes": 3834,
+      "size_lines": 91,
+      "sha256": "acb23cf9f16d5ac6b9701dc34c2ff5d36f6b5ae9cbce473d440855760d193c25",
+      "first_operation": "SELECT CRON"
+    },
+    {
+      "filename": "20260412140000_close_admin_self_elevation.sql",
+      "timestamp": "20260412140000",
+      "timestamp_raw": "20260412140000",
+      "ts_format": "14-digit",
+      "name": "close_admin_self_elevation",
+      "size_bytes": 4018,
+      "size_lines": 104,
+      "sha256": "3e93e7f9f0859930d1e67e5fa42ade84e13e7a2bfa8744006bd85eb62bdcccbc",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260412150000_create_cron_logs.sql",
+      "timestamp": "20260412150000",
+      "timestamp_raw": "20260412150000",
+      "ts_format": "14-digit",
+      "name": "create_cron_logs",
+      "size_bytes": 1060,
+      "size_lines": 36,
+      "sha256": "321c08876e5d68c9455fd85b1dc033a0f6160bf4380f4f7ef5a197dbcbeb8800",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260415000000_signup_integrity_guard.sql",
+      "timestamp": "20260415000000",
+      "timestamp_raw": "20260415000000",
+      "ts_format": "14-digit",
+      "name": "signup_integrity_guard",
+      "size_bytes": 13297,
+      "size_lines": 376,
+      "sha256": "bdb1b3359bba710c3a483a08ecb28256b7a65e7f5a2546773596cef1184fe01a",
+      "first_operation": "DO"
+    },
+    {
+      "filename": "20260415121706_harden_sign_cash_receipt_as_tenant.sql",
+      "timestamp": "20260415121706",
+      "timestamp_raw": "20260415121706",
+      "ts_format": "14-digit",
+      "name": "harden_sign_cash_receipt_as_tenant",
+      "size_bytes": 6968,
+      "size_lines": 187,
+      "sha256": "1cae3ff3beb694f4f043aa7782d0e8ad4da2a1ad802b854d9a1363e3726fefd0",
+      "first_operation": "DROP FUNCTION IF EXISTS"
+    },
+    {
+      "filename": "20260415124844_add_cheque_photo_to_payments.sql",
+      "timestamp": "20260415124844",
+      "timestamp_raw": "20260415124844",
+      "ts_format": "14-digit",
+      "name": "add_cheque_photo_to_payments",
+      "size_bytes": 3322,
+      "size_lines": 83,
+      "sha256": "3dcedece941a1564c2b1daec5f8fe7a7ac5a32ba3017fdbf293e69c2c1f5805d",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20260415130000_fix_tenant_accessible_property_ids_security_definer.sql",
+      "timestamp": "20260415130000",
+      "timestamp_raw": "20260415130000",
+      "ts_format": "14-digit",
+      "name": "fix_tenant_accessible_property_ids_security_definer",
+      "size_bytes": 3508,
+      "size_lines": 84,
+      "sha256": "9f40da5fe5e1cc5998aa294e2380d5699c260d603c00ebd80975d10eef01cf8c",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260415140000_buildings_sota_fix_wave1.sql",
+      "timestamp": "20260415140000",
+      "timestamp_raw": "20260415140000",
+      "ts_format": "14-digit",
+      "name": "buildings_sota_fix_wave1",
+      "size_bytes": 17534,
+      "size_lines": 445,
+      "sha256": "c734324cf4eb925eeefbafbca0cda660c1e76217a6e01bc7ad99030237d1f039",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260415140000_fix_tenant_payment_signing_and_leases_recursion.sql",
+      "timestamp": "20260415140000",
+      "timestamp_raw": "20260415140000",
+      "ts_format": "14-digit",
+      "name": "fix_tenant_payment_signing_and_leases_recursion",
+      "size_bytes": 9084,
+      "size_lines": 198,
+      "sha256": "6f9291bfeb1804bfb62401e93c58653b78ced5d16556608d03173fe10a82db8e",
+      "first_operation": "ALTER TABLE PUBLIC"
+    },
+    {
+      "filename": "20260415150000_upsert_building_with_units_rpc.sql",
+      "timestamp": "20260415150000",
+      "timestamp_raw": "20260415150000",
+      "ts_format": "14-digit",
+      "name": "upsert_building_with_units_rpc",
+      "size_bytes": 13108,
+      "size_lines": 320,
+      "sha256": "b02754956a4ca914c784e8c3e6626298c564cc26f4c5b9b3f6ee8aa736ec77cb",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260415160000_buildings_rls_entity_members_support.sql",
+      "timestamp": "20260415160000",
+      "timestamp_raw": "20260415160000",
+      "ts_format": "14-digit",
+      "name": "buildings_rls_entity_members_support",
+      "size_bytes": 6039,
+      "size_lines": 172,
+      "sha256": "b953ba1c0cb1a9b41e8ca8fde75a40d64128dfad6e2c8780666870f0a696c33d",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260415230000_enforce_invoice_paid_has_payment.sql",
+      "timestamp": "20260415230000",
+      "timestamp_raw": "20260415230000",
+      "ts_format": "14-digit",
+      "name": "enforce_invoice_paid_has_payment",
+      "size_bytes": 6967,
+      "size_lines": 177,
+      "sha256": "c5d69e17c4efccd127efb8330cee89fab1c7d871810d335c76d0eebf791c2b11",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260416100000_fix_messages_conversation_trigger.sql",
+      "timestamp": "20260416100000",
+      "timestamp_raw": "20260416100000",
+      "ts_format": "14-digit",
+      "name": "fix_messages_conversation_trigger",
+      "size_bytes": 2209,
+      "size_lines": 70,
+      "sha256": "fa033399a566b4b89954975c6a7015bd5c5303698db54c6a44ec4175ec35cd6e",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260416100000_fix_tickets_rls_recursion.sql",
+      "timestamp": "20260416100000",
+      "timestamp_raw": "20260416100000",
+      "ts_format": "14-digit",
+      "name": "fix_tickets_rls_recursion",
+      "size_bytes": 6286,
+      "size_lines": 166,
+      "sha256": "dcad7ec93f372ba7707e245c6f10f70b7547c0faa218df778900b8a4a0484685",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    },
+    {
+      "filename": "20260417090000_charges_reg_invoice_link.sql",
+      "timestamp": "20260417090000",
+      "timestamp_raw": "20260417090000",
+      "ts_format": "14-digit",
+      "name": "charges_reg_invoice_link",
+      "size_bytes": 1002,
+      "size_lines": 23,
+      "sha256": "958a5c51a6ffb9d7aee25402d5d6e02c7761cfba1716576bfc70a23228cb23b0",
+      "first_operation": "ALTER TABLE LEASE"
+    },
+    {
+      "filename": "20260417090100_tax_notices_table.sql",
+      "timestamp": "20260417090100",
+      "timestamp_raw": "20260417090100",
+      "ts_format": "14-digit",
+      "name": "tax_notices_table",
+      "size_bytes": 3439,
+      "size_lines": 72,
+      "sha256": "20ff1d0b464f9f212c8ac385520941869db122d1008fc55c7590d431376ee965",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260417090200_epci_reference_table.sql",
+      "timestamp": "20260417090200",
+      "timestamp_raw": "20260417090200",
+      "ts_format": "14-digit",
+      "name": "epci_reference_table",
+      "size_bytes": 2357,
+      "size_lines": 51,
+      "sha256": "618be9f0edaa5103cd9da825a842d037013c11b8d6b71621d372c79a944ebb16",
+      "first_operation": "CREATE TABLE IF NOT"
+    },
+    {
+      "filename": "20260417090300_fix_tenant_contest_rls.sql",
+      "timestamp": "20260417090300",
+      "timestamp_raw": "20260417090300",
+      "ts_format": "14-digit",
+      "name": "fix_tenant_contest_rls",
+      "size_bytes": 1969,
+      "size_lines": 49,
+      "sha256": "e7944afde170f59bb5bd5905438679d43e11673b0288f931f5cf7e6a7631ab3e",
+      "first_operation": "DROP POLICY IF EXISTS"
+    },
+    {
+      "filename": "20260417090400_charges_pcg_accounts_backfill.sql",
+      "timestamp": "20260417090400",
+      "timestamp_raw": "20260417090400",
+      "ts_format": "14-digit",
+      "name": "charges_pcg_accounts_backfill",
+      "size_bytes": 1441,
+      "size_lines": 32,
+      "sha256": "db5af56d7d59a4c7789e066544cbcbf8f49d717f5e48a8b18385b54574d5d838",
+      "first_operation": "INSERT INTO CHART"
+    },
+    {
+      "filename": "20260417090500_epci_reference_seed_drom.sql",
+      "timestamp": "20260417090500",
+      "timestamp_raw": "20260417090500",
+      "ts_format": "14-digit",
+      "name": "epci_reference_seed_drom",
+      "size_bytes": 5215,
+      "size_lines": 93,
+      "sha256": "f3000131342046b7e7e915f9d6a41e7dec9f7c4f2ce01e4c0a30c3f954b51659",
+      "first_operation": "INSERT INTO EPCI"
+    },
+    {
+      "filename": "20260417100000_drop_phone_otp_codes_refs.sql",
+      "timestamp": "20260417100000",
+      "timestamp_raw": "20260417100000",
+      "ts_format": "14-digit",
+      "name": "drop_phone_otp_codes_refs",
+      "size_bytes": 1564,
+      "size_lines": 37,
+      "sha256": "d52e225dbe0cd7fd7dad255ace2d52ca9fc58ca884db3b65fe1361c1685f979a",
+      "first_operation": "DROP TABLE IF EXISTS"
+    },
+    {
+      "filename": "20260417110000_purge_identity_2fa_cron.sql",
+      "timestamp": "20260417110000",
+      "timestamp_raw": "20260417110000",
+      "ts_format": "14-digit",
+      "name": "purge_identity_2fa_cron",
+      "size_bytes": 2342,
+      "size_lines": 66,
+      "sha256": "6b645233470b5d9122ea252155aba3b422e1142525115c6364f3cb48e123d025",
+      "first_operation": "CREATE OR REPLACE FUNCTION"
+    }
+  ]
+}
