@@ -881,6 +881,7 @@ BEGIN
   LOOP
     EXECUTE format('DROP TRIGGER IF EXISTS trg_%s_updated_at ON %I', tbl, tbl);
     EXECUTE format(
+      'DROP TRIGGER IF EXISTS trg_ ON TABLE;
       'CREATE TRIGGER trg_%s_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION fn_accounting_updated_at()',
       tbl, tbl
     );
@@ -1385,6 +1386,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS charge_regularisations_on_insert ON charge_regularisations;
 CREATE TRIGGER charge_regularisations_on_insert
   INSTEAD OF INSERT ON public.charge_regularisations
   FOR EACH ROW EXECUTE FUNCTION charge_regularisations_insert_redirect();
@@ -1414,6 +1416,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS charge_regularisations_on_update ON charge_regularisations;
 CREATE TRIGGER charge_regularisations_on_update
   INSTEAD OF UPDATE ON public.charge_regularisations
   FOR EACH ROW EXECUTE FUNCTION charge_regularisations_update_redirect();
@@ -1426,6 +1429,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS charge_regularisations_on_delete ON charge_regularisations;
 CREATE TRIGGER charge_regularisations_on_delete
   INSTEAD OF DELETE ON public.charge_regularisations
   FOR EACH ROW EXECUTE FUNCTION charge_regularisations_delete_redirect();

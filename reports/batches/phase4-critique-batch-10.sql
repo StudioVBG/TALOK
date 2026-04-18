@@ -1583,6 +1583,7 @@ $$;
 
 -- S'assurer que le trigger existe bien sur auth.users
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW

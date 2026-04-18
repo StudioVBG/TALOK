@@ -499,6 +499,7 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger WHERE tgname = 'trg_notify_owner_on_ticket_created'
   ) THEN
+    DROP TRIGGER IF EXISTS trg_notify_owner_on_ticket_created ON tickets;
     CREATE TRIGGER trg_notify_owner_on_ticket_created
       AFTER INSERT ON tickets
       FOR EACH ROW
@@ -563,6 +564,7 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger WHERE tgname = 'trg_notify_provider_on_work_order'
   ) THEN
+    DROP TRIGGER IF EXISTS trg_notify_provider_on_work_order ON tickets;
     CREATE TRIGGER trg_notify_provider_on_work_order
       AFTER INSERT OR UPDATE OF provider_id ON tickets
       FOR EACH ROW

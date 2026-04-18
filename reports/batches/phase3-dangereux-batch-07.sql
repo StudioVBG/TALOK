@@ -72,6 +72,7 @@ CREATE POLICY "Admins can view all sessions"
   USING (user_role() = 'admin');
 
 -- Auto-update timestamp trigger
+DROP TRIGGER IF EXISTS set_active_sessions_updated_at ON active_sessions;
 CREATE TRIGGER set_active_sessions_updated_at
   BEFORE UPDATE ON active_sessions
   FOR EACH ROW
@@ -259,6 +260,7 @@ CREATE INDEX IF NOT EXISTS idx_support_tickets_assigned_to ON support_tickets(as
 CREATE INDEX IF NOT EXISTS idx_support_tickets_created_at ON support_tickets(created_at DESC);
 
 -- Trigger updated_at
+DROP TRIGGER IF EXISTS update_support_tickets_updated_at ON support_tickets;
 CREATE TRIGGER update_support_tickets_updated_at
   BEFORE UPDATE ON support_tickets
   FOR EACH ROW
@@ -446,6 +448,7 @@ CREATE POLICY property_listings_public_read ON property_listings
   FOR SELECT USING (is_published = true);
 
 -- Trigger updated_at
+DROP TRIGGER IF EXISTS update_property_listings_updated_at ON property_listings;
 CREATE TRIGGER update_property_listings_updated_at
   BEFORE UPDATE ON property_listings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -505,6 +508,7 @@ CREATE POLICY applications_public_insert ON applications
   FOR INSERT WITH CHECK (true);
 
 -- Trigger updated_at
+DROP TRIGGER IF EXISTS update_applications_updated_at ON applications;
 CREATE TRIGGER update_applications_updated_at
   BEFORE UPDATE ON applications
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -554,6 +558,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS applications_calculate_completeness ON applications;
 CREATE TRIGGER applications_calculate_completeness
   BEFORE INSERT OR UPDATE OF documents, applicant_phone, message ON applications
   FOR EACH ROW EXECUTE FUNCTION calculate_application_completeness();
@@ -804,14 +809,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_charge_categories_updated ON charge_categories;
 CREATE TRIGGER trg_charge_categories_updated
   BEFORE UPDATE ON charge_categories
   FOR EACH ROW EXECUTE FUNCTION update_charges_updated_at();
 
+DROP TRIGGER IF EXISTS trg_charge_entries_updated ON charge_entries;
 CREATE TRIGGER trg_charge_entries_updated
   BEFORE UPDATE ON charge_entries
   FOR EACH ROW EXECUTE FUNCTION update_charges_updated_at();
 
+DROP TRIGGER IF EXISTS trg_lease_charge_reg_updated ON lease_charge_regularizations;
 CREATE TRIGGER trg_lease_charge_reg_updated
   BEFORE UPDATE ON lease_charge_regularizations
   FOR EACH ROW EXECUTE FUNCTION update_charges_updated_at();
@@ -931,6 +939,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_property_diagnostics_updated_at ON property_diagnostics;
 CREATE TRIGGER trg_property_diagnostics_updated_at
   BEFORE UPDATE ON property_diagnostics
   FOR EACH ROW EXECUTE FUNCTION update_property_diagnostics_updated_at();

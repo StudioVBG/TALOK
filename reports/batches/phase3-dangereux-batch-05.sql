@@ -437,6 +437,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_expenses_updated_at ON expenses;
 CREATE TRIGGER update_expenses_updated_at
   BEFORE UPDATE ON expenses
   FOR EACH ROW
@@ -612,12 +613,14 @@ $$ LANGUAGE plpgsql;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'set_api_keys_updated_at') THEN
+    DROP TRIGGER IF EXISTS set_api_keys_updated_at ON api_keys;
     CREATE TRIGGER set_api_keys_updated_at
       BEFORE UPDATE ON api_keys
       FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
   END IF;
 
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'set_api_webhooks_updated_at') THEN
+    DROP TRIGGER IF EXISTS set_api_webhooks_updated_at ON api_webhooks;
     CREATE TRIGGER set_api_webhooks_updated_at
       BEFORE UPDATE ON api_webhooks
       FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

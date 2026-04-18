@@ -550,6 +550,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_entity_members_updated_at ON entity_members;
 CREATE TRIGGER trg_entity_members_updated_at
   BEFORE UPDATE ON entity_members
   FOR EACH ROW

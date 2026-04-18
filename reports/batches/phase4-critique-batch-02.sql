@@ -118,6 +118,7 @@ Ne bloque jamais la creation auth meme en cas d''erreur (EXCEPTION handler).';
 -- S'assurer que le trigger existe (idempotent)
 DO $$ BEGIN
   DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+  DROP TRIGGER IF EXISTS on_auth_user_created ON auth;
   CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
@@ -1742,6 +1743,7 @@ Ne bloque jamais la modification auth (EXCEPTION handler).';
 -- ============================================
 DROP TRIGGER IF EXISTS on_auth_user_email_changed ON auth.users;
 
+DROP TRIGGER IF EXISTS on_auth_user_email_changed ON auth;
 CREATE TRIGGER on_auth_user_email_changed
   AFTER UPDATE OF email ON auth.users
   FOR EACH ROW

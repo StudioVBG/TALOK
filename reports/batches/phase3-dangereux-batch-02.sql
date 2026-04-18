@@ -94,6 +94,7 @@ CREATE POLICY "tpm_admin_all" ON tenant_payment_methods
   FOR ALL USING (public.user_role() = 'admin');
 
 -- Trigger updated_at
+DROP TRIGGER IF EXISTS update_tpm_updated_at ON tenant_payment_methods;
 CREATE TRIGGER update_tpm_updated_at
   BEFORE UPDATE ON tenant_payment_methods
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -113,6 +114,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_enforce_single_default_pm ON tenant_payment_methods;
 CREATE TRIGGER trg_enforce_single_default_pm
   AFTER INSERT OR UPDATE OF is_default ON tenant_payment_methods
   FOR EACH ROW
@@ -188,6 +190,7 @@ DROP POLICY IF EXISTS "sepa_admin_all" ON sepa_mandates;
 CREATE POLICY "sepa_admin_all" ON sepa_mandates
   FOR ALL USING (public.user_role() = 'admin');
 
+DROP TRIGGER IF EXISTS update_sepa_mandates_updated_at ON sepa_mandates;
 CREATE TRIGGER update_sepa_mandates_updated_at
   BEFORE UPDATE ON sepa_mandates
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -261,6 +264,7 @@ DROP POLICY IF EXISTS "ps_admin_all" ON payment_schedules;
 CREATE POLICY "ps_admin_all" ON payment_schedules
   FOR ALL USING (public.user_role() = 'admin');
 
+DROP TRIGGER IF EXISTS update_ps_updated_at ON payment_schedules;
 CREATE TRIGGER update_ps_updated_at
   BEFORE UPDATE ON payment_schedules
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -424,6 +428,7 @@ CREATE POLICY "tenant_key_handovers" ON key_handovers
   );
 
 -- Updated at trigger
+DROP TRIGGER IF EXISTS set_key_handovers_updated_at ON key_handovers;
 CREATE OR REPLACE TRIGGER set_key_handovers_updated_at
   BEFORE UPDATE ON key_handovers
   FOR EACH ROW

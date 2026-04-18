@@ -376,10 +376,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_seasonal_listings_updated_at ON seasonal_listings;
 CREATE TRIGGER trg_seasonal_listings_updated_at
   BEFORE UPDATE ON seasonal_listings
   FOR EACH ROW EXECUTE FUNCTION update_seasonal_updated_at();
 
+DROP TRIGGER IF EXISTS trg_reservations_updated_at ON reservations;
 CREATE TRIGGER trg_reservations_updated_at
   BEFORE UPDATE ON reservations
   FOR EACH ROW EXECUTE FUNCTION update_seasonal_updated_at();
@@ -451,6 +453,7 @@ CREATE INDEX IF NOT EXISTS idx_security_deposits_restitution_due ON security_dep
   WHERE status = 'received' AND restitution_due_date IS NOT NULL;
 
 -- Trigger updated_at
+DROP TRIGGER IF EXISTS set_updated_at_security_deposits ON security_deposits;
 CREATE OR REPLACE TRIGGER set_updated_at_security_deposits
   BEFORE UPDATE ON security_deposits
   FOR EACH ROW

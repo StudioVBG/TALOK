@@ -157,6 +157,7 @@ CREATE INDEX IF NOT EXISTS idx_security_deposits_tenant_id ON security_deposits(
 CREATE INDEX IF NOT EXISTS idx_security_deposits_status ON security_deposits(status);
 
 -- Trigger updated_at
+DROP TRIGGER IF EXISTS set_updated_at_security_deposits ON security_deposits;
 CREATE OR REPLACE TRIGGER set_updated_at_security_deposits
   BEFORE UPDATE ON security_deposits
   FOR EACH ROW

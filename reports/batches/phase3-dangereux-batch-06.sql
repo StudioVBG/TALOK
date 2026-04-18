@@ -400,10 +400,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_coloc_rooms_updated_at ON colocation_rooms;
 CREATE TRIGGER trg_coloc_rooms_updated_at
   BEFORE UPDATE ON colocation_rooms
   FOR EACH ROW EXECUTE FUNCTION update_colocation_updated_at();
 
+DROP TRIGGER IF EXISTS trg_coloc_members_updated_at ON colocation_members;
 CREATE TRIGGER trg_coloc_members_updated_at
   BEFORE UPDATE ON colocation_members
   FOR EACH ROW EXECUTE FUNCTION update_colocation_updated_at();
@@ -429,6 +431,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_coloc_solidarity_end ON colocation_members;
 CREATE TRIGGER trg_coloc_solidarity_end
   BEFORE INSERT OR UPDATE ON colocation_members
   FOR EACH ROW EXECUTE FUNCTION auto_solidarity_end_date();
@@ -1395,6 +1398,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_property_meters_updated_at ON property_meters;
 CREATE TRIGGER trg_property_meters_updated_at
   BEFORE UPDATE ON property_meters
   FOR EACH ROW EXECUTE FUNCTION update_property_meters_updated_at();
@@ -1753,6 +1757,7 @@ $$ LANGUAGE plpgsql;
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'set_updated_at_whitelabel_configs') THEN
+    DROP TRIGGER IF EXISTS set_updated_at_whitelabel_configs ON whitelabel_configs;
     CREATE TRIGGER set_updated_at_whitelabel_configs
       BEFORE UPDATE ON whitelabel_configs
       FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
@@ -1761,6 +1766,7 @@ END $$;
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'set_updated_at_agency_mandates') THEN
+    DROP TRIGGER IF EXISTS set_updated_at_agency_mandates ON agency_mandates;
     CREATE TRIGGER set_updated_at_agency_mandates
       BEFORE UPDATE ON agency_mandates
       FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
@@ -1769,6 +1775,7 @@ END $$;
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'set_updated_at_mandant_accounts') THEN
+    DROP TRIGGER IF EXISTS set_updated_at_mandant_accounts ON agency_mandant_accounts;
     CREATE TRIGGER set_updated_at_mandant_accounts
       BEFORE UPDATE ON agency_mandant_accounts
       FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
@@ -1796,6 +1803,7 @@ $$ LANGUAGE plpgsql;
 
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'check_reversement_overdue_trigger') THEN
+    DROP TRIGGER IF EXISTS check_reversement_overdue_trigger ON agency_mandant_accounts;
     CREATE TRIGGER check_reversement_overdue_trigger
       BEFORE INSERT OR UPDATE ON agency_mandant_accounts
       FOR EACH ROW EXECUTE FUNCTION check_reversement_overdue();

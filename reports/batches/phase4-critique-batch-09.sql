@@ -105,6 +105,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_subscription_addons_updated_at ON subscription_addons;
 CREATE TRIGGER trg_subscription_addons_updated_at
   BEFORE UPDATE ON subscription_addons
   FOR EACH ROW
@@ -673,6 +674,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_lease_amendments_updated_at ON lease_amendments;
 CREATE TRIGGER trg_lease_amendments_updated_at
   BEFORE UPDATE ON lease_amendments
   FOR EACH ROW
