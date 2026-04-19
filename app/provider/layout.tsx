@@ -20,6 +20,7 @@ import {
   FolderOpen,
   Shield,
   Image,
+  MessageSquare,
 } from "lucide-react";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { ProviderBottomNav } from "@/components/layout/provider-bottom-nav";
@@ -31,6 +32,7 @@ import { OfflineIndicator } from "@/components/ui/offline-indicator";
 const navigation = [
   { name: "Tableau de bord", href: "/provider/dashboard", icon: LayoutDashboard },
   { name: "Mes missions", href: "/provider/jobs", icon: Briefcase },
+  { name: "Messages", href: "/provider/messages", icon: MessageSquare },
   { name: "Calendrier", href: "/provider/calendar", icon: Calendar },
   { name: "Mes devis", href: "/provider/quotes", icon: FileText },
   { name: "Mes factures", href: "/provider/invoices", icon: Receipt },
