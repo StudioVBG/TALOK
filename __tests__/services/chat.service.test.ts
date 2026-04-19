@@ -381,6 +381,124 @@ describe("ChatService", () => {
     });
   });
 
+  describe("getConversationsEnriched", () => {
+    it("should call RPC with default params and return data+count+hasMore", async () => {
+      const rpcRows = [
+        { id: "c1", conversation_type: "owner_tenant", total_count: 3 },
+        { id: "c2", conversation_type: "owner_provider", total_count: 3 },
+      ];
+      const rpcMock = vi.fn().mockResolvedValue({ data: rpcRows, error: null });
+      mockSupabase.rpc = rpcMock;
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      const result = await chatService.getConversationsEnriched();
+
+      expect(rpcMock).toHaveBeenCalledWith("get_conversations_enriched", {
+        p_limit: 25,
+        p_offset: 0,
+        p_type: null,
+      });
+      expect(result.data).toHaveLength(2);
+      expect(result.count).toBe(3);
+      expect(result.hasMore).toBe(true);
+      // total_count est stripé du payload retourné
+      expect((result.data[0] as any).total_count).toBeUndefined();
+    });
+
+    it("should forward type filter to the RPC", async () => {
+      const rpcMock = vi.fn().mockResolvedValue({ data: [], error: null });
+      mockSupabase.rpc = rpcMock;
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      await chatService.getConversationsEnriched({
+        limit: 10,
+        offset: 5,
+        type: "owner_provider",
+      });
+
+      expect(rpcMock).toHaveBeenCalledWith("get_conversations_enriched", {
+        p_limit: 10,
+        p_offset: 5,
+        p_type: "owner_provider",
+      });
+    });
+
+    it("should return hasMore=false when count <= offset + data.length", async () => {
+      const rpcMock = vi.fn().mockResolvedValue({
+        data: [{ id: "c1", total_count: 5 }, { id: "c2", total_count: 5 }],
+        error: null,
+      });
+      mockSupabase.rpc = rpcMock;
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      const result = await chatService.getConversationsEnriched({ limit: 2, offset: 3 });
+
+      expect(result.count).toBe(5);
+      expect(result.hasMore).toBe(false);
+    });
+  });
+
+  describe("getOtherPartyInfo", () => {
+    it("viewer=owner, owner_tenant → returns tenant info", async () => {
+      const { getOtherPartyInfo } = await import("@/lib/services/chat.service");
+      const info = getOtherPartyInfo({
+        id: "c",
+        conversation_type: "owner_tenant",
+        owner_profile_id: "o",
+        tenant_profile_id: "t",
+        provider_profile_id: null,
+        tenant_name: "Alice",
+        tenant_avatar: "avatar-t",
+        tenant_prenom: "Alice",
+        tenant_nom: "Smith",
+      } as any, "o");
+      expect(info.role).toBe("tenant");
+      expect(info.name).toBe("Alice");
+      expect(info.avatar).toBe("avatar-t");
+    });
+
+    it("viewer=tenant, tenant_provider → returns provider info", async () => {
+      const { getOtherPartyInfo } = await import("@/lib/services/chat.service");
+      const info = getOtherPartyInfo({
+        id: "c",
+        conversation_type: "tenant_provider",
+        owner_profile_id: null,
+        tenant_profile_id: "t",
+        provider_profile_id: "p",
+        provider_name: "Bob",
+        provider_avatar: null,
+      } as any, "t");
+      expect(info.role).toBe("provider");
+      expect(info.name).toBe("Bob");
+    });
+
+    it("viewer=provider, owner_provider → returns owner info", async () => {
+      const { getOtherPartyInfo } = await import("@/lib/services/chat.service");
+      const info = getOtherPartyInfo({
+        id: "c",
+        conversation_type: "owner_provider",
+        owner_profile_id: "o",
+        tenant_profile_id: null,
+        provider_profile_id: "p",
+        owner_name: "Charlie",
+      } as any, "p");
+      expect(info.role).toBe("owner");
+      expect(info.name).toBe("Charlie");
+    });
+
+    it("viewer is not a participant → returns role=null", async () => {
+      const { getOtherPartyInfo } = await import("@/lib/services/chat.service");
+      const info = getOtherPartyInfo({
+        id: "c",
+        conversation_type: "owner_tenant",
+        owner_profile_id: "o",
+        tenant_profile_id: "t",
+        provider_profile_id: null,
+      } as any, "stranger");
+      expect(info.role).toBeNull();
+    });
+  });
+
   describe("markAsRead", () => {
     it("should call RPC to mark messages as read", async () => {
       const mockUser = { id: "user-123" };

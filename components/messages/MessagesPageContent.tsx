@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { MessageSquare, ArrowRight, Plus, Loader2 } from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
 import { chatService } from "@/lib/services/chat.service";
-import type { Conversation } from "@/lib/services/chat.service";
+import type { Conversation, ConversationEnriched } from "@/lib/services/chat.service";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -162,8 +162,18 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
     init();
   }, [onNotAuthenticated]);
 
-  const handleSelectConversation = (conversation: Conversation) => {
-    setSelectedConversation(conversation);
+  const handleSelectConversation = async (enriched: ConversationEnriched) => {
+    // La liste renvoie un ConversationEnriched (sous-titres pré-calculés).
+    // ChatWindow attend un Conversation complet (avec profils joints pour
+    // l'avatar + le nom). On re-fetch la forme canonique au clic.
+    try {
+      const full = await chatService.getConversation(enriched.id);
+      if (full) {
+        setSelectedConversation(full);
+      }
+    } catch (error) {
+      console.error("Erreur ouverture conversation:", error);
+    }
   };
 
   const handleBack = () => {

@@ -16,20 +16,31 @@ import {
   RefreshCw,
   Ticket
 } from "lucide-react";
-import { chatService, type Conversation } from "@/lib/services/chat.service";
-import { getInitials } from "@/lib/design-system/utils";
+import {
+  chatService,
+  type ConversationEnriched,
+} from "@/lib/services/chat.service";
+import { ConversationRoleBadge, type ConversationRole } from "@/components/chat/conversation-role-badge";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 
 interface ConversationsListProps {
   currentProfileId: string;
-  currentRole?: "owner" | "tenant";
+  currentRole?: "owner" | "tenant" | "provider" | "admin";
   selectedId?: string;
-  onSelect: (conversation: Conversation) => void;
+  onSelect: (conversation: ConversationEnriched) => void;
+}
+
+function initialsFromFullName(name: string | null | undefined): string {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return (parts[0][0] ?? "?").toUpperCase();
+  return ((parts[0][0] ?? "") + (parts[parts.length - 1][0] ?? "")).toUpperCase();
 }
 
 export function ConversationsList({ currentProfileId, currentRole, selectedId, onSelect }: ConversationsListProps) {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<ConversationEnriched[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [usePolling, setUsePolling] = useState(false);
@@ -38,8 +49,8 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
   const loadConversations = useCallback(async () => {
     try {
       setLoadError(null);
-      const data = await chatService.getConversations();
-      setConversations(data);
+      const result = await chatService.getConversationsEnriched();
+      setConversations(result.data);
     } catch (error) {
       console.error("Erreur chargement conversations:", error);
       setLoadError("Impossible de charger les conversations");
@@ -58,7 +69,11 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
     try {
       unsubscribe = chatService.subscribeToConversations((updated) => {
         setConversations((prev) =>
-          prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c))
+          prev.map((c) =>
+            c.id === updated.id
+              ? ({ ...c, ...updated } as ConversationEnriched)
+              : c
+          )
         );
       });
 
@@ -88,35 +103,17 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
   const filteredConversations = conversations.filter((conv) => {
     if (!search) return true;
     const searchLower = search.toLowerCase();
-    const isOwner = currentProfileId === conv.owner_profile_id;
-    const otherName = isOwner ? conv.tenant_name : conv.owner_name;
     return (
-      otherName?.toLowerCase().includes(searchLower) ||
-      conv.property_address?.toLowerCase().includes(searchLower) ||
-      conv.subject?.toLowerCase().includes(searchLower)
+      conv.other_party_name?.toLowerCase().includes(searchLower) ||
+      conv.other_party_subtitle?.toLowerCase().includes(searchLower)
     );
   });
 
-  const getUnreadCount = (conv: Conversation) => {
-    const isOwner = currentProfileId === conv.owner_profile_id;
-    return isOwner ? conv.owner_unread_count : conv.tenant_unread_count;
-  };
-
-  const getOtherName = (conv: Conversation) => {
-    const isOwner = currentProfileId === conv.owner_profile_id;
-    return isOwner ? conv.tenant_name : conv.owner_name;
-  };
-
-  const getOtherAvatar = (conv: Conversation) => {
-    const isOwner = currentProfileId === conv.owner_profile_id;
-    return isOwner ? conv.tenant_avatar : conv.owner_avatar;
-  };
-
-  const getOtherInitials = (conv: Conversation) => {
-    const isOwner = currentProfileId === conv.owner_profile_id;
-    const prenom = isOwner ? conv.tenant_prenom : conv.owner_prenom;
-    const nom = isOwner ? conv.tenant_nom : conv.owner_nom;
-    return getInitials(prenom, nom);
+  const getUnreadCount = (conv: ConversationEnriched) => {
+    if (currentProfileId === conv.owner_profile_id) return conv.owner_unread_count;
+    if (currentProfileId === conv.tenant_profile_id) return conv.tenant_unread_count;
+    if (currentProfileId === conv.provider_profile_id) return conv.provider_unread_count;
+    return 0;
   };
 
   const formatLastMessage = (dateString?: string | null) => {
@@ -223,11 +220,14 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
                   >
                     <div className="flex items-start gap-3">
                       <Avatar className="h-12 w-12 flex-shrink-0">
-                        {getOtherAvatar(conversation) && (
-                          <AvatarImage src={getOtherAvatar(conversation)!} alt={getOtherName(conversation) || "Interlocuteur"} />
+                        {conversation.other_party_avatar_url && (
+                          <AvatarImage
+                            src={conversation.other_party_avatar_url}
+                            alt={conversation.other_party_name || "Interlocuteur"}
+                          />
                         )}
                         <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10">
-                          {getOtherInitials(conversation)}
+                          {initialsFromFullName(conversation.other_party_name)}
                         </AvatarFallback>
                       </Avatar>
 
@@ -235,8 +235,15 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
                             <p className={`font-medium truncate ${unreadCount > 0 ? "font-semibold" : ""}`}>
-                              {getOtherName(conversation) || "Utilisateur"}
+                              {conversation.other_party_name || "Utilisateur"}
                             </p>
+                            {conversation.other_party_role && (
+                              <ConversationRoleBadge
+                                role={conversation.other_party_role as ConversationRole}
+                                size="sm"
+                                showIcon={false}
+                              />
+                            )}
                             {conversation.ticket_id && (
                               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 flex-shrink-0">
                                 <Ticket className="h-3 w-3 mr-0.5" />
@@ -251,16 +258,12 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
                           )}
                         </div>
 
-                        {conversation.subject && (
-                          <p className="text-xs font-medium text-foreground/70 truncate mt-0.5">
-                            {conversation.subject}
+                        {conversation.other_party_subtitle && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                            <Home className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">{conversation.other_party_subtitle}</span>
                           </p>
                         )}
-
-                        <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                          <Home className="h-3 w-3" />
-                          <span className="truncate">{conversation.property_address}</span>
-                        </p>
 
                         {conversation.last_message_preview && (
                           <p className={`text-sm mt-1 truncate ${

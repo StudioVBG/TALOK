@@ -122,6 +122,128 @@ export interface GetConversationsFilter {
   type?: ConversationType;
 }
 
+/**
+ * Row returned by the `get_conversations_enriched` RPC (Sprint 3).
+ * Includes raw conversation columns + pre-computed subtitles and
+ * other-party info so the UI list can render in one round-trip.
+ */
+export interface ConversationEnriched {
+  id: string;
+  conversation_type: ConversationType;
+  property_id: string | null;
+  lease_id: string | null;
+  ticket_id: string | null;
+  owner_profile_id: string | null;
+  tenant_profile_id: string | null;
+  provider_profile_id: string | null;
+  status: "active" | "archived" | "closed";
+  last_message_at: string | null;
+  last_message_preview: string | null;
+  owner_unread_count: number;
+  tenant_unread_count: number;
+  provider_unread_count: number;
+  created_at: string;
+  updated_at: string;
+  other_party_subtitle: string | null;
+  other_party_name: string | null;
+  other_party_avatar_url: string | null;
+  other_party_role: SenderRole | null;
+}
+
+export interface GetConversationsEnrichedParams {
+  limit?: number;
+  offset?: number;
+  type?: ConversationType;
+}
+
+export interface GetConversationsEnrichedResult {
+  data: ConversationEnriched[];
+  count: number;
+  hasMore: boolean;
+}
+
+export interface OtherPartyInfo {
+  role: SenderRole | null;
+  name?: string;
+  avatar?: string | null;
+  prenom?: string | null;
+  nom?: string | null;
+}
+
+/**
+ * Derive "the other participant" info from a Conversation + the current user.
+ * Works for all 3 conversation_types (owner_tenant, owner_provider, tenant_provider).
+ * Returns role=null when the viewer is not a participant (should not happen if
+ * RLS is correctly enforced, but the UI tolerates it).
+ */
+export function getOtherPartyInfo(
+  conversation: Conversation,
+  currentProfileId: string
+): OtherPartyInfo {
+  const ct = conversation.conversation_type;
+
+  if (currentProfileId === conversation.owner_profile_id) {
+    if (ct === "owner_tenant") {
+      return {
+        role: "tenant",
+        name: conversation.tenant_name,
+        avatar: conversation.tenant_avatar,
+        prenom: conversation.tenant_prenom,
+        nom: conversation.tenant_nom,
+      };
+    }
+    if (ct === "owner_provider") {
+      return {
+        role: "provider",
+        name: conversation.provider_name,
+        avatar: conversation.provider_avatar,
+        prenom: conversation.provider_prenom,
+        nom: conversation.provider_nom,
+      };
+    }
+  } else if (currentProfileId === conversation.tenant_profile_id) {
+    if (ct === "owner_tenant") {
+      return {
+        role: "owner",
+        name: conversation.owner_name,
+        avatar: conversation.owner_avatar,
+        prenom: conversation.owner_prenom,
+        nom: conversation.owner_nom,
+      };
+    }
+    if (ct === "tenant_provider") {
+      return {
+        role: "provider",
+        name: conversation.provider_name,
+        avatar: conversation.provider_avatar,
+        prenom: conversation.provider_prenom,
+        nom: conversation.provider_nom,
+      };
+    }
+  } else if (currentProfileId === conversation.provider_profile_id) {
+    if (ct === "owner_provider") {
+      return {
+        role: "owner",
+        name: conversation.owner_name,
+        avatar: conversation.owner_avatar,
+        prenom: conversation.owner_prenom,
+        nom: conversation.owner_nom,
+      };
+    }
+    if (ct === "tenant_provider") {
+      return {
+        role: "tenant",
+        name: conversation.tenant_name,
+        avatar: conversation.tenant_avatar,
+        prenom: conversation.tenant_prenom,
+        nom: conversation.tenant_nom,
+      };
+    }
+  }
+
+  return { role: null };
+}
+
 class ChatService {
   private supabase = createClient();
   private channels: Map<string, RealtimeChannel> = new Map();
@@ -257,6 +379,43 @@ class ChatService {
         property_address: conv.property?.adresse_complete || "",
       };
     });
+  }
+
+  /**
+   * Récupérer les conversations enrichies via le RPC
+   * `get_conversations_enriched` (sous-titres + other_party pré-calculés,
+   * pagination via offset/limit). Sprint 3.
+   *
+   * Sert `MessagesPageContent`. L'ancien `getConversations` reste en place
+   * pour les callers legacy ; Sprint 4 décidera de sa suppression.
+   */
+  async getConversationsEnriched(
+    params: GetConversationsEnrichedParams = {}
+  ): Promise<GetConversationsEnrichedResult> {
+    const limit = params.limit ?? 25;
+    const offset = params.offset ?? 0;
+
+    const { data, error } = await (this.supabase.rpc as any)("get_conversations_enriched", {
+      p_limit: limit,
+      p_offset: offset,
+      p_type: params.type ?? null,
+    });
+
+    if (error) throw error;
+
+    const rows = (data ?? []) as (ConversationEnriched & { total_count: number | string })[];
+    const count = rows.length > 0 ? Number(rows[0].total_count ?? 0) : 0;
+
+    const cleaned: ConversationEnriched[] = rows.map((row) => {
+      const { total_count: _ignored, ...rest } = row;
+      return rest as ConversationEnriched;
+    });
+
+    return {
+      data: cleaned,
+      count,
+      hasMore: offset + cleaned.length < count,
+    };
   }
 
   /**

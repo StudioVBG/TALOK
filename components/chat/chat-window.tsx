@@ -32,7 +32,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { chatService, type Message, type Conversation } from "@/lib/services/chat.service";
+import {
+  chatService,
+  getOtherPartyInfo,
+  type Message,
+  type Conversation,
+  type SenderRole,
+} from "@/lib/services/chat.service";
+import { ConversationRoleBadge, type ConversationRole } from "@/components/chat/conversation-role-badge";
 import { getInitials } from "@/lib/design-system/utils";
 import { cleanAttachmentName, truncateMiddle } from "@/lib/utils/clean-filename";
 import { formatDistanceToNow } from "date-fns";
@@ -92,11 +99,18 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isOwner = currentProfileId === conversation.owner_profile_id;
-  const otherName = isOwner ? conversation.tenant_name : conversation.owner_name;
-  const otherAvatar = isOwner ? conversation.tenant_avatar : conversation.owner_avatar;
-  const otherPrenom = isOwner ? conversation.tenant_prenom : conversation.owner_prenom;
-  const otherNom = isOwner ? conversation.tenant_nom : conversation.owner_nom;
+  const otherParty = getOtherPartyInfo(conversation, currentProfileId);
+  const otherRole = otherParty.role as ConversationRole | null;
+  const otherName = otherParty.name;
+  const otherAvatar = otherParty.avatar;
+  const otherPrenom = otherParty.prenom;
+  const otherNom = otherParty.nom;
+  const viewerRole: SenderRole =
+    currentProfileId === conversation.owner_profile_id
+      ? "owner"
+      : currentProfileId === conversation.tenant_profile_id
+      ? "tenant"
+      : "provider";
 
   // Charger les messages
   useEffect(() => {
@@ -169,7 +183,7 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
       id: `temp-${Date.now()}`,
       conversation_id: conversation.id,
       sender_profile_id: currentProfileId,
-      sender_role: isOwner ? "owner" : "tenant",
+      sender_role: viewerRole,
       content: messageContent,
       content_type: "text",
       created_at: new Date().toISOString(),
@@ -399,9 +413,7 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
               {conversation.property_address}
             </p>
           </div>
-          <Badge variant="outline" className="text-xs">
-            {isOwner ? "Locataire" : "Propriétaire"}
-          </Badge>
+          {otherRole && <ConversationRoleBadge role={otherRole} size="sm" />}
           {conversation.ticket_id && (
             <Badge variant="secondary" className="text-xs">
               Ticket lié
