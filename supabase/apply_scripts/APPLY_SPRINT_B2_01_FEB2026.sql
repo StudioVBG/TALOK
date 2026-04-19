@@ -1,6 +1,6 @@
 -- =============================================================================
 -- APPLY SPRINT B2 — BATCH 01_FEB2026 (IDEMPOTENT v2)
--- Genere le 2026-04-19T17:28:30Z
+-- Genere le 2026-04-19T17:33:42Z
 --
 -- Contenu : 61 migrations (action=apply uniquement)
 -- Plage   : 20260208100000 -> 20260230100000

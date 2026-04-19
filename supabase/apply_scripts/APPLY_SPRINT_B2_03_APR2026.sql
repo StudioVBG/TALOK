@@ -1,6 +1,6 @@
 -- =============================================================================
 -- APPLY SPRINT B2 — BATCH 03_APR2026 (IDEMPOTENT v2)
--- Genere le 2026-04-19T17:28:39Z
+-- Genere le 2026-04-19T17:33:50Z
 --
 -- Contenu : 71 migrations (action=apply uniquement)
 -- Plage   : 20260401000000 -> 20260417110000
@@ -4377,10 +4377,7 @@ BEGIN
       $cron$SELECT public.fn_cleanup_orphan_document_analyses();$cron$
     );
   ELSE
-    RAISE NOTICE 'pg_cron extension not installed; skipping schedule. '
-      'Enable pg_cron from the Supabase dashboard and run:'
-      E'\n  SELECT cron.schedule(''cleanup-orphan-analyses'', ''0 3 * * 0'', '
-      E'''SELECT public.fn_cleanup_orphan_document_analyses();'');';
+    RAISE NOTICE E'pg_cron extension not installed; skipping schedule. Enable pg_cron from the Supabase dashboard and run:\n  SELECT cron.schedule(''cleanup-orphan-analyses'', ''0 3 * * 0'', ''SELECT public.fn_cleanup_orphan_document_analyses();'');';
   END IF;
 END $$;
 
