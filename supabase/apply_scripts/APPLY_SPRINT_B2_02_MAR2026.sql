@@ -1,6 +1,6 @@
 -- =============================================================================
 -- APPLY SPRINT B2 — BATCH 02_MAR2026 (IDEMPOTENT v2)
--- Genere le 2026-04-19T17:21:27Z
+-- Genere le 2026-04-19T17:24:32Z
 --
 -- Contenu : 62 migrations (action=apply uniquement)
 -- Plage   : 20260301000000 -> 20260331130000
@@ -4125,6 +4125,7 @@ BEGIN
       AND column_name = 'payout_id'
   ) THEN
     BEGIN
+      ALTER TABLE public.stripe_transfers DROP CONSTRAINT IF EXISTS fk_stripe_transfers_payout;
       ALTER TABLE public.stripe_transfers
         ADD CONSTRAINT fk_stripe_transfers_payout
         FOREIGN KEY (payout_id) REFERENCES public.stripe_payouts(id) ON DELETE SET NULL;
@@ -5841,6 +5842,7 @@ DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_constraint WHERE conname = 'leases_cancellation_type_check'
   ) THEN
+    ALTER TABLE leases DROP CONSTRAINT IF EXISTS leases_cancellation_type_check;
     ALTER TABLE leases ADD CONSTRAINT leases_cancellation_type_check
       CHECK (cancellation_type IS NULL OR cancellation_type IN (
         'tenant_withdrawal',

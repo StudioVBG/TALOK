@@ -1,6 +1,6 @@
 -- =============================================================================
 -- APPLY SPRINT B2 — BATCH 01_FEB2026 (IDEMPOTENT v2)
--- Genere le 2026-04-19T17:21:23Z
+-- Genere le 2026-04-19T17:24:28Z
 --
 -- Contenu : 61 migrations (action=apply uniquement)
 -- Plage   : 20260208100000 -> 20260230100000
@@ -3261,6 +3261,7 @@ DO $$ BEGIN
     WHERE tenant_id IS NOT NULL
       AND NOT EXISTS (SELECT 1 FROM profiles WHERE id = leases.tenant_id);
     -- Puis ajouter la contrainte
+    ALTER TABLE leases DROP CONSTRAINT IF EXISTS fk_leases_tenant_id;
     ALTER TABLE leases
       ADD CONSTRAINT fk_leases_tenant_id
       FOREIGN KEY (tenant_id) REFERENCES profiles(id) ON DELETE SET NULL;
@@ -3279,6 +3280,7 @@ DO $$ BEGIN
     UPDATE leases SET owner_id = NULL
     WHERE owner_id IS NOT NULL
       AND NOT EXISTS (SELECT 1 FROM profiles WHERE id = leases.owner_id);
+    ALTER TABLE leases DROP CONSTRAINT IF EXISTS fk_leases_owner_id;
     ALTER TABLE leases
       ADD CONSTRAINT fk_leases_owner_id
       FOREIGN KEY (owner_id) REFERENCES profiles(id) ON DELETE SET NULL;
@@ -3297,6 +3299,7 @@ DO $$ BEGIN
     UPDATE tickets SET assigned_provider_id = NULL
     WHERE assigned_provider_id IS NOT NULL
       AND NOT EXISTS (SELECT 1 FROM profiles WHERE id = tickets.assigned_provider_id);
+    ALTER TABLE tickets DROP CONSTRAINT IF EXISTS fk_tickets_assigned_provider_id;
     ALTER TABLE tickets
       ADD CONSTRAINT fk_tickets_assigned_provider_id
       FOREIGN KEY (assigned_provider_id) REFERENCES profiles(id) ON DELETE SET NULL;
@@ -3309,6 +3312,7 @@ DO $$ BEGIN
   AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_tickets_owner_id' AND table_name = 'tickets')
   THEN
     UPDATE tickets SET owner_id = NULL WHERE owner_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM profiles WHERE id = tickets.owner_id);
+    ALTER TABLE tickets DROP CONSTRAINT IF EXISTS fk_tickets_owner_id;
     ALTER TABLE tickets ADD CONSTRAINT fk_tickets_owner_id FOREIGN KEY (owner_id) REFERENCES profiles(id) ON DELETE SET NULL;
   END IF;
 END $$;
@@ -3319,6 +3323,7 @@ DO $$ BEGIN
   AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_documents_profile_id' AND table_name = 'documents')
   THEN
     UPDATE documents SET profile_id = NULL WHERE profile_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM profiles WHERE id = documents.profile_id);
+    ALTER TABLE documents DROP CONSTRAINT IF EXISTS fk_documents_profile_id;
     ALTER TABLE documents ADD CONSTRAINT fk_documents_profile_id FOREIGN KEY (profile_id) REFERENCES profiles(id) ON DELETE SET NULL;
   END IF;
 END $$;
@@ -3329,6 +3334,7 @@ DO $$ BEGIN
   AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_building_units_current_lease_id' AND table_name = 'building_units')
   THEN
     UPDATE building_units SET current_lease_id = NULL WHERE current_lease_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM leases WHERE id = building_units.current_lease_id);
+    ALTER TABLE building_units DROP CONSTRAINT IF EXISTS fk_building_units_current_lease_id;
     ALTER TABLE building_units ADD CONSTRAINT fk_building_units_current_lease_id FOREIGN KEY (current_lease_id) REFERENCES leases(id) ON DELETE SET NULL;
   END IF;
 END $$;
@@ -3339,6 +3345,7 @@ DO $$ BEGIN
   AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_work_orders_quote_id' AND table_name = 'work_orders')
   THEN
     UPDATE work_orders SET quote_id = NULL WHERE quote_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM quotes WHERE id = work_orders.quote_id);
+    ALTER TABLE work_orders DROP CONSTRAINT IF EXISTS fk_work_orders_quote_id;
     ALTER TABLE work_orders ADD CONSTRAINT fk_work_orders_quote_id FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE SET NULL;
   END IF;
 END $$;
@@ -3349,6 +3356,7 @@ DO $$ BEGIN
   AND NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'fk_work_orders_property_id' AND table_name = 'work_orders')
   THEN
     UPDATE work_orders SET property_id = NULL WHERE property_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM properties WHERE id = work_orders.property_id);
+    ALTER TABLE work_orders DROP CONSTRAINT IF EXISTS fk_work_orders_property_id;
     ALTER TABLE work_orders ADD CONSTRAINT fk_work_orders_property_id FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE SET NULL;
   END IF;
 END $$;
@@ -3377,6 +3385,7 @@ DO $$ BEGIN
       SELECT id FROM ranked WHERE rn > 1
     );
 
+    ALTER TABLE invoices DROP CONSTRAINT IF EXISTS uq_invoices_lease_periode;
     ALTER TABLE invoices
       ADD CONSTRAINT uq_invoices_lease_periode
       UNIQUE (lease_id, periode);
@@ -5612,6 +5621,7 @@ BEGIN
   END IF;
 
   -- Recréer avec tous les statuts valides (SSOT 2026)
+  ALTER TABLE leases DROP CONSTRAINT IF EXISTS leases_statut_check;
   ALTER TABLE leases ADD CONSTRAINT leases_statut_check CHECK (
     statut IN (
       'draft',
@@ -6014,6 +6024,7 @@ EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'copro_units.owner_profile_id FK not found, skipping drop';
 END $$;
 
+ALTER TABLE copro_units DROP CONSTRAINT IF EXISTS copro_units_owner_profile_id_fkey;
 ALTER TABLE copro_units
   ADD CONSTRAINT copro_units_owner_profile_id_fkey
   FOREIGN KEY (owner_profile_id) REFERENCES profiles(id) ON DELETE SET NULL;
@@ -6040,6 +6051,7 @@ EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'copro_units.property_id FK not found, skipping drop';
 END $$;
 
+ALTER TABLE copro_units DROP CONSTRAINT IF EXISTS copro_units_property_id_fkey;
 ALTER TABLE copro_units
   ADD CONSTRAINT copro_units_property_id_fkey
   FOREIGN KEY (property_id) REFERENCES properties(id) ON DELETE SET NULL;
@@ -6066,6 +6078,7 @@ EXCEPTION WHEN OTHERS THEN
   RAISE NOTICE 'sites.syndic_profile_id FK not found, skipping drop';
 END $$;
 
+ALTER TABLE sites DROP CONSTRAINT IF EXISTS sites_syndic_profile_id_fkey;
 ALTER TABLE sites
   ADD CONSTRAINT sites_syndic_profile_id_fkey
   FOREIGN KEY (syndic_profile_id) REFERENCES profiles(id) ON DELETE SET NULL;
@@ -8049,6 +8062,7 @@ BEGIN
       WHERE sub.rn > 1
     );
 
+    ALTER TABLE invoices DROP CONSTRAINT IF EXISTS uq_invoices_lease_periode;
     ALTER TABLE invoices
       ADD CONSTRAINT uq_invoices_lease_periode
       UNIQUE (lease_id, periode);
@@ -8786,6 +8800,7 @@ DO $$ BEGIN
       LEFT JOIN public.profiles p ON pr.owner_id = p.id
       WHERE p.id IS NULL AND pr.owner_id IS NOT NULL
     ) THEN
+      ALTER TABLE public.properties DROP CONSTRAINT IF EXISTS fk_properties_owner;
       ALTER TABLE public.properties
         ADD CONSTRAINT fk_properties_owner
         FOREIGN KEY (owner_id) REFERENCES public.profiles(id) ON DELETE RESTRICT;
@@ -8811,6 +8826,7 @@ DO $$ BEGIN
       LEFT JOIN public.properties pr ON l.property_id = pr.id
       WHERE pr.id IS NULL AND l.property_id IS NOT NULL
     ) THEN
+      ALTER TABLE public.leases DROP CONSTRAINT IF EXISTS fk_leases_property;
       ALTER TABLE public.leases
         ADD CONSTRAINT fk_leases_property
         FOREIGN KEY (property_id) REFERENCES public.properties(id) ON DELETE RESTRICT;
@@ -8836,6 +8852,7 @@ DO $$ BEGIN
       LEFT JOIN public.leases l ON ls.lease_id = l.id
       WHERE l.id IS NULL AND ls.lease_id IS NOT NULL
     ) THEN
+      ALTER TABLE public.lease_signers DROP CONSTRAINT IF EXISTS fk_lease_signers_lease;
       ALTER TABLE public.lease_signers
         ADD CONSTRAINT fk_lease_signers_lease
         FOREIGN KEY (lease_id) REFERENCES public.leases(id) ON DELETE CASCADE;
@@ -8861,6 +8878,7 @@ DO $$ BEGIN
       LEFT JOIN public.profiles p ON ls.profile_id = p.id
       WHERE p.id IS NULL AND ls.profile_id IS NOT NULL
     ) THEN
+      ALTER TABLE public.lease_signers DROP CONSTRAINT IF EXISTS fk_lease_signers_profile;
       ALTER TABLE public.lease_signers
         ADD CONSTRAINT fk_lease_signers_profile
         FOREIGN KEY (profile_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
@@ -8886,6 +8904,7 @@ DO $$ BEGIN
       LEFT JOIN public.leases l ON inv.lease_id = l.id
       WHERE l.id IS NULL AND inv.lease_id IS NOT NULL
     ) THEN
+      ALTER TABLE public.invoices DROP CONSTRAINT IF EXISTS fk_invoices_lease;
       ALTER TABLE public.invoices
         ADD CONSTRAINT fk_invoices_lease
         FOREIGN KEY (lease_id) REFERENCES public.leases(id) ON DELETE RESTRICT;
@@ -13974,6 +13993,7 @@ CREATE TRIGGER update_sepa_mandates_updated_at
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Link tenant_payment_methods to sepa_mandates
+ALTER TABLE tenant_payment_methods DROP CONSTRAINT IF EXISTS fk_tpm_sepa_mandate;
 ALTER TABLE tenant_payment_methods
   ADD CONSTRAINT fk_tpm_sepa_mandate
   FOREIGN KEY (sepa_mandate_id) REFERENCES sepa_mandates(id) ON DELETE SET NULL;

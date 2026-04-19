@@ -1,6 +1,6 @@
 -- =============================================================================
 -- APPLY SPRINT B2 — BATCH 03_APR2026 (IDEMPOTENT v2)
--- Genere le 2026-04-19T17:21:30Z
+-- Genere le 2026-04-19T17:24:36Z
 --
 -- Contenu : 71 migrations (action=apply uniquement)
 -- Plage   : 20260401000000 -> 20260417110000
@@ -1427,31 +1427,37 @@ END $$;
 
 -- 2. CHECK constraints on status columns (skip if table does not exist)
 DO $$ BEGIN
+  ALTER TABLE reconciliation_matches DROP CONSTRAINT IF EXISTS chk_reconciliation_matches_status;
   ALTER TABLE reconciliation_matches ADD CONSTRAINT chk_reconciliation_matches_status CHECK (status IN ('pending','matched','disputed','resolved'));
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
+  ALTER TABLE payment_schedules DROP CONSTRAINT IF EXISTS chk_payment_schedules_status;
   ALTER TABLE payment_schedules ADD CONSTRAINT chk_payment_schedules_status CHECK (status IN ('pending','active','paused','completed','cancelled'));
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
+  ALTER TABLE receipt_stubs DROP CONSTRAINT IF EXISTS chk_receipt_stubs_status;
   ALTER TABLE receipt_stubs ADD CONSTRAINT chk_receipt_stubs_status CHECK (status IN ('signed','cancelled','archived'));
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
+  ALTER TABLE subscriptions DROP CONSTRAINT IF EXISTS chk_subscriptions_status;
   ALTER TABLE subscriptions ADD CONSTRAINT chk_subscriptions_status CHECK (status IN ('trialing','active','past_due','canceled','incomplete','paused'));
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
+  ALTER TABLE visit_slots DROP CONSTRAINT IF EXISTS chk_visit_slots_status;
   ALTER TABLE visit_slots ADD CONSTRAINT chk_visit_slots_status CHECK (status IN ('available','booked','cancelled','completed'));
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 DO $$ BEGIN
+  ALTER TABLE visit_bookings DROP CONSTRAINT IF EXISTS chk_visit_bookings_status;
   ALTER TABLE visit_bookings ADD CONSTRAINT chk_visit_bookings_status CHECK (status IN ('pending','confirmed','cancelled','no_show','completed'));
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
@@ -1543,6 +1549,7 @@ BEGIN
       GROUP BY entity_id, exercise_id, entry_number
       HAVING COUNT(*) > 1
     ) dups) = 0 THEN
+      ALTER TABLE public.accounting_entries DROP CONSTRAINT IF EXISTS entry_number_unique;
       ALTER TABLE public.accounting_entries
         ADD CONSTRAINT entry_number_unique UNIQUE (entity_id, exercise_id, entry_number);
     END IF;
@@ -2698,10 +2705,12 @@ ALTER TABLE tickets ADD COLUMN IF NOT EXISTS resolution_notes TEXT;
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS satisfaction_rating INTEGER;
 
 -- 2. Contrainte satisfaction_rating
+ALTER TABLE tickets DROP CONSTRAINT IF EXISTS tickets_satisfaction_rating_check;
 ALTER TABLE tickets ADD CONSTRAINT tickets_satisfaction_rating_check
   CHECK (satisfaction_rating IS NULL OR (satisfaction_rating >= 1 AND satisfaction_rating <= 5));
 
 -- 3. Contrainte category
+ALTER TABLE tickets DROP CONSTRAINT IF EXISTS tickets_category_check;
 ALTER TABLE tickets ADD CONSTRAINT tickets_category_check
   CHECK (category IS NULL OR category IN (
     'plomberie','electricite','serrurerie','chauffage','humidite',
@@ -8232,6 +8241,7 @@ ALTER TABLE public.stripe_connect_accounts
 DO $$
 BEGIN
   BEGIN
+    ALTER TABLE public.stripe_connect_accounts DROP CONSTRAINT IF EXISTS stripe_connect_unique_profile_or_entity;
     ALTER TABLE public.stripe_connect_accounts
       ADD CONSTRAINT stripe_connect_unique_profile_or_entity
       UNIQUE NULLS NOT DISTINCT (profile_id, entity_id);
@@ -8257,6 +8267,7 @@ END $$;
 -- techniquement non nécessaire tant que profile_id est NOT NULL.
 DO $$
 BEGIN
+  ALTER TABLE public.stripe_connect_accounts DROP CONSTRAINT IF EXISTS stripe_connect_has_owner;
   ALTER TABLE public.stripe_connect_accounts
     ADD CONSTRAINT stripe_connect_has_owner
     CHECK (profile_id IS NOT NULL OR entity_id IS NOT NULL);
