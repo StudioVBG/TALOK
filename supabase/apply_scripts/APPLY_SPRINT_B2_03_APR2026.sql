@@ -1,6 +1,6 @@
 -- =============================================================================
 -- APPLY SPRINT B2 — BATCH 03_APR2026 (IDEMPOTENT v2)
--- Genere le 2026-04-19T17:24:36Z
+-- Genere le 2026-04-19T17:28:39Z
 --
 -- Contenu : 71 migrations (action=apply uniquement)
 -- Plage   : 20260401000000 -> 20260417110000
@@ -3409,7 +3409,9 @@ END $$;
 
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'vetusty_grid') THEN
+    EXECUTE 'DROP POLICY IF EXISTS "vetusty_grid_read_authenticated" ON vetusty_grid';
     EXECUTE 'CREATE POLICY "vetusty_grid_read_authenticated" ON vetusty_grid FOR SELECT USING (auth.role() = ''authenticated'')';
+    EXECUTE 'DROP POLICY IF EXISTS "vetusty_grid_write_admin_only" ON vetusty_grid';
     EXECUTE 'CREATE POLICY "vetusty_grid_write_admin_only" ON vetusty_grid FOR ALL USING (false)';
   END IF;
 END $$;
