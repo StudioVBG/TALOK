@@ -24,12 +24,18 @@ Total : 194 migrations (action `apply` uniquement).
 
 1. **BACKUP prod obligatoire** : `pg_dump` + point de restauration Supabase PITR.
 2. Choisir un créneau de maintenance (certaines migrations sont CRITIQUE sur profiles/RLS).
-3. Appliquer les batches **dans l'ordre** : `01_FEB` → `02_MAR` → `03_APR`.
-4. Pour chaque batch :
+3. **Avant chaque batch : coller `REALTIME_PAUSE_BEFORE_BATCH.sql`** pour désabonner
+   les tables de la publication supabase_realtime. Sinon, deadlocks quasi-certains
+   sur les tables actives (properties, leases, etc.) avec le worker realtime.
+4. Appliquer les batches **dans l'ordre** : `01_FEB` → `02_MAR` → `03_APR`.
+5. Pour chaque batch :
    - Ouvrir Supabase Dashboard → SQL Editor → New Query
    - Coller le fichier intégralement, cliquer Run
-   - Vérifier les NOTICES dans l'onglet Messages
-5. Chaque migration est encapsulée dans son propre `BEGIN/COMMIT` : rollback ciblé en cas d'erreur.
+   - Vérifier les NOTICES dans l'onglet Messages (affiche la migration en cours)
+6. **Après tous les batches : coller `REALTIME_RESUME_AFTER_BATCH.sql`** pour
+   restaurer la publication realtime.
+7. Chaque migration est encapsulée dans son propre `BEGIN/COMMIT` : rollback ciblé.
+8. Les batches sont idempotents : recoller en cas d'échec ne crée pas de doublon.
 
 ## Ordre
 
