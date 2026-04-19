@@ -3,9 +3,11 @@ name: talok-documents-sota
 description: >
   Architecture SOTA complète de la gestion des documents Talok.
   Utilise ce skill pour tout travail sur les documents : upload, consultation,
-  génération automatique, quittances, GED, permissions, bugs, nouveaux comptes.
+  génération automatique, quittances, GED, permissions, bugs, nouveaux comptes,
+  affichage de noms de fichiers (cleanAttachmentName / truncateMiddle / clean-filename).
   Déclenche dès que la tâche touche à documents, upload, storage, quittance,
-  bail PDF, EDL PDF, CNI, coffre-fort, bibliothèque, GED, pièces jointes.
+  bail PDF, EDL PDF, CNI, coffre-fort, bibliothèque, GED, pièces jointes,
+  attachment, filename, nom de fichier, bubble attachment.
 ---
 
 # Talok — Gestion des documents SOTA
@@ -410,3 +412,47 @@ Le flux justificatif traverse les deux skills :
 | `useGedUpload`, hooks React documents | Pas de hooks React compta (server-side only) |
 
 **Règle :** ne JAMAIS dupliquer la logique OCR/analyse dans ce skill. Importer depuis `@/lib/accounting`.
+
+---
+
+## 14. Affichage des noms de fichiers (convention canonique)
+
+Les filenames stockés en Supabase Storage contiennent systématiquement du bruit technique :
+- Préfixe user ID : `u4725513253_`
+- UUID v4 injecté par l'upload : `_943f417c-e62d-4224-aa56-836a1563f969_`
+- Suffixe d'index : `_1.png`
+- Underscores à la place des espaces
+
+**Ne jamais afficher un filename brut dans l'UI.** Utiliser systématiquement :
+
+```ts
+import { cleanAttachmentName, truncateMiddle } from "@/lib/utils/clean-filename";
+
+const display = truncateMiddle(cleanAttachmentName(rawFilename), 40);
+```
+
+Résultat attendu :
+- Input  : `u4725513253_Appartement_T3_-_chambre_principale_realistic_mas_943f417c-e62d-4224-aa56-836a1563f969_1.png`
+- Output : `Appartement T3 - chambre principale realistic mas.png`
+
+**Contextes d'application :**
+- Bubbles d'attachement dans `/owner/messages` et `/tenant/messages`
+- Liste documents dans la GED (`/owner/documents`, `/tenant/documents`)
+- Aperçus de pièces jointes dans les tickets
+- Export PDF qui liste des documents source
+
+**Truncate middle :** préserve début + extension, ellipsis au centre. Permet de garder
+`.pdf`/`.jpg` visible (critère UX : l'utilisateur doit toujours voir le type de fichier).
+
+**Ne pas réimplémenter** de nettoyage local dans les composants : passer systématiquement
+par ces deux utils.
+
+Source canonique : `lib/utils/clean-filename.ts`.
+Tests : `__tests__/lib/clean-filename.test.ts` (cas u{id}/UUID/suffixe _N, truncate middle).
+
+### Anti-patterns à refuser en code review
+
+- `attachment.filename` (ou `document.original_filename`) affiché directement dans du JSX
+- Regex ad-hoc de nettoyage dans un composant (`.replace(/u\d+_/, '')`, etc.)
+- Troncature brutale `.slice(0, 30) + '...'` qui masque l'extension
+- Ré-implémentation locale de `cleanAttachmentName` / `truncateMiddle` sous un autre nom

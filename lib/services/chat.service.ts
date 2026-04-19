@@ -1,6 +1,23 @@
 /**
  * Service de Chat en temps réel
  * Gère les conversations et messages entre propriétaires et locataires
+ *
+ * IMPORTANT — Exécution côté navigateur uniquement.
+ * Ce service est importé par des composants `"use client"` (MessagesPageContent,
+ * ConversationsList, ChatWindow). Le client Supabase utilisé ici est donc
+ * OBLIGATOIREMENT le client browser (createClient de @/lib/supabase/client),
+ * user-scoped via cookies, soumis à RLS.
+ *
+ * Ne PAS importer `getServiceClient()` ici : la service role key ne doit
+ * JAMAIS atterrir dans le bundle navigateur (exposerait un bypass total des
+ * RLS à tout visiteur). Pour les opérations nécessitant un bypass RLS
+ * contrôlé, passer par une route API (ex. /api/messages/*).
+ *
+ * Risque 42P17 (recursion sur profiles) : éliminé côté DB par la migration
+ * `20260213000000_fix_profiles_rls_recursion_v2.sql` — les policies actives
+ * utilisent des helpers SECURITY DEFINER (`get_my_profile_id()`, `is_admin()`)
+ * qui bypassent la récursion. Les queries profiles depuis le browser client
+ * sont donc sûres.
  */
 
 import { createClient } from "@/lib/supabase/client";
@@ -134,8 +151,16 @@ class ChatService {
 
     if (error) throw error;
 
-    // Fallback : si l'embed FK ne renvoie pas le profil (RLS/visibilité),
-    // on résout les profils manquants via une seconde requête ciblée.
+    // Fallback : si l'embed FK ne renvoie pas le profil (cas RLS/visibilité
+    // où PostgREST embedde `null`), on résout les profils manquants via une
+    // seconde requête ciblée.
+    //
+    // Browser client (user-scoped) volontaire : getServiceClient() est interdit
+    // côté client (leak service role). Cette requête reste soumise aux RLS v2
+    // de `profiles` (policy `profiles_owner_read_tenants` via lease_signers,
+    // helpers SECURITY DEFINER anti-recursion 42P17). Si la RLS refuse, on
+    // retombe proprement sur `"Utilisateur"` côté UI — c'est le comportement
+    // voulu (pas de bypass silencieux).
     const missingProfileIds = new Set<string>();
     for (const conv of (data || []) as any[]) {
       if (!conv.owner?.prenom && !conv.owner?.nom) missingProfileIds.add(conv.owner_profile_id);
