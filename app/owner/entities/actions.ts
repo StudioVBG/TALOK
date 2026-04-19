@@ -13,6 +13,11 @@ import { z } from "zod";
 import { canDeleteEntity } from "@/features/legal-entities/services/legal-entities.service";
 import { isValidSiret, siretToSiren, isValidIban } from "@/lib/entities/siret-validation";
 import { withFeatureAccess } from "@/lib/middleware/subscription-check";
+import {
+  computeFiscalYearDefaults,
+  deriveDateCloture,
+  validateFiscalYearRange,
+} from "@/lib/entities/fiscal-year-defaults";
 
 // ============================================
 // SCHEMAS
@@ -94,6 +99,26 @@ const createEntitySchema = z.object({
       message: "Format d'email invalide",
     }),
   telephone_entite: z.string().optional(),
+  // Exercice fiscal — optionnels côté API (dérivés si absents) mais
+  // toujours persistés en base non-NULL par le serveur.
+  premier_exercice_debut: z
+    .string()
+    .optional()
+    .refine((val) => !val || /^\d{4}-\d{2}-\d{2}$/.test(val), {
+      message: "Date de début d'exercice invalide (format YYYY-MM-DD)",
+    }),
+  premier_exercice_fin: z
+    .string()
+    .optional()
+    .refine((val) => !val || /^\d{4}-\d{2}-\d{2}$/.test(val), {
+      message: "Date de fin d'exercice invalide (format YYYY-MM-DD)",
+    }),
+  date_cloture_exercice: z
+    .string()
+    .optional()
+    .refine((val) => !val || /^\d{2}-\d{2}$/.test(val), {
+      message: "Date de clôture invalide (format MM-DD)",
+    }),
 });
 
 const updateEntitySchema = createEntitySchema.partial().extend({
@@ -219,6 +244,22 @@ export async function createEntity(
     if (data.email_entite) metadata.email = data.email_entite;
     if (data.telephone_entite) metadata.telephone = data.telephone_entite;
 
+    // Compute fiscal year dates — never NULL. Takes user input if provided,
+    // otherwise derives from regime + date_creation (calendar year for IR).
+    const defaults = computeFiscalYearDefaults(
+      data.regime_fiscal,
+      data.date_creation
+    );
+    const premierExerciceDebut = data.premier_exercice_debut || defaults.premierExerciceDebut;
+    const premierExerciceFin = data.premier_exercice_fin || defaults.premierExerciceFin;
+    const dateClotureExercice =
+      data.date_cloture_exercice || deriveDateCloture(premierExerciceFin);
+
+    const rangeCheck = validateFiscalYearRange(premierExerciceDebut, premierExerciceFin);
+    if (!rangeCheck.valid) {
+      return { success: false, error: rangeCheck.error || "Exercice fiscal invalide" };
+    }
+
     const { data: entity, error } = await supabase
       .from("legal_entities")
       .insert({
@@ -242,6 +283,9 @@ export async function createEntity(
         bic: data.bic || null,
         banque_nom: data.banque_nom || null,
         couleur: data.couleur || null,
+        premier_exercice_debut: premierExerciceDebut,
+        premier_exercice_fin: premierExerciceFin,
+        date_cloture_exercice: dateClotureExercice,
         metadata: Object.keys(metadata).length > 0 ? metadata : null,
       })
       .select("id")
@@ -250,6 +294,27 @@ export async function createEntity(
     if (error) {
       console.error("[createEntity] Error:", error);
       return { success: false, error: "Erreur lors de la création" };
+    }
+
+    // Create the opening accounting exercise so the compta module is usable
+    // immediately. Idempotent: the DB trigger fn_legal_entities_bootstrap_exercise
+    // may have already inserted the row — upsert with onConflict swallows
+    // the duplicate cleanly.
+    try {
+      const serviceClient = getServiceClient();
+      await serviceClient
+        .from("accounting_exercises")
+        .upsert(
+          {
+            entity_id: entity.id,
+            start_date: premierExerciceDebut,
+            end_date: premierExerciceFin,
+            status: "open",
+          },
+          { onConflict: "entity_id,start_date,end_date", ignoreDuplicates: true }
+        );
+    } catch (exerciseError) {
+      console.error("[createEntity] exercise creation failed:", exerciseError);
     }
 
     // Create representative as associate
@@ -388,6 +453,15 @@ export async function updateEntity(
     if (data.bic !== undefined) updateData.bic = data.bic || null;
     if (data.banque_nom !== undefined) updateData.banque_nom = data.banque_nom || null;
     if (data.couleur !== undefined) updateData.couleur = data.couleur || null;
+    if (data.premier_exercice_debut !== undefined && data.premier_exercice_debut) {
+      updateData.premier_exercice_debut = data.premier_exercice_debut;
+    }
+    if (data.premier_exercice_fin !== undefined && data.premier_exercice_fin) {
+      updateData.premier_exercice_fin = data.premier_exercice_fin;
+    }
+    if (data.date_cloture_exercice !== undefined && data.date_cloture_exercice) {
+      updateData.date_cloture_exercice = data.date_cloture_exercice;
+    }
 
     // Handle metadata (email/telephone)
     if (data.email_entite !== undefined || data.telephone_entite !== undefined) {
@@ -591,6 +665,9 @@ export async function ensureDefaultEntity(): Promise<ActionResult<{ id: string }
       console.error("[ensureDefaultEntity] owner_profiles upsert error:", opError.message);
     }
 
+    // Compute calendar-year exercise for the default "particulier" entity
+    const defaults = computeFiscalYearDefaults("ir", null);
+
     // Créer l'entité
     const { data: entity, error: leError } = await serviceClient
       .from("legal_entities")
@@ -600,6 +677,9 @@ export async function ensureDefaultEntity(): Promise<ActionResult<{ id: string }
         nom,
         regime_fiscal: "ir",
         is_active: true,
+        premier_exercice_debut: defaults.premierExerciceDebut,
+        premier_exercice_fin: defaults.premierExerciceFin,
+        date_cloture_exercice: defaults.dateClotureExercice,
       })
       .select("id")
       .single();
@@ -622,6 +702,24 @@ export async function ensureDefaultEntity(): Promise<ActionResult<{ id: string }
       }
       console.error("[ensureDefaultEntity] legal_entities insert error:", leError?.message);
       return { success: false, error: leError?.message || "Erreur de création" };
+    }
+
+    // Créer l'exercice comptable d'ouverture (idempotent — trigger DB peut
+    // avoir déjà inséré la ligne)
+    const { error: exerciseError } = await serviceClient
+      .from("accounting_exercises")
+      .upsert(
+        {
+          entity_id: entity.id,
+          start_date: defaults.premierExerciceDebut,
+          end_date: defaults.premierExerciceFin,
+          status: "open",
+        },
+        { onConflict: "entity_id,start_date,end_date", ignoreDuplicates: true }
+      );
+
+    if (exerciseError) {
+      console.error("[ensureDefaultEntity] exercise insert error:", exerciseError.message);
     }
 
     // Lier les propriétés orphelines à la nouvelle entité

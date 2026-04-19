@@ -21,10 +21,16 @@ import { StepRepresentative } from "@/components/entities/create/StepRepresentat
 import { StepBankDetails } from "@/components/entities/create/StepBankDetails";
 import type { EntityFormData } from "@/lib/entities/entity-form-utils";
 import { getDefaultRegimeFiscal } from "@/lib/entities/entity-form-utils";
+import {
+  computeFiscalYearDefaults,
+  validateFiscalYearRange,
+} from "@/lib/entities/fiscal-year-defaults";
 
 // ============================================
 // TYPES & CONSTANTS
 // ============================================
+
+const DEFAULT_FY = computeFiscalYearDefaults("ir", null);
 
 export const INITIAL_FORM_DATA: EntityFormData = {
   entityType: "",
@@ -51,6 +57,9 @@ export const INITIAL_FORM_DATA: EntityFormData = {
   iban: "",
   bic: "",
   banqueNom: "",
+  premierExerciceDebut: DEFAULT_FY.premierExerciceDebut,
+  premierExerciceFin: DEFAULT_FY.premierExerciceFin,
+  dateClotureExercice: DEFAULT_FY.dateClotureExercice,
 };
 
 const ALL_STEPS = [
@@ -150,6 +159,25 @@ export function EntityFormWizard({
           }
         }
 
+        // Recompute fiscal year defaults when regime or creation date changes,
+        // unless the user already manually edited the exercise dates.
+        const regimeChanged =
+          updates.regimeFiscal !== undefined &&
+          updates.regimeFiscal !== prev.regimeFiscal;
+        const dateCreationChanged =
+          updates.dateCreation !== undefined &&
+          updates.dateCreation !== prev.dateCreation;
+
+        if (regimeChanged || dateCreationChanged) {
+          const fy = computeFiscalYearDefaults(
+            next.regimeFiscal,
+            next.dateCreation || null
+          );
+          next.premierExerciceDebut = fy.premierExerciceDebut;
+          next.premierExerciceFin = fy.premierExerciceFin;
+          next.dateClotureExercice = fy.dateClotureExercice;
+        }
+
         return next;
       });
 
@@ -196,6 +224,21 @@ export function EntityFormWizard({
             } else if (digits.length === 14 && !isValidSiret(digits)) {
               newErrors.siret =
                 "SIRET invalide (clé de contrôle incorrecte)";
+            }
+          }
+          if (!formData.premierExerciceDebut) {
+            newErrors.premierExerciceDebut = "Date de début d'exercice obligatoire";
+          }
+          if (!formData.premierExerciceFin) {
+            newErrors.premierExerciceFin = "Date de fin d'exercice obligatoire";
+          }
+          if (formData.premierExerciceDebut && formData.premierExerciceFin) {
+            const range = validateFiscalYearRange(
+              formData.premierExerciceDebut,
+              formData.premierExerciceFin
+            );
+            if (!range.valid) {
+              newErrors.premierExerciceFin = range.error || "Dates invalides";
             }
           }
           break;
@@ -256,7 +299,12 @@ export function EntityFormWizard({
         return !!formData.entityType;
       case 2:
         if (isParticulier) return true;
-        return !!(formData.nom.trim() && formData.formeJuridique);
+        return !!(
+          formData.nom.trim() &&
+          formData.formeJuridique &&
+          formData.premierExerciceDebut &&
+          formData.premierExerciceFin
+        );
       case 3:
         if (isParticulier) return true;
         return !!(

@@ -55,6 +55,9 @@ export function EditEntityClient({
         banque_nom: formData.banqueNom || undefined,
         email_entite: formData.emailEntite || undefined,
         telephone_entite: formData.telephoneEntite || undefined,
+        premier_exercice_debut: formData.premierExerciceDebut || undefined,
+        premier_exercice_fin: formData.premierExerciceFin || undefined,
+        date_cloture_exercice: formData.dateClotureExercice || undefined,
       };
 
       const result = await updateEntity(entityPayload as any);

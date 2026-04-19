@@ -38,6 +38,11 @@ export interface EntityFormData {
   iban: string;
   bic: string;
   banqueNom: string;
+
+  // Exercice fiscal (sous-formulaire dans Step 2)
+  premierExerciceDebut: string; // YYYY-MM-DD
+  premierExerciceFin: string; // YYYY-MM-DD
+  dateClotureExercice: string; // MM-DD
 }
 
 /** Entity types forcés en IS (impôt sur les sociétés) */
