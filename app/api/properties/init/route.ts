@@ -103,6 +103,30 @@ export async function POST(request: Request) {
 
     const { type, adresse, cp, ville } = validation.data;
 
+    // 3b. Reuse: si un draft du même type sans adresse existe déjà pour ce owner,
+    // le retourner (idempotence du wizard, évite l'accumulation de drafts fantômes
+    // qui se bloqueraient mutuellement via le trigger anti-doublon)
+    const { data: existingDraft } = await serviceClient
+      .from("properties")
+      .select("id")
+      .eq("owner_id", profile.id)
+      .eq("type", type)
+      .eq("etat", "draft")
+      .or("adresse_complete.is.null,adresse_complete.eq.")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (existingDraft) {
+      return NextResponse.json({
+        success: true,
+        propertyId: existingDraft.id,
+        status: "draft",
+        reused: true,
+      });
+    }
+
     // 4. Générer un code unique pour la propriété
     let uniqueCode: string;
     let attempts = 0;

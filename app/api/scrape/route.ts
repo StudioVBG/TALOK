@@ -1046,6 +1046,160 @@ function mergeData(sources: Partial<ExtractedData>[]): ExtractedData {
 }
 
 // ============================================
+// FETCH EN CASCADE (ScrapingBee -> Browserless -> direct)
+// ============================================
+
+const DIRECT_FETCH_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "Accept":
+    "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+  "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+  "Cache-Control": "no-cache",
+  "Pragma": "no-cache",
+};
+
+const FETCH_TIMEOUT_MS = 12000;
+const MAX_HTML_BYTES = 5 * 1024 * 1024;
+
+// Sites qui activent le bypass anti-bot premium côté ScrapingBee/Browserless
+const PROTECTED_SITES = new Set(["leboncoin", "seloger", "bienici", "logic-immo", "figaro"]);
+
+type FetchOk = { kind: "ok"; html: string; via: string };
+type FetchBlocked = { kind: "blocked"; attempts: string[] };
+type FetchNotFound = { kind: "not_found"; attempts: string[] };
+type FetchError = { kind: "error"; attempts: string[] };
+type FetchOutcome = FetchOk | FetchBlocked | FetchNotFound | FetchError;
+
+function looksBlocked(html: string): boolean {
+  if (!html || html.length < 1000) return true;
+  const lower = html.slice(0, 8000).toLowerCase();
+  return (
+    lower.includes("datadome") ||
+    lower.includes("are you a human") ||
+    lower.includes("g-recaptcha") ||
+    (lower.includes("cloudflare") && lower.includes("challenge")) ||
+    (lower.includes("captcha") && !lower.includes("nocaptcha"))
+  );
+}
+
+async function fetchWithTimeout(input: string, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function readHtml(response: Response): Promise<string> {
+  const contentLength = response.headers.get("content-length");
+  if (contentLength && parseInt(contentLength, 10) > MAX_HTML_BYTES) {
+    throw new Error("Page trop volumineuse (>5MB)");
+  }
+  return response.text();
+}
+
+async function fetchViaScrapingBee(url: string, isProtected: boolean): Promise<Response> {
+  const apiKey = process.env.SCRAPINGBEE_API_KEY!;
+  const params = new URLSearchParams({
+    api_key: apiKey,
+    url,
+    render_js: "true",
+    country_code: "fr",
+  });
+  if (isProtected) {
+    params.set("premium_proxy", "true");
+    params.set("stealth_proxy", "true");
+  }
+  return fetchWithTimeout(`https://app.scrapingbee.com/api/v1/?${params.toString()}`);
+}
+
+async function fetchViaBrowserless(url: string, isProtected: boolean): Promise<Response> {
+  const token = process.env.BROWSERLESS_API_KEY!;
+  const endpoint = `https://production-sfo.browserless.io/content?token=${encodeURIComponent(token)}`;
+  return fetchWithTimeout(endpoint, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      url,
+      gotoOptions: { waitUntil: "networkidle2", timeout: FETCH_TIMEOUT_MS - 1000 },
+      ...(isProtected ? { stealth: true, humanLike: true } : {}),
+    }),
+  });
+}
+
+async function fetchDirect(url: string): Promise<Response> {
+  return fetchWithTimeout(url, { headers: DIRECT_FETCH_HEADERS });
+}
+
+async function tryProvider(
+  label: string,
+  fetcher: () => Promise<Response>,
+  attempts: string[]
+): Promise<{ html: string; via: string } | { status: number } | null> {
+  try {
+    const response = await fetcher();
+    if (response.status === 404) {
+      attempts.push(`${label}:404`);
+      return { status: 404 };
+    }
+    if (!response.ok) {
+      attempts.push(`${label}:${response.status}`);
+      return null;
+    }
+    const html = await readHtml(response);
+    if (looksBlocked(html)) {
+      attempts.push(`${label}:blocked-html`);
+      return null;
+    }
+    attempts.push(`${label}:ok`);
+    return { html, via: label };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "unknown";
+    attempts.push(`${label}:err(${msg.slice(0, 40)})`);
+    return null;
+  }
+}
+
+async function fetchPageHtmlWithFallback(url: string, site: string): Promise<FetchOutcome> {
+  const attempts: string[] = [];
+  const isProtected = PROTECTED_SITES.has(site);
+  let saw404 = false;
+
+  const providers: Array<{ label: string; enabled: boolean; run: () => Promise<Response> }> = [
+    {
+      label: "scrapingbee",
+      enabled: !!process.env.SCRAPINGBEE_API_KEY,
+      run: () => fetchViaScrapingBee(url, isProtected),
+    },
+    {
+      label: "browserless",
+      enabled: !!process.env.BROWSERLESS_API_KEY,
+      run: () => fetchViaBrowserless(url, isProtected),
+    },
+    { label: "direct", enabled: true, run: () => fetchDirect(url) },
+  ];
+
+  for (const p of providers) {
+    if (!p.enabled) continue;
+    const result = await tryProvider(p.label, p.run, attempts);
+    if (result && "html" in result) {
+      console.info(`[Scrape] OK via ${result.via} (attempts: ${attempts.join(", ")})`);
+      return { kind: "ok", html: result.html, via: result.via };
+    }
+    if (result && "status" in result && result.status === 404) {
+      saw404 = true;
+    }
+  }
+
+  console.warn(`[Scrape] All providers failed for ${site} (${attempts.join(", ")})`);
+  if (saw404) return { kind: "not_found", attempts };
+  return { kind: "blocked", attempts };
+}
+
+// ============================================
 // ENDPOINT PRINCIPAL
 // ============================================
 
@@ -1102,50 +1256,30 @@ export async function POST(request: Request) {
     // Détecter le site source
     const site = detectSourceSite(url);
 
-    // 6. Fetch avec timeout (10 secondes)
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    // 6. Fetch avec cascade ScrapingBee -> Browserless -> direct
+    const fetchResult = await fetchPageHtmlWithFallback(url, site);
 
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-          "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
-          "Cache-Control": "no-cache",
-          "Pragma": "no-cache",
+    if (fetchResult.kind === "blocked") {
+      return NextResponse.json(
+        {
+          error: "Ce site bloque les imports automatiques. Copiez les infos manuellement, ou essayez une annonce PAP / agence.",
+          code: "SCRAPE_BLOCKED",
+          attempts: fetchResult.attempts,
         },
-      });
-    } finally {
-      clearTimeout(timeoutId);
+        { status: 502 }
+      );
+    }
+    if (fetchResult.kind === "not_found") {
+      return NextResponse.json(
+        { error: "L'annonce n'a pas été trouvée. Vérifiez l'URL.", code: "SCRAPE_NOT_FOUND" },
+        { status: 404 }
+      );
+    }
+    if (fetchResult.kind === "error") {
+      throw new ApiError(502, `Aucune méthode de scrape n'a fonctionné (${fetchResult.attempts.join(" | ")})`);
     }
 
-    if (!response.ok) {
-      const statusCode = response.status;
-      if (statusCode === 403 || statusCode === 429) {
-        return NextResponse.json(
-          { error: "Le site a bloqué la requête. Réessayez plus tard ou remplissez manuellement.", code: "SCRAPE_BLOCKED" },
-          { status: 502 }
-        );
-      }
-      if (statusCode === 404) {
-        return NextResponse.json(
-          { error: "L'annonce n'a pas été trouvée. Vérifiez l'URL.", code: "SCRAPE_NOT_FOUND" },
-          { status: 404 }
-        );
-      }
-      throw new ApiError(502, `Le site a répondu avec une erreur (${statusCode})`);
-    }
-
-    // 7. Vérifier la taille de la réponse (max 5MB)
-    const contentLength = response.headers.get("content-length");
-    if (contentLength && parseInt(contentLength) > 5 * 1024 * 1024) {
-      throw new Error("La page est trop volumineuse (max 5MB)");
-    }
-
-    const html = await response.text();
+    const html = fetchResult.html;
     const $ = cheerio.load(html);
     
     // Texte brut pour analyse

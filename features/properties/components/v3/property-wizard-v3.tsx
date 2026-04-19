@@ -216,9 +216,15 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url }),
         });
-        const { data, error } = await response.json();
-        
-        if (error) throw new Error(error);
+        const payload = await response.json();
+        const { data, error, code } = payload || {};
+
+        if (!response.ok || error) {
+            const err = new Error(error || "Erreur d'import");
+            (err as any).code = code;
+            (err as any).status = response.status;
+            throw err;
+        }
         
         // Pré-remplir le store avec les données scrapées
         // ⚠️ Ne JAMAIS utiliser le titre comme adresse !
@@ -378,9 +384,21 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
         }
     } catch (err) {
         console.error(err);
+        const errCode = (err as any)?.code as string | undefined;
+        const errMsg = err instanceof Error ? err.message : "Impossible de récupérer les infos";
+
+        let description = errMsg;
+        if (errCode === "SCRAPE_BLOCKED") {
+            description = "Ce site bloque les imports automatiques (LeBonCoin, SeLoger…). Créez le bien manuellement, c'est plus rapide.";
+        } else if (errCode === "SCRAPE_NOT_FOUND") {
+            description = "L'annonce n'a pas été trouvée. Vérifiez l'URL ou remplissez manuellement.";
+        } else if (errCode === "SCRAPE_TIMEOUT") {
+            description = "Le site met trop de temps à répondre. Réessayez ou remplissez manuellement.";
+        }
+
         toast({
-            title: "Erreur d'import",
-            description: "Impossible de récupérer les infos. Veuillez remplir manuellement.",
+            title: "Import indisponible",
+            description,
             variant: "destructive",
         });
         // En cas d'erreur, on laisse l'utilisateur continuer manuellement
