@@ -90,6 +90,19 @@ export interface CreateConversationData {
   initial_message?: string;
 }
 
+export interface GetConversationsParams {
+  limit?: number;
+  offset?: number;
+}
+
+export interface GetConversationsResult {
+  data: Conversation[];
+  count: number;
+  hasMore: boolean;
+}
+
+const DEFAULT_PAGE_SIZE = 25;
+
 class ChatService {
   private supabase = createClient();
   private channels: Map<string, RealtimeChannel> = new Map();
@@ -110,9 +123,16 @@ class ChatService {
   }
 
   /**
-   * Récupérer toutes les conversations de l'utilisateur
+   * Récupérer une page de conversations de l'utilisateur.
+   * Pagination via offset/limit ; renvoie le total `count` (HEAD `count: 'exact'`)
+   * et `hasMore` pour piloter l'infinite scroll côté UI.
    */
-  async getConversations(): Promise<Conversation[]> {
+  async getConversations(
+    params: GetConversationsParams = {}
+  ): Promise<GetConversationsResult> {
+    const limit = params.limit ?? DEFAULT_PAGE_SIZE;
+    const offset = params.offset ?? 0;
+
     const { data: { user } } = await this.supabase.auth.getUser();
     if (!user) throw new Error("Non authentifié");
 
@@ -124,7 +144,7 @@ class ChatService {
 
     if (profileError || !profile) throw new Error("Profil non trouvé");
 
-    const { data, error } = await this.supabase
+    const { data, error, count } = await this.supabase
       .from("conversations")
       .select(`
         *,
@@ -144,10 +164,11 @@ class ChatService {
           adresse_complete,
           ville
         )
-      `)
+      `, { count: "exact" })
       .or(`owner_profile_id.eq.${profile.id},tenant_profile_id.eq.${profile.id}`)
       .eq("status", "active")
-      .order("last_message_at", { ascending: false, nullsFirst: false });
+      .order("last_message_at", { ascending: false, nullsFirst: false })
+      .range(offset, offset + limit - 1);
 
     if (error) throw error;
 
@@ -177,7 +198,7 @@ class ChatService {
       }
     }
 
-    return (data || []).map((conv: any) => {
+    const enriched: Conversation[] = (data || []).map((conv: any) => {
       const owner = conv.owner?.prenom || conv.owner?.nom
         ? conv.owner
         : profileMap.get(conv.owner_profile_id);
@@ -197,6 +218,13 @@ class ChatService {
         property_address: conv.property?.adresse_complete || "",
       };
     });
+
+    const totalCount = count ?? enriched.length;
+    return {
+      data: enriched,
+      count: totalCount,
+      hasMore: offset + enriched.length < totalCount,
+    };
   }
 
   /**
