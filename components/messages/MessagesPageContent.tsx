@@ -43,7 +43,11 @@ interface MessagesPageContentProps {
 
 export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPageContentProps) {
   const pathname = usePathname();
-  const currentRole: "owner" | "tenant" = pathname?.startsWith("/owner") ? "owner" : "tenant";
+  const currentRole: "owner" | "tenant" | "provider" = pathname?.startsWith("/owner")
+    ? "owner"
+    : pathname?.startsWith("/provider")
+    ? "provider"
+    : "tenant";
   const [loading, setLoading] = useState(true);
   const [currentProfileId, setCurrentProfileId] = useState<string>("");
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
