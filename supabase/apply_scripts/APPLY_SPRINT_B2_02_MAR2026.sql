@@ -1,20 +1,22 @@
 -- =============================================================================
--- APPLY SPRINT B2 — BATCH 02_MAR2026
--- Genere le 2026-04-19T07:04:47Z
+-- APPLY SPRINT B2 — BATCH 02_MAR2026 (IDEMPOTENT v2)
+-- Genere le 2026-04-19T07:15:48Z
 --
 -- Contenu : 62 migrations (action=apply uniquement)
 -- Plage   : 20260301000000 -> 20260331130000
 -- Risque  : SAFE=17 / MODERE=21 / DANGEREUX=16 / CRITIQUE=8
 --
+-- IDEMPOTENCE : chaque CREATE POLICY est precede d'un DROP POLICY IF EXISTS,
+-- chaque CREATE TRIGGER est precede d'un DROP TRIGGER IF EXISTS.
+-- Les CREATE TABLE/INDEX/FUNCTION utilisent deja IF NOT EXISTS ou OR REPLACE.
+-- => Re-executable sans erreur si une migration a deja ete partiellement appliquee.
+--
 -- INSTRUCTIONS :
 -- 1. BACKUP prod obligatoire avant execution (pg_dump + Supabase PITR).
 -- 2. Ouvrir Supabase Dashboard > SQL Editor > New Query.
 -- 3. Coller ce fichier integralement et cliquer Run.
--- 4. Chaque migration est encapsulee dans son propre BEGIN/COMMIT :
---    une erreur rollback UNIQUEMENT la migration fautive et le batch s'arrete
---    sur la suivante (NOTICE). Note : execute sequentiellement en prod.
--- 5. Ne PAS appliquer les 28 migrations "rename-then-apply" : elles
---    necessitent la branche dedup mergee d'abord. Voir reports/sprint-b2-migrations-to-apply.md.
+-- 4. Chaque migration est encapsulee dans son propre BEGIN/COMMIT : rollback cible.
+-- 5. Ne PAS appliquer les 28 migrations "rename-then-apply" (branche dedup requise).
 --
 -- ORDRE : CHRONOLOGIQUE STRICT — ne pas reordonner.
 -- =============================================================================
@@ -70,6 +72,7 @@ CREATE INDEX IF NOT EXISTS idx_key_handovers_confirmed ON key_handovers(lease_id
 ALTER TABLE key_handovers ENABLE ROW LEVEL SECURITY;
 
 -- Owner can see and create handovers for their leases
+DROP POLICY IF EXISTS "owner_key_handovers" ON key_handovers;
 CREATE POLICY "owner_key_handovers" ON key_handovers
   FOR ALL
   USING (
@@ -79,6 +82,7 @@ CREATE POLICY "owner_key_handovers" ON key_handovers
   );
 
 -- Tenant can see and confirm handovers for their leases
+DROP POLICY IF EXISTS "tenant_key_handovers" ON key_handovers;
 CREATE POLICY "tenant_key_handovers" ON key_handovers
   FOR ALL
   USING (
@@ -142,6 +146,7 @@ CREATE INDEX IF NOT EXISTS idx_entity_audit_log_date ON entity_audit_log(created
 -- RLS pour entity_audit_log
 ALTER TABLE entity_audit_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
 CREATE POLICY "Users can view audit logs of their entities"
   ON entity_audit_log FOR SELECT
   USING (
@@ -155,6 +160,7 @@ CREATE POLICY "Users can view audit logs of their entities"
     )
   );
 
+DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
 CREATE POLICY "Users can insert audit logs for their entities"
   ON entity_audit_log FOR INSERT
   WITH CHECK (
@@ -168,6 +174,7 @@ CREATE POLICY "Users can insert audit logs for their entities"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can do everything on entity_audit_log" ON entity_audit_log;
 CREATE POLICY "Admins can do everything on entity_audit_log"
   ON entity_audit_log FOR ALL
   USING (
@@ -541,6 +548,7 @@ DROP POLICY IF EXISTS "Users can view associates of their entities" ON entity_as
 
 -- Recréer la policy FOR ALL avec la fonction optimisée
 DROP POLICY IF EXISTS "Users can manage associates of their entities" ON entity_associates;
+DROP POLICY IF EXISTS "Users can manage associates of their entities" ON entity_associates;
 CREATE POLICY "Users can manage associates of their entities"
   ON entity_associates FOR ALL
   USING (
@@ -555,20 +563,24 @@ CREATE POLICY "Users can manage associates of their entities"
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Users can view their own entities" ON legal_entities;
+DROP POLICY IF EXISTS "Users can view their own entities" ON legal_entities;
 CREATE POLICY "Users can view their own entities"
   ON legal_entities FOR SELECT
   USING (owner_profile_id = get_current_owner_profile_id());
 
+DROP POLICY IF EXISTS "Users can insert their own entities" ON legal_entities;
 DROP POLICY IF EXISTS "Users can insert their own entities" ON legal_entities;
 CREATE POLICY "Users can insert their own entities"
   ON legal_entities FOR INSERT
   WITH CHECK (owner_profile_id = get_current_owner_profile_id());
 
 DROP POLICY IF EXISTS "Users can update their own entities" ON legal_entities;
+DROP POLICY IF EXISTS "Users can update their own entities" ON legal_entities;
 CREATE POLICY "Users can update their own entities"
   ON legal_entities FOR UPDATE
   USING (owner_profile_id = get_current_owner_profile_id());
 
+DROP POLICY IF EXISTS "Users can delete their own entities" ON legal_entities;
 DROP POLICY IF EXISTS "Users can delete their own entities" ON legal_entities;
 CREATE POLICY "Users can delete their own entities"
   ON legal_entities FOR DELETE
@@ -578,6 +590,7 @@ CREATE POLICY "Users can delete their own entities"
 -- 4. Optimiser les policies property_ownership
 -- ============================================================================
 
+DROP POLICY IF EXISTS "Users can view ownership of their properties" ON property_ownership;
 DROP POLICY IF EXISTS "Users can view ownership of their properties" ON property_ownership;
 CREATE POLICY "Users can view ownership of their properties"
   ON property_ownership FOR SELECT
@@ -592,6 +605,7 @@ CREATE POLICY "Users can view ownership of their properties"
     )
   );
 
+DROP POLICY IF EXISTS "Users can manage ownership of their properties" ON property_ownership;
 DROP POLICY IF EXISTS "Users can manage ownership of their properties" ON property_ownership;
 CREATE POLICY "Users can manage ownership of their properties"
   ON property_ownership FOR ALL
@@ -611,6 +625,7 @@ CREATE POLICY "Users can manage ownership of their properties"
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
+DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
 CREATE POLICY "Users can view audit logs of their entities"
   ON entity_audit_log FOR SELECT
   USING (
@@ -620,6 +635,7 @@ CREATE POLICY "Users can view audit logs of their entities"
     )
   );
 
+DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
 DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
 CREATE POLICY "Users can insert audit logs for their entities"
   ON entity_audit_log FOR INSERT
@@ -1182,10 +1198,12 @@ COMMENT ON TABLE tenant_credit_score IS 'Score de ponctualité du locataire (cac
 -- payment_reminders
 ALTER TABLE payment_reminders ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Tenants can view own reminders" ON payment_reminders;
 CREATE POLICY "Tenants can view own reminders"
   ON payment_reminders FOR SELECT
   USING (tenant_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "Owners can view reminders of own invoices" ON payment_reminders;
 CREATE POLICY "Owners can view reminders of own invoices"
   ON payment_reminders FOR SELECT
   USING (
@@ -1196,6 +1214,7 @@ CREATE POLICY "Owners can view reminders of own invoices"
     )
   );
 
+DROP POLICY IF EXISTS "Admins can view all reminders" ON payment_reminders;
 CREATE POLICY "Admins can view all reminders"
   ON payment_reminders FOR SELECT
   USING (public.user_role() = 'admin');
@@ -1203,6 +1222,7 @@ CREATE POLICY "Admins can view all reminders"
 -- late_fees
 ALTER TABLE late_fees ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view late fees of accessible invoices" ON late_fees;
 CREATE POLICY "Users can view late fees of accessible invoices"
   ON late_fees FOR SELECT
   USING (
@@ -1220,14 +1240,17 @@ CREATE POLICY "Users can view late fees of accessible invoices"
 -- receipts
 ALTER TABLE receipts ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Tenants can view own receipts" ON receipts;
 CREATE POLICY "Tenants can view own receipts"
   ON receipts FOR SELECT
   USING (tenant_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "Owners can view receipts of own properties" ON receipts;
 CREATE POLICY "Owners can view receipts of own properties"
   ON receipts FOR SELECT
   USING (owner_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "Admins can view all receipts" ON receipts;
 CREATE POLICY "Admins can view all receipts"
   ON receipts FOR SELECT
   USING (public.user_role() = 'admin');
@@ -1235,10 +1258,12 @@ CREATE POLICY "Admins can view all receipts"
 -- tenant_credit_score
 ALTER TABLE tenant_credit_score ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Tenants can view own credit score" ON tenant_credit_score;
 CREATE POLICY "Tenants can view own credit score"
   ON tenant_credit_score FOR SELECT
   USING (tenant_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "Admins can view all credit scores" ON tenant_credit_score;
 CREATE POLICY "Admins can view all credit scores"
   ON tenant_credit_score FOR SELECT
   USING (public.user_role() = 'admin');
@@ -1562,6 +1587,7 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger WHERE tgname = 'trg_notify_owner_on_ticket_created'
   ) THEN
+    DROP TRIGGER IF EXISTS trg_notify_owner_on_ticket_created ON tickets;
     CREATE TRIGGER trg_notify_owner_on_ticket_created
       AFTER INSERT ON tickets
       FOR EACH ROW
@@ -1626,6 +1652,7 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_trigger WHERE tgname = 'trg_notify_provider_on_work_order'
   ) THEN
+    DROP TRIGGER IF EXISTS trg_notify_provider_on_work_order ON tickets;
     CREATE TRIGGER trg_notify_provider_on_work_order
       AFTER INSERT OR UPDATE OF provider_id ON tickets
       FOR EACH ROW
@@ -1652,6 +1679,7 @@ CREATE INDEX IF NOT EXISTS idx_documents_lease_visible_tenant
 
 -- RLS policy: tenants can only see documents marked as visible_tenant = true
 -- (Updates existing tenant read policy to add visible_tenant check)
+DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
 DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
 CREATE POLICY "Tenants can read visible lease documents"
   ON documents FOR SELECT
@@ -2048,6 +2076,7 @@ BEGIN;
 -- Needed for message edit/delete feature
 
 -- Policy for UPDATE: users can only update their own messages in their conversations
+DROP POLICY IF EXISTS "Users can update own messages" ON messages;
 DROP POLICY IF EXISTS "Users can update own messages" ON messages;
 CREATE POLICY "Users can update own messages"
   ON messages FOR UPDATE
@@ -3179,11 +3208,13 @@ CREATE INDEX IF NOT EXISTS idx_fc_sessions_expires_at ON franceconnect_sessions(
 ALTER TABLE franceconnect_sessions ENABLE ROW LEVEL SECURITY;
 
 -- Les utilisateurs ne peuvent voir que leurs propres sessions
+DROP POLICY IF EXISTS "Users can view own FC sessions" ON franceconnect_sessions;
 CREATE POLICY "Users can view own FC sessions"
   ON franceconnect_sessions FOR SELECT
   USING (auth.uid() = user_id);
 
 -- Seul le service role peut insérer/modifier (via l'API route)
+DROP POLICY IF EXISTS "Service role can manage FC sessions" ON franceconnect_sessions;
 CREATE POLICY "Service role can manage FC sessions"
   ON franceconnect_sessions FOR ALL
   USING (auth.role() = 'service_role');
@@ -3676,6 +3707,7 @@ DROP POLICY IF EXISTS "Owners can view own connect account" ON stripe_connect_ac
 DROP POLICY IF EXISTS "Owners can create own connect account" ON stripe_connect_accounts;
 DROP POLICY IF EXISTS "Service role full access connect" ON stripe_connect_accounts;
 
+DROP POLICY IF EXISTS "Owners can view own connect account" ON stripe_connect_accounts;
 CREATE POLICY "Owners can view own connect account" ON stripe_connect_accounts
   FOR SELECT
   USING (
@@ -3683,6 +3715,7 @@ CREATE POLICY "Owners can view own connect account" ON stripe_connect_accounts
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Owners can create own connect account" ON stripe_connect_accounts;
 CREATE POLICY "Owners can create own connect account" ON stripe_connect_accounts
   FOR INSERT
   WITH CHECK (
@@ -3690,6 +3723,7 @@ CREATE POLICY "Owners can create own connect account" ON stripe_connect_accounts
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Owners can update own connect account" ON stripe_connect_accounts;
 CREATE POLICY "Owners can update own connect account" ON stripe_connect_accounts
   FOR UPDATE
   USING (
@@ -3701,6 +3735,7 @@ CREATE POLICY "Owners can update own connect account" ON stripe_connect_accounts
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Service role full access connect" ON stripe_connect_accounts;
 CREATE POLICY "Service role full access connect" ON stripe_connect_accounts
   FOR ALL
   USING (auth.jwt() ->> 'role' = 'service_role')
@@ -3709,6 +3744,7 @@ CREATE POLICY "Service role full access connect" ON stripe_connect_accounts
 DROP POLICY IF EXISTS "Owners can view own transfers" ON stripe_transfers;
 DROP POLICY IF EXISTS "Service role full access transfers" ON stripe_transfers;
 
+DROP POLICY IF EXISTS "Owners can view own transfers" ON stripe_transfers;
 CREATE POLICY "Owners can view own transfers" ON stripe_transfers
   FOR SELECT
   USING (
@@ -3723,6 +3759,7 @@ CREATE POLICY "Owners can view own transfers" ON stripe_transfers
     )
   );
 
+DROP POLICY IF EXISTS "Service role full access transfers" ON stripe_transfers;
 CREATE POLICY "Service role full access transfers" ON stripe_transfers
   FOR ALL
   USING (auth.jwt() ->> 'role' = 'service_role')
@@ -4037,6 +4074,7 @@ CREATE INDEX IF NOT EXISTS idx_stripe_payouts_status
 ALTER TABLE public.stripe_payouts ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Owners can view own payouts" ON public.stripe_payouts;
+DROP POLICY IF EXISTS "Owners can view own payouts" ON public;
 CREATE POLICY "Owners can view own payouts" ON public.stripe_payouts
   FOR SELECT USING (
     connect_account_id IN (
@@ -4048,6 +4086,7 @@ CREATE POLICY "Owners can view own payouts" ON public.stripe_payouts
   );
 
 DROP POLICY IF EXISTS "Service role full access payouts" ON public.stripe_payouts;
+DROP POLICY IF EXISTS "Service role full access payouts" ON public;
 CREATE POLICY "Service role full access payouts" ON public.stripe_payouts
   FOR ALL USING (auth.jwt() ->> 'role' = 'service_role')
   WITH CHECK (auth.jwt() ->> 'role' = 'service_role');
@@ -4315,30 +4354,36 @@ DROP POLICY IF EXISTS "Owners can delete their building units" ON building_units
 
 -- 3. Nouvelles policies buildings (owner)
 -- ============================================
+DROP POLICY IF EXISTS "buildings_owner_select" ON buildings;
 CREATE POLICY "buildings_owner_select" ON buildings
   FOR SELECT TO authenticated
   USING (owner_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "buildings_owner_insert" ON buildings;
 CREATE POLICY "buildings_owner_insert" ON buildings
   FOR INSERT TO authenticated
   WITH CHECK (owner_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "buildings_owner_update" ON buildings;
 CREATE POLICY "buildings_owner_update" ON buildings
   FOR UPDATE TO authenticated
   USING (owner_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "buildings_owner_delete" ON buildings;
 CREATE POLICY "buildings_owner_delete" ON buildings
   FOR DELETE TO authenticated
   USING (owner_id = public.user_profile_id());
 
 -- 4. Policies buildings (admin)
 -- ============================================
+DROP POLICY IF EXISTS "buildings_admin_all" ON buildings;
 CREATE POLICY "buildings_admin_all" ON buildings
   FOR ALL TO authenticated
   USING (public.user_role() = 'admin');
 
 -- 5. Policies buildings (tenant via bail actif)
 -- ============================================
+DROP POLICY IF EXISTS "buildings_tenant_select" ON buildings;
 CREATE POLICY "buildings_tenant_select" ON buildings
   FOR SELECT TO authenticated
   USING (
@@ -4355,6 +4400,7 @@ CREATE POLICY "buildings_tenant_select" ON buildings
 
 -- 6. Nouvelles policies building_units (owner)
 -- ============================================
+DROP POLICY IF EXISTS "building_units_owner_select" ON building_units;
 CREATE POLICY "building_units_owner_select" ON building_units
   FOR SELECT TO authenticated
   USING (
@@ -4365,6 +4411,7 @@ CREATE POLICY "building_units_owner_select" ON building_units
     )
   );
 
+DROP POLICY IF EXISTS "building_units_owner_insert" ON building_units;
 CREATE POLICY "building_units_owner_insert" ON building_units
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -4375,6 +4422,7 @@ CREATE POLICY "building_units_owner_insert" ON building_units
     )
   );
 
+DROP POLICY IF EXISTS "building_units_owner_update" ON building_units;
 CREATE POLICY "building_units_owner_update" ON building_units
   FOR UPDATE TO authenticated
   USING (
@@ -4385,6 +4433,7 @@ CREATE POLICY "building_units_owner_update" ON building_units
     )
   );
 
+DROP POLICY IF EXISTS "building_units_owner_delete" ON building_units;
 CREATE POLICY "building_units_owner_delete" ON building_units
   FOR DELETE TO authenticated
   USING (
@@ -4397,12 +4446,14 @@ CREATE POLICY "building_units_owner_delete" ON building_units
 
 -- 7. Policies building_units (admin)
 -- ============================================
+DROP POLICY IF EXISTS "building_units_admin_all" ON building_units;
 CREATE POLICY "building_units_admin_all" ON building_units
   FOR ALL TO authenticated
   USING (public.user_role() = 'admin');
 
 -- 8. Policies building_units (tenant via bail actif)
 -- ============================================
+DROP POLICY IF EXISTS "building_units_tenant_select" ON building_units;
 CREATE POLICY "building_units_tenant_select" ON building_units
   FOR SELECT TO authenticated
   USING (
@@ -4604,6 +4655,7 @@ BEGIN;
 
 DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
 
+DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
 CREATE POLICY "Tenants can read visible lease documents"
   ON documents FOR SELECT
   USING (
@@ -4831,6 +4883,7 @@ CREATE INDEX IF NOT EXISTS idx_document_links_expires_at ON document_links(expir
 -- RLS
 ALTER TABLE document_links ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view own document links" ON document_links;
 CREATE POLICY "Users can view own document links" ON document_links
   FOR SELECT TO authenticated
   USING (
@@ -4843,10 +4896,12 @@ CREATE POLICY "Users can view own document links" ON document_links
     )
   );
 
+DROP POLICY IF EXISTS "Users can create document links" ON document_links;
 CREATE POLICY "Users can create document links" ON document_links
   FOR INSERT TO authenticated
   WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Service role full access document_links" ON document_links;
 CREATE POLICY "Service role full access document_links" ON document_links
   FOR ALL TO service_role
   USING (true) WITH CHECK (true);
@@ -4990,7 +5045,9 @@ CREATE TABLE IF NOT EXISTS site_config (
 -- RLS : lecture publique, écriture admin uniquement
 ALTER TABLE site_config ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Public read" ON site_config;
 CREATE POLICY "Public read" ON site_config FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Admin write" ON site_config;
 CREATE POLICY "Admin write" ON site_config FOR ALL
   USING (
     EXISTS (
@@ -5060,11 +5117,13 @@ VALUES ('landing-images', 'landing-images', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Politique de lecture publique sur le bucket
+DROP POLICY IF EXISTS "Public read landing images" ON storage;
 CREATE POLICY "Public read landing images"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'landing-images');
 
 -- Politique d'upload admin
+DROP POLICY IF EXISTS "Admin upload landing images" ON storage;
 CREATE POLICY "Admin upload landing images"
 ON storage.objects FOR INSERT
 WITH CHECK (
@@ -5077,6 +5136,7 @@ WITH CHECK (
 );
 
 -- Politique de suppression admin
+DROP POLICY IF EXISTS "Admin delete landing images" ON storage;
 CREATE POLICY "Admin delete landing images"
 ON storage.objects FOR DELETE
 USING (
@@ -5273,9 +5333,11 @@ CREATE TABLE IF NOT EXISTS site_content (
 -- RLS
 ALTER TABLE site_content ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "site_content_public_read" ON site_content;
 CREATE POLICY "site_content_public_read" ON site_content
   FOR SELECT USING (is_published = true);
 
+DROP POLICY IF EXISTS "site_content_admin_all" ON site_content;
 CREATE POLICY "site_content_admin_all" ON site_content
   FOR ALL TO authenticated
   USING (public.user_role() = 'admin');

@@ -1,6 +1,10 @@
-# Apply Sprint B2 — 3 batches prêts à coller
+# Apply Sprint B2 — 3 batches prêts à coller (IDEMPOTENTS v2)
 
 Scripts générés depuis `reports/sprint-b2-migrations-to-apply.json` (commit `28fe418`).
+
+**Idempotence** : chaque `CREATE POLICY` est précédé d'un `DROP POLICY IF EXISTS`,
+chaque `CREATE TRIGGER` d'un `DROP TRIGGER IF EXISTS`. Les batches sont donc
+**ré-exécutables** même si une migration a été partiellement appliquée avant.
 
 ## Fichiers
 

@@ -1,20 +1,22 @@
 -- =============================================================================
--- APPLY SPRINT B2 — BATCH 01_FEB2026
--- Genere le 2026-04-19T07:04:46Z
+-- APPLY SPRINT B2 — BATCH 01_FEB2026 (IDEMPOTENT v2)
+-- Genere le 2026-04-19T07:15:44Z
 --
 -- Contenu : 61 migrations (action=apply uniquement)
 -- Plage   : 20260208100000 -> 20260230100000
 -- Risque  : SAFE=11 / MODERE=19 / DANGEREUX=6 / CRITIQUE=25
 --
+-- IDEMPOTENCE : chaque CREATE POLICY est precede d'un DROP POLICY IF EXISTS,
+-- chaque CREATE TRIGGER est precede d'un DROP TRIGGER IF EXISTS.
+-- Les CREATE TABLE/INDEX/FUNCTION utilisent deja IF NOT EXISTS ou OR REPLACE.
+-- => Re-executable sans erreur si une migration a deja ete partiellement appliquee.
+--
 -- INSTRUCTIONS :
 -- 1. BACKUP prod obligatoire avant execution (pg_dump + Supabase PITR).
 -- 2. Ouvrir Supabase Dashboard > SQL Editor > New Query.
 -- 3. Coller ce fichier integralement et cliquer Run.
--- 4. Chaque migration est encapsulee dans son propre BEGIN/COMMIT :
---    une erreur rollback UNIQUEMENT la migration fautive et le batch s'arrete
---    sur la suivante (NOTICE). Note : execute sequentiellement en prod.
--- 5. Ne PAS appliquer les 28 migrations "rename-then-apply" : elles
---    necessitent la branche dedup mergee d'abord. Voir reports/sprint-b2-migrations-to-apply.md.
+-- 4. Chaque migration est encapsulee dans son propre BEGIN/COMMIT : rollback cible.
+-- 5. Ne PAS appliquer les 28 migrations "rename-then-apply" (branche dedup requise).
 --
 -- ORDRE : CHRONOLOGIQUE STRICT — ne pas reordonner.
 -- =============================================================================
@@ -189,6 +191,7 @@ CREATE TRIGGER trg_sms_messages_updated_at
 ALTER TABLE sms_messages ENABLE ROW LEVEL SECURITY;
 
 -- Admins can see all SMS
+DROP POLICY IF EXISTS sms_messages_admin_all ON sms_messages;
 CREATE POLICY sms_messages_admin_all ON sms_messages
   FOR ALL
   USING (
@@ -199,6 +202,7 @@ CREATE POLICY sms_messages_admin_all ON sms_messages
   );
 
 -- Owners can see SMS they sent (via their profile)
+DROP POLICY IF EXISTS sms_messages_owner_select ON sms_messages;
 CREATE POLICY sms_messages_owner_select ON sms_messages
   FOR SELECT
   USING (
@@ -212,6 +216,7 @@ CREATE POLICY sms_messages_owner_select ON sms_messages
 
 -- Service role inserts (API routes use service role client, bypasses RLS)
 -- No explicit INSERT policy needed for service role, but add one for completeness
+DROP POLICY IF EXISTS sms_messages_service_insert ON sms_messages;
 CREATE POLICY sms_messages_service_insert ON sms_messages
   FOR INSERT
   WITH CHECK (true);
@@ -2238,6 +2243,7 @@ CREATE TABLE IF NOT EXISTS guarantor_profiles (
 ALTER TABLE guarantor_profiles ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "guarantor_profiles_select_own" ON guarantor_profiles;
+DROP POLICY IF EXISTS "guarantor_profiles_select_own" ON guarantor_profiles;
 CREATE POLICY "guarantor_profiles_select_own" ON guarantor_profiles
   FOR SELECT USING (
     profile_id IN (
@@ -2246,6 +2252,7 @@ CREATE POLICY "guarantor_profiles_select_own" ON guarantor_profiles
   );
 
 DROP POLICY IF EXISTS "guarantor_profiles_insert_own" ON guarantor_profiles;
+DROP POLICY IF EXISTS "guarantor_profiles_insert_own" ON guarantor_profiles;
 CREATE POLICY "guarantor_profiles_insert_own" ON guarantor_profiles
   FOR INSERT WITH CHECK (
     profile_id IN (
@@ -2253,6 +2260,7 @@ CREATE POLICY "guarantor_profiles_insert_own" ON guarantor_profiles
     )
   );
 
+DROP POLICY IF EXISTS "guarantor_profiles_update_own" ON guarantor_profiles;
 DROP POLICY IF EXISTS "guarantor_profiles_update_own" ON guarantor_profiles;
 CREATE POLICY "guarantor_profiles_update_own" ON guarantor_profiles
   FOR UPDATE USING (
@@ -2285,12 +2293,15 @@ CREATE INDEX IF NOT EXISTS idx_user_consents_user_id ON user_consents(user_id);
 -- RLS pour user_consents
 ALTER TABLE user_consents ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "user_consents_select_own" ON user_consents;
 CREATE POLICY "user_consents_select_own" ON user_consents
   FOR SELECT USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "user_consents_insert_own" ON user_consents;
 CREATE POLICY "user_consents_insert_own" ON user_consents
   FOR INSERT WITH CHECK (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "user_consents_update_own" ON user_consents;
 CREATE POLICY "user_consents_update_own" ON user_consents
   FOR UPDATE USING (user_id = auth.uid());
 
@@ -3630,6 +3641,7 @@ ALTER TABLE email_template_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_logs ENABLE ROW LEVEL SECURITY;
 
 -- email_templates: lecture pour les admins, écriture pour les admins
+DROP POLICY IF EXISTS "email_templates_admin_read" ON email_templates;
 CREATE POLICY "email_templates_admin_read" ON email_templates
   FOR SELECT TO authenticated
   USING (
@@ -3640,6 +3652,7 @@ CREATE POLICY "email_templates_admin_read" ON email_templates
     )
   );
 
+DROP POLICY IF EXISTS "email_templates_admin_write" ON email_templates;
 CREATE POLICY "email_templates_admin_write" ON email_templates
   FOR ALL TO authenticated
   USING (
@@ -3658,11 +3671,13 @@ CREATE POLICY "email_templates_admin_write" ON email_templates
   );
 
 -- email_templates: lecture pour le service role (envoi d'emails)
+DROP POLICY IF EXISTS "email_templates_service_read" ON email_templates;
 CREATE POLICY "email_templates_service_read" ON email_templates
   FOR SELECT TO service_role
   USING (true);
 
 -- email_template_versions: lecture pour les admins
+DROP POLICY IF EXISTS "email_template_versions_admin_read" ON email_template_versions;
 CREATE POLICY "email_template_versions_admin_read" ON email_template_versions
   FOR SELECT TO authenticated
   USING (
@@ -3674,6 +3689,7 @@ CREATE POLICY "email_template_versions_admin_read" ON email_template_versions
   );
 
 -- email_logs: lecture pour les admins
+DROP POLICY IF EXISTS "email_logs_admin_read" ON email_logs;
 CREATE POLICY "email_logs_admin_read" ON email_logs
   FOR SELECT TO authenticated
   USING (
@@ -3685,6 +3701,7 @@ CREATE POLICY "email_logs_admin_read" ON email_logs
   );
 
 -- email_logs: insertion pour service role
+DROP POLICY IF EXISTS "email_logs_service_insert" ON email_logs;
 CREATE POLICY "email_logs_service_insert" ON email_logs
   FOR INSERT TO service_role
   WITH CHECK (true);
@@ -5285,6 +5302,7 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 -- Politique principale : chaque utilisateur peut voir/modifier son propre profil
 -- Utilise auth.uid() directement, aucune sous-requête vers profiles
+DROP POLICY IF EXISTS "profiles_own_access" ON profiles;
 CREATE POLICY "profiles_own_access" ON profiles
 FOR ALL TO authenticated
 USING (user_id = auth.uid())
@@ -5292,12 +5310,14 @@ WITH CHECK (user_id = auth.uid());
 
 -- Politique admin : les admins peuvent voir tous les profils
 -- is_admin() est SECURITY DEFINER donc bypasse les RLS
+DROP POLICY IF EXISTS "profiles_admin_read" ON profiles;
 CREATE POLICY "profiles_admin_read" ON profiles
 FOR SELECT TO authenticated
 USING (public.is_admin());
 
 -- Politique propriétaire : peut voir les profils de ses locataires
 -- get_my_profile_id() est SECURITY DEFINER donc bypasse les RLS
+DROP POLICY IF EXISTS "profiles_owner_read_tenants" ON profiles;
 CREATE POLICY "profiles_owner_read_tenants" ON profiles
 FOR SELECT TO authenticated
 USING (
@@ -5367,11 +5387,13 @@ DROP POLICY IF EXISTS "Owners can view their subscription" ON subscriptions;
 DROP POLICY IF EXISTS "Admins can view all subscriptions" ON subscriptions;
 
 -- Propriétaire voit son abonnement (utilise get_my_profile_id au lieu de sous-requête)
+DROP POLICY IF EXISTS "Owners can view their subscription" ON subscriptions;
 CREATE POLICY "Owners can view their subscription" ON subscriptions
   FOR SELECT TO authenticated
   USING (owner_id = public.get_my_profile_id());
 
 -- Admins voient tout (utilise is_admin qui est SECURITY DEFINER)
+DROP POLICY IF EXISTS "Admins can view all subscriptions" ON subscriptions;
 CREATE POLICY "Admins can view all subscriptions" ON subscriptions
   FOR ALL TO authenticated
   USING (public.is_admin());
@@ -5380,6 +5402,7 @@ CREATE POLICY "Admins can view all subscriptions" ON subscriptions
 -- 2. CORRIGER subscription_invoices (si la table existe)
 -- ============================================
 DO $$ BEGIN
+  DROP POLICY IF EXISTS "Owners can view their invoices" ON subscription_invoices;
   DROP POLICY IF EXISTS "Owners can view their invoices" ON subscription_invoices;
   CREATE POLICY "Owners can view their invoices" ON subscription_invoices
     FOR SELECT TO authenticated
@@ -5397,6 +5420,7 @@ END $$;
 -- 3. CORRIGER subscription_usage (si la table existe)
 -- ============================================
 DO $$ BEGIN
+  DROP POLICY IF EXISTS "Owners can view their usage" ON subscription_usage;
   DROP POLICY IF EXISTS "Owners can view their usage" ON subscription_usage;
   CREATE POLICY "Owners can view their usage" ON subscription_usage
     FOR SELECT TO authenticated
@@ -5431,6 +5455,7 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
 -- Lecture : l'utilisateur voit ses propres notifications
 -- Utilise auth.uid() directement et get_my_profile_id() pour recipient_id/profile_id
+DROP POLICY IF EXISTS "notifications_select_own" ON notifications;
 CREATE POLICY "notifications_select_own" ON notifications
   FOR SELECT TO authenticated
   USING (
@@ -5440,6 +5465,7 @@ CREATE POLICY "notifications_select_own" ON notifications
   );
 
 -- Mise à jour : l'utilisateur peut modifier ses propres notifications
+DROP POLICY IF EXISTS "notifications_update_own" ON notifications;
 CREATE POLICY "notifications_update_own" ON notifications
   FOR UPDATE TO authenticated
   USING (
@@ -5449,6 +5475,7 @@ CREATE POLICY "notifications_update_own" ON notifications
   );
 
 -- Suppression : l'utilisateur peut supprimer ses propres notifications
+DROP POLICY IF EXISTS "notifications_delete_own" ON notifications;
 CREATE POLICY "notifications_delete_own" ON notifications
   FOR DELETE TO authenticated
   USING (
@@ -5458,6 +5485,7 @@ CREATE POLICY "notifications_delete_own" ON notifications
   );
 
 -- Insertion : le système peut insérer des notifications
+DROP POLICY IF EXISTS "notifications_insert_system" ON notifications;
 CREATE POLICY "notifications_insert_system" ON notifications
   FOR INSERT
   WITH CHECK (true);
@@ -5623,6 +5651,7 @@ BEGIN;
 DROP POLICY IF EXISTS "Tenants can view properties with active leases" ON properties;
 
 -- 2. Créer la nouvelle policy élargie
+DROP POLICY IF EXISTS "Tenants can view linked properties" ON properties;
 CREATE POLICY "Tenants can view linked properties"
   ON properties
   FOR SELECT
@@ -5749,6 +5778,7 @@ BEGIN;
 -- ============================================
 DROP POLICY IF EXISTS "Users can view units of accessible properties" ON units;
 
+DROP POLICY IF EXISTS "Users can view units of accessible properties" ON units;
 CREATE POLICY "Users can view units of accessible properties"
   ON units
   FOR SELECT
@@ -5782,6 +5812,7 @@ CREATE POLICY "Users can view units of accessible properties"
 -- ============================================
 DROP POLICY IF EXISTS "Tenants can view charges of properties with active leases" ON charges;
 
+DROP POLICY IF EXISTS "Tenants can view charges of linked properties" ON charges;
 CREATE POLICY "Tenants can view charges of linked properties"
   ON charges
   FOR SELECT
@@ -5818,6 +5849,7 @@ CREATE POLICY "Tenants can view charges of linked properties"
 DROP POLICY IF EXISTS "Users can view tickets of accessible properties" ON tickets;
 DROP POLICY IF EXISTS "tickets_select_policy" ON tickets;
 
+DROP POLICY IF EXISTS "Users can view tickets of accessible properties" ON tickets;
 CREATE POLICY "Users can view tickets of accessible properties"
   ON tickets
   FOR SELECT
@@ -5860,6 +5892,7 @@ CREATE POLICY "Users can view tickets of accessible properties"
 DROP POLICY IF EXISTS "Users can create tickets for accessible properties" ON tickets;
 DROP POLICY IF EXISTS "tickets_insert_policy" ON tickets;
 
+DROP POLICY IF EXISTS "Users can create tickets for accessible properties" ON tickets;
 CREATE POLICY "Users can create tickets for accessible properties"
   ON tickets
   FOR INSERT
@@ -6443,6 +6476,7 @@ BEGIN
     SELECT 1 FROM pg_policies
     WHERE tablename = 'lease_signers' AND policyname = 'lease_signers_tenant_view_for_doc_center'
   ) THEN
+    DROP POLICY IF EXISTS "lease_signers_tenant_view_for_doc_center" ON lease_signers;
     CREATE POLICY "lease_signers_tenant_view_for_doc_center"
       ON lease_signers
       FOR SELECT
@@ -6851,6 +6885,7 @@ DROP POLICY IF EXISTS "notifications_insert_system" ON notifications;
 -- Le service_role bypass RLS par défaut, donc cette policy est pour les
 -- appels authentifiés qui insèrent des notifications pour eux-mêmes.
 -- Les Edge Functions (service_role) ne sont pas affectées par cette restriction.
+DROP POLICY IF EXISTS "notifications_insert_own_or_service" ON notifications;
 CREATE POLICY "notifications_insert_own_or_service" ON notifications
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -6873,6 +6908,7 @@ BEGIN
 
     -- Restreindre aux logs créés par l'utilisateur authentifié
     EXECUTE '
+      DROP POLICY IF EXISTS "audit_log_insert_own" ON document_ged_audit_log;
       CREATE POLICY "audit_log_insert_own" ON document_ged_audit_log
         FOR INSERT TO authenticated
         WITH CHECK (
@@ -6900,6 +6936,7 @@ BEGIN
 
     -- professional_orders is a read-only reference table, keep open read
     EXECUTE '
+      DROP POLICY IF EXISTS "professional_orders_select_scoped" ON professional_orders;
       CREATE POLICY "professional_orders_select_scoped" ON professional_orders
         FOR SELECT TO authenticated
         USING (TRUE)
@@ -7311,6 +7348,7 @@ DROP POLICY IF EXISTS "profiles_insert_own" ON profiles;
 -- Permettre a un utilisateur authentifie de creer son propre profil
 -- (couvre le cas ou le trigger handle_new_user echoue et que le
 --  client tente un INSERT direct ou via l'API)
+DROP POLICY IF EXISTS "profiles_insert_own" ON profiles;
 CREATE POLICY "profiles_insert_own" ON profiles
   FOR INSERT TO authenticated
   WITH CHECK (user_id = auth.uid());
@@ -9191,6 +9229,7 @@ CREATE INDEX IF NOT EXISTS idx_tenant_rewards_profile
 ALTER TABLE tenant_rewards ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "tenant_rewards_select_own" ON tenant_rewards;
+DROP POLICY IF EXISTS "tenant_rewards_select_own" ON tenant_rewards;
 CREATE POLICY "tenant_rewards_select_own" ON tenant_rewards
   FOR SELECT USING (
     profile_id IN (
@@ -9199,6 +9238,7 @@ CREATE POLICY "tenant_rewards_select_own" ON tenant_rewards
   );
 
 DROP POLICY IF EXISTS "tenant_rewards_insert_own" ON tenant_rewards;
+DROP POLICY IF EXISTS "tenant_rewards_insert_own" ON tenant_rewards;
 CREATE POLICY "tenant_rewards_insert_own" ON tenant_rewards
   FOR INSERT WITH CHECK (
     profile_id IN (
@@ -9206,6 +9246,7 @@ CREATE POLICY "tenant_rewards_insert_own" ON tenant_rewards
     )
   );
 
+DROP POLICY IF EXISTS "tenant_rewards_admin" ON tenant_rewards;
 DROP POLICY IF EXISTS "tenant_rewards_admin" ON tenant_rewards;
 CREATE POLICY "tenant_rewards_admin" ON tenant_rewards
   FOR ALL USING (
@@ -9254,6 +9295,7 @@ CREATE INDEX IF NOT EXISTS idx_invoice_reminders_invoice
 ALTER TABLE invoice_reminders ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "invoice_reminders_select_owner" ON invoice_reminders;
+DROP POLICY IF EXISTS "invoice_reminders_select_owner" ON invoice_reminders;
 CREATE POLICY "invoice_reminders_select_owner" ON invoice_reminders
   FOR SELECT USING (
     EXISTS (
@@ -9266,6 +9308,7 @@ CREATE POLICY "invoice_reminders_select_owner" ON invoice_reminders
   );
 
 DROP POLICY IF EXISTS "invoice_reminders_insert_owner" ON invoice_reminders;
+DROP POLICY IF EXISTS "invoice_reminders_insert_owner" ON invoice_reminders;
 CREATE POLICY "invoice_reminders_insert_owner" ON invoice_reminders
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -9277,6 +9320,7 @@ CREATE POLICY "invoice_reminders_insert_owner" ON invoice_reminders
     )
   );
 
+DROP POLICY IF EXISTS "invoice_reminders_admin" ON invoice_reminders;
 DROP POLICY IF EXISTS "invoice_reminders_admin" ON invoice_reminders;
 CREATE POLICY "invoice_reminders_admin" ON invoice_reminders
   FOR ALL USING (
@@ -9310,12 +9354,14 @@ ALTER TABLE webhook_logs ENABLE ROW LEVEL SECURITY;
 
 -- Seuls les admins et le service_role lisent les webhook logs
 DROP POLICY IF EXISTS "webhook_logs_admin" ON webhook_logs;
+DROP POLICY IF EXISTS "webhook_logs_admin" ON webhook_logs;
 CREATE POLICY "webhook_logs_admin" ON webhook_logs
   FOR ALL USING (
     public.user_role() = 'admin'
   );
 
 -- Permettre l'insertion depuis les API routes (service_role)
+DROP POLICY IF EXISTS "webhook_logs_service_insert" ON webhook_logs;
 DROP POLICY IF EXISTS "webhook_logs_service_insert" ON webhook_logs;
 CREATE POLICY "webhook_logs_service_insert" ON webhook_logs
   FOR INSERT WITH CHECK (true);
@@ -9346,6 +9392,7 @@ CREATE INDEX IF NOT EXISTS idx_ai_conversations_model
 ALTER TABLE ai_conversations ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "ai_conversations_select_own" ON ai_conversations;
+DROP POLICY IF EXISTS "ai_conversations_select_own" ON ai_conversations;
 CREATE POLICY "ai_conversations_select_own" ON ai_conversations
   FOR SELECT USING (
     profile_id IN (
@@ -9354,6 +9401,7 @@ CREATE POLICY "ai_conversations_select_own" ON ai_conversations
   );
 
 DROP POLICY IF EXISTS "ai_conversations_insert_own" ON ai_conversations;
+DROP POLICY IF EXISTS "ai_conversations_insert_own" ON ai_conversations;
 CREATE POLICY "ai_conversations_insert_own" ON ai_conversations
   FOR INSERT WITH CHECK (
     profile_id IN (
@@ -9361,6 +9409,7 @@ CREATE POLICY "ai_conversations_insert_own" ON ai_conversations
     )
   );
 
+DROP POLICY IF EXISTS "ai_conversations_admin" ON ai_conversations;
 DROP POLICY IF EXISTS "ai_conversations_admin" ON ai_conversations;
 CREATE POLICY "ai_conversations_admin" ON ai_conversations
   FOR ALL USING (
@@ -9505,25 +9554,32 @@ ALTER TABLE platform_knowledge ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_context_embeddings ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "legal_embeddings_select_authenticated" ON legal_embeddings;
+DROP POLICY IF EXISTS "legal_embeddings_select_authenticated" ON legal_embeddings;
 CREATE POLICY "legal_embeddings_select_authenticated" ON legal_embeddings
   FOR SELECT USING (auth.uid() IS NOT NULL);
+DROP POLICY IF EXISTS "legal_embeddings_admin_manage" ON legal_embeddings;
 DROP POLICY IF EXISTS "legal_embeddings_admin_manage" ON legal_embeddings;
 CREATE POLICY "legal_embeddings_admin_manage" ON legal_embeddings
   FOR ALL USING (public.user_role() = 'admin');
 
 DROP POLICY IF EXISTS "platform_knowledge_select_authenticated" ON platform_knowledge;
+DROP POLICY IF EXISTS "platform_knowledge_select_authenticated" ON platform_knowledge;
 CREATE POLICY "platform_knowledge_select_authenticated" ON platform_knowledge
   FOR SELECT USING (auth.uid() IS NOT NULL AND is_published = true);
+DROP POLICY IF EXISTS "platform_knowledge_admin_manage" ON platform_knowledge;
 DROP POLICY IF EXISTS "platform_knowledge_admin_manage" ON platform_knowledge;
 CREATE POLICY "platform_knowledge_admin_manage" ON platform_knowledge
   FOR ALL USING (public.user_role() = 'admin');
 
 DROP POLICY IF EXISTS "user_context_select_own" ON user_context_embeddings;
+DROP POLICY IF EXISTS "user_context_select_own" ON user_context_embeddings;
 CREATE POLICY "user_context_select_own" ON user_context_embeddings
   FOR SELECT USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
 DROP POLICY IF EXISTS "user_context_manage_own" ON user_context_embeddings;
+DROP POLICY IF EXISTS "user_context_manage_own" ON user_context_embeddings;
 CREATE POLICY "user_context_manage_own" ON user_context_embeddings
   FOR ALL USING (profile_id IN (SELECT id FROM profiles WHERE user_id = auth.uid()));
+DROP POLICY IF EXISTS "user_context_admin" ON user_context_embeddings;
 DROP POLICY IF EXISTS "user_context_admin" ON user_context_embeddings;
 CREATE POLICY "user_context_admin" ON user_context_embeddings
   FOR ALL USING (public.user_role() = 'admin');
@@ -10381,6 +10437,7 @@ BEGIN;
 
 DROP POLICY IF EXISTS "EDL signatures creator update" ON edl_signatures;
 
+DROP POLICY IF EXISTS "EDL signatures update" ON edl_signatures;
 CREATE POLICY "EDL signatures update"
   ON edl_signatures FOR UPDATE
   USING (
@@ -11782,6 +11839,7 @@ DROP POLICY IF EXISTS "tenant_insert_own_documents" ON tenant_documents;
 -- ============================================
 
 -- Le locataire peut voir ses propres documents
+DROP POLICY IF EXISTS "tenant_view_own_documents" ON tenant_documents;
 CREATE POLICY "tenant_view_own_documents" ON tenant_documents
   FOR SELECT USING (
     tenant_profile_id IN (
@@ -11790,6 +11848,7 @@ CREATE POLICY "tenant_view_own_documents" ON tenant_documents
   );
 
 -- Le locataire peut uploader ses documents
+DROP POLICY IF EXISTS "tenant_insert_own_documents" ON tenant_documents;
 CREATE POLICY "tenant_insert_own_documents" ON tenant_documents
   FOR INSERT WITH CHECK (
     tenant_profile_id IN (
@@ -12588,6 +12647,7 @@ CREATE TRIGGER update_conversations_updated_at
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view own conversations" ON conversations;
+DROP POLICY IF EXISTS "Users can view own conversations" ON conversations;
 CREATE POLICY "Users can view own conversations"
   ON conversations FOR SELECT
   USING (
@@ -12597,6 +12657,7 @@ CREATE POLICY "Users can view own conversations"
   );
 
 DROP POLICY IF EXISTS "Users can insert conversations" ON conversations;
+DROP POLICY IF EXISTS "Users can insert conversations" ON conversations;
 CREATE POLICY "Users can insert conversations"
   ON conversations FOR INSERT
   WITH CHECK (
@@ -12605,6 +12666,7 @@ CREATE POLICY "Users can insert conversations"
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Users can update own conversations" ON conversations;
 DROP POLICY IF EXISTS "Users can update own conversations" ON conversations;
 CREATE POLICY "Users can update own conversations"
   ON conversations FOR UPDATE
@@ -12643,6 +12705,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(conversation_id, 
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view messages of own conversations" ON messages;
+DROP POLICY IF EXISTS "Users can view messages of own conversations" ON messages;
 CREATE POLICY "Users can view messages of own conversations"
   ON messages FOR SELECT
   USING (
@@ -12654,6 +12717,7 @@ CREATE POLICY "Users can view messages of own conversations"
     OR public.user_role() = 'admin'
   );
 
+DROP POLICY IF EXISTS "Users can insert messages in own conversations" ON messages;
 DROP POLICY IF EXISTS "Users can insert messages in own conversations" ON messages;
 CREATE POLICY "Users can insert messages in own conversations"
   ON messages FOR INSERT
@@ -12732,6 +12796,7 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Politique upload pour utilisateurs authentifiés
 DROP POLICY IF EXISTS "Users can upload documents" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload documents" ON storage;
 CREATE POLICY "Users can upload documents"
 ON storage.objects FOR INSERT
 TO authenticated
@@ -13243,14 +13308,17 @@ COMMENT ON TABLE owner_payment_audit_log IS 'Audit trail PSD3 pour les opératio
 ALTER TABLE owner_payment_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Le propriétaire ne voit que ses propres logs
+DROP POLICY IF EXISTS "opal_select_own" ON owner_payment_audit_log;
 CREATE POLICY "opal_select_own" ON owner_payment_audit_log
   FOR SELECT USING (owner_id = public.user_profile_id());
 
 -- Le propriétaire peut insérer des logs pour lui-même (via l'API qui utilise son session)
+DROP POLICY IF EXISTS "opal_insert_own" ON owner_payment_audit_log;
 CREATE POLICY "opal_insert_own" ON owner_payment_audit_log
   FOR INSERT WITH CHECK (owner_id = public.user_profile_id());
 
 -- L'admin voit et gère tout (lecture seule en pratique, pas de UPDATE/DELETE prévus)
+DROP POLICY IF EXISTS "opal_admin_all" ON owner_payment_audit_log;
 CREATE POLICY "opal_admin_all" ON owner_payment_audit_log
   FOR ALL USING (public.user_role() = 'admin');
 
@@ -13273,6 +13341,7 @@ BEGIN;
 -- ----------------------------------------------------------------------------
 
 DROP POLICY IF EXISTS furniture_inventories_owner_policy ON furniture_inventories;
+DROP POLICY IF EXISTS furniture_inventories_owner_policy ON furniture_inventories;
 CREATE POLICY furniture_inventories_owner_policy ON furniture_inventories
   FOR ALL
   USING (
@@ -13285,6 +13354,7 @@ CREATE POLICY furniture_inventories_owner_policy ON furniture_inventories
     )
   );
 
+DROP POLICY IF EXISTS furniture_inventories_tenant_policy ON furniture_inventories;
 DROP POLICY IF EXISTS furniture_inventories_tenant_policy ON furniture_inventories;
 CREATE POLICY furniture_inventories_tenant_policy ON furniture_inventories
   FOR SELECT
@@ -13303,6 +13373,7 @@ CREATE POLICY furniture_inventories_tenant_policy ON furniture_inventories
 -- ----------------------------------------------------------------------------
 
 DROP POLICY IF EXISTS furniture_items_owner_policy ON furniture_items;
+DROP POLICY IF EXISTS furniture_items_owner_policy ON furniture_items;
 CREATE POLICY furniture_items_owner_policy ON furniture_items
   FOR ALL
   USING (
@@ -13316,6 +13387,7 @@ CREATE POLICY furniture_items_owner_policy ON furniture_items
     )
   );
 
+DROP POLICY IF EXISTS furniture_items_tenant_policy ON furniture_items;
 DROP POLICY IF EXISTS furniture_items_tenant_policy ON furniture_items;
 CREATE POLICY furniture_items_tenant_policy ON furniture_items
   FOR SELECT
@@ -13334,6 +13406,7 @@ CREATE POLICY furniture_items_tenant_policy ON furniture_items
 -- 3. vetusty_reports
 -- ----------------------------------------------------------------------------
 
+DROP POLICY IF EXISTS "vetusty_reports_select_policy" ON vetusty_reports;
 DROP POLICY IF EXISTS "vetusty_reports_select_policy" ON vetusty_reports;
 CREATE POLICY "vetusty_reports_select_policy" ON vetusty_reports
   FOR SELECT USING (
@@ -13355,6 +13428,7 @@ CREATE POLICY "vetusty_reports_select_policy" ON vetusty_reports
   );
 
 DROP POLICY IF EXISTS "vetusty_reports_insert_policy" ON vetusty_reports;
+DROP POLICY IF EXISTS "vetusty_reports_insert_policy" ON vetusty_reports;
 CREATE POLICY "vetusty_reports_insert_policy" ON vetusty_reports
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -13366,6 +13440,7 @@ CREATE POLICY "vetusty_reports_insert_policy" ON vetusty_reports
     )
   );
 
+DROP POLICY IF EXISTS "vetusty_reports_update_policy" ON vetusty_reports;
 DROP POLICY IF EXISTS "vetusty_reports_update_policy" ON vetusty_reports;
 CREATE POLICY "vetusty_reports_update_policy" ON vetusty_reports
   FOR UPDATE USING (
@@ -13382,6 +13457,7 @@ CREATE POLICY "vetusty_reports_update_policy" ON vetusty_reports
 -- 4. vetusty_items
 -- ----------------------------------------------------------------------------
 
+DROP POLICY IF EXISTS "vetusty_items_select_policy" ON vetusty_items;
 DROP POLICY IF EXISTS "vetusty_items_select_policy" ON vetusty_items;
 CREATE POLICY "vetusty_items_select_policy" ON vetusty_items
   FOR SELECT USING (
@@ -13404,6 +13480,7 @@ CREATE POLICY "vetusty_items_select_policy" ON vetusty_items
   );
 
 DROP POLICY IF EXISTS "vetusty_items_insert_policy" ON vetusty_items;
+DROP POLICY IF EXISTS "vetusty_items_insert_policy" ON vetusty_items;
 CREATE POLICY "vetusty_items_insert_policy" ON vetusty_items
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -13417,6 +13494,7 @@ CREATE POLICY "vetusty_items_insert_policy" ON vetusty_items
   );
 
 DROP POLICY IF EXISTS "vetusty_items_update_policy" ON vetusty_items;
+DROP POLICY IF EXISTS "vetusty_items_update_policy" ON vetusty_items;
 CREATE POLICY "vetusty_items_update_policy" ON vetusty_items
   FOR UPDATE USING (
     EXISTS (
@@ -13429,6 +13507,7 @@ CREATE POLICY "vetusty_items_update_policy" ON vetusty_items
     )
   );
 
+DROP POLICY IF EXISTS "vetusty_items_delete_policy" ON vetusty_items;
 DROP POLICY IF EXISTS "vetusty_items_delete_policy" ON vetusty_items;
 CREATE POLICY "vetusty_items_delete_policy" ON vetusty_items
   FOR DELETE USING (
@@ -13643,22 +13722,28 @@ CREATE INDEX idx_tpm_active ON tenant_payment_methods(tenant_profile_id, status)
 
 ALTER TABLE tenant_payment_methods ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "tpm_select_own" ON tenant_payment_methods;
 CREATE POLICY "tpm_select_own" ON tenant_payment_methods
   FOR SELECT USING (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "tpm_insert_own" ON tenant_payment_methods;
 CREATE POLICY "tpm_insert_own" ON tenant_payment_methods
   FOR INSERT WITH CHECK (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "tpm_update_own" ON tenant_payment_methods;
 CREATE POLICY "tpm_update_own" ON tenant_payment_methods
   FOR UPDATE USING (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "tpm_delete_own" ON tenant_payment_methods;
 CREATE POLICY "tpm_delete_own" ON tenant_payment_methods
   FOR DELETE USING (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "tpm_admin_all" ON tenant_payment_methods;
 CREATE POLICY "tpm_admin_all" ON tenant_payment_methods
   FOR ALL USING (public.user_role() = 'admin');
 
 -- Trigger updated_at
+DROP TRIGGER IF EXISTS update_tpm_updated_at ON tenant_payment_methods;
 CREATE TRIGGER update_tpm_updated_at
   BEFORE UPDATE ON tenant_payment_methods
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -13678,6 +13763,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_enforce_single_default_pm ON tenant_payment_methods;
 CREATE TRIGGER trg_enforce_single_default_pm
   AFTER INSERT OR UPDATE OF is_default ON tenant_payment_methods
   FOR EACH ROW
@@ -13733,21 +13819,27 @@ CREATE INDEX idx_sepa_mandates_next_collection ON sepa_mandates(next_collection_
 
 ALTER TABLE sepa_mandates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "sepa_select_tenant" ON sepa_mandates;
 CREATE POLICY "sepa_select_tenant" ON sepa_mandates
   FOR SELECT USING (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "sepa_select_owner" ON sepa_mandates;
 CREATE POLICY "sepa_select_owner" ON sepa_mandates
   FOR SELECT USING (owner_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "sepa_insert_tenant" ON sepa_mandates;
 CREATE POLICY "sepa_insert_tenant" ON sepa_mandates
   FOR INSERT WITH CHECK (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "sepa_update_tenant" ON sepa_mandates;
 CREATE POLICY "sepa_update_tenant" ON sepa_mandates
   FOR UPDATE USING (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "sepa_admin_all" ON sepa_mandates;
 CREATE POLICY "sepa_admin_all" ON sepa_mandates
   FOR ALL USING (public.user_role() = 'admin');
 
+DROP TRIGGER IF EXISTS update_sepa_mandates_updated_at ON sepa_mandates;
 CREATE TRIGGER update_sepa_mandates_updated_at
   BEFORE UPDATE ON sepa_mandates
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -13795,6 +13887,7 @@ CREATE INDEX idx_ps_lease ON payment_schedules(lease_id);
 
 ALTER TABLE payment_schedules ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "ps_select_tenant" ON payment_schedules;
 CREATE POLICY "ps_select_tenant" ON payment_schedules
   FOR SELECT USING (
     EXISTS (
@@ -13805,6 +13898,7 @@ CREATE POLICY "ps_select_tenant" ON payment_schedules
     )
   );
 
+DROP POLICY IF EXISTS "ps_select_owner" ON payment_schedules;
 CREATE POLICY "ps_select_owner" ON payment_schedules
   FOR SELECT USING (
     EXISTS (
@@ -13815,9 +13909,11 @@ CREATE POLICY "ps_select_owner" ON payment_schedules
     )
   );
 
+DROP POLICY IF EXISTS "ps_admin_all" ON payment_schedules;
 CREATE POLICY "ps_admin_all" ON payment_schedules
   FOR ALL USING (public.user_role() = 'admin');
 
+DROP TRIGGER IF EXISTS update_ps_updated_at ON payment_schedules;
 CREATE TRIGGER update_ps_updated_at
   BEFORE UPDATE ON payment_schedules
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -13844,9 +13940,11 @@ CREATE INDEX idx_pmal_pm ON payment_method_audit_log(payment_method_id, created_
 
 ALTER TABLE payment_method_audit_log ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "pmal_select_own" ON payment_method_audit_log;
 CREATE POLICY "pmal_select_own" ON payment_method_audit_log
   FOR SELECT USING (tenant_profile_id = public.user_profile_id());
 
+DROP POLICY IF EXISTS "pmal_admin_all" ON payment_method_audit_log;
 CREATE POLICY "pmal_admin_all" ON payment_method_audit_log
   FOR ALL USING (public.user_role() = 'admin');
 
@@ -13926,6 +14024,7 @@ CREATE INDEX IF NOT EXISTS idx_identity_2fa_requests_expires_at ON identity_2fa_
 ALTER TABLE identity_2fa_requests ENABLE ROW LEVEL SECURITY;
 
 -- Le locataire ne peut voir que ses propres demandes
+DROP POLICY IF EXISTS "identity_2fa_requests_tenant_own" ON identity_2fa_requests;
 DROP POLICY IF EXISTS "identity_2fa_requests_tenant_own" ON identity_2fa_requests;
 CREATE POLICY "identity_2fa_requests_tenant_own"
   ON identity_2fa_requests FOR ALL TO authenticated
