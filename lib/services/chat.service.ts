@@ -150,6 +150,8 @@ export interface GetConversationsEnrichedParams {
   limit?: number;
   offset?: number;
   type?: ConversationType;
+  /** Full-text search (ILIKE) on participant names, ticket title, and last message preview. */
+  search?: string;
 }
 
 export interface GetConversationsEnrichedResult {
@@ -277,10 +279,12 @@ class ChatService {
     const limit = params.limit ?? 25;
     const offset = params.offset ?? 0;
 
+    const trimmedSearch = params.search?.trim();
     const { data, error } = await (this.supabase.rpc as any)("get_conversations_enriched", {
       p_limit: limit,
       p_offset: offset,
       p_type: params.type ?? null,
+      p_search: trimmedSearch && trimmedSearch.length > 0 ? trimmedSearch : null,
     });
 
     if (error) throw error;

@@ -14,7 +14,8 @@ import {
   MessageSquare,
   Home,
   RefreshCw,
-  Ticket
+  Ticket,
+  Loader2
 } from "lucide-react";
 import {
   chatService,
@@ -43,29 +44,44 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
   const [conversations, setConversations] = useState<ConversationEnriched[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [searching, setSearching] = useState(false);
   const [usePolling, setUsePolling] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const loadConversations = useCallback(async () => {
+  const loadConversations = useCallback(async (searchTerm?: string) => {
     try {
       setLoadError(null);
-      const result = await chatService.getConversationsEnriched();
+      const result = await chatService.getConversationsEnriched({
+        search: searchTerm || undefined,
+      });
       setConversations(result.data);
     } catch (error) {
       console.error("Erreur chargement conversations:", error);
       setLoadError("Impossible de charger les conversations");
     } finally {
       setLoading(false);
+      setSearching(false);
     }
   }, []);
 
+  // Debounce search term — 300ms après la dernière frappe
   useEffect(() => {
-    loadConversations();
+    const handle = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(handle);
+  }, [search]);
 
+  // Refetch serveur à chaque changement de debouncedSearch (inclus au mount via "")
+  useEffect(() => {
+    if (debouncedSearch !== "") setSearching(true);
+    loadConversations(debouncedSearch);
+  }, [debouncedSearch, loadConversations]);
+
+  // Realtime + polling fallback (le load initial est fait par le useEffect debounce ci-dessus).
+  useEffect(() => {
     let unsubscribe: (() => void) | undefined;
     let pollInterval: NodeJS.Timeout | undefined;
 
-    // Tenter la souscription Realtime
     try {
       unsubscribe = chatService.subscribeToConversations((updated) => {
         setConversations((prev) =>
@@ -77,7 +93,6 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
         );
       });
 
-      // Vérifier si Realtime fonctionne
       if (!chatService.isRealtimeEnabled()) {
         setUsePolling(true);
       }
@@ -86,10 +101,10 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
       setUsePolling(true);
     }
 
-    // Fallback: polling toutes les 15 secondes si WebSocket échoue
+    // Fallback polling : refetch avec le dernier searchTerm debounce
     if (usePolling) {
       pollInterval = setInterval(() => {
-        loadConversations();
+        loadConversations(debouncedSearch);
       }, 15000);
     }
 
@@ -97,17 +112,12 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
       unsubscribe?.();
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [loadConversations, usePolling]);
+  }, [loadConversations, usePolling, debouncedSearch]);
 
 
-  const filteredConversations = conversations.filter((conv) => {
-    if (!search) return true;
-    const searchLower = search.toLowerCase();
-    return (
-      conv.other_party_name?.toLowerCase().includes(searchLower) ||
-      conv.other_party_subtitle?.toLowerCase().includes(searchLower)
-    );
-  });
+  // Sprint 9 — le filtre est désormais server-side via p_search.
+  // Le state `conversations` contient déjà la liste filtrée.
+  const filteredConversations = conversations;
 
   const getUnreadCount = (conv: ConversationEnriched) => {
     if (currentProfileId === conv.owner_profile_id) return conv.owner_unread_count;
@@ -167,8 +177,11 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
             placeholder="Rechercher..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-9 pr-9"
           />
+          {searching && (
+            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+          )}
         </div>
       </CardHeader>
 
@@ -177,7 +190,7 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
           {loadError && (
             <div className="p-3 mb-2 text-sm text-destructive bg-destructive/10 rounded-lg">
               {loadError}
-              <button onClick={loadConversations} className="underline ml-1 font-medium">
+              <button onClick={() => loadConversations(debouncedSearch)} className="underline ml-1 font-medium">
                 Réessayer
               </button>
             </div>

@@ -344,6 +344,7 @@ describe("ChatService", () => {
         p_limit: 25,
         p_offset: 0,
         p_type: null,
+        p_search: null,
       });
       expect(result.data).toHaveLength(2);
       expect(result.count).toBe(3);
@@ -367,6 +368,7 @@ describe("ChatService", () => {
         p_limit: 10,
         p_offset: 5,
         p_type: "owner_provider",
+        p_search: null,
       });
     });
 
@@ -382,6 +384,36 @@ describe("ChatService", () => {
 
       expect(result.count).toBe(5);
       expect(result.hasMore).toBe(false);
+    });
+
+    it("should forward trimmed search param to the RPC as p_search", async () => {
+      const rpcMock = vi.fn().mockResolvedValue({ data: [], error: null });
+      mockSupabase.rpc = rpcMock;
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      await chatService.getConversationsEnriched({ search: "  Marie  " });
+
+      expect(rpcMock).toHaveBeenCalledWith("get_conversations_enriched", {
+        p_limit: 25,
+        p_offset: 0,
+        p_type: null,
+        p_search: "Marie",
+      });
+    });
+
+    it("should send p_search=null when search is empty or whitespace", async () => {
+      const rpcMock = vi.fn().mockResolvedValue({ data: [], error: null });
+      mockSupabase.rpc = rpcMock;
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      await chatService.getConversationsEnriched({ search: "   " });
+
+      expect(rpcMock).toHaveBeenCalledWith("get_conversations_enriched", {
+        p_limit: 25,
+        p_offset: 0,
+        p_type: null,
+        p_search: null,
+      });
     });
   });
 
