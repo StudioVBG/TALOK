@@ -22,6 +22,7 @@ import {
   type ConversationEnriched,
 } from "@/lib/services/chat.service";
 import { ConversationRoleBadge, type ConversationRole } from "@/components/chat/conversation-role-badge";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -57,7 +58,13 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
       });
       setConversations(result.data);
     } catch (error) {
-      console.error("Erreur chargement conversations:", error);
+      // Log le détail (code Supabase, hint, details) pour faciliter le debug.
+      // L'UI reste volontairement générique — on ne fuite pas d'info technique.
+      console.error(
+        "Erreur chargement conversations:",
+        extractErrorMessage(error),
+        error
+      );
       setLoadError("Impossible de charger les conversations");
     } finally {
       setLoading(false);
@@ -101,8 +108,11 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
       setUsePolling(true);
     }
 
-    // Fallback polling : refetch avec le dernier searchTerm debounce
-    if (usePolling) {
+    // Fallback polling : refetch avec le dernier searchTerm debounce.
+    // Si une erreur de chargement est active, on met le polling en pause —
+    // inutile de marteler un endpoint qui vient de renvoyer 4xx/5xx. L'utilisateur
+    // peut toujours relancer manuellement via le bouton "Réessayer".
+    if (usePolling && !loadError) {
       pollInterval = setInterval(() => {
         loadConversations(debouncedSearch);
       }, 15000);
@@ -112,7 +122,7 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
       unsubscribe?.();
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [loadConversations, usePolling, debouncedSearch]);
+  }, [loadConversations, usePolling, debouncedSearch, loadError]);
 
 
   // Sprint 9 — le filtre est désormais server-side via p_search.
