@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
+// Shape brute renvoyee par la RPC admin_stats — utilisee comme base par fetchAdminStatsV2.
 export interface AdminStatsData {
   totalUsers: number;
   usersByRole: {
@@ -28,31 +29,6 @@ export interface AdminStatsData {
     description: string;
     date: string;
   }>;
-}
-
-export async function fetchAdminStats(): Promise<AdminStatsData | null> {
-  const supabase = await createClient();
-
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError || !user) {
-    // Rediriger au lieu de lancer une erreur - le layout devrait déjà gérer cela
-    // mais cette protection supplémentaire évite les erreurs non gérées
-    redirect("/auth/signin");
-  }
-
-  // Note: Cette RPC est rapide (agrégats). 
-  // On pourrait utiliser unstable_cache ici si la charge DB devenait critique,
-  // mais cela nécessiterait de gérer l'auth context (via service role).
-  // Pour l'instant, le Streaming UI (Suspense) suffit pour l'UX.
-  
-  const { data, error } = await supabase.rpc("admin_stats");
-
-  if (error) {
-    console.error("[fetchAdminStats] RPC Error:", error);
-    return null;
-  }
-
-  return data as AdminStatsData;
 }
 
 // Type V2 avec données réelles (revenus mensuels, tendances, modération, abonnements)
