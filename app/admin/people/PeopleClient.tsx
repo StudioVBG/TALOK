@@ -57,15 +57,8 @@ export function PeopleClient({ activeTab, initialData, currentPage, currentSearc
 
   const totalPages = Math.ceil(initialData.total / 20);
 
-  // Fonction pour générer l'URL correcte selon le type
-  const getDetailUrl = (userId: string) => {
-    // Les locataires ont leur propre section /admin/tenants/
-    if (activeTab === "tenants") {
-      return `/admin/tenants/${userId}`;
-    }
-    // Les autres restent dans /admin/people/
-    return `/admin/people/${activeTab}/${userId}`;
-  };
+  const getDetailUrl = (userId: string) =>
+    `/admin/people/${activeTab}/${userId}`;
 
   const columns = [
     {

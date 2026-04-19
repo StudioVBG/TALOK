@@ -221,9 +221,9 @@ const nextConfig = {
       // /admin/users (liste + détail) → /admin/people (Annuaire unique)
       { source: '/admin/users', destination: '/admin/people', permanent: true },
       { source: '/admin/users/:id', destination: '/admin/people', permanent: true },
-      // /admin/tenants (liste uniquement) → onglet locataires du répertoire
-      // NB: /admin/tenants/:id reste actif (page fiche locataire)
+      // /admin/tenants (liste + fiche) → regroupe sous /admin/people
       { source: '/admin/tenants', destination: '/admin/people?tab=tenants', permanent: true },
+      { source: '/admin/tenants/:id', destination: '/admin/people/tenants/:id', permanent: true },
     ];
   },
 
