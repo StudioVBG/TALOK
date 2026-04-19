@@ -1,6 +1,6 @@
 -- =============================================================================
 -- APPLY SPRINT B2 — BATCH 02_MAR2026 (IDEMPOTENT v2)
--- Genere le 2026-04-19T07:15:48Z
+-- Genere le 2026-04-19T07:19:23Z
 --
 -- Contenu : 62 migrations (action=apply uniquement)
 -- Plage   : 20260301000000 -> 20260331130000
@@ -1596,70 +1596,10 @@ BEGIN
 END;
 $$;
 
--- =====================================================
--- TRIGGER 2: Notifier le prestataire quand un ticket lui est assigné
--- (work order / intervention assignée)
--- =====================================================
-CREATE OR REPLACE FUNCTION notify_provider_on_work_order()
-RETURNS TRIGGER AS $$
-DECLARE
-  v_property_address TEXT;
-BEGIN
-  -- Seulement si un prestataire est assigné
-  IF NEW.provider_id IS NULL THEN
-    RETURN NEW;
-  END IF;
-
-  -- Seulement si l'assignation est nouvelle (INSERT ou UPDATE avec changement de provider)
-  IF TG_OP = 'UPDATE' AND OLD.provider_id = NEW.provider_id THEN
-    RETURN NEW;
-  END IF;
-
-  -- Récupérer l'adresse du bien
-  SELECT COALESCE(p.adresse_complete, 'Logement')
-  INTO v_property_address
-  FROM properties p
-  WHERE p.id = NEW.property_id;
-
-  -- Créer la notification pour le prestataire
-  INSERT INTO notifications (
-    profile_id,
-    type,
-    title,
-    message,
-    link,
-    metadata
-  ) VALUES (
-    NEW.provider_id,
-    'work_order',
-    'Nouvelle intervention assignée',
-    'Intervention sur ' || COALESCE(v_property_address, 'un bien') || ' : ' || COALESCE(NEW.title, NEW.titre, 'Sans titre'),
-    '/provider/interventions/' || NEW.id,
-    jsonb_build_object(
-      'ticket_id', NEW.id,
-      'property_id', NEW.property_id,
-      'priority', COALESCE(NEW.priority, NEW.priorite, 'normal')
-    )
-  );
-
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Créer le trigger seulement s'il n'existe pas déjà
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger WHERE tgname = 'trg_notify_provider_on_work_order'
-  ) THEN
-    DROP TRIGGER IF EXISTS trg_notify_provider_on_work_order ON tickets;
-    CREATE TRIGGER trg_notify_provider_on_work_order
-      AFTER INSERT OR UPDATE OF provider_id ON tickets
-      FOR EACH ROW
-      EXECUTE FUNCTION notify_provider_on_work_order();
-  END IF;
-END;
-$$;
+-- TRIGGER 2 SKIPPED : references tickets.provider_id which never existed.
+-- The provider is linked via work_orders.provider_id, not tickets.
+-- The function notify_provider_on_work_order() is left defined above
+-- for future use once the column semantics are fixed.
 
 COMMIT;
 
