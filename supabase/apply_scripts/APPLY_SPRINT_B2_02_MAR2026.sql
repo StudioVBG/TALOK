@@ -1,6 +1,6 @@
 -- =============================================================================
 -- APPLY SPRINT B2 — BATCH 02_MAR2026 (IDEMPOTENT v2)
--- Genere le 2026-04-19T07:29:14Z
+-- Genere le 2026-04-19T07:32:28Z
 --
 -- Contenu : 62 migrations (action=apply uniquement)
 -- Plage   : 20260301000000 -> 20260331130000
@@ -560,7 +560,6 @@ DROP POLICY IF EXISTS "Users can view associates of their entities" ON entity_as
 
 -- Recréer la policy FOR ALL avec la fonction optimisée
 DROP POLICY IF EXISTS "Users can manage associates of their entities" ON entity_associates;
-DROP POLICY IF EXISTS "Users can manage associates of their entities" ON entity_associates;
 CREATE POLICY "Users can manage associates of their entities"
   ON entity_associates FOR ALL
   USING (
@@ -575,24 +574,20 @@ CREATE POLICY "Users can manage associates of their entities"
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Users can view their own entities" ON legal_entities;
-DROP POLICY IF EXISTS "Users can view their own entities" ON legal_entities;
 CREATE POLICY "Users can view their own entities"
   ON legal_entities FOR SELECT
   USING (owner_profile_id = get_current_owner_profile_id());
 
-DROP POLICY IF EXISTS "Users can insert their own entities" ON legal_entities;
 DROP POLICY IF EXISTS "Users can insert their own entities" ON legal_entities;
 CREATE POLICY "Users can insert their own entities"
   ON legal_entities FOR INSERT
   WITH CHECK (owner_profile_id = get_current_owner_profile_id());
 
 DROP POLICY IF EXISTS "Users can update their own entities" ON legal_entities;
-DROP POLICY IF EXISTS "Users can update their own entities" ON legal_entities;
 CREATE POLICY "Users can update their own entities"
   ON legal_entities FOR UPDATE
   USING (owner_profile_id = get_current_owner_profile_id());
 
-DROP POLICY IF EXISTS "Users can delete their own entities" ON legal_entities;
 DROP POLICY IF EXISTS "Users can delete their own entities" ON legal_entities;
 CREATE POLICY "Users can delete their own entities"
   ON legal_entities FOR DELETE
@@ -602,7 +597,6 @@ CREATE POLICY "Users can delete their own entities"
 -- 4. Optimiser les policies property_ownership
 -- ============================================================================
 
-DROP POLICY IF EXISTS "Users can view ownership of their properties" ON property_ownership;
 DROP POLICY IF EXISTS "Users can view ownership of their properties" ON property_ownership;
 CREATE POLICY "Users can view ownership of their properties"
   ON property_ownership FOR SELECT
@@ -617,7 +611,6 @@ CREATE POLICY "Users can view ownership of their properties"
     )
   );
 
-DROP POLICY IF EXISTS "Users can manage ownership of their properties" ON property_ownership;
 DROP POLICY IF EXISTS "Users can manage ownership of their properties" ON property_ownership;
 CREATE POLICY "Users can manage ownership of their properties"
   ON property_ownership FOR ALL
@@ -637,7 +630,6 @@ CREATE POLICY "Users can manage ownership of their properties"
 -- ============================================================================
 
 DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
-DROP POLICY IF EXISTS "Users can view audit logs of their entities" ON entity_audit_log;
 CREATE POLICY "Users can view audit logs of their entities"
   ON entity_audit_log FOR SELECT
   USING (
@@ -647,7 +639,6 @@ CREATE POLICY "Users can view audit logs of their entities"
     )
   );
 
-DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
 DROP POLICY IF EXISTS "Users can insert audit logs for their entities" ON entity_audit_log;
 CREATE POLICY "Users can insert audit logs for their entities"
   ON entity_audit_log FOR INSERT
@@ -1659,7 +1650,6 @@ CREATE INDEX IF NOT EXISTS idx_documents_lease_visible_tenant
 -- RLS policy: tenants can only see documents marked as visible_tenant = true
 -- (Updates existing tenant read policy to add visible_tenant check)
 DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
-DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
 CREATE POLICY "Tenants can read visible lease documents"
   ON documents FOR SELECT
   USING (
@@ -2073,7 +2063,6 @@ DO $$ BEGIN RAISE NOTICE 'Applying 19/62 (DANGEREUX) 20260309000001_messages_upd
 -- Needed for message edit/delete feature
 
 -- Policy for UPDATE: users can only update their own messages in their conversations
-DROP POLICY IF EXISTS "Users can update own messages" ON messages;
 DROP POLICY IF EXISTS "Users can update own messages" ON messages;
 CREATE POLICY "Users can update own messages"
   ON messages FOR UPDATE
@@ -3737,7 +3726,6 @@ DROP POLICY IF EXISTS "Owners can view own connect account" ON stripe_connect_ac
 DROP POLICY IF EXISTS "Owners can create own connect account" ON stripe_connect_accounts;
 DROP POLICY IF EXISTS "Service role full access connect" ON stripe_connect_accounts;
 
-DROP POLICY IF EXISTS "Owners can view own connect account" ON stripe_connect_accounts;
 CREATE POLICY "Owners can view own connect account" ON stripe_connect_accounts
   FOR SELECT
   USING (
@@ -3745,7 +3733,6 @@ CREATE POLICY "Owners can view own connect account" ON stripe_connect_accounts
     OR public.user_role() = 'admin'
   );
 
-DROP POLICY IF EXISTS "Owners can create own connect account" ON stripe_connect_accounts;
 CREATE POLICY "Owners can create own connect account" ON stripe_connect_accounts
   FOR INSERT
   WITH CHECK (
@@ -3765,7 +3752,6 @@ CREATE POLICY "Owners can update own connect account" ON stripe_connect_accounts
     OR public.user_role() = 'admin'
   );
 
-DROP POLICY IF EXISTS "Service role full access connect" ON stripe_connect_accounts;
 CREATE POLICY "Service role full access connect" ON stripe_connect_accounts
   FOR ALL
   USING (auth.jwt() ->> 'role' = 'service_role')
@@ -3774,7 +3760,6 @@ CREATE POLICY "Service role full access connect" ON stripe_connect_accounts
 DROP POLICY IF EXISTS "Owners can view own transfers" ON stripe_transfers;
 DROP POLICY IF EXISTS "Service role full access transfers" ON stripe_transfers;
 
-DROP POLICY IF EXISTS "Owners can view own transfers" ON stripe_transfers;
 CREATE POLICY "Owners can view own transfers" ON stripe_transfers
   FOR SELECT
   USING (
@@ -3789,7 +3774,6 @@ CREATE POLICY "Owners can view own transfers" ON stripe_transfers
     )
   );
 
-DROP POLICY IF EXISTS "Service role full access transfers" ON stripe_transfers;
 CREATE POLICY "Service role full access transfers" ON stripe_transfers
   FOR ALL
   USING (auth.jwt() ->> 'role' = 'service_role')
@@ -4110,7 +4094,6 @@ CREATE INDEX IF NOT EXISTS idx_stripe_payouts_status
 ALTER TABLE public.stripe_payouts ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Owners can view own payouts" ON public.stripe_payouts;
-DROP POLICY IF EXISTS "Owners can view own payouts" ON public;
 CREATE POLICY "Owners can view own payouts" ON public.stripe_payouts
   FOR SELECT USING (
     connect_account_id IN (
@@ -4122,7 +4105,6 @@ CREATE POLICY "Owners can view own payouts" ON public.stripe_payouts
   );
 
 DROP POLICY IF EXISTS "Service role full access payouts" ON public.stripe_payouts;
-DROP POLICY IF EXISTS "Service role full access payouts" ON public;
 CREATE POLICY "Service role full access payouts" ON public.stripe_payouts
   FOR ALL USING (auth.jwt() ->> 'role' = 'service_role')
   WITH CHECK (auth.jwt() ->> 'role' = 'service_role');
@@ -4715,7 +4697,6 @@ DO $$ BEGIN RAISE NOTICE 'Applying 40/62 (MODERE) 20260323000000_fix_document_vi
 
 DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
 
-DROP POLICY IF EXISTS "Tenants can read visible lease documents" ON documents;
 CREATE POLICY "Tenants can read visible lease documents"
   ON documents FOR SELECT
   USING (
@@ -5198,13 +5179,13 @@ VALUES ('landing-images', 'landing-images', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Politique de lecture publique sur le bucket
-DROP POLICY IF EXISTS "Public read landing images" ON storage;
+DROP POLICY IF EXISTS "Public read landing images" ON storage.objects;
 CREATE POLICY "Public read landing images"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'landing-images');
 
 -- Politique d'upload admin
-DROP POLICY IF EXISTS "Admin upload landing images" ON storage;
+DROP POLICY IF EXISTS "Admin upload landing images" ON storage.objects;
 CREATE POLICY "Admin upload landing images"
 ON storage.objects FOR INSERT
 WITH CHECK (
@@ -5217,7 +5198,7 @@ WITH CHECK (
 );
 
 -- Politique de suppression admin
-DROP POLICY IF EXISTS "Admin delete landing images" ON storage;
+DROP POLICY IF EXISTS "Admin delete landing images" ON storage.objects;
 CREATE POLICY "Admin delete landing images"
 ON storage.objects FOR DELETE
 USING (
