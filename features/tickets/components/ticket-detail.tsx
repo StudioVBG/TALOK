@@ -28,6 +28,7 @@ import { TicketComments } from "./ticket-comments";
 import { AssignProviderModal } from "./assign-provider-modal";
 import { CreateWorkOrderButton } from "./create-work-order-button";
 import { SatisfactionRating } from "./satisfaction-rating";
+import { ContactProviderButton } from "@/components/tickets/contact-provider-button";
 
 const CATEGORY_LABELS: Record<string, string> = {
   plomberie: "Plomberie",
@@ -329,6 +330,19 @@ export function TicketDetailView({ ticketId, userRole, backHref }: TicketDetailV
                   </span>
                 )}
               </div>
+
+              {/* Sprint 4 — Contacter le prestataire (owner ou tenant uniquement) */}
+              {(userRole === "owner" || userRole === "tenant") &&
+                activeWorkOrder.provider?.id &&
+                ticket.property_id && (
+                  <ContactProviderButton
+                    ticketId={ticketId}
+                    propertyId={ticket.property_id}
+                    providerProfileId={activeWorkOrder.provider.id}
+                    providerName={activeWorkOrder.provider.prenom || "le prestataire"}
+                    viewerRole={userRole}
+                  />
+                )}
             </GlassCard>
           )}
 
