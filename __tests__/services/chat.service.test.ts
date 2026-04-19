@@ -499,6 +499,68 @@ describe("ChatService", () => {
     });
   });
 
+  describe("getTicketMetadata", () => {
+    it("returns ticket data when ticket exists", async () => {
+      const ticketRow = {
+        id: "tk-1",
+        titre: "Fuite robinet",
+        statut: "in_progress",
+        priorite: "haute",
+      };
+      mockSupabase.from.mockImplementation(((table: string) => {
+        if (table === "tickets") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: ticketRow, error: null }),
+          };
+        }
+        return (mockSupabase.from as any)(table);
+      }) as any);
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      const data = await chatService.getTicketMetadata("tk-1");
+      expect(data).toEqual(ticketRow);
+    });
+
+    it("returns null when ticket not found", async () => {
+      mockSupabase.from.mockImplementation(((table: string) => {
+        if (table === "tickets") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          };
+        }
+        return (mockSupabase.from as any)(table);
+      }) as any);
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      const data = await chatService.getTicketMetadata("missing");
+      expect(data).toBeNull();
+    });
+
+    it("returns null when query errors", async () => {
+      mockSupabase.from.mockImplementation(((table: string) => {
+        if (table === "tickets") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: null,
+              error: { code: "42501", message: "permission denied" },
+            }),
+          };
+        }
+        return (mockSupabase.from as any)(table);
+      }) as any);
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      const data = await chatService.getTicketMetadata("forbidden");
+      expect(data).toBeNull();
+    });
+  });
+
   describe("markAsRead", () => {
     it("should call RPC to mark messages as read", async () => {
       const mockUser = { id: "user-123" };

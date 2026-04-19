@@ -22,7 +22,8 @@ import {
   Pencil,
   Trash2,
   Flag,
-  X
+  X,
+  Wrench
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -111,6 +112,28 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
       : currentProfileId === conversation.tenant_profile_id
       ? "tenant"
       : "provider";
+
+  // Sprint 4 — métadata ticket affichée dans le header quand la conv y est liée
+  const [ticketMeta, setTicketMeta] = useState<{
+    id: string;
+    titre: string;
+    statut: string;
+    priorite: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!conversation.ticket_id) {
+      setTicketMeta(null);
+      return;
+    }
+    let cancelled = false;
+    chatService.getTicketMetadata(conversation.ticket_id).then((data) => {
+      if (!cancelled) setTicketMeta(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [conversation.ticket_id]);
 
   // Charger les messages
   useEffect(() => {
@@ -412,9 +435,18 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
             <p className="text-xs text-muted-foreground truncate">
               {conversation.property_address}
             </p>
+            {ticketMeta && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                <Wrench className="h-3 w-3 flex-shrink-0" aria-hidden="true" />
+                <span className="truncate">Ticket · {ticketMeta.titre}</span>
+                <Badge variant="outline" className="text-[10px] capitalize px-1.5 py-0 h-4">
+                  {ticketMeta.statut.replace("_", " ")}
+                </Badge>
+              </div>
+            )}
           </div>
           {otherRole && <ConversationRoleBadge role={otherRole} size="sm" />}
-          {conversation.ticket_id && (
+          {conversation.ticket_id && !ticketMeta && (
             <Badge variant="secondary" className="text-xs">
               Ticket lié
             </Badge>
