@@ -17,6 +17,7 @@ import {
   Ticket
 } from "lucide-react";
 import { chatService, type Conversation } from "@/lib/services/chat.service";
+import { getInitials } from "@/lib/design-system/utils";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -109,6 +110,13 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
   const getOtherAvatar = (conv: Conversation) => {
     const isOwner = currentProfileId === conv.owner_profile_id;
     return isOwner ? conv.tenant_avatar : conv.owner_avatar;
+  };
+
+  const getOtherInitials = (conv: Conversation) => {
+    const isOwner = currentProfileId === conv.owner_profile_id;
+    const prenom = isOwner ? conv.tenant_prenom : conv.owner_prenom;
+    const nom = isOwner ? conv.tenant_nom : conv.owner_nom;
+    return getInitials(prenom, nom);
   };
 
   const formatLastMessage = (dateString?: string | null) => {
@@ -219,12 +227,7 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
                           <AvatarImage src={getOtherAvatar(conversation)!} alt={getOtherName(conversation) || "Interlocuteur"} />
                         )}
                         <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10">
-                          {getOtherName(conversation)
-                            ?.split(" ")
-                            .map((n) => n[0])
-                            .join("")
-                            .toUpperCase()
-                            .slice(0, 2) || "?"}
+                          {getOtherInitials(conversation)}
                         </AvatarFallback>
                       </Avatar>
 

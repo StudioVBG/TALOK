@@ -24,6 +24,10 @@ export interface Conversation {
   // Joined data
   owner_name?: string;
   tenant_name?: string;
+  owner_prenom?: string | null;
+  owner_nom?: string | null;
+  tenant_prenom?: string | null;
+  tenant_nom?: string | null;
   owner_avatar?: string | null;
   tenant_avatar?: string | null;
   property_address?: string;
@@ -108,11 +112,13 @@ class ChatService {
       .select(`
         *,
         owner:profiles!conversations_owner_profile_id_fkey (
+          id,
           prenom,
           nom,
           avatar_url
         ),
         tenant:profiles!conversations_tenant_profile_id_fkey (
+          id,
           prenom,
           nom,
           avatar_url
@@ -128,14 +134,44 @@ class ChatService {
 
     if (error) throw error;
 
-    return (data || []).map((conv: any) => ({
-      ...conv,
-      owner_name: `${conv.owner?.prenom || ""} ${conv.owner?.nom || ""}`.trim(),
-      tenant_name: `${conv.tenant?.prenom || ""} ${conv.tenant?.nom || ""}`.trim(),
-      owner_avatar: conv.owner?.avatar_url || null,
-      tenant_avatar: conv.tenant?.avatar_url || null,
-      property_address: conv.property ? `${conv.property.adresse_complete}, ${conv.property.ville}` : "",
-    }));
+    // Fallback : si l'embed FK ne renvoie pas le profil (RLS/visibilité),
+    // on résout les profils manquants via une seconde requête ciblée.
+    const missingProfileIds = new Set<string>();
+    for (const conv of (data || []) as any[]) {
+      if (!conv.owner?.prenom && !conv.owner?.nom) missingProfileIds.add(conv.owner_profile_id);
+      if (!conv.tenant?.prenom && !conv.tenant?.nom) missingProfileIds.add(conv.tenant_profile_id);
+    }
+    const profileMap = new Map<string, { prenom?: string; nom?: string; avatar_url?: string | null }>();
+    if (missingProfileIds.size > 0) {
+      const { data: profs } = await this.supabase
+        .from("profiles")
+        .select("id, prenom, nom, avatar_url")
+        .in("id", Array.from(missingProfileIds));
+      for (const p of (profs || []) as any[]) {
+        profileMap.set(p.id, { prenom: p.prenom, nom: p.nom, avatar_url: p.avatar_url });
+      }
+    }
+
+    return (data || []).map((conv: any) => {
+      const owner = conv.owner?.prenom || conv.owner?.nom
+        ? conv.owner
+        : profileMap.get(conv.owner_profile_id);
+      const tenant = conv.tenant?.prenom || conv.tenant?.nom
+        ? conv.tenant
+        : profileMap.get(conv.tenant_profile_id);
+      return {
+        ...conv,
+        owner_prenom: owner?.prenom || null,
+        owner_nom: owner?.nom || null,
+        tenant_prenom: tenant?.prenom || null,
+        tenant_nom: tenant?.nom || null,
+        owner_name: `${owner?.prenom || ""} ${owner?.nom || ""}`.trim(),
+        tenant_name: `${tenant?.prenom || ""} ${tenant?.nom || ""}`.trim(),
+        owner_avatar: owner?.avatar_url || null,
+        tenant_avatar: tenant?.avatar_url || null,
+        property_address: conv.property?.adresse_complete || "",
+      };
+    });
   }
 
   /**
@@ -171,11 +207,15 @@ class ChatService {
 
     return {
       ...data,
+      owner_prenom: data.owner?.prenom || null,
+      owner_nom: data.owner?.nom || null,
+      tenant_prenom: data.tenant?.prenom || null,
+      tenant_nom: data.tenant?.nom || null,
       owner_name: `${data.owner?.prenom || ""} ${data.owner?.nom || ""}`.trim(),
       tenant_name: `${data.tenant?.prenom || ""} ${data.tenant?.nom || ""}`.trim(),
       owner_avatar: data.owner?.avatar_url || null,
       tenant_avatar: data.tenant?.avatar_url || null,
-      property_address: data.property ? `${data.property.adresse_complete}, ${data.property.ville}` : "",
+      property_address: data.property?.adresse_complete || "",
     } as Conversation;
   }
 
