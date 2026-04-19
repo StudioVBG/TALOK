@@ -83,9 +83,20 @@ interface ChatWindowProps {
   currentProfileId: string;
   onBack?: () => void;
   onConversationStatusChange?: (conversationId: string, status: "archived" | "closed") => void;
+  /**
+   * Sprint 5 — vue admin read-only. Masque l'input, l'upload, les actions
+   * de statut et le bouton de signalement. Les messages restent lisibles.
+   */
+  readOnly?: boolean;
 }
 
-export function ChatWindow({ conversation, currentProfileId, onBack, onConversationStatusChange }: ChatWindowProps) {
+export function ChatWindow({
+  conversation,
+  currentProfileId,
+  onBack,
+  onConversationStatusChange,
+  readOnly = false,
+}: ChatWindowProps) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -451,22 +462,24 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
               Ticket lié
             </Badge>
           )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleClose}>
-                Clôturer (résolu)
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleArchive} className="text-muted-foreground">
-                Archiver
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {!readOnly && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleClose}>
+                  Clôturer (résolu)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleArchive} className="text-muted-foreground">
+                  Archiver
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </CardHeader>
 
@@ -665,8 +678,8 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
                             )}
                           </div>
 
-                          {/* Report button for received messages */}
-                          {!isMe && !message.id.startsWith("temp-") && (
+                          {/* Report button for received messages — masqué en read-only */}
+                          {!isMe && !readOnly && !message.id.startsWith("temp-") && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -688,57 +701,63 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
         )}
       </div>
 
-      {/* Input */}
-      <div className="p-4 border-t flex-shrink-0">
-        <form onSubmit={handleSend} className="flex items-center gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
-            onChange={handleFileSelect}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 text-muted-foreground hover:text-foreground"
-            disabled={sending || uploading}
-            onClick={() => fileInputRef.current?.click()}
-            aria-label="Ajouter une pièce jointe"
-          >
-            {uploading ? (
-              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-            ) : (
-              <Paperclip className="h-5 w-5" aria-hidden="true" />
-            )}
-          </Button>
+      {/* Input — masqué en mode read-only (vue admin) */}
+      {readOnly ? (
+        <div className="p-3 border-t flex-shrink-0 bg-muted/30 text-center text-xs text-muted-foreground">
+          Vue lecture seule — réservée à l'administration.
+        </div>
+      ) : (
+        <div className="p-4 border-t flex-shrink-0">
+          <form onSubmit={handleSend} className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+              onChange={handleFileSelect}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 text-muted-foreground hover:text-foreground"
+              disabled={sending || uploading}
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Ajouter une pièce jointe"
+            >
+              {uploading ? (
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Paperclip className="h-5 w-5" aria-hidden="true" />
+              )}
+            </Button>
 
-          <Input
-            ref={inputRef}
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Écrivez votre message..."
-            className="flex-1"
-            disabled={sending}
-          />
+            <Input
+              ref={inputRef}
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Écrivez votre message..."
+              className="flex-1"
+              disabled={sending}
+            />
 
-          <Button
-            type="submit"
-            size="icon"
-            className="h-10 w-10"
-            disabled={!newMessage.trim() || sending}
-            aria-label={sending ? "Envoi en cours..." : "Envoyer le message"}
-          >
-            {sending ? (
-              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-            ) : (
-              <Send className="h-5 w-5" aria-hidden="true" />
-            )}
-          </Button>
-        </form>
-      </div>
+            <Button
+              type="submit"
+              size="icon"
+              className="h-10 w-10"
+              disabled={!newMessage.trim() || sending}
+              aria-label={sending ? "Envoi en cours..." : "Envoyer le message"}
+            >
+              {sending ? (
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Send className="h-5 w-5" aria-hidden="true" />
+              )}
+            </Button>
+          </form>
+        </div>
+      )}
 
       {/* Report dialog */}
       {reportingMessage && (
