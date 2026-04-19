@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,8 @@ import {
   MessageSquare,
   Home,
   RefreshCw,
-  Ticket
+  Ticket,
+  Loader2
 } from "lucide-react";
 import { chatService, type Conversation } from "@/lib/services/chat.service";
 import { getInitials } from "@/lib/design-system/utils";
@@ -28,18 +29,24 @@ interface ConversationsListProps {
   onSelect: (conversation: Conversation) => void;
 }
 
+const PAGE_SIZE = 25;
+
 export function ConversationsList({ currentProfileId, currentRole, selectedId, onSelect }: ConversationsListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [search, setSearch] = useState("");
   const [usePolling, setUsePolling] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const loadConversations = useCallback(async () => {
     try {
       setLoadError(null);
-      const data = await chatService.getConversations();
-      setConversations(data);
+      const result = await chatService.getConversations({ limit: PAGE_SIZE, offset: 0 });
+      setConversations(result.data);
+      setHasMore(result.hasMore);
     } catch (error) {
       console.error("Erreur chargement conversations:", error);
       setLoadError("Impossible de charger les conversations");
@@ -47,6 +54,27 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
       setLoading(false);
     }
   }, []);
+
+  const loadMore = useCallback(async () => {
+    if (isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    try {
+      const result = await chatService.getConversations({
+        limit: PAGE_SIZE,
+        offset: conversations.length,
+      });
+      setConversations((prev) => {
+        const seen = new Set(prev.map((c) => c.id));
+        const next = result.data.filter((c) => !seen.has(c.id));
+        return [...prev, ...next];
+      });
+      setHasMore(result.hasMore);
+    } catch (error) {
+      console.error("Erreur chargement page suivante:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  }, [isLoadingMore, hasMore, conversations.length]);
 
   useEffect(() => {
     loadConversations();
@@ -83,6 +111,23 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
       if (pollInterval) clearInterval(pollInterval);
     };
   }, [loadConversations, usePolling]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel || !hasMore || loading) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          loadMore();
+        }
+      },
+      { rootMargin: "100px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadMore]);
 
 
   const filteredConversations = conversations.filter((conv) => {
@@ -280,6 +325,13 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
                   </motion.div>
                 );
               })}
+              {hasMore && !search && (
+                <div ref={sentinelRef} className="flex items-center justify-center py-4">
+                  {isLoadingMore && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+              )}
             </div>
           )}
         </CardContent>
