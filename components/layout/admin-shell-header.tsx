@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BarChart3, Bell, LogOut, User, ChevronDown } from "lucide-react";
+import { LogOut, User, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -70,13 +70,6 @@ export function AdminShellHeader() {
       onBack={() => router.back()}
       rightContent={
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild className="hidden xl:flex">
-            <Link href="/admin/reports">
-              <BarChart3 className="mr-2 h-4 w-4" />
-              Rapports
-            </Link>
-          </Button>
-
           <AdminNotificationBell />
 
           <DropdownMenu>

@@ -76,7 +76,6 @@ const adminNavItems: NavCategory[] = [
     items: [
       { href: "/admin/people", label: "Annuaire", icon: Users },
       { href: "/admin/properties", label: "Parc immobilier", icon: Building2 },
-      { href: "/admin/reports", label: "Rapports", icon: FileText },
       { href: "/admin/documents", label: "Documents", icon: FolderOpen },
     ],
   },
@@ -102,9 +101,15 @@ const adminNavItems: NavCategory[] = [
     ],
   },
   {
-    category: "Plateforme",
+    category: "Analyse & rapports",
     items: [
       { href: "/admin/metrics", label: "Métriques", icon: TrendingUp },
+      { href: "/admin/reports", label: "Rapports", icon: FileText },
+    ],
+  },
+  {
+    category: "Plateforme",
+    items: [
       { href: "/admin/flags", label: "Feature Flags", icon: Flag },
       { href: "/admin/crons", label: "Tâches planifiées", icon: Clock },
     ],
