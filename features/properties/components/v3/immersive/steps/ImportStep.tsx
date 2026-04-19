@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Link as LinkIcon, ArrowRight, Building, Loader2 } from "lucide-react";
+import { Sparkles, Link as LinkIcon, ArrowRight, Building, Loader2, Info } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -65,8 +65,8 @@ export function ImportStep({ onImport, onSkip, isAnalyzing }: ImportStepProps) {
                 </div>
 
                 <form onSubmit={handleSubmit} className="mt-auto space-y-3">
-                    <Input 
-                        placeholder="https://www.leboncoin.fr/..." 
+                    <Input
+                        placeholder="https://www.pap.fr/..."
                         className="bg-background border-indigo-200 dark:border-indigo-700 focus-visible:ring-indigo-500"
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
@@ -122,8 +122,17 @@ export function ImportStep({ onImport, onSkip, isAnalyzing }: ImportStepProps) {
         </motion.div>
       </div>
       
-      <div className="text-center text-xs text-muted-foreground">
-         Compatible avec la plupart des sites immobiliers majeurs.
+      <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20 p-3 text-xs text-amber-900 dark:text-amber-200 flex gap-2">
+         <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+         <div className="space-y-1">
+            <p className="font-medium">Compatibilité de l'import automatique</p>
+            <p>
+               <span className="font-semibold">Fonctionne bien :</span> PAP, Orpi, Century21, Laforêt, Guy Hoquet, sites d'agences indépendantes.
+            </p>
+            <p>
+               <span className="font-semibold">Souvent bloqué :</span> LeBonCoin, SeLoger, BienIci, Logic-Immo (protection anti-bot). Préférez la création manuelle pour ces sites.
+            </p>
+         </div>
       </div>
     </div>
   );
