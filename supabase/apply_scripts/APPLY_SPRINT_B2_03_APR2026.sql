@@ -1,6 +1,6 @@
 -- =============================================================================
 -- APPLY SPRINT B2 — BATCH 03_APR2026 (IDEMPOTENT v2)
--- Genere le 2026-04-19T07:54:58Z
+-- Genere le 2026-04-19T17:21:30Z
 --
 -- Contenu : 71 migrations (action=apply uniquement)
 -- Plage   : 20260401000000 -> 20260417110000
@@ -2021,7 +2021,12 @@ WHERE exercise_id IS NULL AND annee IS NOT NULL;
 -- 1d. Renommer l'ancienne table et créer une vue de compatibilité
 -- On ne DROP pas l'ancienne table pour éviter de casser du code legacy
 -- qui pourrait encore la référencer via des FK ou du code direct
-ALTER TABLE public.charge_regularisations RENAME TO charge_regularisations_legacy;
+DO $RENAME$ BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='charge_regularisations' AND table_type='BASE TABLE')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='charge_regularisations_legacy') THEN
+    EXECUTE 'ALTER TABLE public.charge_regularisations RENAME TO charge_regularisations_legacy';
+  END IF;
+END $RENAME$;
 
 -- Vue de compatibilité : le code qui SELECT depuis charge_regularisations
 -- continue de fonctionner, pointant vers la table normalisée
