@@ -75,18 +75,167 @@ describe("ChatService", () => {
             select: vi.fn().mockReturnThis(),
             or: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            order: vi.fn().mockResolvedValue({ data: mockConversations }),
+            order: vi.fn().mockReturnThis(),
+            range: vi.fn().mockResolvedValue({ data: mockConversations, count: 1 }),
           };
         }
         return (mockSupabase.from as any)(table);
       }) as any);
 
       const { chatService } = await import("@/lib/services/chat.service");
-      const conversations = await chatService.getConversations();
+      const result = await chatService.getConversations();
 
-      expect(conversations).toHaveLength(1);
-      expect(conversations[0].owner_name).toBe("John Doe");
-      expect(conversations[0].tenant_name).toBe("Jane Smith");
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].owner_name).toBe("John Doe");
+      expect(result.data[0].tenant_name).toBe("Jane Smith");
+      expect(result.count).toBe(1);
+      expect(result.hasMore).toBe(false);
+    });
+
+    it("should respect limit and offset parameters via .range()", async () => {
+      const mockUser = { id: "user-123" };
+      const mockProfile = { id: "profile-123" };
+      const rangeMock = vi.fn().mockResolvedValue({ data: [], count: 0 });
+
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } });
+      mockSupabase.from.mockImplementation(((table: string) => {
+        if (table === "profiles") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockProfile }),
+          };
+        }
+        if (table === "conversations") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            or: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
+            range: rangeMock,
+          };
+        }
+        return (mockSupabase.from as any)(table);
+      }) as any);
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      await chatService.getConversations({ limit: 10, offset: 20 });
+
+      expect(rangeMock).toHaveBeenCalledWith(20, 29);
+    });
+
+    it("should default to limit=25 offset=0 when no params", async () => {
+      const mockUser = { id: "user-123" };
+      const mockProfile = { id: "profile-123" };
+      const rangeMock = vi.fn().mockResolvedValue({ data: [], count: 0 });
+
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } });
+      mockSupabase.from.mockImplementation(((table: string) => {
+        if (table === "profiles") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockProfile }),
+          };
+        }
+        if (table === "conversations") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            or: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
+            range: rangeMock,
+          };
+        }
+        return (mockSupabase.from as any)(table);
+      }) as any);
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      await chatService.getConversations();
+
+      expect(rangeMock).toHaveBeenCalledWith(0, 24);
+    });
+
+    it("should return hasMore=true when more results exist", async () => {
+      const mockUser = { id: "user-123" };
+      const mockProfile = { id: "profile-123" };
+      const mockConversations = Array.from({ length: 25 }, (_, i) => ({
+        id: `conv-${i}`,
+        owner_profile_id: "profile-123",
+        tenant_profile_id: "profile-456",
+        owner: { prenom: "O", nom: "" },
+        tenant: { prenom: "T", nom: "" },
+        property: { adresse_complete: "" },
+      }));
+
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } });
+      mockSupabase.from.mockImplementation(((table: string) => {
+        if (table === "profiles") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockProfile }),
+          };
+        }
+        if (table === "conversations") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            or: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
+            range: vi.fn().mockResolvedValue({ data: mockConversations, count: 100 }),
+          };
+        }
+        return (mockSupabase.from as any)(table);
+      }) as any);
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      const result = await chatService.getConversations({ limit: 25, offset: 0 });
+
+      expect(result.data).toHaveLength(25);
+      expect(result.count).toBe(100);
+      expect(result.hasMore).toBe(true);
+    });
+
+    it("should return hasMore=false on last page", async () => {
+      const mockUser = { id: "user-123" };
+      const mockProfile = { id: "profile-123" };
+      const mockConversations = Array.from({ length: 5 }, (_, i) => ({
+        id: `conv-${i}`,
+        owner_profile_id: "profile-123",
+        tenant_profile_id: "profile-456",
+        owner: { prenom: "O", nom: "" },
+        tenant: { prenom: "T", nom: "" },
+        property: { adresse_complete: "" },
+      }));
+
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } });
+      mockSupabase.from.mockImplementation(((table: string) => {
+        if (table === "profiles") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockProfile }),
+          };
+        }
+        if (table === "conversations") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            or: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            order: vi.fn().mockReturnThis(),
+            range: vi.fn().mockResolvedValue({ data: mockConversations, count: 30 }),
+          };
+        }
+        return (mockSupabase.from as any)(table);
+      }) as any);
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      const result = await chatService.getConversations({ limit: 25, offset: 25 });
+
+      expect(result.data).toHaveLength(5);
+      expect(result.count).toBe(30);
+      expect(result.hasMore).toBe(false);
     });
   });
 
