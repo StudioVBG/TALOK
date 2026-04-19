@@ -1,6 +1,6 @@
 -- =============================================================================
 -- APPLY SPRINT B2 — BATCH 01_FEB2026 (IDEMPOTENT v2)
--- Genere le 2026-04-19T07:52:43Z
+-- Genere le 2026-04-19T07:54:49Z
 --
 -- Contenu : 61 migrations (action=apply uniquement)
 -- Plage   : 20260208100000 -> 20260230100000
@@ -8084,7 +8084,7 @@ BEGIN
       WHERE sub.rn > 1
     );
 
-    CREATE UNIQUE INDEX uq_lease_signers_lease_profile
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_lease_signers_lease_profile
       ON lease_signers (lease_id, profile_id)
       WHERE profile_id IS NOT NULL;
 
@@ -8116,7 +8116,7 @@ BEGIN
         WHERE sub.rn > 1
       );
 
-      CREATE UNIQUE INDEX uq_roommates_lease_profile
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_roommates_lease_profile
         ON roommates (lease_id, profile_id);
 
       RAISE NOTICE 'Created index uq_roommates_lease_profile on roommates';
@@ -8148,7 +8148,7 @@ BEGIN
       WHERE sub.rn > 1
     );
 
-    CREATE UNIQUE INDEX uq_documents_storage_path
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_documents_storage_path
       ON documents (storage_path)
       WHERE storage_path IS NOT NULL;
 
@@ -13423,7 +13423,7 @@ CREATE TABLE IF NOT EXISTS owner_payment_audit_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_opal_owner_created ON owner_payment_audit_log(owner_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_opal_owner_created ON owner_payment_audit_log(owner_id, created_at DESC);
 
 COMMENT ON TABLE owner_payment_audit_log IS 'Audit trail PSD3 pour les opérations sur les moyens de paiement propriétaire (abonnement, carte, etc.)';
 
@@ -13844,10 +13844,10 @@ CREATE TABLE IF NOT EXISTS tenant_payment_methods (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_tpm_tenant ON tenant_payment_methods(tenant_profile_id);
-CREATE INDEX idx_tpm_stripe_pm ON tenant_payment_methods(stripe_payment_method_id);
-CREATE INDEX idx_tpm_default ON tenant_payment_methods(tenant_profile_id, is_default) WHERE is_default = true;
-CREATE INDEX idx_tpm_active ON tenant_payment_methods(tenant_profile_id, status) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_tpm_tenant ON tenant_payment_methods(tenant_profile_id);
+CREATE INDEX IF NOT EXISTS idx_tpm_stripe_pm ON tenant_payment_methods(stripe_payment_method_id);
+CREATE INDEX IF NOT EXISTS idx_tpm_default ON tenant_payment_methods(tenant_profile_id, is_default) WHERE is_default = true;
+CREATE INDEX IF NOT EXISTS idx_tpm_active ON tenant_payment_methods(tenant_profile_id, status) WHERE status = 'active';
 
 ALTER TABLE tenant_payment_methods ENABLE ROW LEVEL SECURITY;
 
@@ -13941,10 +13941,10 @@ CREATE TABLE IF NOT EXISTS sepa_mandates (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_sepa_mandates_tenant ON sepa_mandates(tenant_profile_id);
-CREATE INDEX idx_sepa_mandates_lease ON sepa_mandates(lease_id);
-CREATE INDEX idx_sepa_mandates_status ON sepa_mandates(status) WHERE status = 'active';
-CREATE INDEX idx_sepa_mandates_next_collection ON sepa_mandates(next_collection_date) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_sepa_mandates_tenant ON sepa_mandates(tenant_profile_id);
+CREATE INDEX IF NOT EXISTS idx_sepa_mandates_lease ON sepa_mandates(lease_id);
+CREATE INDEX IF NOT EXISTS idx_sepa_mandates_status ON sepa_mandates(status) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_sepa_mandates_next_collection ON sepa_mandates(next_collection_date) WHERE status = 'active';
 
 ALTER TABLE sepa_mandates ENABLE ROW LEVEL SECURITY;
 
@@ -14010,9 +14010,9 @@ CREATE TABLE IF NOT EXISTS payment_schedules (
   UNIQUE(lease_id)
 );
 
-CREATE INDEX idx_ps_active ON payment_schedules(is_active, collection_day) WHERE is_active = true;
-CREATE INDEX idx_ps_next_retry ON payment_schedules(next_retry_at) WHERE next_retry_at IS NOT NULL;
-CREATE INDEX idx_ps_lease ON payment_schedules(lease_id);
+CREATE INDEX IF NOT EXISTS idx_ps_active ON payment_schedules(is_active, collection_day) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_ps_next_retry ON payment_schedules(next_retry_at) WHERE next_retry_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_ps_lease ON payment_schedules(lease_id);
 
 ALTER TABLE payment_schedules ENABLE ROW LEVEL SECURITY;
 
@@ -14064,8 +14064,8 @@ CREATE TABLE IF NOT EXISTS payment_method_audit_log (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_pmal_tenant ON payment_method_audit_log(tenant_profile_id, created_at DESC);
-CREATE INDEX idx_pmal_pm ON payment_method_audit_log(payment_method_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pmal_tenant ON payment_method_audit_log(tenant_profile_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pmal_pm ON payment_method_audit_log(payment_method_id, created_at DESC);
 
 ALTER TABLE payment_method_audit_log ENABLE ROW LEVEL SECURITY;
 
