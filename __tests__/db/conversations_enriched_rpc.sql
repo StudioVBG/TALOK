@@ -276,6 +276,86 @@ END $$;
 
 
 -- ============================================================================
+-- Test 9 : p_search matches participant prenom (owner viewer, cherche "Tenant")
+-- Le fixture a tenant prenom='Tenant' → doit matcher la conv owner_tenant.
+-- ============================================================================
+SELECT pg_temp.set_viewer('11111111-1111-1111-1111-111111111111');
+
+DO $$
+DECLARE
+  v_count INT;
+  v_id TEXT;
+BEGIN
+  SELECT COUNT(*)::INT, MIN(id::text) INTO v_count, v_id
+  FROM public.get_conversations_enriched(25, 0, NULL, 'Tenant');
+
+  IF v_count != 1 THEN
+    RAISE EXCEPTION 'TEST 9 FAILED : attendu 1 match pour "Tenant", obtenu %', v_count;
+  END IF;
+  IF v_id != 'aaaaaaaa-0001-0000-0000-000000000000' THEN
+    RAISE EXCEPTION 'TEST 9 FAILED : attendu conv owner_tenant, obtenu %', v_id;
+  END IF;
+  RAISE NOTICE 'TEST 9 OK : search "Tenant" matche la conv owner_tenant';
+END $$;
+
+
+-- ============================================================================
+-- Test 10 : p_search matches ticket titre (owner viewer, cherche "Fuite")
+-- Fixture ticket titre='Fuite robinet cuisine' → owner_provider conv matche.
+-- ============================================================================
+DO $$
+DECLARE
+  v_count INT;
+  v_id TEXT;
+BEGIN
+  SELECT COUNT(*)::INT, MIN(id::text) INTO v_count, v_id
+  FROM public.get_conversations_enriched(25, 0, NULL, 'Fuite');
+
+  IF v_count != 1 THEN
+    RAISE EXCEPTION 'TEST 10 FAILED : attendu 1 match pour "Fuite", obtenu %', v_count;
+  END IF;
+  IF v_id != 'aaaaaaaa-0002-0000-0000-000000000000' THEN
+    RAISE EXCEPTION 'TEST 10 FAILED : attendu conv owner_provider, obtenu %', v_id;
+  END IF;
+  RAISE NOTICE 'TEST 10 OK : search "Fuite" matche la conv owner_provider via ticket titre';
+END $$;
+
+
+-- ============================================================================
+-- Test 11 : p_search no match → 0 rows, total_count = 0
+-- ============================================================================
+DO $$
+DECLARE
+  v_count INT;
+BEGIN
+  SELECT COUNT(*)::INT INTO v_count
+  FROM public.get_conversations_enriched(25, 0, NULL, 'ZZZ_nothing_matches_ZZZ');
+
+  IF v_count != 0 THEN
+    RAISE EXCEPTION 'TEST 11 FAILED : attendu 0 match, obtenu %', v_count;
+  END IF;
+  RAISE NOTICE 'TEST 11 OK : search qui ne matche rien retourne 0 rows';
+END $$;
+
+
+-- ============================================================================
+-- Test 12 : p_search vide/whitespace traité comme NULL (pas de filtre)
+-- ============================================================================
+DO $$
+DECLARE
+  v_count INT;
+BEGIN
+  SELECT COUNT(*)::INT INTO v_count
+  FROM public.get_conversations_enriched(25, 0, NULL, '   ');
+
+  IF v_count != 2 THEN
+    RAISE EXCEPTION 'TEST 12 FAILED : attendu 2 rows (pas de filtre), obtenu %', v_count;
+  END IF;
+  RAISE NOTICE 'TEST 12 OK : search vide équivaut à pas de filtre';
+END $$;
+
+
+-- ============================================================================
 -- Cleanup
 -- ============================================================================
 SET session_replication_role = replica;
