@@ -9,6 +9,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { sendEmail } from "@/lib/emails/resend.service";
 
 // Types
 export type NotificationType = 
@@ -121,7 +122,7 @@ const notificationConfig: Record<NotificationType, {
   },
   message_received: {
     defaultPriority: "normal",
-    defaultChannels: ["in_app", "push"],
+    defaultChannels: ["in_app", "push", "email"],
     icon: "💬",
   },
   maintenance_scheduled: {
@@ -257,6 +258,126 @@ async function dispatchPush(
 }
 
 /**
+ * Envoie un email de notification via Resend. Best-effort, ne jette pas.
+ *
+ * Respecte :
+ *   - notification_preferences.email_enabled (défaut true si absent)
+ *   - notification_preferences.disabled_templates (skip si type dedans)
+ * Throttle : saute l'envoi si une notification du même type pour le même
+ * profil + même conversation a déjà reçu un email dans les 2 dernières
+ * minutes (évite le spam lors d'échanges rapides).
+ *
+ * Après envoi, met à jour notifications.channels_status.email_sent_at pour
+ * que les prochains appels voient l'émission récente via le throttle.
+ */
+async function dispatchEmail(
+  notificationId: string,
+  profileId: string,
+  title: string,
+  body: string,
+  actionUrl: string | undefined,
+  notificationType: NotificationType,
+  metadata?: Record<string, any>,
+): Promise<void> {
+  try {
+    const serviceClient = createServiceRoleClient();
+
+    // 1. Résoudre email + prénom depuis profiles → auth.users
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("user_id, prenom")
+      .eq("id", profileId)
+      .maybeSingle() as { data: { user_id: string | null; prenom: string | null } | null };
+    if (!profile?.user_id) return;
+
+    const { data: authUser } = await serviceClient.auth.admin.getUserById(profile.user_id);
+    const email = authUser?.user?.email;
+    if (!email) return;
+
+    // 2. Préférences utilisateur — table notification_preferences
+    const { data: prefs } = await serviceClient
+      .from("notification_preferences")
+      .select("email_enabled, disabled_templates")
+      .eq("profile_id", profileId)
+      .maybeSingle() as { data: { email_enabled: boolean | null; disabled_templates: string[] | null } | null };
+    if (prefs?.email_enabled === false) return;
+    if (prefs?.disabled_templates?.includes(notificationType)) return;
+
+    // 3. Throttle 2 minutes par (profile, type, conversation_id)
+    const conversationId = metadata?.conversationId ?? metadata?.conversation_id;
+    if (conversationId) {
+      const twoMinAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+      const { data: recent } = await serviceClient
+        .from("notifications")
+        .select("id, channels_status, metadata")
+        .eq("profile_id", profileId)
+        .eq("type", notificationType)
+        .gte("created_at", twoMinAgo)
+        .neq("id", notificationId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      const throttled = (recent ?? []).some((n: any) => {
+        const cid = n.metadata?.conversationId ?? n.metadata?.conversation_id;
+        return cid === conversationId && n.channels_status?.email_sent_at;
+      });
+      if (throttled) return;
+    }
+
+    // 4. Envoi via Resend — HTML minimal, pas de template dédié v1
+    const fullUrl = actionUrl
+      ? actionUrl.startsWith("http")
+        ? actionUrl
+        : `https://app.talok.fr${actionUrl}`
+      : undefined;
+    const salutation = profile.prenom ? `Bonjour ${profile.prenom},` : "Bonjour,";
+    const html = `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;padding:24px;">
+        <p>${salutation}</p>
+        <p><strong>${escapeHtml(title)}</strong></p>
+        <p style="color:#374151;">${escapeHtml(body)}</p>
+        ${fullUrl ? `<p style="margin-top:24px;"><a href="${fullUrl}" style="display:inline-block;background:#2563EB;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600;">Ouvrir sur Talok</a></p>` : ""}
+        <hr style="margin:32px 0;border:0;border-top:1px solid #E5E7EB;">
+        <p style="color:#6B7280;font-size:12px;">Vous recevez cet email car vous avez une notification Talok. Gérez vos préférences depuis votre espace.</p>
+      </div>
+    `;
+
+    const result = await sendEmail({
+      to: email,
+      subject: title,
+      html,
+      tags: [
+        { name: "notification_type", value: notificationType },
+        { name: "talok_channel", value: "notification" },
+      ],
+    });
+
+    if (result.success) {
+      // 5. Marquer email_sent_at sur la notification pour le throttle futur
+      await serviceClient
+        .from("notifications")
+        .update({
+          channels_status: {
+            email_sent_at: new Date().toISOString(),
+            email_id: result.id ?? null,
+          },
+        } as any)
+        .eq("id", notificationId);
+    }
+  } catch (e) {
+    console.warn("[notification-service] Email dispatch failed:", e);
+  }
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+/**
  * Crée une notification in-app et envoie un push réel si le canal push est activé.
  * recipientId est traité comme profile_id : on résout user_id pour la RLS.
  */
@@ -312,6 +433,19 @@ export async function createNotification(
   if (channels.includes("push")) {
     dispatchPush(input.recipientId, input.title, input.message, input.actionUrl)
       .catch((e) => console.warn("[notification-service] dispatchPush error:", e));
+  }
+
+  // Envoyer un email si le canal email est activé (best-effort, throttle 2min)
+  if (channels.includes("email") && data?.id) {
+    dispatchEmail(
+      data.id as string,
+      input.recipientId,
+      input.title,
+      input.message,
+      input.actionUrl,
+      input.type,
+      input.metadata,
+    ).catch((e) => console.warn("[notification-service] dispatchEmail error:", e));
   }
 
   // Convertir au format Notification
@@ -568,15 +702,20 @@ export async function notifyMessageReceived(
   senderName: string,
   messagePreview: string,
   conversationId: string,
-  recipientRole?: "owner" | "tenant"
+  recipientRole?: "owner" | "tenant" | "provider"
 ): Promise<Notification | null> {
-  const basePath = recipientRole === "owner" ? "/owner/messages" : "/tenant/messages";
+  const basePath =
+    recipientRole === "owner"
+      ? "/owner/messages"
+      : recipientRole === "provider"
+      ? "/provider/messages"
+      : "/tenant/messages";
   return createNotification({
     type: "message_received",
     title: `Message de ${senderName}`,
     message: messagePreview.slice(0, 100) + (messagePreview.length > 100 ? "..." : ""),
     recipientId,
-    actionUrl: basePath,
+    actionUrl: `${basePath}?conversation=${conversationId}`,
     actionLabel: "Répondre",
     metadata: { senderName, conversationId },
   });
