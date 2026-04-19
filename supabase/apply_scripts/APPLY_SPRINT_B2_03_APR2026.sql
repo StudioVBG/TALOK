@@ -1,6 +1,6 @@
 -- =============================================================================
 -- APPLY SPRINT B2 — BATCH 03_APR2026 (IDEMPOTENT v2)
--- Genere le 2026-04-19T17:33:50Z
+-- Genere le 2026-04-19T17:39:50Z
 --
 -- Contenu : 71 migrations (action=apply uniquement)
 -- Plage   : 20260401000000 -> 20260417110000
@@ -8705,8 +8705,7 @@ SELECT cron.schedule('copro-pv-distribution', '0 10 * * *',
 );
 
 -- ============================================================
-COMMENT ON SCHEMA cron IS 'pg_cron schedules including 5 copro cron jobs: convocation-reminders (9h daily), fund-call-reminders (8h daily), overdue-alerts (8h Monday), assembly-countdown (7h daily), pv-distribution (10h daily)';
-
+-- COMMENT ON SCHEMA cron SKIPPED (postgres is not owner on Supabase)
 COMMIT;
 
 -- -----------------------------------------------------------------------------
