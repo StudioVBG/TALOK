@@ -419,6 +419,30 @@ class ChatService {
   }
 
   /**
+   * Récupérer les métadonnées d'un ticket pour enrichir le header de la
+   * conversation associée (Sprint 4). Retourne null si le ticket est
+   * introuvable ou bloqué par RLS.
+   */
+  async getTicketMetadata(ticketId: string): Promise<{
+    id: string;
+    titre: string;
+    statut: string;
+    priorite: string;
+  } | null> {
+    const { data, error } = await this.supabase
+      .from("tickets")
+      .select("id, titre, statut, priorite")
+      .eq("id", ticketId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("[chatService.getTicketMetadata]", error);
+      return null;
+    }
+    return (data as { id: string; titre: string; statut: string; priorite: string } | null) ?? null;
+  }
+
+  /**
    * Récupérer une conversation par ID
    */
   async getConversation(conversationId: string): Promise<Conversation | null> {
