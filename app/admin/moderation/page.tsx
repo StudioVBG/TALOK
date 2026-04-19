@@ -78,6 +78,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { AdminConversationsPanel } from "@/components/admin/admin-conversations-panel";
 
 // Types
 interface ModerationRule {
@@ -671,6 +672,10 @@ export default function AdminModerationPage() {
               <Settings className="h-4 w-4" />
               Règles IA
             </TabsTrigger>
+            <TabsTrigger value="conversations" className="gap-2">
+              <MessageSquare className="h-4 w-4" />
+              Conversations
+            </TabsTrigger>
           </TabsList>
 
           {/* Queue Tab */}
@@ -948,6 +953,17 @@ export default function AdminModerationPage() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Conversations Tab — Sprint 5 admin read-only view */}
+          <TabsContent value="conversations" className="space-y-4">
+            {profile?.id ? (
+              <AdminConversationsPanel adminProfileId={profile.id} />
+            ) : (
+              <div className="text-center py-12 text-sm text-muted-foreground">
+                Profil admin non chargé.
+              </div>
+            )}
           </TabsContent>
         </Tabs>
 

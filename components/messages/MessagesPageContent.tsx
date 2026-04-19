@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { MessageSquare, ArrowRight, Plus, Loader2 } from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
 import { chatService } from "@/lib/services/chat.service";
-import type { Conversation } from "@/lib/services/chat.service";
+import type { Conversation, ConversationEnriched } from "@/lib/services/chat.service";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,7 +43,13 @@ interface MessagesPageContentProps {
 
 export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPageContentProps) {
   const pathname = usePathname();
-  const currentRole: "owner" | "tenant" = pathname?.startsWith("/owner") ? "owner" : "tenant";
+  const searchParams = useSearchParams();
+  const conversationIdFromUrl = searchParams?.get("conversation") ?? null;
+  const currentRole: "owner" | "tenant" | "provider" = pathname?.startsWith("/owner")
+    ? "owner"
+    : pathname?.startsWith("/provider")
+    ? "provider"
+    : "tenant";
   const [loading, setLoading] = useState(true);
   const [currentProfileId, setCurrentProfileId] = useState<string>("");
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
@@ -85,71 +91,75 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
         if (profile) {
           setCurrentProfileId(profile.id);
 
-          // Charger le contexte pour le bouton "Nouvelle conversation"
-          try {
-            // 1) Côté locataire : chercher via lease_signers
-            const { data: signerData } = await supabase
-              .from("lease_signers")
-              .select("lease_id")
-              .eq("profile_id", profile.id)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .single();
-
-            if (signerData?.lease_id) {
-              const { data: leaseData } = await supabase
-                .from("leases")
-                .select("id, property_id, properties(owner_id)")
-                .eq("id", signerData.lease_id)
+          // Sprint 5 — providers ne créent pas de conversation depuis ici
+          // (ils répondent uniquement). Skip les fetches lease/owner inutiles.
+          if (currentRole !== "provider") {
+            // Charger le contexte pour le bouton "Nouvelle conversation"
+            try {
+              // 1) Côté locataire : chercher via lease_signers
+              const { data: signerData } = await supabase
+                .from("lease_signers")
+                .select("lease_id")
+                .eq("profile_id", profile.id)
+                .order("created_at", { ascending: false })
+                .limit(1)
                 .single();
 
-              if (leaseData?.property_id && (leaseData as any).properties?.owner_id) {
-                setLeaseContext({
-                  propertyId: leaseData.property_id,
-                  ownerId: (leaseData as any).properties.owner_id,
-                  leaseId: leaseData.id,
-                });
-              }
-            }
-          } catch {
-            // Pas de bail signé — vérifier côté propriétaire
-          }
+              if (signerData?.lease_id) {
+                const { data: leaseData } = await supabase
+                  .from("leases")
+                  .select("id, property_id, properties(owner_id)")
+                  .eq("id", signerData.lease_id)
+                  .single();
 
-          // 2) Côté propriétaire : chercher les baux actifs avec locataires
-          try {
-            const { data: ownerLeases } = await supabase
-              .from("leases")
-              .select(`
-                id,
-                property_id,
-                properties(owner_id, adresse_complete, ville),
-                lease_signers(profile_id, profiles(prenom, nom))
-              `)
-              .eq("properties.owner_id", profile.id)
-              .in("statut", ["active", "signed"]);
-
-            if (ownerLeases && ownerLeases.length > 0) {
-              const tenants: TenantOption[] = [];
-              for (const lease of ownerLeases) {
-                const prop = (lease as any).properties;
-                const signers = (lease as any).lease_signers;
-                if (!prop || !signers || !lease.property_id) continue;
-                for (const signer of signers) {
-                  if (signer.profile_id === profile.id) continue; // skip self
-                  const p = signer.profiles;
-                  tenants.push({
-                    tenantProfileId: signer.profile_id,
-                    tenantName: p ? `${p.prenom || ""} ${p.nom || ""}`.trim() : "Locataire",
-                    propertyId: lease.property_id,
-                    propertyAddress: prop.adresse_complete || "",
-                    leaseId: lease.id,
+                if (leaseData?.property_id && (leaseData as any).properties?.owner_id) {
+                  setLeaseContext({
+                    propertyId: leaseData.property_id,
+                    ownerId: (leaseData as any).properties.owner_id,
+                    leaseId: leaseData.id,
                   });
                 }
               }
-              setOwnerTenants(tenants);
+            } catch {
+              // Pas de bail signé — vérifier côté propriétaire
             }
-          } catch {
-            // Silently ignore — owner tenants not available
+
+            // 2) Côté propriétaire : chercher les baux actifs avec locataires
+            try {
+              const { data: ownerLeases } = await supabase
+                .from("leases")
+                .select(`
+                  id,
+                  property_id,
+                  properties(owner_id, adresse_complete, ville),
+                  lease_signers(profile_id, profiles(prenom, nom))
+                `)
+                .eq("properties.owner_id", profile.id)
+                .in("statut", ["active", "signed"]);
+
+              if (ownerLeases && ownerLeases.length > 0) {
+                const tenants: TenantOption[] = [];
+                for (const lease of ownerLeases) {
+                  const prop = (lease as any).properties;
+                  const signers = (lease as any).lease_signers;
+                  if (!prop || !signers || !lease.property_id) continue;
+                  for (const signer of signers) {
+                    if (signer.profile_id === profile.id) continue; // skip self
+                    const p = signer.profiles;
+                    tenants.push({
+                      tenantProfileId: signer.profile_id,
+                      tenantName: p ? `${p.prenom || ""} ${p.nom || ""}`.trim() : "Locataire",
+                      propertyId: lease.property_id,
+                      propertyAddress: prop.adresse_complete || "",
+                      leaseId: lease.id,
+                    });
+                  }
+                }
+                setOwnerTenants(tenants);
+              }
+            } catch {
+              // Silently ignore — owner tenants not available
+            }
           }
         }
       } catch (error) {
@@ -160,10 +170,40 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
     }
 
     init();
-  }, [onNotAuthenticated]);
+  }, [onNotAuthenticated, currentRole]);
 
-  const handleSelectConversation = (conversation: Conversation) => {
-    setSelectedConversation(conversation);
+  // Sprint 5 QW1 — ouvrir directement la conv si ?conversation=<id> dans l'URL
+  // (utilisé par ContactProviderButton après création/récupération d'une conv).
+  useEffect(() => {
+    if (!conversationIdFromUrl || !currentProfileId) return;
+    let cancelled = false;
+    chatService
+      .getConversation(conversationIdFromUrl)
+      .then((full) => {
+        if (!cancelled && full) {
+          setSelectedConversation(full);
+        }
+      })
+      .catch((error) => {
+        console.error("Erreur ouverture conversation depuis URL:", error);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationIdFromUrl, currentProfileId]);
+
+  const handleSelectConversation = async (enriched: ConversationEnriched) => {
+    // La liste renvoie un ConversationEnriched (sous-titres pré-calculés).
+    // ChatWindow attend un Conversation complet (avec profils joints pour
+    // l'avatar + le nom). On re-fetch la forme canonique au clic.
+    try {
+      const full = await chatService.getConversation(enriched.id);
+      if (full) {
+        setSelectedConversation(full);
+      }
+    } catch (error) {
+      console.error("Erreur ouverture conversation:", error);
+    }
   };
 
   const handleBack = () => {

@@ -22,7 +22,8 @@ import {
   Pencil,
   Trash2,
   Flag,
-  X
+  X,
+  Wrench
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -32,7 +33,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { chatService, type Message, type Conversation } from "@/lib/services/chat.service";
+import {
+  chatService,
+  getOtherPartyInfo,
+  type Message,
+  type Conversation,
+  type SenderRole,
+} from "@/lib/services/chat.service";
+import { ConversationRoleBadge, type ConversationRole } from "@/components/chat/conversation-role-badge";
 import { getInitials } from "@/lib/design-system/utils";
 import { cleanAttachmentName, truncateMiddle } from "@/lib/utils/clean-filename";
 import { formatDistanceToNow } from "date-fns";
@@ -75,9 +83,20 @@ interface ChatWindowProps {
   currentProfileId: string;
   onBack?: () => void;
   onConversationStatusChange?: (conversationId: string, status: "archived" | "closed") => void;
+  /**
+   * Sprint 5 — vue admin read-only. Masque l'input, l'upload, les actions
+   * de statut et le bouton de signalement. Les messages restent lisibles.
+   */
+  readOnly?: boolean;
 }
 
-export function ChatWindow({ conversation, currentProfileId, onBack, onConversationStatusChange }: ChatWindowProps) {
+export function ChatWindow({
+  conversation,
+  currentProfileId,
+  onBack,
+  onConversationStatusChange,
+  readOnly = false,
+}: ChatWindowProps) {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,11 +111,40 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isOwner = currentProfileId === conversation.owner_profile_id;
-  const otherName = isOwner ? conversation.tenant_name : conversation.owner_name;
-  const otherAvatar = isOwner ? conversation.tenant_avatar : conversation.owner_avatar;
-  const otherPrenom = isOwner ? conversation.tenant_prenom : conversation.owner_prenom;
-  const otherNom = isOwner ? conversation.tenant_nom : conversation.owner_nom;
+  const otherParty = getOtherPartyInfo(conversation, currentProfileId);
+  const otherRole = otherParty.role as ConversationRole | null;
+  const otherName = otherParty.name;
+  const otherAvatar = otherParty.avatar;
+  const otherPrenom = otherParty.prenom;
+  const otherNom = otherParty.nom;
+  const viewerRole: SenderRole =
+    currentProfileId === conversation.owner_profile_id
+      ? "owner"
+      : currentProfileId === conversation.tenant_profile_id
+      ? "tenant"
+      : "provider";
+
+  // Sprint 4 — métadata ticket affichée dans le header quand la conv y est liée
+  const [ticketMeta, setTicketMeta] = useState<{
+    id: string;
+    titre: string;
+    statut: string;
+    priorite: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!conversation.ticket_id) {
+      setTicketMeta(null);
+      return;
+    }
+    let cancelled = false;
+    chatService.getTicketMetadata(conversation.ticket_id).then((data) => {
+      if (!cancelled) setTicketMeta(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [conversation.ticket_id]);
 
   // Charger les messages
   useEffect(() => {
@@ -169,7 +217,7 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
       id: `temp-${Date.now()}`,
       conversation_id: conversation.id,
       sender_profile_id: currentProfileId,
-      sender_role: isOwner ? "owner" : "tenant",
+      sender_role: viewerRole,
       content: messageContent,
       content_type: "text",
       created_at: new Date().toISOString(),
@@ -398,31 +446,40 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
             <p className="text-xs text-muted-foreground truncate">
               {conversation.property_address}
             </p>
+            {ticketMeta && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5">
+                <Wrench className="h-3 w-3 flex-shrink-0" aria-hidden="true" />
+                <span className="truncate">Ticket · {ticketMeta.titre}</span>
+                <Badge variant="outline" className="text-[10px] capitalize px-1.5 py-0 h-4">
+                  {ticketMeta.statut.replace("_", " ")}
+                </Badge>
+              </div>
+            )}
           </div>
-          <Badge variant="outline" className="text-xs">
-            {isOwner ? "Locataire" : "Propriétaire"}
-          </Badge>
-          {conversation.ticket_id && (
+          {otherRole && <ConversationRoleBadge role={otherRole} size="sm" />}
+          {conversation.ticket_id && !ticketMeta && (
             <Badge variant="secondary" className="text-xs">
               Ticket lié
             </Badge>
           )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreVertical className="h-4 w-4" aria-hidden="true" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleClose}>
-                Clôturer (résolu)
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleArchive} className="text-muted-foreground">
-                Archiver
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {!readOnly && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleClose}>
+                  Clôturer (résolu)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleArchive} className="text-muted-foreground">
+                  Archiver
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </CardHeader>
 
@@ -621,8 +678,8 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
                             )}
                           </div>
 
-                          {/* Report button for received messages */}
-                          {!isMe && !message.id.startsWith("temp-") && (
+                          {/* Report button for received messages — masqué en read-only */}
+                          {!isMe && !readOnly && !message.id.startsWith("temp-") && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -644,57 +701,63 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
         )}
       </div>
 
-      {/* Input */}
-      <div className="p-4 border-t flex-shrink-0">
-        <form onSubmit={handleSend} className="flex items-center gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="hidden"
-            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
-            onChange={handleFileSelect}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-10 w-10 text-muted-foreground hover:text-foreground"
-            disabled={sending || uploading}
-            onClick={() => fileInputRef.current?.click()}
-            aria-label="Ajouter une pièce jointe"
-          >
-            {uploading ? (
-              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-            ) : (
-              <Paperclip className="h-5 w-5" aria-hidden="true" />
-            )}
-          </Button>
+      {/* Input — masqué en mode read-only (vue admin) */}
+      {readOnly ? (
+        <div className="p-3 border-t flex-shrink-0 bg-muted/30 text-center text-xs text-muted-foreground">
+          Vue lecture seule — réservée à l'administration.
+        </div>
+      ) : (
+        <div className="p-4 border-t flex-shrink-0">
+          <form onSubmit={handleSend} className="flex items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+              onChange={handleFileSelect}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-10 w-10 text-muted-foreground hover:text-foreground"
+              disabled={sending || uploading}
+              onClick={() => fileInputRef.current?.click()}
+              aria-label="Ajouter une pièce jointe"
+            >
+              {uploading ? (
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Paperclip className="h-5 w-5" aria-hidden="true" />
+              )}
+            </Button>
 
-          <Input
-            ref={inputRef}
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Écrivez votre message..."
-            className="flex-1"
-            disabled={sending}
-          />
+            <Input
+              ref={inputRef}
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Écrivez votre message..."
+              className="flex-1"
+              disabled={sending}
+            />
 
-          <Button
-            type="submit"
-            size="icon"
-            className="h-10 w-10"
-            disabled={!newMessage.trim() || sending}
-            aria-label={sending ? "Envoi en cours..." : "Envoyer le message"}
-          >
-            {sending ? (
-              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-            ) : (
-              <Send className="h-5 w-5" aria-hidden="true" />
-            )}
-          </Button>
-        </form>
-      </div>
+            <Button
+              type="submit"
+              size="icon"
+              className="h-10 w-10"
+              disabled={!newMessage.trim() || sending}
+              aria-label={sending ? "Envoi en cours..." : "Envoyer le message"}
+            >
+              {sending ? (
+                <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+              ) : (
+                <Send className="h-5 w-5" aria-hidden="true" />
+              )}
+            </Button>
+          </form>
+        </div>
+      )}
 
       {/* Report dialog */}
       {reportingMessage && (

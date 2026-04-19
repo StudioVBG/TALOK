@@ -23,30 +23,40 @@
 import { createClient } from "@/lib/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
+export type ConversationType = "owner_tenant" | "owner_provider" | "tenant_provider";
+export type SenderRole = "owner" | "tenant" | "provider";
+
 export interface Conversation {
   id: string;
+  conversation_type: ConversationType;
   property_id: string;
   lease_id?: string | null;
   ticket_id?: string | null;
-  owner_profile_id: string;
-  tenant_profile_id: string;
+  owner_profile_id: string | null;
+  tenant_profile_id: string | null;
+  provider_profile_id: string | null;
   subject?: string | null;
   last_message_at?: string | null;
   last_message_preview?: string | null;
   status: "active" | "archived" | "closed";
   owner_unread_count: number;
   tenant_unread_count: number;
+  provider_unread_count: number;
   created_at: string;
   updated_at: string;
   // Joined data
   owner_name?: string;
   tenant_name?: string;
+  provider_name?: string;
   owner_prenom?: string | null;
   owner_nom?: string | null;
   tenant_prenom?: string | null;
   tenant_nom?: string | null;
+  provider_prenom?: string | null;
+  provider_nom?: string | null;
   owner_avatar?: string | null;
   tenant_avatar?: string | null;
+  provider_avatar?: string | null;
   property_address?: string;
 }
 
@@ -54,7 +64,7 @@ export interface Message {
   id: string;
   conversation_id: string;
   sender_profile_id: string;
-  sender_role: "owner" | "tenant";
+  sender_role: SenderRole;
   content: string;
   content_type: "text" | "image" | "file" | "system";
   attachment_url?: string | null;
@@ -90,6 +100,148 @@ export interface CreateConversationData {
   initial_message?: string;
 }
 
+export interface CreateOwnerProviderConversationData {
+  ticket_id: string;
+  property_id: string;
+  owner_profile_id: string;
+  provider_profile_id: string;
+  subject?: string;
+  initial_message?: string;
+}
+
+export interface CreateTenantProviderConversationData {
+  ticket_id: string;
+  property_id: string;
+  tenant_profile_id: string;
+  provider_profile_id: string;
+  subject?: string;
+  initial_message?: string;
+}
+
+/**
+ * Row returned by the `get_conversations_enriched` RPC (Sprint 3).
+ * Includes raw conversation columns + pre-computed subtitles and
+ * other-party info so the UI list can render in one round-trip.
+ */
+export interface ConversationEnriched {
+  id: string;
+  conversation_type: ConversationType;
+  property_id: string | null;
+  lease_id: string | null;
+  ticket_id: string | null;
+  owner_profile_id: string | null;
+  tenant_profile_id: string | null;
+  provider_profile_id: string | null;
+  status: "active" | "archived" | "closed";
+  last_message_at: string | null;
+  last_message_preview: string | null;
+  owner_unread_count: number;
+  tenant_unread_count: number;
+  provider_unread_count: number;
+  created_at: string;
+  updated_at: string;
+  other_party_subtitle: string | null;
+  other_party_name: string | null;
+  other_party_avatar_url: string | null;
+  other_party_role: SenderRole | null;
+}
+
+export interface GetConversationsEnrichedParams {
+  limit?: number;
+  offset?: number;
+  type?: ConversationType;
+  /** Full-text search (ILIKE) on participant names, ticket title, and last message preview. */
+  search?: string;
+}
+
+export interface GetConversationsEnrichedResult {
+  data: ConversationEnriched[];
+  count: number;
+  hasMore: boolean;
+}
+
+export interface OtherPartyInfo {
+  role: SenderRole | null;
+  name?: string;
+  avatar?: string | null;
+  prenom?: string | null;
+  nom?: string | null;
+}
+
+/**
+ * Derive "the other participant" info from a Conversation + the current user.
+ * Works for all 3 conversation_types (owner_tenant, owner_provider, tenant_provider).
+ * Returns role=null when the viewer is not a participant (should not happen if
+ * RLS is correctly enforced, but the UI tolerates it).
+ */
+export function getOtherPartyInfo(
+  conversation: Conversation,
+  currentProfileId: string
+): OtherPartyInfo {
+  const ct = conversation.conversation_type;
+
+  if (currentProfileId === conversation.owner_profile_id) {
+    if (ct === "owner_tenant") {
+      return {
+        role: "tenant",
+        name: conversation.tenant_name,
+        avatar: conversation.tenant_avatar,
+        prenom: conversation.tenant_prenom,
+        nom: conversation.tenant_nom,
+      };
+    }
+    if (ct === "owner_provider") {
+      return {
+        role: "provider",
+        name: conversation.provider_name,
+        avatar: conversation.provider_avatar,
+        prenom: conversation.provider_prenom,
+        nom: conversation.provider_nom,
+      };
+    }
+  } else if (currentProfileId === conversation.tenant_profile_id) {
+    if (ct === "owner_tenant") {
+      return {
+        role: "owner",
+        name: conversation.owner_name,
+        avatar: conversation.owner_avatar,
+        prenom: conversation.owner_prenom,
+        nom: conversation.owner_nom,
+      };
+    }
+    if (ct === "tenant_provider") {
+      return {
+        role: "provider",
+        name: conversation.provider_name,
+        avatar: conversation.provider_avatar,
+        prenom: conversation.provider_prenom,
+        nom: conversation.provider_nom,
+      };
+    }
+  } else if (currentProfileId === conversation.provider_profile_id) {
+    if (ct === "owner_provider") {
+      return {
+        role: "owner",
+        name: conversation.owner_name,
+        avatar: conversation.owner_avatar,
+        prenom: conversation.owner_prenom,
+        nom: conversation.owner_nom,
+      };
+    }
+    if (ct === "tenant_provider") {
+      return {
+        role: "tenant",
+        name: conversation.tenant_name,
+        avatar: conversation.tenant_avatar,
+        prenom: conversation.tenant_prenom,
+        nom: conversation.tenant_nom,
+      };
+    }
+  }
+
+  return { role: null };
+}
+
 class ChatService {
   private supabase = createClient();
   private channels: Map<string, RealtimeChannel> = new Map();
@@ -110,93 +262,70 @@ class ChatService {
   }
 
   /**
-   * Récupérer toutes les conversations de l'utilisateur
+   * Récupérer les conversations de l'utilisateur via le RPC
+   * `get_conversations_enriched` (Sprint 3).
+   *
+   * Retourne les lignes brutes + sous-titres pré-calculés + other_party_*
+   * en un seul round-trip. Filtre optionnel par `conversation_type`,
+   * pagination via `offset`/`limit` (défaut 25/0).
+   *
+   * Seul point d'entrée pour lister les conversations côté service
+   * (l'ancien `getConversations` client-side a été supprimé dans
+   * le sprint cleanup).
    */
-  async getConversations(): Promise<Conversation[]> {
-    const { data: { user } } = await this.supabase.auth.getUser();
-    if (!user) throw new Error("Non authentifié");
+  async getConversationsEnriched(
+    params: GetConversationsEnrichedParams = {}
+  ): Promise<GetConversationsEnrichedResult> {
+    const limit = params.limit ?? 25;
+    const offset = params.offset ?? 0;
 
-    const { data: profile, error: profileError } = await this.supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profileError || !profile) throw new Error("Profil non trouvé");
-
-    const { data, error } = await this.supabase
-      .from("conversations")
-      .select(`
-        *,
-        owner:profiles!conversations_owner_profile_id_fkey (
-          id,
-          prenom,
-          nom,
-          avatar_url
-        ),
-        tenant:profiles!conversations_tenant_profile_id_fkey (
-          id,
-          prenom,
-          nom,
-          avatar_url
-        ),
-        property:properties (
-          adresse_complete,
-          ville
-        )
-      `)
-      .or(`owner_profile_id.eq.${profile.id},tenant_profile_id.eq.${profile.id}`)
-      .eq("status", "active")
-      .order("last_message_at", { ascending: false, nullsFirst: false });
+    const trimmedSearch = params.search?.trim();
+    const { data, error } = await (this.supabase.rpc as any)("get_conversations_enriched", {
+      p_limit: limit,
+      p_offset: offset,
+      p_type: params.type ?? null,
+      p_search: trimmedSearch && trimmedSearch.length > 0 ? trimmedSearch : null,
+    });
 
     if (error) throw error;
 
-    // Fallback : si l'embed FK ne renvoie pas le profil (cas RLS/visibilité
-    // où PostgREST embedde `null`), on résout les profils manquants via une
-    // seconde requête ciblée.
-    //
-    // Browser client (user-scoped) volontaire : getServiceClient() est interdit
-    // côté client (leak service role). Cette requête reste soumise aux RLS v2
-    // de `profiles` (policy `profiles_owner_read_tenants` via lease_signers,
-    // helpers SECURITY DEFINER anti-recursion 42P17). Si la RLS refuse, on
-    // retombe proprement sur `"Utilisateur"` côté UI — c'est le comportement
-    // voulu (pas de bypass silencieux).
-    const missingProfileIds = new Set<string>();
-    for (const conv of (data || []) as any[]) {
-      if (!conv.owner?.prenom && !conv.owner?.nom) missingProfileIds.add(conv.owner_profile_id);
-      if (!conv.tenant?.prenom && !conv.tenant?.nom) missingProfileIds.add(conv.tenant_profile_id);
-    }
-    const profileMap = new Map<string, { prenom?: string; nom?: string; avatar_url?: string | null }>();
-    if (missingProfileIds.size > 0) {
-      const { data: profs } = await this.supabase
-        .from("profiles")
-        .select("id, prenom, nom, avatar_url")
-        .in("id", Array.from(missingProfileIds));
-      for (const p of (profs || []) as any[]) {
-        profileMap.set(p.id, { prenom: p.prenom, nom: p.nom, avatar_url: p.avatar_url });
-      }
-    }
+    const rows = (data ?? []) as (ConversationEnriched & { total_count: number | string })[];
+    const count = rows.length > 0 ? Number(rows[0].total_count ?? 0) : 0;
 
-    return (data || []).map((conv: any) => {
-      const owner = conv.owner?.prenom || conv.owner?.nom
-        ? conv.owner
-        : profileMap.get(conv.owner_profile_id);
-      const tenant = conv.tenant?.prenom || conv.tenant?.nom
-        ? conv.tenant
-        : profileMap.get(conv.tenant_profile_id);
-      return {
-        ...conv,
-        owner_prenom: owner?.prenom || null,
-        owner_nom: owner?.nom || null,
-        tenant_prenom: tenant?.prenom || null,
-        tenant_nom: tenant?.nom || null,
-        owner_name: `${owner?.prenom || ""} ${owner?.nom || ""}`.trim(),
-        tenant_name: `${tenant?.prenom || ""} ${tenant?.nom || ""}`.trim(),
-        owner_avatar: owner?.avatar_url || null,
-        tenant_avatar: tenant?.avatar_url || null,
-        property_address: conv.property?.adresse_complete || "",
-      };
+    const cleaned: ConversationEnriched[] = rows.map((row) => {
+      const { total_count: _ignored, ...rest } = row;
+      return rest as ConversationEnriched;
     });
+
+    return {
+      data: cleaned,
+      count,
+      hasMore: offset + cleaned.length < count,
+    };
+  }
+
+  /**
+   * Récupérer les métadonnées d'un ticket pour enrichir le header de la
+   * conversation associée (Sprint 4). Retourne null si le ticket est
+   * introuvable ou bloqué par RLS.
+   */
+  async getTicketMetadata(ticketId: string): Promise<{
+    id: string;
+    titre: string;
+    statut: string;
+    priorite: string;
+  } | null> {
+    const { data, error } = await this.supabase
+      .from("tickets")
+      .select("id, titre, statut, priorite")
+      .eq("id", ticketId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("[chatService.getTicketMetadata]", error);
+      return null;
+    }
+    return (data as { id: string; titre: string; statut: string; priorite: string } | null) ?? null;
   }
 
   /**
@@ -217,6 +346,11 @@ class ChatService {
           nom,
           avatar_url
         ),
+        provider:profiles!conversations_provider_profile_id_fkey (
+          prenom,
+          nom,
+          avatar_url
+        ),
         property:properties (
           adresse_complete,
           ville
@@ -230,17 +364,22 @@ class ChatService {
       throw error;
     }
 
+    const d = data as any;
     return {
-      ...data,
-      owner_prenom: data.owner?.prenom || null,
-      owner_nom: data.owner?.nom || null,
-      tenant_prenom: data.tenant?.prenom || null,
-      tenant_nom: data.tenant?.nom || null,
-      owner_name: `${data.owner?.prenom || ""} ${data.owner?.nom || ""}`.trim(),
-      tenant_name: `${data.tenant?.prenom || ""} ${data.tenant?.nom || ""}`.trim(),
-      owner_avatar: data.owner?.avatar_url || null,
-      tenant_avatar: data.tenant?.avatar_url || null,
-      property_address: data.property?.adresse_complete || "",
+      ...d,
+      owner_prenom: d.owner?.prenom || null,
+      owner_nom: d.owner?.nom || null,
+      tenant_prenom: d.tenant?.prenom || null,
+      tenant_nom: d.tenant?.nom || null,
+      provider_prenom: d.provider?.prenom || null,
+      provider_nom: d.provider?.nom || null,
+      owner_name: `${d.owner?.prenom || ""} ${d.owner?.nom || ""}`.trim(),
+      tenant_name: `${d.tenant?.prenom || ""} ${d.tenant?.nom || ""}`.trim(),
+      provider_name: `${d.provider?.prenom || ""} ${d.provider?.nom || ""}`.trim(),
+      owner_avatar: d.owner?.avatar_url || null,
+      tenant_avatar: d.tenant?.avatar_url || null,
+      provider_avatar: d.provider?.avatar_url || null,
+      property_address: d.property?.adresse_complete || "",
     } as Conversation;
   }
 
@@ -261,7 +400,7 @@ class ChatService {
       // Re-fetch avec les données jointes (profiles, property)
       const full = await this.getConversation(existing.id);
       if (full) return full;
-      return existing as Conversation;
+      return existing as unknown as Conversation;
     }
 
     // Créer une nouvelle conversation
@@ -290,7 +429,107 @@ class ChatService {
     // Re-fetch avec les données jointes
     const fullNew = await this.getConversation(newConv.id);
     if (fullNew) return fullNew;
-    return newConv as Conversation;
+    return newConv as unknown as Conversation;
+  }
+
+  /**
+   * Créer ou récupérer une conversation owner↔provider (liée à un ticket).
+   * UNIQUE partiel sur (ticket_id, owner_profile_id, provider_profile_id)
+   * WHERE status='active' AND conversation_type='owner_provider' (migration Sprint 1).
+   */
+  async getOrCreateOwnerProviderConversation(
+    data: CreateOwnerProviderConversationData
+  ): Promise<Conversation> {
+    const { data: existing } = await this.supabase
+      .from("conversations")
+      .select("id")
+      .eq("conversation_type", "owner_provider")
+      .eq("ticket_id", data.ticket_id)
+      .eq("owner_profile_id", data.owner_profile_id)
+      .eq("provider_profile_id", data.provider_profile_id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (existing) {
+      const full = await this.getConversation(existing.id);
+      if (full) return full;
+    }
+
+    const { data: newConv, error } = await this.supabase
+      .from("conversations")
+      .insert({
+        conversation_type: "owner_provider",
+        ticket_id: data.ticket_id,
+        property_id: data.property_id,
+        owner_profile_id: data.owner_profile_id,
+        provider_profile_id: data.provider_profile_id,
+        subject: data.subject || "Conversation prestataire",
+      } as any)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    if (data.initial_message && newConv) {
+      await this.sendMessage({
+        conversation_id: newConv.id,
+        content: data.initial_message,
+      });
+    }
+
+    const full = await this.getConversation(newConv.id);
+    if (full) return full;
+    return newConv as unknown as Conversation;
+  }
+
+  /**
+   * Créer ou récupérer une conversation tenant↔provider (liée à un ticket).
+   * UNIQUE partiel sur (ticket_id, tenant_profile_id, provider_profile_id)
+   * WHERE status='active' AND conversation_type='tenant_provider' (migration Sprint 1).
+   */
+  async getOrCreateTenantProviderConversation(
+    data: CreateTenantProviderConversationData
+  ): Promise<Conversation> {
+    const { data: existing } = await this.supabase
+      .from("conversations")
+      .select("id")
+      .eq("conversation_type", "tenant_provider")
+      .eq("ticket_id", data.ticket_id)
+      .eq("tenant_profile_id", data.tenant_profile_id)
+      .eq("provider_profile_id", data.provider_profile_id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (existing) {
+      const full = await this.getConversation(existing.id);
+      if (full) return full;
+    }
+
+    const { data: newConv, error } = await this.supabase
+      .from("conversations")
+      .insert({
+        conversation_type: "tenant_provider",
+        ticket_id: data.ticket_id,
+        property_id: data.property_id,
+        tenant_profile_id: data.tenant_profile_id,
+        provider_profile_id: data.provider_profile_id,
+        subject: data.subject || "Conversation prestataire",
+      } as any)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    if (data.initial_message && newConv) {
+      await this.sendMessage({
+        conversation_id: newConv.id,
+        content: data.initial_message,
+      });
+    }
+
+    const full = await this.getConversation(newConv.id);
+    if (full) return full;
+    return newConv as unknown as Conversation;
   }
 
   /**
@@ -328,7 +567,7 @@ class ChatService {
       .single();
 
     if (error) throw error;
-    return newConv as Conversation;
+    return newConv as unknown as Conversation;
   }
 
   /**
@@ -380,16 +619,25 @@ class ChatService {
 
     if (profileError || !profile) throw new Error("Profil non trouvé");
 
-    // Déterminer le rôle de l'expéditeur
+    // Déterminer le rôle de l'expéditeur parmi 3 participants possibles
     const { data: conversation } = await this.supabase
       .from("conversations")
-      .select("owner_profile_id, tenant_profile_id")
+      .select("owner_profile_id, tenant_profile_id, provider_profile_id")
       .eq("id", data.conversation_id)
-      .single();
+      .single() as { data: { owner_profile_id: string | null; tenant_profile_id: string | null; provider_profile_id: string | null } | null };
 
     if (!conversation) throw new Error("Conversation non trouvée");
 
-    const senderRole = profile.id === conversation.owner_profile_id ? "owner" : "tenant";
+    let senderRole: SenderRole;
+    if (profile.id === conversation.owner_profile_id) {
+      senderRole = "owner";
+    } else if (profile.id === conversation.tenant_profile_id) {
+      senderRole = "tenant";
+    } else if (profile.id === conversation.provider_profile_id) {
+      senderRole = "provider";
+    } else {
+      throw new Error("Utilisateur non participant à cette conversation");
+    }
 
     const { data: message, error } = await this.supabase
       .from("messages")
@@ -753,14 +1001,16 @@ class ChatService {
 
     const { data: conversations } = await this.supabase
       .from("conversations")
-      .select("owner_unread_count, tenant_unread_count, owner_profile_id")
-      .or(`owner_profile_id.eq.${profile.id},tenant_profile_id.eq.${profile.id}`);
+      .select("owner_unread_count, tenant_unread_count, provider_unread_count, owner_profile_id, tenant_profile_id, provider_profile_id")
+      .or(`owner_profile_id.eq.${profile.id},tenant_profile_id.eq.${profile.id},provider_profile_id.eq.${profile.id}`);
 
     if (!conversations) return 0;
 
-    return conversations.reduce((total, conv) => {
-      const isOwner = conv.owner_profile_id === profile.id;
-      return total + (isOwner ? (conv.owner_unread_count ?? 0) : (conv.tenant_unread_count ?? 0));
+    return (conversations as any[]).reduce((total, conv) => {
+      if (conv.owner_profile_id === profile.id) return total + (conv.owner_unread_count ?? 0);
+      if (conv.tenant_profile_id === profile.id) return total + (conv.tenant_unread_count ?? 0);
+      if (conv.provider_profile_id === profile.id) return total + (conv.provider_unread_count ?? 0);
+      return total;
     }, 0);
   }
 }
