@@ -33,6 +33,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { chatService, type Message, type Conversation } from "@/lib/services/chat.service";
+import { getInitials } from "@/lib/design-system/utils";
+import { cleanAttachmentName, truncateMiddle } from "@/lib/utils/clean-filename";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -46,12 +48,13 @@ function MessageImage({ src, alt, fileName, isMe }: {
   const [hasError, setHasError] = useState(false);
 
   if (hasError) {
+    const cleaned = fileName ? truncateMiddle(cleanAttachmentName(fileName)) : "Image non disponible";
     return (
       <div className={`flex items-center gap-2 text-sm ${
         isMe ? "text-primary-foreground/80" : "text-muted-foreground"
       }`}>
         <Paperclip className="h-4 w-4 flex-shrink-0" />
-        <span>{fileName || "Image non disponible"}</span>
+        <span title={fileName ?? undefined}>{cleaned}</span>
       </div>
     );
   }
@@ -92,6 +95,8 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
   const isOwner = currentProfileId === conversation.owner_profile_id;
   const otherName = isOwner ? conversation.tenant_name : conversation.owner_name;
   const otherAvatar = isOwner ? conversation.tenant_avatar : conversation.owner_avatar;
+  const otherPrenom = isOwner ? conversation.tenant_prenom : conversation.owner_prenom;
+  const otherNom = isOwner ? conversation.tenant_nom : conversation.owner_nom;
 
   // Charger les messages
   useEffect(() => {
@@ -385,7 +390,7 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
           <Avatar className="h-10 w-10">
             {otherAvatar && <AvatarImage src={otherAvatar} alt={otherName || "Interlocuteur"} />}
             <AvatarFallback>
-              {otherName?.split(" ").map(n => n[0]).join("").toUpperCase() || "?"}
+              {getInitials(otherPrenom, otherNom)}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
@@ -567,12 +572,17 @@ export function ChatWindow({ conversation, currentProfileId, onBack, onConversat
                                         href={message.attachment_url}
                                         target="_blank"
                                         rel="noopener noreferrer"
+                                        title={message.attachment_name ?? undefined}
                                         className={`flex items-center gap-2 text-sm ${
                                           isMe ? "text-primary-foreground/80" : "text-muted-foreground"
                                         } hover:underline`}
                                       >
-                                        <File className="h-4 w-4" />
-                                        {message.attachment_name || "Fichier"}
+                                        <File className="h-4 w-4 flex-shrink-0" />
+                                        <span className="truncate">
+                                          {message.attachment_name
+                                            ? truncateMiddle(cleanAttachmentName(message.attachment_name))
+                                            : "Fichier"}
+                                        </span>
                                       </a>
                                     )}
                                   </div>

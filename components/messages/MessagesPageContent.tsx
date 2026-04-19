@@ -141,7 +141,7 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
                     tenantProfileId: signer.profile_id,
                     tenantName: p ? `${p.prenom || ""} ${p.nom || ""}`.trim() : "Locataire",
                     propertyId: lease.property_id,
-                    propertyAddress: `${prop.adresse_complete || ""}, ${prop.ville || ""}`.trim(),
+                    propertyAddress: prop.adresse_complete || "",
                     leaseId: lease.id,
                   });
                 }

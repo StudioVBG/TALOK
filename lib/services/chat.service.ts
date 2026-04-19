@@ -1,6 +1,23 @@
 /**
  * Service de Chat en temps réel
  * Gère les conversations et messages entre propriétaires et locataires
+ *
+ * IMPORTANT — Exécution côté navigateur uniquement.
+ * Ce service est importé par des composants `"use client"` (MessagesPageContent,
+ * ConversationsList, ChatWindow). Le client Supabase utilisé ici est donc
+ * OBLIGATOIREMENT le client browser (createClient de @/lib/supabase/client),
+ * user-scoped via cookies, soumis à RLS.
+ *
+ * Ne PAS importer `getServiceClient()` ici : la service role key ne doit
+ * JAMAIS atterrir dans le bundle navigateur (exposerait un bypass total des
+ * RLS à tout visiteur). Pour les opérations nécessitant un bypass RLS
+ * contrôlé, passer par une route API (ex. /api/messages/*).
+ *
+ * Risque 42P17 (recursion sur profiles) : éliminé côté DB par la migration
+ * `20260213000000_fix_profiles_rls_recursion_v2.sql` — les policies actives
+ * utilisent des helpers SECURITY DEFINER (`get_my_profile_id()`, `is_admin()`)
+ * qui bypassent la récursion. Les queries profiles depuis le browser client
+ * sont donc sûres.
  */
 
 import { createClient } from "@/lib/supabase/client";
@@ -24,6 +41,10 @@ export interface Conversation {
   // Joined data
   owner_name?: string;
   tenant_name?: string;
+  owner_prenom?: string | null;
+  owner_nom?: string | null;
+  tenant_prenom?: string | null;
+  tenant_nom?: string | null;
   owner_avatar?: string | null;
   tenant_avatar?: string | null;
   property_address?: string;
@@ -108,11 +129,13 @@ class ChatService {
       .select(`
         *,
         owner:profiles!conversations_owner_profile_id_fkey (
+          id,
           prenom,
           nom,
           avatar_url
         ),
         tenant:profiles!conversations_tenant_profile_id_fkey (
+          id,
           prenom,
           nom,
           avatar_url
@@ -128,14 +151,52 @@ class ChatService {
 
     if (error) throw error;
 
-    return (data || []).map((conv: any) => ({
-      ...conv,
-      owner_name: `${conv.owner?.prenom || ""} ${conv.owner?.nom || ""}`.trim(),
-      tenant_name: `${conv.tenant?.prenom || ""} ${conv.tenant?.nom || ""}`.trim(),
-      owner_avatar: conv.owner?.avatar_url || null,
-      tenant_avatar: conv.tenant?.avatar_url || null,
-      property_address: conv.property ? `${conv.property.adresse_complete}, ${conv.property.ville}` : "",
-    }));
+    // Fallback : si l'embed FK ne renvoie pas le profil (cas RLS/visibilité
+    // où PostgREST embedde `null`), on résout les profils manquants via une
+    // seconde requête ciblée.
+    //
+    // Browser client (user-scoped) volontaire : getServiceClient() est interdit
+    // côté client (leak service role). Cette requête reste soumise aux RLS v2
+    // de `profiles` (policy `profiles_owner_read_tenants` via lease_signers,
+    // helpers SECURITY DEFINER anti-recursion 42P17). Si la RLS refuse, on
+    // retombe proprement sur `"Utilisateur"` côté UI — c'est le comportement
+    // voulu (pas de bypass silencieux).
+    const missingProfileIds = new Set<string>();
+    for (const conv of (data || []) as any[]) {
+      if (!conv.owner?.prenom && !conv.owner?.nom) missingProfileIds.add(conv.owner_profile_id);
+      if (!conv.tenant?.prenom && !conv.tenant?.nom) missingProfileIds.add(conv.tenant_profile_id);
+    }
+    const profileMap = new Map<string, { prenom?: string; nom?: string; avatar_url?: string | null }>();
+    if (missingProfileIds.size > 0) {
+      const { data: profs } = await this.supabase
+        .from("profiles")
+        .select("id, prenom, nom, avatar_url")
+        .in("id", Array.from(missingProfileIds));
+      for (const p of (profs || []) as any[]) {
+        profileMap.set(p.id, { prenom: p.prenom, nom: p.nom, avatar_url: p.avatar_url });
+      }
+    }
+
+    return (data || []).map((conv: any) => {
+      const owner = conv.owner?.prenom || conv.owner?.nom
+        ? conv.owner
+        : profileMap.get(conv.owner_profile_id);
+      const tenant = conv.tenant?.prenom || conv.tenant?.nom
+        ? conv.tenant
+        : profileMap.get(conv.tenant_profile_id);
+      return {
+        ...conv,
+        owner_prenom: owner?.prenom || null,
+        owner_nom: owner?.nom || null,
+        tenant_prenom: tenant?.prenom || null,
+        tenant_nom: tenant?.nom || null,
+        owner_name: `${owner?.prenom || ""} ${owner?.nom || ""}`.trim(),
+        tenant_name: `${tenant?.prenom || ""} ${tenant?.nom || ""}`.trim(),
+        owner_avatar: owner?.avatar_url || null,
+        tenant_avatar: tenant?.avatar_url || null,
+        property_address: conv.property?.adresse_complete || "",
+      };
+    });
   }
 
   /**
@@ -171,11 +232,15 @@ class ChatService {
 
     return {
       ...data,
+      owner_prenom: data.owner?.prenom || null,
+      owner_nom: data.owner?.nom || null,
+      tenant_prenom: data.tenant?.prenom || null,
+      tenant_nom: data.tenant?.nom || null,
       owner_name: `${data.owner?.prenom || ""} ${data.owner?.nom || ""}`.trim(),
       tenant_name: `${data.tenant?.prenom || ""} ${data.tenant?.nom || ""}`.trim(),
       owner_avatar: data.owner?.avatar_url || null,
       tenant_avatar: data.tenant?.avatar_url || null,
-      property_address: data.property ? `${data.property.adresse_complete}, ${data.property.ville}` : "",
+      property_address: data.property?.adresse_complete || "",
     } as Conversation;
   }
 
