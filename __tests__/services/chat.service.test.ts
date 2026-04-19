@@ -163,6 +163,224 @@ describe("ChatService", () => {
     });
   });
 
+  describe("getOrCreateOwnerProviderConversation", () => {
+    it("should return existing owner_provider conversation when one matches", async () => {
+      const existingId = "conv-op-1";
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: "u" } } });
+      mockSupabase.from.mockImplementation(((table: string) => {
+        if (table === "conversations") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: { id: existingId } }),
+            single: vi.fn().mockResolvedValue({
+              data: {
+                id: existingId,
+                conversation_type: "owner_provider",
+                ticket_id: "t-1",
+                owner_profile_id: "o-1",
+                provider_profile_id: "p-1",
+                owner: { prenom: "O", nom: "Wner" },
+                provider: { prenom: "P", nom: "Rov" },
+              },
+            }),
+          };
+        }
+        return (mockSupabase.from as any)(table);
+      }) as any);
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      const conv = await chatService.getOrCreateOwnerProviderConversation({
+        ticket_id: "t-1",
+        property_id: "pr-1",
+        owner_profile_id: "o-1",
+        provider_profile_id: "p-1",
+      });
+
+      expect(conv.id).toBe(existingId);
+      expect(conv.owner_name).toBe("O Wner");
+      expect(conv.provider_name).toBe("P Rov");
+    });
+
+    it("should insert with conversation_type='owner_provider' when none exists", async () => {
+      const insertedRef = { value: null as any };
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: "u" } } });
+
+      mockSupabase.from.mockImplementation(((table: string) => {
+        if (table === "conversations") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+            single: vi.fn().mockResolvedValue({
+              data: { id: "new-op", conversation_type: "owner_provider" },
+            }),
+            insert: vi.fn((payload: any) => {
+              insertedRef.value = payload;
+              return {
+                select: vi.fn().mockReturnThis(),
+                single: vi.fn().mockResolvedValue({ data: { id: "new-op" } }),
+              };
+            }),
+          };
+        }
+        return (mockSupabase.from as any)(table);
+      }) as any);
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      await chatService.getOrCreateOwnerProviderConversation({
+        ticket_id: "t-2",
+        property_id: "pr-2",
+        owner_profile_id: "o-2",
+        provider_profile_id: "p-2",
+      });
+
+      expect(insertedRef.value).toMatchObject({
+        conversation_type: "owner_provider",
+        ticket_id: "t-2",
+        owner_profile_id: "o-2",
+        provider_profile_id: "p-2",
+      });
+      expect(insertedRef.value.tenant_profile_id).toBeUndefined();
+    });
+  });
+
+  describe("getOrCreateTenantProviderConversation", () => {
+    it("should insert with conversation_type='tenant_provider' and no owner_profile_id", async () => {
+      const insertedRef = { value: null as any };
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: "u" } } });
+
+      mockSupabase.from.mockImplementation(((table: string) => {
+        if (table === "conversations") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+            single: vi.fn().mockResolvedValue({
+              data: { id: "new-tp", conversation_type: "tenant_provider" },
+            }),
+            insert: vi.fn((payload: any) => {
+              insertedRef.value = payload;
+              return {
+                select: vi.fn().mockReturnThis(),
+                single: vi.fn().mockResolvedValue({ data: { id: "new-tp" } }),
+              };
+            }),
+          };
+        }
+        return (mockSupabase.from as any)(table);
+      }) as any);
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      await chatService.getOrCreateTenantProviderConversation({
+        ticket_id: "t-3",
+        property_id: "pr-3",
+        tenant_profile_id: "te-3",
+        provider_profile_id: "p-3",
+      });
+
+      expect(insertedRef.value).toMatchObject({
+        conversation_type: "tenant_provider",
+        ticket_id: "t-3",
+        tenant_profile_id: "te-3",
+        provider_profile_id: "p-3",
+      });
+      expect(insertedRef.value.owner_profile_id).toBeUndefined();
+    });
+  });
+
+  describe("sendMessage — provider sender", () => {
+    it("should send message with sender_role='provider' when caller is the provider", async () => {
+      const mockUser = { id: "user-prov" };
+      const mockProfile = { id: "profile-prov" };
+      const mockConversation = {
+        owner_profile_id: "profile-owner",
+        tenant_profile_id: null,
+        provider_profile_id: "profile-prov",
+      };
+      const mockMessage = {
+        id: "msg-p",
+        conversation_id: "conv-op",
+        content: "Bonjour",
+        sender_profile_id: "profile-prov",
+        sender_role: "provider",
+        sender: { prenom: "Pro", nom: "Vider" },
+      };
+
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } });
+      mockSupabase.from.mockImplementation(((table: string) => {
+        if (table === "profiles") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockProfile }),
+          };
+        }
+        if (table === "conversations") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockConversation }),
+          };
+        }
+        if (table === "messages") {
+          return {
+            insert: vi.fn(() => ({
+              select: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({ data: mockMessage }),
+            })),
+          };
+        }
+        return (mockSupabase.from as any)(table);
+      }) as any);
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      const msg = await chatService.sendMessage({
+        conversation_id: "conv-op",
+        content: "Bonjour",
+      });
+
+      expect(msg.sender_role).toBe("provider");
+    });
+
+    it("should throw when caller is not a participant of the conversation", async () => {
+      const mockUser = { id: "user-stranger" };
+      const mockProfile = { id: "profile-stranger" };
+      const mockConversation = {
+        owner_profile_id: "profile-owner",
+        tenant_profile_id: "profile-tenant",
+        provider_profile_id: null,
+      };
+
+      mockSupabase.auth.getUser.mockResolvedValue({ data: { user: mockUser } });
+      mockSupabase.from.mockImplementation(((table: string) => {
+        if (table === "profiles") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockProfile }),
+          };
+        }
+        if (table === "conversations") {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: mockConversation }),
+          };
+        }
+        return (mockSupabase.from as any)(table);
+      }) as any);
+
+      const { chatService } = await import("@/lib/services/chat.service");
+      await expect(
+        chatService.sendMessage({
+          conversation_id: "conv-x",
+          content: "Hi",
+        })
+      ).rejects.toThrow("Utilisateur non participant");
+    });
+  });
+
   describe("markAsRead", () => {
     it("should call RPC to mark messages as read", async () => {
       const mockUser = { id: "user-123" };
