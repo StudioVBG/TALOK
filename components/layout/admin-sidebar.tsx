@@ -68,7 +68,7 @@ const adminNavItems: NavCategory[] = [
       { href: "/admin/support", label: "Support", icon: Ticket },
       { href: "/admin/moderation", label: "Modération IA", icon: Brain },
       { href: "/admin/providers/pending", label: "Validation Prestataires", icon: ShieldCheck },
-      { href: "/admin/compliance", label: "Documents & Conformité", icon: Shield },
+      { href: "/admin/compliance", label: "Conformité prestataires", icon: Shield },
     ],
   },
   {

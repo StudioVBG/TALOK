@@ -26,7 +26,7 @@ const ADMIN_TITLES: Array<{ pattern: string; title: string }> = [
   { pattern: "/admin/people", title: "Annuaire" },
   { pattern: "/admin/properties", title: "Parc immobilier" },
   { pattern: "/admin/moderation", title: "Moderation IA" },
-  { pattern: "/admin/compliance", title: "Documents & conformite" },
+  { pattern: "/admin/compliance", title: "Conformité prestataires" },
   { pattern: "/admin/audit-logs", title: "Journal d'audit" },
 ];
 
