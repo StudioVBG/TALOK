@@ -216,6 +216,14 @@ const nextConfig = {
 
       // === Route /profile legacy → rôle-spécifique (non-permanent car dépend du rôle) ===
       { source: '/profile', destination: '/owner/profile', permanent: false },
+
+      // === Admin : déduplication annuaire utilisateurs ===
+      // /admin/users (liste + détail) → /admin/people (Annuaire unique)
+      { source: '/admin/users', destination: '/admin/people', permanent: true },
+      { source: '/admin/users/:id', destination: '/admin/people', permanent: true },
+      // /admin/tenants (liste uniquement) → onglet locataires du répertoire
+      // NB: /admin/tenants/:id reste actif (page fiche locataire)
+      { source: '/admin/tenants', destination: '/admin/people?tab=tenants', permanent: true },
     ];
   },
 

@@ -24,13 +24,11 @@ import {
   Mail,
   Palette,
   Brain,
-  UserCheck,
   FolderOpen,
   LogOut,
   Flag,
   Ticket,
   TrendingUp,
-  UserCog,
   Clock,
   Zap,
 } from "lucide-react";
@@ -76,9 +74,7 @@ const adminNavItems: NavCategory[] = [
   {
     category: "Utilisateurs & parc",
     items: [
-      { href: "/admin/users", label: "Utilisateurs", icon: UserCog },
       { href: "/admin/people", label: "Annuaire", icon: Users },
-      { href: "/admin/tenants", label: "Locataires", icon: UserCheck },
       { href: "/admin/properties", label: "Parc immobilier", icon: Building2 },
       { href: "/admin/reports", label: "Rapports", icon: FileText },
       { href: "/admin/documents", label: "Documents", icon: FolderOpen },
