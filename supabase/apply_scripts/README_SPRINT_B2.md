@@ -34,8 +34,12 @@ Total : 194 migrations (action `apply` uniquement).
    - Vérifier les NOTICES dans l'onglet Messages (affiche la migration en cours)
 6. **Après tous les batches : coller `REALTIME_RESUME_AFTER_BATCH.sql`** pour
    restaurer la publication realtime.
-7. Chaque migration est encapsulée dans son propre `BEGIN/COMMIT` : rollback ciblé.
-8. Les batches sont idempotents : recoller en cas d'échec ne crée pas de doublon.
+7. **Coller `REGISTER_SPRINT_B2_APPLIED.sql`** pour enregistrer les 194 migrations
+   dans `supabase_migrations.schema_migrations`. Sans cette étape, un futur
+   `supabase db push` retenterait de les appliquer et échouerait. Idempotent
+   (`ON CONFLICT DO NOTHING`).
+8. Chaque migration est encapsulée dans son propre `BEGIN/COMMIT` : rollback ciblé.
+9. Les batches sont idempotents : recoller en cas d'échec ne crée pas de doublon.
 
 ## Ordre
 
