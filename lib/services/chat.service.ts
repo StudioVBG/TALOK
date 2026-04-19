@@ -118,10 +118,6 @@ export interface CreateTenantProviderConversationData {
   initial_message?: string;
 }
 
-export interface GetConversationsFilter {
-  type?: ConversationType;
-}
-
 /**
  * Row returned by the `get_conversations_enriched` RPC (Sprint 3).
  * Includes raw conversation columns + pre-computed subtitles and
@@ -264,130 +260,16 @@ class ChatService {
   }
 
   /**
-   * Récupérer toutes les conversations de l'utilisateur.
-   * Filtre optionnel par conversation_type pour segmenter par feature UI
-   * (ex: liste locataire vs liste tickets/prestataires).
-   */
-  async getConversations(filter: GetConversationsFilter = {}): Promise<Conversation[]> {
-    const { data: { user } } = await this.supabase.auth.getUser();
-    if (!user) throw new Error("Non authentifié");
-
-    const { data: profile, error: profileError } = await this.supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profileError || !profile) throw new Error("Profil non trouvé");
-
-    let query = this.supabase
-      .from("conversations")
-      .select(`
-        *,
-        owner:profiles!conversations_owner_profile_id_fkey (
-          id,
-          prenom,
-          nom,
-          avatar_url
-        ),
-        tenant:profiles!conversations_tenant_profile_id_fkey (
-          id,
-          prenom,
-          nom,
-          avatar_url
-        ),
-        provider:profiles!conversations_provider_profile_id_fkey (
-          id,
-          prenom,
-          nom,
-          avatar_url
-        ),
-        property:properties (
-          adresse_complete,
-          ville
-        )
-      `)
-      .or(`owner_profile_id.eq.${profile.id},tenant_profile_id.eq.${profile.id},provider_profile_id.eq.${profile.id}`)
-      .eq("status", "active")
-      .order("last_message_at", { ascending: false, nullsFirst: false });
-
-    if (filter.type) {
-      query = query.eq("conversation_type", filter.type);
-    }
-
-    const { data, error } = await query;
-
-    if (error) throw error;
-
-    // Fallback : si l'embed FK ne renvoie pas le profil (cas RLS/visibilité
-    // où PostgREST embedde `null`), on résout les profils manquants via une
-    // seconde requête ciblée.
-    //
-    // Browser client (user-scoped) volontaire : getServiceClient() est interdit
-    // côté client (leak service role). Cette requête reste soumise aux RLS v2
-    // de `profiles` (policy `profiles_owner_read_tenants` via lease_signers,
-    // helpers SECURITY DEFINER anti-recursion 42P17). Si la RLS refuse, on
-    // retombe proprement sur `"Utilisateur"` côté UI — c'est le comportement
-    // voulu (pas de bypass silencieux).
-    const missingProfileIds = new Set<string>();
-    for (const conv of (data || []) as any[]) {
-      if (conv.owner_profile_id && !conv.owner?.prenom && !conv.owner?.nom) {
-        missingProfileIds.add(conv.owner_profile_id);
-      }
-      if (conv.tenant_profile_id && !conv.tenant?.prenom && !conv.tenant?.nom) {
-        missingProfileIds.add(conv.tenant_profile_id);
-      }
-      if (conv.provider_profile_id && !conv.provider?.prenom && !conv.provider?.nom) {
-        missingProfileIds.add(conv.provider_profile_id);
-      }
-    }
-    const profileMap = new Map<string, { prenom?: string; nom?: string; avatar_url?: string | null }>();
-    if (missingProfileIds.size > 0) {
-      const { data: profs } = await this.supabase
-        .from("profiles")
-        .select("id, prenom, nom, avatar_url")
-        .in("id", Array.from(missingProfileIds));
-      for (const p of (profs || []) as any[]) {
-        profileMap.set(p.id, { prenom: p.prenom, nom: p.nom, avatar_url: p.avatar_url });
-      }
-    }
-
-    return (data || []).map((conv: any) => {
-      const owner = conv.owner?.prenom || conv.owner?.nom
-        ? conv.owner
-        : profileMap.get(conv.owner_profile_id);
-      const tenant = conv.tenant?.prenom || conv.tenant?.nom
-        ? conv.tenant
-        : profileMap.get(conv.tenant_profile_id);
-      const provider = conv.provider?.prenom || conv.provider?.nom
-        ? conv.provider
-        : profileMap.get(conv.provider_profile_id);
-      return {
-        ...conv,
-        owner_prenom: owner?.prenom || null,
-        owner_nom: owner?.nom || null,
-        tenant_prenom: tenant?.prenom || null,
-        tenant_nom: tenant?.nom || null,
-        provider_prenom: provider?.prenom || null,
-        provider_nom: provider?.nom || null,
-        owner_name: `${owner?.prenom || ""} ${owner?.nom || ""}`.trim(),
-        tenant_name: `${tenant?.prenom || ""} ${tenant?.nom || ""}`.trim(),
-        provider_name: `${provider?.prenom || ""} ${provider?.nom || ""}`.trim(),
-        owner_avatar: owner?.avatar_url || null,
-        tenant_avatar: tenant?.avatar_url || null,
-        provider_avatar: provider?.avatar_url || null,
-        property_address: conv.property?.adresse_complete || "",
-      };
-    });
-  }
-
-  /**
-   * Récupérer les conversations enrichies via le RPC
-   * `get_conversations_enriched` (sous-titres + other_party pré-calculés,
-   * pagination via offset/limit). Sprint 3.
+   * Récupérer les conversations de l'utilisateur via le RPC
+   * `get_conversations_enriched` (Sprint 3).
    *
-   * Sert `MessagesPageContent`. L'ancien `getConversations` reste en place
-   * pour les callers legacy ; Sprint 4 décidera de sa suppression.
+   * Retourne les lignes brutes + sous-titres pré-calculés + other_party_*
+   * en un seul round-trip. Filtre optionnel par `conversation_type`,
+   * pagination via `offset`/`limit` (défaut 25/0).
+   *
+   * Seul point d'entrée pour lister les conversations côté service
+   * (l'ancien `getConversations` client-side a été supprimé dans
+   * le sprint cleanup).
    */
   async getConversationsEnriched(
     params: GetConversationsEnrichedParams = {}
