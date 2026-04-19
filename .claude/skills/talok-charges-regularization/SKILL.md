@@ -524,6 +524,10 @@ Système de rappels à brancher sur le cron existant :
 
 ## 9. Gaps actuels & roadmap
 
+### Re-audit Sprint P0 — 2026-04-19
+
+Audit complet des 4 P0 du sprint initial : **tous résolus en prod**. Aucune nouvelle migration applicative nécessaire. Seule action : migration `20260418150000_fix_charges_contested_rls.sql` committée pour formaliser la dérive git ↔ prod (la policy avait été appliquée via SQL Editor le 18/04 sans être versionnée). Tests `apply-engine.test.ts` confirmés exhaustifs (19/19 passent, couvrent les 5 scénarios B/C/D/E + toutes les validations). Le sprint "4 migrations à créer" décrit dans le prompt initial est obsolète — tout existe déjà sous un schéma plus robuste (cf. rapport Phase 0 du 19/04).
+
 ### Gaps critiques (P0)
 
 1. ✅ **RÉSOLU Sprint 0.a (17/04/2026)** — `regularization_invoice_id` ajouté sur `lease_charge_regularizations` (migration `20260417090000_charges_reg_invoice_link.sql`, appliquée prod 18/04).
