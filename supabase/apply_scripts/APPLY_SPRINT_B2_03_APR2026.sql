@@ -1,6 +1,6 @@
 -- =============================================================================
 -- APPLY SPRINT B2 — BATCH 03_APR2026 (IDEMPOTENT v2)
--- Genere le 2026-04-19T07:19:27Z
+-- Genere le 2026-04-19T07:29:18Z
 --
 -- Contenu : 71 migrations (action=apply uniquement)
 -- Plage   : 20260401000000 -> 20260417110000
@@ -27,6 +27,9 @@
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 1/71 (SAFE) 20260401000000_add_identity_status_onboarding_step.sql'; END $$;
 -- Migration: Ajout identity_status et onboarding_step sur profiles
 -- Ces colonnes alimentent le middleware identity-gate qui contrôle
 -- l'accès aux routes protégées selon le niveau de vérification.
@@ -81,6 +84,9 @@ COMMIT;
 -- risk: UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 2/71 (MODERE) 20260401000001_add_initial_payment_confirmed_to_leases.sql'; END $$;
 -- Migration: Ajouter initial_payment_confirmed sur leases
 -- Permet au webhook Stripe de marquer le paiement initial comme confirmé
 -- et d'éviter la désynchronisation entre l'UI et l'API key-handover.
@@ -115,6 +121,9 @@ COMMIT;
 -- risk: +1 policies, -1 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 3/71 (MODERE) 20260404100000_rls_push_subscriptions.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Activer RLS sur push_subscriptions
 -- Date: 2026-04-04
@@ -149,6 +158,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 4/71 (SAFE) 20260404100100_fix_tenant_docs_view_visible_tenant.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Ajouter filtre visible_tenant à la vue v_tenant_accessible_documents
 -- Date: 2026-04-04
@@ -206,6 +218,9 @@ COMMIT;
 -- risk: +2 policies, -2 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 5/71 (MODERE) 20260404100200_fix_ticket_messages_rls_lease_signers.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Fix ticket_messages RLS — utiliser lease_signers au lieu de roommates
 -- Date: 2026-04-04
@@ -294,6 +309,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 6/71 (CRITIQUE) 20260406200000_create_entities_view_and_members.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Create entities view + entity_members table
 -- Date: 2026-04-07
@@ -487,6 +505,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 7/71 (CRITIQUE) 20260406210000_accounting_complete.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Module Comptabilite complet
 -- Date: 2026-04-06
@@ -1395,6 +1416,9 @@ COMMIT;
 -- risk: ALTER/DROP sur table billing (stripe_* / subscriptions*)
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 8/71 (CRITIQUE) 20260407110000_audit_fixes_rls_indexes.sql'; END $$;
 -- Migration: Audit fixes — missing indexes, CHECK constraints, and RLS
 -- Idempotent: safe to run multiple times
 
@@ -1445,6 +1469,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 9/71 (CRITIQUE) 20260407120000_accounting_reconcile_schemas.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Reconcile accounting schemas
 -- Date: 2026-04-07
@@ -1641,6 +1668,9 @@ COMMIT;
 -- risk: +1 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 10/71 (MODERE) 20260407130000_ocr_category_rules.sql'; END $$;
 -- =====================================================
 -- MIGRATION: OCR Category Rules + document_analyses extensions
 -- Date: 2026-04-07
@@ -1686,6 +1716,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : on
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 11/71 (DANGEREUX) 20260408042218_create_expenses_table.sql'; END $$;
 -- Migration: Table expenses (dépenses/travaux propriétaire)
 -- Date: 2026-04-08
 -- RLS via chaîne : legal_entities.owner_profile_id → owner_profiles.profile_id
@@ -1869,6 +1902,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 12/71 (CRITIQUE) 20260408044152_reconcile_charge_regularisations_and_backfill_entry_lines.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Réconciliation finale des schémas comptables
 -- Date: 2026-04-08
@@ -2186,6 +2222,9 @@ COMMIT;
 -- risk: +2 policies, ALTER column (type/constraint), UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 13/71 (MODERE) 20260408100000_copro_lots.sql'; END $$;
 -- Sprint 5: Copropriété lots + fund call lines
 -- Tables for syndic copropriété module
 
@@ -2258,6 +2297,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 14/71 (SAFE) 20260408110000_agency_hoguet.sql'; END $$;
 -- ============================================================================
 -- Sprint 6: Agency Hoguet compliance columns
 --
@@ -2287,6 +2329,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : on,on
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 15/71 (DANGEREUX) 20260408120000_api_keys_webhooks.sql'; END $$;
 -- ============================================================================
 -- Migration: API Keys, API Logs, API Webhooks
 -- Feature: REST API pour développeurs tiers (Pro+/Enterprise)
@@ -2463,6 +2508,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : own,on
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 16/71 (DANGEREUX) 20260408130000_active_sessions.sql'; END $$;
 -- ============================================================
 -- MIGRATION: active_sessions — Session tracking & multi-device
 -- SOTA 2026 — Auth & RBAC Architecture
@@ -2628,6 +2676,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : on
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 17/71 (DANGEREUX) 20260408140000_tickets_module_sota.sql'; END $$;
 -- =============================================
 -- TICKETS MODULE SOTA — Upgrade complet
 -- State machine: open → acknowledged → assigned → in_progress → resolved → closed
@@ -2771,6 +2822,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : on
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 18/71 (DANGEREUX) 20260408200000_unified_notification_system.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Système de notifications unifié
 -- Ajoute la table notification_event_preferences (per-event)
@@ -2873,6 +2927,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : on
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 19/71 (DANGEREUX) 20260408220000_payment_architecture_sota.sql'; END $$;
 -- =====================================================
 -- Migration: Payment Architecture SOTA 2026
 -- Date: 2026-04-08
@@ -3247,6 +3304,9 @@ COMMIT;
 -- risk: +13 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 20/71 (MODERE) 20260409100000_add_missing_rls.sql'; END $$;
 -- ==========================================================
 -- Migration: Add missing RLS to 8 unprotected tables
 -- Date: 2026-04-09
@@ -3380,6 +3440,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : to
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 21/71 (DANGEREUX) 20260409110000_fix_remaining_rls_recursion.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Fix remaining RLS recursion on tables still using
 --            direct sub-queries on profiles instead of get_my_profile_id()
@@ -3505,6 +3568,9 @@ COMMIT;
 -- risk: +3 policies, -3 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 22/71 (MODERE) 20260409120000_fix_subscriptions_rls_recursion.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Ensure subscriptions RLS uses get_my_profile_id() (no recursion)
 -- Date: 2026-04-09
@@ -3561,6 +3627,9 @@ COMMIT;
 -- risk: ALTER/DROP sur table billing (stripe_* / subscriptions*)
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 23/71 (CRITIQUE) 20260409130000_fix_subscriptions_status_check.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Add 'expired' status to subscriptions CHECK constraint
 -- Date: 2026-04-09
@@ -3594,6 +3663,9 @@ COMMIT;
 -- risk: +2 policies, -2 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 24/71 (MODERE) 20260409140000_fix_addons_sms_rls_recursion.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Fix RLS on subscription_addons & sms_usage
 -- Date: 2026-04-09
@@ -3642,6 +3714,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 25/71 (SAFE) 20260409150000_fix_signature_tracking_and_analytics.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Fix 2 SQL bugs (signature tracking + analytics view)
 -- Date: 2026-04-09
@@ -3820,6 +3895,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : on
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 26/71 (DANGEREUX) 20260409160000_building_unit_lease_document_fk.sql'; END $$;
 -- ============================================
 -- Migration : FK building_unit_id sur leases et documents
 -- Sprint 2+3 : Permettre baux et documents par lot d'immeuble
@@ -3903,6 +3981,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : on,on
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 27/71 (DANGEREUX) 20260409170000_backfill_building_unit_properties.sql'; END $$;
 -- ============================================
 -- Migration : Compléter le schéma buildings + backfill lots
 --
@@ -4126,6 +4207,9 @@ COMMIT;
 -- risk: ALTER column (type/constraint)
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 28/71 (MODERE) 20260409180000_buildings_site_id_nullable.sql'; END $$;
 -- ============================================
 -- Migration : Rendre site_id nullable sur buildings
 --
@@ -4144,6 +4228,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 29/71 (SAFE) 20260410100000_accounting_missing_indexes.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Accounting — missing indexes for hot queries
 -- Date: 2026-04-10
@@ -4218,6 +4305,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 30/71 (SAFE) 20260410110000_cleanup_orphan_analyses.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Cleanup orphan document_analyses
 -- Date: 2026-04-10
@@ -4309,6 +4399,9 @@ COMMIT;
 -- risk: UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 31/71 (MODERE) 20260410180000_fix_invoice_generation_sota.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Consolidated invoice generation fixes (bugs A-H)
 -- Date: 2026-04-10
@@ -4777,6 +4870,9 @@ COMMIT;
 -- risk: +3 policies, -3 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 32/71 (MODERE) 20260410204528_extend_invoices_rls_for_sci_access.sql'; END $$;
 -- =====================================================
 -- Migration: Extend invoices/leases/properties SELECT RLS for SCI access
 -- Date: 2026-04-10
@@ -4924,6 +5020,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : on
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 33/71 (DANGEREUX) 20260410210000_fix_protected_document_visibility.sql'; END $$;
 -- =============================================================================
 -- Migration : Fix protected document visibility for tenants
 -- Date      : 2026-04-10
@@ -5348,6 +5447,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 34/71 (SAFE) 20260410210341_fix_notify_tenant_invoice_created_user_id.sql'; END $$;
 -- =====================================================
 -- Migration: Fix notify_tenant_invoice_created — populate user_id
 -- Date: 2026-04-10
@@ -5457,6 +5559,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 35/71 (SAFE) 20260410210342_fix_generate_monthly_invoices_fields.sql'; END $$;
 -- =====================================================
 -- Migration: Extend generate_monthly_invoices to populate period/type/metadata
 -- Date: 2026-04-10
@@ -5610,6 +5715,9 @@ COMMIT;
 -- risk: +4 policies, -4 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 36/71 (MODERE) 20260410212232_fix_entity_members_policy_recursion.sql'; END $$;
 -- =====================================================
 -- Migration: Fix entity_members RLS recursion
 -- Date: 2026-04-10
@@ -5793,6 +5901,9 @@ COMMIT;
 -- risk: +1 policies, -1 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 37/71 (MODERE) 20260410213940_fix_properties_tenant_policy_recursion.sql'; END $$;
 -- =====================================================
 -- Migration: Fix "Tenants can view linked properties" policy recursion
 -- Date: 2026-04-10
@@ -5883,6 +5994,9 @@ COMMIT;
 -- risk: ALTER column (type/constraint), UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 38/71 (MODERE) 20260410220000_cash_receipt_two_step_signature.sql'; END $$;
 -- =====================================================
 -- Migration: Reçu espèces — signature en deux étapes
 -- Date: 2026-04-10
@@ -6103,6 +6217,9 @@ COMMIT;
 -- risk: ALTER column (type/constraint)
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 39/71 (MODERE) 20260411000000_create_cash_receipt_function.sql'; END $$;
 -- =====================================================
 -- Migration: (Re)création de la fonction create_cash_receipt
 -- Date: 2026-04-11
@@ -6341,6 +6458,9 @@ COMMIT;
 -- risk: +1 policies, -1 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 40/71 (MODERE) 20260411100000_fix_work_orders_policy_recursion.sql'; END $$;
 -- =====================================================
 -- Migration: Fix work_orders RLS recursion via tickets/properties/leases
 -- Date: 2026-04-11
@@ -6434,6 +6554,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 41/71 (SAFE) 20260411120000_harden_payments_check_constraints.sql'; END $$;
 -- =====================================================
 -- Migration: Harden payments CHECK constraints for manual flows
 -- Date: 2026-04-11
@@ -6535,6 +6658,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 42/71 (CRITIQUE) 20260411130000_restore_handle_new_user_sota.sql'; END $$;
 -- ============================================
 -- Migration: Restaurer handle_new_user SOTA 2026
 -- Date: 2026-04-11
@@ -6640,6 +6766,9 @@ COMMIT;
 -- risk: ALTER column (type/constraint)
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 43/71 (MODERE) 20260411130100_agency_profiles_raison_sociale_nullable.sql'; END $$;
 -- ============================================
 -- Migration: Rendre raison_sociale nullable sur agency_profiles
 -- Date: 2026-04-11
@@ -6666,6 +6795,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : on
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 44/71 (DANGEREUX) 20260411130200_create_syndic_profiles.sql'; END $$;
 -- ============================================
 -- Migration: Créer table syndic_profiles
 -- Date: 2026-04-11
@@ -6794,6 +6926,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 45/71 (SAFE) 20260411130300_onboarding_role_constraints_allow_syndic_agency.sql'; END $$;
 -- ============================================
 -- Migration : Autoriser syndic + agency dans onboarding_analytics et onboarding_reminders
 -- Date : 2026-04-11
@@ -6834,6 +6969,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 46/71 (CRITIQUE) 20260411140000_copro_assemblies_module.sql'; END $$;
 -- ============================================
 -- Migration: Module Assemblées Générales de Copropriété
 -- Date: 2026-04-11
@@ -7348,6 +7486,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 47/71 (CRITIQUE) 20260411140100_copro_governance_module.sql'; END $$;
 -- ============================================
 -- Migration: Module Gouvernance Copropriété & Fonds Travaux (Loi ALUR)
 -- Date: 2026-04-11
@@ -7693,6 +7834,9 @@ COMMIT;
 -- risk: +6 policies, -6 policies, ALTER column (type/constraint), UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 48/71 (MODERE) 20260412000000_fix_cash_receipt_rpc_sota.sql'; END $$;
 -- =====================================================
 -- Migration: Fix SOTA create_cash_receipt RPC + schema cache reload
 -- Date: 2026-04-12
@@ -8071,6 +8215,9 @@ COMMIT;
 -- risk: ALTER/DROP sur table billing (stripe_* / subscriptions*)
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 49/71 (CRITIQUE) 20260412100000_stripe_connect_multi_entity.sql'; END $$;
 -- =====================================================
 -- Migration: Stripe Connect — support multi-entité (copropriétés)
 -- Date: 2026-04-12
@@ -8326,6 +8473,9 @@ COMMIT;
 -- risk: +4 policies, -4 policies, UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 50/71 (MODERE) 20260412110000_documents_copro_fk.sql'; END $$;
 -- =====================================================
 -- Migration: Documents copropriété — FK copro_site_id + RLS
 -- Date: 2026-04-12
@@ -8462,6 +8612,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 51/71 (SAFE) 20260412120000_copro_fund_call_lines_reminder_tracking.sql'; END $$;
 -- =====================================================
 -- Migration: Ajouter le tracking des relances sur copro_fund_call_lines
 -- Date: 2026-04-12
@@ -8510,6 +8663,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 52/71 (SAFE) 20260412130000_copro_cron_schedules.sql'; END $$;
 -- ============================================================
 -- Migration: Schedule copro cron jobs via pg_cron + pg_net
 -- Date: 2026-04-12
@@ -8608,6 +8764,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 53/71 (CRITIQUE) 20260412140000_close_admin_self_elevation.sql'; END $$;
 -- ============================================
 -- Migration: Fermer la faille admin self-elevation dans handle_new_user
 -- Date: 2026-04-12
@@ -8719,6 +8878,9 @@ COMMIT;
 -- risk: +2 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 54/71 (MODERE) 20260412150000_create_cron_logs.sql'; END $$;
 -- =====================================================
 -- Migration: Create cron_logs table for admin monitoring
 -- =====================================================
@@ -8764,6 +8926,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 55/71 (CRITIQUE) 20260415000000_signup_integrity_guard.sql'; END $$;
 -- ============================================
 -- Migration : Garde d'intégrité de l'inscription SOTA 2026
 -- Date : 2026-04-15
@@ -9147,6 +9312,9 @@ COMMIT;
 -- risk: UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 56/71 (MODERE) 20260415121706_harden_sign_cash_receipt_as_tenant.sql'; END $$;
 -- =====================================================
 -- Migration: Hardening SOTA de sign_cash_receipt_as_tenant
 -- Date: 2026-04-15
@@ -9341,6 +9509,9 @@ COMMIT;
 -- risk: -2 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 57/71 (MODERE) 20260415124844_add_cheque_photo_to_payments.sql'; END $$;
 -- =====================================================
 -- Migration: Cheque photo upload for manual payments
 -- Date: 2026-04-15
@@ -9431,6 +9602,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 58/71 (SAFE) 20260415130000_fix_tenant_accessible_property_ids_security_definer.sql'; END $$;
 -- =====================================================
 -- Migration: Hardening SOTA de tenant_accessible_property_ids
 -- Date: 2026-04-15
@@ -9522,6 +9696,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : on,to
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 59/71 (DANGEREUX) 20260415140000_buildings_sota_fix_wave1.sql'; END $$;
 -- ============================================================================
 -- Migration : Buildings SOTA Fix — Vague 1 (Sécurité & intégrité)
 --
@@ -9981,6 +10158,9 @@ COMMIT;
 -- risk: UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 60/71 (MODERE) 20260415150000_upsert_building_with_units_rpc.sql'; END $$;
 -- ============================================================================
 -- Migration : RPC transactionnelle upsert_building_with_units
 --
@@ -10308,6 +10488,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : to
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 61/71 (DANGEREUX) 20260415160000_buildings_rls_entity_members_support.sql'; END $$;
 -- ============================================================================
 -- Migration : RLS Support entity_members pour buildings et building_units
 --
@@ -10494,6 +10677,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : of
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 62/71 (DANGEREUX) 20260415230000_enforce_invoice_paid_has_payment.sql'; END $$;
 -- =============================================================================
 -- Migration : garde-fou "une invoice paid a toujours un payment associé"
 -- Date      : 2026-04-15
@@ -10678,6 +10864,9 @@ COMMIT;
 -- risk: +1 triggers, UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 63/71 (MODERE) 20260416100000_fix_messages_conversation_trigger.sql'; END $$;
 -- Migration: Fix Messages Module
 -- 1. Trigger AFTER INSERT ON messages → update conversations metadata
 -- 2. Backfill existing conversations with last_message data
@@ -10755,6 +10944,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 64/71 (SAFE) 20260417090000_charges_reg_invoice_link.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Gap P0 #1 — Liaison régul ↔ invoice
 -- Date: 2026-04-17
@@ -10785,6 +10977,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : on
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 65/71 (DANGEREUX) 20260417090100_tax_notices_table.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Sprint 0.a — Table tax_notices
 -- Date: 2026-04-17
@@ -10865,6 +11060,9 @@ COMMIT;
 -- risk: +1 policies, -1 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 66/71 (MODERE) 20260417090200_epci_reference_table.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Sprint 0.a — Table epci_reference
 -- Date: 2026-04-17
@@ -10924,6 +11122,9 @@ COMMIT;
 -- risk: +1 policies, -1 policies, UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 67/71 (MODERE) 20260417090300_fix_tenant_contest_rls.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Gap P0 #4 — RLS locataire contested
 -- Date: 2026-04-17
@@ -10981,6 +11182,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 68/71 (SAFE) 20260417090400_charges_pcg_accounts_backfill.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Gap P0 #3 — Backfill comptes PCG charges
 -- Date: 2026-04-17
@@ -11020,6 +11224,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 69/71 (SAFE) 20260417090500_epci_reference_seed_drom.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Sprint 0.b — Seed EPCI DROM-COM
 -- Date: 2026-04-17
@@ -11120,6 +11327,9 @@ COMMIT;
 -- risk: DROP TABLE : phone_otp_codes
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 70/71 (DANGEREUX) 20260417100000_drop_phone_otp_codes_refs.sql'; END $$;
 -- Migration: Drop phone_otp_codes + enrich sms_messages (2026-04-17)
 --
 -- Sprint 0 (SMS unification + Twilio Verify):
@@ -11164,6 +11374,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 71/71 (SAFE) 20260417110000_purge_identity_2fa_cron.sql'; END $$;
 -- Migration: Cron quotidien de purge des demandes 2FA identité expirées
 -- Date: 2026-04-17
 --

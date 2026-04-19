@@ -1,6 +1,6 @@
 -- =============================================================================
 -- APPLY SPRINT B2 — BATCH 01_FEB2026 (IDEMPOTENT v2)
--- Genere le 2026-04-19T07:19:19Z
+-- Genere le 2026-04-19T07:29:11Z
 --
 -- Contenu : 61 migrations (action=apply uniquement)
 -- Plage   : 20260208100000 -> 20260230100000
@@ -27,6 +27,9 @@
 -- risk: ALTER column (type/constraint)
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 1/61 (MODERE) 20260208100000_fix_data_storage_audit.sql'; END $$;
 -- Migration: Fix data storage issues found during route audit (2026-02-08)
 --
 -- FIX #3: Add room_label, has_guarantor, guarantor_email, guarantor_name to roommates
@@ -109,6 +112,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : on
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 2/61 (DANGEREUX) 20260209100000_create_sms_messages_table.sql'; END $$;
 -- Migration: Create sms_messages table for Twilio SMS tracking (2026-02-09)
 --
 -- The application code (API routes) already references this table:
@@ -228,6 +234,9 @@ COMMIT;
 -- risk: UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 3/61 (MODERE) 20260211000000_p2_unique_constraint_and_gdpr_rpc.sql'; END $$;
 -- =====================================================
 -- Migration P2: Contrainte UNIQUE partielle + RPC GDPR transactionnelle
 -- Date: 2026-02-11
@@ -516,6 +525,9 @@ COMMIT;
 -- risk: +1 triggers, UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 4/61 (MODERE) 20260211100000_bic_compliance_tax_regime.sql'; END $$;
 -- ============================================
 -- BIC Compliance: Régime fiscal + Inventaire mobilier
 -- Corrige les lacunes identifiées dans l'audit BIC
@@ -622,6 +634,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 5/61 (CRITIQUE) 20260212000000_audit_database_integrity.sql'; END $$;
 -- ============================================================================
 -- AUDIT D'INTÉGRITÉ DE LA BASE DE DONNÉES TALOK
 -- Date: 2026-02-12
@@ -2160,6 +2175,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 6/61 (CRITIQUE) 20260212000001_fix_guarantor_role_and_tables.sql'; END $$;
 -- ============================================
 -- Migration: Ajouter le rôle guarantor + tables manquantes
 -- Date: 2026-02-12
@@ -2322,6 +2340,9 @@ COMMIT;
 -- risk: +2 triggers, UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 7/61 (MODERE) 20260212100000_audit_v2_merge_and_prevention.sql'; END $$;
 -- ============================================================================
 -- AUDIT D'INTÉGRITÉ V2 — FUSION, DRY RUN, ROLLBACK, PRÉVENTION
 -- Date: 2026-02-12
@@ -3539,6 +3560,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 8/61 (CRITIQUE) 20260212100001_email_template_system.sql'; END $$;
 -- ============================================================
 -- Email Template System
 -- Tables: email_templates, email_template_versions, email_logs
@@ -3713,6 +3737,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 9/61 (SAFE) 20260212100002_email_templates_seed.sql'; END $$;
 -- ============================================================
 -- Seed data: 31 email templates
 -- ============================================================
@@ -4423,6 +4450,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 10/61 (CRITIQUE) 20260212200000_audit_v3_comprehensive_integrity.sql'; END $$;
 -- ============================================================================
 -- AUDIT D'INTÉGRITÉ V3 — VÉRIFICATIONS ÉTENDUES & QUALITÉ DES DONNÉES
 -- Date: 2026-02-12
@@ -5184,6 +5214,9 @@ COMMIT;
 -- risk: +3 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 11/61 (MODERE) 20260213000000_fix_profiles_rls_recursion_v2.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Correction définitive de la récursion RLS sur profiles (v2)
 -- Date: 2026-02-13
@@ -5361,6 +5394,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : to
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 12/61 (DANGEREUX) 20260213100000_fix_rls_all_tables_recursion.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Correction globale de la récursion RLS
 -- Date: 2026-02-13
@@ -5512,6 +5548,9 @@ COMMIT;
 -- risk: RENAME column
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 13/61 (MODERE) 20260215100000_signature_security_audit_fixes.sql'; END $$;
 -- ============================================================================
 -- MIGRATION: Corrections audit sécurité signatures (2026-02-15)
 -- ============================================================================
@@ -5635,6 +5674,9 @@ COMMIT;
 -- risk: +1 policies, -1 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 14/61 (MODERE) 20260215200000_fix_rls_properties_tenant_pre_active.sql'; END $$;
 -- ============================================================================
 -- P0-E1: Fix RLS properties pour locataires avant bail "active"
 -- ============================================================================
@@ -5682,6 +5724,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 15/61 (SAFE) 20260215200001_add_notice_given_lease_status.sql'; END $$;
 -- ============================================================================
 -- MIGRATION CORRECTIVE: Harmonisation complète des statuts de bail
 -- Date: 2026-02-15
@@ -5761,6 +5806,9 @@ COMMIT;
 -- risk: +4 policies, -6 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 16/61 (MODERE) 20260215200002_fix_rls_tenant_access_beyond_active.sql'; END $$;
 -- ============================================================================
 -- MIGRATION CORRECTIVE: Élargir les RLS units/charges/tickets pour les locataires
 -- Date: 2026-02-15
@@ -5936,6 +5984,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 17/61 (SAFE) 20260215200003_fix_copro_fk_on_delete.sql'; END $$;
 -- ============================================================================
 -- MIGRATION CORRECTIVE: Ajouter ON DELETE aux FK copropriété
 -- Date: 2026-02-15
@@ -6042,6 +6093,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : of
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 18/61 (DANGEREUX) 20260216000000_tenant_document_center.sql'; END $$;
 -- =============================================================================
 -- Migration : Tenant Document Center
 -- Date      : 2026-02-16
@@ -6568,6 +6622,9 @@ COMMIT;
 -- risk: +1 triggers, UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 19/61 (MODERE) 20260216000001_document_center_notifications.sql'; END $$;
 -- =============================================================================
 -- Migration : Document Center — Notifications & URL updates
 -- Date      : 2026-02-16
@@ -6830,6 +6887,9 @@ COMMIT;
 -- risk: +3 policies, -7 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 20/61 (MODERE) 20260216100000_security_audit_rls_fixes.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Correctifs sécurité P0 — Audit BIC2026
 -- Date: 2026-02-16
@@ -6981,6 +7041,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 21/61 (CRITIQUE) 20260216200000_auto_link_lease_signers_trigger.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Auto-link lease_signers + fix profil orphelin
 -- Date: 2026-02-16
@@ -7149,6 +7212,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 22/61 (CRITIQUE) 20260216300000_fix_auth_profile_sync.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Correction synchronisation auth <-> profiles
 -- Date: 2026-02-16
@@ -7504,6 +7570,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 23/61 (SAFE) 20260216400000_performance_indexes_rls.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Index de performance pour les policies RLS
 -- Date: 2026-02-16
@@ -7621,6 +7690,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 24/61 (CRITIQUE) 20260216500000_fix_tenant_dashboard_complete.sql'; END $$;
 -- ============================================================================
 -- MIGRATION: Compléter la RPC tenant_dashboard avec toutes les données nécessaires
 -- Date: 2026-02-16
@@ -7955,6 +8027,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 25/61 (SAFE) 20260216500001_enforce_unique_constraints_safety.sql'; END $$;
 -- Migration: Enforce unique constraints safety net
 -- Date: 2026-02-16
 -- Description: S'assure que les contraintes uniques critiques sont bien appliquées.
@@ -8103,6 +8178,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 26/61 (CRITIQUE) 20260217000000_data_integrity_audit_repair.sql'; END $$;
 -- ============================================================================
 -- MIGRATION: Audit & Réparation Intégrité Relationnelle Complète
 -- Date: 2026-02-17
@@ -8951,6 +9029,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 27/61 (CRITIQUE) 20260218000000_audit_repair_profiles.sql'; END $$;
 -- ============================================================================
 -- BLOC 1 : TABLE D'AUDIT + RÉPARATION PROFILS
 -- ============================================================================
@@ -9037,6 +9118,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 28/61 (CRITIQUE) 20260218100000_sync_auth_email_updates.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Synchronisation des changements d'email auth -> profiles
 -- Date: 2026-02-18
@@ -9183,6 +9267,9 @@ COMMIT;
 -- risk: +18 policies, -18 policies, +1 triggers, UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 29/61 (MODERE) 20260219000000_missing_tables_and_rag.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Tables et fonctions manquantes
 -- Date: 2026-02-19
@@ -9667,6 +9754,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 30/61 (CRITIQUE) 20260219100000_auto_link_notify_owner.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Notify owner when tenant creates account (auto-link)
 -- Date: 2026-02-19
@@ -9776,6 +9866,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 31/61 (CRITIQUE) 20260219200000_fix_autolink_triggers_audit.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Corrections issues de l'audit auto-link triggers
 -- Date: 2026-02-19
@@ -10107,6 +10200,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 32/61 (CRITIQUE) 20260220000000_auto_link_signer_on_insert.sql'; END $$;
 -- =====================================================
 -- MIGRATION: SOTA 2026 — Auto-link signer à l'INSERT
 -- Date: 2026-02-20
@@ -10246,6 +10342,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 33/61 (CRITIQUE) 20260220100000_fix_orphan_signers_audit.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Audit connexion comptes — fix rétroactif + RPC
 -- Date: 2026-02-20
@@ -10364,6 +10463,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 34/61 (CRITIQUE) 20260221000001_auto_link_trigger_update.sql'; END $$;
 -- =====================================================
 -- Auto-link lease_signers on profile UPDATE
 -- Date: 2026-02-21
@@ -10424,6 +10526,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 35/61 (CRITIQUE) 20260221000002_fix_edl_signatures_rls.sql'; END $$;
 -- =====================================================
 -- Fix RLS edl_signatures pour invités (signer_user NULL)
 -- Date: 2026-02-21
@@ -10465,6 +10570,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 36/61 (CRITIQUE) 20260221100000_fix_tenant_dashboard_draft_visibility.sql'; END $$;
 -- ============================================================================
 -- MIGRATION: Fix tenant_dashboard — inclure les baux 'draft' pour le locataire
 -- Date: 2026-02-21
@@ -10804,6 +10912,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 37/61 (CRITIQUE) 20260221100001_auto_upgrade_draft_on_tenant_signer.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Auto-upgrade baux draft + fix rétroactif complet
 -- Date: 2026-02-21
@@ -11007,6 +11118,9 @@ COMMIT;
 -- risk: +1 triggers
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 38/61 (MODERE) 20260221200000_sync_edl_signer_to_lease_signer.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Sync edl_signatures → lease_signers (défense en profondeur)
 -- Date: 2026-02-21
@@ -11103,6 +11217,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 39/61 (CRITIQUE) 20260221300000_fix_tenant_dashboard_owner_join.sql'; END $$;
 -- ============================================================================
 -- MIGRATION: Fix tenant_dashboard — LEFT JOIN sur owner_prof + adresse_complete
 -- Date: 2026-02-21
@@ -11455,6 +11572,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 40/61 (CRITIQUE) 20260222000000_fix_invitations_and_orphan_signers.sql'; END $$;
 -- =====================================================
 -- Migration: Lier les lease_signers orphelins et créer les invitations manquantes
 -- Date: 2026-02-22
@@ -11524,6 +11644,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 41/61 (CRITIQUE) 20260222100000_repair_missing_signers_and_invitations.sql'; END $$;
 -- =====================================================
 -- Migration: Réparation complète — signataires manquants + invitations
 -- Date: 2026-02-22
@@ -11707,6 +11830,9 @@ COMMIT;
 -- risk: UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 42/61 (MODERE) 20260222200000_ensure_all_owners_have_entity.sql'; END $$;
 -- ============================================
 -- Migration: S'assurer que tous les propriétaires ont une entité juridique
 -- Date: 2026-02-22
@@ -11747,6 +11873,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 43/61 (SAFE) 20260222200001_get_entity_stats_for_store.sql'; END $$;
 -- ============================================
 -- Migration: get_entity_stats aligné avec la logique du store (properties.legal_entity_id + particulier)
 -- Date: 2026-02-22
@@ -11820,6 +11949,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 44/61 (CRITIQUE) 20260223000000_fix_tenant_documents_rls.sql'; END $$;
 -- Migration : Corriger les politiques RLS sur tenant_documents
 -- Date : 2026-02-23
 --
@@ -11890,6 +12022,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : on
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 45/61 (DANGEREUX) 20260223000001_auto_fill_document_fk.sql'; END $$;
 -- =====================================================
 -- MIGRATION SOTA 2026: Auto-complétion des FK documents
 -- Date: 2026-02-23
@@ -12092,6 +12227,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 46/61 (SAFE) 20260223000002_document_access_views.sql'; END $$;
 -- =====================================================
 -- MIGRATION SOTA 2026: Vues d'accès documents optimisées
 -- Date: 2026-02-23
@@ -12184,6 +12322,9 @@ COMMIT;
 -- risk: +1 triggers
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 47/61 (MODERE) 20260223000003_notify_owner_on_tenant_document.sql'; END $$;
 -- =====================================================
 -- MIGRATION SOTA 2026: Notification propriétaire sur dépôt document locataire
 -- Date: 2026-02-23
@@ -12286,6 +12427,9 @@ COMMIT;
 -- risk: +3 triggers, UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 48/61 (MODERE) 20260223100000_fix_entity_connections.sql'; END $$;
 -- ============================================================================
 -- Migration: Correction des connexions entites juridiques
 -- Date: 2026-02-23
@@ -12569,6 +12713,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : on,own,own
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 49/61 (DANGEREUX) 20260223200000_fix_all_missing_tables_and_columns.sql'; END $$;
 -- ============================================================================
 -- MIGRATION CONSOLIDÉE : Tables et colonnes manquantes (connexions BDD)
 -- Date: 2026-02-23
@@ -12813,6 +12960,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 50/61 (CRITIQUE) 20260224000000_fix_tenant_sync_and_notifications.sql'; END $$;
 -- =====================================================
 -- Migration: Fix tenant data sync — liaison orpheline + notifications manquantes
 -- Date: 2026-02-24
@@ -12928,6 +13078,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 51/61 (SAFE) 20260224000001_remove_yousign_sendgrid_brevo.sql'; END $$;
 -- Suppression des providers Yousign, SendGrid et Brevo (signature/email intégrés ou non utilisés)
 -- Les credentials associées sont supprimées en premier (FK)
 
@@ -12947,6 +13100,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 52/61 (CRITIQUE) 20260224100000_fix_tenant_dashboard_notifications_query.sql'; END $$;
 -- ============================================================================
 -- MIGRATION: Fix tenant_dashboard RPC — notification query includes user_id
 -- Date: 2026-02-24
@@ -13285,6 +13441,9 @@ COMMIT;
 -- risk: +3 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 53/61 (MODERE) 20260225000000_owner_payment_audit_log.sql'; END $$;
 -- ============================================================
 -- SOTA 2026 : Journal d'audit PSD3 pour les moyens de paiement propriétaire
 -- Traçabilité des actions (carte ajoutée/supprimée, défaut, etc.)
@@ -13329,6 +13488,9 @@ COMMIT;
 -- risk: +11 policies, -11 policies, UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 54/61 (MODERE) 20260225000001_fix_furniture_vetusty_rls.sql'; END $$;
 -- ============================================================================
 -- P0-4: Correction RLS vétusté et mobilier
 -- properties.owner_id et lease_signers.profile_id sont des profiles.id,
@@ -13531,6 +13693,9 @@ COMMIT;
 -- risk: Touche auth.users
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 55/61 (CRITIQUE) 20260225100000_autolink_backfill_invoices_on_profile.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Backfill invoices.tenant_id dans l'auto-link profil
 -- Date: 2026-02-25
@@ -13604,6 +13769,9 @@ COMMIT;
 -- risk: UPDATE
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 56/61 (MODERE) 20260226000000_backfill_existing_invoices_tenant_id.sql'; END $$;
 -- =====================================================
 -- MIGRATION: Backfill invoices.tenant_id pour les profils existants
 -- Date: 2026-02-26
@@ -13644,6 +13812,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 57/61 (SAFE) 20260227000000_drop_auto_activate_lease_trigger.sql'; END $$;
 -- Fix: Le trigger auto_activate_lease_on_edl n'a pas été supprimé
 -- car la migration 20260207200000 ciblait le mauvais nom
 DROP TRIGGER IF EXISTS auto_activate_lease_on_edl ON public.edl;
@@ -13656,6 +13827,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 58/61 (SAFE) 20260228000000_lease_signers_share_percentage.sql'; END $$;
 -- SOTA 2026: part de répartition par signataire (colocation).
 -- Si NULL, l'UI utilise le fallback 100 / nombre de colocataires.
 ALTER TABLE public.lease_signers
@@ -13671,6 +13845,9 @@ COMMIT;
 -- risk: UPDATE sans WHERE : using,on,of,using,on,on,invoices,of
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 59/61 (DANGEREUX) 20260228100000_tenant_payment_methods_sota2026.sql'; END $$;
 -- ============================================================
 -- SOTA 2026 : Système de paiement locataire complet
 -- - tenant_payment_methods  (multi-cartes, SEPA, wallets)
@@ -14001,6 +14178,9 @@ COMMIT;
 -- risk: +1 policies, -1 policies
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 60/61 (MODERE) 20260229100000_identity_2fa_requests.sql'; END $$;
 -- Migration: Table pour les demandes 2FA (SMS + email) lors des changements d'identité
 -- SOTA 2026 - Vérification à deux facteurs pour renouvellement / mise à jour CNI
 
@@ -14044,6 +14224,9 @@ COMMIT;
 -- risk: Idempotent / structural only
 -- -----------------------------------------------------------------------------
 BEGIN;
+SET LOCAL lock_timeout = '3s';
+SET LOCAL statement_timeout = '10min';
+DO $$ BEGIN RAISE NOTICE 'Applying 61/61 (SAFE) 20260230100000_create_notification_resolve_profile_id.sql'; END $$;
 -- =====================================================
 -- MIGRATION: create_notification — résolution profile_id → user_id
 -- Date: 2026-02-30
