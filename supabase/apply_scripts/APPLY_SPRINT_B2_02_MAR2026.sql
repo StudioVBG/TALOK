@@ -1,6 +1,6 @@
 -- =============================================================================
 -- APPLY SPRINT B2 — BATCH 02_MAR2026 (IDEMPOTENT v2)
--- Genere le 2026-04-19T07:32:28Z
+-- Genere le 2026-04-19T07:38:02Z
 --
 -- Contenu : 62 migrations (action=apply uniquement)
 -- Plage   : 20260301000000 -> 20260331130000
@@ -4582,7 +4582,7 @@ WITH duplicates AS (
 )
 UPDATE properties
 SET deleted_at = NOW(),
-    deleted_by = 'system-dedup-migration'
+    deleted_by = NULL
 WHERE id IN (
   SELECT id FROM duplicates WHERE rn > 1
 );
@@ -4594,8 +4594,7 @@ DECLARE
 BEGIN
   SELECT COUNT(*) INTO dedup_count
   FROM properties
-  WHERE deleted_by = 'system-dedup-migration'
-    AND deleted_at >= NOW() - INTERVAL '1 minute';
+  WHERE deleted_at >= NOW() - INTERVAL '1 minute';
 
   RAISE NOTICE 'Propriétés doublons soft-deleted: %', dedup_count;
 END $$;
