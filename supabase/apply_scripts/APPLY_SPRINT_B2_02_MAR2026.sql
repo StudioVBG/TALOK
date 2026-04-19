@@ -1,6 +1,6 @@
 -- =============================================================================
 -- APPLY SPRINT B2 — BATCH 02_MAR2026 (IDEMPOTENT v2)
--- Genere le 2026-04-19T07:38:02Z
+-- Genere le 2026-04-19T07:52:47Z
 --
 -- Contenu : 62 migrations (action=apply uniquement)
 -- Plage   : 20260301000000 -> 20260331130000
@@ -4886,7 +4886,7 @@ BEGIN
       'extracted_data', td.extracted_data
     ) AS metadata,
     td.created_at,
-    COALESCE(td.updated_at, td.created_at)
+    COALESCE(td.uploaded_at, td.created_at)
   FROM tenant_documents td
   WHERE NOT EXISTS (
     SELECT 1 FROM documents d
