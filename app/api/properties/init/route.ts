@@ -160,12 +160,37 @@ export async function POST(request: Request) {
       .single();
 
     if (insertError) {
+      // 23505 = unique_violation Postgres. Côté propriétés, la contrainte
+      // qui déclenche le plus souvent ce code est le trigger métier
+      // "1 brouillon actif par (owner, adresse, code_postal)" : on traite
+      // le cas comme un 409 idempotent et on renvoie le brouillon existant
+      // pour que le wizard puisse reprendre dessus au lieu de crasher.
+      if (insertError.code === "23505") {
+        const { data: existingDraft } = await serviceClient
+          .from("properties")
+          .select("id, etat")
+          .eq("owner_id", profile.id)
+          .eq("adresse_complete", insertData.adresse_complete)
+          .eq("code_postal", insertData.code_postal)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        return NextResponse.json({
+          error: "DUPLICATE_PROPERTY",
+          message: "Un brouillon existe déjà pour cette adresse. Reprenez-le ou supprimez-le avant d'en créer un nouveau.",
+          details: insertError.message,
+          existing_property_id: existingDraft?.id ?? null,
+          existing_status: existingDraft?.etat ?? null,
+        }, { status: 409 });
+      }
+
       console.error("Erreur création property:", insertError);
       console.error("Données tentées:", insertData);
-      return NextResponse.json({ 
-        error: "Erreur lors de la création", 
+      return NextResponse.json({
+        error: "Erreur lors de la création",
         details: insertError.message,
-        code: insertError.code 
+        code: insertError.code,
       }, { status: 500 });
     }
 

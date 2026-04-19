@@ -387,14 +387,22 @@ class ChatService {
    * Créer ou récupérer une conversation existante
    */
   async getOrCreateConversation(data: CreateConversationData): Promise<Conversation> {
-    // Vérifier si une conversation existe déjà
+    // Vérifier si une conversation existe déjà.
+    // maybeSingle() évite l'erreur PGRST116 (406 côté réseau) lorsqu'aucune
+    // ligne ne correspond — le cas normal pour une première conversation.
+    // Filtres conversation_type + status alignés sur le CHECK et l'UNIQUE
+    // partiel défini dans la migration Sprint 1 (20260419130000).
     const { data: existing, error: checkError } = await this.supabase
       .from("conversations")
       .select("*")
+      .eq("conversation_type", "owner_tenant")
       .eq("property_id", data.property_id)
       .eq("owner_profile_id", data.owner_profile_id)
       .eq("tenant_profile_id", data.tenant_profile_id)
-      .single();
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (checkError) throw checkError;
 
     if (existing) {
       // Re-fetch avec les données jointes (profiles, property)
@@ -543,14 +551,16 @@ class ChatService {
     subject?: string;
   }): Promise<Conversation> {
     // Chercher une conversation existante liée au ticket
-    const { data: existing } = await (this.supabase
+    const { data: existing, error: checkError } = await this.supabase
       .from("conversations")
-      .select("*") as any)
+      .select("*")
       .eq("ticket_id", data.ticket_id)
-      .single();
+      .maybeSingle();
+
+    if (checkError) throw checkError;
 
     if (existing) {
-      return existing as Conversation;
+      return existing as unknown as Conversation;
     }
 
     // Créer une nouvelle conversation liée au ticket

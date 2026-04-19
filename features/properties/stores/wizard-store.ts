@@ -363,8 +363,16 @@ export const usePropertyWizardStore = create<WizardState>()(
     } catch (error: unknown) {
       console.error('[WizardStore] Erreur création draft:', error);
 
-      // Détecter erreur de limite d'abonnement (403 SUBSCRIPTION_LIMIT)
-      const errorData = (error as { data?: { error?: string; message?: string } })?.data;
+      const errorData = (error as {
+        data?: {
+          error?: string;
+          message?: string;
+          existing_property_id?: string | null;
+          existing_status?: string | null;
+        };
+      })?.data;
+
+      // 403 SUBSCRIPTION_LIMIT — quota atteint
       const isSubscriptionLimit = errorData?.error === "SUBSCRIPTION_LIMIT"
         || (error instanceof Error && error.message === "SUBSCRIPTION_LIMIT");
 
@@ -380,6 +388,44 @@ export const usePropertyWizardStore = create<WizardState>()(
           variant: "destructive",
           title: "Limite atteinte",
           description: limitMessage,
+        });
+        return;
+      }
+
+      // 409 DUPLICATE_PROPERTY — brouillon existant à la même adresse.
+      // On reprend silencieusement dessus si c'est un draft, plutôt que
+      // de crasher le wizard. L'utilisateur retrouve son travail.
+      if (errorData?.error === "DUPLICATE_PROPERTY") {
+        const existingId = errorData.existing_property_id;
+        const existingStatus = errorData.existing_status;
+
+        if (existingId && existingStatus === "draft") {
+          set({
+            propertyId: existingId,
+            formData: { ...get().formData, type_bien: type, type },
+            syncStatus: 'saved',
+            lastError: null,
+            isInitializing: false,
+          });
+          toast({
+            title: "Brouillon repris",
+            description: "Un brouillon existait déjà à cette adresse, on continue dessus.",
+          });
+          console.info(`[WizardStore] Brouillon existant récupéré: ${existingId}`);
+          return;
+        }
+
+        const duplicateMessage = errorData.message
+          || "Un bien existe déjà à cette adresse.";
+        set({
+          syncStatus: 'error',
+          lastError: duplicateMessage,
+          isInitializing: false,
+        });
+        toast({
+          variant: "destructive",
+          title: "Bien en doublon",
+          description: duplicateMessage,
         });
         return;
       }

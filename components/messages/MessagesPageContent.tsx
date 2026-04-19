@@ -13,6 +13,8 @@ import { MessageSquare, ArrowRight, Plus, Loader2 } from "lucide-react";
 import { PageTransition } from "@/components/ui/page-transition";
 import { chatService } from "@/lib/services/chat.service";
 import type { Conversation, ConversationEnriched } from "@/lib/services/chat.service";
+import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
+import { useToast } from "@/components/ui/use-toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,6 +64,7 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
   } | null>(null);
   const [ownerTenants, setOwnerTenants] = useState<TenantOption[]>([]);
   const supabase = createClient();
+  const { toast } = useToast();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -163,7 +166,7 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
           }
         }
       } catch (error) {
-        console.error("Erreur initialisation:", error);
+        console.error("Erreur initialisation:", extractErrorMessage(error), error);
       } finally {
         setLoading(false);
       }
@@ -185,7 +188,7 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
         }
       })
       .catch((error) => {
-        console.error("Erreur ouverture conversation depuis URL:", error);
+        console.error("Erreur ouverture conversation depuis URL:", extractErrorMessage(error), error);
       });
     return () => {
       cancelled = true;
@@ -202,7 +205,12 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
         setSelectedConversation(full);
       }
     } catch (error) {
-      console.error("Erreur ouverture conversation:", error);
+      console.error("Erreur ouverture conversation:", extractErrorMessage(error), error);
+      toast({
+        title: "Impossible d'ouvrir cette conversation",
+        description: extractErrorMessage(error, "Veuillez réessayer dans un instant."),
+        variant: "destructive",
+      });
     }
   };
 
@@ -226,7 +234,12 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
       });
       setSelectedConversation(conversation);
     } catch (error) {
-      console.error("Erreur création conversation:", error);
+      console.error("Erreur création conversation:", extractErrorMessage(error), error);
+      toast({
+        title: "Impossible de créer la conversation",
+        description: extractErrorMessage(error, "Veuillez réessayer dans un instant."),
+        variant: "destructive",
+      });
     } finally {
       setIsCreatingConversation(false);
     }
@@ -244,7 +257,12 @@ export function MessagesPageContent({ subtitle, onNotAuthenticated }: MessagesPa
       });
       setSelectedConversation(conversation);
     } catch (error) {
-      console.error("Erreur création conversation:", error);
+      console.error("Erreur création conversation:", extractErrorMessage(error), error);
+      toast({
+        title: "Impossible de créer la conversation",
+        description: extractErrorMessage(error, "Veuillez réessayer dans un instant."),
+        variant: "destructive",
+      });
     } finally {
       setIsCreatingConversation(false);
     }
