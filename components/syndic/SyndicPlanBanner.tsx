@@ -116,7 +116,7 @@ export function SyndicPlanBanner({
           </div>
         </div>
         <Link
-          href="/owner/settings/subscription"
+          href="/syndic/settings/subscription"
           className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#2563EB] text-white text-sm font-semibold hover:bg-[#2563EB]/90 transition-colors"
         >
           Choisir un plan
@@ -143,7 +143,7 @@ export function SyndicPlanBanner({
             </span>
           </p>
           <Link
-            href="/owner/settings/subscription"
+            href="/syndic/settings/subscription"
             className="inline-block mt-1 sm:mt-0 sm:ml-2 text-[#2563EB] font-semibold hover:underline"
           >
             Choisir un plan →
