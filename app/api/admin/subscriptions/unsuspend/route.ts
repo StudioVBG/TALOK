@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { adminUnsuspendAccount } from "@/lib/subscriptions/subscription-service";
 import { z } from "zod";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { validateCsrfFromRequest } from "@/lib/security/csrf";
 
 const unsuspendSchema = z.object({
   user_id: z.string().uuid(),
@@ -19,6 +20,16 @@ const unsuspendSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    // CSRF validation
+    try {
+      const csrfValid = await validateCsrfFromRequest(request);
+      if (!csrfValid) {
+        return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+      }
+    } catch {
+      // CSRF_SECRET not configured — degrade gracefully
+    }
+
     // RBAC + rate limit + audit
     const auth = await requireAdminPermissions(request, ["admin.subscriptions.write"], {
       rateLimit: "adminCritical",
