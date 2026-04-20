@@ -107,9 +107,9 @@ export const AnimatedTestimonialGrid = ({
             {badgeText}
           </div>
         )}
-        <h1 className="text-4xl md:text-6xl font-bold tracking-tighter text-foreground mb-4 max-w-3xl">
+        <h2 className="text-4xl md:text-6xl font-bold tracking-tighter text-foreground mb-4 max-w-3xl">
           {title}
-        </h1>
+        </h2>
         <p className="max-w-xl text-lg text-muted-foreground mb-8">
           {description}
         </p>

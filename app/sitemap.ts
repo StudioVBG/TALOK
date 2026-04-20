@@ -45,18 +45,13 @@ async function getBlogPosts(): Promise<Array<{ slug: string; updated_at: string 
 /**
  * Sitemap dynamique SOTA 2026 pour le SEO
  *
- * Génère automatiquement les URLs pour :
- * - Pages statiques publiques
- * - Articles de blog dynamiques
- * - Pages marketing SEO
- * - Pages légales
+ * Seules les routes EXISTANTES (200) sont listées. Ajouter une entrée
+ * implique que la page soit livrée en prod ; sinon on pollue le sitemap
+ * avec des 404 (rapport audit SEO 2026-04-20).
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
-  // ============================================
-  // PAGES PRINCIPALES (Priorité haute)
-  // ============================================
   const mainPages: MetadataRoute.Sitemap = [
     {
       url: BASE_URL,
@@ -71,83 +66,54 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9,
     },
     {
-      url: `${BASE_URL}/features`,
+      url: `${BASE_URL}/fonctionnalites`,
       lastModified: now,
       changeFrequency: "weekly",
       priority: 0.9,
     },
   ];
 
-  // ============================================
-  // PAGES SEO STRATÉGIQUES
-  // ============================================
-  const seoPages: MetadataRoute.Sitemap = [
-    {
-      url: `${BASE_URL}/logiciel-gestion-locative`,
-      lastModified: now,
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
-    {
-      url: `${BASE_URL}/comparatif/rentila`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/comparatif/smovin`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/comparatif/hektor`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-  ];
+  const featureSubpages: MetadataRoute.Sitemap = [
+    "comptabilite-fiscalite",
+    "etats-des-lieux",
+    "gestion-biens",
+    "gestion-locataires",
+    "paiements-en-ligne",
+    "quittances-loyers",
+    "signature-electronique",
+  ].map((slug) => ({
+    url: `${BASE_URL}/fonctionnalites/${slug}`,
+    lastModified: now,
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
 
-  // ============================================
-  // OUTILS GRATUITS (Lead magnets SEO)
-  // ============================================
+  const solutionPages: MetadataRoute.Sitemap = [
+    "administrateurs-biens",
+    "dom-tom",
+    "investisseurs",
+    "proprietaires-particuliers",
+    "sci-familiales",
+  ].map((slug) => ({
+    url: `${BASE_URL}/solutions/${slug}`,
+    lastModified: now,
+    changeFrequency: "monthly" as const,
+    priority: 0.8,
+  }));
+
   const toolPages: MetadataRoute.Sitemap = [
-    {
-      url: `${BASE_URL}/outils/quittance-loyer`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/outils/modele-bail`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: `${BASE_URL}/outils/calculateur-rentabilite`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${BASE_URL}/outils/etat-des-lieux`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-  ];
+    "calcul-frais-notaire",
+    "calcul-rendement-locatif",
+    "calcul-revision-irl",
+    "simulateur-charges",
+  ].map((slug) => ({
+    url: `${BASE_URL}/outils/${slug}`,
+    lastModified: now,
+    changeFrequency: "monthly" as const,
+    priority: 0.7,
+  }));
 
-  // ============================================
-  // PAGES AUTHENTIFICATION
-  // ============================================
   const authPages: MetadataRoute.Sitemap = [
-    {
-      url: `${BASE_URL}/auth/signin`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
     {
       url: `${BASE_URL}/auth/signup`,
       lastModified: now,
@@ -162,19 +128,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // ============================================
-  // BLOG / HELP CENTER
-  // ============================================
-  const blogIndexPage: MetadataRoute.Sitemap = [
+  const contentHubPages: MetadataRoute.Sitemap = [
     {
       url: `${BASE_URL}/blog`,
       lastModified: now,
       changeFrequency: "daily",
       priority: 0.8,
     },
+    {
+      url: `${BASE_URL}/guides`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${BASE_URL}/temoignages`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
   ];
 
-  // Articles de blog dynamiques
   const blogPosts = await getBlogPosts();
   const blogPages: MetadataRoute.Sitemap = blogPosts.map((post) => ({
     url: `${BASE_URL}/blog/${post.slug}`,
@@ -183,9 +157,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  // ============================================
-  // PAGES LÉGALES
-  // ============================================
   const legalPages: MetadataRoute.Sitemap = [
     {
       url: `${BASE_URL}/legal/mentions`,
@@ -237,44 +208,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // ============================================
-  // PAGES GUIDES (Contenu SEO)
-  // ============================================
-  const guidePages: MetadataRoute.Sitemap = [
-    {
-      url: `${BASE_URL}/guide/proprietaire-bailleur`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${BASE_URL}/guide/bail-location`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${BASE_URL}/guide/gestion-locative-drom`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-  ];
-
-  // ============================================
-  // ASSEMBLAGE FINAL
-  // ============================================
   return [
     ...mainPages,
-    ...seoPages,
+    ...featureSubpages,
+    ...solutionPages,
     ...toolPages,
     ...authPages,
-    ...blogIndexPage,
+    ...contentHubPages,
     ...blogPages,
-    ...guidePages,
     ...legalPages,
   ];
 }
-
-
-

@@ -7,7 +7,9 @@ import { PricingClient } from "./PricingClient";
 // ============================================
 
 export const metadata: Metadata = {
-  title: "Tarifs — Gestion locative simple et abordable | Talok",
+  // NB : le layout racine applique `title.template: "%s | Talok"`. Ne pas
+  // ajouter "| Talok" ici pour éviter le double suffixe "| Talok | Talok".
+  title: "Tarifs — Gestion locative simple et abordable",
   description:
     "Decouvrez les tarifs Talok : de 0 a 69 EUR/mois pour gerer vos biens locatifs. Quittances, baux, paiements en ligne, EDL numerique. 1er mois offert, sans engagement.",
   openGraph: {

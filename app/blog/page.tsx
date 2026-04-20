@@ -3,9 +3,11 @@ import { BookOpen, ArrowRight, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const metadata = {
-  title: "Blog — Talok",
+  // Layout racine: template "%s | Talok" — ne pas repeter "| Talok" ici.
+  title: "Blog",
   description:
     "Conseils, actualites et guides pratiques pour la gestion locative. Bientot disponible.",
+  alternates: { canonical: "https://talok.fr/blog" },
 };
 
 export default function BlogPage() {
