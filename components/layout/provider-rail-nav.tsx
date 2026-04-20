@@ -3,26 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LucideIcon } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { providerNavigation, providerSecondaryNav } from "./provider-nav-config";
 
-interface NavItem {
-  name: string;
-  href: string;
-  icon: LucideIcon;
-}
-
-interface ProviderRailNavProps {
-  navigation: NavItem[];
-  secondaryNav: NavItem[];
-}
-
-export function ProviderRailNav({ navigation, secondaryNav }: ProviderRailNavProps) {
+export function ProviderRailNav() {
+  const navigation = providerNavigation;
+  const secondaryNav = providerSecondaryNav;
   const pathname = usePathname();
 
   const isActive = (href: string) =>
