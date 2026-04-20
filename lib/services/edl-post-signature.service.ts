@@ -25,9 +25,13 @@ export interface EDLPostSignatureResult {
   sealed: boolean;
 }
 
-export async function handleEDLFullySigned(edlId: string): Promise<EDLPostSignatureResult> {
-  // 1. Generation PDF (sync, throw si echec).
-  const generated = await generateSignedEdlPdf(edlId);
+export async function handleEDLFullySigned(
+  edlId: string,
+  options?: { force?: boolean }
+): Promise<EDLPostSignatureResult> {
+  // 1. Generation PDF (sync, throw si echec). `force:true` bypass
+  //    l'idempotence et regenere meme si un doc existe deja.
+  const generated = await generateSignedEdlPdf(edlId, { force: options?.force === true });
 
   if (!generated.storagePath) {
     throw new Error(`[edl-post-signature] Generation PDF EDL ${edlId} echouee (pas de storagePath)`);
