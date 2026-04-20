@@ -32,6 +32,8 @@ import {
   Clock,
   Zap,
   Megaphone,
+  Tag,
+  Activity,
 } from "lucide-react";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
 import { cn } from "@/lib/utils";
@@ -94,6 +96,7 @@ const adminNavItems: NavCategory[] = [
     items: [
       { href: "/admin/plans", label: "Forfaits & Tarifs", icon: CreditCard },
       { href: "/admin/subscriptions", label: "Abonnements", icon: Wallet },
+      { href: "/admin/promo-codes", label: "Codes promo", icon: Tag },
       { href: "/admin/accounting", label: "Comptabilité", icon: Calculator },
       { href: "/admin/branding", label: "Branding", icon: Palette },
       { href: "/admin/stripe", label: "Stripe Connect", icon: Zap },
@@ -104,12 +107,14 @@ const adminNavItems: NavCategory[] = [
     category: "Analyse & rapports",
     items: [
       { href: "/admin/metrics", label: "Métriques", icon: TrendingUp },
+      { href: "/admin/metrics-saas", label: "Métriques SaaS", icon: Activity },
       { href: "/admin/reports", label: "Rapports", icon: FileText },
     ],
   },
   {
     category: "Plateforme",
     items: [
+      { href: "/admin/platform-health", label: "Santé plateforme", icon: Activity },
       { href: "/admin/flags", label: "Feature Flags", icon: Flag },
       { href: "/admin/crons", label: "Tâches planifiées", icon: Clock },
     ],
