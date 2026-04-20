@@ -166,7 +166,7 @@ export async function fetchAdminOwnerDetails(ownerId: string): Promise<AdminOwne
       properties_count, 
       leases_count,
       created_at,
-      plan:subscription_plans(
+      plan:subscription_plans!plan_id(
         slug, 
         name, 
         price_monthly, 

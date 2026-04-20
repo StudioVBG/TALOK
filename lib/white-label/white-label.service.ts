@@ -37,7 +37,7 @@ export class WhiteLabelService {
   async getUserWhiteLabelLevel(userId: string): Promise<WhiteLabelLevel> {
     const { data: subscription } = await this.supabase
       .from('subscriptions')
-      .select('plan_id, subscription_plans(slug)')
+      .select('plan_id, subscription_plans!plan_id(slug)')
       .eq('owner_id', userId)
       .eq('status', 'active')
       .single();

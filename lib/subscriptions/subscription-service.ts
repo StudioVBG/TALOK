@@ -54,7 +54,7 @@ export async function getUserSubscription(userId: string): Promise<SubscriptionW
     .from('subscriptions')
     .select(`
       *,
-      plan:subscription_plans(
+      plan:subscription_plans!plan_id(
         id,
         name,
         slug,
@@ -90,7 +90,7 @@ export async function getSubscriptionByProfileId(profileId: string): Promise<Sub
     .from('subscriptions')
     .select(`
       *,
-      plan:subscription_plans(
+      plan:subscription_plans!plan_id(
         id,
         name,
         slug,
@@ -640,7 +640,7 @@ export async function getSubscriptionStats(): Promise<SubscriptionStats | null> 
     .select(`
       owner_id,
       status,
-      plan:subscription_plans(slug, price_monthly)
+      plan:subscription_plans!plan_id(slug, price_monthly)
     `)
     .in('owner_id', profileIds);
 
@@ -703,7 +703,7 @@ export async function getPlansDistribution(): Promise<PlanDistribution[]> {
     .from('subscriptions')
     .select(`
       owner_id,
-      plan:subscription_plans(slug, name)
+      plan:subscription_plans!plan_id(slug, name)
     `)
     .in('owner_id', profileIds);
 
@@ -793,7 +793,7 @@ export async function getAdminSubscriptionsList(options?: {
       leases_count,
       stripe_customer_id,
       stripe_subscription_id,
-      plan:subscription_plans(
+      plan:subscription_plans!plan_id(
         slug,
         name,
         price_monthly,
