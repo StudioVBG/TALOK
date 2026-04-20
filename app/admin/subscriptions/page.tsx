@@ -441,14 +441,18 @@ export default function AdminSubscriptionsPage() {
   const [actionType, setActionType] = useState<"override" | "gift" | "suspend" | "unsuspend" | null>(null);
 
   // Stats query
-  const { data: statsData, refetch: refetchStats } = useQuery({
+  const { data: statsData, error: statsError, refetch: refetchStats } = useQuery({
     queryKey: adminKeys.subscriptionStats(),
     queryFn: async () => {
       const res = await fetch("/api/admin/subscriptions/stats");
-      if (!res.ok) throw new Error("Failed to fetch stats");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Erreur ${res.status} lors du chargement des statistiques`);
+      }
       return res.json();
     },
     staleTime: 60_000,
+    retry: 1,
   });
 
   const stats: SubscriptionStats | null = statsData?.stats || null;
@@ -463,14 +467,18 @@ export default function AdminSubscriptionsPage() {
   if (planFilter !== "all") usersQueryParams.set("plan", planFilter);
   if (statusFilter !== "all") usersQueryParams.set("status", statusFilter);
 
-  const { data: usersData, isLoading: loading, isFetching: tableLoading, refetch: fetchUsers } = useQuery({
+  const { data: usersData, isLoading: loading, isFetching: tableLoading, error: usersError, refetch: fetchUsers } = useQuery({
     queryKey: [...adminKeys.subscriptions(Object.fromEntries(usersQueryParams))],
     queryFn: async () => {
       const res = await fetch(`/api/admin/subscriptions/list?${usersQueryParams}`);
-      if (!res.ok) throw new Error("Failed to fetch users");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Erreur ${res.status} lors du chargement de la liste`);
+      }
       return res.json();
     },
     staleTime: 30_000,
+    retry: 1,
   });
 
   const users: AdminSubscriptionOverview[] = usersData?.users || [];
@@ -540,6 +548,29 @@ export default function AdminSubscriptionsPage() {
         </div>
       </div>
 
+      {/* Error banner */}
+      {(statsError || usersError) && (
+        <div className="flex items-start gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-400">
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-medium">Impossible de charger les abonnements</p>
+            <p className="text-red-500/80 dark:text-red-400/80 mt-1">
+              {(statsError as Error | null)?.message || (usersError as Error | null)?.message}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              refetchStats();
+              fetchUsers();
+            }}
+          >
+            Réessayer
+          </Button>
+        </div>
+      )}
+
       {/* Stats */}
       <StatsCards stats={stats} loading={loading} />
 
@@ -574,8 +605,6 @@ export default function AdminSubscriptionsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tous les plans</SelectItem>
-                    <SelectItem value="starter">Starter</SelectItem>
-                    <SelectItem value="confort">Confort</SelectItem>
                     <SelectItem value="gratuit">Gratuit</SelectItem>
                     <SelectItem value="starter">Starter</SelectItem>
                     <SelectItem value="confort">Confort</SelectItem>

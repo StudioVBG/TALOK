@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Users,
@@ -45,14 +45,12 @@ import {
   CommandList,
   CommandShortcut,
 } from "@/components/ui/command";
-import { SubscriptionManagerDialog } from "@/components/admin/subscription-manager-dialog";
 
 interface NavItem {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: number;
-  isDialog?: boolean;
 }
 
 interface NavCategory {
@@ -130,23 +128,9 @@ const allNavItems = adminNavItems.flatMap((cat) =>
 
 export function AdminSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [open, setOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const { signOut: handleSignOut, isLoading: signingOut } = useSignOut({ redirectTo: "/login" });
-  
-  // Subscription Manager Dialog
-  const [subscriptionDialogOpen, setSubscriptionDialogOpen] = React.useState(false);
-  const [subscriptionInitialSearch, setSubscriptionInitialSearch] = React.useState("");
-
-  // Check URL for /admin/subscriptions and open dialog
-  React.useEffect(() => {
-    if (pathname === "/admin/subscriptions") {
-      const searchQuery = searchParams.get("search") || "";
-      setSubscriptionInitialSearch(searchQuery);
-      setSubscriptionDialogOpen(true);
-    }
-  }, [pathname, searchParams]);
 
   // Keyboard shortcut for search (Cmd+K / Ctrl+K)
   React.useEffect(() => {
@@ -165,11 +149,6 @@ export function AdminSidebar({ className }: { className?: string }) {
     setSearchOpen(false);
     command();
   }, []);
-
-  const openSubscriptionManager = (search?: string) => {
-    if (search) setSubscriptionInitialSearch(search);
-    setSubscriptionDialogOpen(true);
-  };
 
   return (
     <>
@@ -205,39 +184,7 @@ export function AdminSidebar({ className }: { className?: string }) {
                 <div className="space-y-1">
                   {category.items.map((item) => {
                     const Icon = item.icon;
-                    const isActive = pathname === item.href || (item.isDialog && subscriptionDialogOpen);
-
-                    // Dialog items
-                    if (item.isDialog) {
-                      return (
-                        <button
-                          key={item.href}
-                          onClick={() => openSubscriptionManager()}
-                          className={cn(
-                            "w-full group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
-                            "hover:bg-accent hover:text-accent-foreground",
-                            isActive
-                              ? "bg-accent text-accent-foreground shadow-sm"
-                              : "text-muted-foreground",
-                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          )}
-                        >
-                          <Icon
-                            className={cn(
-                              "h-4 w-4 transition-transform duration-200",
-                              isActive && "scale-110",
-                              "group-hover:scale-110"
-                            )}
-                          />
-                          <span className="flex-1 text-left">{item.label}</span>
-                          {item.badge && (
-                            <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
-                              {item.badge}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    }
+                    const isActive = pathname === item.href;
 
                     return (
                       <Link
@@ -346,41 +293,7 @@ export function AdminSidebar({ className }: { className?: string }) {
                   <div className="space-y-1">
                     {category.items.map((item) => {
                       const Icon = item.icon;
-                      const isActive = pathname === item.href || (item.isDialog && subscriptionDialogOpen);
-
-                      // Dialog items (mobile)
-                      if (item.isDialog) {
-                        return (
-                          <button
-                            key={item.href}
-                            onClick={() => {
-                              setOpen(false);
-                              openSubscriptionManager();
-                            }}
-                            className={cn(
-                              "w-full group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
-                              "hover:bg-accent hover:text-accent-foreground",
-                              isActive
-                                ? "bg-accent text-accent-foreground shadow-sm"
-                                : "text-muted-foreground"
-                            )}
-                          >
-                            <Icon
-                              className={cn(
-                                "h-4 w-4 transition-transform duration-200",
-                                isActive && "scale-110",
-                                "group-hover:scale-110"
-                              )}
-                            />
-                            <span className="flex-1 text-left">{item.label}</span>
-                            {item.badge && (
-                              <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-primary-foreground">
-                                {item.badge}
-                              </span>
-                            )}
-                          </button>
-                        );
-                      }
+                      const isActive = pathname === item.href;
 
                       return (
                         <Link
@@ -447,13 +360,9 @@ export function AdminSidebar({ className }: { className?: string }) {
                   <CommandItem
                     key={item.href}
                     onSelect={() => {
-                      if (item.isDialog) {
-                        runCommand(() => openSubscriptionManager());
-                      } else {
-                        runCommand(() => {
-                          window.location.href = item.href;
-                        });
-                      }
+                      runCommand(() => {
+                        window.location.href = item.href;
+                      });
                     }}
                     className="cursor-pointer"
                   >
@@ -471,13 +380,6 @@ export function AdminSidebar({ className }: { className?: string }) {
           ))}
         </CommandList>
       </CommandDialog>
-
-      {/* Subscription Manager Dialog */}
-      <SubscriptionManagerDialog
-        open={subscriptionDialogOpen}
-        onOpenChange={setSubscriptionDialogOpen}
-        initialSearch={subscriptionInitialSearch}
-      />
     </>
   );
 }
