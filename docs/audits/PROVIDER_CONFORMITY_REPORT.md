@@ -187,4 +187,10 @@ Tables dont les policies sub-SELECT `profiles` sans passer par un helper SECURIT
   - `app/api/provider/compliance/status/route.ts` + `documents/route.ts` + `documents/[id]/route.ts` + `upload/route.ts`
 - [x] Migration SQL `20260420120000_provider_dashboard_rpc_standalone_work_orders.sql`
 - [ ] `npx tsc --noEmit` : non exécuté (node_modules absent dans cet environnement). **À relancer en local avant merge.**
-- [ ] P2 restant : réécriture policies `providers` / `owner_providers` / `provider_reviews` / `provider_availability` / `provider_quotes` / `provider_portfolio_items` via SECURITY DEFINER helpers — migration à planifier séparément.
+- [x] **P2 RLS unifié** — migration `20260420130000_provider_tables_rls_unified.sql` :
+  - `providers`, `owner_providers`, `provider_reviews`, `provider_availability`, `provider_quotes`, `provider_quote_items`, `provider_portfolio_items`
+  - Remplace tous les `IN (SELECT id FROM profiles WHERE user_id = auth.uid())` par `= public.user_profile_id()`
+  - Remplace tous les `EXISTS (SELECT ... profiles ... role='admin')` par `public.is_admin()`
+  - Nouveau helper `public.quote_is_mine(uuid)` pour casser la chaîne `provider_quote_items` → `provider_quotes` → `profiles`
+  - Préserve la sémantique d'origine (role='owner' sur INSERT reviews via `public.user_role()`)
+  - Idempotent ; fallback création des helpers si environnement incomplet.
