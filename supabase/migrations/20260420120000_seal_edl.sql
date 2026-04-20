@@ -7,6 +7,11 @@
 -- Aligne sur le pattern `leases` (migration 20251228100000).
 -- ============================================
 
+-- 0. Drop l'ancienne version si elle existe avec un autre return type
+--    (drift git<->prod observe le 2026-04-20 : fonction pre-existante
+--    avec signature differente, aucun appelant dans le code app).
+DROP FUNCTION IF EXISTS seal_edl(UUID, TEXT);
+
 -- 1. Colonnes de scellement
 ALTER TABLE edl
   ADD COLUMN IF NOT EXISTS signed_pdf_path TEXT,
