@@ -829,19 +829,14 @@ export async function adminOverridePlan(
     return { success: false, error: error.message };
   }
 
-  // Logger l'action admin si la table existe
-  try {
-    await supabase.from('admin_subscription_actions').insert({
-      admin_user_id: adminUserId,
-      target_user_id: targetUserId,
-      action_type: 'plan_override',
-      to_plan: newPlanSlug,
-      reason,
-      notify_user: notifyUser,
-    });
-  } catch {
-    // Table n'existe peut-être pas
-  }
+  await supabase.from('admin_subscription_actions').insert({
+    admin_user_id: adminUserId,
+    target_user_id: targetUserId,
+    action_type: 'plan_override',
+    to_plan: newPlanSlug,
+    reason,
+    notify_user: notifyUser,
+  });
 
   return { success: true };
 }
@@ -895,6 +890,15 @@ export async function adminGiftDays(
     return { success: false, error: error.message };
   }
 
+  await supabase.from('admin_subscription_actions').insert({
+    admin_user_id: adminUserId,
+    target_user_id: targetUserId,
+    action_type: 'gift_days',
+    gift_days: days,
+    reason,
+    notify_user: notifyUser,
+  });
+
   return { success: true };
 }
 
@@ -917,7 +921,7 @@ export async function adminSuspendAccount(
   const { error } = await supabase
     .from('subscriptions')
     .update({
-      status: 'paused',
+      status: 'suspended',
       updated_at: new Date().toISOString(),
     })
     .eq('owner_id', profileId);
@@ -925,6 +929,14 @@ export async function adminSuspendAccount(
   if (error) {
     return { success: false, error: error.message };
   }
+
+  await supabase.from('admin_subscription_actions').insert({
+    admin_user_id: adminUserId,
+    target_user_id: targetUserId,
+    action_type: 'suspend',
+    reason,
+    notify_user: notifyUser,
+  });
 
   return { success: true };
 }
@@ -956,6 +968,14 @@ export async function adminUnsuspendAccount(
   if (error) {
     return { success: false, error: error.message };
   }
+
+  await supabase.from('admin_subscription_actions').insert({
+    admin_user_id: adminUserId,
+    target_user_id: targetUserId,
+    action_type: 'unsuspend',
+    reason,
+    notify_user: notifyUser,
+  });
 
   return { success: true };
 }
