@@ -14,13 +14,20 @@
 
 Le site a de **bonnes bases techniques** (HTTPS, HSTS, CSP, robots.txt propre, sitemap présent, méta/OG complets sur la home) mais souffre de **défauts critiques de rendu et d'indexation** qui neutralisent l'essentiel du trafic organique potentiel.
 
-### Top 5 critical issues
+### Top issues critiques
 
-1. **Balise `<meta name="robots">` dupliquée avec `noindex` en premier** sur quasi toutes les pages testées (`/pricing`, `/blog`, `/faq`, `/solutions/investisseurs`, `/a-propos`). En cas de directives conflictuelles, Google prend la plus restrictive → risque de **désindexation massive**.
-2. **Canonicals cassés** : `/blog`, `/solutions/investisseurs`, `/a-propos` pointent tous vers `https://talok.fr/`. Les pages Solutions et la page "À propos" sont donc traitées comme des doublons de la home et ne seront jamais indexées indépendamment.
-3. **42 % du sitemap en 404** (11 URL sur 26) : `/comparatif/rentila|smovin|hektor`, `/logiciel-gestion-locative`, `/outils/quittance-loyer|modele-bail|calculateur-rentabilite|etat-des-lieux`, `/guide/proprietaire-bailleur|bail-location|gestion-locative-drom`. Dommage direct à la santé de crawl et au trust Google.
-4. **Pages clés rendues côté client (pas de SSR)** : `/pricing`, `/blog`, `/faq`, `/solutions/*`, `/a-propos` n'ont **ni H1 ni H2 ni texte SEO en HTML initial** (word_count ≤ 10). Les crawlers qui ne déclenchent pas JS (et partiellement Google en cas de budget serré) voient des pages vides.
-5. **Zéro schema JSON-LD** sur la home et sur toutes les pages testées. Pour un SaaS qui vise "logiciel n°1 en France", l'absence d'`Organization`, `SoftwareApplication`, `Product` avec `Offer`/`AggregateRating` est un manque à gagner direct sur les rich results et les citations IA (AI Overviews, Perplexity, ChatGPT search).
+> **MISE À JOUR après inspection code source (2026-04-20)** : la vraie cause racine des findings 1, 2 et 4 est un **crash SSR en production**. Toutes les pages testées hors home renvoient `<html id="__next_error__">` — Next.js sert l'error boundary en SSR, d'où le `noindex` auto-injecté, le canonical qui retombe sur la home, et l'absence de SSR content. Le HTTP 200 masque le problème côté monitoring.
+
+1. **🚨 CRITIQUE — Crash SSR en production sur toutes les pages marketing hors home**
+   - Pages confirmées en `__next_error__` : `/pricing`, `/blog`, `/faq`, `/solutions/investisseurs`, `/a-propos` (probablement aussi `/solutions/*`, `/temoignages`, `/guides`, `/fonctionnalites/*`, `/outils/*`)
+   - Home : OK (`<html lang="fr" class="...">`)
+   - Conséquences automatiques : `<meta name="robots" content="noindex">` injecté par Next.js, canonical retombant sur `/`, HTML vide (pas de H1/H2), métadonnées de page perdues
+   - **Action immédiate** : reproduire avec `npm run build && npm run start` en local, consulter Sentry (le projet a `@sentry/nextjs`) pour récupérer le stack trace, ou les logs Netlify function.
+2. **42 % du sitemap en 404** (11 URL sur 26) : `/comparatif/rentila|smovin|hektor`, `/logiciel-gestion-locative`, `/outils/quittance-loyer|modele-bail|calculateur-rentabilite|etat-des-lieux`, `/guide/proprietaire-bailleur|bail-location|gestion-locative-drom`. Source : `app/sitemap.ts` — URLs hardcodées sans vérification.
+3. **Sitemap qui liste `/features` (redirection 308 → `/fonctionnalites`)** et qui **omet** les pages réelles : `/fonctionnalites` + 7 sous-pages, `/solutions/*` (5 pages), `/temoignages`, `/guides`, `/outils/calcul-rendement-locatif|calcul-frais-notaire|calcul-revision-irl|simulateur-charges`.
+4. **Zéro schema JSON-LD exposé** — NB : `/pricing/page.tsx` contient un `SoftwareApplication` + `FAQPage` correctement structuré en source, mais la page crashant en SSR, le JSON-LD est écrasé par l'error boundary. Se corrige en résolvant le finding 1.
+5. **Titles de `/pricing` et `/blog` avec suffixe dupliqué** : `| Talok | Talok`. Cause : la `metadata.title` de la page contient déjà `"| Talok"` alors que le layout racine applique `template: "%s | Talok"`.
+6. **H1 home avec 2 balises** et une de ces balises (`"Une solution adoptée par chaque profil"`) devrait être `<h2>`. NB : mon first pass avait rapporté un H1 "collé" (`TALOKLelogicieldeGestionLocative`) — c'était un artefact de parsing, les mots sont bien séparés par `<span>` avec margin. Mais le hero a bien `style="opacity:0"` en SSR (framer-motion initial state) → contenu invisible sans JS.
 
 ### Top 5 quick wins (≤ 1 semaine)
 

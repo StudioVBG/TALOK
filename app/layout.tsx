@@ -236,6 +236,41 @@ const themeScript = `
 })();
 `;
 
+/**
+ * JSON-LD global : Organization + WebSite (+ SearchAction).
+ * Posé sur toutes les pages pour nourrir Knowledge Panel et SERP sitelinks.
+ * Les schémas spécifiques (Product, SoftwareApplication, FAQPage...) restent
+ * définis dans chaque page concernée.
+ */
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Talok",
+  url: "https://talok.fr",
+  logo: "https://talok.fr/images/talok-logo-horizontal.png",
+  description:
+    "Logiciel de gestion locative tout-en-un pour propriétaires bailleurs en France et DROM. Baux ALUR, signatures électroniques, scoring IA, Open Banking, comptabilité.",
+  sameAs: ["https://twitter.com/talok_fr"],
+  contactPoint: [
+    {
+      "@type": "ContactPoint",
+      email: "support@talok.fr",
+      contactType: "customer support",
+      areaServed: "FR",
+      availableLanguage: ["fr"],
+    },
+  ],
+};
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Talok",
+  url: "https://talok.fr",
+  inLanguage: "fr-FR",
+  publisher: { "@type": "Organization", name: "Talok" },
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -250,6 +285,19 @@ export default function RootLayout({
       <head>
         {/* Script anti-flash de thème - s'exécute avant le rendu */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* JSON-LD global : Organization + WebSite */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(websiteJsonLd),
+          }}
+        />
       </head>
       <body className={`${inter.className} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>

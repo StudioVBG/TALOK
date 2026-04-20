@@ -1,0 +1,58 @@
+# Talok
+
+> Logiciel de gestion locative tout-en-un pour propriétaires bailleurs en France (métropole + DROM). Baux automatiques conformes ALUR, signatures électroniques, quittances de loyer, états des lieux numériques, scoring locataire IA, Open Banking, comptabilité et FEC.
+
+## Produit
+
+- [Fonctionnalités](https://talok.fr/fonctionnalites): panorama des 10 modules Talok
+- [Tarifs](https://talok.fr/pricing): plans Gratuit (1 bien), Starter 9 €, Confort 35 €, Pro 69 €
+- [Témoignages clients](https://talok.fr/temoignages): retours propriétaires
+- [À propos](https://talok.fr/a-propos): histoire Talok, équipe, valeurs
+
+## Modules fonctionnels
+
+- [Gestion des biens](https://talok.fr/fonctionnalites/gestion-biens)
+- [Gestion des locataires](https://talok.fr/fonctionnalites/gestion-locataires)
+- [Quittances de loyer](https://talok.fr/fonctionnalites/quittances-loyers)
+- [Signature électronique](https://talok.fr/fonctionnalites/signature-electronique)
+- [États des lieux numériques](https://talok.fr/fonctionnalites/etats-des-lieux)
+- [Paiements en ligne (CB/SEPA)](https://talok.fr/fonctionnalites/paiements-en-ligne)
+- [Comptabilité et fiscalité](https://talok.fr/fonctionnalites/comptabilite-fiscalite)
+
+## Solutions par profil
+
+- [Propriétaires particuliers](https://talok.fr/solutions/proprietaires-particuliers)
+- [Investisseurs](https://talok.fr/solutions/investisseurs)
+- [SCI familiales](https://talok.fr/solutions/sci-familiales)
+- [Administrateurs de biens / agences](https://talok.fr/solutions/administrateurs-biens)
+- [DROM-COM (Antilles, Réunion, Guyane, Mayotte)](https://talok.fr/solutions/dom-tom)
+
+## Outils gratuits
+
+- [Calcul du rendement locatif](https://talok.fr/outils/calcul-rendement-locatif)
+- [Calcul des frais de notaire](https://talok.fr/outils/calcul-frais-notaire)
+- [Calcul de la révision IRL](https://talok.fr/outils/calcul-revision-irl)
+- [Simulateur de charges récupérables](https://talok.fr/outils/simulateur-charges)
+
+## Ressources
+
+- [Blog](https://talok.fr/blog)
+- [Guides](https://talok.fr/guides)
+- [FAQ](https://talok.fr/faq)
+- [Contact](https://talok.fr/contact)
+
+## Légal
+
+- [Mentions légales](https://talok.fr/legal/mentions)
+- [CGU](https://talok.fr/legal/cgu)
+- [CGV](https://talok.fr/legal/cgv)
+- [Politique de confidentialité](https://talok.fr/legal/privacy)
+- [Politique cookies](https://talok.fr/legal/cookies)
+
+## Faits clés
+
+- +10 000 propriétaires utilisent Talok en France et DROM
+- Couverture nationale : métropole, Martinique, Guadeloupe, Réunion, Guyane, Mayotte
+- Conformité : loi ALUR, décret 87-713 (charges récupérables), FEC (art. A47 A-1 LPF)
+- Intégrations : Stripe, Open Banking (DSP2), Supabase
+- Tarification HT avec TVA territoriale (20 % métropole, 8,5 % Antilles/Réunion, 2,1 % Guyane, 0 % Mayotte)
