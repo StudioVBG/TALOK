@@ -213,6 +213,15 @@ export async function POST(
     );
 
     if (hasOwner && hasTenant) {
+      // Capturer le statut precedent pour rollback en cas d'echec de
+      // scellement (signed sans PDF final = preuve legale manquante).
+      const { data: prevEdl } = await serviceClient
+        .from("edl")
+        .select("status")
+        .eq("id", signatureEntry.edl_id)
+        .single();
+      const previousStatus = (prevEdl as { status?: string } | null)?.status ?? "in_progress";
+
       await serviceClient
         .from("edl")
         .update({ status: "signed" } as any)
@@ -248,14 +257,28 @@ export async function POST(
         },
       } as any);
 
-      // Générer le PDF signé de l'EDL — INSERT/UPDATE document + upload Storage
-      // est pris en charge par generateSignedEdlPdf (idempotent, pur PDF).
+      // Générer le PDF signé + sceller l'EDL via RPC seal_edl.
+      // SYNC + rollback : si la génération PDF ou le seal échoue, on
+      // rollback status='signed' vers previousStatus pour éviter un état
+      // incohérent (EDL signed sans PDF final = preuve légale manquante).
       try {
         const { handleEDLFullySigned } = await import("@/lib/services/edl-post-signature.service");
         const edlResult = await handleEDLFullySigned(signatureEntry.edl_id);
-        log.info("Post-signature EDL via token", { htmlStored: edlResult.htmlStored, path: edlResult.storagePath });
+        log.info("Post-signature EDL via token", { path: edlResult.storagePath, sealed: edlResult.sealed });
       } catch (postSignErr) {
-        log.warn("Exception post-signature EDL via token (non bloquant)", { error: String(postSignErr) });
+        log.error("Echec scellement EDL — rollback status", {
+          edlId: signatureEntry.edl_id,
+          previousStatus,
+          error: String(postSignErr),
+        });
+        await serviceClient
+          .from("edl")
+          .update({ status: previousStatus } as any)
+          .eq("id", signatureEntry.edl_id);
+        return NextResponse.json(
+          { error: "Scellement EDL échoué. Veuillez réessayer ou contacter le support." },
+          { status: 500 }
+        );
       }
 
       // Générer la facture initiale pour le bail (si pas encore créée)
