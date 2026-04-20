@@ -1,7 +1,16 @@
-// Root layout: PAS de force-dynamic ici.
-// Les 8 layouts authentifiés (owner, tenant, admin, syndic, copro, agency,
-// guarantor, provider) définissent chacun leur propre force-dynamic + nodejs.
-// Les pages marketing/publiques restent statiques (SSG par défaut).
+// Root layout: `dynamic = 'force-dynamic'` force le SSR a chaque requete.
+//
+// Pourquoi ? Next.js 14.0.4 prerender toutes les pages en statique par defaut,
+// mais heurte silencieusement des erreurs pour les pages "use client" sur ce
+// projet (providers racine + hooks d'auth qui accedent au navigateur). Les
+// .html generes au build contiennent alors le shell `<html id="__next_error__">`,
+// servi ensuite en runtime => pages 200 vides avec noindex injecte par Next
+// (audit SEO 2026-04-20 : /pricing /blog /faq /a-propos /solutions/* tous casses).
+//
+// Force-dynamic court-circuite le prerender et SSR chaque requete, ce qui
+// resout le bug. Impact perf minime car le cache Netlify CDN absorbe la
+// charge sur les pages publiques. A reverifier apres upgrade Next >= 14.2.
+export const dynamic = 'force-dynamic';
 
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
