@@ -634,6 +634,124 @@ export async function POST(
       },
     } as any);
 
+    // ===============================
+    // NOTIFICATIONS + EMAILS — contrepartie + double signature
+    // ===============================
+    try {
+      const { notifyEDLSignedByCounterparty, notifyEDLFullySigned } =
+        await import("@/lib/services/notification-service");
+      const {
+        sendEDLCounterpartySignedNotification,
+        sendEDLFullySignedNotification,
+      } = await import("@/lib/emails/resend.service");
+
+      const { data: edlContext } = await serviceClient
+        .from("edl")
+        .select(`
+          type,
+          lease_id,
+          property:properties(adresse_complete, owner_id),
+          leases(
+            property_id,
+            lease_signers(role, profile_id)
+          )
+        `)
+        .eq("id", edlId)
+        .maybeSingle();
+
+      const propertyAddress =
+        (edlContext as any)?.property?.adresse_complete ||
+        "votre logement";
+      const edlType = ((edlContext as any)?.type || "entree") as "entree" | "sortie";
+      const ownerProfileId = (edlContext as any)?.property?.owner_id as string | undefined;
+      const tenantProfileId = (edlContext as any)?.leases?.lease_signers?.find(
+        (s: any) => ["locataire_principal", "tenant", "locataire"].includes(s.role)
+      )?.profile_id as string | undefined;
+
+      // Résolution email + nom par profile_id (via auth.users pour l'email)
+      const resolveRecipient = async (profileId: string | undefined) => {
+        if (!profileId) return null;
+        const { data: p } = await serviceClient
+          .from("profiles")
+          .select("user_id, prenom, nom, email")
+          .eq("id", profileId)
+          .maybeSingle() as { data: { user_id: string | null; prenom: string | null; nom: string | null; email: string | null } | null };
+        if (!p) return null;
+        let email = p.email;
+        if (!email && p.user_id) {
+          const { data: authUser } = await serviceClient.auth.admin.getUserById(p.user_id);
+          email = authUser?.user?.email ?? null;
+        }
+        if (!email) return null;
+        const name = `${p.prenom || ""} ${p.nom || ""}`.trim() || email.split("@")[0];
+        return { email, name };
+      };
+
+      const signerFullName = `${profile.prenom || ""} ${profile.nom || ""}`.trim() || user.email || "Signataire";
+      const fullySigned = !!(hasOwner && hasTenant);
+
+      if (fullySigned) {
+        // Les deux parties sont signées — notifier les deux (in-app + email dédié)
+        if (ownerProfileId) {
+          await notifyEDLFullySigned(ownerProfileId, edlId, edlType, propertyAddress, "owner");
+          const r = await resolveRecipient(ownerProfileId);
+          if (r) {
+            sendEDLFullySignedNotification({
+              recipientEmail: r.email,
+              recipientName: r.name,
+              recipientRole: "owner",
+              propertyAddress,
+              edlId,
+              edlType,
+            }).catch((e) => console.warn("[sign-edl] Email owner fully signed:", String(e)));
+          }
+        }
+        if (tenantProfileId) {
+          await notifyEDLFullySigned(tenantProfileId, edlId, edlType, propertyAddress, "tenant");
+          const r = await resolveRecipient(tenantProfileId);
+          if (r) {
+            sendEDLFullySignedNotification({
+              recipientEmail: r.email,
+              recipientName: r.name,
+              recipientRole: "tenant",
+              propertyAddress,
+              edlId,
+              edlType,
+            }).catch((e) => console.warn("[sign-edl] Email tenant fully signed:", String(e)));
+          }
+        }
+      } else {
+        // Une seule partie a signé — notifier la contrepartie (in-app + email dédié)
+        const counterpartyId = isOwner ? tenantProfileId : ownerProfileId;
+        const counterpartyRole: "owner" | "tenant" = isOwner ? "tenant" : "owner";
+        if (counterpartyId) {
+          await notifyEDLSignedByCounterparty(
+            counterpartyId,
+            edlId,
+            edlType,
+            propertyAddress,
+            signerRole,
+            counterpartyRole,
+          );
+          const r = await resolveRecipient(counterpartyId);
+          if (r) {
+            sendEDLCounterpartySignedNotification({
+              recipientEmail: r.email,
+              recipientName: r.name,
+              signerName: signerFullName,
+              signerRole,
+              recipientRole: counterpartyRole,
+              propertyAddress,
+              edlId,
+              edlType,
+            }).catch((e) => console.warn("[sign-edl] Email counterparty signed:", String(e)));
+          }
+        }
+      }
+    } catch (notifErr) {
+      console.warn("[sign-edl] Notification non-bloquante échouée:", String(notifErr));
+    }
+
     // FIX AUDIT 2026-02-16: Invalider le cache pour que l'UI reflète la signature
     revalidatePath("/owner/inspections");
     revalidatePath(`/owner/inspections/${edlId}`);

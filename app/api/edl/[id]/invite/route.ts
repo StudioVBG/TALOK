@@ -275,6 +275,42 @@ export async function POST(
     }
 
     // ===============================
+    // 5a. ENVOYER L'EMAIL TRANSACTIONNEL (Resend — template dédié EDL)
+    // ===============================
+    try {
+      // Récupérer le nom complet du propriétaire pour le template
+      const ownerId = (edl as any).property?.owner_id as string | undefined;
+      let ownerName = "Votre propriétaire";
+      if (ownerId) {
+        const { data: ownerProfile } = await serviceClient
+          .from("profiles")
+          .select("prenom, nom")
+          .eq("id", ownerId)
+          .maybeSingle() as { data: { prenom: string | null; nom: string | null } | null };
+        if (ownerProfile) {
+          const full = `${ownerProfile.prenom || ""} ${ownerProfile.nom || ""}`.trim();
+          if (full) ownerName = full;
+        }
+      }
+
+      const edlType = ((edl as any).type === "sortie" ? "sortie" : "entree") as "entree" | "sortie";
+      const propertyAddress = (edl as any).property?.adresse_complete || "votre logement";
+
+      const { sendEDLSignatureRequest } = await import("@/lib/emails/resend.service");
+      sendEDLSignatureRequest({
+        signerEmail: targetEmail,
+        signerName: targetName || targetEmail.split("@")[0],
+        ownerName,
+        propertyAddress,
+        edlId,
+        edlType,
+        signatureToken: invitationToken,
+      }).catch((e) => console.warn(`[EDL Invite ${edlId}] Email Resend échoué:`, String(e)));
+    } catch (e) {
+      console.warn(`[EDL Invite ${edlId}] Email dispatch error:`, String(e));
+    }
+
+    // ===============================
     // 5b. NOTIFICATION IN-APP DIRECTE
     // ===============================
     if (targetProfileId || targetUserId) {

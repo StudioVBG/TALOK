@@ -12,7 +12,7 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 import { sendEmail } from "@/lib/emails/resend.service";
 
 // Types
-export type NotificationType = 
+export type NotificationType =
   | "payment_received"
   | "payment_due"
   | "payment_late"
@@ -26,6 +26,9 @@ export type NotificationType =
   | "message_received"
   | "maintenance_scheduled"
   | "rent_revision"
+  | "edl_ready_to_sign"
+  | "edl_signed_by_counterparty"
+  | "edl_fully_signed"
   | "system"
   | "custom";
 
@@ -134,6 +137,24 @@ const notificationConfig: Record<NotificationType, {
     defaultPriority: "high",
     defaultChannels: ["in_app", "email"],
     icon: "📈",
+  },
+  // L'email pour ces 3 types est géré par les helpers sendEDL*Notification
+  // dédiés (templates spécifiques + idempotencyKey). On garde in_app + push
+  // ici pour éviter un email générique dupliqué.
+  edl_ready_to_sign: {
+    defaultPriority: "high",
+    defaultChannels: ["in_app", "push"],
+    icon: "✍️",
+  },
+  edl_signed_by_counterparty: {
+    defaultPriority: "normal",
+    defaultChannels: ["in_app", "push"],
+    icon: "✍️",
+  },
+  edl_fully_signed: {
+    defaultPriority: "normal",
+    defaultChannels: ["in_app"],
+    icon: "✅",
   },
   system: {
     defaultPriority: "low",
@@ -721,6 +742,87 @@ export async function notifyMessageReceived(
   });
 }
 
+/**
+ * Notifie qu'un EDL est prêt à être signé (status "completed")
+ */
+export async function notifyEDLReadyToSign(
+  recipientId: string,
+  edlId: string,
+  edlType: "entree" | "sortie",
+  propertyAddress: string,
+  recipientRole: "owner" | "tenant",
+  tokenUrl?: string,
+): Promise<Notification | null> {
+  const kind = edlType === "entree" ? "d'entrée" : "de sortie";
+  const actionUrl =
+    recipientRole === "owner"
+      ? `/owner/inspections/${edlId}?sign=1`
+      : tokenUrl || `/tenant/inspections/${edlId}`;
+  return createNotification({
+    type: "edl_ready_to_sign",
+    title: "État des lieux prêt à être signé",
+    message: `L'EDL ${kind} pour ${propertyAddress} est prêt. Veuillez le signer.`,
+    recipientId,
+    actionUrl,
+    actionLabel: "Signer",
+    metadata: { edlId, edlType, propertyAddress, recipientRole },
+  });
+}
+
+/**
+ * Notifie qu'une partie a signé l'EDL — l'autre doit encore signer.
+ */
+export async function notifyEDLSignedByCounterparty(
+  recipientId: string,
+  edlId: string,
+  edlType: "entree" | "sortie",
+  propertyAddress: string,
+  signerRole: "owner" | "tenant",
+  recipientRole: "owner" | "tenant",
+): Promise<Notification | null> {
+  const who = signerRole === "owner" ? "Le propriétaire" : "Le locataire";
+  const kind = edlType === "entree" ? "d'entrée" : "de sortie";
+  const actionUrl =
+    recipientRole === "owner"
+      ? `/owner/inspections/${edlId}?sign=1`
+      : `/tenant/inspections/${edlId}`;
+  return createNotification({
+    type: "edl_signed_by_counterparty",
+    title: `${who} a signé l'état des lieux`,
+    message: `${who} a signé l'EDL ${kind} pour ${propertyAddress}. Il reste votre signature.`,
+    recipientId,
+    actionUrl,
+    actionLabel: "Signer à mon tour",
+    metadata: { edlId, edlType, signerRole, recipientRole },
+  });
+}
+
+/**
+ * Notifie que l'EDL est entièrement signé (les deux parties).
+ */
+export async function notifyEDLFullySigned(
+  recipientId: string,
+  edlId: string,
+  edlType: "entree" | "sortie",
+  propertyAddress: string,
+  recipientRole: "owner" | "tenant",
+): Promise<Notification | null> {
+  const kind = edlType === "entree" ? "d'entrée" : "de sortie";
+  const actionUrl =
+    recipientRole === "owner"
+      ? `/owner/inspections/${edlId}`
+      : `/tenant/inspections/${edlId}`;
+  return createNotification({
+    type: "edl_fully_signed",
+    title: "État des lieux signé par toutes les parties",
+    message: `L'EDL ${kind} pour ${propertyAddress} est signé. Le PDF scellé est disponible.`,
+    recipientId,
+    actionUrl,
+    actionLabel: "Voir le PDF",
+    metadata: { edlId, edlType, recipientRole },
+  });
+}
+
 export default {
   createNotification,
   getNotifications,
@@ -733,6 +835,9 @@ export default {
   notifyLeaseSigned,
   notifyTicketCreated,
   notifyMessageReceived,
+  notifyEDLReadyToSign,
+  notifyEDLSignedByCounterparty,
+  notifyEDLFullySigned,
   notificationConfig,
 };
 
