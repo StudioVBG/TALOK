@@ -51,9 +51,9 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public, pg_temp
-AS $$
+AS $func$
   SELECT id FROM public.profiles WHERE user_id = auth.uid() LIMIT 1;
-$$;
+$func$;
 
 GRANT EXECUTE ON FUNCTION public.user_profile_id() TO authenticated;
 
@@ -63,13 +63,13 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public, pg_temp
-AS $$
+AS $func$
   SELECT EXISTS (
     SELECT 1 FROM public.profiles
     WHERE user_id = auth.uid()
       AND role IN ('admin', 'platform_admin')
   );
-$$;
+$func$;
 
 GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 
@@ -81,9 +81,9 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public, pg_temp
-AS $$
+AS $func$
   SELECT role FROM public.profiles WHERE user_id = auth.uid() LIMIT 1;
-$$;
+$func$;
 
 GRANT EXECUTE ON FUNCTION public.user_role() TO authenticated;
 
@@ -265,7 +265,7 @@ LANGUAGE sql
 SECURITY DEFINER
 STABLE
 SET search_path = public, pg_temp
-AS $$
+AS $func$
   SELECT EXISTS (
     SELECT 1 FROM public.provider_quotes pq
     WHERE pq.id = p_quote_id
@@ -274,7 +274,7 @@ AS $$
         OR pq.owner_profile_id = public.user_profile_id()
       )
   );
-$$;
+$func$;
 
 GRANT EXECUTE ON FUNCTION public.quote_is_mine(UUID) TO authenticated;
 

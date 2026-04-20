@@ -38,7 +38,7 @@ CREATE OR REPLACE FUNCTION public.work_order_statut_to_status(p_statut TEXT)
 RETURNS TEXT
 LANGUAGE sql
 IMMUTABLE
-AS $$
+AS $func$
   SELECT CASE p_statut
     WHEN 'assigned'    THEN 'draft'
     WHEN 'scheduled'   THEN 'scheduled'
@@ -47,7 +47,7 @@ AS $$
     WHEN 'cancelled'   THEN 'cancelled'
     ELSE 'draft'
   END;
-$$;
+$func$;
 
 COMMENT ON FUNCTION public.work_order_statut_to_status(TEXT) IS
   'Mappe une valeur legacy FR (statut) vers la nouvelle machine d''état EN (status).';
@@ -56,7 +56,7 @@ CREATE OR REPLACE FUNCTION public.work_order_status_to_statut(p_status TEXT)
 RETURNS TEXT
 LANGUAGE sql
 IMMUTABLE
-AS $$
+AS $func$
   SELECT CASE p_status
     -- draft et phases de devis sont des états pré-planification → assigned (par défaut legacy)
     WHEN 'draft'           THEN 'assigned'
@@ -75,7 +75,7 @@ AS $$
     WHEN 'cancelled'       THEN 'cancelled'
     ELSE 'assigned'
   END;
-$$;
+$func$;
 
 COMMENT ON FUNCTION public.work_order_status_to_statut(TEXT) IS
   'Mappe une valeur de la nouvelle machine d''état EN (status) vers legacy FR (statut). '
@@ -89,7 +89,7 @@ COMMENT ON FUNCTION public.work_order_status_to_statut(TEXT) IS
 CREATE OR REPLACE FUNCTION public.work_orders_sync_statut_status()
 RETURNS TRIGGER
 LANGUAGE plpgsql
-AS $$
+AS $func$
 BEGIN
   IF TG_OP = 'INSERT' THEN
     -- INSERT : dériver la colonne manquante si nécessaire
@@ -121,7 +121,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$$;
+$func$;
 
 COMMENT ON FUNCTION public.work_orders_sync_statut_status() IS
   'Garde statut (FR legacy) et status (EN) cohérents sur work_orders. '

@@ -35,7 +35,7 @@ RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
-AS $$
+AS $func$
 DECLARE
   v_profile_id UUID;
   v_result JSONB;
@@ -138,7 +138,7 @@ BEGIN
 
   RETURN v_result;
 END;
-$$;
+$func$;
 
 COMMENT ON FUNCTION public.provider_dashboard(UUID) IS
   'Dashboard principal du prestataire. LEFT JOIN tickets + properties via '
