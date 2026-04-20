@@ -31,7 +31,7 @@ export async function GET(
     // Récupérer le profil et son état
     const { data: profile } = await supabase
       .from("profiles")
-      .select("id, user_id, account_status, suspended_at, suspended_reason")
+      .select("id, user_id, suspended, suspended_at, suspension_reason")
       .eq("id", ownerId)
       .single();
 
@@ -94,10 +94,7 @@ export async function GET(
 
     // Déterminer le statut du compte
     let accountStatus = "active";
-    const profileData = profile as any;
-    if (profileData.account_status) {
-      accountStatus = profileData.account_status;
-    } else if (profileData.suspended_at) {
+    if (profile.suspended) {
       accountStatus = "suspended";
     }
 
@@ -193,9 +190,9 @@ export async function POST(
         await supabase
           .from("profiles")
           .update({
-            account_status: "suspended",
+            suspended: true,
             suspended_at: now,
-            suspended_reason: reason,
+            suspension_reason: reason,
           })
           .eq("id", ownerId);
         
@@ -215,9 +212,9 @@ export async function POST(
         await supabase
           .from("profiles")
           .update({
-            account_status: "active",
+            suspended: false,
             suspended_at: null,
-            suspended_reason: null,
+            suspension_reason: null,
           })
           .eq("id", ownerId);
         
@@ -236,9 +233,9 @@ export async function POST(
         await supabase
           .from("profiles")
           .update({
-            account_status: "banned",
+            suspended: true,
             suspended_at: now,
-            suspended_reason: reason,
+            suspension_reason: reason,
           })
           .eq("id", ownerId);
         
@@ -256,7 +253,11 @@ export async function POST(
       case "restrict":
         await supabase
           .from("profiles")
-          .update({ account_status: "restricted" })
+          .update({
+            suspended: true,
+            suspended_at: now,
+            suspension_reason: `Restricted: ${reason}`,
+          })
           .eq("id", ownerId);
         break;
 

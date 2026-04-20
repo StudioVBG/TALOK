@@ -36,6 +36,7 @@ import {
 import { formatDateShort } from "@/lib/helpers/format";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 
 // Nouveaux composants SOTA 2025
 import {
@@ -193,7 +194,7 @@ export function OwnerDetailsClient({ owner }: OwnerDetailsClientProps) {
 
   // Actions de modération
   const handleModerationAction = async (action: ModerationActionType, reason: string) => {
-    const response = await fetch(`/api/admin/people/owners/${owner.id}/moderation`, {
+    const response = await fetchWithCsrf(`/api/admin/people/owners/${owner.id}/moderation`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, reason }),
