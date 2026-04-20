@@ -2344,5 +2344,114 @@ export const emailTemplates = {
       `, `Impaye J+${data.daysLate} — ${data.tenantName} — ${data.amount.toLocaleString('fr-FR')} \u20AC`),
     };
   },
+
+  /**
+   * Invitation locataire à signer un état des lieux
+   */
+  edlSignatureRequest: (data: {
+    signerName: string;
+    ownerName: string;
+    propertyAddress: string;
+    edlType: "entree" | "sortie";
+    signatureUrl: string;
+  }) => {
+    const kind = data.edlType === "entree" ? "d'entrée" : "de sortie";
+    return {
+      subject: `État des lieux ${kind} à signer — ${data.propertyAddress}`,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span class="badge badge-info">ACTION REQUISE</span>
+          </div>
+
+          <h1>État des lieux ${kind} à signer</h1>
+          <p>Bonjour ${escapeHtml(data.signerName)},</p>
+          <p>${escapeHtml(data.ownerName)} vous invite à signer l'état des lieux ${kind} pour le logement suivant :</p>
+
+          <div class="highlight-box">
+            <p style="font-weight: 600; color: ${COLORS.gray[900]}; margin-bottom: 8px;">${escapeHtml(data.propertyAddress)}</p>
+            <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin: 0;">Type : État des lieux ${kind}</p>
+          </div>
+
+          <p>Prévoyez quelques minutes pour vérifier le document et signer. Une pièce d'identité valide (CNI) est nécessaire.</p>
+
+          <div style="text-align: center;">
+            <a href="${data.signatureUrl}" class="button">Signer l'état des lieux</a>
+          </div>
+
+          <p style="font-size: 14px; color: ${COLORS.gray[500]};">
+            Ce lien est valable 7 jours. Contactez ${escapeHtml(data.ownerName)} si vous avez une question.
+          </p>
+        </div>
+      `, `Signez l'état des lieux ${kind} pour ${escapeHtml(data.propertyAddress)}`),
+    };
+  },
+
+  /**
+   * Notification : une partie a signé l'EDL, la contrepartie doit signer
+   */
+  edlCounterpartySigned: (data: {
+    recipientName: string;
+    signerName: string;
+    signerRoleLabel: string;
+    propertyAddress: string;
+    edlType: "entree" | "sortie";
+    signatureUrl: string;
+  }) => {
+    const kind = data.edlType === "entree" ? "d'entrée" : "de sortie";
+    return {
+      subject: `${data.signerRoleLabel} a signé — EDL ${kind} ${data.propertyAddress}`,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span class="badge badge-info">SIGNATURE REÇUE</span>
+          </div>
+
+          <h1>${escapeHtml(data.signerRoleLabel)} a signé l'état des lieux</h1>
+          <p>Bonjour ${escapeHtml(data.recipientName)},</p>
+          <p><strong>${escapeHtml(data.signerName)}</strong> (${escapeHtml(data.signerRoleLabel)}) vient de signer l'état des lieux ${kind} pour <strong>${escapeHtml(data.propertyAddress)}</strong>.</p>
+          <p>Il ne reste plus que votre signature pour finaliser le document.</p>
+
+          <div style="text-align: center;">
+            <a href="${data.signatureUrl}" class="button">Signer à mon tour</a>
+          </div>
+        </div>
+      `, `Il reste votre signature sur l'EDL ${kind} ${escapeHtml(data.propertyAddress)}`),
+    };
+  },
+
+  /**
+   * Notification : EDL entièrement signé par les deux parties
+   */
+  edlFullySigned: (data: {
+    recipientName: string;
+    propertyAddress: string;
+    edlType: "entree" | "sortie";
+    edlUrl: string;
+  }) => {
+    const kind = data.edlType === "entree" ? "d'entrée" : "de sortie";
+    return {
+      subject: `État des lieux ${kind} signé — ${data.propertyAddress}`,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span class="badge badge-success">EDL FINALISÉ</span>
+          </div>
+
+          <h1>État des lieux ${kind} signé par toutes les parties</h1>
+          <p>Bonjour ${escapeHtml(data.recipientName)},</p>
+          <p>L'état des lieux ${kind} pour <strong>${escapeHtml(data.propertyAddress)}</strong> est maintenant entièrement signé. Le PDF scellé est disponible dans votre espace Talok.</p>
+
+          <div class="highlight-box" style="border-left-color: ${COLORS.success};">
+            <p style="font-weight: 600; color: ${COLORS.success}; font-size: 18px; margin: 0;">✓ EDL finalisé avec succès</p>
+          </div>
+
+          <div style="text-align: center;">
+            <a href="${data.edlUrl}" class="button button-success">Voir le PDF signé</a>
+          </div>
+        </div>
+      `, `L'EDL ${kind} pour ${escapeHtml(data.propertyAddress)} est entièrement signé`),
+    };
+  },
 };
 

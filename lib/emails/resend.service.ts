@@ -929,6 +929,117 @@ export async function sendOwnerPaymentAlert(data: {
   });
 }
 
+/**
+ * Envoie au locataire une invitation à signer un état des lieux
+ */
+export async function sendEDLSignatureRequest(data: {
+  signerEmail: string;
+  signerName: string;
+  ownerName: string;
+  propertyAddress: string;
+  edlId: string;
+  edlType: "entree" | "sortie";
+  signatureToken: string;
+}): Promise<EmailResult> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+  const template = emailTemplates.edlSignatureRequest({
+    signerName: data.signerName,
+    ownerName: data.ownerName,
+    propertyAddress: data.propertyAddress,
+    edlType: data.edlType,
+    signatureUrl: `${appUrl}/signature-edl/${data.signatureToken}`,
+  });
+
+  return sendEmail({
+    to: data.signerEmail,
+    subject: template.subject,
+    html: template.html,
+    idempotencyKey: `edl-signature-request/${data.edlId}/${data.signatureToken}`,
+    tags: [
+      { name: 'type', value: 'edl_signature_request' },
+      { name: 'edl_id', value: data.edlId },
+      { name: 'edl_type', value: data.edlType },
+    ],
+  });
+}
+
+/**
+ * Notifie la contrepartie qu'une partie a signé l'EDL
+ */
+export async function sendEDLCounterpartySignedNotification(data: {
+  recipientEmail: string;
+  recipientName: string;
+  signerName: string;
+  signerRole: "owner" | "tenant";
+  recipientRole: "owner" | "tenant";
+  propertyAddress: string;
+  edlId: string;
+  edlType: "entree" | "sortie";
+  tokenUrl?: string;
+}): Promise<EmailResult> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+  const signatureUrl =
+    data.recipientRole === "owner"
+      ? `${appUrl}/owner/inspections/${data.edlId}?sign=1`
+      : data.tokenUrl || `${appUrl}/tenant/inspections/${data.edlId}`;
+  const template = emailTemplates.edlCounterpartySigned({
+    recipientName: data.recipientName,
+    signerName: data.signerName,
+    signerRoleLabel: data.signerRole === "owner" ? "Le propriétaire" : "Le locataire",
+    propertyAddress: data.propertyAddress,
+    edlType: data.edlType,
+    signatureUrl,
+  });
+
+  return sendEmail({
+    to: data.recipientEmail,
+    subject: template.subject,
+    html: template.html,
+    idempotencyKey: `edl-counterparty-signed/${data.edlId}/${data.signerRole}`,
+    tags: [
+      { name: 'type', value: 'edl_counterparty_signed' },
+      { name: 'edl_id', value: data.edlId },
+      { name: 'signer_role', value: data.signerRole },
+    ],
+  });
+}
+
+/**
+ * Notifie une partie que l'EDL est entièrement signé
+ */
+export async function sendEDLFullySignedNotification(data: {
+  recipientEmail: string;
+  recipientName: string;
+  recipientRole: "owner" | "tenant";
+  propertyAddress: string;
+  edlId: string;
+  edlType: "entree" | "sortie";
+}): Promise<EmailResult> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+  const edlUrl =
+    data.recipientRole === "owner"
+      ? `${appUrl}/owner/inspections/${data.edlId}`
+      : `${appUrl}/tenant/inspections/${data.edlId}`;
+  const template = emailTemplates.edlFullySigned({
+    recipientName: data.recipientName,
+    propertyAddress: data.propertyAddress,
+    edlType: data.edlType,
+    edlUrl,
+  });
+
+  return sendEmail({
+    to: data.recipientEmail,
+    subject: template.subject,
+    html: template.html,
+    idempotencyKey: `edl-fully-signed/${data.edlId}/${data.recipientRole}`,
+    tags: [
+      { name: 'type', value: 'edl_fully_signed' },
+      { name: 'edl_id', value: data.edlId },
+      { name: 'recipient_role', value: data.recipientRole },
+    ],
+  });
+}
+
 // Export du service
 export const emailService = {
   send: sendEmail,
@@ -939,6 +1050,9 @@ export const emailService = {
   sendTicketUpdateNotification,
   sendSignatureRequest,
   sendLeaseSignedNotification,
+  sendEDLSignatureRequest,
+  sendEDLCounterpartySignedNotification,
+  sendEDLFullySignedNotification,
   sendPropertyInvitation,
   sendWelcomeEmail,
   sendPasswordResetEmail,

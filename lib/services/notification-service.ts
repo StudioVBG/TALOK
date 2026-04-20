@@ -138,19 +138,22 @@ const notificationConfig: Record<NotificationType, {
     defaultChannels: ["in_app", "email"],
     icon: "📈",
   },
+  // L'email pour ces 3 types est géré par les helpers sendEDL*Notification
+  // dédiés (templates spécifiques + idempotencyKey). On garde in_app + push
+  // ici pour éviter un email générique dupliqué.
   edl_ready_to_sign: {
     defaultPriority: "high",
-    defaultChannels: ["in_app", "email", "push"],
+    defaultChannels: ["in_app", "push"],
     icon: "✍️",
   },
   edl_signed_by_counterparty: {
     defaultPriority: "normal",
-    defaultChannels: ["in_app", "email"],
+    defaultChannels: ["in_app", "push"],
     icon: "✍️",
   },
   edl_fully_signed: {
     defaultPriority: "normal",
-    defaultChannels: ["in_app", "email"],
+    defaultChannels: ["in_app"],
     icon: "✅",
   },
   system: {
