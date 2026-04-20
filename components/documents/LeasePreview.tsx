@@ -126,7 +126,7 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
                       <iframe
                         src={pdfUrl}
                         className="w-full border-0"
-                        style={{ height: "calc(297mm * 2)" }}
+                        style={{ height: "calc(297mm * 2)", colorScheme: "light" }}
                         title="Bail signé plein écran"
                       />
                     ) : html ? (
@@ -160,7 +160,7 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
                 <iframe
                   src={pdfUrl}
                   className="w-full border-0 bg-white"
-                  style={{ height: "calc(297mm * 1.5)" }}
+                  style={{ height: "calc(297mm * 1.5)", colorScheme: "light" }}
                   title="Bail signé (document définitif)"
                   onError={() => {
                     console.error("[LeasePreview] iframe PDF failed to load", { leaseId, pdfUrl });

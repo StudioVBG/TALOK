@@ -21,6 +21,13 @@ export async function GET(request: Request, { params }: RouteParams) {
     const { id: leaseId } = await params;
     if (!leaseId) return NextResponse.json({ error: "ID du bail requis" }, { status: 400 });
 
+    // Supabase Storage ajoute un header `Content-Security-Policy: sandbox`
+    // sur les signed URLs de PDF, ce qui empeche le rendu dans un <iframe>.
+    // Quand ?inline=1 est passe, on proxy les bytes pour servir le PDF
+    // avec `Content-Disposition: inline` et sans CSP sandbox.
+    const url = new URL(request.url);
+    const inline = url.searchParams.get("inline") === "1";
+
     const supabase = await createClient();
     const serviceClient = getServiceClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -46,9 +53,28 @@ export async function GET(request: Request, { params }: RouteParams) {
 
     // Sealed bail: return stored PDF
     if (lease.sealed_at && lease.signed_pdf_path && !lease.signed_pdf_path.startsWith("pending_generation_")) {
+      await serviceClient.from("audit_log").insert({ user_id: user.id, action: "read", entity_type: "document", entity_id: leaseId, metadata: { type: "bail_signe", sealed: true, inline } } as any);
+
+      if (inline) {
+        const { data: fileBlob, error: dlError } = await serviceClient.storage
+          .from("documents")
+          .download(lease.signed_pdf_path);
+        if (!dlError && fileBlob) {
+          const buffer = Buffer.from(await fileBlob.arrayBuffer());
+          const fileName = `Bail_Signe_${property?.ville || leaseId.slice(0, 8)}.pdf`;
+          return new NextResponse(new Uint8Array(buffer), {
+            headers: {
+              "Content-Type": "application/pdf",
+              "Content-Disposition": `inline; filename="${fileName}"`,
+              "Content-Length": String(buffer.length),
+              "Cache-Control": "private, max-age=300",
+            },
+          });
+        }
+      }
+
       const { data: signedUrl, error: urlError } = await serviceClient.storage.from("documents").createSignedUrl(lease.signed_pdf_path, 3600);
       if (!urlError && signedUrl?.signedUrl) {
-        await serviceClient.from("audit_log").insert({ user_id: user.id, action: "read", entity_type: "document", entity_id: leaseId, metadata: { type: "bail_signe", sealed: true } } as any);
         return NextResponse.redirect(signedUrl.signedUrl);
       }
     }
