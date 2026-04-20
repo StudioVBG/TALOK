@@ -13,7 +13,6 @@ interface LeasePreviewProps {
 
 export function LeasePreview({ leaseId }: LeasePreviewProps) {
   const [html, setHtml] = useState<string>("");
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isSealed, setIsSealed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -37,19 +36,13 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
 
       const data = await response.json();
 
-      if (data.sealed && data.pdfUrl) {
-        setPdfUrl(data.pdfUrl);
-        setIsSealed(true);
-        setHtml("");
-      } else if (typeof data.html === "string" && data.html.length > 0) {
+      if (typeof data.html === "string" && data.html.length > 0) {
         setHtml(data.html);
-        setPdfUrl(null);
-        setIsSealed(false);
+        setIsSealed(Boolean(data.sealed));
       } else {
-        // Ni PDF signé, ni HTML : impossible d'afficher l'aperçu
-        console.error("[LeasePreview] Réponse API vide — ni pdfUrl ni html", { leaseId, data });
+        // Ni HTML scellé ni HTML live : impossible d'afficher l'aperçu
+        console.error("[LeasePreview] Réponse API vide — ni html scellé ni html live", { leaseId, data });
         setHtml("");
-        setPdfUrl(null);
         setIsSealed(false);
         setFetchError("Le document n'est pas encore disponible");
       }
@@ -59,7 +52,6 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
       const message = error instanceof Error ? error.message : "Erreur inconnue";
       setFetchError(message);
       setHtml("");
-      setPdfUrl(null);
       setIsSealed(false);
       toast({
         title: "Erreur",
@@ -79,16 +71,16 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
   // React's attribute reconciliation may not reliably update srcdoc on
   // existing iframes in all browsers.
   useEffect(() => {
-    if (iframeRef.current && html && !isSealed) {
+    if (iframeRef.current && html) {
       iframeRef.current.srcdoc = html;
     }
-  }, [html, isSealed, iframeKey]);
+  }, [html, iframeKey]);
 
   useEffect(() => {
-    if (fullscreenIframeRef.current && html && !isSealed && fullscreen) {
+    if (fullscreenIframeRef.current && html && fullscreen) {
       fullscreenIframeRef.current.srcdoc = html;
     }
-  }, [html, isSealed, fullscreen, iframeKey]);
+  }, [html, fullscreen, iframeKey]);
 
   return (
     <Card className="h-full flex flex-col">
@@ -109,7 +101,7 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
           </Button>
           <Dialog open={fullscreen} onOpenChange={setFullscreen}>
             <DialogTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={!html && !pdfUrl}>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" disabled={!html}>
                 <Maximize2 className="h-4 w-4" />
               </Button>
             </DialogTrigger>
@@ -122,21 +114,14 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
               <div className="flex-1 min-h-0 bg-[#525659] overflow-y-auto">
                 <div className="flex justify-center py-6 px-4">
                   <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)]">
-                    {isSealed && pdfUrl ? (
-                      <iframe
-                        src={pdfUrl}
-                        className="w-full border-0"
-                        style={{ height: "calc(297mm * 2)", colorScheme: "light" }}
-                        title="Bail signé plein écran"
-                      />
-                    ) : html ? (
+                    {html ? (
                       <iframe
                         ref={fullscreenIframeRef}
                         key={`fullscreen-${iframeKey}`}
                         srcDoc={html}
                         className="w-full border-0"
-                        style={{ height: "calc(297mm * 2)" }}
-                        title="Aperçu bail plein écran"
+                        style={{ height: "calc(297mm * 2)", colorScheme: "light" }}
+                        title={isSealed ? "Bail signé plein écran" : "Aperçu bail plein écran"}
                       />
                     ) : null}
                   </div>
@@ -154,21 +139,6 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
               <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-blue-600 mb-2" />
               <p className="text-xs sm:text-sm text-white/80 text-center">Chargement du contrat...</p>
             </div>
-          ) : isSealed && pdfUrl && !iframeFailed ? (
-            <div className="h-full overflow-y-auto flex justify-center py-4 px-2 sm:px-4">
-              <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)] flex-shrink-0 h-fit">
-                <iframe
-                  src={pdfUrl}
-                  className="w-full border-0 bg-white"
-                  style={{ height: "calc(297mm * 1.5)", colorScheme: "light" }}
-                  title="Bail signé (document définitif)"
-                  onError={() => {
-                    console.error("[LeasePreview] iframe PDF failed to load", { leaseId, pdfUrl });
-                    setIframeFailed(true);
-                  }}
-                />
-              </div>
-            </div>
           ) : html && !iframeFailed ? (
             <div className="h-full overflow-y-auto flex justify-center py-4 px-2 sm:px-4">
               <div className="w-full max-w-[210mm] bg-white shadow-[0_2px_10px_rgba(0,0,0,0.3)] flex-shrink-0 h-fit">
@@ -177,10 +147,10 @@ export function LeasePreview({ leaseId }: LeasePreviewProps) {
                   key={`preview-${iframeKey}`}
                   srcDoc={html}
                   className="w-full border-0 bg-white"
-                  style={{ height: "calc(297mm * 1.5)" }}
-                  title="Aperçu du bail"
+                  style={{ height: "calc(297mm * 1.5)", colorScheme: "light" }}
+                  title={isSealed ? "Bail signé (document définitif)" : "Aperçu du bail"}
                   onError={() => {
-                    console.error("[LeasePreview] iframe HTML failed to load", { leaseId });
+                    console.error("[LeasePreview] iframe failed to load", { leaseId, isSealed });
                     setIframeFailed(true);
                   }}
                 />
