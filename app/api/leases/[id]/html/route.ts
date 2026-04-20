@@ -79,23 +79,38 @@ export async function GET(
       );
 
       if (hasNonEmptyFile) {
-        // On NE renvoie PAS la signed URL Supabase directement : Supabase
-        // Storage ajoute un header `Content-Security-Policy: sandbox` sur
-        // les PDFs, ce qui empeche le rendu dans un <iframe>. On passe par
-        // la route proxy `/api/leases/[id]/pdf?inline=1` qui re-sert les
-        // bytes avec les bons headers.
-        return NextResponse.json({
-          sealed: true,
-          pdfUrl: `/api/leases/${leaseId}/pdf?inline=1`,
-          fileName: `Bail_Signe_${(leaseCheck.property as any)?.ville || "document"}.pdf`,
-          html: null,
-        });
+        // Le "signed_pdf_path" est historiquement un chemin HTML
+        // (bails/{id}/signed_final.html) — pas un PDF. On download le
+        // contenu et on le renvoie tel quel pour injection via
+        // <iframe srcDoc={html}> cote client (meme pattern que la vue
+        // owner, qui ne passe pas par un iframe PDF).
+        const { data: fileBlob, error: dlError } = await serviceClient.storage
+          .from("documents")
+          .download(signedPath);
+
+        if (!dlError && fileBlob) {
+          const htmlContent = await fileBlob.text();
+          if (htmlContent && htmlContent.length > 0) {
+            return NextResponse.json({
+              sealed: true,
+              sealedAt: leaseCheck.sealed_at,
+              html: htmlContent,
+              fileName: `Bail_Signe_${(leaseCheck.property as any)?.ville || "document"}.pdf`,
+              pdfUrl: null,
+            });
+          }
+        }
+
+        console.warn(
+          "[Lease HTML] sealed file download failed, falling back to HTML regeneration",
+          { leaseId, signed_pdf_path: signedPath, error: dlError?.message }
+        );
+      } else {
+        console.warn(
+          "[Lease HTML] sealed_at set but signed_pdf_path missing in storage, falling back to HTML",
+          { leaseId, signed_pdf_path: signedPath }
+        );
       }
-      // File is missing or empty — fall through to HTML regeneration
-      console.warn(
-        "[Lease HTML] sealed_at set but signed_pdf_path missing in storage, falling back to HTML",
-        { leaseId, signed_pdf_path: signedPath }
-      );
     }
 
     // Build bail data via unified builder
