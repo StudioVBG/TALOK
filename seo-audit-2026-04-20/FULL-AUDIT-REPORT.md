@@ -29,6 +29,26 @@ Le site a de **bonnes bases techniques** (HTTPS, HSTS, CSP, robots.txt propre, s
 5. **Titles de `/pricing` et `/blog` avec suffixe dupliqué** : `| Talok | Talok`. Cause : la `metadata.title` de la page contient déjà `"| Talok"` alors que le layout racine applique `template: "%s | Talok"`.
 6. **H1 home avec 2 balises** et une de ces balises (`"Une solution adoptée par chaque profil"`) devrait être `<h2>`. NB : mon first pass avait rapporté un H1 "collé" (`TALOKLelogicieldeGestionLocative`) — c'était un artefact de parsing, les mots sont bien séparés par `<span>` avec margin. Mais le hero a bien `style="opacity:0"` en SSR (framer-motion initial state) → contenu invisible sans JS.
 
+### Investigation SSR crash (C1 / C2 / C4) — suite
+
+Inspection de la réponse HTTP de `/pricing` en production :
+
+- Body du HTML contient **uniquement des `<script>`** de streaming Flight RSC, **aucun contenu rendu** (`<body>` vide à part `self.__next_f.push(...)`).
+- Le payload RSC référence bien `static/chunks/app/error-e6fe6d57d765cace.js` (le composant `app/error.tsx`).
+- Les 2 `<meta name="robots">` coexistent : la première (`noindex`) est injectée par la shell `<html id="__next_error__">`, la seconde (`index, follow`) vient de la config `metadata` du projet.
+- L'HTTP reste 200 et le cache Netlify est `"Next.js"; hit, "Netlify Durable"; fwd=stale` — donc la version en cache est celle qui crash, et elle ne sera pas automatiquement regénérée.
+
+Pistes à vérifier pour identifier l'origine du crash (classées par probabilité) :
+
+1. **Sentry `@sentry/nextjs`** : le projet l'a intégré. Chercher les erreurs SSR sur `pages = /pricing|/blog|/faq|/solutions/* |/a-propos` dans les 7 derniers jours.
+2. **Netlify Function logs** : Site settings → Functions → `___netlify-server-handler` → chercher les entrées d'erreur sur les mêmes paths.
+3. **Purger le cache Netlify** : `Deploys → Options → Clear cache and deploy site` une fois le fix poussé. Sans purge, la version cassée restera servie jusqu'à expiration du cache (`ttl=31530943` ≈ 1 an).
+4. **Reproduire en local** : `NODE_ENV=production npm run build && npm run start`, puis `curl -sI http://localhost:3000/pricing`. Si OK en local, le problème est lié à l'environnement Netlify (env vars manquantes, serverless size, etc.). Si reproduit en local, lire la stack trace directement dans le terminal Next.
+5. Hypothèses candidates :
+    - `NEXT_PUBLIC_APP_URL` mal configurée ou non-HTTPS au runtime sur Netlify (le code normalise le protocole via `getMetadataBaseUrl()` mais un `new URL()` mal formé bloque le render).
+    - Composant client partagé (`MarketingNavbar`, `MarketingFooter`) qui échoue à l'hydration SSR uniquement pour certaines routes (la home fonctionne parce qu'elle ne passe pas par le layout `(marketing)` de la même façon — à vérifier).
+    - Import côté serveur de `framer-motion` qui peut parfois produire des RSC timeouts sur Netlify Functions.
+
 ### Top 5 quick wins (≤ 1 semaine)
 
 1. **Retirer la balise `<meta name="robots" content="noindex">`** qui s'ajoute avant `index, follow` (régression layout/SSR probable).
