@@ -59,11 +59,11 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: str
   scheduled: { label: "Planifié", color: "text-blue-600", bgColor: "bg-blue-100" },
   in_progress: { label: "En cours", color: "text-purple-600", bgColor: "bg-purple-100" },
   done: { label: "Terminé", color: "text-green-600", bgColor: "bg-green-100" },
-  cancelled: { label: "Annulé", color: "text-gray-600", bgColor: "bg-gray-100" },
+  cancelled: { label: "Annulé", color: "text-muted-foreground", bgColor: "bg-muted" },
 };
 
 const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
-  basse: { label: "Basse", color: "bg-gray-100 text-gray-600" },
+  basse: { label: "Basse", color: "bg-muted text-muted-foreground" },
   normale: { label: "Normale", color: "bg-blue-100 text-blue-600" },
   haute: { label: "Urgente", color: "bg-red-100 text-red-600" },
 };

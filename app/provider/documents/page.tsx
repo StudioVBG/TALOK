@@ -76,8 +76,8 @@ const CATEGORY_CONFIG: Record<DocumentCategory, {
   all: { 
     label: "Tous", 
     icon: FolderOpen, 
-    color: "text-slate-600", 
-    bgColor: "bg-slate-100" 
+    color: "text-muted-foreground", 
+    bgColor: "bg-muted"
   },
   compliance: { 
     label: "Conformité", 
@@ -114,8 +114,8 @@ const STATUS_CONFIG: Record<string, {
   verified: { label: "Vérifié", color: "bg-green-100 text-green-700", icon: CheckCircle2 },
   pending: { label: "En attente", color: "bg-amber-100 text-amber-700", icon: Clock },
   rejected: { label: "Rejeté", color: "bg-red-100 text-red-700", icon: AlertTriangle },
-  expired: { label: "Expiré", color: "bg-gray-100 text-gray-700", icon: AlertTriangle },
-  draft: { label: "Brouillon", color: "bg-slate-100 text-slate-700", icon: FileText },
+  expired: { label: "Expiré", color: "bg-muted text-muted-foreground", icon: AlertTriangle },
+  draft: { label: "Brouillon", color: "bg-muted text-muted-foreground", icon: FileText },
   sent: { label: "Envoyé", color: "bg-blue-100 text-blue-700", icon: FileSignature },
   paid: { label: "Payé", color: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
 };
@@ -244,10 +244,10 @@ function DocumentCard({ doc }: { doc: ProviderDocument }) {
 
         {/* Content */}
         <div className="flex-1 mb-4">
-          <h3 className="text-lg font-bold text-slate-900 group-hover:text-orange-600 transition-colors line-clamp-2">
+          <h3 className="text-lg font-bold text-foreground group-hover:text-orange-600 transition-colors line-clamp-2">
             {doc.title}
           </h3>
-          <div className="flex items-center gap-4 mt-2 text-sm text-slate-500">
+          <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
             <div className="flex items-center gap-1.5">
               <Calendar className="h-3.5 w-3.5" />
               {new Date(doc.created_at).toLocaleDateString("fr-FR", { 
@@ -270,7 +270,7 @@ function DocumentCard({ doc }: { doc: ProviderDocument }) {
         </div>
 
         {/* Actions */}
-        <div className="flex gap-2 pt-4 border-t border-slate-100">
+        <div className="flex gap-2 pt-4 border-t border-border">
           <Button 
             variant="ghost" 
             size="sm" 
@@ -346,11 +346,11 @@ export default function ProviderDocumentsPage() {
               <div className="p-2 bg-orange-600 rounded-lg shadow-lg shadow-orange-200">
                 <FolderOpen className="h-6 w-6 text-white" />
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">
+              <h1 className="text-3xl font-bold tracking-tight text-foreground">
                 Mes Documents
               </h1>
             </div>
-            <p className="text-slate-500 text-lg">
+            <p className="text-muted-foreground text-lg">
               Tous vos documents professionnels au même endroit
             </p>
           </div>
@@ -388,7 +388,7 @@ export default function ProviderDocumentsPage() {
                     <Icon className={cn("h-5 w-5", config.color)} />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-slate-900">{stats[key]}</p>
+                    <p className="text-2xl font-bold text-foreground">{stats[key]}</p>
                     <p className="text-xs text-muted-foreground">{config.label}</p>
                   </div>
                 </div>
@@ -401,7 +401,7 @@ export default function ProviderDocumentsPage() {
         <GlassCard className="p-4 border-border bg-card/50 backdrop-blur-md sticky top-4 z-20 shadow-lg">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/70" />
               <Input
                 placeholder="Rechercher un document..."
                 value={searchQuery}
@@ -413,7 +413,7 @@ export default function ProviderDocumentsPage() {
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full sm:w-48 h-11 bg-card/80 border-border" aria-label="Filtrer par statut">
                 <div className="flex items-center gap-2">
-                  <Filter className="h-4 w-4 text-slate-400" />
+                  <Filter className="h-4 w-4 text-muted-foreground/70" />
                   <SelectValue placeholder="Statut" />
                 </div>
               </SelectTrigger>
@@ -471,7 +471,7 @@ export default function ProviderDocumentsPage() {
               </div>
               <div>
                 <h4 className="text-xl font-bold">Documents de conformité</h4>
-                <p className="text-slate-400 text-sm max-w-md">
+                <p className="text-muted-foreground/70 text-sm max-w-md">
                   Gardez vos documents légaux à jour pour recevoir des missions. 
                   RC Pro, décennale, KBIS sont obligatoires.
                 </p>

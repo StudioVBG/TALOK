@@ -78,7 +78,7 @@ interface QuoteStats {
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-  draft: { label: "Brouillon", color: "bg-slate-100 text-slate-700", icon: FileText },
+  draft: { label: "Brouillon", color: "bg-muted text-muted-foreground", icon: FileText },
   sent: { label: "Envoyé", color: "bg-blue-100 text-blue-700", icon: Send },
   viewed: { label: "Consulté", color: "bg-purple-100 text-purple-700", icon: Eye },
   accepted: { label: "Accepté", color: "bg-green-100 text-green-700", icon: CheckCircle2 },

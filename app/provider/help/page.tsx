@@ -347,9 +347,9 @@ export default function ProviderHelpPage() {
                     <p className="font-semibold">01 23 45 67 89</p>
                   </div>
 
-                  <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
+                  <div className="p-4 rounded-lg bg-muted/50 border border-border">
                     <h4 className="font-medium flex items-center gap-2 mb-2">
-                      <Mail className="h-4 w-4 text-slate-500" />
+                      <Mail className="h-4 w-4 text-muted-foreground" />
                       Email
                     </h4>
                     <p className="text-sm text-muted-foreground mb-1">
