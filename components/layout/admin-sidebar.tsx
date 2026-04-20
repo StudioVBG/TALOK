@@ -24,13 +24,11 @@ import {
   Mail,
   Palette,
   Brain,
-  UserCheck,
   FolderOpen,
   LogOut,
   Flag,
   Ticket,
   TrendingUp,
-  UserCog,
   Clock,
   Zap,
 } from "lucide-react";
@@ -70,17 +68,14 @@ const adminNavItems: NavCategory[] = [
       { href: "/admin/support", label: "Support", icon: Ticket },
       { href: "/admin/moderation", label: "Modération IA", icon: Brain },
       { href: "/admin/providers/pending", label: "Validation Prestataires", icon: ShieldCheck },
-      { href: "/admin/compliance", label: "Documents & Conformité", icon: Shield },
+      { href: "/admin/compliance", label: "Conformité prestataires", icon: Shield },
     ],
   },
   {
     category: "Utilisateurs & parc",
     items: [
-      { href: "/admin/users", label: "Utilisateurs", icon: UserCog },
       { href: "/admin/people", label: "Annuaire", icon: Users },
-      { href: "/admin/tenants", label: "Locataires", icon: UserCheck },
       { href: "/admin/properties", label: "Parc immobilier", icon: Building2 },
-      { href: "/admin/reports", label: "Rapports", icon: FileText },
       { href: "/admin/documents", label: "Documents", icon: FolderOpen },
     ],
   },
@@ -106,9 +101,15 @@ const adminNavItems: NavCategory[] = [
     ],
   },
   {
-    category: "Plateforme",
+    category: "Analyse & rapports",
     items: [
       { href: "/admin/metrics", label: "Métriques", icon: TrendingUp },
+      { href: "/admin/reports", label: "Rapports", icon: FileText },
+    ],
+  },
+  {
+    category: "Plateforme",
+    items: [
       { href: "/admin/flags", label: "Feature Flags", icon: Flag },
       { href: "/admin/crons", label: "Tâches planifiées", icon: Clock },
     ],

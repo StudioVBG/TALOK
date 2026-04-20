@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
           type: "new_user",
           title: "Nouvel utilisateur",
           body: `${data.prenom || ""} ${data.nom || ""} (${data.email}) — ${data.role}`,
-          actionUrl: "/admin/users",
+          actionUrl: "/admin/people",
           metadata: { user_id: authData.user!.id, role: data.role },
         })
       ).catch(() => {});

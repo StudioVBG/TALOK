@@ -14,9 +14,6 @@ export const adminKeys = {
   subscriptions: (filters?: Record<string, string>) =>
     [...adminKeys.all, "subscriptions", filters] as const,
   subscriptionStats: () => [...adminKeys.all, "subscriptions", "stats"] as const,
-  users: (filters?: Record<string, string>) =>
-    [...adminKeys.all, "users", filters] as const,
-  user: (id: string) => [...adminKeys.all, "users", id] as const,
   supportTickets: (filters?: Record<string, string>) =>
     [...adminKeys.all, "support-tickets", filters] as const,
   featureFlags: () => [...adminKeys.all, "feature-flags"] as const,
@@ -169,29 +166,6 @@ export function useSubscriptionStats() {
     queryFn: () =>
       adminFetch<SubscriptionStatsResponse>("/api/admin/subscriptions/stats"),
     staleTime: 60_000,
-  });
-}
-
-// ─── User mutations ────────────────────────────────────────
-export function useSuspendUser() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      userId,
-      suspended,
-      reason,
-    }: {
-      userId: string;
-      suspended: boolean;
-      reason?: string;
-    }) =>
-      adminMutate<unknown>(`/api/admin/users/${userId}`, "PATCH", {
-        suspended,
-        reason,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.users() });
-    },
   });
 }
 
@@ -384,42 +358,3 @@ export function useAdminMetrics() {
   });
 }
 
-// ─── Admin Users List ─────────────────────────────────────
-interface AdminUsersResponse {
-  users: Array<{
-    id: string;
-    user_id: string;
-    role: string;
-    prenom: string | null;
-    nom: string | null;
-    email: string | null;
-    telephone: string | null;
-    avatar_url: string | null;
-    suspended?: boolean;
-    created_at: string;
-  }>;
-  total: number;
-}
-
-export function useAdminUsers(filters: {
-  search?: string;
-  role?: string;
-  status?: string;
-  page?: number;
-  per_page?: number;
-}) {
-  const params = new URLSearchParams();
-  if (filters.search) params.set("search", filters.search);
-  if (filters.role && filters.role !== "all") params.set("role", filters.role);
-  if (filters.status && filters.status !== "all")
-    params.set("status", filters.status);
-  if (filters.page) params.set("page", String(filters.page));
-  if (filters.per_page) params.set("per_page", String(filters.per_page));
-
-  return useQuery({
-    queryKey: adminKeys.users(Object.fromEntries(params)),
-    queryFn: () =>
-      adminFetch<AdminUsersResponse>(`/api/admin/users?${params}`),
-    staleTime: 30_000,
-  });
-}

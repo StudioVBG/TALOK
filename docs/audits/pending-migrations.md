@@ -1,8 +1,17 @@
 # Migrations en attente d'application (post-20260208024659)
 
 **Date :** 2026-04-09
-**Total migrations en attente :** 168
-**Derniere migration appliquee (prod) :** `20260208024659`
+**Mise à jour :** 2026-04-19 — Sprint B2 appliqué
+**Total migrations en attente :** 28 (rename-then-apply uniquement)
+**Derniere migration appliquee (prod) :** `20260417110000`
+
+> **Sprint B2 (2026-04-19) — 194 migrations `apply` exécutées** via
+> `supabase/apply_scripts/APPLY_SPRINT_B2_{01_FEB,02_MAR,03_APR}2026.sql`,
+> puis enregistrées dans `supabase_migrations.schema_migrations` via
+> `REGISTER_SPRINT_B2_APPLIED.sql`.
+>
+> Reste **28 migrations `rename-then-apply`** qui nécessitent la branche
+> `dedup` mergée d'abord (voir `reports/sprint-b2-migrations-to-apply.md`).
 
 > Pour verifier en prod : `SELECT version FROM supabase_migrations.schema_migrations ORDER BY version DESC LIMIT 5;`
 

@@ -1,7 +1,13 @@
 # Inventaire des migrations Supabase
 
 **Date :** 2026-04-09
-**Total migrations :** 388
+**Mise à jour :** 2026-04-19 — Sprint B2 appliqué (194 migrations)
+**Total migrations :** 388 (448 après Sprint B2 — voir `supabase/migrations/`)
+
+> **Sprint B2 clos** : 194 migrations du backlog appliquées en prod via
+> `supabase/apply_scripts/APPLY_SPRINT_B2_*.sql` le 2026-04-19. Voir
+> `supabase/apply_scripts/README_SPRINT_B2.md` pour la procédure utilisée
+> et `scripts/migrations/` pour le tooling réutilisable.
 
 ---
 
