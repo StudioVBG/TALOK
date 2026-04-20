@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceClient } from '@/lib/supabase/service-client';
 import { STORAGE_BUCKETS } from '@/lib/config/storage-buckets';
 
 interface RouteParams {
@@ -27,8 +28,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -40,8 +42,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     const documentId = params.id;
 
-    // Récupérer le document
-    const { data: document, error: docError } = await supabase
+    const { data: document, error: docError } = await serviceClient
       .from('provider_compliance_documents')
       .select('*')
       .eq('id', documentId)
@@ -51,17 +52,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Document non trouvé' }, { status: 404 });
     }
 
-    // Vérifier l'accès (propriétaire ou admin)
     if (profile.role !== 'admin' && document.provider_profile_id !== profile.id) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    // Générer une URL signée pour le fichier
+    // Générer une URL signée pour le fichier (storage accepte service client)
     let signedUrl = null;
     if (document.storage_path) {
-      const { data: urlData } = await supabase.storage
+      const { data: urlData } = await serviceClient.storage
         .from('documents')
-        .createSignedUrl(document.storage_path as string, 3600); // 1 heure
+        .createSignedUrl(document.storage_path as string, 3600);
 
       signedUrl = urlData?.signedUrl;
     }
@@ -73,8 +73,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error: unknown) {
-    console.error('Error in GET /api/provider/compliance/documents/[id]:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+    console.error('[provider/compliance/documents/[id]] GET error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }
 
@@ -90,8 +93,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -103,8 +107,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     const documentId = params.id;
 
-    // Récupérer le document
-    const { data: document } = await supabase
+    const { data: document } = await serviceClient
       .from('provider_compliance_documents')
       .select('*')
       .eq('id', documentId)
@@ -115,7 +118,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Document non trouvé' }, { status: 404 });
     }
 
-    // Seuls les documents en attente peuvent être supprimés
     if (document.verification_status !== 'pending') {
       return NextResponse.json(
         { error: 'Seuls les documents en attente peuvent être supprimés' },
@@ -123,31 +125,33 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Supprimer le fichier du storage
     if (document.storage_path) {
-      await supabase.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([document.storage_path as string]);
+      await serviceClient.storage
+        .from(STORAGE_BUCKETS.DOCUMENTS)
+        .remove([document.storage_path as string]);
     }
 
-    // Supprimer le document de la base
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await serviceClient
       .from('provider_compliance_documents')
       .delete()
-      .eq('id', documentId);
+      .eq('id', documentId)
+      .eq('provider_profile_id', profile.id);
 
     if (deleteError) {
-      console.error('Error deleting document:', deleteError);
+      console.error('[provider/compliance/documents/[id]] DELETE error:', deleteError);
       return NextResponse.json({ error: deleteError.message }, { status: 500 });
     }
 
-    // Mettre à jour le statut KYC
-    await supabase.rpc('update_provider_kyc_status', {
+    await serviceClient.rpc('update_provider_kyc_status', {
       p_provider_profile_id: profile.id,
     });
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    console.error('Error in DELETE /api/provider/compliance/documents/[id]:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+    console.error('[provider/compliance/documents/[id]] DELETE handler error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }
-

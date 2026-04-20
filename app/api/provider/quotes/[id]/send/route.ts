@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceClient } from '@/lib/supabase/service-client';
 
 interface RouteParams {
   params: { id: string };
@@ -26,9 +27,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const quoteId = params.id;
+    const serviceClient = getServiceClient();
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id')
       .eq('user_id', user.id)
@@ -38,8 +39,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
     }
 
-    // Récupérer le devis
-    const { data: quote, error: quoteError } = await supabase
+    const { data: quote, error: quoteError } = await serviceClient
       .from('provider_quotes')
       .select(`
         *,
@@ -67,13 +67,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Mettre à jour le statut du devis
-    const { error: updateError } = await supabase
+    const { error: updateError } = await serviceClient
       .from('provider_quotes')
       .update({
         status: 'sent',
         sent_at: new Date().toISOString(),
       })
-      .eq('id', quoteId);
+      .eq('id', quoteId)
+      .eq('provider_profile_id', profile.id);
 
     if (updateError) {
       console.error('Error updating quote:', updateError);
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Créer une notification pour le destinataire
     if (quote.owner?.id) {
-      await supabase.from('notifications').insert({
+      await serviceClient.from('notifications').insert({
         profile_id: quote.owner.id,
         type: 'quote_received',
         title: 'Nouveau devis reçu',

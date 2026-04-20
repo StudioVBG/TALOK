@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceClient } from '@/lib/supabase/service-client';
 import { z } from 'zod';
 
 // Schéma de validation pour la création de facture
@@ -52,8 +53,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -71,8 +73,8 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = (page - 1) * limit;
 
-    // Construire la requête
-    let query = supabase
+    // Construire la requête via serviceClient (bypass RLS, scoping via .eq)
+    let query = serviceClient
       .from('provider_invoices')
       .select(`
         *,
@@ -105,7 +107,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculer les stats
-    const { data: stats } = await supabase
+    const { data: stats } = await serviceClient
       .from('provider_invoices')
       .select('status, total_amount')
       .eq('provider_profile_id', profile.id);
@@ -152,8 +154,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Récupérer le profil prestataire
-    const { data: profile } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -183,7 +186,7 @@ export async function POST(request: NextRequest) {
     ).toISOString().split('T')[0];
 
     // Créer la facture (le numéro sera généré automatiquement par le trigger)
-    const { data: invoice, error: createError } = await supabase
+    const { data: invoice, error: createError } = await serviceClient
       .from('provider_invoices')
       .insert({
         provider_profile_id: profile.id,
@@ -226,21 +229,19 @@ export async function POST(request: NextRequest) {
       sort_order: index,
     }));
 
-    const { error: itemsError } = await supabase
+    const { error: itemsError } = await serviceClient
       .from('provider_invoice_items')
       .insert(items);
 
     if (itemsError) {
       // Supprimer la facture en cas d'erreur
-      await supabase.from('provider_invoices').delete().eq('id', invoice.id);
-      console.error('Error creating invoice items:', itemsError);
+      await serviceClient.from('provider_invoices').delete().eq('id', invoice.id);
+      console.error('[provider/invoices] POST items error:', itemsError);
       return NextResponse.json({ error: itemsError.message }, { status: 500 });
     }
 
     // Les totaux seront calculés automatiquement par le trigger
-
-    // Récupérer la facture mise à jour
-    const { data: updatedInvoice } = await supabase
+    const { data: updatedInvoice } = await serviceClient
       .from('provider_invoices')
       .select('*')
       .eq('id', invoice.id)

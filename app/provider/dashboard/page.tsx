@@ -169,7 +169,7 @@ export default function ProviderDashboardPage() {
     );
   }
 
-  if (error || !data) {
+  if (error || !data || !data.stats) {
     return (
       <div className="container mx-auto p-4 sm:p-6 space-y-4">
         <Alert variant="destructive">
@@ -184,7 +184,9 @@ export default function ProviderDashboardPage() {
     );
   }
 
-  const { stats, pending_orders, recent_reviews } = data;
+  const stats = data.stats;
+  const pending_orders = Array.isArray(data.pending_orders) ? data.pending_orders : [];
+  const recent_reviews = Array.isArray(data.recent_reviews) ? data.recent_reviews : [];
   const completionRate = stats.total_interventions > 0
     ? Math.round((stats.completed_interventions / stats.total_interventions) * 100)
     : 0;
@@ -398,7 +400,13 @@ export default function ProviderDashboardPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {pending_orders.map((order, idx) => (
+                    {pending_orders.map((order, idx) => {
+                      const ticket = order.ticket ?? { titre: "Intervention", priorite: "normale" };
+                      const property = order.property ?? { adresse: "", ville: "" };
+                      const addressLabel = [property.adresse, property.ville]
+                        .filter(Boolean)
+                        .join(", ");
+                      return (
                       <motion.div
                         key={order.id}
                         initial={{ opacity: 0, y: 10 }}
@@ -408,23 +416,23 @@ export default function ProviderDashboardPage() {
                       >
                         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <h4 className="font-medium truncate">{order.ticket.titre}</h4>
+                            <h4 className="font-medium truncate">{ticket.titre}</h4>
                             <div className="flex items-center text-sm text-muted-foreground mt-1">
                               <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
-                              <span className="truncate">{order.property.adresse}, {order.property.ville}</span>
+                              <span className="truncate">{addressLabel || "Adresse non renseignée"}</span>
                             </div>
                           </div>
                           <Badge
                             className="self-start flex-shrink-0"
                             variant={
-                              order.ticket.priorite === "haute"
+                              ticket.priorite === "haute"
                                 ? "destructive"
-                                : order.ticket.priorite === "normale"
+                                : ticket.priorite === "normale"
                                 ? "default"
                                 : "secondary"
                             }
                           >
-                            {order.ticket.priorite}
+                            {ticket.priorite}
                           </Badge>
                         </div>
                         <div className="flex items-center justify-between mt-3 text-sm">
@@ -453,7 +461,8 @@ export default function ProviderDashboardPage() {
                           </Button>
                         </div>
                       </motion.div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>

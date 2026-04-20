@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceClient } from '@/lib/supabase/service-client';
 import { STORAGE_BUCKETS } from '@/lib/config/storage-buckets';
 import { documentTypeEnum } from '@/lib/validations/provider-compliance';
 
@@ -32,8 +33,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Récupérer le profil prestataire
-    const { data: profile } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -90,8 +92,8 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    // Upload vers Supabase Storage
-    const { error: uploadError } = await supabase.storage
+    // Upload vers Supabase Storage (service client — bypass RLS storage)
+    const { error: uploadError } = await serviceClient.storage
       .from('documents')
       .upload(filePath, buffer, {
         contentType: file.type,
@@ -100,20 +102,19 @@ export async function POST(request: NextRequest) {
       });
 
     if (uploadError) {
-      console.error('Upload error:', uploadError);
+      console.error('[provider/compliance/upload] Upload error:', uploadError);
       return NextResponse.json({ error: `Erreur d'upload: ${uploadError.message}` }, { status: 500 });
     }
 
     // Supprimer les anciens documents pending du même type
-    await supabase
+    await serviceClient
       .from('provider_compliance_documents')
       .delete()
       .eq('provider_profile_id', profile.id)
       .eq('document_type', documentType)
       .eq('verification_status', 'pending');
 
-    // Créer l'enregistrement du document
-    const { data: document, error: createError } = await supabase
+    const { data: document, error: createError } = await serviceClient
       .from('provider_compliance_documents')
       .insert({
         provider_profile_id: profile.id,
@@ -131,13 +132,12 @@ export async function POST(request: NextRequest) {
 
     if (createError) {
       // Nettoyer le fichier uploadé en cas d'erreur
-      await supabase.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([filePath]);
-      console.error('Error creating document record:', createError);
+      await serviceClient.storage.from(STORAGE_BUCKETS.DOCUMENTS).remove([filePath]);
+      console.error('[provider/compliance/upload] Create record error:', createError);
       return NextResponse.json({ error: createError.message }, { status: 500 });
     }
 
-    // Mettre à jour le statut KYC
-    await supabase.rpc('update_provider_kyc_status', {
+    await serviceClient.rpc('update_provider_kyc_status', {
       p_provider_profile_id: profile.id,
     });
 

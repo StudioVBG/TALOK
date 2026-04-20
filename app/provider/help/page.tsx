@@ -209,7 +209,7 @@ export default function ProviderHelpPage() {
               placeholder="Rechercher dans l'aide..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-12 py-6 text-lg bg-white/80 backdrop-blur-sm shadow-sm"
+              className="pl-12 py-6 text-lg bg-card/80 backdrop-blur-sm shadow-sm"
             />
           </div>
         </motion.div>
@@ -223,7 +223,7 @@ export default function ProviderHelpPage() {
             { label: "Mes avis", href: "/provider/reviews", icon: Star },
           ].map((link) => (
             <Link key={link.label} href={link.href}>
-              <Card className="bg-white/80 backdrop-blur-sm hover:bg-white hover:shadow-md transition-all cursor-pointer h-full">
+              <Card className="bg-card/80 backdrop-blur-sm hover:bg-card hover:shadow-md transition-all cursor-pointer h-full">
                 <CardContent className="p-4 flex flex-col items-center justify-center gap-2 text-center">
                   <link.icon className="h-6 w-6 text-orange-500" />
                   <span className="text-sm font-medium">{link.label}</span>
@@ -238,7 +238,7 @@ export default function ProviderHelpPage() {
           <h2 className="text-xl font-semibold mb-6">Questions fréquentes</h2>
           
           {filteredFaq.length === 0 ? (
-            <Card className="bg-white/80 backdrop-blur-sm">
+            <Card className="bg-card/80 backdrop-blur-sm">
               <CardContent className="py-12 text-center">
                 <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground">
@@ -249,7 +249,7 @@ export default function ProviderHelpPage() {
           ) : (
             <div className="space-y-6">
               {filteredFaq.map((category) => (
-                <Card key={category.title} className="bg-white/80 backdrop-blur-sm">
+                <Card key={category.title} className="bg-card/80 backdrop-blur-sm">
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center gap-2 text-lg">
                       <category.icon className={cn("h-5 w-5", category.color)} />
@@ -278,7 +278,7 @@ export default function ProviderHelpPage() {
 
         {/* Contact */}
         <motion.div variants={itemVariants}>
-          <Card className="bg-white/80 backdrop-blur-sm">
+          <Card className="bg-card/80 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-orange-500" />
@@ -300,7 +300,7 @@ export default function ProviderHelpPage() {
                         setContactForm({ ...contactForm, subject: e.target.value })
                       }
                       placeholder="Ex: Question sur la facturation"
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                   <div className="space-y-2">
@@ -313,7 +313,7 @@ export default function ProviderHelpPage() {
                       }
                       placeholder="Décrivez votre problème..."
                       rows={5}
-                      className="bg-white resize-none"
+                      className="bg-card resize-none"
                     />
                   </div>
                   <Button
@@ -347,9 +347,9 @@ export default function ProviderHelpPage() {
                     <p className="font-semibold">01 23 45 67 89</p>
                   </div>
 
-                  <div className="p-4 rounded-lg bg-slate-50 border border-slate-200">
+                  <div className="p-4 rounded-lg bg-muted/50 border border-border">
                     <h4 className="font-medium flex items-center gap-2 mb-2">
-                      <Mail className="h-4 w-4 text-slate-500" />
+                      <Mail className="h-4 w-4 text-muted-foreground" />
                       Email
                     </h4>
                     <p className="text-sm text-muted-foreground mb-1">

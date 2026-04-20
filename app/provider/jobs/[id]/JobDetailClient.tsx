@@ -136,9 +136,9 @@ export function JobDetailClient({ job }: JobDetailProps) {
       case "assigned": return "bg-yellow-100 text-yellow-800 border-yellow-200";
       case "scheduled": return "bg-blue-100 text-blue-800 border-blue-200";
       case "in_progress": return "bg-purple-100 text-purple-800 border-purple-200";
-      case "done": return "bg-green-100 text-green-800 border-green-200";
-      case "cancelled": return "bg-red-100 text-red-800 border-red-200";
-      default: return "bg-slate-100 text-slate-800";
+      case "done": return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-900/50";
+      case "cancelled": return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-900/50";
+      default: return "bg-muted text-foreground";
     }
   };
 
@@ -155,12 +155,12 @@ export function JobDetailClient({ job }: JobDetailProps) {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-slate-900">{job.title}</h1>
+              <h1 className="text-3xl font-bold text-foreground">{job.title}</h1>
               <Badge className={getStatusColor(job.status)} variant="outline">
                 {getStatusLabel(job.status)}
               </Badge>
             </div>
-            <p className="text-slate-500 flex items-center gap-2">
+            <p className="text-muted-foreground flex items-center gap-2">
               <MapPin className="h-4 w-4" />
               {job.property.address}, {job.property.postalCode} {job.property.city}
             </p>
@@ -226,9 +226,9 @@ export function JobDetailClient({ job }: JobDetailProps) {
                       />
                     </div>
 
-                    <div className="p-4 bg-slate-50 rounded-lg border border-dashed border-slate-300 text-center">
-                      <Camera className="h-8 w-8 mx-auto text-slate-400 mb-2" />
-                      <p className="text-sm text-slate-500">Ajouter des photos (Bientôt disponible)</p>
+                    <div className="p-4 bg-muted/50 rounded-lg border border-dashed border-border text-center">
+                      <Camera className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">Ajouter des photos (Bientôt disponible)</p>
                     </div>
                   </div>
 
@@ -252,7 +252,7 @@ export function JobDetailClient({ job }: JobDetailProps) {
               <CardTitle className="text-lg">Description du problème</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-slate-700 whitespace-pre-wrap">{job.description}</p>
+              <p className="text-foreground whitespace-pre-wrap">{job.description}</p>
             </CardContent>
           </Card>
 
@@ -263,7 +263,7 @@ export function JobDetailClient({ job }: JobDetailProps) {
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
                  <div className="p-4 bg-slate-50 rounded-lg">
-                    <p className="text-sm text-slate-500 mb-1">Coût estimé</p>
+                    <p className="text-sm text-muted-foreground mb-1">Coût estimé</p>
                     <p className="text-xl font-semibold">{job.estimated_cost ? `${job.estimated_cost} €` : "Non défini"}</p>
                  </div>
                  <div className={`p-4 rounded-lg ${job.final_cost ? "bg-green-50 text-green-900" : "bg-slate-50"}`}>
@@ -283,14 +283,14 @@ export function JobDetailClient({ job }: JobDetailProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase mb-2">Propriétaire</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Propriétaire</p>
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                     <User className="h-4 w-4" />
                   </div>
                   <div>
                     <p className="text-sm font-medium">{job.owner.name}</p>
-                    {job.owner.phone && <p className="text-xs text-slate-500">{job.owner.phone}</p>}
+                    {job.owner.phone && <p className="text-xs text-muted-foreground">{job.owner.phone}</p>}
                   </div>
                 </div>
               </div>
@@ -298,7 +298,7 @@ export function JobDetailClient({ job }: JobDetailProps) {
               <Separator />
 
               <div>
-                <p className="text-xs font-medium text-slate-500 uppercase mb-2">Locataire (Sur place)</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Locataire (Sur place)</p>
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
                     <User className="h-4 w-4" />
@@ -307,7 +307,7 @@ export function JobDetailClient({ job }: JobDetailProps) {
                     <p className="text-sm font-medium">{job.tenant.name}</p>
                     {job.tenant.phone && (
                       <div className="flex items-center gap-1 mt-1">
-                        <Phone className="h-3 w-3 text-slate-400" />
+                        <Phone className="h-3 w-3 text-muted-foreground/70" />
                         <a href={`tel:${job.tenant.phone}`} className="text-xs text-blue-600 hover:underline">
                           {job.tenant.phone}
                         </a>
@@ -325,9 +325,9 @@ export function JobDetailClient({ job }: JobDetailProps) {
             </CardHeader>
             <CardContent className="space-y-4">
                <div>
-                 <p className="text-xs text-slate-500 mb-1">Date souhaitée</p>
+                 <p className="text-xs text-muted-foreground mb-1">Date souhaitée</p>
                  <div className="flex items-center gap-2">
-                   <Calendar className="h-4 w-4 text-slate-400" />
+                   <Calendar className="h-4 w-4 text-muted-foreground/70" />
                    <span className="text-sm">
                      {job.scheduled_date ? format(new Date(job.scheduled_date), "d MMMM yyyy", { locale: fr }) : "À définir"}
                    </span>
@@ -336,7 +336,7 @@ export function JobDetailClient({ job }: JobDetailProps) {
                
                {job.completed_date && (
                  <div>
-                   <p className="text-xs text-slate-500 mb-1">Réalisé le</p>
+                   <p className="text-xs text-muted-foreground mb-1">Réalisé le</p>
                    <div className="flex items-center gap-2 text-green-700">
                      <CheckCircle className="h-4 w-4" />
                      <span className="text-sm font-medium">

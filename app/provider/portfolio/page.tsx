@@ -517,7 +517,7 @@ export default function ProviderPortfolioPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {items.map(item => (
             <Card key={item.id} className="overflow-hidden group">
-              <div className="relative aspect-[4/3] bg-gray-100">
+              <div className="relative aspect-[4/3] bg-muted">
                 {item.before_photo_url ? (
                   <div className="absolute inset-0 flex">
                     <div className="flex-1 relative">

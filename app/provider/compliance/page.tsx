@@ -93,7 +93,7 @@ const STATUS_COLORS: Record<DocumentVerificationStatus, { bg: string; text: stri
   pending: { bg: "bg-amber-100", text: "text-amber-700", icon: <Clock className="h-4 w-4" /> },
   verified: { bg: "bg-green-100", text: "text-green-700", icon: <CheckCircle2 className="h-4 w-4" /> },
   rejected: { bg: "bg-red-100", text: "text-red-700", icon: <XCircle className="h-4 w-4" /> },
-  expired: { bg: "bg-gray-100", text: "text-gray-700", icon: <AlertTriangle className="h-4 w-4" /> },
+  expired: { bg: "bg-muted", text: "text-muted-foreground", icon: <AlertTriangle className="h-4 w-4" /> },
 };
 
 interface ComplianceStatus {
@@ -295,8 +295,8 @@ export default function ProviderCompliancePage() {
   }
 
   const kycColor = KYC_STATUS_COLORS[status.provider.kyc_status] ?? {
-    bg: 'bg-gray-100',
-    text: 'text-gray-700'
+    bg: 'bg-muted',
+    text: 'text-muted-foreground'
   };
 
   return (
@@ -375,7 +375,7 @@ export default function ProviderCompliancePage() {
                 <p className="text-xs text-muted-foreground">Rejetés</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold text-gray-600">{status.missing_documents.length}</p>
+                <p className="text-2xl font-bold text-muted-foreground">{status.missing_documents.length}</p>
                 <p className="text-xs text-muted-foreground">Manquants</p>
               </div>
             </div>

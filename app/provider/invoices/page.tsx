@@ -90,13 +90,13 @@ interface WorkOrder {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  draft: { label: "Brouillon", color: "bg-gray-100 text-gray-800", icon: FileText },
-  sent: { label: "Envoyée", color: "bg-blue-100 text-blue-800", icon: Send },
-  viewed: { label: "Vue", color: "bg-purple-100 text-purple-800", icon: Eye },
-  paid: { label: "Payée", color: "bg-green-100 text-green-800", icon: CheckCircle2 },
-  overdue: { label: "En retard", color: "bg-red-100 text-red-800", icon: AlertCircle },
-  cancelled: { label: "Annulée", color: "bg-gray-100 text-gray-600", icon: Trash2 },
-  disputed: { label: "Contestée", color: "bg-amber-100 text-amber-800", icon: AlertCircle },
+  draft: { label: "Brouillon", color: "bg-muted text-foreground", icon: FileText },
+  sent: { label: "Envoyée", color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300", icon: Send },
+  viewed: { label: "Vue", color: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300", icon: Eye },
+  paid: { label: "Payée", color: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300", icon: CheckCircle2 },
+  overdue: { label: "En retard", color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300", icon: AlertCircle },
+  cancelled: { label: "Annulée", color: "bg-muted text-muted-foreground", icon: Trash2 },
+  disputed: { label: "Contestée", color: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300", icon: AlertCircle },
 };
 
 const containerVariants = {
@@ -555,7 +555,7 @@ export default function ProviderInvoicesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Brouillons</p>
-                  <p className="text-2xl font-bold text-gray-600">{stats.draft}</p>
+                  <p className="text-2xl font-bold text-muted-foreground">{stats.draft}</p>
                 </div>
                 <FileText className="h-8 w-8 text-gray-400" />
               </div>

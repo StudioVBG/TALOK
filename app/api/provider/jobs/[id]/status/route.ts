@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceClient } from '@/lib/supabase/service-client';
 import { z } from 'zod';
 
 interface RouteParams {
@@ -23,6 +24,7 @@ const updateStatusSchema = z.object({
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
+    // Auth — anon client (cookies)
     const supabase = await createClient();
     const {
       data: { user },
@@ -35,8 +37,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const workOrderId = params.id;
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    // Queries — service client (bypass RLS, scoping explicite via .eq)
+    const serviceClient = getServiceClient();
+
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -46,7 +50,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    // Parser et valider le body
     const body = await request.json();
     const validationResult = updateStatusSchema.safeParse(body);
 
@@ -59,8 +62,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const { action, notes, final_cost, scheduled_date } = validationResult.data;
 
-    // Récupérer le work_order
-    const { data: workOrder, error: woError } = await supabase
+    // RBAC scoping: work_order doit appartenir au provider courant
+    const { data: workOrder, error: woError } = await serviceClient
       .from('work_orders')
       .select('*')
       .eq('id', workOrderId)
@@ -71,7 +74,6 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Intervention non trouvée' }, { status: 404 });
     }
 
-    // Déterminer le nouveau statut et les mises à jour
     let updateData: Record<string, any> = {};
     let newStatus: string;
 
@@ -92,7 +94,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         break;
 
       case 'reject':
-        if (!['assigned', 'scheduled'].includes(workOrder.statut)) {
+        if (!['assigned', 'scheduled'].includes(workOrder.statut as string)) {
           return NextResponse.json(
             { error: 'Cette intervention ne peut pas être refusée' },
             { status: 400 }
@@ -154,25 +156,34 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: 'Action non reconnue' }, { status: 400 });
     }
 
-    // Mettre à jour le work_order
-    const { error: updateError } = await supabase
+    const { error: updateError } = await serviceClient
       .from('work_orders')
       .update(updateData)
-      .eq('id', workOrderId);
+      .eq('id', workOrderId)
+      .eq('provider_id', profile.id);
 
     if (updateError) {
-      console.error('Error updating work_order:', updateError);
+      console.error('[provider/jobs/status] Error updating work_order:', updateError);
       return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    // Créer une notification pour le propriétaire
-    const { data: ticket } = await supabase
-      .from('tickets')
-      .select('property_id, properties!inner(owner_id)')
-      .eq('id', workOrder.ticket_id)
-      .single();
+    // Notification propriétaire — résoudre le owner_id :
+    //  1) work_orders.owner_id (standalone WO, migration 20260408120000)
+    //  2) via tickets.properties.owner_id (WO liée à un ticket)
+    let ownerProfileId: string | null = (workOrder.owner_id as string | null) ?? null;
 
-    if (ticket?.properties?.owner_id) {
+    if (!ownerProfileId && workOrder.ticket_id) {
+      const { data: ticketRow } = await serviceClient
+        .from('tickets')
+        .select('property_id, properties!inner(owner_id)')
+        .eq('id', workOrder.ticket_id as string)
+        .single();
+      const properties: any = (ticketRow as any)?.properties;
+      const property = Array.isArray(properties) ? properties[0] : properties;
+      ownerProfileId = property?.owner_id ?? null;
+    }
+
+    if (ownerProfileId) {
       const actionLabels: Record<string, string> = {
         accept: 'acceptée',
         start: 'démarrée',
@@ -181,8 +192,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         cancel: 'annulée',
       };
 
-      await supabase.from('notifications').insert({
-        profile_id: ticket.properties.owner_id,
+      await serviceClient.from('notifications').insert({
+        profile_id: ownerProfileId,
         type: 'work_order_status',
         title: `Intervention ${actionLabels[action]}`,
         message: `L'intervention a été ${actionLabels[action]} par le prestataire.`,
@@ -200,8 +211,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       message: `Intervention mise à jour avec succès`,
     });
   } catch (error: unknown) {
-    console.error('Error in POST /api/provider/jobs/[id]/status:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+    console.error('[provider/jobs/status] Unhandled error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }
-
