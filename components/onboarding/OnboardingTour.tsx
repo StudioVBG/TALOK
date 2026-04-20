@@ -260,6 +260,68 @@ const tenantTourSteps: TourStep[] = [
 ];
 
 // ============================================================================
+// SYNDIC TOUR - 6 étapes orientées copropriété
+// ============================================================================
+const syndicTourSteps: TourStep[] = [
+  {
+    id: "welcome-syndic",
+    title: "Votre espace Syndic",
+    description:
+      "Pilotez vos copropriétés : assemblées, appels de fonds, comptabilité, mandats. Tout au même endroit, conforme loi ALUR.",
+    position: "center",
+    icon: Rocket,
+  },
+  {
+    id: "sites-syndic",
+    title: "Vos copropriétés",
+    description:
+      "Retrouvez toutes vos copropriétés gérées. Ajoutez immeubles, lots et tantièmes en quelques clics.",
+    target: "[data-tour='syndic-sites']",
+    position: "right",
+    icon: Building2,
+  },
+  {
+    id: "assemblies-syndic",
+    title: "Assemblées générales",
+    description:
+      "Convoquez, animez et votez vos AG. Génération automatique du PV et envoi par email aux copropriétaires.",
+    target: "[data-tour='syndic-assemblies']",
+    position: "right",
+    icon: FileText,
+  },
+  {
+    id: "calls-syndic",
+    title: "Appels de fonds",
+    description:
+      "Émettez vos appels de fonds trimestriels et fonds travaux (loi ALUR). Suivi des paiements automatique.",
+    target: "[data-tour='syndic-calls']",
+    position: "right",
+    icon: Euro,
+  },
+  {
+    id: "accounting-syndic",
+    title: "Comptabilité copropriété",
+    description:
+      "Saisie des dépenses, rapprochement bancaire, annexes 1 à 5, arrêté des comptes. Conforme PCG copro.",
+    target: "[data-tour='syndic-accounting']",
+    position: "right",
+    icon: FileCheck,
+  },
+  {
+    id: "mandates-syndic",
+    title: "Mandats & honoraires",
+    description:
+      "Gérez vos mandats de syndic, honoraires particuliers et échéances. Rappels avant expiration de carte pro.",
+    target: "[data-tour='syndic-mandates']",
+    position: "right",
+    icon: Wrench,
+    action: {
+      label: "Accéder à mon espace",
+    },
+  },
+];
+
+// ============================================================================
 // SPOTLIGHT - Overlay avec découpe (mobile-aware)
 // ============================================================================
 function Spotlight({ target, isActive }: { target?: string; isActive: boolean }) {
@@ -609,7 +671,7 @@ function TourTooltip({
 // ============================================================================
 interface OnboardingTourProviderProps {
   children: React.ReactNode;
-  role?: "owner" | "tenant";
+  role?: "owner" | "tenant" | "syndic";
   profileId?: string;
   storageKey?: string;
 }
@@ -625,7 +687,12 @@ export function OnboardingTourProvider({
   const [hasCompletedTour, setHasCompletedTour] = useState(true);
   const isActiveRef = useRef(false);
 
-  const steps = role === "owner" ? ownerTourSteps : tenantTourSteps;
+  const steps =
+    role === "owner"
+      ? ownerTourSteps
+      : role === "syndic"
+      ? syndicTourSteps
+      : tenantTourSteps;
   const totalSteps = steps.length;
 
   // Load completion state

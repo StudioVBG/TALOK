@@ -16,6 +16,7 @@ import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { SyndicPlanBanner } from "@/components/syndic/SyndicPlanBanner";
+import { SyndicOnboardingWrapper } from "@/components/syndic/SyndicOnboardingWrapper";
 import Link from "next/link";
 import {
   Building2, Users, Calendar, Euro,
@@ -24,15 +25,15 @@ import {
   Calculator, AlertTriangle, Hammer, Scale,
 } from "lucide-react";
 
-// Navigation syndic
+// Navigation syndic — `tour` cible les étapes de SyndicOnboardingWrapper.
 const navigation = [
-  { name: "Dashboard", href: "/syndic/dashboard", icon: LayoutDashboard },
-  { name: "Copropriétés", href: "/syndic/sites", icon: Building2 },
-  { name: "Assemblées", href: "/syndic/assemblies", icon: Calendar },
-  { name: "Mandats", href: "/syndic/mandates", icon: FileText },
+  { name: "Dashboard", href: "/syndic/dashboard", icon: LayoutDashboard, tour: "syndic-dashboard" },
+  { name: "Copropriétés", href: "/syndic/sites", icon: Building2, tour: "syndic-sites" },
+  { name: "Assemblées", href: "/syndic/assemblies", icon: Calendar, tour: "syndic-assemblies" },
+  { name: "Mandats", href: "/syndic/mandates", icon: FileText, tour: "syndic-mandates" },
   { name: "Conseils syndicaux", href: "/syndic/councils", icon: Users },
-  { name: "Comptabilité", href: "/syndic/accounting", icon: Calculator },
-  { name: "Appels de fonds", href: "/syndic/calls", icon: Euro },
+  { name: "Comptabilité", href: "/syndic/accounting", icon: Calculator, tour: "syndic-accounting" },
+  { name: "Appels de fonds", href: "/syndic/calls", icon: Euro, tour: "syndic-calls" },
   { name: "Fonds travaux", href: "/syndic/fonds-travaux", icon: Hammer },
   { name: "Dépenses", href: "/syndic/expenses", icon: FileText },
   { name: "Impayés", href: "/syndic/impayes", icon: AlertTriangle },
@@ -83,9 +84,12 @@ export default async function SyndicLayout({
   checkIdentityGate(pathname, profile.role, profile.identity_status);
 
   // 4. Rendre le layout - SOTA 2026: Thème light unifié + breakpoint lg
+  const userName = profile.prenom || "";
+
   return (
     <ErrorBoundary>
       <CsrfTokenInjector />
+      <SyndicOnboardingWrapper profileId={profile.id} userName={userName}>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/30 to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-cyan-950/30">
         {/* Offline indicator - visible when device loses connectivity */}
         <OfflineIndicator />
@@ -95,6 +99,7 @@ export default async function SyndicLayout({
           className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0"
           role="navigation"
           aria-label="Navigation principale syndic"
+          data-tour-sidebar
         >
           <div className="flex flex-col flex-grow pt-5 overflow-y-auto bg-card/80 backdrop-blur-xl border-r border-border/50">
             {/* Logo / Titre */}
@@ -123,6 +128,7 @@ export default async function SyndicLayout({
                 <Link
                   key={item.name}
                   href={item.href}
+                  data-tour={item.tour}
                   className="group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                   aria-label={item.name}
                 >
@@ -223,6 +229,7 @@ export default async function SyndicLayout({
         {/* Spacer pour bottom nav mobile */}
         <div className="h-14 lg:hidden" aria-hidden="true" />
       </div>
+      </SyndicOnboardingWrapper>
     </ErrorBoundary>
   );
 }
