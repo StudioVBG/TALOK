@@ -147,7 +147,7 @@ export default function ProviderSettingsPage() {
         <div className="space-y-6">
           {/* Profil */}
           <motion.div variants={itemVariants}>
-            <Card className="bg-white/80 backdrop-blur-sm">
+            <Card className="bg-card/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <User className="h-5 w-5 text-orange-500" />
@@ -165,7 +165,7 @@ export default function ProviderSettingsPage() {
                       id="prenom"
                       value={profile.prenom}
                       onChange={(e) => setProfile({ ...profile, prenom: e.target.value })}
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                   <div className="space-y-2">
@@ -174,7 +174,7 @@ export default function ProviderSettingsPage() {
                       id="nom"
                       value={profile.nom}
                       onChange={(e) => setProfile({ ...profile, nom: e.target.value })}
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                 </div>
@@ -190,7 +190,7 @@ export default function ProviderSettingsPage() {
                       type="email"
                       value={profile.email}
                       onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                   <div className="space-y-2">
@@ -202,7 +202,7 @@ export default function ProviderSettingsPage() {
                       id="telephone"
                       value={profile.telephone}
                       onChange={(e) => setProfile({ ...profile, telephone: e.target.value })}
-                      className="bg-white"
+                      className="bg-card"
                     />
                   </div>
                 </div>
@@ -217,7 +217,7 @@ export default function ProviderSettingsPage() {
                     value={profile.adresse}
                     onChange={(e) => setProfile({ ...profile, adresse: e.target.value })}
                     placeholder="Votre adresse professionnelle"
-                    className="bg-white"
+                    className="bg-card"
                   />
                 </div>
 
@@ -231,7 +231,7 @@ export default function ProviderSettingsPage() {
                     value={profile.siret}
                     onChange={(e) => setProfile({ ...profile, siret: e.target.value })}
                     placeholder="123 456 789 00012"
-                    className="bg-white"
+                    className="bg-card"
                   />
                 </div>
               </CardContent>
@@ -240,7 +240,7 @@ export default function ProviderSettingsPage() {
 
           {/* Activité */}
           <motion.div variants={itemVariants}>
-            <Card className="bg-white/80 backdrop-blur-sm">
+            <Card className="bg-card/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Briefcase className="h-5 w-5 text-orange-500" />
@@ -259,7 +259,7 @@ export default function ProviderSettingsPage() {
                     onChange={(e) => setProfile({ ...profile, description: e.target.value })}
                     placeholder="Décrivez votre activité, vos spécialités..."
                     rows={4}
-                    className="bg-white resize-none"
+                    className="bg-card resize-none"
                   />
                 </div>
 
@@ -298,7 +298,7 @@ export default function ProviderSettingsPage() {
 
           {/* Notifications */}
           <motion.div variants={itemVariants}>
-            <Card className="bg-white/80 backdrop-blur-sm">
+            <Card className="bg-card/80 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Bell className="h-5 w-5 text-orange-500" />

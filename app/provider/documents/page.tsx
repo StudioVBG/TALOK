@@ -223,7 +223,7 @@ function DocumentCard({ doc }: { doc: ProviderDocument }) {
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ type: "spring", stiffness: 100, damping: 15 }}
     >
-      <GlassCard className="group hover:shadow-xl hover:border-orange-200 transition-all duration-300 border-slate-200 bg-white h-full flex flex-col p-5">
+      <GlassCard className="group hover:shadow-xl hover:border-orange-200 transition-all duration-300 border-border bg-card h-full flex flex-col p-5">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className={cn("p-3 rounded-2xl shadow-sm transition-transform group-hover:scale-110", category.bgColor)}>
@@ -378,7 +378,7 @@ export default function ProviderDocumentsPage() {
                   "p-4 rounded-xl border-2 transition-all duration-200 text-left",
                   categoryFilter === key 
                     ? "border-orange-400 bg-orange-50 shadow-md" 
-                    : "border-slate-200 bg-white hover:border-orange-200 hover:bg-orange-50/50"
+                    : "border-border bg-card hover:border-orange-200 hover:bg-orange-50/50 dark:hover:bg-orange-950/20"
                 )}
                 aria-label={`Filtrer par ${config.label}`}
                 aria-pressed={categoryFilter === key}
@@ -398,7 +398,7 @@ export default function ProviderDocumentsPage() {
         </div>
 
         {/* Barre de recherche et filtres */}
-        <GlassCard className="p-4 border-slate-200 bg-white/50 backdrop-blur-md sticky top-4 z-20 shadow-lg">
+        <GlassCard className="p-4 border-border bg-card/50 backdrop-blur-md sticky top-4 z-20 shadow-lg">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -406,12 +406,12 @@ export default function ProviderDocumentsPage() {
                 placeholder="Rechercher un document..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-white/80 border-slate-200 h-11 focus:ring-2 focus:ring-orange-500"
+                className="pl-10 bg-card/80 border-border h-11 focus:ring-2 focus:ring-orange-500"
                 aria-label="Rechercher dans les documents"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-48 h-11 bg-white/80 border-slate-200" aria-label="Filtrer par statut">
+              <SelectTrigger className="w-full sm:w-48 h-11 bg-card/80 border-border" aria-label="Filtrer par statut">
                 <div className="flex items-center gap-2">
                   <Filter className="h-4 w-4 text-slate-400" />
                   <SelectValue placeholder="Statut" />
