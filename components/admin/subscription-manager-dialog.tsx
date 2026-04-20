@@ -78,6 +78,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 
 // ============================================
 // TYPES
@@ -205,7 +206,7 @@ function ActionModal({ open, onClose, user, action, onSuccess }: ActionModalProp
       if (action === "override") body.target_plan = targetPlan;
       else if (action === "gift") body.days = giftDays;
 
-      const res = await fetch(endpoint, {
+      const res = await fetchWithCsrf(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),

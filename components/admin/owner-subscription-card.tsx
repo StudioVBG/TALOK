@@ -55,6 +55,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PLANS } from "@/lib/subscriptions/plans";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 
 // ============================================
 // TYPES
@@ -300,7 +301,7 @@ function PlanChangeDialog({
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/admin/subscriptions/override", {
+      const response = await fetchWithCsrf("/api/admin/subscriptions/override", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
