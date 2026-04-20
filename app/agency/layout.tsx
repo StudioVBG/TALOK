@@ -16,6 +16,7 @@ import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { AgencySidebar } from "./_components/AgencySidebar";
 import { AgencyThemeWrapper } from "./_components/AgencyThemeWrapper";
+import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
 
 /**
  * Layout Agency - Server Component
@@ -95,6 +96,7 @@ export default async function AgencyLayout({
           >
             <div className="py-6 px-4 sm:px-6 lg:px-8">
               <AgencyThemeWrapper>
+                <PlatformBroadcastBanner />
                 {children}
               </AgencyThemeWrapper>
             </div>

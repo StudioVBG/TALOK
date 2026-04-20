@@ -17,6 +17,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { SyndicPlanBanner } from "@/components/syndic/SyndicPlanBanner";
 import { SyndicOnboardingWrapper } from "@/components/syndic/SyndicOnboardingWrapper";
+import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
 import Link from "next/link";
 import {
   Building2, Users, Calendar, Euro,
@@ -195,6 +196,7 @@ export default async function SyndicLayout({
           aria-label="Contenu principal"
         >
           <div className="py-6 px-4 sm:px-6 lg:px-8">
+            <PlatformBroadcastBanner />
             {/* S2-4 : bandeau persistant affiché aux syndics sur plan
                 Gratuit/Starter (copro_module=false). Le composant ne
                 rend rien si le plan actuel inclut copro_module. */}

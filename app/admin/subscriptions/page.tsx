@@ -229,7 +229,7 @@ interface ActionModalProps {
   open: boolean;
   onClose: () => void;
   user: AdminSubscriptionOverview | null;
-  action: "override" | "gift" | "suspend" | "unsuspend" | null;
+  action: "override" | "gift" | "suspend" | "unsuspend" | "refund" | null;
   onSuccess: () => void;
 }
 
@@ -241,6 +241,10 @@ function AdminActionModal({ open, onClose, user, action, onSuccess }: ActionModa
   const [giftPlan, setGiftPlan] = useState<PlanSlug | "">("");
   const [reason, setReason] = useState("");
   const [notifyUser, setNotifyUser] = useState(true);
+  // Refund-specific state
+  const [refundPaymentIntent, setRefundPaymentIntent] = useState("");
+  const [refundAmountEuros, setRefundAmountEuros] = useState("");
+  const [refundReason, setRefundReason] = useState<"" | "duplicate" | "fraudulent" | "requested_by_customer">("requested_by_customer");
 
   const handleSubmit = async () => {
     if (!user || !action) return;
@@ -255,8 +259,8 @@ function AdminActionModal({ open, onClose, user, action, onSuccess }: ActionModa
 
     setLoading(true);
     try {
-      const endpoint = `/api/admin/subscriptions/${action}`;
-      const body: Record<string, unknown> = {
+      let endpoint = `/api/admin/subscriptions/${action}`;
+      let body: Record<string, unknown> = {
         user_id: user.user_id,
         reason,
         notify_user: notifyUser,
@@ -269,6 +273,24 @@ function AdminActionModal({ open, onClose, user, action, onSuccess }: ActionModa
         if (giftPlan) {
           body.plan_slug = giftPlan;
         }
+      } else if (action === "refund") {
+        if (!refundPaymentIntent.trim()) {
+          toast({
+            title: "Erreur",
+            description: "ID de paiement Stripe requis (pi_... ou ch_...)",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+        const pid = refundPaymentIntent.trim();
+        body = {
+          user_id: user.user_id,
+          admin_note: reason,
+          ...(pid.startsWith("ch_") ? { charge_id: pid } : { payment_intent_id: pid }),
+          ...(refundAmountEuros ? { amount: Math.round(parseFloat(refundAmountEuros) * 100) } : {}),
+          ...(refundReason ? { reason: refundReason } : {}),
+        };
       }
 
       const res = await fetch(endpoint, {
@@ -312,6 +334,8 @@ function AdminActionModal({ open, onClose, user, action, onSuccess }: ActionModa
         return "Suspendre le compte";
       case "unsuspend":
         return "Réactiver le compte";
+      case "refund":
+        return "Rembourser un paiement";
       default:
         return "";
     }
@@ -350,6 +374,52 @@ function AdminActionModal({ open, onClose, user, action, onSuccess }: ActionModa
             </div>
           )}
 
+          {action === "refund" && (
+            <>
+              <div className="space-y-2">
+                <Label className="text-foreground">
+                  ID de paiement Stripe <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  value={refundPaymentIntent}
+                  onChange={(e) => setRefundPaymentIntent(e.target.value)}
+                  placeholder="pi_... ou ch_..."
+                  className="bg-background border-input font-mono"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Copiez l&apos;ID depuis le dashboard Stripe ou la facture.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">
+                  Montant (€) — laisser vide pour rembourser la totalité
+                </Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={refundAmountEuros}
+                  onChange={(e) => setRefundAmountEuros(e.target.value)}
+                  placeholder="Ex: 35.00"
+                  className="bg-background border-input"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Motif Stripe</Label>
+                <Select value={refundReason} onValueChange={(v) => setRefundReason(v as typeof refundReason)}>
+                  <SelectTrigger className="bg-background border-input">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="requested_by_customer">Demande client</SelectItem>
+                    <SelectItem value="duplicate">Paiement en double</SelectItem>
+                    <SelectItem value="fraudulent">Fraude</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
+
           {action === "gift" && (
             <>
               <div className="space-y-2">
@@ -383,19 +453,27 @@ function AdminActionModal({ open, onClose, user, action, onSuccess }: ActionModa
           )}
 
           <div className="space-y-2">
-            <Label className="text-foreground">Raison (obligatoire)</Label>
+            <Label className="text-foreground">
+              {action === "refund" ? "Note interne (obligatoire)" : "Raison (obligatoire)"}
+            </Label>
             <Textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="Expliquez la raison de cette action..."
+              placeholder={
+                action === "refund"
+                  ? "Note interne pour l'audit (ex: ticket #1234, erreur facturation...)"
+                  : "Expliquez la raison de cette action..."
+              }
               className="bg-background border-input"
             />
           </div>
 
-          <div className="flex items-center justify-between">
-            <Label className="text-foreground">Notifier l&apos;utilisateur par email</Label>
-            <Switch checked={notifyUser} onCheckedChange={setNotifyUser} />
-          </div>
+          {action !== "refund" && (
+            <div className="flex items-center justify-between">
+              <Label className="text-foreground">Notifier l&apos;utilisateur par email</Label>
+              <Switch checked={notifyUser} onCheckedChange={setNotifyUser} />
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -441,14 +519,18 @@ export default function AdminSubscriptionsPage() {
   const [actionType, setActionType] = useState<"override" | "gift" | "suspend" | "unsuspend" | null>(null);
 
   // Stats query
-  const { data: statsData, refetch: refetchStats } = useQuery({
+  const { data: statsData, error: statsError, refetch: refetchStats } = useQuery({
     queryKey: adminKeys.subscriptionStats(),
     queryFn: async () => {
       const res = await fetch("/api/admin/subscriptions/stats");
-      if (!res.ok) throw new Error("Failed to fetch stats");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Erreur ${res.status} lors du chargement des statistiques`);
+      }
       return res.json();
     },
     staleTime: 60_000,
+    retry: 1,
   });
 
   const stats: SubscriptionStats | null = statsData?.stats || null;
@@ -463,14 +545,18 @@ export default function AdminSubscriptionsPage() {
   if (planFilter !== "all") usersQueryParams.set("plan", planFilter);
   if (statusFilter !== "all") usersQueryParams.set("status", statusFilter);
 
-  const { data: usersData, isLoading: loading, isFetching: tableLoading, refetch: fetchUsers } = useQuery({
+  const { data: usersData, isLoading: loading, isFetching: tableLoading, error: usersError, refetch: fetchUsers } = useQuery({
     queryKey: [...adminKeys.subscriptions(Object.fromEntries(usersQueryParams))],
     queryFn: async () => {
       const res = await fetch(`/api/admin/subscriptions/list?${usersQueryParams}`);
-      if (!res.ok) throw new Error("Failed to fetch users");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Erreur ${res.status} lors du chargement de la liste`);
+      }
       return res.json();
     },
     staleTime: 30_000,
+    retry: 1,
   });
 
   const users: AdminSubscriptionOverview[] = usersData?.users || [];
@@ -484,7 +570,7 @@ export default function AdminSubscriptionsPage() {
     fetchUsers();
   };
 
-  const openAction = (user: AdminSubscriptionOverview, action: "override" | "gift" | "suspend" | "unsuspend") => {
+  const openAction = (user: AdminSubscriptionOverview, action: "override" | "gift" | "suspend" | "unsuspend" | "refund") => {
     setSelectedUser(user);
     setActionType(action);
   };
@@ -540,6 +626,29 @@ export default function AdminSubscriptionsPage() {
         </div>
       </div>
 
+      {/* Error banner */}
+      {(statsError || usersError) && (
+        <div className="flex items-start gap-3 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-600 dark:text-red-400">
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="font-medium">Impossible de charger les abonnements</p>
+            <p className="text-red-500/80 dark:text-red-400/80 mt-1">
+              {(statsError as Error | null)?.message || (usersError as Error | null)?.message}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              refetchStats();
+              fetchUsers();
+            }}
+          >
+            Réessayer
+          </Button>
+        </div>
+      )}
+
       {/* Stats */}
       <StatsCards stats={stats} loading={loading} />
 
@@ -574,8 +683,6 @@ export default function AdminSubscriptionsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tous les plans</SelectItem>
-                    <SelectItem value="starter">Starter</SelectItem>
-                    <SelectItem value="confort">Confort</SelectItem>
                     <SelectItem value="gratuit">Gratuit</SelectItem>
                     <SelectItem value="starter">Starter</SelectItem>
                     <SelectItem value="confort">Confort</SelectItem>
@@ -710,6 +817,10 @@ export default function AdminSubscriptionsPage() {
                                 <DropdownMenuItem onClick={() => openAction(user, "gift")} className="text-foreground cursor-pointer">
                                   <Gift className="w-4 h-4 mr-2" />
                                   Offrir des jours
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openAction(user, "refund")} className="text-foreground cursor-pointer">
+                                  <DollarSign className="w-4 h-4 mr-2" />
+                                  Rembourser un paiement
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator className="bg-border" />
                                 {user.status === "paused" ? (

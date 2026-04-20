@@ -13,6 +13,7 @@ import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { AdminKeyboardShortcuts } from "@/components/admin/admin-keyboard-shortcuts";
 import { AdminShellHeader } from "@/components/layout/admin-shell-header";
+import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
 
 export default async function AdminLayout({
   children,
@@ -61,6 +62,7 @@ export default async function AdminLayout({
           <AdminShellHeader />
           <div className="container mx-auto max-w-7xl px-4 py-6 lg:px-8">
             <Breadcrumb homeHref="/admin/dashboard" className="mb-4" />
+            <PlatformBroadcastBanner />
             {children}
           </div>
         </main>

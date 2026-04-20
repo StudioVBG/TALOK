@@ -595,32 +595,75 @@ export async function getUserInvoices(
 // ADMIN FUNCTIONS
 // ============================================
 
+// Rôles qui comptent comme "comptes clients payants possibles".
+const BILLABLE_ROLES = ['owner', 'agency', 'syndic'] as const;
+
 /**
  * Récupère les statistiques globales (admin)
+ *
+ * Compte TOUS les profils payants (owner/agency/syndic) même s'ils n'ont pas
+ * encore de ligne `subscriptions` — ils sont considérés "gratuit".
  */
 export async function getSubscriptionStats(): Promise<SubscriptionStats | null> {
   const supabase = createServiceRoleClient();
 
-  // Calculer les stats manuellement
+  // 1. Profils payants (base de l'univers)
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id')
+    .in('role', BILLABLE_ROLES as unknown as string[]);
+
+  if (profilesError) {
+    console.error('[SubscriptionService] Stats profiles error:', profilesError);
+    throw new Error(`Impossible de charger les profils: ${profilesError.message}`);
+  }
+
+  const profileIds = (profiles || []).map((p) => p.id);
+  const total_users = profileIds.length;
+
+  if (total_users === 0) {
+    return {
+      total_users: 0,
+      paying_users: 0,
+      free_users: 0,
+      trialing_users: 0,
+      canceled_users: 0,
+      mrr: 0,
+      arr: 0,
+      arpu: 0,
+    };
+  }
+
+  // 2. Abonnements existants pour ces profils
   const { data: subs, error } = await supabase
     .from('subscriptions')
     .select(`
-      id,
+      owner_id,
       status,
       plan:subscription_plans(slug, price_monthly)
-    `);
+    `)
+    .in('owner_id', profileIds);
 
-  if (error || !subs) return null;
+  if (error) {
+    console.error('[SubscriptionService] Stats subs error:', error);
+    throw new Error(`Impossible de charger les abonnements: ${error.message}`);
+  }
 
-  const total_users = subs.length;
   const entitled = (st: string) => ['active', 'trialing', 'past_due'].includes(st);
-  const paying_users = subs.filter(s => s.plan?.slug !== 'gratuit' && entitled(s.status)).length;
-  const free_users = subs.filter(s => s.plan?.slug === 'gratuit').length;
-  const trialing_users = subs.filter(s => s.status === 'trialing').length;
-  const canceled_users = subs.filter(s => s.status === 'canceled').length;
+  const subsList = subs || [];
+  const ownersWithSub = new Set(subsList.map((s) => s.owner_id as string));
+  const implicit_free_users = total_users - ownersWithSub.size;
 
-  const mrr = subs
-    .filter(s => entitled(s.status) && s.plan?.price_monthly)
+  const paying_users = subsList.filter(
+    (s) => s.plan?.slug !== 'gratuit' && entitled(s.status)
+  ).length;
+  const free_users =
+    implicit_free_users + subsList.filter((s) => s.plan?.slug === 'gratuit').length;
+  const trialing_users = subsList.filter((s) => s.status === 'trialing').length;
+  const canceled_users = subsList.filter((s) => s.status === 'canceled').length;
+
+  const mrr = subsList
+    .filter((s) => entitled(s.status) && s.plan?.price_monthly)
     .reduce((sum, s) => sum + (s.plan?.price_monthly || 0), 0);
 
   return {
@@ -637,30 +680,58 @@ export async function getSubscriptionStats(): Promise<SubscriptionStats | null> 
 
 /**
  * Récupère la distribution par plan (admin)
+ *
+ * Les profils sans `subscriptions` sont classés "gratuit".
  */
 export async function getPlansDistribution(): Promise<PlanDistribution[]> {
   const supabase = createServiceRoleClient();
 
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id')
+    .in('role', BILLABLE_ROLES as unknown as string[]);
+
+  if (profilesError) {
+    console.error('[SubscriptionService] Distribution profiles error:', profilesError);
+    throw new Error(`Impossible de charger les profils: ${profilesError.message}`);
+  }
+
+  const profileIds = (profiles || []).map((p) => p.id);
+  if (profileIds.length === 0) return [];
+
   const { data: subs, error } = await supabase
     .from('subscriptions')
     .select(`
+      owner_id,
       plan:subscription_plans(slug, name)
-    `);
+    `)
+    .in('owner_id', profileIds);
 
-  if (error || !subs) return [];
+  if (error) {
+    console.error('[SubscriptionService] Distribution subs error:', error);
+    throw new Error(`Impossible de charger les abonnements: ${error.message}`);
+  }
 
-  // Grouper par plan
   const counts: Record<string, { name: string; count: number }> = {};
-  subs.forEach(s => {
-    const slug = s.plan?.slug || 'unknown';
-    const name = s.plan?.name || 'Unknown';
-    if (!counts[slug]) {
-      counts[slug] = { name, count: 0 };
-    }
+  const subsList = subs || [];
+  const ownersWithSub = new Set<string>();
+
+  subsList.forEach((s) => {
+    ownersWithSub.add(s.owner_id as string);
+    const slug = s.plan?.slug || 'gratuit';
+    const name = s.plan?.name || 'Gratuit';
+    if (!counts[slug]) counts[slug] = { name, count: 0 };
     counts[slug].count++;
   });
 
-  const total = subs.length;
+  // Profils sans abonnement = gratuit implicite
+  const implicitFree = profileIds.length - ownersWithSub.size;
+  if (implicitFree > 0) {
+    if (!counts.gratuit) counts.gratuit = { name: 'Gratuit', count: 0 };
+    counts.gratuit.count += implicitFree;
+  }
+
+  const total = profileIds.length;
   return Object.entries(counts).map(([slug, data]) => ({
     plan_slug: slug as PlanSlug,
     plan_name: data.name,
@@ -671,6 +742,9 @@ export async function getPlansDistribution(): Promise<PlanDistribution[]> {
 
 /**
  * Récupère la liste des abonnements (admin)
+ *
+ * Part de `profiles` (rôles billables) pour que TOUS les comptes apparaissent,
+ * même ceux qui n'ont jamais souscrit (affichés comme "Gratuit").
  */
 export async function getAdminSubscriptionsList(options?: {
   page?: number;
@@ -683,11 +757,31 @@ export async function getAdminSubscriptionsList(options?: {
   const page = options?.page || 1;
   const perPage = options?.perPage || 25;
 
-  // Requête avec jointures (sans auth.users qui pose problème)
-  let query = supabase
+  // 1. Tous les profils billables
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, user_id, prenom, nom, role, created_at')
+    .in('role', BILLABLE_ROLES as unknown as string[])
+    .order('created_at', { ascending: false });
+
+  if (profilesError) {
+    console.error('[SubscriptionService] Admin list profiles error:', profilesError);
+    throw new Error(`Impossible de charger les profils: ${profilesError.message}`);
+  }
+
+  const profilesList = profiles || [];
+  if (profilesList.length === 0) {
+    return { data: [], total: 0 };
+  }
+
+  const profileIds = profilesList.map((p) => p.id as string);
+
+  // 2. Abonnements de ces profils (LEFT JOIN manuel)
+  const { data: subs, error: subsError } = await supabase
     .from('subscriptions')
     .select(`
       id,
+      owner_id,
       status,
       billing_cycle,
       current_period_start,
@@ -699,117 +793,123 @@ export async function getAdminSubscriptionsList(options?: {
       leases_count,
       stripe_customer_id,
       stripe_subscription_id,
-      created_at,
-      owner:profiles!owner_id(
-        id,
-        user_id,
-        prenom,
-        nom,
-        role,
-        created_at
-      ),
       plan:subscription_plans(
         slug,
         name,
         price_monthly,
         max_properties
       )
-    `, { count: 'exact' });
+    `)
+    .in('owner_id', profileIds);
 
-  // Filtres
-  if (options?.statusFilter && options.statusFilter.length > 0) {
-    query = query.in('status', options.statusFilter);
+  if (subsError) {
+    console.error('[SubscriptionService] Admin list subs error:', subsError);
+    throw new Error(`Impossible de charger les abonnements: ${subsError.message}`);
   }
 
-  const { data, error } = await query.order('created_at', { ascending: false });
+  const subByOwner = new Map<string, Record<string, unknown>>();
+  (subs || []).forEach((s: Record<string, unknown>) => {
+    subByOwner.set(s.owner_id as string, s);
+  });
 
-  if (error) {
-    console.error('[SubscriptionService] Admin list error:', error);
-    return { data: [], total: 0 };
-  }
-
-  // Récupérer les user_ids pour fetcher les emails
-  const userIds = (data || [])
-    .map((sub: Record<string, unknown>) => {
-      const owner = sub.owner as Record<string, unknown> | null;
-      return owner?.user_id as string;
-    })
-    .filter(Boolean);
-
-  // Récupérer les emails depuis auth.users via requête directe
-  let emailMap: Record<string, string> = {};
+  // 3. Emails depuis auth.users (paginé pour dépasser la limite de 1000)
+  const userIds = profilesList
+    .map((p) => p.user_id as string | null)
+    .filter((id): id is string => Boolean(id));
+  const emailMap: Record<string, string> = {};
   if (userIds.length > 0) {
-    const { data: usersData } = await supabase.auth.admin.listUsers({
-      perPage: 1000,
-    });
-    
-    if (usersData?.users) {
-      usersData.users.forEach(user => {
-        if (user.email) {
-          emailMap[user.id] = user.email;
+    const neededIds = new Set(userIds);
+    let authPage = 1;
+    const authPerPage = 1000;
+    // Pagine jusqu'à avoir couvert tous les IDs ou épuisé la source.
+    // Limite de sécurité: 20 pages (20 000 users) pour éviter une boucle infinie.
+    while (neededIds.size > 0 && authPage <= 20) {
+      const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
+        page: authPage,
+        perPage: authPerPage,
+      });
+      if (authError) {
+        console.error('[SubscriptionService] auth.listUsers error:', authError);
+        break;
+      }
+      const users = authData?.users || [];
+      if (users.length === 0) break;
+      users.forEach((u) => {
+        if (u.email && neededIds.has(u.id)) {
+          emailMap[u.id] = u.email;
+          neededIds.delete(u.id);
         }
       });
+      if (users.length < authPerPage) break;
+      authPage++;
     }
   }
 
-  // Transformer les données
-  const transformedData: AdminSubscriptionOverview[] = (data || []).map((sub: Record<string, unknown>) => {
-    const owner = sub.owner as Record<string, unknown> | null;
-    const plan = sub.plan as Record<string, unknown> | null;
-    const userId = (owner?.user_id as string) || '';
-    
+  // 4. Construire les lignes (1 par profil, avec fallback "gratuit")
+  const allRows: AdminSubscriptionOverview[] = profilesList.map((profile) => {
+    const profileId = profile.id as string;
+    const userId = (profile.user_id as string) || '';
+    const sub = subByOwner.get(profileId) || null;
+    const plan = (sub?.plan as Record<string, unknown> | null) || null;
+
+    const planSlug = ((plan?.slug as string) || 'gratuit') as PlanSlug;
+    const planName = (plan?.name as string) || 'Gratuit';
+    const priceMonthly = (plan?.price_monthly as number) ?? 0;
+    const status = (sub?.status as string) || (sub ? 'active' : 'free');
+    const entitled = ['active', 'trialing', 'past_due'].includes(status);
+
     return {
       user_id: userId,
       email: emailMap[userId] || '',
-      user_created_at: (owner?.created_at as string) || '',
-      prenom: (owner?.prenom as string) || null,
-      nom: (owner?.nom as string) || null,
-      user_role: (owner?.role as string) || 'owner',
-      subscription_id: sub.id as string,
-      plan_slug: (plan?.slug || 'gratuit') as PlanSlug,
-      plan_name: (plan?.name as string) || 'Gratuit',
-      price_monthly: (plan?.price_monthly as number) || 0,
-      status: sub.status as string,
-      billing_cycle: sub.billing_cycle as string,
-      current_period_start: sub.current_period_start as string | null,
-      current_period_end: sub.current_period_end as string | null,
-      trial_end: sub.trial_end as string | null,
-      canceled_at: sub.canceled_at as string | null,
-      cancel_at_period_end: sub.cancel_at_period_end as boolean,
-      stripe_customer_id: sub.stripe_customer_id as string | null,
-      stripe_subscription_id: sub.stripe_subscription_id as string | null,
-      properties_count: (sub.properties_count as number) || 0,
-      leases_count: (sub.leases_count as number) || 0,
+      user_created_at: (profile.created_at as string) || '',
+      prenom: (profile.prenom as string) || null,
+      nom: (profile.nom as string) || null,
+      user_role: (profile.role as string) || 'owner',
+      subscription_id: (sub?.id as string) || null,
+      plan_slug: planSlug,
+      plan_name: planName,
+      price_monthly: priceMonthly,
+      status,
+      billing_cycle: (sub?.billing_cycle as string) || 'monthly',
+      current_period_start: (sub?.current_period_start as string) || null,
+      current_period_end: (sub?.current_period_end as string) || null,
+      trial_end: (sub?.trial_end as string) || null,
+      canceled_at: (sub?.canceled_at as string) || null,
+      cancel_at_period_end: Boolean(sub?.cancel_at_period_end),
+      stripe_customer_id: (sub?.stripe_customer_id as string) || null,
+      stripe_subscription_id: (sub?.stripe_subscription_id as string) || null,
+      properties_count: (sub?.properties_count as number) || 0,
+      leases_count: (sub?.leases_count as number) || 0,
       signatures_used_this_month: 0,
       max_properties: (plan?.max_properties as number) || 3,
       max_signatures: 0,
-      mrr_contribution: ['active', 'trialing', 'past_due'].includes(sub.status) ? ((plan?.price_monthly as number) || 0) : 0,
+      mrr_contribution: entitled ? priceMonthly : 0,
     };
   });
 
-  // Filtrer par recherche côté client si nécessaire
-  let filteredData = transformedData;
+  // 5. Filtres (search, plan, status)
+  let filteredData = allRows;
   if (options?.search) {
     const search = options.search.toLowerCase();
-    filteredData = transformedData.filter(d => 
-      d.email?.toLowerCase().includes(search) ||
-      d.prenom?.toLowerCase().includes(search) ||
-      d.nom?.toLowerCase().includes(search)
+    filteredData = filteredData.filter(
+      (d) =>
+        d.email?.toLowerCase().includes(search) ||
+        d.prenom?.toLowerCase().includes(search) ||
+        d.nom?.toLowerCase().includes(search)
     );
   }
-
   if (options?.planFilter && options.planFilter.length > 0) {
-    filteredData = filteredData.filter(d => options.planFilter!.includes(d.plan_slug));
+    filteredData = filteredData.filter((d) => options.planFilter!.includes(d.plan_slug));
+  }
+  if (options?.statusFilter && options.statusFilter.length > 0) {
+    filteredData = filteredData.filter((d) => options.statusFilter!.includes(d.status));
   }
 
   const total = filteredData.length;
   const offset = (page - 1) * perPage;
-  filteredData = filteredData.slice(offset, offset + perPage);
+  const paged = filteredData.slice(offset, offset + perPage);
 
-  return {
-    data: filteredData,
-    total,
-  };
+  return { data: paged, total };
 }
 
 /**

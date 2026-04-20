@@ -36,6 +36,7 @@ import { SkipLinks } from "@/components/ui/skip-links";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { CompanySwitcher } from "@/components/entities/CompanySwitcher";
 import { CoreShellHeader } from "@/components/layout/core-shell-header";
+import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -461,6 +462,7 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
             tabIndex={-1}
             className="py-4 md:py-5 lg:py-6 px-3 md:px-6 lg:px-8 outline-none"
           >
+            <PlatformBroadcastBanner />
             {children}
           </main>
         </div>
