@@ -12,8 +12,7 @@ import { useRouter } from "next/navigation";
  * - G puis I : Aller aux Integrations
  * - G puis M : Aller a la Moderation
  * - G puis B : Aller au Blog
- * - G puis R : Aller aux Rapports
- * - G puis S : Aller aux Subscriptions
+ * - G puis S : Aller aux Subscriptions (dialog)
  * - G puis T : Aller aux Templates
  * - ? : Afficher l'aide raccourcis (via event custom)
  */
@@ -24,7 +23,6 @@ const SHORTCUTS: Record<string, string> = {
   i: "/admin/integrations",
   m: "/admin/moderation",
   b: "/admin/blog",
-  r: "/admin/reports",
   s: "/admin/subscriptions",
   t: "/admin/templates",
   f: "/admin/plans",

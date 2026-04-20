@@ -2,11 +2,10 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Users,
-  FileText,
   BookOpen,
   Key,
   ShieldCheck,
@@ -23,7 +22,6 @@ import {
   Mail,
   Palette,
   Brain,
-  UserCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -57,14 +55,12 @@ const adminNavItems: NavCategory[] = [
     category: "Vue d'ensemble",
     items: [
       { href: "/admin/dashboard", label: "Tableau de bord", icon: BarChart3 },
-      { href: "/admin/reports", label: "Rapports", icon: FileText },
     ],
   },
   {
     category: "Gestion",
     items: [
       { href: "/admin/people", label: "Annuaire", icon: Users },
-      { href: "/admin/tenants", label: "Locataires", icon: UserCheck },
       { href: "/admin/properties", label: "Parc immobilier", icon: Building2 },
       { href: "/admin/templates", label: "Templates Baux", icon: ScrollText },
       { href: "/admin/email-templates", label: "Templates Email", icon: Mail },
@@ -75,7 +71,7 @@ const adminNavItems: NavCategory[] = [
     category: "Commercial",
     items: [
       { href: "/admin/plans", label: "Forfaits & Tarifs", icon: CreditCard },
-      { href: "/admin/subscriptions", label: "Abonnements", icon: Wallet },
+      { href: "/admin/subscriptions", label: "Abonnements", icon: Wallet, isDialog: true },
       { href: "/admin/accounting", label: "Comptabilité", icon: Calculator },
       { href: "/admin/branding", label: "Branding", icon: Palette },
       { href: "/admin/integrations", label: "Intégrations", icon: Key },
@@ -100,22 +96,12 @@ const allNavItems = adminNavItems.flatMap((cat) =>
 
 export function AdminSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [open, setOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   
   // Subscription Manager Dialog
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = React.useState(false);
   const [subscriptionInitialSearch, setSubscriptionInitialSearch] = React.useState("");
-
-  // Check URL for /admin/subscriptions and open dialog
-  React.useEffect(() => {
-    if (pathname === "/admin/subscriptions") {
-      const searchQuery = searchParams.get("search") || "";
-      setSubscriptionInitialSearch(searchQuery);
-      setSubscriptionDialogOpen(true);
-    }
-  }, [pathname, searchParams]);
 
   // Keyboard shortcut for search (Cmd+K / Ctrl+K)
   React.useEffect(() => {
