@@ -79,17 +79,17 @@ export async function GET(
       );
 
       if (hasNonEmptyFile) {
-        const { data: signedUrl } = await serviceClient.storage
-          .from("documents")
-          .createSignedUrl(signedPath, 3600);
-        if (signedUrl?.signedUrl) {
-          return NextResponse.json({
-            sealed: true,
-            pdfUrl: signedUrl.signedUrl,
-            fileName: `Bail_Signe_${(leaseCheck.property as any)?.ville || "document"}.pdf`,
-            html: null,
-          });
-        }
+        // On NE renvoie PAS la signed URL Supabase directement : Supabase
+        // Storage ajoute un header `Content-Security-Policy: sandbox` sur
+        // les PDFs, ce qui empeche le rendu dans un <iframe>. On passe par
+        // la route proxy `/api/leases/[id]/pdf?inline=1` qui re-sert les
+        // bytes avec les bons headers.
+        return NextResponse.json({
+          sealed: true,
+          pdfUrl: `/api/leases/${leaseId}/pdf?inline=1`,
+          fileName: `Bail_Signe_${(leaseCheck.property as any)?.ville || "document"}.pdf`,
+          html: null,
+        });
       }
       // File is missing or empty — fall through to HTML regeneration
       console.warn(
