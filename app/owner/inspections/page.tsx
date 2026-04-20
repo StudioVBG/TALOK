@@ -42,15 +42,33 @@ async function fetchInspections(profileId: string) {
     return [];
   }
 
-  return (data || []).map((edl: any) => ({
-    ...edl,
-    property_address: edl.leases?.properties?.adresse_complete || "",
-    property_city: edl.leases?.properties?.ville || "",
-    tenant_name: edl.leases?.lease_signers?.find((s: any) => s.role === "locataire_principal")?.profiles
-      ? `${edl.leases.lease_signers.find((s: any) => s.role === "locataire_principal").profiles.prenom || ""} ${edl.leases.lease_signers.find((s: any) => s.role === "locataire_principal").profiles.nom || ""}`.trim()
-      : "Locataire",
-    signatures_count: edl.edl_signatures?.length || 0,
-  }));
+  return (data || []).map((edl: any) => {
+    const sigs = edl.edl_signatures || [];
+    const ownerSigned = sigs.some((s: any) =>
+      ["owner", "proprietaire", "bailleur"].includes(s.signer_role) &&
+      s.signed_at && s.signature_image_path
+    );
+    const tenantSigned = sigs.some((s: any) =>
+      ["tenant", "locataire", "locataire_principal"].includes(s.signer_role) &&
+      s.signed_at && s.signature_image_path
+    );
+    const tenantInvitedAt = sigs.find((s: any) =>
+      ["tenant", "locataire", "locataire_principal"].includes(s.signer_role)
+    )?.invitation_sent_at || null;
+
+    return {
+      ...edl,
+      property_address: edl.leases?.properties?.adresse_complete || "",
+      property_city: edl.leases?.properties?.ville || "",
+      tenant_name: edl.leases?.lease_signers?.find((s: any) => s.role === "locataire_principal")?.profiles
+        ? `${edl.leases.lease_signers.find((s: any) => s.role === "locataire_principal").profiles.prenom || ""} ${edl.leases.lease_signers.find((s: any) => s.role === "locataire_principal").profiles.nom || ""}`.trim()
+        : "Locataire",
+      signatures_count: sigs.length,
+      owner_signed: ownerSigned,
+      tenant_signed: tenantSigned,
+      tenant_invited_at: tenantInvitedAt,
+    };
+  });
 }
 
 function InspectionsSkeleton() {

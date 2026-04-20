@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, ClipboardList, Search, CheckCircle2, Clock, Eye, Pencil, FileText, Printer, Trash2, Loader2, AlertTriangle, RefreshCw } from "lucide-react";
+import { Plus, ClipboardList, Search, CheckCircle2, Clock, Eye, Pencil, FileText, Printer, Trash2, Loader2, AlertTriangle, RefreshCw, FileSignature, Hourglass } from "lucide-react";
 import { CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,6 +49,9 @@ interface Inspection {
   property_city: string;
   tenant_name: string;
   signatures_count: number;
+  owner_signed: boolean;
+  tenant_signed: boolean;
+  tenant_invited_at: string | null;
   created_at: string;
 }
 
@@ -185,20 +188,68 @@ export function InspectionsClient({ inspections }: Props) {
           draft: { label: "Brouillon", type: "neutral", animate: false },
         };
         const config = statusMap[edl.status] || statusMap.draft;
+
+        // Sous-badge d'attente pour les EDL "completed" (double signature requise)
+        const pendingLabel =
+          edl.status === "completed" && !edl.owner_signed
+            ? "À signer"
+            : edl.status === "completed" && edl.owner_signed && !edl.tenant_signed
+              ? "En attente locataire"
+              : edl.status === "completed" && !edl.owner_signed && edl.tenant_signed
+                ? "À signer"
+                : null;
+
         return (
-          <StatusBadge
-            status={config.label}
-            type={config.type}
-            animate={config.animate}
-          />
+          <div className="flex flex-col items-start gap-1">
+            <StatusBadge
+              status={config.label}
+              type={config.type}
+              animate={config.animate}
+            />
+            {pendingLabel && (
+              <span
+                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                  pendingLabel === "À signer"
+                    ? "border-blue-200 bg-blue-50 text-blue-700"
+                    : "border-amber-200 bg-amber-50 text-amber-700"
+                }`}
+              >
+                {pendingLabel === "À signer" ? (
+                  <FileSignature className="h-3 w-3" />
+                ) : (
+                  <Hourglass className="h-3 w-3" />
+                )}
+                {pendingLabel}
+              </span>
+            )}
+          </div>
         );
       },
     },
     {
       header: "Actions",
       className: "text-right",
-      cell: (edl: Inspection) => (
+      cell: (edl: Inspection) => {
+        const canOwnerSign =
+          !edl.owner_signed &&
+          ["completed", "in_progress"].includes(edl.status);
+
+        return (
         <div className="flex justify-end gap-2">
+          {canOwnerSign && (
+            <Button
+              size="sm"
+              asChild
+              className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm h-8 gap-1.5 px-2.5"
+              title="Signer l'état des lieux"
+            >
+              <Link href={`/owner/inspections/${edl.id}?sign=1`}>
+                <FileSignature className="h-4 w-4" />
+                <span className="text-xs font-medium">Signer</span>
+              </Link>
+            </Button>
+          )}
+
           <Button size="sm" variant="outline" asChild className="hover:bg-blue-50 hover:border-blue-300 h-8 gap-1.5 px-2.5 text-blue-600 border-blue-200" title="Voir l'état des lieux">
             <Link href={`/owner/inspections/${edl.id}`}>
               <Eye className="h-4 w-4" />
@@ -232,7 +283,8 @@ export function InspectionsClient({ inspections }: Props) {
             </Button>
           )}
         </div>
-      ),
+        );
+      },
     },
   ];
 

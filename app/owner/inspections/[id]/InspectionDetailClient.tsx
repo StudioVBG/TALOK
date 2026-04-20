@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
@@ -169,8 +169,9 @@ const itemVariants = {
 
 export function InspectionDetailClient({ data }: Props) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
-  
+
   // États
   const [isSending, setIsSending] = useState(false);
   const [isSigning, setIsSigning] = useState(false);
@@ -523,6 +524,16 @@ export function InspectionDetailClient({ data }: Props) {
   const ownerSigned = !!(ownerSignature?.signed_at && (ownerSignature?.signature_image_path || ownerSignature?.signature_image));
   const tenantSigned = !!(tenantSignature?.signed_at && (tenantSignature?.signature_image_path || tenantSignature?.signature_image));
   const actualSignaturesCount = (edl.edl_signatures || []).filter((s: any) => (s.signature_image_path || s.signature_image) && s.signed_at).length;
+
+  // Auto-ouverture du dialog de signature via ?sign=1 (depuis la liste EDL)
+  useEffect(() => {
+    if (searchParams?.get("sign") === "1" && !ownerSigned && edl.status !== "signed") {
+      setIsSignModalOpen(true);
+      // Nettoyer l'URL pour que l'utilisateur puisse fermer/rouvrir librement
+      router.replace(`/owner/inspections/${edl.id}`, { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="min-h-screen bg-muted/50 flex flex-col">
