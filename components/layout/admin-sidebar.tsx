@@ -31,6 +31,7 @@ import {
   TrendingUp,
   Clock,
   Zap,
+  Megaphone,
 } from "lucide-react";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
 import { cn } from "@/lib/utils";
@@ -80,6 +81,7 @@ const adminNavItems: NavCategory[] = [
   {
     category: "Contenu & communication",
     items: [
+      { href: "/admin/broadcasts", label: "Annonces globales", icon: Megaphone },
       { href: "/admin/site-content", label: "Contenu du site", icon: FileText },
       { href: "/admin/templates", label: "Templates Baux", icon: ScrollText },
       { href: "/admin/email-templates", label: "Templates Email", icon: Mail },

@@ -28,6 +28,7 @@ import { ProviderRailNav } from "@/components/layout/provider-rail-nav";
 import { ProviderSidebar } from "@/components/layout/provider-sidebar";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
+import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
 
 const navigation = [
   { name: "Tableau de bord", href: "/provider/dashboard", icon: LayoutDashboard },
@@ -151,6 +152,7 @@ export default async function VendorLayout({
           </div>
 
           <div className="py-4 xs:py-5 sm:py-6 px-3 xs:px-4 sm:px-6 lg:px-8">
+            <PlatformBroadcastBanner />
             {children}
           </div>
         </main>

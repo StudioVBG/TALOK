@@ -7,8 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Shield, UserX, Download, Loader2 } from "lucide-react";
+import { ProtectedRoute } from "@/components/protected-route";
 
 export default function AdminPrivacyPage() {
+  return (
+    <ProtectedRoute allowedRoles={["admin", "platform_admin"]}>
+      <AdminPrivacyPageContent />
+    </ProtectedRoute>
+  );
+}
+
+function AdminPrivacyPageContent() {
   const { toast } = useToast();
   const [anonymizing, setAnonymizing] = useState(false);
   const [exporting, setExporting] = useState(false);

@@ -52,6 +52,7 @@ import { PushNotificationPrompt } from "@/components/notifications/push-notifica
 import { useTenantNavBadges } from "@/lib/hooks/use-tenant-nav-badges";
 import { CoreShellHeader } from "@/components/layout/core-shell-header";
 import { getCoreShellMetadata } from "@/lib/navigation/core-shell-metadata";
+import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
 
 interface TenantAppLayoutProps {
   children: React.ReactNode;
@@ -403,6 +404,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
           tabIndex={-1}
           className="min-h-0 outline-none"
         >
+          <PlatformBroadcastBanner />
           {children}
         </main>
       </div>
