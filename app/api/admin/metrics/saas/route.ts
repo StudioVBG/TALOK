@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     .select(
       `
       id, owner_id, status, created_at, canceled_at,
-      plan:subscription_plans(slug, price_monthly, name)
+      plan:subscription_plans!plan_id(slug, price_monthly, name)
     `
     );
 

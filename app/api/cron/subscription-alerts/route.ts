@@ -49,7 +49,7 @@ export async function GET(request: Request) {
         id,
         owner_id,
         trial_end,
-        plan:subscription_plans(name, slug),
+        plan:subscription_plans!plan_id(name, slug),
         owner:profiles!subscriptions_owner_id_fkey(
           id, prenom, nom, user_id
         )
@@ -121,7 +121,7 @@ export async function GET(request: Request) {
         current_period_end,
         billing_cycle,
         cancel_at_period_end,
-        plan:subscription_plans(name, slug, price_monthly, price_yearly),
+        plan:subscription_plans!plan_id(name, slug, price_monthly, price_yearly),
         owner:profiles!subscriptions_owner_id_fkey(
           id, prenom, nom, user_id
         )
@@ -187,7 +187,7 @@ export async function GET(request: Request) {
         id,
         owner_id,
         current_period_end,
-        plan:subscription_plans(name),
+        plan:subscription_plans!plan_id(name),
         owner:profiles!subscriptions_owner_id_fkey(
           id, prenom, nom, user_id
         )

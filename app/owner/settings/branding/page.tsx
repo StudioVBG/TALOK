@@ -67,7 +67,7 @@ export default function OwnerBrandingPage() {
       // Récupérer l'abonnement pour déterminer le niveau
       const { data: subscription } = await supabase
         .from("subscriptions")
-        .select("plan_id, subscription_plans(slug)")
+        .select("plan_id, subscription_plans!plan_id(slug)")
         .eq("owner_id", profileId)
         .eq("status", "active")
         .single();
