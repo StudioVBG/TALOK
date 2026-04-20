@@ -53,6 +53,7 @@ export default async function VendorLayout({
 }: {
   children: React.ReactNode;
 }) {
+  try {
   const supabase = await createClient();
   const {
     data: { user },
@@ -162,4 +163,32 @@ export default async function VendorLayout({
       </div>
     </ErrorBoundary>
   );
+  } catch (e) {
+    // Re-throw redirect()/notFound() untouched so Next.js can process them
+    const digest =
+      typeof e === "object" && e !== null && "digest" in e
+        ? String((e as { digest?: unknown }).digest)
+        : null;
+    if (digest && (digest.startsWith("NEXT_REDIRECT") || digest === "NEXT_NOT_FOUND")) {
+      throw e;
+    }
+
+    // Surface the real error in Netlify/Vercel function logs — Next.js hides it
+    // behind a generic digest in production. This lets us diagnose the root cause
+    // of the intermittent "Oups ! Une erreur est survenue" seen on /provider/dashboard.
+    const err = e instanceof Error ? e : new Error(String(e));
+    console.error(
+      JSON.stringify({
+        level: "error",
+        source: "app/provider/layout",
+        name: err.name,
+        message: err.message,
+        stack: err.stack,
+        cause: err.cause ? String(err.cause) : undefined,
+        timestamp: new Date().toISOString(),
+      })
+    );
+
+    throw e;
+  }
 }
