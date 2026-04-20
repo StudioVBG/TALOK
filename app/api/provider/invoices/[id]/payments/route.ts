@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceClient } from '@/lib/supabase/service-client';
 import { z } from 'zod';
 
 interface RouteParams {
@@ -38,9 +39,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const invoiceId = params.id;
+    const serviceClient = getServiceClient();
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -50,8 +51,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
     }
 
-    // Vérifier l'accès à la facture
-    const { data: invoice } = await supabase
+    const { data: invoice } = await serviceClient
       .from('provider_invoices')
       .select('id, provider_profile_id, owner_profile_id')
       .eq('id', invoiceId)
@@ -69,22 +69,27 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    // Récupérer les paiements
-    const { data: payments, error } = await supabase
+    const { data: payments, error } = await serviceClient
       .from('provider_invoice_payments')
       .select('*')
       .eq('invoice_id', invoiceId)
       .order('paid_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching payments:', error);
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: 500 });
+      console.error('[provider/invoices/payments] GET error:', error);
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({ payments });
   } catch (error: unknown) {
-    console.error('Error in GET /api/provider/invoices/[id]/payments:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+    console.error('[provider/invoices/payments] GET handler error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }
 
@@ -101,9 +106,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const invoiceId = params.id;
+    const serviceClient = getServiceClient();
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -113,8 +118,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
     }
 
-    // Vérifier l'accès à la facture (seul le prestataire peut enregistrer les paiements)
-    const { data: invoice } = await supabase
+    const { data: invoice } = await serviceClient
       .from('provider_invoices')
       .select('id, provider_profile_id, total_amount, status')
       .eq('id', invoiceId)
@@ -128,18 +132,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const isAdmin = profile.role === 'admin';
 
     if (!isProvider && !isAdmin) {
-      return NextResponse.json({ error: 'Seul le prestataire peut enregistrer des paiements' }, { status: 403 });
+      return NextResponse.json(
+        { error: 'Seul le prestataire peut enregistrer des paiements' },
+        { status: 403 }
+      );
     }
 
-    // Vérifier que la facture est dans un état permettant les paiements
-    if (!['sent', 'viewed', 'partial', 'overdue'].includes(invoice.status)) {
+    if (!['sent', 'viewed', 'partial', 'overdue'].includes(invoice.status as string)) {
       return NextResponse.json(
         { error: 'Les paiements ne peuvent être enregistrés que sur une facture envoyée' },
         { status: 400 }
       );
     }
 
-    // Parser et valider le body
     const body = await request.json();
     const validationResult = createPaymentSchema.safeParse(body);
 
@@ -152,20 +157,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const data = validationResult.data;
 
-    // Vérifier le solde restant
-    const { data: currentBalance } = await supabase.rpc('get_invoice_balance', {
+    const { data: currentBalance } = await serviceClient.rpc('get_invoice_balance', {
       p_invoice_id: invoiceId,
     });
 
-    if (data.payment_type !== 'refund' && data.amount > ((currentBalance as number) || invoice.total_amount || 0)) {
+    if (
+      data.payment_type !== 'refund' &&
+      data.amount > ((currentBalance as number) || (invoice.total_amount as number) || 0)
+    ) {
       return NextResponse.json(
         { error: `Le montant dépasse le solde dû (${currentBalance}€)` },
         { status: 400 }
       );
     }
 
-    // Créer le paiement
-    const { data: payment, error: createError } = await supabase
+    const { data: payment, error: createError } = await serviceClient
       .from('provider_invoice_payments')
       .insert({
         invoice_id: invoiceId,
@@ -182,27 +188,33 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (createError) {
-      console.error('Error creating payment:', createError);
+      console.error('[provider/invoices/payments] POST create error:', createError);
       return NextResponse.json({ error: createError.message }, { status: 500 });
     }
 
     // Le statut de la facture sera mis à jour automatiquement par le trigger
-
-    // Récupérer la facture mise à jour
-    const { data: updatedInvoice } = await supabase
+    const { data: updatedInvoice } = await serviceClient
       .from('provider_invoices')
       .select('status')
       .eq('id', invoiceId)
       .single();
 
-    return NextResponse.json({
-      payment,
-      invoice_status: updatedInvoice?.status,
-      message: updatedInvoice?.status === 'paid' ? 'Facture entièrement payée' : 'Paiement enregistré',
-    }, { status: 201 });
+    return NextResponse.json(
+      {
+        payment,
+        invoice_status: updatedInvoice?.status,
+        message:
+          updatedInvoice?.status === 'paid'
+            ? 'Facture entièrement payée'
+            : 'Paiement enregistré',
+      },
+      { status: 201 }
+    );
   } catch (error: unknown) {
-    console.error('Error in POST /api/provider/invoices/[id]/payments:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+    console.error('[provider/invoices/payments] POST handler error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }
-

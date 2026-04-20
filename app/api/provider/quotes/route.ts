@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceClient } from '@/lib/supabase/service-client';
 import { z } from 'zod';
 
 const createQuoteSchema = z.object({
@@ -40,8 +41,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -55,8 +57,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
 
-    // Construire la requête
-    let query = supabase
+    // Construire la requête via serviceClient
+    let query = serviceClient
       .from('provider_quotes')
       .select(`
         *,
@@ -130,8 +132,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Récupérer le profil prestataire
-    const { data: profile } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -160,7 +163,7 @@ export async function POST(request: NextRequest) {
     ).toISOString().split('T')[0];
 
     // Créer le devis (la référence sera générée automatiquement)
-    const { data: quote, error: createError } = await supabase
+    const { data: quote, error: createError } = await serviceClient
       .from('provider_quotes')
       .insert({
         provider_profile_id: profile.id,
@@ -193,19 +196,19 @@ export async function POST(request: NextRequest) {
       sort_order: index,
     }));
 
-    const { error: itemsError } = await supabase
+    const { error: itemsError } = await serviceClient
       .from('provider_quote_items')
       .insert(items);
 
     if (itemsError) {
       // Supprimer le devis en cas d'erreur
-      await supabase.from('provider_quotes').delete().eq('id', quote.id);
-      console.error('Error creating quote items:', itemsError);
+      await serviceClient.from('provider_quotes').delete().eq('id', quote.id);
+      console.error('[provider/quotes] POST items error:', itemsError);
       return NextResponse.json({ error: itemsError.message }, { status: 500 });
     }
 
     // Récupérer le devis mis à jour (avec totaux calculés par trigger)
-    const { data: updatedQuote } = await supabase
+    const { data: updatedQuote } = await serviceClient
       .from('provider_quotes')
       .select('*')
       .eq('id', quote.id)

@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceClient } from '@/lib/supabase/service-client';
 import { sendEmail } from '@/lib/services/email-service';
 import { emailTemplates } from '@/lib/emails/templates';
 
@@ -28,9 +29,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     const invoiceId = params.id;
+    const serviceClient = getServiceClient();
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id')
       .eq('user_id', user.id)
@@ -40,8 +41,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
     }
 
-    // Récupérer la facture
-    const { data: invoice, error: invoiceError } = await supabase
+    // Récupérer la facture via serviceClient (scoping explicite par provider_profile_id)
+    const { data: invoice, error: invoiceError } = await serviceClient
       .from('provider_invoices')
       .select(`
         *,
@@ -68,10 +69,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Récupérer l'email du destinataire
+    // Récupérer l'email du destinataire (serviceClient pour auth.admin API)
     let recipientEmail = null;
     if (invoice.owner?.user_id) {
-      const { data: ownerUser } = await supabase.auth.admin.getUserById(invoice.owner.user_id);
+      const { data: ownerUser } = await serviceClient.auth.admin.getUserById(invoice.owner.user_id);
       recipientEmail = ownerUser?.user?.email;
     }
 
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Mettre à jour le statut de la facture
-    const { error: updateError } = await supabase
+    const { error: updateError } = await serviceClient
       .from('provider_invoices')
       .update({
         status: 'sent',
@@ -96,7 +97,8 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         reminder_count: invoice.status === 'sent' ? (invoice.reminder_count || 0) + 1 : 0,
         last_reminder_at: invoice.status === 'sent' ? new Date().toISOString() : null,
       })
-      .eq('id', invoiceId);
+      .eq('id', invoiceId)
+      .eq('provider_profile_id', profile.id);
 
     if (updateError) {
       console.error('Error updating invoice:', updateError);
@@ -105,7 +107,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Send the invoice email to the owner
     try {
-      const { data: providerProf } = await supabase
+      const { data: providerProf } = await serviceClient
         .from("profiles")
         .select("prenom, nom")
         .eq("id", profile.id)
@@ -129,7 +131,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Créer une notification pour le destinataire
     if (invoice.owner?.id) {
-      await supabase.from('notifications').insert({
+      await serviceClient.from('notifications').insert({
         profile_id: invoice.owner.id,
         type: 'invoice_received',
         title: 'Nouvelle facture reçue',

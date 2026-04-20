@@ -41,21 +41,30 @@ Règle Talok :
 - **SSR/API** : `getServiceClient()` pour queries, `createClient()` uniquement pour `getUser()`.
 - **Browser** : `createClient()` obligatoire (clé anon, RLS appliquée).
 
-| Fichier | Auth (`getUser`) | Queries | Conforme ? | Patch |
+| Fichier | Auth (`getUser`) | Queries | Conforme ? | Statut |
 |---|---|---|---|---|
 | `app/provider/layout.tsx` | `createClient()` ✅ | via `getServerProfile` (fallback service role) ✅ | ✅ | — |
-| `app/provider/jobs/[id]/page.tsx` | `createClient()` ✅ | `createClient()` SSR ❌ | ❌ | Passer queries sur `getServiceClient()` |
-| `app/api/provider/dashboard/route.ts` | `createRouteHandlerClient()` ✅ | profile via `serviceClient` ✅ / fallback WO+reviews via `supabase` user-authed ❌ | ⚠️ partiel | P0 — fallback sur `serviceClient` |
-| `app/api/provider/portfolio/route.ts` | `createRouteHandlerClient()` ✅ | `createRouteHandlerClient()` pour profile + items ❌ | ❌ | Migrer vers `getServiceClient()` |
-| `app/api/provider/portfolio/[id]/route.ts` | `createRouteHandlerClient()` ✅ | idem ❌ | ❌ | idem |
-| `app/api/provider/jobs/[id]/status/route.ts` | `createClient()` ✅ | queries + notifications insert via user-authed ❌ | ❌ | idem |
-| `app/api/provider/invoices/route.ts` | `createClient()` ✅ | queries via user-authed ❌ | ❌ | idem |
-| `app/api/provider/invoices/[id]/route.ts` | idem | idem | ❌ | idem |
-| `app/api/provider/invoices/[id]/{payments,send}/route.ts` | idem | idem | ❌ | idem |
-| `app/api/provider/quotes/*` | idem | idem | ❌ | idem |
-| `app/api/provider/compliance/*` | idem | idem + RPC calls | ❌ | idem |
+| `app/provider/jobs/[id]/page.tsx` | `createClient()` ✅ | `getServiceClient()` ✅ | ✅ | **fixé dans cette PR** |
+| `app/api/provider/dashboard/route.ts` | `createRouteHandlerClient()` ✅ | RPC + fallback via `serviceClient` ✅ | ✅ | **fixé P0 dans cette PR** |
+| `app/api/provider/portfolio/route.ts` | `createRouteHandlerClient()` ✅ | `serviceClient` ✅ | ✅ | **fixé P1 dans cette PR** |
+| `app/api/provider/portfolio/[id]/route.ts` | idem | `serviceClient` ✅ | ✅ | **fixé P1 dans cette PR** |
+| `app/api/provider/jobs/[id]/status/route.ts` | `createClient()` ✅ | `serviceClient` ✅ + fallback owner_id standalone WO | ✅ | **fixé P1 dans cette PR** |
+| `app/api/provider/invoices/route.ts` | `createClient()` ✅ | `serviceClient` ✅ | ✅ | **fixé P1 dans cette PR** |
+| `app/api/provider/invoices/[id]/route.ts` | idem | `serviceClient` ✅ | ✅ | **fixé P1 dans cette PR** |
+| `app/api/provider/invoices/[id]/payments/route.ts` | idem | `serviceClient` ✅ | ✅ | **fixé P1 dans cette PR** |
+| `app/api/provider/invoices/[id]/send/route.ts` | idem | `serviceClient` ✅ | ✅ | **fixé P1 dans cette PR** |
+| `app/api/provider/quotes/route.ts` | idem | `serviceClient` ✅ | ✅ | **fixé P1 dans cette PR** |
+| `app/api/provider/quotes/[id]/route.ts` | idem | `serviceClient` ✅ | ✅ | **fixé P1 dans cette PR** |
+| `app/api/provider/quotes/[id]/send/route.ts` | idem | `serviceClient` ✅ | ✅ | **fixé P1 dans cette PR** |
+| `app/api/provider/compliance/status/route.ts` | idem | `serviceClient` ✅ + RPC | ✅ | **fixé P1 dans cette PR** |
+| `app/api/provider/compliance/documents/route.ts` | idem | `serviceClient` ✅ | ✅ | **fixé P1 dans cette PR** |
+| `app/api/provider/compliance/documents/[id]/route.ts` | idem | `serviceClient` ✅ + storage | ✅ | **fixé P1 dans cette PR** |
+| `app/api/provider/compliance/upload/route.ts` | idem | `serviceClient` ✅ + storage + RPC | ✅ | **fixé P1 dans cette PR** |
 
-**Résumé** : 1/15 API routes parfaitement conforme. Risque fonctionnel : requêtes silencieusement vides si RLS bloque, ou 42P17 résiduel.
+**Résumé** : 17/17 routes/pages SSR provider conformes après cette PR.
+
+### Principe de scoping conservé
+Le passage au service client **bypass RLS**, mais la RBAC reste garantie par des filtres `.eq('provider_profile_id', profile.id)` explicites sur toutes les queries (déjà présents). Aucun changement de surface d'attaque.
 
 ### Browser-side (client components)
 
@@ -151,10 +160,10 @@ Tables dont les policies sub-SELECT `profiles` sans passer par un helper SECURIT
 2. **Migration conformité RLS** (optionnel — à planifier) : confirmer que `20260418130000` est bien appliquée.
 
 ### P1 — Bugs fonctionnels silencieux
-1. `lib/hooks/use-realtime-provider.ts:164` — `review.provider_profile_id` au lieu de `provider_id`
-2. Interface `PendingOrder.property.adresse` → harmoniser avec `adresse_complete` (ou garder le remap RPC comme source unique)
-3. `app/api/provider/portfolio/*`, `jobs/[id]/status`, `invoices/*`, `quotes/*`, `compliance/*` — migrer sur `getServiceClient()`
-4. RPC `provider_dashboard` : remplacer INNER JOIN tickets par LEFT JOIN pour inclure les work_orders standalone, ou basculer sur le flux "status" (nouveau) vs "statut" (legacy)
+1. ✅ `lib/hooks/use-realtime-provider.ts:164` — `review.provider_profile_id` au lieu de `provider_id` (fixé)
+2. ✅ Interface `PendingOrder.property.adresse` → fallback harmonisé dans API + page défensive (fixé)
+3. ✅ `app/api/provider/portfolio/*`, `jobs/[id]/status`, `invoices/*`, `quotes/*`, `compliance/*` — migrés sur `getServiceClient()` (fixé)
+4. ✅ RPC `provider_dashboard` : LEFT JOIN tickets + properties via `COALESCE(wo.property_id, t.property_id)` (migration `20260420120000`)
 
 ### P2 — Dette technique
 1. RLS `providers`, `owner_providers`, `provider_reviews`, `provider_availability`, `provider_quotes`, `provider_portfolio_items` — réécrire avec `public.user_profile_id()` et SECURITY DEFINER helpers
@@ -166,7 +175,16 @@ Tables dont les policies sub-SELECT `profiles` sans passer par un helper SECURIT
 ## 9. Actions livrées dans cette PR
 
 - [x] Rapports `PROVIDER_SCHEMA_AUDIT.md`, `PROVIDER_CRASH_STACK.md`, `PROVIDER_CONFORMITY_REPORT.md`
-- [x] Patch P0 `app/api/provider/dashboard/route.ts`
-- [x] Patch P1 `lib/hooks/use-realtime-provider.ts` (fix colonne realtime)
-- [ ] Migration SQL : aucune requise par ce patch (conformité RLS reste à planifier — demande confirmation)
-- [ ] `npx tsc --noEmit` : non exécuté (node_modules absent dans cet environnement). À relancer en local avant merge.
+- [x] Patch P0 `app/api/provider/dashboard/route.ts` — service client cohérent, colonnes correctes, shape normalisée
+- [x] Patch défensif `app/provider/dashboard/page.tsx` — guard + coercion array + fallback par item
+- [x] Patch P1 `lib/hooks/use-realtime-provider.ts` — fix colonne `provider_profile_id` realtime
+- [x] Patch P1 — **17 routes + SSR** migrés sur `getServiceClient()` :
+  - `app/provider/jobs/[id]/page.tsx`
+  - `app/api/provider/jobs/[id]/status/route.ts` (+ résolution owner_id standalone)
+  - `app/api/provider/portfolio/route.ts` + `[id]/route.ts`
+  - `app/api/provider/invoices/route.ts` + `[id]/route.ts` + `[id]/payments/route.ts` + `[id]/send/route.ts`
+  - `app/api/provider/quotes/route.ts` + `[id]/route.ts` + `[id]/send/route.ts`
+  - `app/api/provider/compliance/status/route.ts` + `documents/route.ts` + `documents/[id]/route.ts` + `upload/route.ts`
+- [x] Migration SQL `20260420120000_provider_dashboard_rpc_standalone_work_orders.sql`
+- [ ] `npx tsc --noEmit` : non exécuté (node_modules absent dans cet environnement). **À relancer en local avant merge.**
+- [ ] P2 restant : réécriture policies `providers` / `owner_providers` / `provider_reviews` / `provider_availability` / `provider_quotes` / `provider_portfolio_items` via SECURITY DEFINER helpers — migration à planifier séparément.

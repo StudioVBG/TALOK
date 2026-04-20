@@ -10,6 +10,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceClient } from '@/lib/supabase/service-client';
 
 interface RouteParams {
   params: { id: string };
@@ -28,9 +29,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const quoteId = params.id;
+    const serviceClient = getServiceClient();
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -40,8 +41,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
     }
 
-    // Récupérer le devis avec les relations
-    const { data: quote, error } = await supabase
+    const { data: quote, error } = await serviceClient
       .from('provider_quotes')
       .select(`
         *,
@@ -69,7 +69,6 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Devis non trouvé' }, { status: 404 });
     }
 
-    // Vérifier les permissions
     const isProvider = quote.provider_profile_id === profile.id;
     const isOwner = quote.owner_profile_id === profile.id;
     const isAdmin = profile.role === 'admin';
@@ -78,32 +77,40 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    // Marquer comme vu si c'est le propriétaire qui consulte
     if (isOwner && !(quote as any).viewed_at && quote.status === 'sent') {
-      await supabase
+      await serviceClient
         .from('provider_quotes')
         .update({ viewed_at: new Date().toISOString(), status: 'viewed' })
         .eq('id', quoteId);
     }
 
-    // Récupérer les lignes
-    const { data: items } = await supabase
+    const { data: items } = await serviceClient
       .from('provider_quote_items')
       .select('*')
       .eq('quote_id', quoteId)
       .order('sort_order');
 
+    const ownerObj: any = quote.owner;
+    const propertyObj: any = quote.property;
+
     return NextResponse.json({
       quote: {
         ...quote,
         items: items || [],
-        owner_name: quote.owner ? `${quote.owner.prenom || ''} ${quote.owner.nom || ''}`.trim() : null,
-        property_address: quote.property ? `${quote.property.adresse_complete}, ${quote.property.ville}` : null,
+        owner_name: ownerObj
+          ? `${ownerObj.prenom || ''} ${ownerObj.nom || ''}`.trim()
+          : null,
+        property_address: propertyObj
+          ? `${propertyObj.adresse_complete}, ${propertyObj.ville}`
+          : null,
       },
     });
   } catch (error: unknown) {
-    console.error('Error in GET /api/provider/quotes/[id]:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+    console.error('[provider/quotes/[id]] GET error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }
 
@@ -120,9 +127,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     const quoteId = params.id;
+    const serviceClient = getServiceClient();
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -132,8 +139,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    // Vérifier que le devis existe et appartient au prestataire
-    const { data: quote } = await supabase
+    const { data: quote } = await serviceClient
       .from('provider_quotes')
       .select('id, status, provider_profile_id')
       .eq('id', quoteId)
@@ -144,7 +150,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Devis non trouvé' }, { status: 404 });
     }
 
-    // Seuls les brouillons peuvent être supprimés
     if (quote.status !== 'draft') {
       return NextResponse.json(
         { error: 'Seuls les brouillons peuvent être supprimés.' },
@@ -152,21 +157,23 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Supprimer le devis (les items seront supprimés en cascade)
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await serviceClient
       .from('provider_quotes')
       .delete()
-      .eq('id', quoteId);
+      .eq('id', quoteId)
+      .eq('provider_profile_id', profile.id);
 
     if (deleteError) {
-      console.error('Error deleting quote:', deleteError);
+      console.error('[provider/quotes/[id]] DELETE error:', deleteError);
       return NextResponse.json({ error: deleteError.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    console.error('Error in DELETE /api/provider/quotes/[id]:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+    console.error('[provider/quotes/[id]] DELETE handler error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }
-

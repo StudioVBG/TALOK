@@ -10,6 +10,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceClient } from '@/lib/supabase/service-client';
 
 interface RouteParams {
   params: { id: string };
@@ -28,9 +29,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const invoiceId = params.id;
+    const serviceClient = getServiceClient();
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -40,8 +41,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
     }
 
-    // Récupérer la facture avec les relations
-    const { data: invoice, error } = await supabase
+    const { data: invoice, error } = await serviceClient
       .from('provider_invoices')
       .select(`
         *,
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Facture non trouvée' }, { status: 404 });
     }
 
-    // Vérifier les permissions
+    // RBAC explicite — la facture doit appartenir au provider, à l'owner, ou admin
     const isProvider = invoice.provider_profile_id === profile.id;
     const isOwner = invoice.owner_profile_id === profile.id;
     const isAdmin = profile.role === 'admin';
@@ -82,28 +82,28 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     // Marquer comme vue si c'est le propriétaire qui consulte
     if (isOwner && !(invoice as any).viewed_at) {
-      await supabase
+      await serviceClient
         .from('provider_invoices')
-        .update({ viewed_at: new Date().toISOString(), status: invoice.status === 'sent' ? 'viewed' : invoice.status })
+        .update({
+          viewed_at: new Date().toISOString(),
+          status: invoice.status === 'sent' ? 'viewed' : invoice.status,
+        })
         .eq('id', invoiceId);
     }
 
-    // Récupérer les lignes
-    const { data: items } = await supabase
+    const { data: items } = await serviceClient
       .from('provider_invoice_items')
       .select('*')
       .eq('invoice_id', invoiceId)
       .order('sort_order');
 
-    // Récupérer les paiements
-    const { data: payments } = await supabase
+    const { data: payments } = await serviceClient
       .from('provider_invoice_payments')
       .select('*')
       .eq('invoice_id', invoiceId)
       .order('paid_at');
 
-    // Calculer le solde
-    const { data: balance } = await supabase.rpc('get_invoice_balance', {
+    const { data: balance } = await serviceClient.rpc('get_invoice_balance', {
       p_invoice_id: invoiceId,
     });
 
@@ -116,8 +116,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error: unknown) {
-    console.error('Error in GET /api/provider/invoices/[id]:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+    console.error('[provider/invoices/[id]] GET error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }
 
@@ -134,9 +137,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     const invoiceId = params.id;
+    const serviceClient = getServiceClient();
 
-    // Récupérer le profil
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -146,8 +149,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    // Vérifier que la facture existe et appartient au prestataire
-    const { data: invoice } = await supabase
+    // RBAC scoping — la facture doit appartenir au provider courant
+    const { data: invoice } = await serviceClient
       .from('provider_invoices')
       .select('id, status, provider_profile_id')
       .eq('id', invoiceId)
@@ -158,7 +161,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Facture non trouvée' }, { status: 404 });
     }
 
-    // Seuls les brouillons peuvent être supprimés
     if (invoice.status !== 'draft') {
       return NextResponse.json(
         { error: 'Seuls les brouillons peuvent être supprimés. Pour annuler une facture envoyée, utilisez l\'action "Annuler".' },
@@ -166,21 +168,23 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Supprimer la facture (les items seront supprimés en cascade)
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await serviceClient
       .from('provider_invoices')
       .delete()
-      .eq('id', invoiceId);
+      .eq('id', invoiceId)
+      .eq('provider_profile_id', profile.id);
 
     if (deleteError) {
-      console.error('Error deleting invoice:', deleteError);
+      console.error('[provider/invoices/[id]] DELETE error:', deleteError);
       return NextResponse.json({ error: deleteError.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    console.error('Error in DELETE /api/provider/invoices/[id]:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+    console.error('[provider/invoices/[id]] DELETE handler error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }
-

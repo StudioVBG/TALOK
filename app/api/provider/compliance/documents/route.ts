@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceClient } from '@/lib/supabase/service-client';
 import { createComplianceDocumentSchema } from '@/lib/validations/provider-compliance';
 
 export async function GET(request: NextRequest) {
@@ -23,8 +24,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Récupérer le profil prestataire
-    const { data: profile, error: profileError } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile, error: profileError } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -38,22 +40,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    // Récupérer les documents
-    const { data: documents, error: docsError } = await supabase
+    const { data: documents, error: docsError } = await serviceClient
       .from('provider_compliance_documents')
       .select('*')
       .eq('provider_profile_id', profile.id)
       .order('created_at', { ascending: false });
 
     if (docsError) {
-      console.error('Error fetching documents:', docsError);
+      console.error('[provider/compliance/documents] GET error:', docsError);
       return NextResponse.json({ error: docsError.message }, { status: 500 });
     }
 
     return NextResponse.json({ documents });
   } catch (error: unknown) {
-    console.error('Error in GET /api/provider/compliance/documents:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+    console.error('[provider/compliance/documents] GET handler error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }
 
@@ -69,8 +73,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
-    // Récupérer le profil prestataire
-    const { data: profile, error: profileError } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: profile, error: profileError } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
@@ -84,10 +89,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
     }
 
-    // Parser le body
     const body = await request.json();
 
-    // Valider les données
     const validationResult = createComplianceDocumentSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
@@ -99,7 +102,7 @@ export async function POST(request: NextRequest) {
     const validated = validationResult.data;
 
     // Vérifier si un document du même type existe déjà et est vérifié
-    const { data: existingDoc } = await supabase
+    const { data: existingDoc } = await serviceClient
       .from('provider_compliance_documents')
       .select('id, verification_status')
       .eq('provider_profile_id', profile.id)
@@ -107,8 +110,6 @@ export async function POST(request: NextRequest) {
       .eq('verification_status', 'verified')
       .single();
 
-    // Si un document vérifié existe, on ne peut pas en ajouter un nouveau du même type
-    // sauf si l'ancien est expiré
     if (existingDoc) {
       return NextResponse.json(
         { error: 'Un document vérifié de ce type existe déjà. Contactez le support pour le remplacer.' },
@@ -117,15 +118,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Supprimer les anciens documents pending du même type
-    await supabase
+    await serviceClient
       .from('provider_compliance_documents')
       .delete()
       .eq('provider_profile_id', profile.id)
       .eq('document_type', validated.document_type)
       .eq('verification_status', 'pending');
 
-    // Créer le document
-    const { data: document, error: createError } = await supabase
+    const { data: document, error: createError } = await serviceClient
       .from('provider_compliance_documents')
       .insert({
         provider_profile_id: profile.id,
@@ -136,19 +136,20 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (createError) {
-      console.error('Error creating document:', createError);
+      console.error('[provider/compliance/documents] POST create error:', createError);
       return NextResponse.json({ error: createError.message }, { status: 500 });
     }
 
-    // Mettre à jour le statut KYC
-    await supabase.rpc('update_provider_kyc_status', {
+    await serviceClient.rpc('update_provider_kyc_status', {
       p_provider_profile_id: profile.id,
     });
 
     return NextResponse.json({ document }, { status: 201 });
   } catch (error: unknown) {
-    console.error('Error in POST /api/provider/compliance/documents:', error);
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Erreur serveur" }, { status: 500 });
+    console.error('[provider/compliance/documents] POST handler error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { status: 500 }
+    );
   }
 }
-

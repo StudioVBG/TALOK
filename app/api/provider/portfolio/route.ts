@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@/lib/supabase/server';
+import { getServiceClient } from '@/lib/supabase/service-client';
 import { z } from 'zod';
 
 const createPortfolioItemSchema = z.object({
@@ -40,7 +41,8 @@ const createPortfolioItemSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createRouteHandlerClient();
-    
+    const serviceClient = getServiceClient();
+
     const { searchParams } = new URL(request.url);
     const providerId = searchParams.get('provider_id');
     const publicOnly = searchParams.get('public_only') === 'true';
@@ -48,31 +50,31 @@ export async function GET(request: NextRequest) {
     const serviceType = searchParams.get('service_type');
     const limit = parseInt(searchParams.get('limit') || '20');
     const offset = parseInt(searchParams.get('offset') || '0');
-    
+
     // Si pas de provider_id, récupérer celui de l'utilisateur connecté
     let targetProviderId = providerId;
-    
+
     if (!targetProviderId) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
       }
-      
-      const { data: profile } = await supabase
+
+      const { data: profile } = await serviceClient
         .from('profiles')
         .select('id, role')
         .eq('user_id', user.id)
         .single();
-      
+
       if (!profile || profile.role !== 'provider') {
         return NextResponse.json({ error: 'Accès réservé aux prestataires' }, { status: 403 });
       }
-      
+
       targetProviderId = profile.id;
     }
-    
-    // Construire la requête
-    let query = supabase
+
+    // Construire la requête via serviceClient
+    let query = serviceClient
       .from('provider_portfolio_items')
       .select('*', { count: 'exact' })
       .eq('provider_profile_id', targetProviderId)
@@ -122,45 +124,46 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createRouteHandlerClient();
-    
+    const serviceClient = getServiceClient();
+
     // Vérifier l'authentification
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
-    
-    // Récupérer le profil
-    const { data: profile } = await supabase
+
+    // Récupérer le profil via serviceClient
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
       .single();
-    
+
     if (!profile || profile.role !== 'provider') {
       return NextResponse.json({ error: 'Accès réservé aux prestataires' }, { status: 403 });
     }
-    
+
     // Parser et valider le body
     const body = await request.json();
     const validationResult = createPortfolioItemSchema.safeParse(body);
-    
+
     if (!validationResult.success) {
       return NextResponse.json(
         { error: 'Données invalides', details: validationResult.error.errors },
         { status: 400 }
       );
     }
-    
+
     const data = validationResult.data;
-    
+
     // Vérifier le nombre d'items en vedette si is_featured
     if (data.is_featured) {
-      const { count: featuredCount } = await supabase
+      const { count: featuredCount } = await serviceClient
         .from('provider_portfolio_items')
         .select('*', { count: 'exact', head: true })
         .eq('provider_profile_id', profile.id)
         .eq('is_featured', true);
-      
+
       if ((featuredCount || 0) >= 3) {
         return NextResponse.json(
           { error: 'Maximum 3 réalisations en vedette autorisées' },
@@ -168,9 +171,9 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-    
+
     // Créer l'item
-    const { data: item, error: createError } = await supabase
+    const { data: item, error: createError } = await serviceClient
       .from('provider_portfolio_items')
       .insert({
         provider_profile_id: profile.id,

@@ -3,15 +3,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { redirect, notFound } from "next/navigation";
 import { JobDetailClient } from "./JobDetailClient";
 import { Skeleton } from "@/components/ui/skeleton";
 
 
 async function fetchJobDetails(jobId: string, profileId: string) {
-  const supabase = await createClient();
+  const serviceClient = getServiceClient();
 
-  const { data: wo, error } = await supabase
+  const { data: wo, error } = await serviceClient
     .from("work_orders")
     .select(`
       *,
@@ -118,7 +119,8 @@ export default async function JobDetailPage({ params }: { params: { id: string }
 
   if (!user) redirect("/auth/signin");
 
-  const { data: profile } = await supabase
+  const serviceClient = getServiceClient();
+  const { data: profile } = await serviceClient
     .from("profiles")
     .select("id, role")
     .eq("user_id", user.id)
