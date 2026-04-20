@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getClientCsrfToken } from "@/lib/security/csrf";
 
 // ─── Query Keys ────────────────────────────────────────────
 export const adminKeys = {
@@ -35,10 +36,21 @@ async function adminMutate<T>(
   method: string,
   body?: unknown
 ): Promise<T> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+  const upperMethod = method.toUpperCase();
+  if (["POST", "PUT", "DELETE", "PATCH"].includes(upperMethod)) {
+    const csrfToken = getClientCsrfToken();
+    if (csrfToken) {
+      headers["x-csrf-token"] = csrfToken;
+    }
+  }
+
   const res = await fetch(url, {
     method,
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
+    credentials: "same-origin",
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
