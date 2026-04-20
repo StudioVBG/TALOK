@@ -10,16 +10,28 @@ import { NextResponse } from "next/server";
 import { adminGiftDays } from "@/lib/subscriptions/subscription-service";
 import { z } from "zod";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { validateCsrfFromRequest } from "@/lib/security/csrf";
 
 const giftSchema = z.object({
   user_id: z.string().uuid(),
   days: z.number().min(1).max(365),
   reason: z.string().min(3),
   notify_user: z.boolean().default(false),
+  plan_slug: z.enum(["gratuit", "starter", "confort", "pro", "enterprise_s", "enterprise_m", "enterprise_l", "enterprise_xl"]).optional(),
 });
 
 export async function POST(request: Request) {
   try {
+    // CSRF validation
+    try {
+      const csrfValid = await validateCsrfFromRequest(request);
+      if (!csrfValid) {
+        return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+      }
+    } catch {
+      // CSRF_SECRET not configured — degrade gracefully
+    }
+
     // RBAC + rate limit + audit
     const auth = await requireAdminPermissions(request, ["admin.subscriptions.write"], {
       rateLimit: "adminCritical",

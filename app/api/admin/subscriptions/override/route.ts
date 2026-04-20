@@ -10,16 +10,27 @@ import { NextResponse } from "next/server";
 import { adminOverridePlan } from "@/lib/subscriptions/subscription-service";
 import { z } from "zod";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { validateCsrfFromRequest } from "@/lib/security/csrf";
 
 const overrideSchema = z.object({
   user_id: z.string().uuid(),
-  target_plan: z.enum(["starter", "confort", "pro", "enterprise"]),
+  target_plan: z.enum(["gratuit", "starter", "confort", "pro", "enterprise_s", "enterprise_m", "enterprise_l", "enterprise_xl"]),
   reason: z.string().min(3),
   notify_user: z.boolean().default(false),
 });
 
 export async function POST(request: Request) {
   try {
+    // CSRF validation
+    try {
+      const csrfValid = await validateCsrfFromRequest(request);
+      if (!csrfValid) {
+        return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+      }
+    } catch {
+      // CSRF_SECRET not configured — degrade gracefully
+    }
+
     // RBAC + rate limit + audit
     const auth = await requireAdminPermissions(request, ["admin.subscriptions.write"], {
       rateLimit: "adminCritical",
@@ -54,6 +65,7 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Erreur serveur";
     console.error("[Admin Override POST]", error);
+    try { const Sentry = await import("@sentry/nextjs"); Sentry.captureException(error, { tags: { route: "admin.subscriptions.override" } }); } catch {}
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

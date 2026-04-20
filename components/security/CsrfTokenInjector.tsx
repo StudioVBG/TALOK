@@ -32,31 +32,47 @@ async function generateSafeCsrfToken(): Promise<string | null> {
 }
 
 export default async function CsrfTokenInjector() {
-  const token = await generateSafeCsrfToken();
-  
-  if (!token) {
-    return null;
-  }
-
-  // Injecter le cookie CSRF (HttpOnly, SameSite=Strict)
   const cookieStore = await cookies();
   const isProduction = process.env.NODE_ENV === "production";
-  
-  try {
-    cookieStore.set({
-      name: "csrf_token",
-      value: token,
-      path: "/",
-      httpOnly: true,
-      sameSite: "strict",
-      secure: isProduction,
-      maxAge: 24 * 60 * 60, // 24h
-    });
-  } catch {
-    // En Server Component read-only, le set cookie peut échouer silencieusement
+
+  // Réutiliser le token existant du cookie s'il est encore valide
+  const existingToken = cookieStore.get("csrf_token")?.value ?? null;
+
+  let token: string | null = null;
+
+  if (existingToken) {
+    // Vérifier que le token existant est encore valide (signature + expiry)
+    try {
+      const { validateCsrfToken } = await import("@/lib/security/csrf");
+      if (validateCsrfToken(existingToken)) {
+        token = existingToken;
+      }
+    } catch {
+      // Validation impossible, on régénère
+    }
   }
 
-  // Injecter la meta tag pour que le JS client puisse lire le token
+  if (!token) {
+    token = await generateSafeCsrfToken();
+    if (!token) return null;
+
+    // Écrire le cookie seulement quand on génère un nouveau token
+    try {
+      cookieStore.set({
+        name: "csrf_token",
+        value: token,
+        path: "/",
+        httpOnly: true,
+        sameSite: "strict",
+        secure: isProduction,
+        maxAge: 24 * 60 * 60, // 24h
+      });
+    } catch {
+      // En Server Component read-only, le set cookie peut échouer silencieusement
+    }
+  }
+
+  // La meta tag doit TOUJOURS correspondre au cookie
   return (
     <meta name="csrf-token" content={token} />
   );
