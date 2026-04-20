@@ -161,7 +161,7 @@ export function useRealtimeProvider(options: UseRealtimeProviderOptions = {}) {
         },
         (payload: RealtimePostgresChangesPayload<any>) => {
           const review = payload.new as Record<string, any>;
-          if (review.provider_id !== profileId) return;
+          if (review.provider_profile_id !== profileId) return;
 
           addEvent({
             type: "review",
