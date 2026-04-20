@@ -4,23 +4,16 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import { LucideIcon, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-interface NavItem {
-  name: string;
-  href: string;
-  icon: LucideIcon;
-}
+import { providerNavigation, providerSecondaryNav } from "./provider-nav-config";
 
 interface ProviderSidebarProps {
-  navigation: NavItem[];
-  secondaryNav: NavItem[];
   profile: {
     prenom: string | null;
     nom: string | null;
@@ -28,11 +21,9 @@ interface ProviderSidebarProps {
   };
 }
 
-export function ProviderSidebar({
-  navigation,
-  secondaryNav,
-  profile,
-}: ProviderSidebarProps) {
+export function ProviderSidebar({ profile }: ProviderSidebarProps) {
+  const navigation = providerNavigation;
+  const secondaryNav = providerSecondaryNav;
   const pathname = usePathname();
   const router = useRouter();
 
