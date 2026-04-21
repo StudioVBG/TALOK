@@ -1,21 +1,18 @@
-import { createClient } from "@/lib/supabase/server";
+import { requireAdminServiceClient } from "./requireAdminServiceClient";
 
 export async function fetchAdminProperties(options: { status?: string; search?: string; limit?: number; offset?: number } = {}) {
-  const supabase = await createClient();
+  const serviceClient = await requireAdminServiceClient();
+  if (!serviceClient) return { properties: [], total: 0 };
+
   const { status, search, limit = 50, offset = 0 } = options;
 
-  // Vérifier que l'utilisateur est authentifié
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { properties: [], total: 0 };
-
-  let query = supabase
+  let query = serviceClient
     .from("properties")
     .select("*, owner:profiles(id, prenom, nom)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (status && status !== "all") {
-    // Mapper le status UI vers DB si besoin, ou utiliser tel quel
     query = query.eq("statut", status);
   }
 
@@ -32,4 +29,3 @@ export async function fetchAdminProperties(options: { status?: string; search?: 
 
   return { properties: data || [], total: count || 0 };
 }
-
