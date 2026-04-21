@@ -54,9 +54,11 @@ const itemVariants = {
 export function DashboardClient({ stats }: DashboardClientProps) {
   useAdminRealtimeSync();
 
-  const occupancyRate = stats.totalProperties > 0
-    ? Math.round((stats.activeLeases / stats.totalProperties) * 100)
-    : 0;
+  const occupancyRate = stats.occupancyRate ?? (
+    stats.totalProperties > 0
+      ? Math.round((stats.activeLeases / stats.totalProperties) * 100)
+      : 0
+  );
 
   const collectionRate = stats.totalInvoices > 0
     ? Math.round(((stats.totalInvoices - stats.unpaidInvoices) / stats.totalInvoices) * 100)
@@ -66,8 +68,11 @@ export function DashboardClient({ stats }: DashboardClientProps) {
     { name: "Propriétaires", value: stats.usersByRole.owner, color: "hsl(217, 91%, 60%)" },
     { name: "Locataires", value: stats.usersByRole.tenant, color: "hsl(142, 71%, 45%)" },
     { name: "Prestataires", value: stats.usersByRole.provider, color: "hsl(38, 92%, 50%)" },
+    { name: "Syndics", value: stats.usersByRole.syndic, color: "hsl(190, 82%, 45%)" },
+    { name: "Agences", value: stats.usersByRole.agency, color: "hsl(245, 75%, 60%)" },
+    { name: "Garants", value: stats.usersByRole.guarantor, color: "hsl(172, 66%, 42%)" },
     { name: "Admins", value: stats.usersByRole.admin, color: "hsl(262, 83%, 58%)" },
-  ];
+  ].filter((r) => r.value > 0);
 
   const leaseStatusData = [
     { name: "Actifs", value: stats.leasesByStatus.active || 0, color: "hsl(142, 71%, 45%)" },
@@ -233,7 +238,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             value={stats.totalUsers}
             icon={Users}
             color="primary"
-            description={`${stats.usersByRole.owner} propriétaires, ${stats.usersByRole.tenant} locataires`}
+            description={`${stats.usersByRole.owner} proprio · ${stats.usersByRole.tenant} loc · ${stats.usersByRole.provider + stats.usersByRole.syndic + stats.usersByRole.agency + stats.usersByRole.guarantor} pro/garants`}
             delay={0}
           />
         </motion.div>
@@ -554,7 +559,7 @@ export function DashboardClient({ stats }: DashboardClientProps) {
           </Card>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
           <div className="rounded-xl bg-muted/30 p-4 text-center">
             <FolderOpen className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
             <p className="text-2xl font-bold">{stats.totalDocuments}</p>
@@ -569,6 +574,21 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             <Building2 className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
             <p className="text-2xl font-bold">{stats.usersByRole.provider}</p>
             <p className="text-xs text-muted-foreground">Prestataires</p>
+          </div>
+          <div className="rounded-xl bg-muted/30 p-4 text-center">
+            <Users className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
+            <p className="text-2xl font-bold">{stats.usersByRole.syndic}</p>
+            <p className="text-xs text-muted-foreground">Syndics</p>
+          </div>
+          <div className="rounded-xl bg-muted/30 p-4 text-center">
+            <Users className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
+            <p className="text-2xl font-bold">{stats.usersByRole.agency}</p>
+            <p className="text-xs text-muted-foreground">Agences</p>
+          </div>
+          <div className="rounded-xl bg-muted/30 p-4 text-center">
+            <Users className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
+            <p className="text-2xl font-bold">{stats.usersByRole.guarantor}</p>
+            <p className="text-xs text-muted-foreground">Garants</p>
           </div>
           <div className="rounded-xl bg-muted/30 p-4 text-center">
             <Users className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
