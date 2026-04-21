@@ -99,10 +99,10 @@ function MetricsSaasContent() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Activity className="w-6 h-6" /> Métriques SaaS
+            <Activity className="w-6 h-6" /> Métriques des abonnements
           </h1>
           <p className="text-muted-foreground">
-            MRR, ARPU, churn, LTV et rétention par cohorte.
+            Revenus mensuels, revenu moyen par client, annulations, valeur client et fidélité des nouveaux inscrits.
           </p>
         </div>
         <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
@@ -135,25 +135,25 @@ function MetricsSaasContent() {
           {/* KPI cards */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <KpiCard
-              label="MRR actuel"
+              label="Revenus mensuels"
               value={formatEur(data.current_mrr)}
               icon={DollarSign}
               accent="text-violet-600"
             />
             <KpiCard
-              label="ARR"
+              label="Revenus annuels"
               value={formatEur(data.arr)}
               icon={TrendingUp}
               accent="text-emerald-600"
             />
             <KpiCard
-              label="ARPU"
+              label="Revenu moyen par client"
               value={formatEur(data.arpu)}
               icon={Users}
               accent="text-blue-600"
             />
             <KpiCard
-              label="Churn 30 j"
+              label="Annulations (30 jours)"
               value={`${data.churn.last_30_days} %`}
               icon={data.churn.last_30_days > 5 ? TrendingDown : Activity}
               accent={
@@ -163,23 +163,23 @@ function MetricsSaasContent() {
                     ? "text-amber-600"
                     : "text-emerald-600"
               }
-              hint={`${data.churn.canceled_30_days} annulations / ${data.churn.active_at_30d_start} actifs`}
+              hint={`${data.churn.canceled_30_days} annulations sur ${data.churn.active_at_30d_start} abonnés`}
             />
             <KpiCard
-              label="LTV estimé"
+              label="Valeur client estimée"
               value={data.estimated_ltv ? formatEur(data.estimated_ltv) : "—"}
               icon={TrendingUp}
               accent="text-amber-600"
-              hint="ARPU / churn mensuel"
+              hint="Revenu moyen ÷ taux d'annulation mensuel"
             />
           </div>
 
           {/* MRR trend */}
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle>Évolution du MRR — 12 mois</CardTitle>
+              <CardTitle>Évolution des revenus mensuels — 12 mois</CardTitle>
               <CardDescription>
-                MRR récurrent estimé par mois (abonnés payants actifs)
+                Revenus récurrents estimés par mois (abonnés payants actifs)
               </CardDescription>
             </CardHeader>
             <CardContent className="h-64">
@@ -189,7 +189,7 @@ function MetricsSaasContent() {
                   <XAxis dataKey="month" className="text-xs" />
                   <YAxis tickFormatter={(v) => formatEur(v as number)} className="text-xs" />
                   <Tooltip
-                    formatter={(v: number) => [formatEur(v), "MRR"]}
+                    formatter={(v: number) => [formatEur(v), "Revenus"]}
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
                       border: "1px solid hsl(var(--border))",
@@ -205,7 +205,7 @@ function MetricsSaasContent() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card className="bg-card border-border">
               <CardHeader>
-                <CardTitle>Churn par plan (30 j)</CardTitle>
+                <CardTitle>Annulations par formule (30 jours)</CardTitle>
                 <CardDescription>Taux d&apos;annulation sur 30 jours glissants</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -239,8 +239,8 @@ function MetricsSaasContent() {
 
             <Card className="bg-card border-border">
               <CardHeader>
-                <CardTitle>Comparatif churn</CardTitle>
-                <CardDescription>30 jours vs 90 jours</CardDescription>
+                <CardTitle>Comparatif des annulations</CardTitle>
+                <CardDescription>30 jours comparé à 90 jours</CardDescription>
               </CardHeader>
               <CardContent className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
@@ -254,7 +254,7 @@ function MetricsSaasContent() {
                     <XAxis dataKey="period" className="text-xs" />
                     <YAxis tickFormatter={(v) => `${v} %`} className="text-xs" />
                     <Tooltip
-                      formatter={(v: number) => [`${v} %`, "Churn"]}
+                      formatter={(v: number) => [`${v} %`, "Annulations"]}
                       contentStyle={{
                         backgroundColor: "hsl(var(--card))",
                         border: "1px solid hsl(var(--border))",
@@ -270,9 +270,9 @@ function MetricsSaasContent() {
           {/* Cohorts */}
           <Card className="bg-card border-border">
             <CardHeader>
-              <CardTitle>Rétention par cohorte</CardTitle>
+              <CardTitle>Fidélité des nouveaux inscrits</CardTitle>
               <CardDescription>
-                Signups par mois · abonnés actifs M+1, M+3, M+6 (— = pas encore évaluable)
+                Inscriptions par mois · abonnés encore actifs après 1, 3 et 6 mois (— = pas encore évaluable)
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -280,11 +280,11 @@ function MetricsSaasContent() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-muted-foreground">
-                      <th className="py-2 pr-4 font-medium">Cohorte</th>
-                      <th className="py-2 pr-4 font-medium">Signups</th>
-                      <th className="py-2 pr-4 font-medium">M+1</th>
-                      <th className="py-2 pr-4 font-medium">M+3</th>
-                      <th className="py-2 pr-4 font-medium">M+6</th>
+                      <th className="py-2 pr-4 font-medium">Mois d&apos;inscription</th>
+                      <th className="py-2 pr-4 font-medium">Inscriptions</th>
+                      <th className="py-2 pr-4 font-medium">Après 1 mois</th>
+                      <th className="py-2 pr-4 font-medium">Après 3 mois</th>
+                      <th className="py-2 pr-4 font-medium">Après 6 mois</th>
                     </tr>
                   </thead>
                   <tbody>
