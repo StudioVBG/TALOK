@@ -50,6 +50,7 @@ interface WorkOrder {
 
 interface Ticket {
   id: string;
+  reference?: string | null;
   titre: string;
   description: string;
   statut: string;
@@ -116,8 +117,13 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-border group-hover:bg-blue-500 transition-colors" />
 
               <div className="flex-1 space-y-1">
-                {/* Priority + Category + Date */}
+                {/* Reference + Priority + Category + Date */}
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  {ticket.reference && (
+                    <span className="font-mono text-[11px] font-bold text-muted-foreground tracking-wide">
+                      {ticket.reference}
+                    </span>
+                  )}
                   <PriorityBadge priority={ticket.priorite} size="sm" />
                   {ticket.category && (
                     <Badge variant="secondary" className="text-[10px] py-0 capitalize">

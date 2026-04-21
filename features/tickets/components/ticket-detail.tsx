@@ -152,6 +152,11 @@ export function TicketDetailView({ ticketId, userRole, backHref }: TicketDetailV
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
+            {ticket.reference && (
+              <p className="font-mono text-xs font-bold text-muted-foreground tracking-wider">
+                {ticket.reference}
+              </p>
+            )}
             <h1 className="text-2xl font-black tracking-tight text-foreground">
               {ticket.titre}
             </h1>
