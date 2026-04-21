@@ -238,7 +238,9 @@ function AdminActionModal({ open, onClose, user, action, onSuccess }: ActionModa
   const [loading, setLoading] = useState(false);
   const [targetPlan, setTargetPlan] = useState<PlanSlug>("confort");
   const [giftDays, setGiftDays] = useState(30);
-  const [giftPlan, setGiftPlan] = useState<PlanSlug | "">("");
+  // Sentinel: Radix Select disallows SelectItem with value="".
+  const GIFT_KEEP_PLAN = "__keep_current__";
+  const [giftPlan, setGiftPlan] = useState<PlanSlug | typeof GIFT_KEEP_PLAN>(GIFT_KEEP_PLAN);
   const [reason, setReason] = useState("");
   const [notifyUser, setNotifyUser] = useState(true);
   // Refund-specific state
@@ -270,7 +272,7 @@ function AdminActionModal({ open, onClose, user, action, onSuccess }: ActionModa
         body.target_plan = targetPlan;
       } else if (action === "gift") {
         body.days = giftDays;
-        if (giftPlan) {
+        if (giftPlan && giftPlan !== GIFT_KEEP_PLAN) {
           body.plan_slug = giftPlan;
         }
       } else if (action === "refund") {
@@ -435,12 +437,12 @@ function AdminActionModal({ open, onClose, user, action, onSuccess }: ActionModa
               </div>
               <div className="space-y-2">
                 <Label className="text-foreground">Plan (optionnel — change le forfait pendant l&apos;essai)</Label>
-                <Select value={giftPlan} onValueChange={(v) => setGiftPlan(v as PlanSlug | "")}>
+                <Select value={giftPlan} onValueChange={(v) => setGiftPlan(v as PlanSlug | typeof GIFT_KEEP_PLAN)}>
                   <SelectTrigger className="bg-background border-input">
                     <SelectValue placeholder="Garder le plan actuel" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Garder le plan actuel</SelectItem>
+                    <SelectItem value={GIFT_KEEP_PLAN}>Garder le plan actuel</SelectItem>
                     {(["starter", "confort", "pro", "enterprise_s", "enterprise_m", "enterprise_l", "enterprise_xl"] as PlanSlug[]).map((slug) => (
                       <SelectItem key={slug} value={slug}>
                         {PLANS[slug].name}
