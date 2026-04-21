@@ -25,6 +25,7 @@ import { TicketStatusBadge } from "./ticket-status-badge";
 import { PriorityBadge } from "./priority-badge";
 import { TicketTimeline } from "./ticket-timeline";
 import { TicketChargesClassification } from "./ticket-charges-classification";
+import { TicketChargesTenantBadge } from "./ticket-charges-tenant-badge";
 import { TicketComments } from "./ticket-comments";
 import { AssignProviderModal } from "./assign-provider-modal";
 import { CreateWorkOrderButton } from "./create-work-order-button";
@@ -177,6 +178,15 @@ export function TicketDetailView({ ticketId, userRole, backHref }: TicketDetailV
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main column */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Badge charges récupérables (locataire uniquement) */}
+          {userRole === "tenant" && (
+            <TicketChargesTenantBadge
+              is_tenant_chargeable={ticket.is_tenant_chargeable}
+              charge_category_code={ticket.charge_category_code}
+              ticketStatus={ticket.statut}
+            />
+          )}
+
           {/* Description */}
           <GlassCard className="p-6 border-border bg-card">
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">
