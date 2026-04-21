@@ -41,7 +41,7 @@ export const POST = withSecurity(
       const { data: workOrder } = await serviceClient
         .from("work_orders")
         .select(
-          "id, ticket_id, property_id, provider_id, requester_role, owner_approval_status, title, date_intervention_prevue"
+          "id, ticket_id, property_id, provider_id, requester_role, owner_approval_status, title, category, date_intervention_prevue"
         )
         .eq("id", workOrderId)
         .maybeSingle();
@@ -56,6 +56,7 @@ export const POST = withSecurity(
         requester_role: string | null;
         owner_approval_status: string;
         title: string | null;
+        category: string | null;
         date_intervention_prevue: string | null;
       };
 
@@ -128,6 +129,7 @@ export const POST = withSecurity(
             ticket_reference: ticketReference,
             work_order_id: wo.id,
             title: wo.title,
+            category: wo.category,
             preferred_date: wo.date_intervention_prevue,
             recipient_user_id: providerUserId,
             via: "owner_approval",

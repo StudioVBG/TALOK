@@ -14,6 +14,11 @@ import {
   visitBookingCancelled as visitBookingCancelledTemplate,
   visitFeedbackRequest as visitFeedbackRequestTemplate,
   initialInvoiceEmail as initialInvoiceEmailTemplate,
+  tenantServiceBooked as tenantServiceBookedTemplate,
+  tenantServiceApprovalRequested as tenantServiceApprovalRequestedTemplate,
+  tenantServiceRejected as tenantServiceRejectedTemplate,
+  workOrderAssignedToProvider as workOrderAssignedToProviderTemplate,
+  ticketPartiesCommunesToSyndic as ticketPartiesCommunesToSyndicTemplate,
 } from "../_shared/email-templates.ts";
 import { normalizePhoneE164, maskPhone } from "../_shared/phone.ts";
 
@@ -350,6 +355,23 @@ async function processEvent(supabase: any, event: any) {
             category: payload.category,
           },
         });
+
+        const recipientInfo = await resolveEmailRecipient(supabase, recipient);
+        if (recipientInfo) {
+          const html = ticketPartiesCommunesToSyndicTemplate({
+            syndicName: recipientInfo.name,
+            reference: payload.ticket_reference ?? null,
+            title: payload.title || "Signalement",
+            priority: payload.priority ?? null,
+            ticketId: payload.ticket_id,
+          });
+          await sendOutboxEmail({
+            to: recipientInfo.email,
+            subject: `Signalement parties communes${refSuffix}`,
+            html,
+            tags: [{ name: "type", value: "ticket_parties_communes" }],
+          });
+        }
       }
       break;
     }
@@ -370,6 +392,26 @@ async function processEvent(supabase: any, event: any) {
             category: payload.category,
           },
         });
+
+        const recipientInfo = await resolveEmailRecipient(supabase, recipient);
+        if (recipientInfo) {
+          const html = tenantServiceBookedTemplate({
+            ownerName: recipientInfo.name,
+            tenantName: payload.tenant_name || "Votre locataire",
+            reference: payload.ticket_reference ?? null,
+            title: payload.title || "Service",
+            category: payload.category ?? null,
+            providerCompany: payload.provider_company ?? null,
+            preferredDate: payload.preferred_date ?? null,
+            ticketId: payload.ticket_id,
+          });
+          await sendOutboxEmail({
+            to: recipientInfo.email,
+            subject: `Votre locataire a réservé ${payload.provider_company || "un prestataire"}`,
+            html,
+            tags: [{ name: "type", value: "tenant_service_booked" }],
+          });
+        }
       }
       break;
     }
@@ -392,6 +434,25 @@ async function processEvent(supabase: any, event: any) {
             action_url: "/owner/approvals",
           },
         });
+
+        const recipientInfo = await resolveEmailRecipient(supabase, recipient);
+        if (recipientInfo) {
+          const html = tenantServiceApprovalRequestedTemplate({
+            ownerName: recipientInfo.name,
+            tenantName: payload.tenant_name || "Votre locataire",
+            reference: payload.ticket_reference ?? null,
+            title: payload.title || "Service",
+            category: payload.category ?? null,
+            providerCompany: payload.provider_company ?? null,
+            preferredDate: payload.preferred_date ?? null,
+          });
+          await sendOutboxEmail({
+            to: recipientInfo.email,
+            subject: `Action requise : validation d'une réservation${refSuffix}`,
+            html,
+            tags: [{ name: "type", value: "tenant_service_approval_required" }],
+          });
+        }
       }
       break;
     }
@@ -413,6 +474,22 @@ async function processEvent(supabase: any, event: any) {
             reason: payload.reason,
           },
         });
+
+        const recipientInfo = await resolveEmailRecipient(supabase, recipient);
+        if (recipientInfo) {
+          const html = tenantServiceRejectedTemplate({
+            tenantName: recipientInfo.name,
+            reference: payload.ticket_reference ?? null,
+            title: payload.title || "votre réservation",
+            reason: payload.reason ?? null,
+          });
+          await sendOutboxEmail({
+            to: recipientInfo.email,
+            subject: `Votre réservation a été refusée${refSuffix}`,
+            html,
+            tags: [{ name: "type", value: "tenant_service_rejected" }],
+          });
+        }
       }
       break;
     }
@@ -445,6 +522,24 @@ async function processEvent(supabase: any, event: any) {
           );
         } catch {
           /* non-blocking */
+        }
+
+        const recipientInfo = await resolveEmailRecipient(supabase, recipient);
+        if (recipientInfo) {
+          const html = workOrderAssignedToProviderTemplate({
+            providerName: recipientInfo.name,
+            reference: payload.ticket_reference ?? null,
+            title: payload.title || "Mission",
+            category: payload.category ?? null,
+            preferredDate: payload.preferred_date ?? null,
+            workOrderId: payload.work_order_id,
+          });
+          await sendOutboxEmail({
+            to: recipientInfo.email,
+            subject: `Nouvelle mission${refSuffix}`,
+            html,
+            tags: [{ name: "type", value: "work_order_assigned" }],
+          });
         }
       }
       break;
@@ -1380,6 +1475,42 @@ async function sendSignatureEmail(supabase: any, params: {
     }
   } catch (error) {
     console.error(`[Email] Erreur envoi:`, error);
+  }
+}
+
+/**
+ * Résout l'email + prénom d'un user_id pour l'envoi d'email transactionnel.
+ * Honore la préférence notification_settings.email_enabled.
+ * Retourne null si l'email ne peut pas être envoyé.
+ */
+async function resolveEmailRecipient(
+  supabase: any,
+  userId: string
+): Promise<{ email: string; name: string } | null> {
+  try {
+    const { data: settings } = await supabase
+      .from("notification_settings")
+      .select("email_enabled")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (settings?.email_enabled === false) return null;
+
+    const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+    const email = authUser?.user?.email;
+    if (!email) return null;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("prenom, nom")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const name =
+      profile?.prenom || profile?.nom || email.split("@")[0];
+    return { email, name };
+  } catch (error) {
+    console.error(`[Email] resolveEmailRecipient failed for ${userId}:`, error);
+    return null;
   }
 }
 

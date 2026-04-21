@@ -54,7 +54,7 @@ export const POST = withSecurity(
 
       const { data: profile } = await serviceClient
         .from("profiles")
-        .select("id, email")
+        .select("id, email, prenom, nom")
         .eq("user_id", user.id)
         .maybeSingle();
 
@@ -65,7 +65,15 @@ export const POST = withSecurity(
         );
       }
 
-      const profileData = profile as { id: string; email: string | null };
+      const profileData = profile as {
+        id: string;
+        email: string | null;
+        prenom: string | null;
+        nom: string | null;
+      };
+      const tenantName =
+        `${profileData.prenom ?? ""} ${profileData.nom ?? ""}`.trim() ||
+        "Votre locataire";
 
       // 1. Vérifier la permission
       const decision = await checkTenantBookingPermission({
@@ -210,6 +218,8 @@ export const POST = withSecurity(
             title: validated.title,
             provider_id: providerData.profile_id,
             provider_company: providerData.company_name,
+            tenant_name: tenantName,
+            preferred_date: validated.preferred_date ?? null,
             recipient_user_id: ownerUserId,
             requester_role: "tenant",
           },

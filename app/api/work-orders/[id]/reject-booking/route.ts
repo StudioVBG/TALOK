@@ -54,7 +54,7 @@ export const POST = withSecurity(
 
       const { data: workOrder } = await serviceClient
         .from("work_orders")
-        .select("id, ticket_id, property_id, owner_approval_status, requester_role")
+        .select("id, ticket_id, property_id, owner_approval_status, requester_role, title")
         .eq("id", workOrderId)
         .maybeSingle();
 
@@ -66,6 +66,7 @@ export const POST = withSecurity(
         property_id: string;
         owner_approval_status: string;
         requester_role: string | null;
+        title: string | null;
       };
 
       if (wo.owner_approval_status !== "pending") {
@@ -137,6 +138,7 @@ export const POST = withSecurity(
             ticket_id: wo.ticket_id,
             ticket_reference: ticketReference,
             work_order_id: wo.id,
+            title: wo.title,
             reason: reason ?? null,
             recipient_user_id: tenantUserId,
           },
