@@ -150,13 +150,6 @@ export async function fetchAdminStatsV2(): Promise<AdminStatsDataV2 | null> {
     .select("id", { count: "exact", head: true })
     .gte("created_at", startOfWeek);
 
-  // Comptes pour les roles non inclus dans la RPC admin_stats (syndic, agency, guarantor)
-  const [syndicCount, agencyCount, guarantorCount] = await Promise.all([
-    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "syndic"),
-    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "agency"),
-    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "guarantor"),
-  ]);
-
   // MRR + revenue by plan (from active/trialing subscriptions joined with subscription_plans)
   let mrr = 0;
   const revenueByPlan: Array<{ plan: string; mrr: number; subscribers: number }> = [];
@@ -233,9 +226,9 @@ export async function fetchAdminStatsV2(): Promise<AdminStatsDataV2 | null> {
       owner: baseRoles.owner || 0,
       tenant: baseRoles.tenant || 0,
       provider: baseRoles.provider || 0,
-      syndic: syndicCount.count || 0,
-      agency: agencyCount.count || 0,
-      guarantor: guarantorCount.count || 0,
+      syndic: baseRoles.syndic || 0,
+      agency: baseRoles.agency || 0,
+      guarantor: baseRoles.guarantor || 0,
     },
     newUsersThisMonth: newThisMonth.count || 0,
     newUsersPrevMonth: newPrevMonth.count || 0,
