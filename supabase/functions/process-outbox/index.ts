@@ -545,6 +545,46 @@ async function processEvent(supabase: any, event: any) {
       break;
     }
 
+    // Paiement reçu côté prestataire (Stripe Connect a transféré les fonds)
+    case "WorkOrder.PaymentReceived": {
+      const recipient = payload.recipient_user_id;
+      if (recipient) {
+        const amountCents = Number(payload.amount_cents || 0);
+        const amountEuros = (amountCents / 100).toFixed(2);
+        const paymentType = payload.payment_type || "full";
+        const label =
+          paymentType === "deposit"
+            ? "acompte"
+            : paymentType === "balance"
+              ? "solde"
+              : "paiement";
+
+        await sendNotification(supabase, {
+          type: "work_order_payment_received",
+          user_id: recipient,
+          title: "Paiement reçu",
+          message: `Le ${label} de ${amountEuros} € a été versé sur votre compte.`,
+          metadata: {
+            work_order_id: payload.work_order_id,
+            payment_type: paymentType,
+            amount_cents: amountCents,
+          },
+        });
+
+        // SMS non-bloquant : le prestataire est souvent sur le terrain
+        try {
+          await sendSmsNotification(
+            supabase,
+            recipient,
+            `Talok : ${amountEuros}€ versés sur votre compte. Détails dans votre espace.`
+          );
+        } catch {
+          /* non-blocking */
+        }
+      }
+      break;
+    }
+
     case "Lease.Activated":
       // Notifier le locataire que le bail est actif
       if (payload.tenant_user_id) {
