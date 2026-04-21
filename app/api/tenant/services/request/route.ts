@@ -11,6 +11,7 @@ import {
   TENANT_BOOKABLE_CATEGORIES,
   checkTenantBookingPermission,
 } from "@/lib/tickets/tenant-service-permissions";
+import { suggestForTenantBookableCategory } from "@/lib/tickets/charges-classification";
 
 const bodySchema = z.object({
   provider_id: z.string().uuid(),
@@ -136,6 +137,10 @@ export const POST = withSecurity(
       const requiresApproval = decision.permissions.requires_owner_approval;
       const approvalStatus = requiresApproval ? "pending" : "not_required";
 
+      // Classification charges récupérables (décret 87-713). Le self-service
+      // locataire est par nature récupérable : c'est le locataire qui initie.
+      const chargeSuggestion = suggestForTenantBookableCategory(validated.category);
+
       // 3. Créer le ticket (déclencheur du parcours pour le propriétaire aussi)
       const { data: ticket, error: ticketError } = await serviceClient
         .from("tickets")
@@ -150,6 +155,8 @@ export const POST = withSecurity(
           owner_id: decision.owner_profile_id,
           assigned_to: providerData.profile_id,
           statut: requiresApproval ? "open" : "assigned",
+          is_tenant_chargeable: chargeSuggestion.is_tenant_chargeable,
+          charge_category_code: chargeSuggestion.charge_category_code,
         })
         .select("id, reference")
         .single();
@@ -157,7 +164,7 @@ export const POST = withSecurity(
       if (ticketError) throw ticketError;
       const ticketRow = ticket as { id: string; reference: string | null };
 
-      // 4. Créer le work_order
+      // 4. Créer le work_order (hérite de la classification du ticket)
       const { data: workOrder, error: woError } = await serviceClient
         .from("work_orders")
         .insert({
@@ -172,6 +179,8 @@ export const POST = withSecurity(
           statut: requiresApproval ? "assigned" : "assigned",
           requester_role: "tenant",
           owner_approval_status: approvalStatus,
+          is_tenant_chargeable: chargeSuggestion.is_tenant_chargeable,
+          charge_category_code: chargeSuggestion.charge_category_code,
         })
         .select("id")
         .single();

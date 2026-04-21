@@ -11,6 +11,7 @@ import { ticketsQuerySchema, validateQueryParams } from "@/lib/validations/param
 import { withSecurity } from "@/lib/api/with-security";
 import { resolveTicketContext } from "@/lib/tickets/resolve-ticket-context";
 import { resolveSyndicForProperty } from "@/lib/tickets/resolve-syndic";
+import { suggestForTicketCategory } from "@/lib/tickets/charges-classification";
 
 /**
  * GET /api/tickets - Récupérer les tickets de l'utilisateur
@@ -264,6 +265,11 @@ export const POST = withSecurity(async function POST(request: Request) {
       ? await resolveSyndicForProperty(serviceClient, context.property_id)
       : { entity_id: null, syndic_profile_id: null, syndic_user_id: null };
 
+    // Suggestion de classification "charges récupérables" (décret 87-713).
+    // Pose les colonnes à la création ; le propriétaire peut changer
+    // ensuite via l'UI ticket. NULL = ambigu, à décider manuellement.
+    const chargeSuggestion = suggestForTicketCategory(validated.category ?? null);
+
     // Créer le ticket avec service client
     const { data: ticket, error: insertError } = await serviceClient
       .from("tickets")
@@ -276,6 +282,8 @@ export const POST = withSecurity(async function POST(request: Request) {
         entity_id: syndicRouting.entity_id,
         assigned_to: syndicRouting.syndic_profile_id,
         statut: syndicRouting.syndic_profile_id ? "acknowledged" : "open",
+        is_tenant_chargeable: chargeSuggestion.is_tenant_chargeable,
+        charge_category_code: chargeSuggestion.charge_category_code,
       })
       .select()
       .single();
