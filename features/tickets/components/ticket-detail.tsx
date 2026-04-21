@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { TicketStatusBadge } from "./ticket-status-badge";
 import { PriorityBadge } from "./priority-badge";
 import { TicketTimeline } from "./ticket-timeline";
+import { TicketChargesClassification } from "./ticket-charges-classification";
 import { TicketComments } from "./ticket-comments";
 import { AssignProviderModal } from "./assign-provider-modal";
 import { CreateWorkOrderButton } from "./create-work-order-button";
@@ -242,6 +243,21 @@ export function TicketDetailView({ ticketId, userRole, backHref }: TicketDetailV
 
         {/* Sidebar */}
         <div className="space-y-4">
+          {/* Classification charges récupérables (owner uniquement) */}
+          {userRole === "owner" && (
+            <TicketChargesClassification
+              ticketId={ticketId}
+              workOrderId={ticket.work_order_id ?? ticket.work_orders?.[0]?.id ?? null}
+              initial={{
+                is_tenant_chargeable: ticket.is_tenant_chargeable ?? null,
+                charge_category_code: ticket.charge_category_code ?? null,
+              }}
+              canInjectCharges={
+                ticket.statut === "resolved" || ticket.statut === "closed"
+              }
+            />
+          )}
+
           {/* Ticket info */}
           <GlassCard className="p-5 border-border bg-card space-y-4">
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
