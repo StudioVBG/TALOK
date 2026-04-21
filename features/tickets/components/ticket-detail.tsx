@@ -24,6 +24,9 @@ import { cn } from "@/lib/utils";
 import { TicketStatusBadge } from "./ticket-status-badge";
 import { PriorityBadge } from "./priority-badge";
 import { TicketTimeline } from "./ticket-timeline";
+import { TicketChargesClassification } from "./ticket-charges-classification";
+import { TicketChargesTenantBadge } from "./ticket-charges-tenant-badge";
+import { WorkOrderPayButton } from "./work-order-pay-button";
 import { TicketComments } from "./ticket-comments";
 import { AssignProviderModal } from "./assign-provider-modal";
 import { CreateWorkOrderButton } from "./create-work-order-button";
@@ -152,6 +155,11 @@ export function TicketDetailView({ ticketId, userRole, backHref }: TicketDetailV
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
+            {ticket.reference && (
+              <p className="font-mono text-xs font-bold text-muted-foreground tracking-wider">
+                {ticket.reference}
+              </p>
+            )}
             <h1 className="text-2xl font-black tracking-tight text-foreground">
               {ticket.titre}
             </h1>
@@ -171,6 +179,15 @@ export function TicketDetailView({ ticketId, userRole, backHref }: TicketDetailV
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main column */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Badge charges récupérables (locataire uniquement) */}
+          {userRole === "tenant" && (
+            <TicketChargesTenantBadge
+              is_tenant_chargeable={ticket.is_tenant_chargeable}
+              charge_category_code={ticket.charge_category_code}
+              ticketStatus={ticket.statut}
+            />
+          )}
+
           {/* Description */}
           <GlassCard className="p-6 border-border bg-card">
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider mb-3">
@@ -237,6 +254,63 @@ export function TicketDetailView({ ticketId, userRole, backHref }: TicketDetailV
 
         {/* Sidebar */}
         <div className="space-y-4">
+          {/* Paiement du prestataire (owner uniquement, work_order non soldé) */}
+          {userRole === "owner" &&
+            (() => {
+              const activeWo = ticket.work_orders?.find(
+                (wo: any) => wo.statut !== "cancelled" && wo.statut !== "fully_paid"
+              );
+              const woId = ticket.work_order_id ?? activeWo?.id ?? null;
+              if (!woId || !activeWo) return null;
+              // On autorise le paiement une fois un devis accepté
+              const canPay =
+                activeWo.statut === "quote_accepted" ||
+                activeWo.statut === "deposit_paid" ||
+                activeWo.statut === "work_completed" ||
+                activeWo.statut === "balance_pending";
+              if (!canPay) return null;
+              const paymentType =
+                activeWo.statut === "deposit_paid" ||
+                activeWo.statut === "balance_pending"
+                  ? "balance"
+                  : "full";
+              return (
+                <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+                  <p className="text-sm font-semibold text-foreground">
+                    {paymentType === "balance"
+                      ? "Solde à régler"
+                      : "Régler l'intervention"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Paiement sécurisé par carte. Les fonds sont transférés
+                    directement au prestataire.
+                  </p>
+                  <WorkOrderPayButton
+                    workOrderId={woId}
+                    paymentType={paymentType}
+                    hintLabel={
+                      paymentType === "balance" ? "Payer le solde" : "Payer"
+                    }
+                  />
+                </div>
+              );
+            })()}
+
+          {/* Classification charges récupérables (owner uniquement) */}
+          {userRole === "owner" && (
+            <TicketChargesClassification
+              ticketId={ticketId}
+              workOrderId={ticket.work_order_id ?? ticket.work_orders?.[0]?.id ?? null}
+              initial={{
+                is_tenant_chargeable: ticket.is_tenant_chargeable ?? null,
+                charge_category_code: ticket.charge_category_code ?? null,
+              }}
+              canInjectCharges={
+                ticket.statut === "resolved" || ticket.statut === "closed"
+              }
+            />
+          )}
+
           {/* Ticket info */}
           <GlassCard className="p-5 border-border bg-card space-y-4">
             <h3 className="text-sm font-bold text-muted-foreground uppercase tracking-wider">

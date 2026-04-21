@@ -494,3 +494,215 @@ export function visitFeedbackRequest(params: {
   </div>
 </div>`;
 }
+
+// ============================================
+// Tenant Self-Service — parcours locataire → prestataire
+// ============================================
+
+function bookingSummaryBox(params: {
+  reference: string | null;
+  title: string;
+  category: string | null;
+  providerCompany: string | null;
+  preferredDate: string | null;
+}): string {
+  const rows: string[] = [];
+  if (params.reference) {
+    rows.push(
+      `<tr><td style="padding: 6px 0; color: #64748b; font-size: 14px;">Référence</td><td style="padding: 6px 0; text-align: right; font-family: monospace; color: #1e293b;">${params.reference}</td></tr>`
+    );
+  }
+  rows.push(
+    `<tr><td style="padding: 6px 0; color: #64748b; font-size: 14px;">Objet</td><td style="padding: 6px 0; text-align: right; color: #1e293b;">${params.title}</td></tr>`
+  );
+  if (params.category) {
+    rows.push(
+      `<tr><td style="padding: 6px 0; color: #64748b; font-size: 14px;">Catégorie</td><td style="padding: 6px 0; text-align: right; color: #1e293b; text-transform: capitalize;">${params.category}</td></tr>`
+    );
+  }
+  if (params.providerCompany) {
+    rows.push(
+      `<tr><td style="padding: 6px 0; color: #64748b; font-size: 14px;">Prestataire</td><td style="padding: 6px 0; text-align: right; color: #1e293b;">${params.providerCompany}</td></tr>`
+    );
+  }
+  if (params.preferredDate) {
+    rows.push(
+      `<tr><td style="padding: 6px 0; color: #64748b; font-size: 14px;">Date souhaitée</td><td style="padding: 6px 0; text-align: right; color: #1e293b;">${params.preferredDate}</td></tr>`
+    );
+  }
+  return `
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 20px 0;">
+      <table style="width: 100%; border-collapse: collapse;">
+        ${rows.join("\n")}
+      </table>
+    </div>
+  `;
+}
+
+/** Email au propriétaire : son locataire vient de réserver un prestataire. */
+export function tenantServiceBooked(params: {
+  ownerName: string;
+  tenantName: string;
+  reference: string | null;
+  title: string;
+  category: string | null;
+  providerCompany: string | null;
+  preferredDate: string | null;
+  ticketId: string;
+}): string {
+  return baseWrapper(`
+    <h2 style="color: #1e293b; margin: 0 0 20px; font-size: 22px; font-weight: 600;">
+      Nouvelle réservation de service
+    </h2>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      Bonjour ${params.ownerName},
+    </p>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      ${params.tenantName} vient de réserver un prestataire via son espace Talok.
+      Vous êtes notifié à titre informatif — aucune action n'est requise.
+    </p>
+    ${bookingSummaryBox({
+      reference: params.reference,
+      title: params.title,
+      category: params.category,
+      providerCompany: params.providerCompany,
+      preferredDate: params.preferredDate,
+    })}
+    ${ctaButton("Voir le ticket", `${APP_URL()}/owner/tickets/${params.ticketId}`)}
+  `);
+}
+
+/** Email au propriétaire : validation requise pour une réservation locataire. */
+export function tenantServiceApprovalRequested(params: {
+  ownerName: string;
+  tenantName: string;
+  reference: string | null;
+  title: string;
+  category: string | null;
+  providerCompany: string | null;
+  preferredDate: string | null;
+}): string {
+  return baseWrapper(`
+    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 16px; border-radius: 8px; margin: 0 0 24px;">
+      <p style="margin: 0; color: #92400e; font-weight: 600; font-size: 15px;">
+        ⏳ Action requise : votre locataire attend votre validation
+      </p>
+    </div>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      Bonjour ${params.ownerName},
+    </p>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      ${params.tenantName} souhaite réserver un prestataire. Le prestataire ne
+      sera notifié qu'une fois votre validation confirmée.
+    </p>
+    ${bookingSummaryBox({
+      reference: params.reference,
+      title: params.title,
+      category: params.category,
+      providerCompany: params.providerCompany,
+      preferredDate: params.preferredDate,
+    })}
+    ${ctaButton("Valider ou refuser", `${APP_URL()}/owner/approvals`, "#f59e0b")}
+  `);
+}
+
+/** Email au locataire : le propriétaire a refusé sa réservation. */
+export function tenantServiceRejected(params: {
+  tenantName: string;
+  reference: string | null;
+  title: string;
+  reason: string | null;
+}): string {
+  const reasonBlock = params.reason
+    ? `<div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; border-radius: 8px; margin: 20px 0;">
+        <p style="margin: 0 0 8px; color: #991b1b; font-weight: 600;">Raison indiquée</p>
+        <p style="margin: 0; color: #7f1d1d; font-style: italic;">« ${params.reason} »</p>
+      </div>`
+    : "";
+
+  return baseWrapper(`
+    <h2 style="color: #1e293b; margin: 0 0 20px; font-size: 22px; font-weight: 600;">
+      Votre réservation a été refusée
+    </h2>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      Bonjour ${params.tenantName},
+    </p>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      Votre propriétaire n'a pas validé la réservation ${params.reference ? `<strong>${params.reference}</strong> ` : ""}concernant&nbsp;: <strong>${params.title}</strong>.
+    </p>
+    ${reasonBlock}
+    <p style="color: #475569; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
+      Vous pouvez échanger avec votre propriétaire depuis votre espace, ou
+      créer une demande classique qu'il prendra en charge lui-même.
+    </p>
+    ${ctaButton("Retourner à mes demandes", `${APP_URL()}/tenant/requests`, "#64748b")}
+  `);
+}
+
+/** Email au prestataire : nouvelle mission assignée. */
+export function workOrderAssignedToProvider(params: {
+  providerName: string;
+  reference: string | null;
+  title: string;
+  category: string | null;
+  preferredDate: string | null;
+  workOrderId: string;
+}): string {
+  return baseWrapper(`
+    <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 16px; border-radius: 8px; margin: 0 0 24px;">
+      <p style="margin: 0; color: #065f46; font-weight: 600; font-size: 15px;">
+        🛠️ Nouvelle mission assignée
+      </p>
+    </div>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      Bonjour ${params.providerName},
+    </p>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      Une nouvelle intervention vous a été confiée via Talok. Connectez-vous
+      pour accepter la mission et proposer un devis.
+    </p>
+    ${bookingSummaryBox({
+      reference: params.reference,
+      title: params.title,
+      category: params.category,
+      providerCompany: null,
+      preferredDate: params.preferredDate,
+    })}
+    ${ctaButton("Voir la mission", `${APP_URL()}/provider/tickets`, "#10b981")}
+  `);
+}
+
+/** Email au syndic : signalement parties communes. */
+export function ticketPartiesCommunesToSyndic(params: {
+  syndicName: string;
+  reference: string | null;
+  title: string;
+  priority: string | null;
+  ticketId: string;
+}): string {
+  const priorityLabel =
+    params.priority === "urgent" || params.priority === "urgente"
+      ? `<span style="display: inline-block; padding: 2px 10px; background: #fee2e2; color: #991b1b; border-radius: 999px; font-size: 12px; font-weight: 600; margin-left: 8px;">URGENT</span>`
+      : "";
+
+  return baseWrapper(`
+    <h2 style="color: #1e293b; margin: 0 0 20px; font-size: 22px; font-weight: 600;">
+      Signalement parties communes ${priorityLabel}
+    </h2>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      Bonjour ${params.syndicName},
+    </p>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      Un locataire d'une propriété que vous syndiquez vient d'ouvrir un
+      signalement sur les parties communes.
+    </p>
+    ${bookingSummaryBox({
+      reference: params.reference,
+      title: params.title,
+      category: "Parties communes",
+      providerCompany: null,
+      preferredDate: null,
+    })}
+    ${ctaButton("Traiter le signalement", `${APP_URL()}/copro/tickets`, "#6366f1")}
+  `);
+}
