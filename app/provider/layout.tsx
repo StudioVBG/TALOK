@@ -15,6 +15,7 @@ import { ProviderSidebar } from "@/components/layout/provider-sidebar";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
+import { OnboardingWrapper } from "@/components/onboarding/OnboardingWrapper";
 
 export default async function VendorLayout({
   children,
@@ -59,6 +60,11 @@ export default async function VendorLayout({
   return (
     <ErrorBoundary>
       <CsrfTokenInjector />
+      <OnboardingWrapper
+        role="provider"
+        profileId={profile.id}
+        userName={profile.prenom || ""}
+      >
       <div className="min-h-screen bg-gradient-to-br from-background via-orange-50/10 to-background dark:from-background dark:via-background dark:to-background">
         {/* Offline indicator */}
         <OfflineIndicator />
@@ -125,6 +131,7 @@ export default async function VendorLayout({
         {/* Mobile bottom navigation (< md) */}
         <ProviderBottomNav />
       </div>
+      </OnboardingWrapper>
     </ErrorBoundary>
   );
   } catch (e) {

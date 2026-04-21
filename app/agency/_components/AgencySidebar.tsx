@@ -24,6 +24,15 @@ interface AgencySidebarProps {
 const manifest = getSecondaryRoleManifest("agency");
 const navigation = [...manifest.navigation, ...manifest.footerNavigation];
 
+/** Mappe un href agence à l'id ciblé par le tour guidé (data-tour). */
+function agencyTourId(href: string): string | undefined {
+  if (href.includes("/mandates")) return "nav-mandates";
+  if (href.includes("/owners")) return "nav-owners";
+  if (href.includes("/accounting")) return "nav-accounting";
+  if (href.includes("/dashboard")) return "nav-dashboard";
+  return undefined;
+}
+
 export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -68,6 +77,7 @@ export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
                 <Link
                   key={item.name}
                   href={item.href}
+                  data-tour={agencyTourId(item.href)}
                   className={cn(
                     "group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200",
                     isActive
@@ -175,6 +185,7 @@ export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
                 <Link
                   key={item.name}
                   href={item.href}
+                  data-tour={agencyTourId(item.href)}
                   className={cn(
                     "flex flex-col items-center justify-center gap-0.5 min-h-[44px] transition-colors",
                     isActive

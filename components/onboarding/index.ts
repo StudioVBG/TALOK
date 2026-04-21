@@ -12,9 +12,17 @@ export {
   StartTourButton,
   AutoTourPrompt,
   ownerTourSteps,
+  tenantTourSteps,
+  syndicTourSteps,
+  providerTourSteps,
+  guarantorTourSteps,
+  agencyTourSteps,
 } from "./OnboardingTour";
 
-export type { TourStep } from "./OnboardingTour";
+export type { TourStep, TourRole } from "./OnboardingTour";
+
+// Wrapper générique (à monter dans les layouts serveur)
+export { OnboardingWrapper } from "./OnboardingWrapper";
 
 // Shell et progression
 export { OnboardingShell, OnboardingProgress } from "./onboarding-shell";

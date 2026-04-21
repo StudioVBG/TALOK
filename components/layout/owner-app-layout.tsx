@@ -475,15 +475,15 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
         {!isInWizard && (
           <SharedBottomNav
             items={[
-              { href: OWNER_ROUTES.dashboard.path, label: "Dashboard", icon: LayoutDashboard },
-              { href: OWNER_ROUTES.properties.path, label: "Biens", icon: Building2 },
-              { href: OWNER_ROUTES.money.path, label: "Loyers", icon: Euro },
-              { href: OWNER_ROUTES.contracts.path, label: "Baux", icon: FileText },
+              { href: OWNER_ROUTES.dashboard.path, label: "Dashboard", icon: LayoutDashboard, tourId: "nav-dashboard" },
+              { href: OWNER_ROUTES.properties.path, label: "Biens", icon: Building2, tourId: "nav-properties" },
+              { href: OWNER_ROUTES.money.path, label: "Loyers", icon: Euro, tourId: "nav-money" },
+              { href: OWNER_ROUTES.contracts.path, label: "Baux", icon: FileText, tourId: "nav-leases" },
             ]}
             moreItems={[
-              { href: OWNER_ROUTES.tickets.path, label: "Tickets", icon: Wrench },
+              { href: OWNER_ROUTES.tickets.path, label: "Tickets", icon: Wrench, tourId: "nav-tickets" },
               { href: "/owner/messages", label: "Messages", icon: MessageSquare },
-              { href: OWNER_ROUTES.documents.path, label: "Documents", icon: FileCheck },
+              { href: OWNER_ROUTES.documents.path, label: "Documents", icon: FileCheck, tourId: "nav-documents" },
               { href: "/owner/settings", label: "Paramètres", icon: Settings },
               { href: OWNER_ROUTES.support.path, label: "Aide", icon: HelpCircle },
             ]}

@@ -4,20 +4,23 @@
  * SOTA 2026 - Tour Guidé d'Onboarding Interactif (Mobile-First)
  *
  * Fonctionnalités:
- * - 12 étapes owner / 7 étapes tenant
+ * - 8 étapes owner / 5 étapes tenant / 6 syndic / 5 provider / 4 guarantor / 5 agency
  * - Supabase backend (avec fallback localStorage)
  * - Raccourcis clavier (← → Enter Escape)
  * - Support dark mode
  * - MOBILE-FIRST :
- *   - Auto-ouverture sidebar via custom event
- *   - Z-index boost sidebar pendant le spotlight
+ *   - Mesure réelle de la hauteur du tooltip (pas d'hardcode)
+ *   - Repositionnement sur scroll + resize + orientationchange
+ *   - Clamp dynamique sur la largeur effective
+ *   - Lock body scroll sur mobile ET desktop pendant le tour
+ *   - Évitement du bottom-nav et du header sticky
  *   - Swipe gauche/droite pour naviguer
  *   - ResizeObserver pour repositionnement
- *   - Scroll intelligent (pas de body lock sur mobile)
  */
 
-import { useState, useEffect, useCallback, createContext, useContext, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect, useCallback, useMemo, createContext, useContext, useRef } from "react";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -84,6 +87,10 @@ export function useOnboardingTour() {
 
 /** Breakpoint lg de Tailwind (sidebar visible en permanent) */
 const LG_BREAKPOINT = 1024;
+/** Hauteur du bottom-nav mobile (h-16 + safe area iOS). */
+const BOTTOM_NAV_SAFE_HEIGHT = 88;
+/** Hauteur d'un header sticky type. */
+const STICKY_HEADER_HEIGHT = 64;
 
 function isMobileViewport(): boolean {
   return typeof window !== "undefined" && window.innerWidth < LG_BREAKPOINT;
@@ -93,31 +100,25 @@ function isSmallScreen(): boolean {
   return typeof window !== "undefined" && window.innerWidth < 640;
 }
 
-/** Vérifie si un target est un lien de la sidebar */
+/** Vérifie si un target est un lien de la sidebar (desktop only, display:none en mobile). */
 function isSidebarTarget(target?: string): boolean {
   if (!target) return false;
   return target.includes("data-tour='nav-");
 }
 
 /**
- * Demande l'ouverture/fermeture du drawer sidebar sur mobile
- * via un CustomEvent écouté par les layouts owner/tenant.
+ * Bloque le scroll du body pendant le tour (mobile + desktop).
+ * Renvoie une fonction pour restaurer l'overflow précédent.
  */
-function requestSidebarState(open: boolean): void {
-  window.dispatchEvent(
-    new CustomEvent("tour:sidebar", { detail: { open } })
-  );
-}
-
-/**
- * Remonte le z-index de la sidebar <aside> au-dessus de l'overlay
- * pour que le spotlight puisse la mettre en valeur sur mobile.
- */
-function boostSidebarZIndex(boost: boolean): void {
-  const sidebar = document.querySelector("aside[data-tour-sidebar]") as HTMLElement | null;
-  if (sidebar) {
-    sidebar.style.zIndex = boost ? "9999" : "";
-  }
+function lockBodyScroll(): () => void {
+  const prevOverflow = document.body.style.overflow;
+  const prevTouchAction = document.body.style.touchAction;
+  document.body.style.overflow = "hidden";
+  document.body.style.touchAction = "none";
+  return () => {
+    document.body.style.overflow = prevOverflow;
+    document.body.style.touchAction = prevTouchAction;
+  };
 }
 
 // ============================================================================
@@ -128,16 +129,16 @@ const ownerTourSteps: TourStep[] = [
     id: "welcome",
     title: "Votre tableau de bord",
     description:
-      "Ici, vous voyez en un coup d'oeil vos revenus du mois, vos biens et vos baux actifs. Tout ce qu'il faut pour piloter vos locations.",
+      "Ici, vous voyez en un coup d'œil vos revenus du mois, vos biens et vos baux actifs. Tout ce qu'il faut pour piloter vos locations.",
     target: "[data-tour='dashboard-header']",
     position: "bottom",
     icon: Rocket,
   },
   {
     id: "properties",
-    title: "Gerez vos logements",
+    title: "Gérez vos logements",
     description:
-      "Ajoutez vos biens, renseignez les details (surface, DPE, equipements) et suivez leur occupation. Commencez par votre premier logement.",
+      "Ajoutez vos biens, renseignez les détails (surface, DPE, équipements) et suivez leur occupation. Commencez par votre premier logement.",
     target: "[data-tour='nav-properties']",
     position: "right",
     icon: Building2,
@@ -148,9 +149,9 @@ const ownerTourSteps: TourStep[] = [
   },
   {
     id: "leases",
-    title: "Creez votre premier bail",
+    title: "Créez votre premier bail",
     description:
-      "Generez un contrat de location conforme a la loi en 5 minutes. Votre locataire signe depuis son telephone. Zero paperasse.",
+      "Générez un contrat de location conforme à la loi en 5 minutes. Votre locataire signe depuis son téléphone. Plus de paperasse.",
     target: "[data-tour='nav-leases']",
     position: "right",
     icon: FileText,
@@ -159,23 +160,23 @@ const ownerTourSteps: TourStep[] = [
     id: "money",
     title: "Recevez vos loyers",
     description:
-      "Connectez votre compte bancaire pour recevoir les paiements de vos locataires. Les recus de loyer partent automatiquement.",
+      "Connectez votre compte bancaire pour recevoir les paiements de vos locataires. Les quittances partent automatiquement.",
     target: "[data-tour='nav-money']",
     position: "right",
     icon: Euro,
   },
   {
     id: "documents",
-    title: "Tous vos documents au meme endroit",
+    title: "Tous vos documents au même endroit",
     description:
-      "Baux signes, etats des lieux, quittances, assurances — tout est archive ici. Cherchez en 1 clic, partagez en 1 clic.",
+      "Baux signés, états des lieux, quittances, assurances — tout est archivé ici. Cherchez en 1 clic, partagez en 1 clic.",
     target: "[data-tour='nav-documents']",
     position: "right",
     icon: FileCheck,
   },
   {
     id: "tickets",
-    title: "Vos locataires vous signalent un probleme ?",
+    title: "Vos locataires vous signalent un problème ?",
     description:
       "Les demandes d'intervention arrivent ici. Assignez un prestataire, suivez l'avancement, validez la facture.",
     target: "[data-tour='nav-tickets']",
@@ -184,7 +185,7 @@ const ownerTourSteps: TourStep[] = [
   },
   {
     id: "command-palette",
-    title: "Retrouvez tout instantanement",
+    title: "Retrouvez tout instantanément",
     description:
       "Recherchez un locataire, un bien, un document, une facture. La recherche couvre toute votre gestion.",
     target: "[data-tour='search-button']",
@@ -195,7 +196,7 @@ const ownerTourSteps: TourStep[] = [
     id: "complete",
     title: "Ne ratez rien",
     description:
-      "Loyer en retard, bail a renouveler, document expirant — vous etes alerte en temps reel. Bonne gestion !",
+      "Loyer en retard, bail à renouveler, document expirant — vous êtes alerté en temps réel. Bonne gestion !",
     target: "[data-tour='notifications-bell']",
     position: "bottom",
     icon: Bell,
@@ -213,7 +214,7 @@ const tenantTourSteps: TourStep[] = [
     id: "dashboard-tenant",
     title: "Votre espace locataire",
     description:
-      "Bienvenue ! Ici vous gerez tout ce qui concerne votre location depuis votre telephone.",
+      "Bienvenue ! Ici vous gérez tout ce qui concerne votre location depuis votre téléphone.",
     target: "[data-tour='tenant-onboarding']",
     position: "bottom",
     icon: Rocket,
@@ -222,7 +223,7 @@ const tenantTourSteps: TourStep[] = [
     id: "lease-tenant",
     title: "Votre contrat de location",
     description:
-      "Consultez votre bail, les conditions, et signez les documents directement depuis l'app.",
+      "Consultez votre bail, les conditions, et signez les documents directement depuis l'application.",
     target: "[data-tour='nav-lease']",
     position: "right",
     icon: Building2,
@@ -231,7 +232,7 @@ const tenantTourSteps: TourStep[] = [
     id: "payments-tenant",
     title: "Payez votre loyer en 1 clic",
     description:
-      "Reglez par carte bancaire ou prelevement automatique. Votre recu est genere instantanement.",
+      "Réglez par carte bancaire ou prélèvement automatique. Votre quittance est générée instantanément.",
     target: "[data-tour='nav-payments']",
     position: "right",
     icon: Euro,
@@ -240,21 +241,169 @@ const tenantTourSteps: TourStep[] = [
     id: "documents-tenant",
     title: "Vos documents accessibles partout",
     description:
-      "Quittances, contrat signe, etat des lieux — telechargez-les a tout moment, meme sur mobile.",
+      "Quittances, contrat signé, état des lieux — téléchargez-les à tout moment, même sur mobile.",
     target: "[data-tour='nav-documents']",
     position: "right",
     icon: FileText,
   },
   {
     id: "requests-tenant",
-    title: "Signalez un probleme",
+    title: "Signalez un problème",
     description:
-      "Fuite, panne, travaux — signalez directement a votre proprietaire avec photos. Suivez l'avancement.",
+      "Fuite, panne, travaux — signalez directement à votre propriétaire avec photos. Suivez l'avancement.",
     target: "[data-tour='nav-requests']",
     position: "right",
     icon: Wrench,
     action: {
-      label: "Acceder a mon tableau de bord",
+      label: "Accéder à mon tableau de bord",
+    },
+  },
+];
+
+// ============================================================================
+// PROVIDER TOUR - 5 étapes SOTA 2026
+// ============================================================================
+const providerTourSteps: TourStep[] = [
+  {
+    id: "welcome-provider",
+    title: "Votre espace prestataire",
+    description:
+      "Trouvez des missions, envoyez vos devis et suivez vos interventions. Tout se pilote depuis ce tableau de bord.",
+    position: "center",
+    icon: Rocket,
+  },
+  {
+    id: "jobs-provider",
+    title: "Vos missions",
+    description:
+      "Consultez les interventions reçues, acceptez celles qui vous intéressent et répondez aux propriétaires en quelques secondes.",
+    target: "[data-tour='nav-jobs']",
+    position: "right",
+    icon: Wrench,
+  },
+  {
+    id: "quotes-provider",
+    title: "Devis et factures",
+    description:
+      "Rédigez vos devis depuis l'app, convertissez-les en factures à la fin du chantier, recevez le paiement directement.",
+    target: "[data-tour='nav-quotes']",
+    position: "right",
+    icon: FileText,
+  },
+  {
+    id: "calendar-provider",
+    title: "Planifiez vos interventions",
+    description:
+      "Bloquez vos créneaux, synchronisez votre agenda et évitez les conflits avec vos autres chantiers.",
+    target: "[data-tour='nav-calendar']",
+    position: "right",
+    icon: FileCheck,
+  },
+  {
+    id: "reviews-provider",
+    title: "Construisez votre réputation",
+    description:
+      "Chaque mission terminée donne lieu à un avis. Plus vous en collectez, plus vous êtes visible auprès des propriétaires.",
+    target: "[data-tour='nav-reviews']",
+    position: "right",
+    icon: Bell,
+    action: {
+      label: "Accéder à mes missions",
+    },
+  },
+];
+
+// ============================================================================
+// GUARANTOR TOUR - 4 étapes SOTA 2026
+// ============================================================================
+const guarantorTourSteps: TourStep[] = [
+  {
+    id: "welcome-guarantor",
+    title: "Votre espace garant",
+    description:
+      "Suivez les baux que vous cautionnez, consultez les paiements du locataire et vos obligations en un seul endroit.",
+    position: "center",
+    icon: Rocket,
+  },
+  {
+    id: "dashboard-guarantor",
+    title: "Vue d'ensemble",
+    description:
+      "Retrouvez chaque bail pour lequel vous vous êtes porté garant, avec les conditions, les montants et l'état des paiements.",
+    target: "[data-tour='nav-dashboard']",
+    position: "bottom",
+    icon: Building2,
+  },
+  {
+    id: "docs-guarantor",
+    title: "Vos documents",
+    description:
+      "Acte de cautionnement, justificatifs, pièces d'identité — tout reste accessible et téléchargeable à vie.",
+    target: "[data-tour='nav-documents']",
+    position: "bottom",
+    icon: FileCheck,
+  },
+  {
+    id: "complete-guarantor",
+    title: "Vous êtes prêt",
+    description:
+      "Vous serez alerté en cas d'impayé avéré uniquement. Aucun spam, juste ce qui compte pour vos engagements.",
+    position: "center",
+    icon: Bell,
+    action: {
+      label: "Consulter mes engagements",
+    },
+  },
+];
+
+// ============================================================================
+// AGENCY TOUR - 5 étapes SOTA 2026
+// ============================================================================
+const agencyTourSteps: TourStep[] = [
+  {
+    id: "welcome-agency",
+    title: "Votre espace agence",
+    description:
+      "Pilotez vos mandats, vos propriétaires, vos locataires et vos prestataires depuis une seule interface conforme loi Hoguet.",
+    position: "center",
+    icon: Rocket,
+  },
+  {
+    id: "mandates-agency",
+    title: "Vos mandats",
+    description:
+      "Créez et suivez vos mandats de gestion ou de location. Relances d'échéance automatiques avant l'expiration de votre carte pro.",
+    target: "[data-tour='nav-mandates']",
+    position: "right",
+    icon: FileText,
+  },
+  {
+    id: "owners-agency",
+    title: "Vos mandants",
+    description:
+      "Centralisez les propriétaires confiés. CRG (Compte Rendu de Gestion), reversements, honoraires — tout est tracé.",
+    target: "[data-tour='nav-owners']",
+    position: "right",
+    icon: Building2,
+  },
+  {
+    id: "accounting-agency",
+    title: "Comptabilité Hoguet",
+    description:
+      "Comptes séparés par mandant, balance détaillée, export FEC. Conforme aux obligations de la loi Hoguet.",
+    target: "[data-tour='nav-accounting']",
+    position: "right",
+    icon: FileCheck,
+  },
+  {
+    id: "complete-agency",
+    title: "Tout est prêt",
+    description:
+      "Invitez votre équipe, paramétrez votre charte, et lancez votre première annonce. Votre agence est opérationnelle.",
+    position: "center",
+    icon: Bell,
+    action: {
+      label: "Accéder à mon tableau de bord",
     },
   },
 ];
@@ -327,6 +476,7 @@ const syndicTourSteps: TourStep[] = [
 function Spotlight({ target, isActive }: { target?: string; isActive: boolean }) {
   const [rect, setRect] = useState<DOMRect | null>(null);
   const observerRef = useRef<ResizeObserver | null>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (!target || !isActive) {
@@ -337,34 +487,48 @@ function Spotlight({ target, isActive }: { target?: string; isActive: boolean })
     const isSidebar = isSidebarTarget(target);
     const mobile = isMobileViewport();
 
-    // Sur mobile, la sidebar n'existe pas (seulement SharedBottomNav)
-    // → on affiche le tooltip centré au lieu de cibler un élément absent
-    if (mobile && isSidebar) {
+    // Sur mobile, la sidebar desktop est display:none → on cherche l'équivalent
+    // rendu dans SharedBottomNav (qui expose le même data-tour).
+    // Si rien n'est trouvé, on retombe au tooltip centré (pas de spotlight).
+    const element = document.querySelector(target) as HTMLElement | null;
+    const visible = element
+      ? element.offsetParent !== null || element.getBoundingClientRect().width > 0
+      : false;
+
+    if (!element || !visible) {
+      if (mobile && isSidebar) {
+        setRect(null);
+        return;
+      }
       setRect(null);
       return;
     }
 
-    // Desktop ou cible non-sidebar
-    const element = document.querySelector(target);
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    element.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
 
-      const updateRect = () => setRect(element.getBoundingClientRect());
-      const timeout = setTimeout(updateRect, 100);
+    const updateRect = () => {
+      const r = element.getBoundingClientRect();
+      // Ignore les rects à 0 (élément caché)
+      if (r.width === 0 && r.height === 0) {
+        setRect(null);
+      } else {
+        setRect(r);
+      }
+    };
+    const timeout = setTimeout(updateRect, 100);
 
-      observerRef.current = new ResizeObserver(updateRect);
-      observerRef.current.observe(element);
+    observerRef.current = new ResizeObserver(updateRect);
+    observerRef.current.observe(element);
 
-      window.addEventListener("resize", updateRect);
-      window.addEventListener("scroll", updateRect, true);
+    window.addEventListener("resize", updateRect);
+    window.addEventListener("scroll", updateRect, true);
 
-      return () => {
-        clearTimeout(timeout);
-        observerRef.current?.disconnect();
-        window.removeEventListener("resize", updateRect);
-        window.removeEventListener("scroll", updateRect, true);
-      };
-    }
+    return () => {
+      clearTimeout(timeout);
+      observerRef.current?.disconnect();
+      window.removeEventListener("resize", updateRect);
+      window.removeEventListener("scroll", updateRect, true);
+    };
   }, [target, isActive]);
 
   if (!isActive) return null;
@@ -387,9 +551,12 @@ function Spotlight({ target, isActive }: { target?: string; isActive: boolean })
             borderRadius: "12px",
           }}
         >
-          {/* Anneau lumineux */}
+          {/* Anneau lumineux — désactivé si prefers-reduced-motion */}
           <div
-            className="absolute inset-0 rounded-xl animate-pulse"
+            className={cn(
+              "absolute inset-0 rounded-xl",
+              !prefersReducedMotion && "animate-pulse"
+            )}
             style={{
               boxShadow: "0 0 20px 4px rgba(59, 130, 246, 0.5)",
             }}
@@ -397,6 +564,32 @@ function Spotlight({ target, isActive }: { target?: string; isActive: boolean })
         </div>
       )}
     </div>
+  );
+}
+
+// ============================================================================
+// ACTION BUTTON - Utilise le router Next.js (SPA) au lieu de window.location
+// ============================================================================
+function TourActionButton({
+  action,
+}: {
+  action: { label: string; href?: string; onClick?: () => void };
+}) {
+  const router = useRouter();
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      className="mb-4 w-full"
+      onClick={() => {
+        if (action.href) {
+          router.push(action.href);
+        }
+        action.onClick?.();
+      }}
+    >
+      {action.label}
+    </Button>
   );
 }
 
@@ -421,37 +614,66 @@ function TourTooltip({
   onComplete: () => void;
 }) {
   const [position, setPosition] = useState({ top: 0, left: 0 });
+  const [tooltipSize, setTooltipSize] = useState({ width: 400, height: 300 });
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   const isFirst = currentStep === 0;
   const isLast = currentStep === totalSteps - 1;
   const isCentered = step.position === "center" || !step.target;
   const Icon = step.icon;
 
-  // Calcul de la position (responsive)
+  // Mesure la vraie hauteur/largeur rendue du tooltip
+  const measureTooltip = useCallback(() => {
+    if (!tooltipRef.current) return { width: 400, height: 300 };
+    const el = tooltipRef.current;
+    return {
+      width: el.offsetWidth || 400,
+      height: el.offsetHeight || 300,
+    };
+  }, []);
+
+  // Calcul de la position (responsive + fallback safe-area)
   const computePosition = useCallback(() => {
+    if (typeof window === "undefined") return;
     const mobile = isSmallScreen();
-    const tooltipWidth = mobile ? Math.min(window.innerWidth - 32, 400) : 400;
-    const tooltipHeight = 300;
+    const measured = measureTooltip();
+    const tooltipWidth = Math.min(
+      measured.width,
+      mobile ? window.innerWidth - 32 : 400
+    );
+    const tooltipHeight = measured.height;
     const padding = 16;
+    setTooltipSize({ width: tooltipWidth, height: tooltipHeight });
+
+    // Zones réservées : header sticky en haut, bottom-nav en bas (mobile)
+    const topSafe = STICKY_HEADER_HEIGHT + padding;
+    const bottomSafe = mobile ? BOTTOM_NAV_SAFE_HEIGHT + padding : padding;
+    const availableHeight = window.innerHeight - topSafe - bottomSafe;
 
     if (isCentered) {
+      const centerTop = topSafe + (availableHeight - tooltipHeight) / 2;
       setPosition({
-        top: window.innerHeight / 2 - tooltipHeight / 2,
-        left: window.innerWidth / 2 - tooltipWidth / 2,
+        top: Math.max(topSafe, centerTop),
+        left: Math.max(padding, (window.innerWidth - tooltipWidth) / 2),
       });
       return;
     }
 
     if (!step.target) return;
 
-    const element = document.querySelector(step.target);
-    if (!element) {
-      // Fallback au centre
+    const element = document.querySelector(step.target) as HTMLElement | null;
+    const visible = element
+      ? element.offsetParent !== null || element.getBoundingClientRect().width > 0
+      : false;
+
+    if (!element || !visible) {
+      // Fallback : tooltip centré dans la zone safe
+      const centerTop = topSafe + (availableHeight - tooltipHeight) / 2;
       setPosition({
-        top: window.innerHeight / 2 - tooltipHeight / 2,
-        left: window.innerWidth / 2 - tooltipWidth / 2,
+        top: Math.max(topSafe, centerTop),
+        left: Math.max(padding, (window.innerWidth - tooltipWidth) / 2),
       });
       return;
     }
@@ -463,12 +685,16 @@ function TourTooltip({
     if (mobile) {
       // Mobile : toujours centré horizontalement, sous ou au-dessus de l'élément
       left = (window.innerWidth - tooltipWidth) / 2;
-      if (rect.bottom + tooltipHeight + padding < window.innerHeight) {
+      const spaceBelow = window.innerHeight - bottomSafe - rect.bottom;
+      const spaceAbove = rect.top - topSafe;
+
+      if (spaceBelow >= tooltipHeight + padding) {
         top = rect.bottom + padding;
-      } else if (rect.top - tooltipHeight - padding > 0) {
+      } else if (spaceAbove >= tooltipHeight + padding) {
         top = rect.top - tooltipHeight - padding;
       } else {
-        top = Math.max(padding, (window.innerHeight - tooltipHeight) / 2);
+        // Aucune place : on centre dans la zone safe
+        top = topSafe + Math.max(0, (availableHeight - tooltipHeight) / 2);
       }
     } else {
       switch (step.position) {
@@ -492,21 +718,41 @@ function TourTooltip({
       }
     }
 
-    // Clamp dans le viewport
-    top = Math.max(padding, Math.min(top, window.innerHeight - tooltipHeight - padding));
+    // Clamp dans le viewport en tenant compte des zones safe
+    top = Math.max(topSafe, Math.min(top, window.innerHeight - bottomSafe - tooltipHeight));
     left = Math.max(padding, Math.min(left, window.innerWidth - tooltipWidth - padding));
 
     setPosition({ top, left });
-  }, [step, isCentered]);
+  }, [step, isCentered, measureTooltip]);
 
-  // Recalculer à chaque changement d'étape + observer le resize
+  // Recalculer à chaque changement d'étape + observer resize, scroll, orientation
   useEffect(() => {
-    computePosition();
+    // Double-raf pour laisser le tooltip se rendre avant de mesurer
+    let raf1 = 0;
+    let raf2 = 0;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(computePosition);
+    });
+
     window.addEventListener("resize", computePosition);
     window.addEventListener("orientationchange", computePosition);
+    window.addEventListener("scroll", computePosition, true);
+
+    // ResizeObserver sur le tooltip : si le contenu grandit (texte long),
+    // la hauteur change et on repositionne.
+    let ro: ResizeObserver | null = null;
+    if (tooltipRef.current && typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(computePosition);
+      ro.observe(tooltipRef.current);
+    }
+
     return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
       window.removeEventListener("resize", computePosition);
       window.removeEventListener("orientationchange", computePosition);
+      window.removeEventListener("scroll", computePosition, true);
+      ro?.disconnect();
     };
   }, [computePosition, currentStep]);
 
@@ -542,33 +788,25 @@ function TourTooltip({
     <motion.div
       ref={tooltipRef}
       key={step.id}
-      initial={{ opacity: 0, scale: 0.9, y: 10 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.9, y: -10 }}
-      transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      initial={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: 10 }}
+      animate={prefersReducedMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+      exit={prefersReducedMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9, y: -10 }}
+      transition={prefersReducedMotion ? { duration: 0 } : { type: "spring", stiffness: 300, damping: 25 }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       className={cn(
         "fixed z-[10000] w-[calc(100%-2rem)] sm:w-[400px] max-w-[400px]",
-        "bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden",
-        "mx-auto sm:mx-0",
-        isCentered && "transform -translate-x-1/2 -translate-y-1/2"
+        "bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden"
       )}
       style={{
-        top: isCentered ? "50%" : position.top,
-        left: isCentered
-          ? "50%"
-          : Math.max(
-              16,
-              Math.min(
-                position.left,
-                typeof window !== "undefined" ? window.innerWidth - 320 : position.left
-              )
-            ),
+        top: position.top,
+        left: position.left,
+        maxHeight: `calc(100dvh - ${STICKY_HEADER_HEIGHT + BOTTOM_NAV_SAFE_HEIGHT + 32}px)`,
+        overflowY: "auto",
       }}
     >
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 text-white">
+      <div className="bg-blue-600 p-4 text-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
             {Icon && (
@@ -594,21 +832,7 @@ function TourTooltip({
           {step.description}
         </p>
 
-        {step.action && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="mb-4 w-full"
-            onClick={() => {
-              if (step.action?.href) {
-                window.location.href = step.action.href;
-              }
-              step.action?.onClick?.();
-            }}
-          >
-            {step.action.label}
-          </Button>
-        )}
+        {step.action && <TourActionButton action={step.action} />}
 
         {/* Progress */}
         <div className="mb-3">
@@ -669,12 +893,25 @@ function TourTooltip({
 // ============================================================================
 // PROVIDER - Context + Supabase backend + Keyboard + Mobile sidebar
 // ============================================================================
+type TourRole = "owner" | "tenant" | "syndic" | "provider" | "guarantor" | "agency" | "admin";
+
 interface OnboardingTourProviderProps {
   children: React.ReactNode;
-  role?: "owner" | "tenant" | "syndic";
+  role?: TourRole;
   profileId?: string;
   storageKey?: string;
 }
+
+const ROLE_STEPS: Record<TourRole, TourStep[]> = {
+  owner: ownerTourSteps,
+  tenant: tenantTourSteps,
+  syndic: syndicTourSteps,
+  provider: providerTourSteps,
+  guarantor: guarantorTourSteps,
+  agency: agencyTourSteps,
+  // Admin : pas de tour guidé (profil interne). On reste avec WelcomeModal + 0 étape.
+  admin: [],
+};
 
 export function OnboardingTourProvider({
   children,
@@ -686,13 +923,9 @@ export function OnboardingTourProvider({
   const [currentStep, setCurrentStep] = useState(0);
   const [hasCompletedTour, setHasCompletedTour] = useState(true);
   const isActiveRef = useRef(false);
+  const unlockScrollRef = useRef<(() => void) | null>(null);
 
-  const steps =
-    role === "owner"
-      ? ownerTourSteps
-      : role === "syndic"
-      ? syndicTourSteps
-      : tenantTourSteps;
+  const steps = useMemo(() => ROLE_STEPS[role] ?? [], [role]);
   const totalSteps = steps.length;
 
   // Load completion state
@@ -745,24 +978,21 @@ export function OnboardingTourProvider({
   }, [totalSteps]);
 
   const startTour = useCallback(() => {
+    if (totalSteps === 0) return; // Rôle sans tour (ex : admin)
     setCurrentStep(0);
     setIsActive(true);
     isActiveRef.current = true;
-    // Sur desktop uniquement, bloquer le scroll du body
-    if (!isMobileViewport()) {
-      document.body.style.overflow = "hidden";
-    }
-  }, []);
+    // Lock body scroll sur mobile ET desktop pour stabiliser la position
+    unlockScrollRef.current?.();
+    unlockScrollRef.current = lockBodyScroll();
+  }, [totalSteps]);
 
   const endTour = useCallback(
     (completed = false) => {
       setIsActive(false);
       isActiveRef.current = false;
-      document.body.style.overflow = "";
-
-      // Nettoyer l'état mobile (fermer sidebar, restaurer z-index)
-      boostSidebarZIndex(false);
-      requestSidebarState(false);
+      unlockScrollRef.current?.();
+      unlockScrollRef.current = null;
 
       if (completed) {
         localStorage.setItem(storageKey, "true");
@@ -909,7 +1139,7 @@ export function AutoTourPrompt() {
       exit={{ opacity: 0, y: 20 }}
       className="fixed bottom-24 right-4 sm:right-6 z-50 max-w-[calc(100%-2rem)] sm:max-w-sm"
     >
-      <div className="bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl p-4 sm:p-5 text-white shadow-2xl">
+      <div className="bg-blue-600 rounded-2xl p-4 sm:p-5 text-white shadow-2xl">
         <div className="flex items-start gap-3">
           <div className="p-2 bg-white/20 rounded-lg shrink-0">
             <Sparkles className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -950,5 +1180,13 @@ export function AutoTourPrompt() {
   );
 }
 
-export { ownerTourSteps, tenantTourSteps };
+export {
+  ownerTourSteps,
+  tenantTourSteps,
+  syndicTourSteps,
+  providerTourSteps,
+  guarantorTourSteps,
+  agencyTourSteps,
+};
+export type { TourRole };
 export type { TourStep };
