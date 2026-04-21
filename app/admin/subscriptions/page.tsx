@@ -82,6 +82,7 @@ import {
 import { cn } from "@/lib/utils";
 import { exportCSV } from "@/lib/utils/export-csv";
 import { useToast } from "@/components/ui/use-toast";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 
 // ============================================
 // STATS CARDS
@@ -295,7 +296,7 @@ function AdminActionModal({ open, onClose, user, action, onSuccess }: ActionModa
         };
       }
 
-      const res = await fetch(endpoint, {
+      const res = await fetchWithCsrf(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
