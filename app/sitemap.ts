@@ -113,13 +113,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  // /auth/signup redirige (307) vers /signup/role. Seule la cible finale
+  // est listee pour eviter un redirect dans le sitemap.
   const authPages: MetadataRoute.Sitemap = [
-    {
-      url: `${BASE_URL}/auth/signup`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
     {
       url: `${BASE_URL}/signup/role`,
       lastModified: now,
