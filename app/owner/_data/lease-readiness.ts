@@ -56,6 +56,11 @@ export interface LeaseReadinessDocument {
 export interface LeaseReadinessEdl {
   id: string;
   status: EdlStatus;
+  // Nombre de signatures effectives (bailleur + locataire) présentes sur l'EDL.
+  // Utilisé comme filet de sécurité : lorsqu'un seal a échoué après l'enregistrement
+  // des 2 signatures, le status reste parfois à "completed" alors que l'EDL est
+  // déjà signé par les deux parties. On considère alors l'EDL comme "signed".
+  signatures_count?: number;
 }
 
 export interface LeaseDpeStatus {
@@ -466,7 +471,7 @@ export function deriveLeaseReadinessState(
         "L'état des lieux existe mais n'est pas encore finalisé ni signé.",
       href: `/owner/inspections/${edl.id}`,
     };
-  } else if (edl.status === "completed") {
+  } else if (edl.status === "completed" && (edl.signatures_count ?? 0) < 2) {
     edlState = {
       status: "awaiting_signature",
       label: "Signature EDL requise",
@@ -475,6 +480,8 @@ export function deriveLeaseReadinessState(
       href: `/owner/inspections/${edl.id}`,
     };
   } else {
+    // status === "signed" OU status === "completed" avec 2/2 signatures
+    // (cas où le seal a échoué après signature — l'EDL est bien signé).
     edlState = {
       status: "signed",
       label: "EDL signé",
