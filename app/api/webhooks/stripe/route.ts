@@ -904,6 +904,19 @@ export async function POST(request: NextRequest) {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const invoiceId = paymentIntent.metadata?.invoice_id;
 
+        // Paiement d'intervention (work_order_payment) — parcours isolé :
+        // aucun invoiceId, le flux est complètement séparé des loyers.
+        if (paymentIntent.metadata?.type === "work_order_payment") {
+          try {
+            await handleWorkOrderPaymentSucceeded(supabase, paymentIntent);
+          } catch (woErr) {
+            console.error("[Stripe Webhook] work_order payment handling failed:", woErr);
+          }
+          // On sort ici : le reste du handler traite uniquement les invoices
+          // (loyer / régul charges).
+          return new Response(JSON.stringify({ received: true }), { status: 200 });
+        }
+
         // Sync rent_payments if this is a Connect rent payment
         if (paymentIntent.metadata?.type === "rent") {
           try {
@@ -1758,6 +1771,120 @@ export async function POST(request: NextRequest) {
       { error: error instanceof Error ? error.message : "Une erreur est survenue" },
       { status: 500 }
     );
+  }
+}
+
+// ============================================================================
+// Work Order payment — handler dédié
+// ============================================================================
+// Déclenché quand un paiement Stripe (Connect) d'une intervention aboutit.
+// Le montant net est déjà routé vers le compte du prestataire par Stripe
+// (transfer_data.destination + application_fee). Ici on met à jour la
+// ligne work_order_payments, on fait avancer le work_order, et — si la
+// classification marque l'intervention comme récupérable — on injecte
+// automatiquement l'écriture dans charge_entries.
+
+async function handleWorkOrderPaymentSucceeded(
+  supabase: any,
+  paymentIntent: Stripe.PaymentIntent
+) {
+  const workOrderId = paymentIntent.metadata?.work_order_id;
+  const paymentType = paymentIntent.metadata?.payment_type || "full";
+  if (!workOrderId) {
+    console.warn("[Stripe Webhook] work_order_payment: missing work_order_id in metadata");
+    return;
+  }
+
+  // Marquer la ligne work_order_payments correspondante comme succeeded.
+  // On matche par stripe_payment_intent_id (posé à la création de la session)
+  // sinon fallback sur metadata.checkout_session_id.
+  const { data: existing } = await supabase
+    .from("work_order_payments")
+    .select("id")
+    .eq("work_order_id", workOrderId)
+    .eq("stripe_payment_intent_id", paymentIntent.id)
+    .maybeSingle();
+
+  const transferId =
+    typeof paymentIntent.latest_charge === "string"
+      ? paymentIntent.latest_charge
+      : (paymentIntent.latest_charge as any)?.transfer || null;
+
+  if (existing) {
+    await supabase
+      .from("work_order_payments")
+      .update({
+        status: "succeeded",
+        escrow_status: "released",
+        stripe_transfer_id: transferId,
+      })
+      .eq("id", (existing as { id: string }).id);
+  } else {
+    // Fallback : la Checkout Session a été créée sans PaymentIntent connu,
+    // on cherche par payment_type restant en 'pending'.
+    await supabase
+      .from("work_order_payments")
+      .update({
+        status: "succeeded",
+        escrow_status: "released",
+        stripe_payment_intent_id: paymentIntent.id,
+        stripe_transfer_id: transferId,
+      })
+      .eq("work_order_id", workOrderId)
+      .eq("payment_type", paymentType)
+      .eq("status", "pending");
+  }
+
+  // Avancer le statut du work_order :
+  //   'deposit' → deposit_paid
+  //   'balance' ou 'full' → fully_paid
+  const nextStatut =
+    paymentType === "deposit" ? "deposit_paid" : "fully_paid";
+  await supabase
+    .from("work_orders")
+    .update({ statut: nextStatut })
+    .eq("id", workOrderId);
+
+  // Injection automatique dans charge_entries si is_tenant_chargeable=true
+  // (idempotent côté helper — safe à appeler même si le WO n'est pas
+  // complètement payé, il ne fera rien tant qu'aucun paiement n'est
+  // succeeded avec montant > 0).
+  if (nextStatut === "fully_paid") {
+    try {
+      const { injectChargeEntryForWorkOrder } = await import(
+        "@/lib/tickets/inject-charge-entry"
+      );
+      await injectChargeEntryForWorkOrder(supabase, workOrderId);
+    } catch (err) {
+      console.error(
+        "[Stripe Webhook] work_order auto-inject charge failed:",
+        err
+      );
+    }
+  }
+
+  // Outbox : notifier le prestataire que les fonds sont transférés
+  const payeeProfileId = paymentIntent.metadata?.payee_profile_id;
+  if (payeeProfileId) {
+    const { data: payeeProfile } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .eq("id", payeeProfileId)
+      .maybeSingle();
+    const payeeUserId =
+      (payeeProfile as { user_id: string | null } | null)?.user_id ?? null;
+
+    if (payeeUserId) {
+      await supabase.from("outbox").insert({
+        event_type: "WorkOrder.PaymentReceived",
+        payload: {
+          work_order_id: workOrderId,
+          payment_type: paymentType,
+          amount_cents: paymentIntent.amount,
+          recipient_user_id: payeeUserId,
+        },
+      });
+    }
   }
 }
 
