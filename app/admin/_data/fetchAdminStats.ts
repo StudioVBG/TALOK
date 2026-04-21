@@ -9,6 +9,9 @@ export interface AdminStatsData {
     owner: number;
     tenant: number;
     provider: number;
+    syndic?: number;
+    agency?: number;
+    guarantor?: number;
   };
   totalProperties: number;
   propertiesByType: Record<string, number>;
@@ -34,7 +37,15 @@ export interface AdminStatsData {
 // Type V2 avec données réelles (revenus mensuels, tendances, modération, abonnements)
 export interface AdminStatsDataV2 {
   totalUsers: number;
-  usersByRole: { admin: number; owner: number; tenant: number; provider: number };
+  usersByRole: {
+    admin: number;
+    owner: number;
+    tenant: number;
+    provider: number;
+    syndic: number;
+    agency: number;
+    guarantor: number;
+  };
   newUsersThisMonth: number;
   newUsersPrevMonth: number;
   totalProperties: number;
@@ -139,6 +150,13 @@ export async function fetchAdminStatsV2(): Promise<AdminStatsDataV2 | null> {
     .select("id", { count: "exact", head: true })
     .gte("created_at", startOfWeek);
 
+  // Comptes pour les roles non inclus dans la RPC admin_stats (syndic, agency, guarantor)
+  const [syndicCount, agencyCount, guarantorCount] = await Promise.all([
+    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "syndic"),
+    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "agency"),
+    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("role", "guarantor"),
+  ]);
+
   // MRR + revenue by plan (from active/trialing subscriptions joined with subscription_plans)
   let mrr = 0;
   const revenueByPlan: Array<{ plan: string; mrr: number; subscribers: number }> = [];
@@ -206,9 +224,19 @@ export async function fetchAdminStatsV2(): Promise<AdminStatsDataV2 | null> {
     ? Math.round(((base.totalInvoices - base.unpaidInvoices) / base.totalInvoices) * 100)
     : 100;
 
+  const baseRoles = base.usersByRole || { admin: 0, owner: 0, tenant: 0, provider: 0 };
+
   return {
     totalUsers: base.totalUsers,
-    usersByRole: base.usersByRole || { admin: 0, owner: 0, tenant: 0, provider: 0 },
+    usersByRole: {
+      admin: baseRoles.admin || 0,
+      owner: baseRoles.owner || 0,
+      tenant: baseRoles.tenant || 0,
+      provider: baseRoles.provider || 0,
+      syndic: syndicCount.count || 0,
+      agency: agencyCount.count || 0,
+      guarantor: guarantorCount.count || 0,
+    },
     newUsersThisMonth: newThisMonth.count || 0,
     newUsersPrevMonth: newPrevMonth.count || 0,
     totalProperties: base.totalProperties,
