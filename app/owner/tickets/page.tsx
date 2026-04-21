@@ -1,19 +1,60 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Hammer, Plus, Users, Wrench } from "lucide-react";
+import { ClipboardCheck, Hammer, Plus, Users, Wrench } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TicketListUnified } from "@/features/tickets/components/ticket-list-unified";
 import { TicketKPIs } from "@/features/tickets/components/ticket-kpis";
 import { getTickets, getTicketKPIs } from "@/features/tickets/server/data-fetching";
 import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
+import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { TicketsTabNav } from "./TicketsTabNav";
 
+async function getPendingApprovalsCount(): Promise<number> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return 0;
+
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!profile) return 0;
+
+    const { data: properties } = await serviceClient
+      .from("properties")
+      .select("id")
+      .eq("owner_id", (profile as { id: string }).id);
+
+    const propertyIds = (properties || []).map((p) => (p as { id: string }).id);
+    if (propertyIds.length === 0) return 0;
+
+    const { count } = await serviceClient
+      .from("work_orders")
+      .select("id", { count: "exact", head: true })
+      .in("property_id", propertyIds)
+      .eq("owner_approval_status", "pending")
+      .eq("requester_role", "tenant");
+
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
 export default async function OwnerTicketsPage() {
-  const [tickets, kpis] = await Promise.all([
+  const [tickets, kpis, pendingApprovals] = await Promise.all([
     getTickets("owner"),
     getTicketKPIs(),
+    getPendingApprovalsCount(),
   ]);
 
   return (
@@ -31,6 +72,17 @@ export default async function OwnerTicketsPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {pendingApprovals > 0 && (
+              <Button asChild variant="outline" className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300">
+                <Link href="/owner/approvals">
+                  <ClipboardCheck className="mr-2 h-4 w-4" />
+                  {pendingApprovals} à valider
+                  <Badge variant="secondary" className="ml-2 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">
+                    {pendingApprovals}
+                  </Badge>
+                </Link>
+              </Button>
+            )}
             <Button asChild variant="outline">
               <Link href="/owner/providers">
                 <Users className="mr-2 h-4 w-4" /> Consulter les prestataires
