@@ -68,8 +68,13 @@ export function PeopleClient({ activeTab, initialData, currentPage, currentSearc
 
   const totalPages = Math.ceil(initialData.total / 20);
 
+  // Les 3 rôles historiques gardent leurs pages dédiées (UI riche existante).
+  // Les nouveaux rôles (syndic/agence/garant) utilisent la route unifiée /admin/people/[id].
+  const LEGACY_TABS: PeopleTab[] = ["owners", "tenants", "vendors"];
   const getDetailUrl = (userId: string) =>
-    `/admin/people/${activeTab}/${userId}`;
+    LEGACY_TABS.includes(activeTab)
+      ? `/admin/people/${activeTab}/${userId}`
+      : `/admin/people/${userId}`;
 
   const columns = [
     {
