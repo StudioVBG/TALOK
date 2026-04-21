@@ -71,6 +71,20 @@ export function EDLPreview({
   const lastHashRef = useRef<string>("");
   const { toast } = useToast();
 
+  // Refs pour accéder aux dernières valeurs sans retrigger l'effet de debounce.
+  // Sans ces refs, chaque nouveau `edlData` reçu du parent (nouvelle référence à
+  // chaque render) relance le timer et la page reste bloquée sur "Génération…".
+  const edlDataRef = useRef(edlData);
+  const roomsRef = useRef(rooms);
+  const toastRef = useRef(toast);
+  const htmlRef = useRef(html);
+  useEffect(() => {
+    edlDataRef.current = edlData;
+    roomsRef.current = rooms;
+    toastRef.current = toast;
+    htmlRef.current = html;
+  });
+
   // === MÉMORISATION: Hash des données clés pour éviter re-renders inutiles ===
   const dataHash = useMemo(() => {
     const hashData = JSON.stringify({
@@ -219,14 +233,22 @@ export function EDLPreview({
     const { errors, warnings } = validateEDLData();
     setValidationErrors(errors);
     setValidationWarnings(warnings);
-  }, [previewHtml, validateEDLData]);
+    // validateEDLData est volontairement hors des deps : on veut déclencher
+    // cet effet sur le changement de previewHtml uniquement, et lire les
+    // données les plus récentes via la closure au moment du run.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewHtml]);
 
   // === DEBOUNCE: Génération de l'aperçu avec délai ===
+  // IMPORTANT: les dépendances sont volontairement réduites à des primitives
+  // stables (dataHash / edlId / isVierge / previewHtml). Inclure `edlData`,
+  // `validateEDLData`, `toast` ou `html` relançait l'effet à chaque render du
+  // parent (nouvelle référence d'objet), ce qui réinitialisait le timer de
+  // debounce et laissait l'aperçu bloqué sur "Génération de l'aperçu…".
   useEffect(() => {
-    // Si le HTML est fourni en prop, ne pas appeler l'API
     if (previewHtml !== undefined) return;
 
-    if (lastHashRef.current === dataHash && html) {
+    if (lastHashRef.current === dataHash && htmlRef.current) {
       return;
     }
 
@@ -240,9 +262,6 @@ export function EDLPreview({
       try {
         const { errors, warnings } = validateEDLData();
 
-        // 🔧 FIX P0: Quand un edlId est fourni, l'API charge les données complètes
-        // depuis la BDD → les erreurs de validation locales ne sont pas pertinentes
-        // et créent une contradiction visuelle (erreurs en rouge + document complet en-dessous)
         if (edlId) {
           setValidationErrors([]);
           setValidationWarnings([]);
@@ -253,18 +272,19 @@ export function EDLPreview({
 
         if (errors.length > 0 && !isVierge && !edlId) {
           setHtml("");
-          setLoading(false);
           return;
         }
 
+        const currentEdlData = edlDataRef.current;
+        const currentRooms = roomsRef.current;
         const response = await fetch("/api/edl/preview", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            edlData,
+            edlData: currentEdlData,
             edlId,
             isVierge,
-            rooms: isVierge ? rooms : undefined,
+            rooms: isVierge ? currentRooms : undefined,
           }),
         });
 
@@ -278,7 +298,7 @@ export function EDLPreview({
         setLastGenerated(new Date());
       } catch (error) {
         console.error("Erreur génération EDL:", error);
-        toast({
+        toastRef.current({
           title: "Erreur",
           description: "Impossible de générer l'aperçu de l'état des lieux",
           variant: "destructive",
@@ -293,7 +313,8 @@ export function EDLPreview({
         clearTimeout(debounceTimerRef.current);
       }
     };
-  }, [dataHash, edlData, edlId, isVierge, rooms, validateEDLData, toast, html, previewHtml]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataHash, edlId, isVierge, previewHtml]);
 
   // Mettre à jour l'iframe quand le HTML change
   useEffect(() => {

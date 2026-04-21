@@ -162,7 +162,11 @@ export function LeaseEdlTab({
     ? Math.round(((edl.completed_items || 0) / edl.total_items) * 100)
     : 0;
   const isIncomplete = ["draft", "scheduled", "in_progress"].includes(edl.status);
-  const isCompleted = edl.status === "completed";
+  // Un EDL "completed" avec déjà 2/2 signatures est en réalité signé : on évite
+  // d'afficher "Signer l'EDL" à un utilisateur qui a déjà signé (cas d'un seal
+  // qui a échoué après enregistrement des 2 signatures).
+  const isCompleted =
+    edl.status === "completed" && (edl.signatures_count ?? 0) < 2;
 
   return (
     <motion.div
