@@ -49,17 +49,31 @@ CREATE TRIGGER trg_set_ticket_reference
   FOR EACH ROW
   EXECUTE FUNCTION set_ticket_reference();
 
--- 5. Backfill : attribue une référence aux tickets existants par ordre
---    chronologique. On reconstruit les compteurs pour rester cohérent.
+-- 5. Backfill IDEMPOTENT : attribue une référence aux tickets existants.
+--    Reste correct si la migration est rejouée (ex. après échec partiel).
+--
+--    Étapes :
+--      a) Seed ticket_counters depuis les références déjà en base (MAX par année)
+--      b) Boucle uniquement sur les tickets sans référence, chronologiquement
+--      c) L'incrémentation continue au-dessus du MAX existant → aucune collision
 DO $$
 DECLARE
   r RECORD;
   v_year INTEGER;
   v_next INTEGER;
 BEGIN
-  -- Réinitialise les compteurs si le backfill a déjà tourné partiellement
-  TRUNCATE ticket_counters;
+  -- a) Seed : extraire l'année + le numéro des références existantes
+  INSERT INTO ticket_counters (year, last_number)
+  SELECT
+    (substring(reference FROM 'TKT-(\d{4})-'))::INTEGER AS year,
+    MAX((substring(reference FROM 'TKT-\d{4}-(\d+)'))::INTEGER) AS last_number
+  FROM tickets
+  WHERE reference ~ '^TKT-\d{4}-\d+$'
+  GROUP BY (substring(reference FROM 'TKT-(\d{4})-'))::INTEGER
+  ON CONFLICT (year)
+  DO UPDATE SET last_number = GREATEST(ticket_counters.last_number, EXCLUDED.last_number);
 
+  -- b) Backfill des tickets sans référence
   FOR r IN
     SELECT id, created_at
     FROM tickets
