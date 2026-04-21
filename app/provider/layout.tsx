@@ -16,6 +16,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
 import { OnboardingWrapper } from "@/components/onboarding/OnboardingWrapper";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 
 export default async function VendorLayout({
   children,
@@ -85,6 +86,7 @@ export default async function VendorLayout({
             <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center text-orange-600 dark:text-orange-400 font-semibold text-sm">
               {initials}
             </div>
+            <SignOutButton variant="mobile-icon" />
           </div>
         </div>
 
@@ -100,6 +102,7 @@ export default async function VendorLayout({
               <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center text-orange-600 dark:text-orange-400 font-semibold text-sm">
                 {initials}
               </div>
+              <SignOutButton variant="mobile-icon" />
             </div>
           </div>
 
