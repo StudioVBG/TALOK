@@ -29,16 +29,17 @@ import { ProviderSidebar } from "@/components/layout/provider-sidebar";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
+import { OnboardingWrapper } from "@/components/onboarding/OnboardingWrapper";
 
 const navigation = [
-  { name: "Tableau de bord", href: "/provider/dashboard", icon: LayoutDashboard },
-  { name: "Mes missions", href: "/provider/jobs", icon: Briefcase },
+  { name: "Tableau de bord", href: "/provider/dashboard", icon: LayoutDashboard, tourId: "nav-dashboard" },
+  { name: "Mes missions", href: "/provider/jobs", icon: Briefcase, tourId: "nav-jobs" },
   { name: "Messages", href: "/provider/messages", icon: MessageSquare },
-  { name: "Calendrier", href: "/provider/calendar", icon: Calendar },
-  { name: "Mes devis", href: "/provider/quotes", icon: FileText },
+  { name: "Calendrier", href: "/provider/calendar", icon: Calendar, tourId: "nav-calendar" },
+  { name: "Mes devis", href: "/provider/quotes", icon: FileText, tourId: "nav-quotes" },
   { name: "Mes factures", href: "/provider/invoices", icon: Receipt },
   { name: "Mes documents", href: "/provider/documents", icon: FolderOpen },
-  { name: "Mes avis", href: "/provider/reviews", icon: Star },
+  { name: "Mes avis", href: "/provider/reviews", icon: Star, tourId: "nav-reviews" },
   { name: "Conformité", href: "/provider/compliance", icon: Shield },
   { name: "Mon portfolio", href: "/provider/portfolio", icon: Image },
 ];
@@ -91,6 +92,11 @@ export default async function VendorLayout({
   return (
     <ErrorBoundary>
       <CsrfTokenInjector />
+      <OnboardingWrapper
+        role="provider"
+        profileId={profile.id}
+        userName={profile.prenom || ""}
+      >
       <div className="min-h-screen bg-gradient-to-br from-background via-orange-50/10 to-background dark:from-background dark:via-background dark:to-background">
         {/* Offline indicator */}
         <OfflineIndicator />
@@ -161,6 +167,7 @@ export default async function VendorLayout({
         {/* Mobile bottom navigation (< md) */}
         <ProviderBottomNav />
       </div>
+      </OnboardingWrapper>
     </ErrorBoundary>
   );
   } catch (e) {

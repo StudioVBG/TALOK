@@ -16,6 +16,7 @@ interface NavItem {
   name: string;
   href: string;
   icon: LucideIcon;
+  tourId?: string;
 }
 
 interface ProviderSidebarProps {
@@ -72,6 +73,7 @@ export function ProviderSidebar({
                     <li key={item.name}>
                       <Link
                         href={item.href}
+                        data-tour={item.tourId}
                         className={cn(
                           "group flex gap-x-3 rounded-lg p-2 text-sm leading-6 font-semibold transition-colors",
                           active

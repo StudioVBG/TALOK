@@ -14,6 +14,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { GuarantorSignOutButton } from "./_components/GuarantorSignOutButton";
+import { OnboardingWrapper } from "@/components/onboarding/OnboardingWrapper";
 
 /**
  * Layout Guarantor - Server Component
@@ -60,6 +61,11 @@ export default async function GuarantorLayout({ children }: { children: ReactNod
   return (
     <ErrorBoundary>
       <CsrfTokenInjector />
+      <OnboardingWrapper
+        role="guarantor"
+        profileId={profile.id}
+        userName={profile.prenom || ""}
+      >
       <div className="min-h-screen bg-background">
         <OfflineIndicator />
 
@@ -80,15 +86,24 @@ export default async function GuarantorLayout({ children }: { children: ReactNod
             <nav className="flex items-center gap-4">
               {[...manifest.navigation, ...manifest.footerNavigation]
                 .filter((item) => item.name !== "Aide")
-                .map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {item.name}
-                  </Link>
-                ))}
+                .map((item) => {
+                  // Propagate data-tour for guarantor tour targeting
+                  const tourId = item.href.endsWith("/dashboard")
+                    ? "nav-dashboard"
+                    : item.href.endsWith("/documents")
+                    ? "nav-documents"
+                    : undefined;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      data-tour={tourId}
+                      className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {item.name}
+                    </Link>
+                  );
+                })}
               <GuarantorSignOutButton />
             </nav>
           </div>
@@ -99,6 +114,7 @@ export default async function GuarantorLayout({ children }: { children: ReactNod
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
       </div>
+      </OnboardingWrapper>
     </ErrorBoundary>
   );
 }
