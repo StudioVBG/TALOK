@@ -17,6 +17,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { SyndicPlanBanner } from "@/components/syndic/SyndicPlanBanner";
 import { SyndicOnboardingWrapper } from "@/components/syndic/SyndicOnboardingWrapper";
+import { SyndicSignOutButton } from "@/components/syndic/SyndicSignOutButton";
 import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
 import Link from "next/link";
 import {
@@ -142,8 +143,8 @@ export default async function SyndicLayout({
               ))}
             </nav>
 
-            {/* Footer avec profil */}
-            <div className="flex-shrink-0 p-4 border-t border-border/50">
+            {/* Footer avec profil et déconnexion */}
+            <div className="flex-shrink-0 p-4 border-t border-border/50 space-y-3">
               <div className="flex items-center gap-3">
                 <div
                   className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white text-sm font-semibold"
@@ -161,6 +162,7 @@ export default async function SyndicLayout({
                   </p>
                 </div>
               </div>
+              <SyndicSignOutButton />
             </div>
           </div>
         </aside>
@@ -185,6 +187,7 @@ export default async function SyndicLayout({
               >
                 <Bell className="w-5 h-5" aria-hidden="true" />
               </button>
+              <SyndicSignOutButton variant="mobile-icon" />
             </div>
           </div>
         </div>
