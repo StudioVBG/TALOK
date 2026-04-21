@@ -22,12 +22,15 @@ interface PropertyRoomsPhotosTabProps {
   propertyId: string;
   property: Property;
   isHabitation: boolean;
+  /** Si true, empile la liste des pièces et la galerie verticalement (utile en sidebar étroite). */
+  compact?: boolean;
 }
 
 export function PropertyRoomsPhotosTab({
   propertyId,
   property,
   isHabitation,
+  compact = false,
 }: PropertyRoomsPhotosTabProps) {
   const { toast } = useToast();
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
@@ -188,9 +191,15 @@ export function PropertyRoomsPhotosTab({
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div
+      className={
+        compact
+          ? "space-y-6"
+          : "grid grid-cols-1 lg:grid-cols-3 gap-6"
+      }
+    >
       {/* Liste des rooms à gauche */}
-      <div className="lg:col-span-1 space-y-4">
+      <div className={compact ? "space-y-4" : "lg:col-span-1 space-y-4"}>
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -214,48 +223,57 @@ export function PropertyRoomsPhotosTab({
                 const roomPhotos = photos.filter((p) => p.room_id === room.id);
                 const hasPhotos = roomPhotos.length > 0;
                 return (
-                  <button
+                  <div
                     key={room.id}
                     onClick={() => setSelectedRoomId(room.id)}
-                    className={`w-full text-left p-3 rounded-lg border transition-all ${
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setSelectedRoomId(room.id);
+                      }
+                    }}
+                    className={`w-full text-left p-3 rounded-lg border transition-all cursor-pointer ${
                       selectedRoomId === room.id
                         ? "border-primary bg-primary/10"
                         : "border-border hover:border-primary/50"
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">{room.label_affiche}</span>
-                      <Badge variant={hasPhotos ? "default" : "secondary"} className="text-xs">
-                        {hasPhotos ? (
-                          <>
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            {roomPhotos.length}
-                          </>
-                        ) : (
-                          <>
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            0
-                          </>
-                        )}
-                      </Badge>
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-medium truncate min-w-0 flex-1">{room.label_affiche}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Badge variant={hasPhotos ? "default" : "secondary"} className="text-xs">
+                          {hasPhotos ? (
+                            <>
+                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                              {roomPhotos.length}
+                            </>
+                          ) : (
+                            <>
+                              <AlertCircle className="h-3 w-3 mr-1" />
+                              0
+                            </>
+                          )}
+                        </Badge>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteRoom(room.id);
+                          }}
+                          aria-label={`Supprimer ${room.label_affiche}`}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                     {room.surface_m2 && (
                       <p className="text-xs text-muted-foreground mt-1">{room.surface_m2} m²</p>
                     )}
-                    <div className="flex gap-2 mt-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 text-xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteRoom(room.id);
-                        }}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </button>
+                  </div>
                 );
               })
             )}
@@ -322,7 +340,7 @@ export function PropertyRoomsPhotosTab({
       </div>
 
       {/* Galerie de la pièce sélectionnée à droite */}
-      <div className="lg:col-span-2">
+      <div className={compact ? "" : "lg:col-span-2"}>
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -333,7 +351,13 @@ export function PropertyRoomsPhotosTab({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div
+              className={
+                compact
+                  ? "grid grid-cols-2 gap-3"
+                  : "grid grid-cols-2 md:grid-cols-3 gap-4"
+              }
+            >
               {selectedRoomPhotos.length === 0 ? (
                 <p className="col-span-full text-center text-muted-foreground py-8">
                   {selectedRoomId ? "Aucune photo pour cette pièce" : "Aucune photo"}

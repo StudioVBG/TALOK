@@ -1444,6 +1444,7 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
                       propertyId={propertyId}
                       property={property as any}
                       isHabitation={!["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"].includes(property.type || "")}
+                      compact
                     />
                   </TabsContent>
                   <TabsContent value="announcement" className="mt-0">
