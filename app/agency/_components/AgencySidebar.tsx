@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { getSecondaryRoleManifest } from "@/lib/navigation/secondary-role-manifest";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 
 interface AgencySidebarProps {
   profile: {
@@ -103,7 +104,7 @@ export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
           </nav>
 
           {/* Footer */}
-          <div className="flex-shrink-0 p-4 border-t border-border/50">
+          <div className="flex-shrink-0 p-4 border-t border-border/50 space-y-3">
             <div className="flex items-center gap-3">
               <div
                 className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-sm font-semibold"
@@ -120,6 +121,7 @@ export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
                 </p>
               </div>
             </div>
+            <SignOutButton />
           </div>
         </div>
       </aside>
@@ -173,6 +175,10 @@ export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
                     </Link>
                   );
                 })}
+                <SignOutButton
+                  variant="mobile-tile"
+                  onAfterClick={() => setMoreOpen(false)}
+                />
               </div>
             </div>
           </>
