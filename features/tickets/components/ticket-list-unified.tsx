@@ -57,6 +57,7 @@ interface Ticket {
   category?: string | null;
   created_at: string;
   lease_id?: string | null;
+  property_id?: string | null;
   assigned_to?: string | null;
   property?: { adresse_complete: string };
   lease?: { id: string; date_debut: string; date_fin?: string; statut: string } | null;
@@ -66,6 +67,8 @@ interface Ticket {
   ticket_comments?: unknown[];
   work_orders?: WorkOrder[];
 }
+
+const CLOSED_TICKET_STATUSES = new Set(["resolved", "closed", "cancelled"]);
 
 interface TicketListProps {
   tickets: Ticket[];
@@ -207,16 +210,39 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
               {/* Right: status + action */}
               <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 pl-4 border-l-0 sm:border-l border-border">
                 <TicketStatusBadge status={ticket.statut} />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  asChild
-                  className="gap-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400"
-                >
-                  <Link href={`${basePath}/${ticket.id}`}>
-                    Voir <ChevronRight className="h-4 w-4" />
-                  </Link>
-                </Button>
+                <div className="flex flex-col gap-1.5 items-stretch">
+                  {variant === "owner" &&
+                    !activeWorkOrder &&
+                    !CLOSED_TICKET_STATUSES.has(ticket.statut) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="gap-1.5"
+                      >
+                        <Link
+                          href={`/owner/work-orders/create?ticket_id=${ticket.id}${
+                            ticket.property_id
+                              ? `&property_id=${ticket.property_id}`
+                              : ""
+                          }`}
+                        >
+                          <Hammer className="h-3.5 w-3.5" />
+                          Demander des travaux
+                        </Link>
+                      </Button>
+                    )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className="gap-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400"
+                  >
+                    <Link href={`${basePath}/${ticket.id}`}>
+                      Voir <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>

@@ -6,14 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TicketListUnified } from "@/features/tickets/components/ticket-list-unified";
 import { TicketKPIs } from "@/features/tickets/components/ticket-kpis";
-import { getTickets, getTicketKPIs } from "@/features/tickets/server/data-fetching";
+import {
+  getTickets,
+  getTicketKPIs,
+  getTicketsActionStats,
+} from "@/features/tickets/server/data-fetching";
 import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
 import { TicketsTabNav } from "./TicketsTabNav";
 
 export default async function OwnerTicketsPage() {
-  const [tickets, kpis] = await Promise.all([
+  const [tickets, kpis, actionStats] = await Promise.all([
     getTickets("owner"),
     getTicketKPIs(),
+    getTicketsActionStats(),
   ]);
 
   return (
@@ -54,7 +59,13 @@ export default async function OwnerTicketsPage() {
                 Demander des travaux
               </h3>
               <p className="text-sm text-muted-foreground line-clamp-2">
-                Créez un ordre de travail et assignez-le à un prestataire
+                {actionStats.workOrdersInProgress > 0
+                  ? `${actionStats.workOrdersInProgress} ${
+                      actionStats.workOrdersInProgress > 1
+                        ? "travaux en cours"
+                        : "intervention en cours"
+                    } · Créer un nouvel ordre`
+                  : "Créez un ordre de travail et assignez-le à un prestataire"}
               </p>
             </div>
             <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" />
@@ -72,7 +83,13 @@ export default async function OwnerTicketsPage() {
                 Consulter les prestataires
               </h3>
               <p className="text-sm text-muted-foreground line-clamp-2">
-                Parcourez la marketplace et trouvez un artisan qualifié
+                {actionStats.providersAvailable > 0
+                  ? `${actionStats.providersAvailable} ${
+                      actionStats.providersAvailable > 1
+                        ? "prestataires vérifiés disponibles"
+                        : "prestataire vérifié disponible"
+                    }`
+                  : "Parcourez la marketplace et trouvez un artisan qualifié"}
               </p>
             </div>
             <ArrowRight className="h-5 w-5 shrink-0 text-muted-foreground transition group-hover:translate-x-1 group-hover:text-primary" />
