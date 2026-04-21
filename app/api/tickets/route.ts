@@ -6,9 +6,10 @@ import { ticketSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError } from "@/lib/helpers/api-error";
 import { createClient } from "@supabase/supabase-js";
-import type { ProfileRow, TicketRow } from "@/lib/supabase/typed-client";
+import type { TicketRow } from "@/lib/supabase/typed-client";
 import { ticketsQuerySchema, validateQueryParams } from "@/lib/validations/params";
 import { withSecurity } from "@/lib/api/with-security";
+import { resolveTicketContext } from "@/lib/tickets/resolve-ticket-context";
 
 /**
  * GET /api/tickets - Récupérer les tickets de l'utilisateur
@@ -221,64 +222,37 @@ export const POST = withSecurity(async function POST(request: Request) {
     // Récupérer le profil avec service client
     const { data: profile } = await serviceClient
       .from("profiles")
-      .select("id, role")
+      .select("id, role, email")
       .eq("user_id", user.id as any)
       .single();
 
     if (!profile) {
-      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Profil non trouvé", code: "NO_PROFILE" },
+        { status: 404 }
+      );
     }
 
-    const profileData = profile as any;
+    const profileData = profile as { id: string; role: string; email: string | null };
 
-    // Vérifier que l'utilisateur a accès à cette propriété (propriétaire ou locataire signataire)
-    if (validated.property_id) {
-      const isAdmin = profileData.role === "admin";
-      const { data: property } = await serviceClient
-        .from("properties")
-        .select("owner_id")
-        .eq("id", validated.property_id)
-        .single();
-      const isOwner = property?.owner_id === profileData.id;
+    // Résoudre le contexte du ticket (property_id, lease_id, owner) et vérifier
+    // l'accès. Le helper gère locataire invité par email (cas courant : invitation
+    // non encore "healed") et renvoie des codes d'erreur distincts.
+    const userEmail = profileData.email ?? user.email ?? null;
+    const context = await resolveTicketContext({
+      serviceClient,
+      profileId: profileData.id,
+      role: profileData.role,
+      userEmail,
+      propertyId: validated.property_id ?? null,
+      leaseId: validated.lease_id ?? null,
+    });
 
-      if (!isAdmin && !isOwner) {
-        const { data: leasesForProperty } = await serviceClient
-          .from("leases")
-          .select("id")
-          .eq("property_id", validated.property_id);
-        const leaseIds = (leasesForProperty || []).map((l: { id: string }) => l.id);
-
-        if (leaseIds.length > 0) {
-          const { data: signer } = await serviceClient
-            .from("lease_signers")
-            .select("id")
-            .eq("profile_id", profileData.id)
-            .in("lease_id", leaseIds)
-            .maybeSingle();
-          if (!signer) {
-            return NextResponse.json(
-              { error: "Vous n'avez pas accès à cette propriété" },
-              { status: 403 }
-            );
-          }
-        } else {
-          return NextResponse.json(
-            { error: "Vous n'avez pas accès à cette propriété" },
-            { status: 403 }
-          );
-        }
-      }
-    }
-
-    // Résoudre owner_id depuis la propriété
-    let propertyOwnerId: string | null = null;
-    if (validated.property_id) {
-      const { data: propOwner } = await serviceClient
-        .from("properties")
-        .select("owner_id")
-        .eq("id", validated.property_id)
-        .single();
-      propertyOwnerId = propOwner?.owner_id || null;
+    if (!context.ok) {
+      return NextResponse.json(
+        { error: context.message, code: context.code },
+        { status: context.status }
+      );
     }
 
     // Créer le ticket avec service client
@@ -286,8 +260,10 @@ export const POST = withSecurity(async function POST(request: Request) {
       .from("tickets")
       .insert({
         ...validated,
+        property_id: context.property_id,
+        lease_id: context.lease_id ?? validated.lease_id ?? null,
         created_by_profile_id: profileData.id,
-        owner_id: propertyOwnerId,
+        owner_id: context.owner_profile_id,
         statut: "open",
       })
       .select()
@@ -295,33 +271,18 @@ export const POST = withSecurity(async function POST(request: Request) {
 
     if (insertError) throw insertError;
 
-    // Émettre un événement — résoudre le owner_id pour la notification
-    let ownerUserId: string | null = null;
-    if (validated.property_id) {
-      const { data: propForOwner } = await serviceClient
-        .from("properties")
-        .select("owner_id")
-        .eq("id", validated.property_id)
-        .single();
-      if (propForOwner?.owner_id) {
-        const { data: ownerProfile } = await serviceClient
-          .from("profiles")
-          .select("user_id")
-          .eq("id", propForOwner.owner_id)
-          .single();
-        ownerUserId = ownerProfile?.user_id || null;
-      }
-    }
-
     await serviceClient.from("outbox").insert({
       event_type: "Ticket.Opened",
       payload: {
         ticket_id: ticket.id,
-        property_id: validated.property_id,
+        property_id: context.property_id,
+        lease_id: context.lease_id,
         priority: validated.priorite,
         title: validated.titre,
-        owner_id: ownerUserId,
+        category: validated.category ?? null,
+        owner_id: context.owner_user_id,
         created_by: profileData.id,
+        creator_role: context.creator_role,
       },
     } as any);
 

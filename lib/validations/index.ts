@@ -819,8 +819,12 @@ export const chargeUpdateSchema = z.object({
 });
 
 // Validation des tickets
+// property_id est optionnel : côté serveur, le contexte est résolu via
+// resolveTicketContext() qui le déduit du bail actif du locataire si absent.
+// Cela évite les 403 parasites quand le client n'a pas encore les données
+// du dashboard (ex. première connexion, onboarding en cours).
 export const ticketSchema = z.object({
-  property_id: z.string().uuid(),
+  property_id: z.string().uuid().optional().nullable(),
   lease_id: z.string().uuid().optional().nullable(),
   titre: z.string().min(1, "Le titre est requis"),
   description: z.string().min(1, "La description est requise"),
