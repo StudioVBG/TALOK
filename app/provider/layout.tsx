@@ -8,20 +8,6 @@ import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
 import { checkIdentityGate } from "@/lib/helpers/identity-gate";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
-import {
-  LayoutDashboard,
-  Briefcase,
-  Receipt,
-  Calendar,
-  Star,
-  Settings,
-  HelpCircle,
-  FileText,
-  FolderOpen,
-  Shield,
-  Image,
-  MessageSquare,
-} from "lucide-react";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { ProviderBottomNav } from "@/components/layout/provider-bottom-nav";
 import { ProviderRailNav } from "@/components/layout/provider-rail-nav";
@@ -30,24 +16,6 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
 import { OnboardingWrapper } from "@/components/onboarding/OnboardingWrapper";
-
-const navigation = [
-  { name: "Tableau de bord", href: "/provider/dashboard", icon: LayoutDashboard, tourId: "nav-dashboard" },
-  { name: "Mes missions", href: "/provider/jobs", icon: Briefcase, tourId: "nav-jobs" },
-  { name: "Messages", href: "/provider/messages", icon: MessageSquare },
-  { name: "Calendrier", href: "/provider/calendar", icon: Calendar, tourId: "nav-calendar" },
-  { name: "Mes devis", href: "/provider/quotes", icon: FileText, tourId: "nav-quotes" },
-  { name: "Mes factures", href: "/provider/invoices", icon: Receipt },
-  { name: "Mes documents", href: "/provider/documents", icon: FolderOpen },
-  { name: "Mes avis", href: "/provider/reviews", icon: Star, tourId: "nav-reviews" },
-  { name: "Conformité", href: "/provider/compliance", icon: Shield },
-  { name: "Mon portfolio", href: "/provider/portfolio", icon: Image },
-];
-
-const secondaryNav = [
-  { name: "Paramètres", href: "/provider/settings", icon: Settings },
-  { name: "Aide", href: "/provider/help", icon: HelpCircle },
-];
 
 export default async function VendorLayout({
   children,
@@ -102,14 +70,10 @@ export default async function VendorLayout({
         <OfflineIndicator />
 
         {/* TABLET Rail Nav (md-lg) - Icônes + tooltip hover (client component) */}
-        <ProviderRailNav navigation={navigation} secondaryNav={secondaryNav} />
+        <ProviderRailNav />
 
         {/* Desktop Sidebar (lg+) - Client component avec état actif + déconnexion */}
-        <ProviderSidebar
-          navigation={navigation}
-          secondaryNav={secondaryNav}
-          profile={profile}
-        />
+        <ProviderSidebar profile={profile} />
 
         {/* Mobile header (< md) */}
         <div className="sticky top-0 z-40 flex items-center gap-x-4 bg-background/95 backdrop-blur-sm px-3 xs:px-4 sm:px-6 py-3 shadow-sm border-b border-border md:hidden">

@@ -1,7 +1,16 @@
-// Root layout: PAS de force-dynamic ici.
-// Les 8 layouts authentifiés (owner, tenant, admin, syndic, copro, agency,
-// guarantor, provider) définissent chacun leur propre force-dynamic + nodejs.
-// Les pages marketing/publiques restent statiques (SSG par défaut).
+// Root layout: `dynamic = 'force-dynamic'` force le SSR a chaque requete.
+//
+// Pourquoi ? Next.js 14.0.4 prerender toutes les pages en statique par defaut,
+// mais heurte silencieusement des erreurs pour les pages "use client" sur ce
+// projet (providers racine + hooks d'auth qui accedent au navigateur). Les
+// .html generes au build contiennent alors le shell `<html id="__next_error__">`,
+// servi ensuite en runtime => pages 200 vides avec noindex injecte par Next
+// (audit SEO 2026-04-20 : /pricing /blog /faq /a-propos /solutions/* tous casses).
+//
+// Force-dynamic court-circuite le prerender et SSR chaque requete, ce qui
+// resout le bug. Impact perf minime car le cache Netlify CDN absorbe la
+// charge sur les pages publiques. A reverifier apres upgrade Next >= 14.2.
+export const dynamic = 'force-dynamic';
 
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
@@ -236,6 +245,41 @@ const themeScript = `
 })();
 `;
 
+/**
+ * JSON-LD global : Organization + WebSite (+ SearchAction).
+ * Posé sur toutes les pages pour nourrir Knowledge Panel et SERP sitelinks.
+ * Les schémas spécifiques (Product, SoftwareApplication, FAQPage...) restent
+ * définis dans chaque page concernée.
+ */
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Talok",
+  url: "https://talok.fr",
+  logo: "https://talok.fr/images/talok-logo-horizontal.png",
+  description:
+    "Logiciel de gestion locative tout-en-un pour propriétaires bailleurs en France et DROM. Baux ALUR, signatures électroniques, scoring IA, Open Banking, comptabilité.",
+  sameAs: ["https://twitter.com/talok_fr"],
+  contactPoint: [
+    {
+      "@type": "ContactPoint",
+      email: "support@talok.fr",
+      contactType: "customer support",
+      areaServed: "FR",
+      availableLanguage: ["fr"],
+    },
+  ],
+};
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Talok",
+  url: "https://talok.fr",
+  inLanguage: "fr-FR",
+  publisher: { "@type": "Organization", name: "Talok" },
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -250,6 +294,19 @@ export default function RootLayout({
       <head>
         {/* Script anti-flash de thème - s'exécute avant le rendu */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        {/* JSON-LD global : Organization + WebSite */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationJsonLd),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(websiteJsonLd),
+          }}
+        />
       </head>
       <body className={`${inter.className} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>

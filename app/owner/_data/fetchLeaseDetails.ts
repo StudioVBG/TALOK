@@ -537,7 +537,9 @@ async function fetchLeaseDetailsFallback(
     signed_pdf_path: leaseData.signed_pdf_path ?? null,
     loyer: leaseData.loyer ?? property.loyer_hc ?? 0,
     charges_forfaitaires: leaseData.charges_forfaitaires ?? property.charges_mensuelles ?? 0,
-    has_signed_edl: edl?.status === "signed",
+    has_signed_edl:
+      edl?.status === "signed" ||
+      (edl?.status === "completed" && (edlStats?.signatures_count ?? 0) >= 2),
     has_paid_initial: initialInvoiceSettlement?.isSettled ?? false,
     property_id: leaseData.property_id,
     unit_id: leaseData.unit_id,
