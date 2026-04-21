@@ -334,6 +334,122 @@ async function processEvent(supabase: any, event: any) {
       break;
     }
 
+    // Ticket sur les parties communes routé vers le syndic
+    case "Ticket.OpenedPartiesCommunes": {
+      const recipient = payload.recipient_user_id || payload.syndic_user_id;
+      if (recipient) {
+        const refSuffix = payload.ticket_reference ? ` (${payload.ticket_reference})` : "";
+        await sendNotification(supabase, {
+          type: "ticket_parties_communes",
+          user_id: recipient,
+          title: "Signalement parties communes",
+          message: `Un locataire a signalé un incident sur les parties communes : ${payload.title || "sans titre"}${refSuffix}`,
+          metadata: {
+            ticket_id: payload.ticket_id,
+            entity_id: payload.entity_id,
+            category: payload.category,
+          },
+        });
+      }
+      break;
+    }
+
+    // Réservation self-service locataire → prestataire, pas de validation owner requise
+    case "TenantService.Booked": {
+      const recipient = payload.recipient_user_id;
+      if (recipient) {
+        const refSuffix = payload.ticket_reference ? ` (${payload.ticket_reference})` : "";
+        await sendNotification(supabase, {
+          type: "tenant_service_booked",
+          user_id: recipient,
+          title: "Votre locataire a réservé un service",
+          message: `${payload.provider_company || "Un prestataire"} a été sollicité pour : ${payload.title || "service"}${refSuffix}`,
+          metadata: {
+            ticket_id: payload.ticket_id,
+            work_order_id: payload.work_order_id,
+            category: payload.category,
+          },
+        });
+      }
+      break;
+    }
+
+    // Réservation self-service en attente de validation propriétaire
+    case "TenantService.ApprovalRequested": {
+      const recipient = payload.recipient_user_id;
+      if (recipient) {
+        const refSuffix = payload.ticket_reference ? ` (${payload.ticket_reference})` : "";
+        await sendNotification(supabase, {
+          type: "tenant_service_approval_required",
+          user_id: recipient,
+          title: "Réservation à valider",
+          message: `Votre locataire souhaite réserver ${payload.provider_company || "un prestataire"} pour : ${payload.title || "service"}${refSuffix}`,
+          metadata: {
+            ticket_id: payload.ticket_id,
+            work_order_id: payload.work_order_id,
+            category: payload.category,
+            action: "approval_required",
+            action_url: "/owner/approvals",
+          },
+        });
+      }
+      break;
+    }
+
+    // Propriétaire a refusé la réservation
+    case "TenantService.Rejected": {
+      const recipient = payload.recipient_user_id;
+      if (recipient) {
+        const refSuffix = payload.ticket_reference ? ` (${payload.ticket_reference})` : "";
+        const reasonSuffix = payload.reason ? ` : « ${payload.reason} »` : ".";
+        await sendNotification(supabase, {
+          type: "tenant_service_rejected",
+          user_id: recipient,
+          title: "Réservation refusée",
+          message: `Votre propriétaire a refusé la réservation${refSuffix}${reasonSuffix}`,
+          metadata: {
+            ticket_id: payload.ticket_id,
+            work_order_id: payload.work_order_id,
+            reason: payload.reason,
+          },
+        });
+      }
+      break;
+    }
+
+    // Work order assigné à un prestataire (post self-service ou post validation owner)
+    case "WorkOrder.AssignedToProvider": {
+      const recipient = payload.recipient_user_id;
+      if (recipient) {
+        const refSuffix = payload.ticket_reference ? ` (${payload.ticket_reference})` : "";
+        const dateSuffix = payload.preferred_date
+          ? ` — souhaité le ${payload.preferred_date}`
+          : "";
+        await sendNotification(supabase, {
+          type: "work_order_assigned",
+          user_id: recipient,
+          title: "Nouvelle mission",
+          message: `${payload.title || "Mission"}${refSuffix}${dateSuffix}`,
+          metadata: {
+            ticket_id: payload.ticket_id,
+            work_order_id: payload.work_order_id,
+            action_url: `/provider/tickets`,
+          },
+        });
+        // SMS non-bloquant pour signaler la mission
+        try {
+          await sendSmsNotification(
+            supabase,
+            recipient,
+            `Talok : nouvelle mission assignée${refSuffix}. Connectez-vous pour répondre.`
+          );
+        } catch {
+          /* non-blocking */
+        }
+      }
+      break;
+    }
+
     case "Lease.Activated":
       // Notifier le locataire que le bail est actif
       if (payload.tenant_user_id) {
