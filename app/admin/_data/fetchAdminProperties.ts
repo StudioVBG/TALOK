@@ -1,23 +1,10 @@
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { requireAdminServiceClient } from "./requireAdminServiceClient";
 
 export async function fetchAdminProperties(options: { status?: string; search?: string; limit?: number; offset?: number } = {}) {
-  const supabase = await createClient();
+  const serviceClient = await requireAdminServiceClient();
+  if (!serviceClient) return { properties: [], total: 0 };
+
   const { status, search, limit = 50, offset = 0 } = options;
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { properties: [], total: 0 };
-
-  const { data: adminProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!adminProfile || (adminProfile.role !== "admin" && adminProfile.role !== "platform_admin")) {
-    return { properties: [], total: 0 };
-  }
-
-  const serviceClient = createServiceRoleClient();
 
   let query = serviceClient
     .from("properties")

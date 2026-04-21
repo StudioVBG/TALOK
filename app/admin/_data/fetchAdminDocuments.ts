@@ -1,4 +1,4 @@
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { requireAdminServiceClient } from "./requireAdminServiceClient";
 
 interface FetchAdminDocumentsOptions {
   page?: number;
@@ -20,25 +20,11 @@ interface FetchAdminDocumentsResult {
 export async function fetchAdminDocuments(
   options: FetchAdminDocumentsOptions = {}
 ): Promise<FetchAdminDocumentsResult> {
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { documents: [], total: 0 };
-
-  const { data: adminProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!adminProfile || (adminProfile.role !== "admin" && adminProfile.role !== "platform_admin")) {
-    return { documents: [], total: 0 };
-  }
+  const serviceClient = await requireAdminServiceClient();
+  if (!serviceClient) return { documents: [], total: 0 };
 
   const { page = 1, limit = 20, search, type, owner_id, tenant_id, property_id, from, to } = options;
   const offset = (Math.max(1, page) - 1) * limit;
-
-  const serviceClient = createServiceRoleClient();
 
   let query = serviceClient
     .from("documents")
