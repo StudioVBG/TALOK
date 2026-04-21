@@ -14,7 +14,9 @@ export interface AdminStatsData {
     guarantor?: number;
   };
   totalProperties: number;
+  deletedProperties?: number;
   propertiesByType: Record<string, number>;
+  propertiesByRentalStatus?: Record<string, number>;
   totalLeases: number;
   activeLeases: number;
   leasesByStatus: Record<string, number>;
@@ -49,7 +51,9 @@ export interface AdminStatsDataV2 {
   newUsersThisMonth: number;
   newUsersPrevMonth: number;
   totalProperties: number;
-  propertiesByStatus: { active: number; rented: number; draft: number; archived: number };
+  deletedProperties: number;
+  propertiesByType: Record<string, number>;
+  propertiesByRentalStatus: Record<string, number>;
   totalLeases: number;
   activeLeases: number;
   leasesByStatus: { active: number; pending_signature: number; draft: number; terminated: number };
@@ -209,9 +213,14 @@ export async function fetchAdminStatsV2(): Promise<AdminStatsDataV2 | null> {
     // no subscriptions table
   }
 
-  // Taux d'occupation et de recouvrement
+  // Taux d'occupation = (properties avec rental_status != vacant) / total
+  const rentalStatus = (base as { propertiesByRentalStatus?: Record<string, number> }).propertiesByRentalStatus || {};
+  const occupiedCount = Object.entries(rentalStatus)
+    .filter(([key]) => key !== "vacant" && key !== "non_defini")
+    .reduce((sum, [, v]) => sum + (v || 0), 0);
+
   const occupancyRate = base.totalProperties > 0
-    ? Math.round((base.activeLeases / base.totalProperties) * 100)
+    ? Math.round((occupiedCount / base.totalProperties) * 100)
     : 0;
   const collectionRate = base.totalInvoices > 0
     ? Math.round(((base.totalInvoices - base.unpaidInvoices) / base.totalInvoices) * 100)
@@ -233,12 +242,9 @@ export async function fetchAdminStatsV2(): Promise<AdminStatsDataV2 | null> {
     newUsersThisMonth: newThisMonth.count || 0,
     newUsersPrevMonth: newPrevMonth.count || 0,
     totalProperties: base.totalProperties,
-    propertiesByStatus: {
-      active: (base.propertiesByType as Record<string, number>)?.active || base.totalProperties,
-      rented: (base.propertiesByType as Record<string, number>)?.rented || 0,
-      draft: (base.propertiesByType as Record<string, number>)?.draft || 0,
-      archived: (base.propertiesByType as Record<string, number>)?.archived || 0,
-    },
+    deletedProperties: (base as { deletedProperties?: number }).deletedProperties || 0,
+    propertiesByType: base.propertiesByType || {},
+    propertiesByRentalStatus: rentalStatus,
     totalLeases: base.totalLeases,
     activeLeases: base.activeLeases,
     leasesByStatus: {

@@ -54,9 +54,11 @@ const itemVariants = {
 export function DashboardClient({ stats }: DashboardClientProps) {
   useAdminRealtimeSync();
 
-  const occupancyRate = stats.totalProperties > 0
-    ? Math.round((stats.activeLeases / stats.totalProperties) * 100)
-    : 0;
+  const occupancyRate = stats.occupancyRate ?? (
+    stats.totalProperties > 0
+      ? Math.round((stats.activeLeases / stats.totalProperties) * 100)
+      : 0
+  );
 
   const collectionRate = stats.totalInvoices > 0
     ? Math.round(((stats.totalInvoices - stats.unpaidInvoices) / stats.totalInvoices) * 100)
