@@ -18,6 +18,7 @@ import {
   PenLine,
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 
 interface SiteContentItem {
   id: string;
@@ -132,7 +133,7 @@ export default function SiteContentAdminPage() {
     setSaving(true);
 
     try {
-      const res = await fetch("/api/admin/site-content", {
+      const res = await fetchWithCsrf("/api/admin/site-content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
