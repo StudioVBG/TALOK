@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Plus, Wrench } from "lucide-react";
+import { Hammer, Plus, Users, Wrench } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,7 +20,7 @@ export default async function OwnerTicketsPage() {
     <PullToRefreshContainer>
       <div className="container mx-auto px-4 py-8 max-w-7xl space-y-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">
               Tickets & travaux
@@ -30,11 +30,23 @@ export default async function OwnerTicketsPage() {
             </p>
           </div>
 
-          <Button asChild className="shadow-lg shadow-blue-500/20">
-            <Link href="/owner/tickets/new">
-              <Plus className="mr-2 h-4 w-4" /> Nouveau ticket
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline">
+              <Link href="/owner/providers">
+                <Users className="mr-2 h-4 w-4" /> Consulter les prestataires
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/owner/work-orders/create">
+                <Hammer className="mr-2 h-4 w-4" /> Demander des travaux
+              </Link>
+            </Button>
+            <Button asChild className="shadow-lg shadow-blue-500/20">
+              <Link href="/owner/tickets/new">
+                <Plus className="mr-2 h-4 w-4" /> Nouveau ticket
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Tab navigation */}
@@ -55,16 +67,30 @@ export default async function OwnerTicketsPage() {
 
         {/* Ticket list */}
         {!tickets || tickets.length === 0 ? (
-          <div className="text-center py-16 bg-card rounded-2xl border">
+          <div className="text-center py-16 bg-card rounded-2xl border px-4">
             <Wrench className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">Aucun ticket</h2>
-            <p className="text-muted-foreground mb-4">
-              Ajoutez un bien et un bail pour commencer à gérer vos tickets de
-              maintenance.
+            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+              Signalez un incident, planifiez des travaux ou découvrez des
+              prestataires qualifiés pour intervenir sur vos biens.
             </p>
-            <Button asChild>
-              <Link href="/owner/properties">Mes biens</Link>
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button asChild className="shadow-lg shadow-blue-500/20">
+                <Link href="/owner/tickets/new">
+                  <Plus className="mr-2 h-4 w-4" /> Nouveau ticket
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/owner/work-orders/create">
+                  <Hammer className="mr-2 h-4 w-4" /> Demander des travaux
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/owner/providers">
+                  <Users className="mr-2 h-4 w-4" /> Consulter les prestataires
+                </Link>
+              </Button>
+            </div>
           </div>
         ) : (
           <Suspense
