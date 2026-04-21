@@ -59,10 +59,13 @@ export function GedUploadDialog({
   const { toast } = useToast();
   const uploadMutation = useGedUpload();
 
+  // Sentinel: Radix Select disallows SelectItem with value="".
+  const NO_PROPERTY = "__none__";
+
   const [file, setFile] = useState<File | null>(null);
   const [docType, setDocType] = useState<string>(defaultType || "autre");
   const [title, setTitle] = useState("");
-  const [propertyId, setPropertyId] = useState<string>(defaultPropertyId || "");
+  const [propertyId, setPropertyId] = useState<string>(defaultPropertyId || NO_PROPERTY);
   const [validUntil, setValidUntil] = useState("");
   const [dragActive, setDragActive] = useState(false);
 
@@ -70,7 +73,7 @@ export function GedUploadDialog({
     setFile(null);
     setDocType(defaultType || "autre");
     setTitle("");
-    setPropertyId(defaultPropertyId || "");
+    setPropertyId(defaultPropertyId || NO_PROPERTY);
     setValidUntil("");
   }, [defaultType, defaultPropertyId]);
 
@@ -132,7 +135,7 @@ export function GedUploadDialog({
       file,
       type: docType as DocumentType,
       title: title || undefined,
-      property_id: propertyId || defaultPropertyId || null,
+      property_id: (propertyId && propertyId !== NO_PROPERTY) ? propertyId : (defaultPropertyId || null),
       lease_id: defaultLeaseId || null,
       entity_id: defaultEntityId || null,
       valid_until: validUntil || null,
@@ -258,7 +261,7 @@ export function GedUploadDialog({
                   <SelectValue placeholder="Sélectionner un bien (optionnel)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Aucun bien</SelectItem>
+                  <SelectItem value={NO_PROPERTY}>Aucun bien</SelectItem>
                   {properties.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.adresse_complete} - {p.ville}
