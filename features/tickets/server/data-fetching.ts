@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { TICKET_OPEN_STATUSES } from "@/lib/tickets/statuses";
 
 /**
  * getTickets — SSR fetcher for the owner/tenant/provider tickets list.
@@ -198,7 +199,7 @@ export async function getTicketKPIs() {
   const tickets = ticketsRaw as TicketKPIRow[];
 
   const open = tickets.filter((t) =>
-    ["open", "acknowledged", "assigned", "reopened"].includes(t.statut)
+    (TICKET_OPEN_STATUSES as readonly string[]).includes(t.statut)
   ).length;
   const inProgress = tickets.filter((t) => t.statut === "in_progress").length;
   const resolved = tickets.filter((t) => t.statut === "resolved").length;

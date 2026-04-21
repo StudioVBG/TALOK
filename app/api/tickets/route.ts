@@ -10,6 +10,7 @@ import type { TicketRow } from "@/lib/supabase/typed-client";
 import { ticketsQuerySchema, validateQueryParams } from "@/lib/validations/params";
 import { withSecurity } from "@/lib/api/with-security";
 import { resolveTicketContext } from "@/lib/tickets/resolve-ticket-context";
+import { resolveSyndicForProperty } from "@/lib/tickets/resolve-syndic";
 
 /**
  * GET /api/tickets - Récupérer les tickets de l'utilisateur
@@ -255,6 +256,14 @@ export const POST = withSecurity(async function POST(request: Request) {
       );
     }
 
+    // Routage parties communes → syndic (si la propriété est rattachée à une
+    // copropriété avec un syndic affecté). Sinon, pas d'effet : on retombe
+    // sur le destinataire propriétaire standard.
+    const isPartiesCommunes = validated.category === "parties_communes";
+    const syndicRouting = isPartiesCommunes
+      ? await resolveSyndicForProperty(serviceClient, context.property_id)
+      : { entity_id: null, syndic_profile_id: null, syndic_user_id: null };
+
     // Créer le ticket avec service client
     const { data: ticket, error: insertError } = await serviceClient
       .from("tickets")
@@ -264,23 +273,36 @@ export const POST = withSecurity(async function POST(request: Request) {
         lease_id: context.lease_id ?? validated.lease_id ?? null,
         created_by_profile_id: profileData.id,
         owner_id: context.owner_profile_id,
-        statut: "open",
+        entity_id: syndicRouting.entity_id,
+        assigned_to: syndicRouting.syndic_profile_id,
+        statut: syndicRouting.syndic_profile_id ? "acknowledged" : "open",
       })
       .select()
       .single();
 
     if (insertError) throw insertError;
 
+    // Destinataire de la notification :
+    //   - parties communes + syndic identifié → le syndic
+    //   - sinon → le propriétaire
+    const recipientUserId =
+      syndicRouting.syndic_user_id ?? context.owner_user_id;
+
     await serviceClient.from("outbox").insert({
-      event_type: "Ticket.Opened",
+      event_type: isPartiesCommunes && syndicRouting.syndic_profile_id
+        ? "Ticket.OpenedPartiesCommunes"
+        : "Ticket.Opened",
       payload: {
         ticket_id: ticket.id,
         property_id: context.property_id,
         lease_id: context.lease_id,
+        entity_id: syndicRouting.entity_id,
         priority: validated.priorite,
         title: validated.titre,
         category: validated.category ?? null,
         owner_id: context.owner_user_id,
+        syndic_user_id: syndicRouting.syndic_user_id,
+        recipient_user_id: recipientUserId,
         created_by: profileData.id,
         creator_role: context.creator_role,
       },

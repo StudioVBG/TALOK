@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
+import { getWorkOrderStatusLabel } from "@/lib/tickets/statuses";
 import { TicketStatusBadge } from "./ticket-status-badge";
 import { PriorityBadge } from "./priority-badge";
 
@@ -30,13 +31,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   parties_communes: "Parties communes",
   equipement: "Équipement",
   autre: "Autre",
-};
-
-const WORK_ORDER_STATUS_LABELS: Record<string, string> = {
-  assigned: "Assigné",
-  scheduled: "Planifié",
-  done: "Terminé",
-  cancelled: "Annulé",
 };
 
 interface WorkOrder {
@@ -187,8 +181,7 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
                       </p>
                       <div className="flex items-center gap-2 text-[10px] text-indigo-500 dark:text-indigo-400/70">
                         <span>
-                          {WORK_ORDER_STATUS_LABELS[activeWorkOrder.statut] ||
-                            activeWorkOrder.statut}
+                          {getWorkOrderStatusLabel(activeWorkOrder.statut)}
                         </span>
                         {activeWorkOrder.date_intervention_prevue && (
                           <>
