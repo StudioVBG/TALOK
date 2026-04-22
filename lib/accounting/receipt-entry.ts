@@ -18,6 +18,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAutoEntry } from "@/lib/accounting/engine";
 import { getOrCreateCurrentExercise } from "@/lib/accounting/auto-exercise";
+import {
+  getEntityAccountingConfig,
+  markEntryInformational,
+  shouldMarkInformational,
+} from "@/lib/accounting/entity-config";
 
 export interface EnsureReceiptAccountingEntryResult {
   created: boolean;
@@ -26,6 +31,7 @@ export interface EnsureReceiptAccountingEntryResult {
     | "already_exists"
     | "payment_not_found"
     | "entity_not_resolved"
+    | "accounting_disabled"
     | "exercise_not_available"
     | "error";
   entryId?: string;
@@ -125,6 +131,14 @@ export async function ensureReceiptAccountingEntry(
       return { created: false, skippedReason: "entity_not_resolved" };
     }
 
+    // ─── 2b. Per-entity accounting toggle ──────────────────────────
+    // Skip if the owner has not activated automatic accounting for this
+    // entity (avoids polluting the journal during initial setup).
+    const config = await getEntityAccountingConfig(supabase, entityId);
+    if (!config || !config.accountingEnabled) {
+      return { created: false, skippedReason: "accounting_disabled" };
+    }
+
     // ─── 3. Current exercise for that entity ───────────────────────
     const exercise = await getOrCreateCurrentExercise(supabase, entityId);
     if (!exercise) {
@@ -159,6 +173,10 @@ export async function ensureReceiptAccountingEntry(
       date: entryDate,
       reference: paymentId,
     });
+
+    if (shouldMarkInformational(config)) {
+      await markEntryInformational(supabase, entry.id);
+    }
 
     return { created: true, entryId: entry.id };
   } catch (err) {

@@ -1103,22 +1103,31 @@ export async function POST(request: NextRequest) {
 
               const entityId = invoiceForEntity?.lease?.property?.legal_entity_id;
               if (entityId) {
-                const exercise = await getOrCreateCurrentExercise(supabase, entityId);
-                if (exercise) {
-                  const tenantName = invoiceForEntity?.tenant
-                    ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
-                    : '';
-                  const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
+                const { getEntityAccountingConfig, shouldMarkInformational, markEntryInformational } =
+                  await import('@/lib/accounting/entity-config');
+                const config = await getEntityAccountingConfig(supabase, entityId);
+                if (config?.accountingEnabled) {
+                  const exercise = await getOrCreateCurrentExercise(supabase, entityId);
+                  if (exercise) {
+                    const tenantName = invoiceForEntity?.tenant
+                      ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
+                      : '';
+                    const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
 
-                  await createAutoEntry(supabase, 'rent_received', {
-                    entityId,
-                    exerciseId: exercise.id,
-                    userId: 'system',
-                    amountCents: paymentIntent.amount, // already in cents from Stripe
-                    label: `Loyer ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
-                    date: new Date().toISOString().split('T')[0],
-                    reference: paymentIntent.id,
-                  });
+                    const entry = await createAutoEntry(supabase, 'rent_received', {
+                      entityId,
+                      exerciseId: exercise.id,
+                      userId: 'system',
+                      amountCents: paymentIntent.amount, // already in cents from Stripe
+                      label: `Loyer ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
+                      date: new Date().toISOString().split('T')[0],
+                      reference: paymentIntent.id,
+                    });
+
+                    if (shouldMarkInformational(config)) {
+                      await markEntryInformational(supabase, entry.id);
+                    }
+                  }
                 }
               }
             } catch (accountingError) {
@@ -1203,22 +1212,31 @@ export async function POST(request: NextRequest) {
 
             const entityId = invoiceForEntity?.lease?.property?.legal_entity_id;
             if (entityId) {
-              const exercise = await getOrCreateCurrentExercise(supabase, entityId);
-              if (exercise) {
-                const tenantName = invoiceForEntity?.tenant
-                  ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
-                  : '';
-                const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
+              const { getEntityAccountingConfig, shouldMarkInformational, markEntryInformational } =
+                await import('@/lib/accounting/entity-config');
+              const config = await getEntityAccountingConfig(supabase, entityId);
+              if (config?.accountingEnabled) {
+                const exercise = await getOrCreateCurrentExercise(supabase, entityId);
+                if (exercise) {
+                  const tenantName = invoiceForEntity?.tenant
+                    ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
+                    : '';
+                  const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
 
-                await createAutoEntry(supabase, 'sepa_rejected', {
-                  entityId,
-                  exerciseId: exercise.id,
-                  userId: 'system',
-                  amountCents: paymentIntent.amount,
-                  label: `Rejet prelevement ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
-                  date: new Date().toISOString().split('T')[0],
-                  reference: paymentIntent.id,
-                });
+                  const entry = await createAutoEntry(supabase, 'sepa_rejected', {
+                    entityId,
+                    exerciseId: exercise.id,
+                    userId: 'system',
+                    amountCents: paymentIntent.amount,
+                    label: `Rejet prelevement ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
+                    date: new Date().toISOString().split('T')[0],
+                    reference: paymentIntent.id,
+                  });
+
+                  if (shouldMarkInformational(config)) {
+                    await markEntryInformational(supabase, entry.id);
+                  }
+                }
               }
             }
           } catch (accountingError) {
@@ -1308,23 +1326,52 @@ export async function POST(request: NextRequest) {
               .eq("id", subscription.id);
           }
 
-          await supabase.from("subscription_invoices").upsert(
-            {
-              subscription_id: subscription.id,
-              stripe_invoice_id: invoice.id,
-              amount_due: invoice.amount_due || 0,
-              amount_paid: invoice.amount_paid || 0,
-              amount_remaining: invoice.amount_remaining || 0,
-              status: invoice.status || "paid",
-              hosted_invoice_url: invoice.hosted_invoice_url,
-              invoice_pdf: invoice.invoice_pdf,
-              paid_at: invoice.status_transitions?.paid_at
-                ? new Date(invoice.status_transitions.paid_at * 1000).toISOString()
-                : new Date().toISOString(),
-            },
-            { onConflict: "stripe_invoice_id" }
-          );
+          const { data: upsertedInvoice } = await supabase
+            .from("subscription_invoices")
+            .upsert(
+              {
+                subscription_id: subscription.id,
+                stripe_invoice_id: invoice.id,
+                amount_due: invoice.amount_due || 0,
+                amount_paid: invoice.amount_paid || 0,
+                amount_remaining: invoice.amount_remaining || 0,
+                status: invoice.status || "paid",
+                hosted_invoice_url: invoice.hosted_invoice_url,
+                invoice_pdf: invoice.invoice_pdf,
+                paid_at: invoice.status_transitions?.paid_at
+                  ? new Date(invoice.status_transitions.paid_at * 1000).toISOString()
+                  : new Date().toISOString(),
+              },
+              { onConflict: "stripe_invoice_id" }
+            )
+            .select("id")
+            .maybeSingle();
 
+          // Accounting auto-entry for the paid subscription (non-blocking, idempotent,
+          // gated by accounting_enabled on the owner's primary entity)
+          const subscriptionInvoiceId = (upsertedInvoice as { id?: string } | null)?.id;
+          if (subscriptionInvoiceId) {
+            try {
+              const { ensureSubscriptionPaidEntry } = await import(
+                "@/lib/accounting/subscription-entry"
+              );
+              const result = await ensureSubscriptionPaidEntry(
+                supabase,
+                subscriptionInvoiceId,
+              );
+              if (result.skippedReason === "error") {
+                console.error(
+                  "[ACCOUNTING] subscription_paid failed:",
+                  result.error,
+                );
+              }
+            } catch (accountingError) {
+              console.error(
+                "[ACCOUNTING] subscription_paid hook exception (non-blocking):",
+                accountingError,
+              );
+            }
+          }
         }
 
         // Vérifier si cette invoice Stripe est aussi liée à une facture locative
