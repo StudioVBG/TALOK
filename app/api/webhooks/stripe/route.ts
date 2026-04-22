@@ -25,6 +25,7 @@ import {
   handleRentPaymentSucceeded,
   handleRentPaymentFailed,
 } from "@/lib/payments/rent-collection.service";
+import { recordPromoCodeUse } from "@/lib/subscriptions/promo-codes.service";
 import {
   buildSubscriptionUpdateFromStripe,
   resolvePlanIdentifiers,
@@ -745,6 +746,52 @@ export async function POST(request: NextRequest) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
         await syncSubscriptionFromCheckoutSession(supabase, stripe, session);
+
+        // ── Promo code usage log ──
+        // Enregistre l'utilisation d'un code promo Talok si la session en
+        // embarquait un. Source de vérité = promo_code_uses. Le trigger
+        // DB trg_promo_code_uses_increment bumpe promo_codes.uses_count.
+        // Non bloquant : une erreur de log ne doit pas faire échouer le
+        // webhook (Stripe ne réessaierait pas pour une raison métier).
+        const promoCodeId = session.metadata?.promo_code_id;
+        if (session.mode === "subscription" && promoCodeId) {
+          try {
+            const profileId = session.metadata?.profile_id;
+            if (profileId) {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("user_id")
+                .eq("id", profileId)
+                .single();
+
+              const userId = (profile as { user_id?: string } | null)?.user_id;
+              if (userId) {
+                const { data: sub } = await supabase
+                  .from("subscriptions")
+                  .select("id")
+                  .eq("owner_id", profileId)
+                  .maybeSingle();
+
+                const amountSubtotal = session.amount_subtotal ?? 0;
+                const amountTotal = session.amount_total ?? 0;
+                await recordPromoCodeUse({
+                  promo_code_id: promoCodeId,
+                  user_id: userId,
+                  subscription_id: (sub as { id?: string } | null)?.id ?? null,
+                  original_amount: amountSubtotal,
+                  final_amount: amountTotal,
+                  discount_amount: amountSubtotal - amountTotal,
+                  applied_plan_slug: session.metadata?.plan_slug ?? "",
+                  applied_billing_cycle:
+                    (session.metadata?.billing_cycle as "monthly" | "yearly") ?? "monthly",
+                  stripe_session_id: session.id,
+                });
+              }
+            }
+          } catch (promoErr) {
+            console.error("[stripe webhook] recordPromoCodeUse failed:", promoErr);
+          }
+        }
 
         // ── Add-on activation ──
         const addonId = session.metadata?.addon_id;
