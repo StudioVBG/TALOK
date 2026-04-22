@@ -6,9 +6,10 @@ import {
   useAccountingEntries,
   type AccountingEntryRow as AccountingEntryRowData,
 } from "@/lib/hooks/use-accounting-entries";
+import Link from "next/link";
 import { QuickEntryForm } from "@/components/accounting/QuickEntryForm";
 import { formatCents } from "@/lib/utils/format-cents";
-import { ChevronLeft, ChevronRight, Plus, Loader2 } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, Plus, Loader2, Settings } from "lucide-react";
 import { EntryFilters, type EntryFilterStatus } from "./components/EntryFilters";
 import { BulkActions } from "./components/BulkActions";
 import {
@@ -209,11 +210,16 @@ function EntriesPageContent() {
           ))}
         </div>
       ) : entries.length === 0 ? (
-        <div className="bg-card rounded-xl border border-border p-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            Aucune ecriture trouvee.
-          </p>
-        </div>
+        <EmptyEntriesState
+          hasActiveFilters={
+            !!search ||
+            !!journalCode ||
+            status !== "all" ||
+            !!source ||
+            !!startDate ||
+            !!endDate
+          }
+        />
       ) : (
         <>
           {/* Desktop table */}
@@ -349,6 +355,44 @@ function EntriesPageContent() {
 
       {/* Quick entry sheet */}
       <QuickEntryForm open={sheetOpen} onOpenChange={setSheetOpen} />
+    </div>
+  );
+}
+
+function EmptyEntriesState({ hasActiveFilters }: { hasActiveFilters: boolean }) {
+  if (hasActiveFilters) {
+    return (
+      <div className="bg-card rounded-xl border border-border p-12 text-center">
+        <p className="text-sm text-muted-foreground">
+          Aucune écriture ne correspond aux filtres sélectionnés.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-card rounded-xl border border-border p-8 sm:p-12 text-center space-y-4">
+      <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+        <BookOpen className="h-6 w-6 text-muted-foreground" />
+      </div>
+      <div className="space-y-1 max-w-md mx-auto">
+        <h3 className="text-base font-medium">Aucune écriture pour le moment</h3>
+        <p className="text-sm text-muted-foreground">
+          Activez la comptabilité automatique dans les paramètres pour que Talok
+          génère une écriture à chaque loyer, paiement, dépôt et dépense.
+          Vous pouvez aussi créer une écriture manuellement ou importer
+          l'historique.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2 justify-center pt-2">
+        <Link
+          href="/owner/accounting/settings"
+          className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+        >
+          <Settings className="h-4 w-4" />
+          Ouvrir les paramètres
+        </Link>
+      </div>
     </div>
   );
 }

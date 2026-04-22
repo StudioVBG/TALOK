@@ -112,6 +112,24 @@ export async function POST(
       metadata: { amount, lease_id: id as any },
     } as any);
 
+    // Accounting auto-entry (non-blocking, idempotent, gated by accounting_enabled)
+    try {
+      const { ensureDepositReceivedEntry } = await import(
+        "@/lib/accounting/deposit-entry"
+      );
+      const result = await ensureDepositReceivedEntry(supabase, movementData.id, {
+        userId: user.id,
+      });
+      if (result.skippedReason === "error") {
+        console.error("[ACCOUNTING] deposit_received failed:", result.error);
+      }
+    } catch (accountingError) {
+      console.error(
+        "[ACCOUNTING] deposit_received hook exception (non-blocking):",
+        accountingError,
+      );
+    }
+
     return NextResponse.json({ movement });
   } catch (error: unknown) {
     return NextResponse.json(

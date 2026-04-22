@@ -435,6 +435,17 @@ async function postWorkOrderAutoEntry(
 
     const { createAutoEntry } = await import('@/lib/accounting/engine');
     const { getOrCreateCurrentExercise } = await import('@/lib/accounting/auto-exercise');
+    const { getEntityAccountingConfig, shouldMarkInformational, markEntryInformational } =
+      await import('@/lib/accounting/entity-config');
+
+    const config = await getEntityAccountingConfig(supabase, entityId);
+    if (!config || !config.accountingEnabled) {
+      console.log(
+        '[work-orders] Skipping auto-entry: accounting not enabled for entity',
+        entityId,
+      );
+      return;
+    }
 
     const exercise = await getOrCreateCurrentExercise(supabase, entityId);
     if (!exercise) {
@@ -451,6 +462,10 @@ async function postWorkOrderAutoEntry(
       date: params.date,
       reference: params.reference,
     });
+
+    if (shouldMarkInformational(config)) {
+      await markEntryInformational(supabase, entry.id);
+    }
 
     if (params.persistEntryIdOnWorkOrder && entry?.id) {
       await supabase

@@ -93,7 +93,8 @@ export type AutoEntryEvent =
   | 'copro_works_fund'
   | 'copro_closing'
   | 'teom_recovered'
-  | 'charge_regularization';
+  | 'charge_regularization'
+  | 'subscription_paid';
 
 // ---------------------------------------------------------------------------
 // Validation helpers
@@ -683,6 +684,23 @@ const AUTO_ENTRIES: Record<
       lines,
     };
   },
+
+  subscription_paid: (ctx) => ({
+    entityId: ctx.entityId,
+    exerciseId: ctx.exerciseId,
+    journalCode: 'BQ',
+    entryDate: ctx.date,
+    label: ctx.label || 'Abonnement Talok',
+    source: 'auto:subscription_paid',
+    reference: ctx.reference,
+    userId: ctx.userId,
+    // Platform subscription is booked as a miscellaneous fee (honoraires)
+    // debited against the bank account at settlement date.
+    lines: [
+      { accountNumber: '622800', debitCents: ctx.amountCents, creditCents: 0 },
+      { accountNumber: ctx.bankAccount ?? '512100', debitCents: 0, creditCents: ctx.amountCents },
+    ],
+  }),
 };
 
 /**
