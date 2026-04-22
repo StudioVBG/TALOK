@@ -10,7 +10,7 @@ import { NextResponse } from "next/server";
 import { adminGiftDays } from "@/lib/subscriptions/subscription-service";
 import { z } from "zod";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
-import { validateCsrfFromRequest } from "@/lib/security/csrf";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 const giftSchema = z.object({
   user_id: z.string().uuid(),
@@ -22,14 +22,10 @@ const giftSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    // CSRF validation
-    try {
-      const csrfValid = await validateCsrfFromRequest(request);
-      if (!csrfValid) {
-        return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
-      }
-    } catch {
-      // CSRF_SECRET not configured — degrade gracefully
+    const csrf = await validateCsrfFromRequestDetailed(request);
+    if (!csrf.valid) {
+      await logCsrfFailure(request, csrf.reason!, "admin.subscriptions.gift");
+      return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
     }
 
     // RBAC + rate limit + audit

@@ -23,7 +23,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
-import { validateCsrfFromRequest } from "@/lib/security/csrf";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 const IMPERSONATION_COOKIE = "impersonation_session";
 const MAX_DURATION_HOURS = 1;
@@ -44,14 +44,10 @@ interface ImpersonationSession {
  */
 export async function POST(request: NextRequest) {
   try {
-    // CSRF validation
-    try {
-      const csrfValid = await validateCsrfFromRequest(request);
-      if (!csrfValid) {
-        return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
-      }
-    } catch {
-      // CSRF_SECRET not configured — degrade gracefully
+    const csrf = await validateCsrfFromRequestDetailed(request);
+    if (!csrf.valid) {
+      await logCsrfFailure(request, csrf.reason!, "admin.impersonate");
+      return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
     }
 
     // RBAC: seuls les platform_admin peuvent impersonner
