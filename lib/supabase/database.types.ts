@@ -1766,6 +1766,44 @@ export type SepaMandateRow = {
   updated_at: string
 }
 
+// Promo Codes - SaaS subscriptions discount codes
+export type PromoCodeRow = {
+  id: string
+  code: string
+  name: string | null
+  description: string | null
+  discount_type: 'percent' | 'fixed'
+  discount_value: number
+  applicable_plans: string[]
+  min_billing_cycle: 'monthly' | 'yearly' | null
+  first_subscription_only: boolean
+  max_uses: number | null
+  uses_count: number
+  max_uses_per_user: number
+  valid_from: string
+  valid_until: string | null
+  stripe_coupon_id: string | null
+  stripe_promotion_code_id: string | null
+  is_active: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type PromoCodeUseRow = {
+  id: string
+  promo_code_id: string
+  user_id: string
+  subscription_id: string | null
+  discount_amount: number | null
+  original_amount: number | null
+  final_amount: number | null
+  applied_plan_slug: string | null
+  applied_billing_cycle: 'monthly' | 'yearly' | null
+  stripe_session_id: string | null
+  created_at: string
+}
+
 // ============================================
 // Generic Row type for tables not yet fully typed
 type GenericRowType = Record<string, unknown> & { id?: string; created_at?: string; updated_at?: string }
@@ -2284,7 +2322,14 @@ export type Database = {
       notification_templates: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       organization_members: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       ownerships: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
-      promo_codes: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      promo_codes: {
+        Row: PromoCodeRow
+        Insert: Partial<PromoCodeRow>
+        Update: Partial<PromoCodeRow>
+        Relationships: [
+          { foreignKeyName: "promo_codes_created_by_fkey"; columns: ["created_by"]; isOneToOne: false; referencedRelation: "users"; referencedColumns: ["id"] }
+        ]
+      }
       provider_compliance_documents: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       provider_compliance_status: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       provider_invoice_items: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
@@ -2471,7 +2516,15 @@ export type Database = {
       payment_intents: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       payment_schedules: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       plan_pricing_history: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
-      promo_code_uses: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
+      promo_code_uses: {
+        Row: PromoCodeUseRow
+        Insert: Partial<PromoCodeUseRow>
+        Update: Partial<PromoCodeUseRow>
+        Relationships: [
+          { foreignKeyName: "promo_code_uses_promo_code_id_fkey"; columns: ["promo_code_id"]; isOneToOne: false; referencedRelation: "promo_codes"; referencedColumns: ["id"] },
+          { foreignKeyName: "promo_code_uses_user_id_fkey"; columns: ["user_id"]; isOneToOne: false; referencedRelation: "users"; referencedColumns: ["id"] }
+        ]
+      }
       property_photos: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       property_share_tokens: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
       provider_stats: { Row: GenericRowType; Insert: Record<string, unknown>; Update: Record<string, unknown>; Relationships: [] }
