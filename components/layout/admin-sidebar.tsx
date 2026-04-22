@@ -63,7 +63,7 @@ interface NavCategory {
 
 const adminNavItems: NavCategory[] = [
   {
-    category: "A traiter",
+    category: "À traiter",
     items: [
       { href: "/admin/dashboard", label: "Tableau de bord", icon: BarChart3 },
       { href: "/admin/support", label: "Support", icon: Ticket },
@@ -98,9 +98,7 @@ const adminNavItems: NavCategory[] = [
       { href: "/admin/subscriptions", label: "Abonnements", icon: Wallet },
       { href: "/admin/promo-codes", label: "Codes promo", icon: Tag },
       { href: "/admin/accounting", label: "Comptabilité", icon: Calculator },
-      { href: "/admin/branding", label: "Branding", icon: Palette },
       { href: "/admin/stripe", label: "Stripe Connect", icon: Zap },
-      { href: "/admin/integrations", label: "Intégrations", icon: Key },
     ],
   },
   {
@@ -115,6 +113,8 @@ const adminNavItems: NavCategory[] = [
     category: "Plateforme",
     items: [
       { href: "/admin/platform-health", label: "Santé plateforme", icon: Activity },
+      { href: "/admin/branding", label: "Branding", icon: Palette },
+      { href: "/admin/integrations", label: "Intégrations", icon: Key },
       { href: "/admin/flags", label: "Feature Flags", icon: Flag },
       { href: "/admin/crons", label: "Tâches planifiées", icon: Clock },
     ],
@@ -244,7 +244,7 @@ export function AdminSidebar({ className }: { className?: string }) {
               className="flex w-full items-center gap-2 rounded-lg px-0 py-2 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 transition-colors disabled:opacity-50"
             >
               <LogOut className="h-4 w-4" />
-              <span>{signingOut ? "Deconnexion..." : "Deconnexion"}</span>
+              <span>{signingOut ? "Déconnexion..." : "Déconnexion"}</span>
             </button>
           </div>
         </div>
@@ -347,7 +347,7 @@ export function AdminSidebar({ className }: { className?: string }) {
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 hover:text-red-600 transition-colors disabled:opacity-50"
               >
                 <LogOut className="h-4 w-4" />
-                <span>{signingOut ? "Deconnexion..." : "Deconnexion"}</span>
+                <span>{signingOut ? "Déconnexion..." : "Déconnexion"}</span>
               </button>
             </div>
           </div>
