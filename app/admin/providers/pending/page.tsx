@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { adminKeys } from "@/lib/hooks/use-admin-queries";
-import { ProtectedRoute } from "@/components/protected-route";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -587,8 +586,7 @@ function PendingProvidersContent() {
   ];
 
   return (
-    <ProtectedRoute allowedRoles={["admin"]}>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Validation des Prestataires</h1>
@@ -1213,8 +1211,7 @@ function PendingProvidersContent() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-    </ProtectedRoute>
+    </div>
   );
 }
 

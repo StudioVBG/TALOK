@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ProtectedRoute } from "@/components/protected-route";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -208,11 +207,7 @@ function VendorDetailContent({ vendorId }: { vendorId: string }) {
 }
 
 export default function VendorDetailPage({ params }: { params: { id: string } }) {
-  return (
-    <ProtectedRoute allowedRoles={["admin"]}>
-      <VendorDetailContent vendorId={params.id} />
-    </ProtectedRoute>
-  );
+  return <VendorDetailContent vendorId={params.id} />;
 }
 
 

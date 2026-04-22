@@ -7,14 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Shield, UserX, Download, Loader2 } from "lucide-react";
-import { ProtectedRoute } from "@/components/protected-route";
 
 export default function AdminPrivacyPage() {
-  return (
-    <ProtectedRoute allowedRoles={["admin", "platform_admin"]}>
-      <AdminPrivacyPageContent />
-    </ProtectedRoute>
-  );
+  return <AdminPrivacyPageContent />;
 }
 
 function AdminPrivacyPageContent() {

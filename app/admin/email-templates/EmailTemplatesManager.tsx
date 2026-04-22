@@ -329,7 +329,7 @@ export function EmailTemplatesManager({
       {/* Main content */}
       <div className="flex gap-4 flex-1 min-h-0">
         {/* Sidebar — template list */}
-        <div className="w-80 shrink-0 overflow-y-auto border rounded-lg bg-white">
+        <div className="w-80 shrink-0 overflow-y-auto border rounded-lg bg-card">
           {Object.entries(groupedTemplates).map(([category, tpls]) => {
             const cat = CATEGORIES[category] || {
               label: category,
@@ -382,7 +382,7 @@ export function EmailTemplatesManager({
 
         {/* Editor panel */}
         {selected ? (
-          <div className="flex-1 min-w-0 flex flex-col border rounded-lg bg-white overflow-hidden">
+          <div className="flex-1 min-w-0 flex flex-col border rounded-lg bg-card overflow-hidden">
             {/* Template header */}
             <div className="px-4 py-3 border-b bg-slate-50 flex items-center justify-between shrink-0">
               <div>
@@ -459,7 +459,7 @@ export function EmailTemplatesManager({
                     {versions.map((v) => (
                       <div
                         key={v.id}
-                        className="flex items-center justify-between bg-white rounded px-3 py-1.5 text-sm"
+                        className="flex items-center justify-between bg-muted rounded px-3 py-1.5 text-sm"
                       >
                         <span className="text-slate-600">
                           {new Date(v.created_at).toLocaleString("fr-FR")}
@@ -517,7 +517,7 @@ export function EmailTemplatesManager({
                   <button
                     key={v.key}
                     onClick={() => handleCopyVar(v.key)}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border rounded text-xs text-slate-700 hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-background border rounded text-xs text-foreground hover:bg-accent hover:border-blue-300 transition-colors"
                     title={`${v.label} — ex: ${v.example}`}
                   >
                     <code>{`{{${v.key}}}`}</code>

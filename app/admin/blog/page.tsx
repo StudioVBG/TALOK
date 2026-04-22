@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ProtectedRoute } from "@/components/protected-route";
 import { BlogPostCard } from "@/features/blog/components/blog-post-card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -83,10 +82,6 @@ function AdminBlogPageContent() {
 }
 
 export default function AdminBlogPage() {
-  return (
-    <ProtectedRoute allowedRoles={["admin"]}>
-      <AdminBlogPageContent />
-    </ProtectedRoute>
-  );
+  return <AdminBlogPageContent />;
 }
 

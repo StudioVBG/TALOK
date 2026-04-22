@@ -14,7 +14,6 @@ import {
   Loader2,
   Power,
 } from "lucide-react";
-import { ProtectedRoute } from "@/components/protected-route";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -73,11 +72,7 @@ const ROLE_OPTIONS = [
 ] as const;
 
 export default function AdminBroadcastsPage() {
-  return (
-    <ProtectedRoute allowedRoles={["admin", "platform_admin"]}>
-      <AdminBroadcastsPageContent />
-    </ProtectedRoute>
-  );
+  return <AdminBroadcastsPageContent />;
 }
 
 function AdminBroadcastsPageContent() {

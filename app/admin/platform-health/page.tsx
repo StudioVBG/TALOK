@@ -10,7 +10,6 @@ import {
   RefreshCw,
   Loader2,
 } from "lucide-react";
-import { ProtectedRoute } from "@/components/protected-route";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -39,11 +38,7 @@ interface HealthResponse {
 }
 
 export default function PlatformHealthPage() {
-  return (
-    <ProtectedRoute allowedRoles={["admin", "platform_admin"]}>
-      <PlatformHealthContent />
-    </ProtectedRoute>
-  );
+  return <PlatformHealthContent />;
 }
 
 const STATUS_META: Record<Status, { label: string; className: string; Icon: React.ComponentType<{ className?: string }> }> = {

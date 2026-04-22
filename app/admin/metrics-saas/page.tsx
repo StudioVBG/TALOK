@@ -23,7 +23,6 @@ import {
   Loader2,
   Activity,
 } from "lucide-react";
-import { ProtectedRoute } from "@/components/protected-route";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -67,11 +66,7 @@ interface SaasMetrics {
 }
 
 export default function MetricsSaasPage() {
-  return (
-    <ProtectedRoute allowedRoles={["admin", "platform_admin"]}>
-      <MetricsSaasContent />
-    </ProtectedRoute>
-  );
+  return <MetricsSaasContent />;
 }
 
 const formatEur = (cents: number) =>

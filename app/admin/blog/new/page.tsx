@@ -1,6 +1,5 @@
 "use client";
 
-import { ProtectedRoute } from "@/components/protected-route";
 import { BlogPostForm } from "@/features/blog/components/blog-post-form";
 import { useRouter } from "next/navigation";
 
@@ -23,10 +22,6 @@ function NewBlogPostPageContent() {
 }
 
 export default function NewBlogPostPage() {
-  return (
-    <ProtectedRoute allowedRoles={["admin"]}>
-      <NewBlogPostPageContent />
-    </ProtectedRoute>
-  );
+  return <NewBlogPostPageContent />;
 }
 

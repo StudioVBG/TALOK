@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   useSupportTickets,
@@ -254,12 +255,16 @@ export default function AdminSupportPage() {
                         </TableCell>
                         <TableCell>
                           {user ? (
-                            <div>
+                            <Link
+                              href={`/admin/people/${user.id as string}`}
+                              className="block hover:underline"
+                              title="Voir la fiche utilisateur"
+                            >
                               <div className="text-sm font-medium">
                                 {(user.prenom as string) || ""} {(user.nom as string) || ""}
                               </div>
                               <div className="text-xs text-muted-foreground">{(user.email as string) || ""}</div>
-                            </div>
+                            </Link>
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}

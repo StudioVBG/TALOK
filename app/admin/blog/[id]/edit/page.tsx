@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ProtectedRoute } from "@/components/protected-route";
 import { BlogPostForm } from "@/features/blog/components/blog-post-form";
 import { blogService } from "@/features/blog/services/blog.service";
 import type { BlogPost } from "@/lib/types";
@@ -69,10 +68,6 @@ function EditBlogPostPageContent() {
 }
 
 export default function EditBlogPostPage() {
-  return (
-    <ProtectedRoute allowedRoles={["admin"]}>
-      <EditBlogPostPageContent />
-    </ProtectedRoute>
-  );
+  return <EditBlogPostPageContent />;
 }
 

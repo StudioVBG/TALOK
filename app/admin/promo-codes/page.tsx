@@ -13,7 +13,6 @@ import {
   Copy,
   CheckCircle2,
 } from "lucide-react";
-import { ProtectedRoute } from "@/components/protected-route";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -91,11 +90,7 @@ const ALL_TERRITORIES = [
 type TerritorySlug = (typeof ALL_TERRITORIES)[number]["slug"];
 
 export default function AdminPromoCodesPage() {
-  return (
-    <ProtectedRoute allowedRoles={["admin", "platform_admin"]}>
-      <AdminPromoCodesPageContent />
-    </ProtectedRoute>
-  );
+  return <AdminPromoCodesPageContent />;
 }
 
 function AdminPromoCodesPageContent() {
