@@ -10,7 +10,10 @@ export async function fetchAdminProperties(options: { status?: string; search?: 
 
   let query = supabase
     .from("properties")
-    .select("*, owner:profiles(id, prenom, nom)", { count: "exact" })
+    .select(
+      "*, owner:profiles!properties_owner_id_fkey(id, prenom, nom)",
+      { count: "exact" }
+    )
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
