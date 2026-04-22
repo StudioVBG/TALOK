@@ -14,6 +14,7 @@ import {
   FileText,
   TrendingDown,
   UserCheck,
+  Settings,
   type LucideIcon,
 } from "lucide-react";
 
@@ -46,6 +47,7 @@ const accountingTabs: AccountingTab[] = [
     icon: TrendingDown,
   },
   { label: "Expert-comptable", href: "/owner/accounting/ec", icon: UserCheck },
+  { label: "Paramètres", href: "/owner/accounting/settings", icon: Settings },
 ];
 
 /**
