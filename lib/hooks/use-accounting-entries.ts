@@ -35,6 +35,7 @@ export interface AccountingEntryRow {
   is_validated: boolean;
   is_locked: boolean;
   reversal_of: string | null;
+  informational?: boolean;
   created_at: string;
   updated_at: string;
   // Legacy fields (may co-exist)

@@ -99,6 +99,17 @@ function StatusBadge({ entry }: { entry: AccountingEntryRowData }) {
   );
 }
 
+function InformationalBadge() {
+  return (
+    <span
+      className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border bg-blue-500/10 text-blue-500 border-blue-500/20"
+      title="Écriture créée à titre informatif (régime micro-foncier). Non intégrée au FEC."
+    >
+      Info
+    </span>
+  );
+}
+
 // ── Row (desktop table variant) ────────────────────────────────────
 
 interface EntryRowProps {
@@ -154,7 +165,10 @@ export function EntryRow({ entry, isSelected, onToggleSelect }: EntryRowProps) {
         {creditCents > 0 ? formatCents(creditCents) : "-"}
       </td>
       <td className="px-3 py-3 text-center">
-        <StatusBadge entry={entry} />
+        <div className="flex items-center justify-center gap-1">
+          <StatusBadge entry={entry} />
+          {entry.informational && <InformationalBadge />}
+        </div>
       </td>
       <td className="px-3 py-3 text-center">
         <SourceBadge source={entry.source} />
@@ -204,6 +218,7 @@ export function EntryCard({ entry, isSelected, onToggleSelect }: EntryRowProps) 
           </div>
           <div className="flex items-center gap-2 mt-2">
             <StatusBadge entry={entry} />
+            {entry.informational && <InformationalBadge />}
             <SourceBadge source={entry.source} />
           </div>
         </Link>
