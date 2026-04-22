@@ -1775,6 +1775,7 @@ export type PromoCodeRow = {
   discount_type: 'percent' | 'fixed'
   discount_value: number
   applicable_plans: string[]
+  eligible_territories: string[]
   min_billing_cycle: 'monthly' | 'yearly' | null
   first_subscription_only: boolean
   max_uses: number | null

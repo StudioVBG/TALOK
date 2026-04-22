@@ -54,6 +54,7 @@ interface PromoCode {
   discount_type: "percent" | "fixed";
   discount_value: number;
   applicable_plans: string[] | null;
+  eligible_territories: string[] | null;
   min_billing_cycle: "monthly" | "yearly" | null;
   first_subscription_only: boolean;
   max_uses: number | null;
@@ -61,6 +62,8 @@ interface PromoCode {
   max_uses_per_user: number;
   valid_from: string;
   valid_until: string | null;
+  stripe_coupon_id: string | null;
+  stripe_promotion_code_id: string | null;
   is_active: boolean;
   created_at: string;
 }
@@ -75,6 +78,17 @@ const ALL_PLAN_SLUGS: PlanSlug[] = [
   "enterprise_l",
   "enterprise_xl",
 ];
+
+const ALL_TERRITORIES = [
+  { slug: "metropole", label: "Métropole" },
+  { slug: "martinique", label: "Martinique" },
+  { slug: "guadeloupe", label: "Guadeloupe" },
+  { slug: "reunion", label: "La Réunion" },
+  { slug: "guyane", label: "Guyane" },
+  { slug: "mayotte", label: "Mayotte" },
+] as const;
+
+type TerritorySlug = (typeof ALL_TERRITORIES)[number]["slug"];
 
 export default function AdminPromoCodesPage() {
   return (
@@ -204,6 +218,15 @@ function AdminPromoCodesPageContent() {
                 : c.applicable_plans
                     .map((slug) => PLANS[slug as PlanSlug]?.name || slug)
                     .join(", ");
+            const territoryLabel =
+              !c.eligible_territories || c.eligible_territories.length === 0
+                ? "Tous les territoires"
+                : c.eligible_territories
+                    .map(
+                      (slug) =>
+                        ALL_TERRITORIES.find((t) => t.slug === slug)?.label || slug
+                    )
+                    .join(", ");
             return (
               <div
                 key={c.id}
@@ -267,6 +290,9 @@ function AdminPromoCodesPageContent() {
                       {c.min_billing_cycle && ` · ${c.min_billing_cycle === "yearly" ? "Annuel uniquement" : "Mensuel ou annuel"}`}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
+                      Territoires : {territoryLabel}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
                       Usages : {c.uses_count}
                       {c.max_uses ? ` / ${c.max_uses}` : " (illimité)"}
                       {" · "}
@@ -278,6 +304,11 @@ function AdminPromoCodesPageContent() {
                         ? ` au ${new Date(c.valid_until).toLocaleDateString("fr-FR")}`
                         : " (sans fin)"}
                     </p>
+                    {c.stripe_promotion_code_id && (
+                      <p className="text-xs text-muted-foreground/70 mt-1 font-mono">
+                        Stripe : {c.stripe_promotion_code_id}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <Button
@@ -340,6 +371,7 @@ function CreatePromoDialog({
   const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
   const [discountValue, setDiscountValue] = useState("10");
   const [applicablePlans, setApplicablePlans] = useState<string[]>([]);
+  const [eligibleTerritories, setEligibleTerritories] = useState<TerritorySlug[]>([]);
   const [minBillingCycle, setMinBillingCycle] = useState<"any" | "yearly">("any");
   const [firstSubOnly, setFirstSubOnly] = useState(false);
   const [maxUses, setMaxUses] = useState("");
@@ -354,6 +386,7 @@ function CreatePromoDialog({
     setDiscountType("percent");
     setDiscountValue("10");
     setApplicablePlans([]);
+    setEligibleTerritories([]);
     setMinBillingCycle("any");
     setFirstSubOnly(false);
     setMaxUses("");
@@ -364,6 +397,12 @@ function CreatePromoDialog({
   const togglePlan = (slug: string) => {
     setApplicablePlans((prev) =>
       prev.includes(slug) ? prev.filter((p) => p !== slug) : [...prev, slug]
+    );
+  };
+
+  const toggleTerritory = (slug: TerritorySlug) => {
+    setEligibleTerritories((prev) =>
+      prev.includes(slug) ? prev.filter((t) => t !== slug) : [...prev, slug]
     );
   };
 
@@ -391,6 +430,7 @@ function CreatePromoDialog({
           // Fixed amount is stored in cents server-side
           discount_value: discountType === "fixed" ? Math.round(valNumber * 100) : valNumber,
           applicable_plans: applicablePlans,
+          eligible_territories: eligibleTerritories,
           min_billing_cycle: minBillingCycle === "any" ? null : "yearly",
           first_subscription_only: firstSubOnly,
           max_uses: maxUses ? parseInt(maxUses, 10) : null,
@@ -504,6 +544,26 @@ function CreatePromoDialog({
                   )}
                 >
                   {PLANS[slug].name}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label>Territoires éligibles (vide = tous)</Label>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {ALL_TERRITORIES.map(({ slug, label }) => (
+                <button
+                  key={slug}
+                  type="button"
+                  onClick={() => toggleTerritory(slug)}
+                  className={cn(
+                    "text-xs px-2.5 py-1 rounded-full border transition",
+                    eligibleTerritories.includes(slug)
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-foreground border-border hover:bg-accent"
+                  )}
+                >
+                  {label}
                 </button>
               ))}
             </div>

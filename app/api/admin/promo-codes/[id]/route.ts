@@ -4,10 +4,21 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import {
+  archivePromoCode,
+  reactivatePromoCode,
+} from "@/lib/subscriptions/promo-codes.service";
 
 /**
  * PATCH /api/admin/promo-codes/[id]
- * Met à jour un code promo (activer/désactiver, changer limite, etc.).
+ *
+ * Met à jour un code promo :
+ *  - is_active toggle   → sync Stripe (Promotion Code active=true/false)
+ *  - autres champs      → UPDATE DB uniquement.
+ *
+ * Note : on ne met PAS à jour la remise (discount_type / discount_value)
+ * d'un Stripe Coupon — Stripe l'interdit après création. Pour changer la
+ * remise il faut archiver + créer un nouveau code.
  */
 export async function PATCH(
   request: NextRequest,
@@ -22,56 +33,61 @@ export async function PATCH(
   const { id } = await params;
   const body = await request.json().catch(() => ({}));
 
-  const updates: Record<string, unknown> = {};
-  const allowed = [
-    "name",
-    "description",
-    "discount_value",
-    "applicable_plans",
-    "min_billing_cycle",
-    "first_subscription_only",
-    "max_uses",
-    "max_uses_per_user",
-    "valid_until",
-    "is_active",
-  ] as const;
+  try {
+    // Toggle actif/archivé : passe par le service pour sync Stripe.
+    if (typeof body.is_active === "boolean") {
+      if (body.is_active === false) {
+        await archivePromoCode(id);
+      } else {
+        await reactivatePromoCode(id);
+      }
+    }
 
-  for (const key of allowed) {
-    if (body[key] !== undefined) updates[key] = body[key];
+    // Autres champs modifiables (métadonnées Talok, pas de sync Stripe requise).
+    const allowed = [
+      "name",
+      "description",
+      "applicable_plans",
+      "eligible_territories",
+      "min_billing_cycle",
+      "first_subscription_only",
+      "max_uses_per_user",
+    ] as const;
+
+    const updates: Record<string, unknown> = {};
+    for (const key of allowed) {
+      if (body[key] !== undefined) updates[key] = body[key];
+    }
+
+    if (Object.keys(updates).length > 0) {
+      const supabase = createServiceRoleClient();
+      const { error } = await supabase.from("promo_codes").update(updates).eq("id", id);
+      if (error) {
+        console.error("[admin/promo-codes PATCH metadata]", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+    }
+
+    // Renvoyer l'état actualisé.
+    const supabase = createServiceRoleClient();
+    const { data } = await supabase.from("promo_codes").select("*").eq("id", id).single();
+    return NextResponse.json({ code: data });
+  } catch (err) {
+    console.error("[admin/promo-codes PATCH]", err);
+    const msg = err instanceof Error ? err.message : "Erreur serveur";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
-
-  if (Object.keys(updates).length === 0) {
-    return NextResponse.json({ error: "Aucune modification fournie" }, { status: 400 });
-  }
-
-  if (
-    updates.discount_value !== undefined &&
-    typeof updates.discount_value === "number" &&
-    updates.discount_value <= 0
-  ) {
-    return NextResponse.json({ error: "La remise doit être positive" }, { status: 400 });
-  }
-
-  const supabase = createServiceRoleClient();
-  const { data, error } = await supabase
-    .from("promo_codes")
-    .update(updates)
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) {
-    console.error("[admin/promo-codes PATCH]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ code: data });
 }
 
 /**
  * DELETE /api/admin/promo-codes/[id]
- * Supprime un code promo.
- * Conserve l'historique des usages (promo_code_uses) grâce à ON DELETE.
+ *
+ * Archive le code (pas de hard delete) :
+ *   - is_active = false côté DB
+ *   - Promotion Code Stripe désactivé
+ *
+ * Les lignes promo_code_uses et l'historique audit sont conservés
+ * (conformité Stripe + audit RGPD).
  */
 export async function DELETE(
   request: NextRequest,
@@ -79,19 +95,18 @@ export async function DELETE(
 ) {
   const auth = await requireAdminPermissions(request, ["admin.plans.write"], {
     rateLimit: "adminCritical",
-    auditAction: "promo_code_deleted",
+    auditAction: "promo_code_archived",
   });
   if (isAdminAuthError(auth)) return auth;
 
   const { id } = await params;
 
-  const supabase = createServiceRoleClient();
-  const { error } = await supabase.from("promo_codes").delete().eq("id", id);
-
-  if (error) {
-    console.error("[admin/promo-codes DELETE]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    await archivePromoCode(id);
+    return NextResponse.json({ success: true, archived: true });
+  } catch (err) {
+    console.error("[admin/promo-codes DELETE]", err);
+    const msg = err instanceof Error ? err.message : "Erreur serveur";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
-
-  return NextResponse.json({ success: true });
 }
