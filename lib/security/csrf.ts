@@ -99,32 +99,41 @@ export function validateCsrfToken(token: string | null): boolean {
   }
 }
 
+export type CsrfFailureReason =
+  | "missing_header"
+  | "invalid_signature_or_expired"
+  | "cookie_mismatch";
+
+export interface CsrfValidationResult {
+  valid: boolean;
+  reason?: CsrfFailureReason;
+}
+
 /**
- * Middleware de validation CSRF pour les API routes
- * À utiliser pour les routes sensibles (POST, PUT, DELETE)
+ * Variante détaillée : renvoie la raison précise d'un échec, pour permettre
+ * aux route handlers (ou au HOC `withSecurity`) de logger via Sentry.
  */
-export async function validateCsrfFromRequest(request: Request): Promise<boolean> {
+export async function validateCsrfFromRequestDetailed(
+  request: Request
+): Promise<CsrfValidationResult> {
   // Les requêtes GET sont safe
   if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") {
-    return true;
+    return { valid: true };
   }
 
-  // Récupérer le token du header
   const headerToken = request.headers.get(CSRF_HEADER_NAME);
-
-  // Le header token est obligatoire
   if (!headerToken) {
-    return false;
+    return { valid: false, reason: "missing_header" };
   }
 
-  // Valider la signature HMAC et l'expiration du token
   if (!validateCsrfToken(headerToken)) {
-    return false;
+    return { valid: false, reason: "invalid_signature_or_expired" };
   }
 
-  // Si le cookie est présent, vérifier qu'il correspond (defense-in-depth)
-  // Le cookie peut être absent car cookies().set() dans un Server Component
-  // Next.js App Router est non fiable et peut échouer silencieusement.
+  // Defense-in-depth : si le cookie est présent et diffère du header, on
+  // rejette. Le cookie peut être absent si `cookies().set()` depuis un Server
+  // Component a échoué silencieusement — dans ce cas on retombe sur la seule
+  // vérif HMAC+expiry du header (suffisante en same-origin).
   const cookieHeader = request.headers.get("cookie");
   const cookieToken = cookieHeader
     ?.split(";")
@@ -133,10 +142,52 @@ export async function validateCsrfFromRequest(request: Request): Promise<boolean
     ?.trim();
 
   if (cookieToken && cookieToken !== headerToken) {
-    return false;
+    return { valid: false, reason: "cookie_mismatch" };
   }
 
-  return true;
+  return { valid: true };
+}
+
+/**
+ * Middleware de validation CSRF pour les API routes
+ * À utiliser pour les routes sensibles (POST, PUT, DELETE)
+ */
+export async function validateCsrfFromRequest(request: Request): Promise<boolean> {
+  const result = await validateCsrfFromRequestDetailed(request);
+  return result.valid;
+}
+
+/**
+ * Logue un échec CSRF via Sentry + console (format JSON structuré).
+ * À appeler côté route handler lorsque `validateCsrfFromRequestDetailed`
+ * renvoie `valid: false`.
+ */
+export async function logCsrfFailure(
+  request: Request,
+  reason: CsrfFailureReason,
+  endpoint: string
+): Promise<void> {
+  const payload = {
+    level: "warn",
+    type: "csrf_violation",
+    endpoint,
+    reason,
+    method: request.method,
+    origin: request.headers.get("origin"),
+    referer: request.headers.get("referer"),
+    timestamp: new Date().toISOString(),
+  };
+  console.warn(JSON.stringify(payload));
+  try {
+    const Sentry = await import("@sentry/nextjs");
+    Sentry.captureMessage(`CSRF rejected: ${reason}`, {
+      level: "warning",
+      tags: { type: "csrf_violation", endpoint, reason },
+      extra: payload,
+    });
+  } catch {
+    // Sentry indisponible — le console.warn suffit.
+  }
 }
 
 /**
@@ -220,6 +271,8 @@ export default {
   generateCsrfToken,
   validateCsrfToken,
   validateCsrfFromRequest,
+  validateCsrfFromRequestDetailed,
+  logCsrfFailure,
   setCsrfCookie,
   getClientCsrfToken,
   fetchWithCsrf,
