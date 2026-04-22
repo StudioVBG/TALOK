@@ -29,6 +29,7 @@
 #   - NEXT_PUBLIC_SUPABASE_ANON_KEY
 #   - SUPABASE_SERVICE_ROLE_KEY (🔒 secret)
 #   - API_KEY_MASTER_KEY (🔒 secret)
+#   - CSRF_SECRET (🔒 secret, ≥32 chars — `openssl rand -hex 32`)
 #   - NEXT_PUBLIC_APP_URL (ex: https://votre-site.netlify.app)
 #
 # 🟡 OPTIONNELLES (selon fonctionnalités activées):
