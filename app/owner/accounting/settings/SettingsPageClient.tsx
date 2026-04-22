@@ -1,23 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Building2, CheckCircle2, Info, Loader2 } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { PlanGate } from "@/components/subscription/plan-gate";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
+import type { BackfillResult } from "@/lib/accounting/backfill";
 import { apiClient } from "@/lib/api-client";
 import { useEntityStore } from "@/stores/useEntityStore";
 
@@ -39,6 +45,11 @@ interface PatchPayload {
   declarationMode?: DeclarationMode;
 }
 
+interface BackfillResponse {
+  success: true;
+  data: BackfillResult;
+}
+
 export default function SettingsPageClient() {
   return (
     <PlanGate feature="bank_reconciliation" mode="block">
@@ -54,23 +65,15 @@ function SettingsContent() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(
-    activeEntityId,
-  );
+  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(activeEntityId);
 
   const entityId = selectedEntityId ?? activeEntityId;
 
-  const selectedEntity = useMemo(
-    () => entities.find((e) => e.id === entityId) ?? null,
-    [entities, entityId],
-  );
+  const selectedEntity = useMemo(() => entities.find((e) => e.id === entityId) ?? null, [entities, entityId]);
 
   const { data, isLoading, isFetching } = useQuery<SettingsResponse>({
     queryKey: ["accounting-settings", entityId],
-    queryFn: () =>
-      apiClient.get<SettingsResponse>(
-        `/accounting/settings?entityId=${entityId}`,
-      ),
+    queryFn: () => apiClient.get<SettingsResponse>(`/accounting/settings?entityId=${entityId}`),
     enabled: !!entityId,
   });
 
@@ -94,6 +97,32 @@ function SettingsContent() {
     },
   });
 
+  const backfillMutation = useMutation<BackfillResponse, Error, void>({
+    mutationFn: () => {
+      if (!entityId) throw new Error("Aucune entité sélectionnée");
+      return apiClient.post<BackfillResponse>("/accounting/backfill", {
+        entityId,
+      });
+    },
+    onSuccess: ({ data }) => {
+      const t = data.totals;
+      toast({
+        title: "Import historique terminé",
+        description: `${t.created} écriture(s) créée(s), ${t.skipped} déjà existante(s)${t.errors > 0 ? `, ${t.errors} erreur(s)` : ""}.`,
+        variant: t.errors > 0 ? "destructive" : undefined,
+      });
+      queryClient.invalidateQueries({ queryKey: ["accounting-entries"] });
+      queryClient.invalidateQueries({ queryKey: ["accounting-journal"] });
+    },
+    onError: (err) => {
+      toast({
+        title: "Erreur",
+        description: err?.message ?? "L'import a échoué",
+        variant: "destructive",
+      });
+    },
+  });
+
   function handleToggleAccounting(checked: boolean) {
     if (!entityId) return;
     mutation.mutate({ entityId, accountingEnabled: checked });
@@ -101,11 +130,7 @@ function SettingsContent() {
 
   function handleChangeDeclarationMode(value: string) {
     if (!entityId) return;
-    if (
-      value !== "micro_foncier" &&
-      value !== "reel" &&
-      value !== "is_comptable"
-    ) {
+    if (value !== "micro_foncier" && value !== "reel" && value !== "is_comptable") {
       return;
     }
     mutation.mutate({ entityId, declarationMode: value });
@@ -119,8 +144,7 @@ function SettingsContent() {
             <Building2 className="h-10 w-10 mx-auto text-muted-foreground" />
             <h2 className="text-lg font-medium">Aucune entité juridique</h2>
             <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Créez une entité juridique (SCI, SARL, patrimoine personnel…) pour
-              configurer sa comptabilité.
+              Créez une entité juridique (SCI, SARL, patrimoine personnel…) pour configurer sa comptabilité.
             </p>
           </CardContent>
         </Card>
@@ -131,12 +155,9 @@ function SettingsContent() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-3xl">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Paramètres comptables
-        </h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Paramètres comptables</h1>
         <p className="text-sm text-muted-foreground">
-          Activez et configurez la génération automatique des écritures pour
-          chaque entité juridique.
+          Activez et configurez la génération automatique des écritures pour chaque entité juridique.
         </p>
       </header>
 
@@ -192,13 +213,9 @@ function SettingsContent() {
                     Comptabilité automatique
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Lorsqu'elle est activée, Talok génère automatiquement les
-                    écritures correspondant à vos quittances, paiements, dépôts
-                    de garantie et dépenses pour{" "}
-                    <span className="font-medium text-foreground">
-                      {selectedEntity?.nom}
-                    </span>
-                    .
+                    Lorsqu'elle est activée, Talok génère automatiquement les écritures correspondant à vos quittances,
+                    paiements, dépôts de garantie et dépenses pour{" "}
+                    <span className="font-medium text-foreground">{selectedEntity?.nom}</span>.
                   </p>
                 </div>
                 <Switch
@@ -213,9 +230,8 @@ function SettingsContent() {
                 <div className="flex items-start gap-2 rounded-lg bg-muted/50 px-3 py-2 text-sm">
                   <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                   <p className="text-muted-foreground">
-                    Les événements futurs généreront automatiquement une
-                    écriture. Pour rattraper l'historique, utilisez le bouton
-                    d'import en bas de page.
+                    Les événements futurs généreront automatiquement une écriture. Pour rattraper l'historique, utilisez
+                    le bouton d'import en bas de page.
                   </p>
                 </div>
               )}
@@ -229,12 +245,10 @@ function SettingsContent() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Détermine le niveau de détail comptable requis et la déclaration
-                fiscale cible. Indépendant du régime juridique (
-                <span className="font-medium text-foreground">
-                  {settings.regimeFiscal?.toUpperCase() ?? "—"}
-                </span>
-                ) configuré à la création de l'entité.
+                Détermine le niveau de détail comptable requis et la déclaration fiscale cible. Indépendant du régime
+                juridique (
+                <span className="font-medium text-foreground">{settings.regimeFiscal?.toUpperCase() ?? "—"}</span>)
+                configuré à la création de l'entité.
               </p>
 
               <RadioGroup
@@ -271,30 +285,37 @@ function SettingsContent() {
               <div className="flex items-start gap-2 text-sm">
                 <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
                 <p className="text-muted-foreground">
-                  L'import historique rejoue les événements passés (loyers,
-                  paiements, dépôts, dépenses) pour générer les écritures
-                  comptables correspondantes. L'opération est idempotente : elle
-                  peut être relancée sans créer de doublons.
+                  L'import historique rejoue les événements passés (loyers, paiements, dépôts, dépenses) pour générer
+                  les écritures comptables correspondantes. L'opération est idempotente : elle peut être relancée sans
+                  créer de doublons.
                 </p>
               </div>
-              <Button
-                variant="outline"
-                disabled={!settings.accountingEnabled}
-                onClick={() => {
-                  toast({
-                    title: "Import historique",
-                    description:
-                      "L'import doit être lancé depuis la ligne de commande :\nnpx tsx scripts/backfill-accounting-entries.ts --entity=" +
-                      (entityId ?? "<uuid>"),
-                  });
-                }}
-              >
-                Lancer l'import historique
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" disabled={!settings.accountingEnabled || backfillMutation.isPending}>
+                    {backfillMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Lancer l'import historique
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Lancer l'import historique ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Cette opération rejoue tous les paiements, dépôts de garantie et abonnements passés pour générer
+                      les écritures comptables manquantes pour{" "}
+                      <span className="font-medium">{selectedEntity?.nom}</span>. Elle est sans risque (idempotente) et
+                      peut prendre jusqu'à une minute.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => backfillMutation.mutate()}>Lancer l'import</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               {!settings.accountingEnabled && (
                 <p className="text-xs text-muted-foreground">
-                  Activez d'abord la comptabilité automatique pour lancer
-                  l'import.
+                  Activez d'abord la comptabilité automatique pour lancer l'import.
                 </p>
               )}
             </CardContent>
