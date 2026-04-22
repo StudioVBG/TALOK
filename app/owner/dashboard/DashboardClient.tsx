@@ -229,10 +229,11 @@ export function DashboardClient({ profileCompletion }: DashboardClientProps) {
       id: "edl_pending",
       type: "signature" as const,
       priority: "high" as const,
-      title: `${dashboard.edl.pending_owner_signature} État des lieux à signer`,
-      description: "Des états des lieux sont terminés et attendent votre signature pour validation",
+      title: `${dashboard.edl.pending_owner_signature} état des lieux d'entrée à signer`,
+      description:
+        "Le bail est signé. Il reste à signer l'état des lieux d'entrée pour activer le bail et démarrer les loyers.",
       link: "/owner/inspections",
-      linkLabel: "Signer",
+      linkLabel: "Signer l'état des lieux",
       metadata: { count: dashboard.edl.pending_owner_signature },
     }] : []),
     // Tickets ouverts (moyenne)
