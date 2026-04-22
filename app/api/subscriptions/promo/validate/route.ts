@@ -1,160 +1,122 @@
 export const dynamic = "force-dynamic";
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 
 /**
  * POST /api/subscriptions/promo/validate
- * Valide un code promo
+ *
+ * Valide un code promo côté pricing/signup. Utilisé par le composant
+ * <PromoCodeField /> avant de déclencher le checkout.
+ *
+ * Body : { code, plan_slug, billing_cycle }
+ * Res  : { valid: boolean, reason?: string, pricing?: {...} }
  */
 
-import { createClient } from "@/lib/supabase/server";
-import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
-import { PLANS, type PlanSlug, formatPrice } from "@/lib/subscriptions/plans";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import {
+  validatePromoCodeForCheckout,
+  type Territory,
+} from "@/lib/subscriptions/promo-codes.service";
+import { PLANS, type PlanSlug } from "@/lib/subscriptions/plans";
+
+const VALID_TERRITORIES: Territory[] = [
+  "metropole",
+  "martinique",
+  "guadeloupe",
+  "reunion",
+  "guyane",
+  "mayotte",
+];
+
+function isTerritory(value: unknown): value is Territory {
+  return typeof value === "string" && (VALID_TERRITORIES as string[]).includes(value);
+}
 
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
     const body = await request.json();
-    const { code, plan_slug, billing_cycle } = body;
+    const { code, plan_slug, billing_cycle } = body as {
+      code?: string;
+      plan_slug?: PlanSlug;
+      billing_cycle?: "monthly" | "yearly";
+    };
 
-    if (!code) {
-      return NextResponse.json({ error: "Code promo requis" }, { status: 400 });
+    if (!code || !plan_slug || !billing_cycle) {
+      return NextResponse.json(
+        { error: "code, plan_slug et billing_cycle requis" },
+        { status: 400 }
+      );
     }
 
-    // Récupérer le code promo
-    const { data: promo, error } = await supabase
-      .from("promo_codes")
-      .select("*")
-      .eq("code", code.toUpperCase())
-      .eq("is_active", true)
-      .single();
+    // Résolution du territoire : on lit la colonne subscriptions.territoire
+    // si le user a déjà une souscription, sinon 'metropole' par défaut
+    // (les codes sans contrainte territoire passent quand même).
+    const service = createServiceRoleClient();
+    const { data: sub } = await service
+      .from("subscriptions")
+      .select("territoire")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    if (error || !promo) {
-      return NextResponse.json({ 
-        valid: false, 
-        error: "Code promo invalide ou expiré" 
+    const rawTerritoire = (sub as { territoire?: unknown } | null)?.territoire;
+    const territoire: Territory = isTerritory(rawTerritoire)
+      ? rawTerritoire
+      : "metropole";
+
+    const result = await validatePromoCodeForCheckout(code, {
+      plan_slug,
+      billing_cycle,
+      user_id: user.id,
+      territoire,
+    });
+
+    if (!result.valid || !result.code) {
+      return NextResponse.json({
+        valid: false,
+        error: result.reason ?? "Code promo invalide",
       });
     }
 
-    // Vérifications
-    const now = new Date();
+    // Calcul du prix affiché côté client (centimes).
+    const plan = PLANS[plan_slug];
+    const originalPrice =
+      billing_cycle === "yearly" ? plan.price_yearly ?? 0 : plan.price_monthly ?? 0;
 
-    // Vérifier la validité temporelle
-    if (promo.valid_until && new Date(promo.valid_until as string) < now) {
-      return NextResponse.json({ 
-        valid: false, 
-        error: "Ce code promo a expiré" 
-      });
-    }
+    const discountAmount =
+      result.code.discount_type === "percent"
+        ? Math.round(originalPrice * (result.code.discount_value / 100))
+        : Math.min(result.code.discount_value, originalPrice);
 
-    // Vérifier les utilisations max
-    if (promo.max_uses && (promo.uses_count as number) >= (promo.max_uses as number)) {
-      return NextResponse.json({ 
-        valid: false, 
-        error: "Ce code promo a atteint sa limite d'utilisation" 
-      });
-    }
-
-    // Vérifier les plans applicables
-    if (promo.applicable_plans && (promo.applicable_plans as any[]).length > 0 && plan_slug) {
-      if (!(promo.applicable_plans as any[]).includes(plan_slug)) {
-        return NextResponse.json({ 
-          valid: false, 
-          error: "Ce code n'est pas valide pour ce plan" 
-        });
-      }
-    }
-
-    // Vérifier le cycle de facturation minimum
-    if (promo.min_billing_cycle === "yearly" && billing_cycle === "monthly") {
-      return NextResponse.json({ 
-        valid: false, 
-        error: "Ce code est valide uniquement pour l'abonnement annuel" 
-      });
-    }
-
-    // Vérifier l'utilisation par utilisateur
-    const { count: userUses } = await supabase
-      .from("promo_code_uses")
-      .select("id", { count: "exact", head: true })
-      .eq("promo_code_id", promo.id as string)
-      .eq("user_id", user.id);
-
-    if (userUses && userUses >= (promo.max_uses_per_user as number)) {
-      return NextResponse.json({ 
-        valid: false, 
-        error: "Vous avez déjà utilisé ce code promo" 
-      });
-    }
-
-    // Vérifier si c'est pour les nouveaux clients uniquement
-    if (promo.first_subscription_only) {
-      const serviceClient = createServiceRoleClient();
-      const { data: subscription } = await serviceClient
-        .from("subscriptions")
-        .select("plan_slug")
-        .eq("user_id", user.id)
-        .single();
-
-      if (subscription && subscription.plan_slug !== "starter") {
-        return NextResponse.json({ 
-          valid: false, 
-          error: "Ce code est réservé aux nouveaux abonnés" 
-        });
-      }
-    }
-
-    // Calculer la réduction
-    let discountAmount = 0;
-    let originalPrice = 0;
-    let finalPrice = 0;
-
-    if (plan_slug && billing_cycle) {
-      const plan = PLANS[plan_slug as PlanSlug];
-      originalPrice = billing_cycle === "yearly" ? (plan.price_yearly || 0) : (plan.price_monthly || 0);
-
-      if (promo.discount_type === "percent") {
-        discountAmount = Math.round(originalPrice * ((promo.discount_value as number) / 100));
-      } else {
-        discountAmount = promo.discount_value as number;
-      }
-
-      finalPrice = Math.max(0, originalPrice - discountAmount);
-    }
+    const finalPrice = Math.max(0, originalPrice - discountAmount);
 
     return NextResponse.json({
       valid: true,
       code: {
-        id: promo.id,
-        code: promo.code,
-        name: promo.name,
-        discount_type: promo.discount_type,
-        discount_value: promo.discount_value,
+        id: result.code.id,
+        code: result.code.code,
+        name: result.code.name,
+        discount_type: result.code.discount_type,
+        discount_value: result.code.discount_value,
       },
-      discount: {
-        amount: discountAmount,
-        formatted: formatPrice(discountAmount),
-        percentage: promo.discount_type === "percent" ? promo.discount_value : null,
-      },
-      pricing: plan_slug && billing_cycle ? {
+      pricing: {
         original: originalPrice,
-        original_formatted: formatPrice(originalPrice),
+        discount: discountAmount,
         final: finalPrice,
-        final_formatted: formatPrice(finalPrice),
-        savings: discountAmount,
-        savings_formatted: formatPrice(discountAmount),
-      } : null,
+      },
+      territoire,
     });
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Erreur serveur";
-    console.error("[Promo Validate]", error);
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Erreur serveur";
+    console.error("[promo/validate]", err);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
-

@@ -27,6 +27,7 @@ import {
   Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { PromoCodeField } from "@/components/subscription/promo-code-field";
 
 type BillingCycle = "monthly" | "yearly";
 
@@ -62,6 +63,7 @@ function SignupPlanContent() {
   const [selectedPlan, setSelectedPlan] = useState<PlanSlug>("confort");
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [promoCode, setPromoCode] = useState<string | null>(null);
 
   // Guard: useSearchParams() peut retourner null pendant le SSR sans Suspense boundary
   const role = searchParams?.get("role") || "owner";
@@ -144,6 +146,7 @@ function SignupPlanContent() {
           billing_cycle: billing,
           success_url: `${window.location.origin}/owner/onboarding/profile?subscription=success`,
           cancel_url: `${window.location.origin}/signup/plan?role=${role}&canceled=true`,
+          promo_code: promoCode ?? undefined,
         }),
       });
 
@@ -372,6 +375,17 @@ function SignupPlanContent() {
             </span>
           </div>
         </div>
+
+        {/* Code promo (hors plan gratuit) */}
+        {selectedPlan !== "gratuit" && (
+          <div className="mb-4">
+            <PromoCodeField
+              planSlug={selectedPlan}
+              billingCycle={billing}
+              onChange={(code) => setPromoCode(code)}
+            />
+          </div>
+        )}
 
         {/* Bouton de confirmation */}
         <Button

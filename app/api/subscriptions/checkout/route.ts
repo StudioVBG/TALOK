@@ -9,6 +9,23 @@ export const runtime = 'nodejs';
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
+import {
+  validatePromoCodeForCheckout,
+  type Territory,
+} from "@/lib/subscriptions/promo-codes.service";
+
+const VALID_TERRITORIES: Territory[] = [
+  "metropole",
+  "martinique",
+  "guadeloupe",
+  "reunion",
+  "guyane",
+  "mayotte",
+];
+
+function isTerritory(value: unknown): value is Territory {
+  return typeof value === "string" && (VALID_TERRITORIES as string[]).includes(value);
+}
 
 export async function POST(request: Request) {
   try {
@@ -34,7 +51,13 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { plan_slug, billing_cycle, success_url, cancel_url } = body;
+    const { plan_slug, billing_cycle, success_url, cancel_url, promo_code } = body as {
+      plan_slug?: string;
+      billing_cycle?: "monthly" | "yearly";
+      success_url?: string;
+      cancel_url?: string;
+      promo_code?: string;
+    };
 
     if (!plan_slug || !billing_cycle) {
       return NextResponse.json(
@@ -161,7 +184,55 @@ export async function POST(request: Request) {
       ];
     }
 
-    // Créer la session Checkout
+    // Validation du code promo (si fourni).
+    // Le territoire est résolu depuis subscriptions.territoire (si existant)
+    // sinon 'metropole' par défaut — les codes sans contrainte territoire
+    // passent quand même.
+    let promoDiscount:
+      | { promotion_code: string; promo_code_id: string; stripe_coupon_id: string | null }
+      | null = null;
+
+    if (promo_code && typeof promo_code === "string" && promo_code.trim()) {
+      const rawTerritoire = (existingSub as { territoire?: unknown } | null)?.territoire;
+      const territoire: Territory = isTerritory(rawTerritoire) ? rawTerritoire : "metropole";
+
+      const result = await validatePromoCodeForCheckout(promo_code.trim(), {
+        plan_slug: plan.slug as never,
+        billing_cycle,
+        user_id: user.id,
+        territoire,
+      });
+
+      if (!result.valid || !result.code?.stripe_promotion_code_id) {
+        return NextResponse.json(
+          { error: result.reason ?? "Code promo invalide" },
+          { status: 400 }
+        );
+      }
+
+      promoDiscount = {
+        promotion_code: result.code.stripe_promotion_code_id,
+        promo_code_id: result.code.id,
+        stripe_coupon_id: result.code.stripe_coupon_id,
+      };
+    }
+
+    // Créer la session Checkout.
+    // `allow_promotion_codes` volontairement retiré : seuls les codes gérés
+    // dans /admin/promo-codes sont acceptés (décision Option A — Talok only).
+    const sessionMetadata: Record<string, string> = {
+      profile_id: profile.id,
+      plan_id: plan.id,
+      plan_slug: plan.slug,
+      billing_cycle,
+    };
+    if (promoDiscount) {
+      sessionMetadata.promo_code_id = promoDiscount.promo_code_id;
+      if (promoDiscount.stripe_coupon_id) {
+        sessionMetadata.stripe_coupon_id = promoDiscount.stripe_coupon_id;
+      }
+    }
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "subscription",
@@ -173,21 +244,16 @@ export async function POST(request: Request) {
       cancel_url:
         cancel_url || `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
       subscription_data: {
-        trial_period_days: existingSub ? undefined : 30, // 1er mois offert pour les nouveaux
-        metadata: {
-          profile_id: profile.id,
-          plan_id: plan.id,
-          plan_slug: plan.slug,
-          billing_cycle,
-        },
+        // Stripe refuse trial_period_days + discounts (duration:once) — la
+        // remise remplace l'essai 30j quand un code promo est appliqué.
+        trial_period_days:
+          existingSub || promoDiscount ? undefined : 30,
+        metadata: sessionMetadata,
       },
-      metadata: {
-        profile_id: profile.id,
-        plan_id: plan.id,
-        plan_slug: plan.slug,
-        billing_cycle,
-      },
-      allow_promotion_codes: true,
+      metadata: sessionMetadata,
+      ...(promoDiscount
+        ? { discounts: [{ promotion_code: promoDiscount.promotion_code }] }
+        : {}),
       billing_address_collection: "auto",
       locale: "fr",
     } as any);

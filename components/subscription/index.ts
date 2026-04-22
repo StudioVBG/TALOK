@@ -24,3 +24,6 @@ export { UsageLimitBanner, UsageMeter } from "./usage-limit-banner";
 // SOTA 2025 - Smart Paywall & Upgrade Triggers
 export { SmartPaywall, UpgradeTrigger } from "./smart-paywall";
 
+// Promo codes (Talok-managed via /admin/promo-codes)
+export { PromoCodeField, type PromoCodeFieldProps } from "./promo-code-field";
+
