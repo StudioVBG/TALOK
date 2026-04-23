@@ -121,8 +121,14 @@ export async function POST(request: Request) {
         </p>
       </div>`;
 
+    const activeEcs = ecs as Array<{
+      id: string;
+      ec_email: string;
+      ec_name: string | null;
+    }>;
+
     const results = await Promise.all(
-      ecs.map((ec) =>
+      activeEcs.map((ec) =>
         sendEmail({
           to: ec.ec_email,
           subject: `Pack comptable ${exerciseLabel} — ${entity.nom ?? ""}`,
@@ -139,7 +145,7 @@ export async function POST(request: Request) {
       ),
     );
 
-    const failures = results.filter((r) => !r.success);
+    const failures = results.filter((r: { success: boolean }) => !r.success);
     if (failures.length === results.length) {
       throw new ApiError(502, "L'envoi a échoué pour tous les destinataires.");
     }

@@ -88,7 +88,7 @@ export function useAccountingEntries(params: UseAccountingEntriesParams) {
   // fallback. Without the Zustand read, this hook stays stuck on whatever
   // `default_entity_id` was baked into the profile (often null) and the
   // entries list renders empty even when rows exist.
-  const activeEntityId = useEntityStore((s) => s.activeEntityId);
+  const { activeEntityId } = useEntityStore();
   const entityId =
     params.entityId ??
     activeEntityId ??
@@ -201,7 +201,7 @@ export interface ChartAccount {
 
 export function useChartOfAccounts(entityId?: string) {
   const { profile } = useAuth();
-  const activeEntityId = useEntityStore((s) => s.activeEntityId);
+  const { activeEntityId } = useEntityStore();
   const resolvedEntityId =
     entityId ??
     activeEntityId ??
