@@ -133,9 +133,20 @@ export async function GET() {
       limits,
     });
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Erreur serveur";
     console.error("[Usage GET]", error);
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    // Fallback gracieux : ne pas 500 côté UI, renvoyer un usage plan gratuit
+    const fallbackLimits = PLANS.gratuit.limits;
+    return NextResponse.json({
+      usage: {
+        properties: { used: 0, limit: fallbackLimits.max_properties, percentage: 0 },
+        leases: { used: 0, limit: fallbackLimits.max_leases, percentage: 0 },
+        users: { used: 1, limit: fallbackLimits.max_users, percentage: 100 },
+        signatures: { used: 0, limit: fallbackLimits.signatures_monthly_quota, percentage: 0 },
+        storage: { used: 0, limit: fallbackLimits.max_documents_gb * 1024, percentage: 0, unit: "Mo" },
+      },
+      plan_slug: "gratuit",
+      limits: fallbackLimits,
+    });
   }
 }
 
