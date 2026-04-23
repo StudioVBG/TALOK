@@ -2,20 +2,19 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/admin/crons — Liste des derniers logs cron
  */
 export async function GET(request: Request) {
-  const { error: authError, supabase } = await requireAdmin(request);
-
-  if (authError || !supabase) {
-    return NextResponse.json(
-      { error: authError?.message || "Accès non autorisé" },
-      { status: authError?.status || 403 }
-    );
-  }
+  const auth = await requireAdminPermissions(request, ["admin.integrations.read"], {
+    rateLimit: "adminStandard",
+    auditAction: "Consultation logs cron",
+  });
+  if (isAdminAuthError(auth)) return auth;
+  const supabase = await createClient();
 
   // Try to fetch from cron_logs table (may not exist yet)
   let logs: any[] = [];

@@ -2,7 +2,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { createClient } from "@/lib/supabase/server";
 import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 /**
@@ -10,14 +11,13 @@ import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/
  * PATCH /api/admin/notifications — Marquer comme lue { id: string }
  */
 export async function GET(request: Request) {
-  const { error: authError, supabase, user } = await requireAdmin(request);
-
-  if (authError || !supabase || !user) {
-    return NextResponse.json(
-      { error: authError?.message || "Accès non autorisé" },
-      { status: authError?.status || 403 }
-    );
-  }
+  const auth = await requireAdminPermissions(request, ["admin.users.read"], {
+    rateLimit: "adminStandard",
+    auditAction: "Consultation notifications admin",
+  });
+  if (isAdminAuthError(auth)) return auth;
+  const user = auth.user;
+  const supabase = await createClient();
 
   // Fetch admin notifications (notifications targeted at admin role)
   const { data: notifications, error } = await supabase
@@ -47,14 +47,12 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
   }
 
-  const { error: authError, supabase } = await requireAdmin(request);
-
-  if (authError || !supabase) {
-    return NextResponse.json(
-      { error: authError?.message || "Accès non autorisé" },
-      { status: authError?.status || 403 }
-    );
-  }
+  const auth = await requireAdminPermissions(request, ["admin.users.write"], {
+    rateLimit: "adminStandard",
+    auditAction: "Marquage notification admin lue",
+  });
+  if (isAdminAuthError(auth)) return auth;
+  const supabase = await createClient();
 
   const { id } = await request.json();
 

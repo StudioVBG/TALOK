@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic';
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { createClient } from "@/lib/supabase/server";
 
 // Mapping des statuts pour filtrage
 const STATUS_MAP: Record<string, string> = {
@@ -19,14 +20,12 @@ const STATUS_MAP: Record<string, string> = {
 
 export async function GET(request: NextRequest) {
   try {
-    const { error, supabase } = await requireAdmin(request);
-
-    if (error || !supabase) {
-      return NextResponse.json(
-        { error: error?.message || "Accès non autorisé" },
-        { status: error?.status || 403 }
-      );
-    }
+    const auth = await requireAdminPermissions(request, ["admin.properties.read"], {
+      rateLimit: "adminStandard",
+      auditAction: "Consultation liste des baux",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const supabase = await createClient();
 
     // Paramètres de requête
     const searchParams = request.nextUrl.searchParams;

@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 /**
@@ -20,14 +20,11 @@ export async function POST(request: Request) {
   }
 
   // 1. Vérifier que l'utilisateur est admin
-  const { error: authError } = await requireAdmin(request);
-
-  if (authError) {
-    return NextResponse.json(
-      { error: authError.message || "Accès non autorisé" },
-      { status: authError.status || 403 }
-    );
-  }
+  const auth = await requireAdminPermissions(request, ["admin.compliance.write"], {
+    rateLimit: "adminCritical",
+    auditAction: "Application migration SQL",
+  });
+  if (isAdminAuthError(auth)) return auth;
 
   // 2. Vérifier le secret de migration (défense en profondeur)
   const { searchParams } = new URL(request.url);

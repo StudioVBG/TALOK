@@ -2,7 +2,8 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { createClient } from "@/lib/supabase/server";
 import { validateCsrfOrCronSecret, logCsrfFailure } from "@/lib/security/csrf";
 import { handleLeaseFullySigned } from "@/lib/services/lease-post-signature.service";
 
@@ -19,14 +20,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "CSRF ou cron secret requis" }, { status: 403 });
   }
 
-  const { error: authError, user, supabase } = await requireAdmin(request);
-
-  if (authError || !supabase) {
-    return NextResponse.json(
-      { error: authError?.message || "Accès non autorisé" },
-      { status: authError?.status || 403 }
-    );
-  }
+  const auth = await requireAdminPermissions(request, ["admin.properties.write"], {
+    rateLimit: "adminCritical",
+    auditAction: "Reseal bail",
+  });
+  if (isAdminAuthError(auth)) return auth;
+  const user = auth.user;
+  const supabase = await createClient();
 
   try {
     const body = await request.json();
