@@ -15,6 +15,7 @@ import {
 } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "./use-auth";
+import { useEntityStore } from "@/stores/useEntityStore";
 
 // -- Types -------------------------------------------------------------------
 
@@ -82,8 +83,15 @@ export interface UseAccountingEntriesParams {
 
 export function useAccountingEntries(params: UseAccountingEntriesParams) {
   const { profile } = useAuth();
+  // Match the resolution order used by ExportsPageClient and the rest of the
+  // accounting UI: explicit param → Zustand active entity → legacy profile
+  // fallback. Without the Zustand read, this hook stays stuck on whatever
+  // `default_entity_id` was baked into the profile (often null) and the
+  // entries list renders empty even when rows exist.
+  const activeEntityId = useEntityStore((s) => s.activeEntityId);
   const entityId =
     params.entityId ??
+    activeEntityId ??
     (profile as { default_entity_id?: string | null } | null)?.default_entity_id ??
     undefined;
   const queryClient = useQueryClient();
@@ -116,7 +124,9 @@ export function useAccountingEntries(params: UseAccountingEntriesParams) {
       }
 
       const searchParams = new URLSearchParams();
-      searchParams.set("owner_id", entityId);
+      // Engine-created entries carry `entity_id` (new double-entry schema),
+      // not `owner_id` (which references profiles.id on legacy flat entries).
+      searchParams.set("entity_id", entityId);
       searchParams.set("limit", String(limit));
       searchParams.set("offset", String(offset));
 
@@ -191,8 +201,10 @@ export interface ChartAccount {
 
 export function useChartOfAccounts(entityId?: string) {
   const { profile } = useAuth();
+  const activeEntityId = useEntityStore((s) => s.activeEntityId);
   const resolvedEntityId =
     entityId ??
+    activeEntityId ??
     (profile as { default_entity_id?: string | null } | null)?.default_entity_id ??
     undefined;
 
