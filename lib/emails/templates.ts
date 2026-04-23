@@ -2453,5 +2453,186 @@ export const emailTemplates = {
       `, `L'EDL ${kind} pour ${escapeHtml(data.propertyAddress)} est entièrement signé`),
     };
   },
+
+  /**
+   * Notification : jours d'essai offerts par un admin Talok
+   */
+  giftDaysNotification: (data: {
+    recipientName: string;
+    days: number;
+    planName?: string;
+    reason: string;
+    trialEndDate: string;
+    dashboardUrl: string;
+  }) => {
+    const daysLabel = data.days > 1 ? `${data.days} jours` : `${data.days} jour`;
+    const planLine = data.planName
+      ? `<tr>
+              <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]};">
+                <span style="color: ${COLORS.gray[500]}; font-size: 14px;">Plan activé</span>
+              </td>
+              <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]}; text-align: right;">
+                <span style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 14px;">${escapeHtml(data.planName)}</span>
+              </td>
+            </tr>`
+      : "";
+    return {
+      subject: `🎁 ${daysLabel} offerts sur Talok`,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span class="badge badge-success">CADEAU TALOK</span>
+          </div>
+
+          <h1 style="text-align: center;">Vous avez reçu ${daysLabel} offerts 🎁</h1>
+          <p>Bonjour ${escapeHtml(data.recipientName)},</p>
+          <p>Bonne nouvelle ! L'équipe Talok vous offre <strong>${daysLabel}</strong> d'accès ${data.planName ? `au plan <strong>${escapeHtml(data.planName)}</strong>` : "à votre plan actuel"} en période d'essai.</p>
+
+          <div class="highlight-box" style="border-left-color: ${COLORS.success};">
+            <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Durée offerte</p>
+            <div class="amount" style="color: ${COLORS.success};">${daysLabel}</div>
+            <p style="color: ${COLORS.gray[500]}; font-size: 14px;">Fin de l'essai : ${escapeHtml(data.trialEndDate)}</p>
+          </div>
+
+          <div class="info-grid">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+              ${planLine}
+              <tr>
+                <td style="padding: 12px 0;">
+                  <span style="color: ${COLORS.gray[500]}; font-size: 14px;">Motif</span>
+                </td>
+                <td style="padding: 12px 0; text-align: right;">
+                  <span style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 14px;">${escapeHtml(data.reason)}</span>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="text-align: center;">
+            <a href="${data.dashboardUrl}" class="button button-success">Accéder à mon espace</a>
+          </div>
+
+          <p style="font-size: 14px; color: ${COLORS.gray[500]};">
+            Profitez-en pour explorer toutes les fonctionnalités de Talok. À l'issue de la période d'essai, votre abonnement reprendra normalement — aucune action n'est requise de votre part.
+          </p>
+        </div>
+      `, `L'équipe Talok vous offre ${daysLabel} d'essai, valables jusqu'au ${data.trialEndDate}.`),
+    };
+  },
+
+  /**
+   * Notification : un admin Talok a forcé un changement de plan
+   */
+  adminPlanOverride: (data: {
+    recipientName: string;
+    newPlanName: string;
+    reason: string;
+    dashboardUrl: string;
+  }) => ({
+    subject: `🔄 Votre plan Talok a été modifié`,
+    html: baseLayout(`
+      <div class="content">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span class="badge badge-info">MISE À JOUR DE PLAN</span>
+        </div>
+
+        <h1>Votre plan a été modifié</h1>
+        <p>Bonjour ${escapeHtml(data.recipientName)},</p>
+        <p>L'équipe Talok a ajusté votre abonnement. Vous bénéficiez désormais du plan <strong>${escapeHtml(data.newPlanName)}</strong>.</p>
+
+        <div class="highlight-box">
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Nouveau plan</p>
+          <div class="amount">${escapeHtml(data.newPlanName)}</div>
+        </div>
+
+        <div class="info-grid">
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+            <tr>
+              <td style="padding: 12px 0;">
+                <span style="color: ${COLORS.gray[500]}; font-size: 14px;">Motif</span>
+              </td>
+              <td style="padding: 12px 0; text-align: right;">
+                <span style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 14px;">${escapeHtml(data.reason)}</span>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="text-align: center;">
+          <a href="${data.dashboardUrl}" class="button">Voir mon abonnement</a>
+        </div>
+
+        <p style="font-size: 14px; color: ${COLORS.gray[500]};">
+          Si vous avez des questions sur ce changement, n'hésitez pas à contacter notre support.
+        </p>
+      </div>
+    `, `Votre plan Talok est désormais ${data.newPlanName}.`),
+  }),
+
+  /**
+   * Notification : compte suspendu par un admin Talok
+   */
+  adminAccountSuspended: (data: {
+    recipientName: string;
+    reason: string;
+    supportUrl: string;
+  }) => ({
+    subject: `⚠️ Votre compte Talok a été suspendu`,
+    html: baseLayout(`
+      <div class="content">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span class="badge badge-error">COMPTE SUSPENDU</span>
+        </div>
+
+        <h1>Accès temporairement suspendu</h1>
+        <p>Bonjour ${escapeHtml(data.recipientName)},</p>
+        <p>Votre compte Talok a été suspendu par l'équipe d'administration. Vous ne pouvez actuellement plus vous connecter à votre espace.</p>
+
+        <div class="highlight-box" style="border-left-color: ${COLORS.error};">
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Motif de la suspension</p>
+          <p style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 16px; margin: 0;">${escapeHtml(data.reason)}</p>
+        </div>
+
+        <div style="text-align: center;">
+          <a href="${data.supportUrl}" class="button">Contacter le support</a>
+        </div>
+
+        <p style="font-size: 14px; color: ${COLORS.gray[500]};">
+          Pour toute question ou demande de réactivation, merci de contacter notre support en répondant directement à cet email.
+        </p>
+      </div>
+    `, `Votre compte Talok a été suspendu : ${data.reason}`),
+  }),
+
+  /**
+   * Notification : compte réactivé par un admin Talok
+   */
+  adminAccountReactivated: (data: {
+    recipientName: string;
+    reason: string;
+    dashboardUrl: string;
+  }) => ({
+    subject: `✅ Votre compte Talok a été réactivé`,
+    html: baseLayout(`
+      <div class="content">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <span class="badge badge-success">COMPTE RÉACTIVÉ</span>
+        </div>
+
+        <h1 style="text-align: center;">Votre accès est rétabli</h1>
+        <p>Bonjour ${escapeHtml(data.recipientName)},</p>
+        <p>Bonne nouvelle : votre compte Talok vient d'être réactivé par l'équipe d'administration. Vous pouvez à nouveau vous connecter et utiliser l'ensemble des fonctionnalités de la plateforme.</p>
+
+        <div class="highlight-box" style="border-left-color: ${COLORS.success};">
+          <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Motif</p>
+          <p style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 16px; margin: 0;">${escapeHtml(data.reason)}</p>
+        </div>
+
+        <div style="text-align: center;">
+          <a href="${data.dashboardUrl}" class="button button-success">Me connecter</a>
+        </div>
+      </div>
+    `, `Votre compte Talok est à nouveau actif.`),
+  }),
 };
 
