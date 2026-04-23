@@ -1,7 +1,7 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
 interface ActivityEvent {
@@ -23,15 +23,12 @@ export async function GET(
 ) {
   try {
     const { id: ownerId } = await params;
-    const { error, user } = await requireAdmin(request);
-
-    if (error) {
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: error.status });
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.users.read"], {
+      rateLimit: "adminStandard",
+      auditAction: "Consultation activité propriétaire",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const user = auth.user;
 
     const supabase = createServiceRoleClient();
 

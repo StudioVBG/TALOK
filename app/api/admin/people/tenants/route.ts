@@ -2,25 +2,21 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/admin/people/tenants - Liste des locataires
  */
 export async function GET(request: Request) {
   try {
-    const { error, user, supabase } = await requireAdmin(request);
-
-    if (error) {
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
-        { status: error.status }
-      );
-    }
-
-    if (!user || !supabase) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.users.read"], {
+      rateLimit: "adminStandard",
+      auditAction: "Consultation liste des locataires",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const user = auth.user;
+    const supabase = await createClient();
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";

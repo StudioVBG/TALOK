@@ -2,7 +2,8 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { createClient } from "@/lib/supabase/server";
 
 const STATUS_MAP: Record<string, string> = {
   brouillon: "draft",
@@ -16,14 +17,12 @@ const STATUS_MAP: Record<string, string> = {
 };
 
 export async function GET(request: Request) {
-  const { error, supabase } = await requireAdmin(request);
-
-  if (error || !supabase) {
-    return NextResponse.json(
-      { error: error?.message || "Accès non autorisé" },
-      { status: error?.status || 403 }
-    );
-  }
+  const auth = await requireAdminPermissions(request, ["admin.properties.read"], {
+    rateLimit: "adminStandard",
+    auditAction: "Consultation liste des biens",
+  });
+  if (isAdminAuthError(auth)) return auth;
+  const supabase = await createClient();
 
   const url = new URL(request.url);
   const statusParam = url.searchParams.get("status") ?? undefined;

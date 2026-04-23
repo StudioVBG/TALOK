@@ -1,9 +1,9 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
-import { createServiceRoleClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 
 type ModerationActionType = "warn" | "restrict" | "suspend" | "unsuspend" | "ban" | "unban" | "verify" | "note";
 
@@ -17,15 +17,12 @@ export async function GET(
 ) {
   try {
     const { id: ownerId } = await params;
-    const { error, user } = await requireAdmin(request);
-
-    if (error) {
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: error.status });
-    }
-
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.users.read"], {
+      rateLimit: "adminStandard",
+      auditAction: "Consultation modération propriétaire",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const user = auth.user;
 
     const supabase = createServiceRoleClient();
 
@@ -147,15 +144,13 @@ export async function POST(
     }
 
     const { id: ownerId } = await params;
-    const { error, user, supabase: adminSupabase } = await requireAdmin(request);
-
-    if (error) {
-      return NextResponse.json({ error: error instanceof Error ? error.message : "Une erreur est survenue" }, { status: error.status });
-    }
-
-    if (!user || !adminSupabase) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.users.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Action de modération sur propriétaire",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const user = auth.user;
+    const adminSupabase = await createClient();
 
     const body = await request.json();
     const { action, reason } = body as { action: ModerationActionType; reason: string };

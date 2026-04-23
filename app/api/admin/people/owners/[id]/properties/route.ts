@@ -1,7 +1,8 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { z } from "zod";
 
@@ -18,11 +19,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { error, user, supabase } = await requireAdmin(request);
-
-    if (error || !user || !supabase) {
-      throw new ApiError(error?.status || 401, error?.message || "Non authentifié");
-    }
+    const auth = await requireAdminPermissions(request, ["admin.users.read"], {
+      rateLimit: "adminStandard",
+      auditAction: "Consultation biens d'un propriétaire",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const user = auth.user;
+    const supabase = await createClient();
 
     const ownerId = ownerIdParamSchema.parse(id);
 
