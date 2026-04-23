@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -45,6 +46,12 @@ export async function GET(request: Request, { params }: RouteParams) {
  */
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
+    const csrf = await validateCsrfFromRequestDetailed(request);
+    if (!csrf.valid) {
+      await logCsrfFailure(request, csrf.reason!, "admin.moderation.queue.update");
+      return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+    }
+
     const { id } = await params;
     const auth = await requireAdminPermissions(request, ["admin.moderation.write"], {
       rateLimit: "adminCritical",
@@ -126,6 +133,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
  */
 export async function DELETE(request: Request, { params }: RouteParams) {
   try {
+    const csrf = await validateCsrfFromRequestDetailed(request);
+    if (!csrf.valid) {
+      await logCsrfFailure(request, csrf.reason!, "admin.moderation.queue.delete");
+      return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+    }
+
     const { id } = await params;
     const auth = await requireAdminPermissions(request, ["admin.moderation.write"], {
       rateLimit: "adminCritical",

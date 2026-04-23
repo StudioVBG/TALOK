@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 import { z } from "zod";
 
 const moderationQueueSchema = z.object({
@@ -80,6 +81,12 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
+    const csrf = await validateCsrfFromRequestDetailed(request);
+    if (!csrf.valid) {
+      await logCsrfFailure(request, csrf.reason!, "admin.moderation.queue.create");
+      return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+    }
+
     const auth = await requireAdminPermissions(request, ["admin.moderation.write"], {
       rateLimit: "adminStandard",
       auditAction: "Ajout élément modération",

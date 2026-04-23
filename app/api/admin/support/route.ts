@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 async function requireAdmin(supabase: Awaited<ReturnType<typeof createClient>>) {
   const { data: { user }, error } = await supabase.auth.getUser();
@@ -75,6 +76,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const csrf = await validateCsrfFromRequestDetailed(request);
+  if (!csrf.valid) {
+    await logCsrfFailure(request, csrf.reason!, "admin.support.update");
+    return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+  }
+
   const supabase = await createClient();
   const admin = await requireAdmin(supabase);
   if (!admin) {

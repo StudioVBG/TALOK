@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 import { sendEmail } from "@/lib/services/email-service";
 import { emailTemplates } from "@/lib/emails/templates";
 
@@ -42,6 +43,12 @@ interface RouteParams {
  */
 export async function POST(request: Request, { params }: RouteParams) {
   try {
+    const csrf = await validateCsrfFromRequestDetailed(request);
+    if (!csrf.valid) {
+      await logCsrfFailure(request, csrf.reason!, "admin.integrations.providers.test");
+      return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+    }
+
     const { id: providerId } = params;
     const auth = await requireAdminPermissions(request, ["admin.integrations.write"], {
       rateLimit: "adminCritical",

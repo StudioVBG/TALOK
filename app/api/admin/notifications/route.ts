@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 /**
  * GET /api/admin/notifications — Liste des notifications admin (non lues en premier)
@@ -40,6 +41,12 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: NextRequest) {
+  const csrf = await validateCsrfFromRequestDetailed(request);
+  if (!csrf.valid) {
+    await logCsrfFailure(request, csrf.reason!, "admin.notifications.update");
+    return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+  }
+
   const { error: authError, supabase } = await requireAdmin(request);
 
   if (authError || !supabase) {

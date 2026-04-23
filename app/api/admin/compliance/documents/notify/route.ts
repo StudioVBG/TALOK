@@ -7,6 +7,7 @@ import {
   requireAdminPermissions,
   isAdminAuthError,
 } from "@/lib/middleware/admin-rbac";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 /**
  * POST /api/admin/compliance/documents/notify
@@ -14,6 +15,12 @@ import {
  */
 export async function POST(request: NextRequest) {
   try {
+    const csrf = await validateCsrfFromRequestDetailed(request);
+    if (!csrf.valid) {
+      await logCsrfFailure(request, csrf.reason!, "admin.compliance.notify");
+      return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+    }
+
     const auth = await requireAdminPermissions(
       request,
       ["admin.compliance.write"],

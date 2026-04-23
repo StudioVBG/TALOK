@@ -232,8 +232,14 @@ export async function GET() {
 /**
  * DELETE - Terminer la session d'impersonation
  */
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   try {
+    const csrf = await validateCsrfFromRequestDetailed(request);
+    if (!csrf.valid) {
+      await logCsrfFailure(request, csrf.reason!, "admin.impersonate.stop");
+      return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+    }
+
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
