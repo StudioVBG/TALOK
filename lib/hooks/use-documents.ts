@@ -149,9 +149,11 @@ export function useDocuments(filters?: {
           if (!viewError && viewData) {
             allDocs = viewData as DocumentRow[];
             usedView = true;
+          } else if (viewError) {
+            console.warn("[useDocuments] v_tenant_accessible_documents failed, falling back:", viewError);
           }
-        } catch {
-          // View doesn't exist yet, fall through to legacy logic
+        } catch (e) {
+          console.warn("[useDocuments] v_tenant_accessible_documents threw, falling back:", e);
         }
 
         if (!usedView) {
@@ -256,9 +258,11 @@ export function useDocuments(filters?: {
           if (!viewError && viewData) {
             allDocs = viewData as DocumentRow[];
             usedView = true;
+          } else if (viewError) {
+            console.warn("[useDocuments] v_owner_accessible_documents failed, falling back:", viewError);
           }
-        } catch {
-          // View doesn't exist yet, fall through to legacy logic
+        } catch (e) {
+          console.warn("[useDocuments] v_owner_accessible_documents threw, falling back:", e);
         }
 
         if (!usedView) {
@@ -392,6 +396,7 @@ export function useDocuments(filters?: {
       return [];
     },
     enabled: !!profile,
+    retry: 1,
   });
 }
 

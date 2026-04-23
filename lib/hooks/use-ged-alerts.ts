@@ -59,7 +59,15 @@ export function useGedAlertsSummary() {
         )
         .order("valid_until", { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        console.error("[useGedAlertsSummary] documents query failed:", {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        });
+        throw error;
+      }
 
       const now = new Date();
       now.setHours(0, 0, 0, 0);
@@ -113,6 +121,7 @@ export function useGedAlertsSummary() {
     enabled: !!profile && profile.role === "owner",
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    retry: 1,
   });
 }
 

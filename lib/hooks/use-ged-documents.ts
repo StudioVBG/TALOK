@@ -146,7 +146,15 @@ export function useGedDocuments(filters?: GedDocumentFilters) {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error("[useGedDocuments] documents query failed:", {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint,
+        });
+        throw error;
+      }
 
       // Enrichir les documents avec les infos du référentiel
       const docs = (data || []).map((doc: Record<string, unknown>) => enrichDocument(doc));
@@ -175,6 +183,7 @@ export function useGedDocuments(filters?: GedDocumentFilters) {
     enabled: !!profile,
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
+    retry: 1,
   });
 }
 
