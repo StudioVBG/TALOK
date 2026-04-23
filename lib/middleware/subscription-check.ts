@@ -28,6 +28,69 @@ import {
 
 export type LimitType = "properties" | "leases" | "users" | "documents_gb" | "signatures";
 
+// In-memory TTL cache for the subscription lookup. Bursts of gating calls
+// within the same request (or across concurrent requests from the same
+// user) otherwise re-hit Postgres for the same row. 3s TTL keeps the
+// staleness window acceptable for billing decisions (webhook writes will
+// be visible at the next cache miss).
+type CachedSubscription = {
+  data: any;
+  expiresAt: number;
+};
+const SUBSCRIPTION_CACHE_TTL_MS = 3000;
+const SUBSCRIPTION_CACHE_MAX_ENTRIES = 500;
+const subscriptionCache = new Map<string, CachedSubscription>();
+
+function pruneSubscriptionCache() {
+  if (subscriptionCache.size <= SUBSCRIPTION_CACHE_MAX_ENTRIES) return;
+  const now = Date.now();
+  for (const [key, value] of subscriptionCache) {
+    if (value.expiresAt <= now) subscriptionCache.delete(key);
+  }
+  // If still oversized, drop oldest entries (insertion order preserved by Map)
+  while (subscriptionCache.size > SUBSCRIPTION_CACHE_MAX_ENTRIES) {
+    const oldestKey = subscriptionCache.keys().next().value;
+    if (oldestKey === undefined) break;
+    subscriptionCache.delete(oldestKey);
+  }
+}
+
+async function loadSubscription(ownerId: string): Promise<any> {
+  const now = Date.now();
+  const cached = subscriptionCache.get(ownerId);
+  if (cached && cached.expiresAt > now) {
+    return cached.data;
+  }
+  const { data, error } = await getServiceClient()
+    .from("subscriptions")
+    .select(`
+      *,
+      plan:subscription_plans!plan_id(*)
+    `)
+    .eq("owner_id", ownerId)
+    .maybeSingle();
+  if (error) {
+    // Ne pas cacher les erreurs — laisser l'appelant les gérer, et retenter
+    // au prochain passage.
+    throw error;
+  }
+  subscriptionCache.set(ownerId, {
+    data,
+    expiresAt: now + SUBSCRIPTION_CACHE_TTL_MS,
+  });
+  pruneSubscriptionCache();
+  return data;
+}
+
+/**
+ * Invalide le cache d'une subscription — à appeler après écriture
+ * (création, upgrade, annulation). Pas grave si omis : le cache s'auto-expire
+ * en SUBSCRIPTION_CACHE_TTL_MS.
+ */
+export function invalidateSubscriptionCache(ownerId: string): void {
+  subscriptionCache.delete(ownerId);
+}
+
 export interface LimitCheckResult {
   allowed: boolean;
   current: number;
@@ -55,31 +118,18 @@ export async function withSubscriptionLimit(
   const serviceClient = getServiceClient();
 
   try {
-    // Récupérer la subscription et le plan
-    const { data: subscription, error: subError } = await serviceClient
-      .from("subscriptions")
-      .select(`
-        *,
-        plan:subscription_plans!plan_id(*)
-      `)
-      .eq("owner_id", ownerId)
-      .maybeSingle();
-
-    // DEBUG: log pour tracer le bug "trialing traité comme gratuit"
-    if (subError) {
+    // Récupérer la subscription et le plan (cache TTL court — voir loadSubscription)
+    let subscription: any = null;
+    let subError: { code?: string; message?: string } | null = null;
+    try {
+      subscription = await loadSubscription(ownerId);
+    } catch (e: any) {
+      subError = { code: e?.code, message: e?.message };
       console.error(`[subscription-check] Query error for owner_id=${ownerId}:`, subError.code, subError.message);
     }
+
     if (!subscription && !subError) {
       console.warn(`[subscription-check] No subscription found for owner_id=${ownerId}, falling back to free plan`);
-      // Vérifier si le problème est un mismatch owner_id vs user_id
-      const { data: subByAny, error: debugError } = await serviceClient
-        .from("subscriptions")
-        .select("id, owner_id, plan_slug, status")
-        .limit(1)
-        .maybeSingle();
-      if (subByAny) {
-        console.warn(`[subscription-check] DEBUG: Found subscription ${subByAny.id} with owner_id=${subByAny.owner_id}, plan_slug=${subByAny.plan_slug}, status=${subByAny.status}`);
-      }
     }
 
     if (subError || !subscription) {
@@ -311,22 +361,16 @@ export async function withFeatureAccess(
   ownerId: string,
   feature: FeatureKey
 ): Promise<FeatureCheckResult> {
-  const serviceClient = getServiceClient();
-
   try {
-    // Seuls status + plan_slug (+ jointure slug en fallback) sont lus ici —
-    // éviter `*` réduit le payload et accélère le parse côté PostgREST.
-    const { data: subscription, error } = await serviceClient
-      .from("subscriptions")
-      .select(`
-        status,
-        plan_slug,
-        plan:subscription_plans!plan_id(slug)
-      `)
-      .eq("owner_id", ownerId)
-      .maybeSingle();
+    // Cache TTL partagé avec withSubscriptionLimit — voir loadSubscription
+    let subscription: any = null;
+    try {
+      subscription = await loadSubscription(ownerId);
+    } catch (e: any) {
+      console.error(`[subscription-check] Query error for owner_id=${ownerId}:`, e?.code, e?.message);
+    }
 
-    if (error || !subscription) {
+    if (!subscription) {
       const requiredPlan = getRequiredPlanForFeature(feature);
       return {
         allowed: false,
