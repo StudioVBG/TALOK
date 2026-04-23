@@ -1,6 +1,6 @@
 /**
- * API Route: Exercise Balance
- * GET /api/accounting/exercises/[exerciseId]/balance - Get balance des comptes
+ * API Route: Journal général
+ * GET /api/accounting/exercises/[exerciseId]/journal - Get chronological journal
  */
 
 import { NextResponse } from "next/server";
@@ -8,18 +8,15 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { requireAccountingAccess } from "@/lib/accounting/feature-gates";
-import { getBalance } from "@/lib/accounting/engine";
-import { renderBalancePdf } from "@/lib/accounting/exports/pdf";
-import { buildBalanceWorkbook } from "@/lib/accounting/exports/xlsx";
+import { getJournal } from "@/lib/accounting/engine";
+import { renderJournalPdf } from "@/lib/accounting/exports/pdf";
+import { buildJournalWorkbook } from "@/lib/accounting/exports/xlsx";
 
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/accounting/exercises/[exerciseId]/balance?entityId=...
- * Get the balance des comptes for an exercise.
- *
- * Auth via user-scoped client, DB reads via service client to avoid RLS
- * recursion (42P17) on profiles that otherwise produces 500s.
+ * GET /api/accounting/exercises/[exerciseId]/journal?entityId=...&journal=VE&format=json|pdf|xlsx
+ * Returns entries grouped by journal_code, chronologically inside each group.
  */
 export async function GET(
   request: Request,
@@ -45,11 +42,12 @@ export async function GET(
       throw new ApiError(403, "Profil non trouve");
     }
 
-    const featureGate = await requireAccountingAccess(profile.id, "balance");
+    const featureGate = await requireAccountingAccess(profile.id, "journal");
     if (featureGate) return featureGate;
 
     const { searchParams } = new URL(request.url);
     const entityId = searchParams.get("entityId");
+    const journalCode = searchParams.get("journal") || undefined;
     const format = (searchParams.get("format") ?? "json") as "json" | "pdf" | "xlsx";
 
     if (!entityId) {
@@ -60,54 +58,51 @@ export async function GET(
     if (profile.role !== "admin") {
       const { data: entity } = await serviceClient
         .from("legal_entities")
-        .select("id")
+        .select("id, nom")
         .eq("id", entityId)
         .eq("owner_profile_id", profile.id)
         .maybeSingle();
       if (!entity) throw new ApiError(403, "Accès refusé à cette entité");
     }
 
-    const balance = await getBalance(serviceClient, entityId, exerciseId);
+    const journal = await getJournal(serviceClient, entityId, exerciseId, journalCode);
 
-    if (format === "pdf" || format === "xlsx") {
-      const [{ data: exercise }, { data: entity }] = await Promise.all([
-        serviceClient
-          .from("accounting_exercises")
-          .select("start_date, end_date")
-          .eq("id", exerciseId)
-          .maybeSingle(),
-        serviceClient
-          .from("legal_entities")
-          .select("nom")
-          .eq("id", entityId)
-          .maybeSingle(),
-      ]);
-
-      if (format === "pdf") {
-        const pdf = await renderBalancePdf(balance, {
-          entityName: entity?.nom ?? "",
-          startDate: exercise?.start_date ?? "",
-          endDate: exercise?.end_date ?? "",
-        });
-        return new Response(pdf, {
-          headers: {
-            "Content-Type": "application/pdf",
-            "Content-Disposition": `attachment; filename="balance_${exerciseId}.pdf"`,
-          },
-        });
-      }
-
-      const xlsx = await buildBalanceWorkbook(balance);
-      return new Response(xlsx, {
+    if (format === "pdf") {
+      const { data: exercise } = await serviceClient
+        .from("accounting_exercises")
+        .select("start_date, end_date, status")
+        .eq("id", exerciseId)
+        .maybeSingle();
+      const { data: entity } = await serviceClient
+        .from("legal_entities")
+        .select("nom")
+        .eq("id", entityId)
+        .maybeSingle();
+      const pdf = await renderJournalPdf(journal, {
+        entityName: entity?.nom ?? "",
+        startDate: exercise?.start_date ?? "",
+        endDate: exercise?.end_date ?? "",
+      });
+      return new Response(pdf, {
         headers: {
-          "Content-Type":
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "Content-Disposition": `attachment; filename="balance_${exerciseId}.xlsx"`,
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="journal_${exerciseId}.pdf"`,
         },
       });
     }
 
-    return NextResponse.json({ success: true, data: { balance } });
+    if (format === "xlsx") {
+      const buffer = await buildJournalWorkbook(journal);
+      return new Response(buffer, {
+        headers: {
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="journal_${exerciseId}.xlsx"`,
+        },
+      });
+    }
+
+    return NextResponse.json({ success: true, data: { journal } });
   } catch (error) {
     return handleApiError(error);
   }

@@ -23,6 +23,7 @@ import { FECExportPanel, type FECPreviewResult } from "./components/FECExportPan
 import { GrandLivreExportPanel } from "./components/GrandLivreExportPanel";
 import { BalanceExportPanel } from "./components/BalanceExportPanel";
 import { CahierExportPanel } from "./components/CahierExportPanel";
+import { JournalExportPanel } from "./components/JournalExportPanel";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -64,12 +65,19 @@ function ExportsContent() {
   const { profile } = useAuth();
   const { getActiveEntity } = useEntityStore();
   const activeEntity = getActiveEntity() as
-    | { id?: string; siret?: string | null }
+    | {
+        id?: string;
+        siret?: string | null;
+        fiscalRegime?: string | null;
+      }
     | null;
   const entityId =
     activeEntity?.id ??
     (profile as { default_entity_id?: string | null } | null)?.default_entity_id ??
     undefined;
+  const fiscalRegime = activeEntity?.fiscalRegime ?? null;
+  const isMicroFoncier = fiscalRegime === "micro_foncier";
+  const isIs = fiscalRegime === "is";
 
   // ── Exercise selector ─────────────────────────────────────────────
 
@@ -134,7 +142,7 @@ function ExportsContent() {
       try {
         const response = await apiClient.get<
           { success?: boolean; data?: ECAccess[] } | ECAccess[]
-        >(`/accounting/ec-access?entityId=${entityId}`);
+        >(`/accounting/ec/access?entityId=${entityId}`);
         if (Array.isArray(response)) return response;
         return response?.data ?? [];
       } catch (err) {
@@ -206,7 +214,7 @@ function ExportsContent() {
 
   const inviteEC = useMutation<unknown, Error, void>({
     mutationFn: async () => {
-      await apiClient.post("/accounting/ec-access", {
+      await apiClient.post("/accounting/ec/access", {
         entityId,
         ec_name: ecForm.name,
         ec_email: ecForm.email,
@@ -222,7 +230,7 @@ function ExportsContent() {
 
   const sendExportsToEC = useMutation<unknown, Error, void>({
     mutationFn: async () => {
-      await apiClient.post("/accounting/ec-access/send-exports", {
+      await apiClient.post("/accounting/ec/access/send-exports", {
         entityId,
         exerciseId,
       });
@@ -346,23 +354,85 @@ function ExportsContent() {
           <GrandLivreExportPanel
             exerciseId={exerciseId}
             exerciseLabel={currentExercise?.label ?? "exercice"}
+            entityId={entityId}
             onDownload={handleDownload}
             loadingMap={loadingMap}
           />
           <BalanceExportPanel
             exerciseId={exerciseId}
             exerciseLabel={currentExercise?.label ?? "exercice"}
+            entityId={entityId}
             onDownload={handleDownload}
             loadingMap={loadingMap}
           />
-          <FECExportPanel
+          <JournalExportPanel
             exerciseId={exerciseId}
-            fecPreview={fecPreview}
-            fecPreviewLoading={fecPreviewLoading}
-            fecDownloading={fecDownloading}
-            onLoadPreview={loadFECPreview}
-            onDownload={handleFECDownload}
+            exerciseLabel={currentExercise?.label ?? "exercice"}
+            entityId={entityId}
+            onDownload={handleDownload}
+            loadingMap={loadingMap}
           />
+          <div className="space-y-2">
+            {isMicroFoncier && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                Le FEC n&apos;est pas requis en micro-foncier. Le fichier reste
+                telechargeable si votre expert-comptable en a besoin.
+              </div>
+            )}
+            <FECExportPanel
+              exerciseId={exerciseId}
+              fecPreview={fecPreview}
+              fecPreviewLoading={fecPreviewLoading}
+              fecDownloading={fecDownloading}
+              onLoadPreview={loadFECPreview}
+              onDownload={handleFECDownload}
+            />
+          </div>
+        </div>
+        {isIs && (
+          <div className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+            Regime IS detecte — la liasse fiscale preparatoire est incluse dans
+            le pack complet envoye a votre expert-comptable.
+          </div>
+        )}
+      </section>
+
+      {/* ── Section: Pack complet ─────────────────────────────────── */}
+      <section className="space-y-4">
+        <div className="bg-card rounded-xl border border-border p-4 sm:p-5 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <FileSpreadsheet className="w-5 h-5 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">
+                Pack complet (ZIP)
+              </p>
+              <p className="text-xs text-muted-foreground">
+                FEC, balance, grand livre et journal general regroupes dans
+                une seule archive. Format ZIP pret a envoyer a votre
+                expert-comptable.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={!exerciseId || !entityId || !!loadingMap["pack-zip"]}
+            onClick={() =>
+              exerciseId &&
+              entityId &&
+              handleDownload(
+                "pack-zip",
+                `/accounting/exports/pack?entityId=${encodeURIComponent(entityId)}&exerciseId=${exerciseId}`,
+                `talok-pack-${currentExercise?.label ?? "exercice"}.zip`,
+              )
+            }
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loadingMap["pack-zip"]
+              ? "Preparation du pack..."
+              : "Telecharger le pack (ZIP)"}
+          </button>
         </div>
       </section>
 

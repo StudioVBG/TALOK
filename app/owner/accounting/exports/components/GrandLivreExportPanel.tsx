@@ -3,9 +3,9 @@
 /**
  * GrandLivreExportPanel — "Grand livre" export card.
  *
- * Thin wrapper around ExportCard with the PDF/CSV format buttons
- * pre-wired for the grand-livre endpoint. The parent passes the
- * exercise context and a single download handler.
+ * Thin wrapper around ExportCard with PDF/XLSX buttons pre-wired for the
+ * grand-livre endpoint. Parent passes the exercise + entity context and a
+ * single download handler.
  */
 
 import { ExportCard } from "@/components/accounting/ExportCard";
@@ -14,6 +14,7 @@ import { BookOpen } from "lucide-react";
 interface GrandLivreExportPanelProps {
   exerciseId: string | null;
   exerciseLabel: string;
+  entityId: string | undefined;
   onDownload: (key: string, url: string, filename: string) => void;
   loadingMap: Record<string, boolean>;
 }
@@ -21,10 +22,15 @@ interface GrandLivreExportPanelProps {
 export function GrandLivreExportPanel({
   exerciseId,
   exerciseLabel,
+  entityId,
   onDownload,
   loadingMap,
 }: GrandLivreExportPanelProps) {
-  const disabled = !exerciseId;
+  const disabled = !exerciseId || !entityId;
+  const url = (format: "pdf" | "xlsx") =>
+    `/accounting/exercises/${exerciseId}/grand-livre?entityId=${encodeURIComponent(
+      entityId ?? "",
+    )}&format=${format}`;
   return (
     <ExportCard
       title="Grand livre"
@@ -35,24 +41,16 @@ export function GrandLivreExportPanel({
           label: "PDF",
           loading: loadingMap["gl-pdf"],
           onClick: () =>
-            exerciseId &&
-            onDownload(
-              "gl-pdf",
-              `/accounting/exercises/${exerciseId}/grand-livre?format=pdf`,
-              `grand_livre_${exerciseLabel}.pdf`,
-            ),
+            !disabled &&
+            onDownload("gl-pdf", url("pdf"), `grand_livre_${exerciseLabel}.pdf`),
           disabled,
         },
         {
-          label: "CSV",
-          loading: loadingMap["gl-csv"],
+          label: "Excel",
+          loading: loadingMap["gl-xlsx"],
           onClick: () =>
-            exerciseId &&
-            onDownload(
-              "gl-csv",
-              `/accounting/exercises/${exerciseId}/grand-livre?format=csv`,
-              `grand_livre_${exerciseLabel}.csv`,
-            ),
+            !disabled &&
+            onDownload("gl-xlsx", url("xlsx"), `grand_livre_${exerciseLabel}.xlsx`),
           disabled,
         },
       ]}

@@ -91,6 +91,10 @@ export async function GET(request: Request) {
     const journalCode = searchParams.get("journal_code");
     const compteNum = searchParams.get("compte_num");
     const ownerId = searchParams.get("owner_id");
+    // New double-entry schema filters on `entity_id` (legal_entities.id). The
+    // legacy `owner_id` (profiles.id) is kept as a fallback for flat entries
+    // that predate the engine rewrite.
+    const entityId = searchParams.get("entity_id");
     const propertyId = searchParams.get("property_id");
     const invoiceId = searchParams.get("invoice_id");
     const startDate = searchParams.get("start_date");
@@ -113,14 +117,35 @@ export async function GET(request: Request) {
 
     // Filtrage par rôle — obligatoire car on utilise le service client qui
     // bypass RLS. L'enforcement d'accès passe donc par ce filtre explicite.
-    if (profile.role !== "admin") {
+    //
+    // Two paths:
+    //   - New double-entry path: caller passes `entity_id`. We validate the
+    //     user owns that legal entity (or is admin) and filter on entity_id.
+    //     Engine-created entries have owner_id = NULL, so filtering on
+    //     owner_id here would hide every auto-posted entry.
+    //   - Legacy flat path: no entity_id → keep the historical owner_id
+    //     filter so old entries created via the flat insert still scope.
+    if (entityId) {
+      if (profile.role !== "admin") {
+        const { data: entity } = await serviceClient
+          .from("legal_entities")
+          .select("id")
+          .eq("id", entityId)
+          .eq("owner_profile_id", profile.id)
+          .maybeSingle();
+        if (!entity) {
+          throw new ApiError(403, "Accès refusé à cette entité");
+        }
+      }
+      query = query.eq("entity_id", entityId);
+    } else if (profile.role !== "admin") {
       query = query.eq("owner_id", profile.id);
     }
 
     // Filtres
     if (journalCode) query = query.eq("journal_code", journalCode);
     if (compteNum) query = query.ilike("compte_num", `${compteNum}%`);
-    if (ownerId) query = query.eq("owner_id", ownerId);
+    if (ownerId && !entityId) query = query.eq("owner_id", ownerId);
     if (propertyId) query = query.eq("property_id", propertyId);
     if (invoiceId) query = query.eq("invoice_id", invoiceId);
     if (search) {
