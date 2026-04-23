@@ -18,6 +18,7 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
+  Info,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -367,6 +368,24 @@ export function DepositTracker({ deposits, loading, onRestitute }: DepositTracke
         <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
           Les dépôts de garantie apparaissent ici automatiquement à la signature des baux.
         </p>
+        <div className="mt-6 mx-auto max-w-lg rounded-xl border border-border/60 bg-background/60 p-4 text-left">
+          <div className="flex gap-3">
+            <Info className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+            <div className="space-y-1 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">Un dépôt figure sur une facture mais pas ici ?</p>
+              <p>
+                Un dépôt de garantie n'apparaît dans ce suivi qu'une fois le bail
+                <span className="font-medium text-foreground"> activé</span> (signé par les deux parties).
+                Tant que le bail reste au statut « brouillon » ou « en attente de signature »,
+                le montant encaissé via la facture initiale n'est pas rattaché à un dépôt formel.
+              </p>
+              <p>
+                Le montant affiché sur la facture reste acquis&nbsp;: il sera automatiquement rattaché
+                ici dès la signature du bail. Aucun paiement n'est perdu.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
