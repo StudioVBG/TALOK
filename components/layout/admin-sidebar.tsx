@@ -28,7 +28,6 @@ import {
   LogOut,
   Flag,
   Ticket,
-  TrendingUp,
   Clock,
   Zap,
   Megaphone,
@@ -104,7 +103,6 @@ const adminNavItems: NavCategory[] = [
   {
     category: "Analyse & rapports",
     items: [
-      { href: "/admin/metrics", label: "Métriques", icon: TrendingUp },
       { href: "/admin/metrics-saas", label: "Métriques abonnements", icon: Activity },
       { href: "/admin/reports", label: "Rapports", icon: FileText },
     ],

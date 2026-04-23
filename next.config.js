@@ -159,6 +159,8 @@ const nextConfig = {
   async redirects() {
     return [
       // === Doublons internes ===
+      // /admin/metrics → /admin/dashboard (fusion analytics, avril 2026)
+      { source: "/admin/metrics", destination: "/admin/dashboard", permanent: true },
       // /owner → /owner/dashboard
       { source: "/owner", destination: "/owner/dashboard", permanent: true },
       // /tenant → /tenant/dashboard

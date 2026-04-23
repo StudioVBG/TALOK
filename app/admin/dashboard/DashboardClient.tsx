@@ -28,6 +28,7 @@ import { AreaChartCard } from "@/components/charts/area-chart-card";
 import { BarChartHorizontal } from "@/components/charts/bar-chart-horizontal";
 import { RadialProgress } from "@/components/ui/radial-progress";
 import { SecondaryContentPanel } from "@/components/layout/secondary-content-panel";
+import { DashboardAnalytics } from "@/components/admin/dashboard-analytics";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { useAdminRealtimeSync } from "@/lib/hooks/use-realtime-sync";
 import type { AdminStatsDataV2 } from "../_data/fetchAdminStats";
@@ -596,6 +597,13 @@ export function DashboardClient({ stats }: DashboardClientProps) {
             <p className="text-xs text-muted-foreground">Administrateurs</p>
           </div>
         </div>
+      </SecondaryContentPanel>
+
+      <SecondaryContentPanel
+        title="Analytics détaillés"
+        description="Tendances d'inscription, conversion et santé plateforme"
+      >
+        <DashboardAnalytics />
       </SecondaryContentPanel>
     </div>
   );
