@@ -1,4 +1,5 @@
 import { TYPE_TO_LABEL } from "@/lib/documents/constants";
+import { cleanAttachmentName } from "@/lib/utils/clean-filename";
 
 /**
  * Lookup case-insensitive dans TYPE_TO_LABEL.
@@ -44,6 +45,7 @@ export function getDocumentDisplayName(doc: {
   name?: string | null;
   type?: string | null;
   created_at?: string | null;
+  storage_path?: string | null;
   metadata?: Record<string, any> | null;
 }): string {
   const candidates = [
@@ -64,6 +66,16 @@ export function getDocumentDisplayName(doc: {
   if (label) {
     const date = formatSafeShortDate(doc.created_at);
     return date ? `${label} — ${date}` : label;
+  }
+
+  // Dernier recours: extraire un nom lisible depuis storage_path
+  // (utile pour les anciens documents sans title ni original_filename)
+  if (doc.storage_path) {
+    const basename = doc.storage_path.split("/").pop() ?? "";
+    if (basename) {
+      const cleaned = cleanFilename(cleanAttachmentName(basename));
+      if (cleaned && cleaned !== "Document") return cleaned;
+    }
   }
 
   return "Document";
