@@ -104,23 +104,23 @@ export function DocumentCard({
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold text-foreground truncate" title={displayTitle}>{displayTitle}</p>
-          <div className="flex items-center gap-1.5 mt-0.5 min-w-0">
+          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 mt-0.5 min-w-0">
             {hasDate && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1 whitespace-nowrap shrink-0">
+              <p className="text-xs text-muted-foreground flex items-center gap-1 whitespace-nowrap">
                 <Calendar className="h-3 w-3" />
                 {formattedDate}
               </p>
             )}
             {isFinal && (
-              <Badge className="bg-emerald-600 text-white text-[10px] h-5 border-none px-1.5 shrink-0">
+              <Badge className="bg-emerald-600 text-white text-[10px] h-5 border-none px-1.5">
                 <CheckCircle2 className="h-3 w-3 mr-0.5" /> Certifié
               </Badge>
             )}
             {isNew && (
-              <Badge className="bg-blue-600 text-white text-[10px] h-5 border-none px-1.5 shrink-0">Nouveau</Badge>
+              <Badge className="bg-blue-600 text-white text-[10px] h-5 border-none px-1.5">Nouveau</Badge>
             )}
             {sourceLabel && (
-              <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 text-[10px] h-5 px-1.5 shrink-0 truncate">{sourceLabel}</Badge>
+              <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 text-[10px] h-5 px-1.5 max-w-full truncate">{sourceLabel}</Badge>
             )}
           </div>
         </div>
