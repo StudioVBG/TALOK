@@ -1128,23 +1128,27 @@ export async function POST(request: NextRequest) {
                 if (config?.accountingEnabled) {
                   const exercise = await getOrCreateCurrentExercise(supabase, entityId);
                   if (exercise) {
-                    const tenantName = invoiceForEntity?.tenant
-                      ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
-                      : '';
-                    const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
+                    const { resolveSystemActorForEntity } = await import('@/lib/accounting/system-actor');
+                    const actorUserId = await resolveSystemActorForEntity(supabase, entityId);
+                    if (actorUserId) {
+                      const tenantName = invoiceForEntity?.tenant
+                        ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
+                        : '';
+                      const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
 
-                    const entry = await createAutoEntry(supabase, 'rent_received', {
-                      entityId,
-                      exerciseId: exercise.id,
-                      userId: 'system',
-                      amountCents: paymentIntent.amount, // already in cents from Stripe
-                      label: `Loyer ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
-                      date: new Date().toISOString().split('T')[0],
-                      reference: paymentIntent.id,
-                    });
+                      const entry = await createAutoEntry(supabase, 'rent_received', {
+                        entityId,
+                        exerciseId: exercise.id,
+                        userId: actorUserId,
+                        amountCents: paymentIntent.amount, // already in cents from Stripe
+                        label: `Loyer ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
+                        date: new Date().toISOString().split('T')[0],
+                        reference: paymentIntent.id,
+                      });
 
-                    if (shouldMarkInformational(config)) {
-                      await markEntryInformational(supabase, entry.id);
+                      if (shouldMarkInformational(config)) {
+                        await markEntryInformational(supabase, entry.id);
+                      }
                     }
                   }
                 }
@@ -1237,23 +1241,27 @@ export async function POST(request: NextRequest) {
               if (config?.accountingEnabled) {
                 const exercise = await getOrCreateCurrentExercise(supabase, entityId);
                 if (exercise) {
-                  const tenantName = invoiceForEntity?.tenant
-                    ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
-                    : '';
-                  const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
+                  const { resolveSystemActorForEntity } = await import('@/lib/accounting/system-actor');
+                  const actorUserId = await resolveSystemActorForEntity(supabase, entityId);
+                  if (actorUserId) {
+                    const tenantName = invoiceForEntity?.tenant
+                      ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
+                      : '';
+                    const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
 
-                  const entry = await createAutoEntry(supabase, 'sepa_rejected', {
-                    entityId,
-                    exerciseId: exercise.id,
-                    userId: 'system',
-                    amountCents: paymentIntent.amount,
-                    label: `Rejet prelevement ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
-                    date: new Date().toISOString().split('T')[0],
-                    reference: paymentIntent.id,
-                  });
+                    const entry = await createAutoEntry(supabase, 'sepa_rejected', {
+                      entityId,
+                      exerciseId: exercise.id,
+                      userId: actorUserId,
+                      amountCents: paymentIntent.amount,
+                      label: `Rejet prelevement ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
+                      date: new Date().toISOString().split('T')[0],
+                      reference: paymentIntent.id,
+                    });
 
-                  if (shouldMarkInformational(config)) {
-                    await markEntryInformational(supabase, entry.id);
+                    if (shouldMarkInformational(config)) {
+                      await markEntryInformational(supabase, entry.id);
+                    }
                   }
                 }
               }

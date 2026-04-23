@@ -35,7 +35,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { entityId, exerciseId, exerciseYear } = await req.json();
+    const { entityId, exerciseId, exerciseYear, userId } = await req.json();
 
     if (!entityId || !exerciseId || !exerciseYear) {
       return new Response(
@@ -49,6 +49,33 @@ serve(async (req: Request) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+
+    // accounting_entries.created_by is UUID NOT NULL REFERENCES auth.users(id).
+    // Use the explicit caller userId, otherwise fall back to the entity owner's
+    // auth.users.id resolved via legal_entities.owner_profile_id -> profiles.user_id.
+    let actorUserId: string | null = userId ?? null;
+    if (!actorUserId) {
+      const { data: entity } = await supabase
+        .from("legal_entities")
+        .select("owner_profile_id")
+        .eq("id", entityId)
+        .maybeSingle();
+      const ownerProfileId = (entity as { owner_profile_id?: string } | null)?.owner_profile_id;
+      if (ownerProfileId) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("user_id")
+          .eq("id", ownerProfileId)
+          .maybeSingle();
+        actorUserId = (profile as { user_id?: string } | null)?.user_id ?? null;
+      }
+    }
+    if (!actorUserId) {
+      return new Response(
+        JSON.stringify({ error: "actor_unresolved" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     // Fetch all active amortization schedules for entity
     const { data: schedules, error: schedError } = await supabase
@@ -180,7 +207,7 @@ serve(async (req: Request) => {
           label: `Dotation amortissement ${schedule.component} ${exerciseYear}`,
           source: "auto:amortization",
           is_validated: true,
-          created_by: "system",
+          created_by: actorUserId,
         })
         .select("id")
         .single();
