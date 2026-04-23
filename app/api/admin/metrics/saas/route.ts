@@ -13,6 +13,7 @@ import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admi
 export async function GET(request: Request) {
   const auth = await requireAdminPermissions(request, ["admin.reports.read"], {
     rateLimit: "adminStandard",
+    auditAction: "Consultation des métriques SaaS",
   });
   if (isAdminAuthError(auth)) return auth;
 

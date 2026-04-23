@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   try {
     const auth = await requireAdminPermissions(request, ["admin.subscriptions.read"], {
       rateLimit: "adminStandard",
+      auditAction: "Consultation des statistiques abonnements",
     });
     if (isAdminAuthError(auth)) return auth;
 

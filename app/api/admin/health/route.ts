@@ -25,6 +25,7 @@ interface HealthCheck {
 export async function GET(request: Request) {
   const auth = await requireAdminPermissions(request, ["admin.reports.read"], {
     rateLimit: "adminStandard",
+    auditAction: "Consultation de la santé plateforme",
   });
   if (isAdminAuthError(auth)) return auth;
 

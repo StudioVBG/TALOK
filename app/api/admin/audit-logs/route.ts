@@ -24,6 +24,7 @@ export async function GET(request: Request) {
   try {
     const auth = await requireAdminPermissions(request, ["admin.compliance.read"], {
       rateLimit: "adminStandard",
+      auditAction: "Consultation du journal d'audit",
     });
     if (isAdminAuthError(auth)) return auth;
 

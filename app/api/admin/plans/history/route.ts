@@ -13,6 +13,7 @@ export async function GET(request: Request) {
   try {
     const auth = await requireAdminPermissions(request, ["admin.plans.read"], {
       rateLimit: "adminStandard",
+      auditAction: "Consultation de l'historique des plans",
     });
     if (isAdminAuthError(auth)) return auth;
 

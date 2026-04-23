@@ -13,6 +13,7 @@ export async function GET(request: Request) {
   try {
     const auth = await requireAdminPermissions(request, ["admin.reports.read"], {
       rateLimit: "adminStandard",
+      auditAction: "Consultation des statistiques admin",
     });
     if (isAdminAuthError(auth)) return auth;
 

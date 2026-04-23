@@ -14,6 +14,7 @@ export async function GET(request: Request) {
   try {
     const auth = await requireAdminPermissions(request, ["admin.integrations.read"], {
       rateLimit: "adminStandard",
+      auditAction: "Consultation de la configuration email",
     });
     if (isAdminAuthError(auth)) return auth;
 

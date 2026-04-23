@@ -14,6 +14,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAdminPermissions(request, ["admin.compliance.read"], {
       rateLimit: "adminStandard",
+      auditAction: "Consultation des documents conformité en attente",
     });
     if (isAdminAuthError(auth)) return auth;
 

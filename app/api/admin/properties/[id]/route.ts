@@ -17,6 +17,7 @@ export async function GET(
 
     const auth = await requireAdminPermissions(request, ["admin.properties.read"], {
       rateLimit: "adminStandard",
+      auditAction: "Consultation du détail d'un bien",
     });
     if (isAdminAuthError(auth)) return auth;
 

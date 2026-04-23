@@ -13,6 +13,7 @@ export async function GET(request: Request) {
   try {
     const auth = await requireAdminPermissions(request, ["admin.templates.read"], {
       rateLimit: "adminStandard",
+      auditAction: "Consultation de la liste des templates d'email",
     });
     if (isAdminAuthError(auth)) return auth;
 

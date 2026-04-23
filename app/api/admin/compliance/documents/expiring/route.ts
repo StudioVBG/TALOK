@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const auth = await requireAdminPermissions(
       request,
       ["admin.compliance.read"],
-      { rateLimit: "adminStandard" }
+      { rateLimit: "adminStandard", auditAction: "Consultation des documents conformité expirants" }
     );
     if (isAdminAuthError(auth)) return auth;
 

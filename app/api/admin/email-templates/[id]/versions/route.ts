@@ -16,6 +16,7 @@ export async function GET(
     const { id } = await params;
     const auth = await requireAdminPermissions(request, ["admin.templates.read"], {
       rateLimit: "adminStandard",
+      auditAction: "Consultation de l'historique d'un template d'email",
     });
     if (isAdminAuthError(auth)) return auth;
 
