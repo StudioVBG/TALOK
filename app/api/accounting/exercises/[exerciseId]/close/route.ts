@@ -141,6 +141,77 @@ export async function POST(
     // Step 5: Close exercise + lock entries
     await closeExercise(supabase, exerciseId, user.id);
 
+    // Step 5b: Auto-send pack to the expert-comptable when opted-in.
+    //
+    // Fire-and-forget: we never block the close flow on email infra. Errors
+    // are captured in the response `warnings` array so the user still sees a
+    // signal that something went wrong without failing the close itself.
+    try {
+      const { data: autoEcs } = await (supabase as any)
+        .from("ec_access")
+        .select("id")
+        .eq("entity_id", entityId)
+        .eq("is_active", true)
+        .eq("auto_send_on_closing", true)
+        .limit(1);
+
+      if (autoEcs && autoEcs.length > 0) {
+        // Deferred import: avoids loading puppeteer + exceljs + jszip during
+        // every close request, only pulled in when auto-send is actually on.
+        const [{ buildAccountingPack }, { sendEmail }] = await Promise.all([
+          import("@/lib/accounting/exports/pack"),
+          import("@/lib/emails/resend.service"),
+        ]);
+
+        const { data: entity } = await (supabase as any)
+          .from("legal_entities")
+          .select("nom, siret, regime_fiscal")
+          .eq("id", entityId)
+          .maybeSingle();
+
+        const { data: ecs } = await (supabase as any)
+          .from("ec_access")
+          .select("id, ec_email, ec_name")
+          .eq("entity_id", entityId)
+          .eq("is_active", true)
+          .eq("auto_send_on_closing", true);
+
+        if (entity && ecs && ecs.length > 0) {
+          const siren = entity.siret ? String(entity.siret).slice(0, 9) : null;
+          const exerciseLabel = String(exerciseYear);
+          const pack = await buildAccountingPack(supabase as any, {
+            entityId,
+            exerciseId,
+            siren,
+            entityName: entity.nom ?? "Entite",
+            exerciseLabel,
+            startDate: exercise.start_date,
+            endDate: exercise.end_date,
+            includeLiasse: entity.regime_fiscal === "is",
+          });
+
+          await Promise.all(
+            ecs.map((ec: { id: string; ec_email: string }) =>
+              sendEmail({
+                to: ec.ec_email,
+                subject: `Pack comptable ${exerciseLabel} — cloture automatique`,
+                html: `<p>La cloture de l'exercice ${exerciseLabel} vient d'etre effectuee sur Talok. Le pack comptable est joint a cet email.</p>`,
+                attachments: [{ filename: pack.filename, content: pack.zip }],
+                tags: [
+                  { name: "type", value: "accounting_pack_auto" },
+                  { name: "entity", value: entityId },
+                ],
+                idempotencyKey: `ec-pack-auto-${ec.id}-${exerciseId}`,
+              }),
+            ),
+          );
+        }
+      }
+    } catch (err) {
+      console.warn("[close] auto-send pack failed:", err);
+      warnings.push("Envoi automatique au expert-comptable non effectue");
+    }
+
     // Step 6: Create next exercise if needed
     const nextStart = new Date(exercise.end_date);
     nextStart.setDate(nextStart.getDate() + 1);

@@ -142,7 +142,7 @@ function ExportsContent() {
       try {
         const response = await apiClient.get<
           { success?: boolean; data?: ECAccess[] } | ECAccess[]
-        >(`/accounting/ec-access?entityId=${entityId}`);
+        >(`/accounting/ec/access?entityId=${entityId}`);
         if (Array.isArray(response)) return response;
         return response?.data ?? [];
       } catch (err) {
@@ -214,7 +214,7 @@ function ExportsContent() {
 
   const inviteEC = useMutation<unknown, Error, void>({
     mutationFn: async () => {
-      await apiClient.post("/accounting/ec-access", {
+      await apiClient.post("/accounting/ec/access", {
         entityId,
         ec_name: ecForm.name,
         ec_email: ecForm.email,
@@ -230,7 +230,7 @@ function ExportsContent() {
 
   const sendExportsToEC = useMutation<unknown, Error, void>({
     mutationFn: async () => {
-      await apiClient.post("/accounting/ec-access/send-exports", {
+      await apiClient.post("/accounting/ec/access/send-exports", {
         entityId,
         exerciseId,
       });
@@ -395,6 +395,45 @@ function ExportsContent() {
             le pack complet envoye a votre expert-comptable.
           </div>
         )}
+      </section>
+
+      {/* ── Section: Pack complet ─────────────────────────────────── */}
+      <section className="space-y-4">
+        <div className="bg-card rounded-xl border border-border p-4 sm:p-5 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <FileSpreadsheet className="w-5 h-5 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-foreground">
+                Pack complet (ZIP)
+              </p>
+              <p className="text-xs text-muted-foreground">
+                FEC, balance, grand livre et journal general regroupes dans
+                une seule archive. Format ZIP pret a envoyer a votre
+                expert-comptable.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={!exerciseId || !entityId || !!loadingMap["pack-zip"]}
+            onClick={() =>
+              exerciseId &&
+              entityId &&
+              handleDownload(
+                "pack-zip",
+                `/accounting/exports/pack?entityId=${encodeURIComponent(entityId)}&exerciseId=${exerciseId}`,
+                `talok-pack-${currentExercise?.label ?? "exercice"}.zip`,
+              )
+            }
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loadingMap["pack-zip"]
+              ? "Preparation du pack..."
+              : "Telecharger le pack (ZIP)"}
+          </button>
+        </div>
       </section>
 
       {/* ── Section: Expert-comptable ──────────────────────────────── */}
