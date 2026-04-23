@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { TICKET_OPEN_STATUSES } from "@/lib/tickets/statuses";
 
 /**
  * getTickets — SSR fetcher for the owner/tenant/provider tickets list.
@@ -233,75 +232,95 @@ export async function getTicketKPIs() {
     return null;
   }
 
-  let query = (serviceClient as any)
-    .from("tickets")
-    .select("id, statut, priorite, category, created_at, resolved_at, satisfaction_rating");
-
-  if (propertyIds.length > 0) {
-    query = query.in("property_id", propertyIds);
-  }
-
-  const { data: ticketsRaw } = await query;
-  if (!ticketsRaw) return null;
-
-  type TicketKPIRow = {
-    id: string;
-    statut: string;
-    priorite: string;
-    category: string | null;
-    created_at: string;
-    resolved_at: string | null;
-    satisfaction_rating: number | null;
+  // 1) Aggregated counts + averages come from the v_tickets_kpis_owner view
+  //    (security_invoker: RLS applies through the owner's profile).
+  //    For admins we aggregate across all owners below.
+  type ViewRow = {
+    owner_id: string;
+    open_count: number | null;
+    in_progress_count: number | null;
+    resolved_count: number | null;
+    closed_count: number | null;
+    avg_resolution_hours: number | null;
+    avg_satisfaction: number | null;
   };
-  const tickets = ticketsRaw as TicketKPIRow[];
 
-  const open = tickets.filter((t) => (TICKET_OPEN_STATUSES as readonly string[]).includes(t.statut)).length;
-  const inProgress = tickets.filter((t) => t.statut === "in_progress").length;
-  const resolved = tickets.filter((t) => t.statut === "resolved").length;
-  const closed = tickets.filter((t) => t.statut === "closed").length;
+  let viewRow: ViewRow | null = null;
 
-  // Average resolution time
-  const resolvedTickets = tickets.filter((t) => t.resolved_at);
-  let avgResolutionHours: number | null = null;
-  if (resolvedTickets.length > 0) {
-    const totalHours = resolvedTickets.reduce((sum: number, t) => {
-      const created = new Date(t.created_at).getTime();
-      const resolvedAt = new Date(t.resolved_at!).getTime();
-      return sum + (resolvedAt - created) / (1000 * 60 * 60);
-    }, 0);
-    avgResolutionHours = Math.round(totalHours / resolvedTickets.length);
+  if (profile.role === "owner") {
+    const { data } = await (serviceClient as any)
+      .from("v_tickets_kpis_owner")
+      .select("*")
+      .eq("owner_id", profile.id)
+      .maybeSingle();
+    viewRow = (data as ViewRow | null) ?? null;
+  } else {
+    // admin : sum across all rows
+    const { data } = await (serviceClient as any).from("v_tickets_kpis_owner").select("*");
+    const rows = (data || []) as ViewRow[];
+    if (rows.length > 0) {
+      const sum = (k: keyof ViewRow) =>
+        rows.reduce((acc, r) => acc + (Number(r[k]) || 0), 0);
+      viewRow = {
+        owner_id: "__admin__",
+        open_count: sum("open_count"),
+        in_progress_count: sum("in_progress_count"),
+        resolved_count: sum("resolved_count"),
+        closed_count: sum("closed_count"),
+        // Weighted averages are out of scope here — keep the simple mean
+        // of non-null per-owner averages to stay cheap.
+        avg_resolution_hours: avgOfNumbers(rows.map((r) => r.avg_resolution_hours)),
+        avg_satisfaction: avgOfNumbers(rows.map((r) => r.avg_satisfaction)),
+      };
+    }
   }
 
-  // Average satisfaction
-  const rated = tickets.filter((t) => t.satisfaction_rating);
-  const avgSatisfaction =
-    rated.length > 0
-      ? Math.round((rated.reduce((s: number, t) => s + (t.satisfaction_rating ?? 0), 0) / rated.length) * 10) / 10
-      : null;
+  // 2) by_category / by_priority still need a lightweight grouping
+  //    (not exposed by the view). We fetch only the 2 columns we need.
+  let catPrioQuery = (serviceClient as any).from("tickets").select("priorite, category");
+  if (propertyIds.length > 0) {
+    catPrioQuery = catPrioQuery.in("property_id", propertyIds);
+  }
+  const { data: grouping } = await catPrioQuery;
+  const rows = (grouping || []) as Array<{ priorite: string; category: string | null }>;
 
-  // By category
   const byCategory: Record<string, number> = {};
-  tickets.forEach((t) => {
-    const cat = t.category || "non_categorise";
-    byCategory[cat] = (byCategory[cat] || 0) + 1;
-  });
-
-  // By priority
   const byPriority: Record<string, number> = {};
-  tickets.forEach((t) => {
-    byPriority[t.priorite] = (byPriority[t.priorite] || 0) + 1;
-  });
+  for (const r of rows) {
+    const cat = r.category || "non_categorise";
+    byCategory[cat] = (byCategory[cat] || 0) + 1;
+    byPriority[r.priorite] = (byPriority[r.priorite] || 0) + 1;
+  }
+
+  const open = Number(viewRow?.open_count ?? 0);
+  const inProgress = Number(viewRow?.in_progress_count ?? 0);
+  const resolved = Number(viewRow?.resolved_count ?? 0);
+  const closed = Number(viewRow?.closed_count ?? 0);
 
   return {
-    total: tickets.length,
+    total: rows.length,
     open,
     in_progress: inProgress,
     resolved,
     closed,
-    avg_resolution_hours: avgResolutionHours,
+    avg_resolution_hours:
+      viewRow?.avg_resolution_hours !== null && viewRow?.avg_resolution_hours !== undefined
+        ? Math.round(Number(viewRow.avg_resolution_hours))
+        : null,
     avg_first_response_hours: null,
-    avg_satisfaction: avgSatisfaction,
+    avg_satisfaction:
+      viewRow?.avg_satisfaction !== null && viewRow?.avg_satisfaction !== undefined
+        ? Number(viewRow.avg_satisfaction)
+        : null,
     by_category: byCategory,
     by_priority: byPriority,
   };
+}
+
+function avgOfNumbers(values: Array<number | null>): number | null {
+  const nums = values
+    .map((v) => (v === null || v === undefined ? null : Number(v)))
+    .filter((v): v is number => v !== null && !Number.isNaN(v));
+  if (nums.length === 0) return null;
+  return nums.reduce((s, v) => s + v, 0) / nums.length;
 }
