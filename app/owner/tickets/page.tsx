@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { ClipboardCheck, Hammer, Plus, Users, Wrench } from "lucide-react";
+import { ClipboardCheck, Hammer, Plus, Users, Wrench, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,28 @@ import { getTickets, getTicketKPIs } from "@/features/tickets/server/data-fetchi
 import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { TICKET_OPEN_STATUSES } from "@/lib/tickets/statuses";
 import { TicketsTabNav } from "./TicketsTabNav";
+
+const STATUS_LABELS: Record<string, string> = {
+  open: "Ouverts",
+  in_progress: "En cours",
+  resolved: "Résolus",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  plomberie: "Plomberie",
+  electricite: "Électricité",
+  serrurerie: "Serrurerie",
+  chauffage: "Chauffage",
+  humidite: "Humidité",
+  nuisibles: "Nuisibles",
+  bruit: "Bruit",
+  parties_communes: "Parties communes",
+  equipement: "Équipement",
+  autre: "Autre",
+  non_categorise: "Non catégorisé",
+};
 
 async function getPendingApprovalsCount(): Promise<number> {
   try {
@@ -50,12 +71,37 @@ async function getPendingApprovalsCount(): Promise<number> {
   }
 }
 
-export default async function OwnerTicketsPage() {
-  const [tickets, kpis, pendingApprovals] = await Promise.all([
+interface OwnerTicketsPageProps {
+  searchParams?: Promise<{ status?: string; category?: string }>;
+}
+
+export default async function OwnerTicketsPage({ searchParams }: OwnerTicketsPageProps) {
+  const params = (await searchParams) ?? {};
+  const activeStatus = params.status ?? null;
+  const activeCategory = params.category ?? null;
+
+  const [allTickets, kpis, pendingApprovals] = await Promise.all([
     getTickets("owner"),
     getTicketKPIs(),
     getPendingApprovalsCount(),
   ]);
+
+  const tickets = (allTickets as any[]).filter((t) => {
+    if (activeStatus === "open") {
+      if (!(TICKET_OPEN_STATUSES as readonly string[]).includes(t.statut)) return false;
+    } else if (activeStatus === "in_progress") {
+      if (t.statut !== "in_progress") return false;
+    } else if (activeStatus === "resolved") {
+      if (t.statut !== "resolved" && t.statut !== "closed") return false;
+    }
+    if (activeCategory) {
+      const cat = t.category || "non_categorise";
+      if (cat !== activeCategory) return false;
+    }
+    return true;
+  });
+
+  const hasActiveFilter = Boolean(activeStatus || activeCategory);
 
   return (
     <PullToRefreshContainer>
@@ -114,8 +160,41 @@ export default async function OwnerTicketsPage() {
             </div>
           }
         >
-          <TicketKPIs kpis={kpis} />
+          <TicketKPIs
+            kpis={kpis}
+            activeStatus={activeStatus}
+            activeCategory={activeCategory}
+            basePath="/owner/tickets"
+          />
         </Suspense>
+
+        {/* Active filters banner */}
+        {hasActiveFilter && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/60 px-4 py-3 dark:border-blue-900/50 dark:bg-blue-950/30">
+            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+              Filtres actifs :
+            </span>
+            {activeStatus && (
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
+                {STATUS_LABELS[activeStatus] ?? activeStatus}
+              </Badge>
+            )}
+            {activeCategory && (
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
+                {CATEGORY_LABELS[activeCategory] ?? activeCategory}
+              </Badge>
+            )}
+            <span className="text-xs text-blue-700/70 dark:text-blue-300/70">
+              {tickets.length} ticket{tickets.length > 1 ? "s" : ""}
+            </span>
+            <Button asChild size="sm" variant="ghost" className="ml-auto h-7 text-blue-700 hover:bg-blue-100 dark:text-blue-300 dark:hover:bg-blue-900/40">
+              <Link href="/owner/tickets">
+                <X className="mr-1 h-3.5 w-3.5" />
+                Réinitialiser
+              </Link>
+            </Button>
+          </div>
+        )}
 
         {/* Ticket list */}
         {!tickets || tickets.length === 0 ? (

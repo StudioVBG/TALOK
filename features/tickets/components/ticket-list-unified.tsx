@@ -3,19 +3,11 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import {
-  ChevronRight,
-  Wrench,
-  User,
-  MessageSquare,
-  Hammer,
-} from "lucide-react";
+import { ChevronRight, Wrench, User, MessageSquare, Hammer } from "lucide-react";
 
 import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { cn } from "@/lib/utils";
 import { getWorkOrderStatusLabel } from "@/lib/tickets/statuses";
 import { TicketStatusBadge } from "./ticket-status-badge";
 import { PriorityBadge } from "./priority-badge";
@@ -100,11 +92,17 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
           ticket.ticket_comments?.length ||
           ticket.messages?.[0]?.count ||
           0;
+        const detailHref = `${basePath}/${ticket.id}`;
 
         return (
-          <Card
+          <Link
             key={ticket.id}
-            className="group relative overflow-hidden transition-all hover:shadow-md"
+            href={detailHref}
+            aria-label={`Voir le ticket ${ticket.reference || ticket.titre}`}
+            className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-2xl"
+          >
+          <Card
+            className="group relative overflow-hidden transition-all hover:shadow-md hover:border-blue-400 cursor-pointer"
           >
             <div className="p-5 flex flex-col sm:flex-row gap-4">
               {/* Status indicator */}
@@ -206,19 +204,13 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
               {/* Right: status + action */}
               <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 pl-4 border-l-0 sm:border-l border-border">
                 <TicketStatusBadge status={ticket.statut} />
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  asChild
-                  className="gap-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400"
-                >
-                  <Link href={`${basePath}/${ticket.id}`}>
-                    Voir <ChevronRight className="h-4 w-4" />
-                  </Link>
-                </Button>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform">
+                  Voir <ChevronRight className="h-4 w-4" />
+                </span>
               </div>
             </div>
           </Card>
+          </Link>
         );
       })}
     </div>

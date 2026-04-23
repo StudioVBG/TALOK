@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
 import { AlertCircle, Clock, CheckCircle2, Star, Wrench, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +20,9 @@ interface KPIData {
 interface TicketKPIsProps {
   kpis?: KPIData | null;
   loading?: boolean;
+  activeStatus?: string | null;
+  activeCategory?: string | null;
+  basePath?: string;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -44,7 +47,22 @@ function formatHours(hours: number | null): string {
   return `${days}j`;
 }
 
-export function TicketKPIs({ kpis, loading }: TicketKPIsProps) {
+function buildHref(basePath: string, params: Record<string, string | null>): string {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => {
+    if (v) qs.set(k, v);
+  });
+  const q = qs.toString();
+  return q ? `${basePath}?${q}` : basePath;
+}
+
+export function TicketKPIs({
+  kpis,
+  loading,
+  activeStatus = null,
+  activeCategory = null,
+  basePath = "/owner/tickets",
+}: TicketKPIsProps) {
   if (loading) {
     return (
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -67,6 +85,8 @@ export function TicketKPIs({ kpis, loading }: TicketKPIsProps) {
       icon: AlertCircle,
       color: "text-blue-600 dark:text-blue-400",
       bg: "bg-blue-50 dark:bg-blue-900/20",
+      filter: "open",
+      ring: "ring-blue-500",
     },
     {
       label: "En cours",
@@ -74,6 +94,8 @@ export function TicketKPIs({ kpis, loading }: TicketKPIsProps) {
       icon: Wrench,
       color: "text-amber-600 dark:text-amber-400",
       bg: "bg-amber-50 dark:bg-amber-900/20",
+      filter: "in_progress",
+      ring: "ring-amber-500",
     },
     {
       label: "Résolus",
@@ -81,6 +103,8 @@ export function TicketKPIs({ kpis, loading }: TicketKPIsProps) {
       icon: CheckCircle2,
       color: "text-emerald-600 dark:text-emerald-400",
       bg: "bg-emerald-50 dark:bg-emerald-900/20",
+      filter: "resolved",
+      ring: "ring-emerald-500",
     },
     {
       label: "Temps moyen résolution",
@@ -89,6 +113,8 @@ export function TicketKPIs({ kpis, loading }: TicketKPIsProps) {
       color: "text-indigo-600 dark:text-indigo-400",
       bg: "bg-indigo-50 dark:bg-indigo-900/20",
       isText: true,
+      filter: null as string | null,
+      ring: "",
     },
   ];
 
@@ -105,20 +131,56 @@ export function TicketKPIs({ kpis, loading }: TicketKPIsProps) {
     <div className="space-y-6">
       {/* Main KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {cards.map((card) => (
-          <div
-            key={card.label}
-            className={cn("p-5 rounded-2xl border border-border shadow-sm", card.bg)}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <card.icon className={cn("h-4 w-4", card.color)} />
-              <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
-            </div>
-            <p className={cn("text-3xl font-bold", card.color)}>
-              {card.value}
-            </p>
-          </div>
-        ))}
+        {cards.map((card) => {
+          const isActive = card.filter !== null && activeStatus === card.filter;
+          const href = card.filter
+            ? buildHref(basePath, {
+                status: isActive ? null : card.filter,
+                category: activeCategory,
+              })
+            : null;
+
+          const cardInner = (
+            <>
+              <div className="flex items-center gap-2 mb-2">
+                <card.icon className={cn("h-4 w-4", card.color)} />
+                <p className="text-sm font-medium text-muted-foreground">{card.label}</p>
+              </div>
+              <p className={cn("text-3xl font-bold", card.color)}>{card.value}</p>
+            </>
+          );
+
+          if (!href) {
+            return (
+              <div
+                key={card.label}
+                className={cn(
+                  "p-5 rounded-2xl border border-border shadow-sm",
+                  card.bg
+                )}
+              >
+                {cardInner}
+              </div>
+            );
+          }
+
+          return (
+            <Link
+              key={card.label}
+              href={href}
+              aria-pressed={isActive}
+              className={cn(
+                "p-5 rounded-2xl border shadow-sm transition-all hover:scale-[1.02] focus:outline-none focus-visible:ring-2",
+                card.bg,
+                isActive
+                  ? cn("ring-2 border-transparent", card.ring)
+                  : "border-border hover:border-foreground/20"
+              )}
+            >
+              {cardInner}
+            </Link>
+          );
+        })}
       </div>
 
       {/* Secondary stats row */}
@@ -154,25 +216,65 @@ export function TicketKPIs({ kpis, loading }: TicketKPIsProps) {
       {/* By category mini chart */}
       {sortedCategories.length > 0 && (
         <div className="p-5 rounded-2xl bg-card border border-border">
-          <div className="flex items-center gap-2 mb-4">
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            <p className="text-sm font-semibold text-foreground">Par catégorie</p>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm font-semibold text-foreground">Par catégorie</p>
+            </div>
+            {activeCategory && (
+              <Link
+                href={buildHref(basePath, { status: activeStatus, category: null })}
+                className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+              >
+                Réinitialiser
+              </Link>
+            )}
           </div>
           <div className="space-y-3">
-            {sortedCategories.map(([cat, count]) => (
-              <div key={cat} className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground w-28 truncate">
-                  {CATEGORY_LABELS[cat] || cat}
-                </span>
-                <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-500 dark:bg-blue-400 rounded-full transition-all"
-                    style={{ width: `${(count / maxCatCount) * 100}%` }}
-                  />
-                </div>
-                <span className="text-xs font-bold text-foreground w-6 text-right">{count}</span>
-              </div>
-            ))}
+            {sortedCategories.map(([cat, count]) => {
+              const isActive = activeCategory === cat;
+              return (
+                <Link
+                  key={cat}
+                  href={buildHref(basePath, {
+                    status: activeStatus,
+                    category: isActive ? null : cat,
+                  })}
+                  aria-pressed={isActive}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-2 py-1.5 -mx-2 transition-colors",
+                    isActive
+                      ? "bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-400"
+                      : "hover:bg-muted/60"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "text-xs w-28 truncate",
+                      isActive
+                        ? "font-bold text-blue-700 dark:text-blue-300"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {CATEGORY_LABELS[cat] || cat}
+                  </span>
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-all",
+                        isActive
+                          ? "bg-blue-600 dark:bg-blue-500"
+                          : "bg-blue-500 dark:bg-blue-400"
+                      )}
+                      style={{ width: `${(count / maxCatCount) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-bold text-foreground w-6 text-right">
+                    {count}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}
