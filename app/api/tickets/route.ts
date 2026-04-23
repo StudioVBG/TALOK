@@ -9,9 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 import type { TicketRow } from "@/lib/supabase/typed-client";
 import { ticketsQuerySchema, validateQueryParams } from "@/lib/validations/params";
 import { withSecurity } from "@/lib/api/with-security";
-import { resolveTicketContext } from "@/lib/tickets/resolve-ticket-context";
-import { resolveSyndicForProperty } from "@/lib/tickets/resolve-syndic";
-import { suggestForTicketCategory } from "@/lib/tickets/charges-classification";
+import { createTicket } from "@/lib/tickets/create-ticket.service";
 
 /**
  * GET /api/tickets - Récupérer les tickets de l'utilisateur
@@ -237,103 +235,36 @@ export const POST = withSecurity(async function POST(request: Request) {
 
     const profileData = profile as { id: string; role: string; email: string | null };
 
-    // Résoudre le contexte du ticket (property_id, lease_id, owner) et vérifier
-    // l'accès. Le helper gère locataire invité par email (cas courant : invitation
-    // non encore "healed") et renvoie des codes d'erreur distincts.
-    const userEmail = profileData.email ?? user.email ?? null;
-    const context = await resolveTicketContext({
+    // Délégation au service partagé (source unique pour la création ticket).
+    const result = await createTicket({
       serviceClient,
-      profileId: profileData.id,
-      role: profileData.role,
-      userEmail,
-      propertyId: validated.property_id ?? null,
-      leaseId: validated.lease_id ?? null,
+      auth: {
+        user_id: user.id,
+        user_email: user.email ?? null,
+        profile_id: profileData.id,
+        profile_email: profileData.email,
+        profile_role: profileData.role,
+      },
+      input: validated,
     });
 
-    if (!context.ok) {
+    if (!result.ok) {
       return NextResponse.json(
-        { error: context.message, code: context.code },
-        { status: context.status }
+        { error: result.message, code: result.code },
+        { status: result.status }
       );
     }
 
-    // Routage parties communes → syndic (si la propriété est rattachée à une
-    // copropriété avec un syndic affecté). Sinon, pas d'effet : on retombe
-    // sur le destinataire propriétaire standard.
-    const isPartiesCommunes = validated.category === "parties_communes";
-    const syndicRouting = isPartiesCommunes
-      ? await resolveSyndicForProperty(serviceClient, context.property_id)
-      : { entity_id: null, syndic_profile_id: null, syndic_user_id: null };
-
-    // Suggestion de classification "charges récupérables" (décret 87-713).
-    // Pose les colonnes à la création ; le propriétaire peut changer
-    // ensuite via l'UI ticket. NULL = ambigu, à décider manuellement.
-    const chargeSuggestion = suggestForTicketCategory(validated.category ?? null);
-
-    // Créer le ticket avec service client
-    const { data: ticket, error: insertError } = await serviceClient
-      .from("tickets")
-      .insert({
-        ...validated,
-        property_id: context.property_id,
-        lease_id: context.lease_id ?? validated.lease_id ?? null,
-        created_by_profile_id: profileData.id,
-        owner_id: context.owner_profile_id,
-        entity_id: syndicRouting.entity_id,
-        assigned_to: syndicRouting.syndic_profile_id,
-        statut: syndicRouting.syndic_profile_id ? "acknowledged" : "open",
-        is_tenant_chargeable: chargeSuggestion.is_tenant_chargeable,
-        charge_category_code: chargeSuggestion.charge_category_code,
-      })
-      .select()
-      .single();
-
-    if (insertError) throw insertError;
-
-    // Destinataire de la notification :
-    //   - parties communes + syndic identifié → le syndic
-    //   - sinon → le propriétaire
-    const recipientUserId =
-      syndicRouting.syndic_user_id ?? context.owner_user_id;
-
-    await serviceClient.from("outbox").insert({
-      event_type: isPartiesCommunes && syndicRouting.syndic_profile_id
-        ? "Ticket.OpenedPartiesCommunes"
-        : "Ticket.Opened",
-      payload: {
-        ticket_id: ticket.id,
-        property_id: context.property_id,
-        lease_id: context.lease_id,
-        entity_id: syndicRouting.entity_id,
-        priority: validated.priorite,
-        title: validated.titre,
-        category: validated.category ?? null,
-        owner_id: context.owner_user_id,
-        syndic_user_id: syndicRouting.syndic_user_id,
-        recipient_user_id: recipientUserId,
-        created_by: profileData.id,
-        creator_role: context.creator_role,
-      },
-    } as any);
-
-    // AI Analysis Trigger (Async but awaited here for serverless environment safety)
-    try {
-        // En background job idéalement, mais ici on l'exécute
-        await maintenanceAiService.analyzeAndEnrichTicket(ticket.id);
-    } catch (aiError) {
+    // AI Analysis (fire-and-forget, non-blocking)
+    void (async () => {
+      try {
+        await maintenanceAiService.analyzeAndEnrichTicket(result.ticket.id);
+      } catch (aiError) {
         console.error("AI Maintenance analysis failed:", aiError);
-    }
+      }
+    })();
 
-    // Journaliser
-    await serviceClient.from("audit_log").insert({
-      user_id: user.id,
-      action: "ticket_created",
-      entity_type: "ticket",
-      entity_id: ticket.id,
-      metadata: { priority: validated.priorite },
-    } as any);
-
-    return NextResponse.json({ ticket });
+    return NextResponse.json({ ticket: result.ticket });
   } catch (error: unknown) {
     return handleApiError(error);
   }
