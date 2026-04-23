@@ -2,8 +2,8 @@
  * Module Comptabilite Talok — Generateur FEC
  *
  * Fichier des Ecritures Comptables conforme art. A47 A-1 du LPF.
- * 18 champs, format .txt, UTF-8, tabulation, montants en virgule FR.
- * Sequentiel sans rupture, trie par ValidDate croissante.
+ * 18 champs, format .txt, UTF-8 sans BOM, separateur pipe `|`, CRLF.
+ * Pas de ligne d'entete (flavor TXT DGI). Sequentiel, trie par ValidDate.
  *
  * REGLES:
  * - JAMAIS FEC sans validation prealable
@@ -97,10 +97,18 @@ function formatFECDate(dateStr: string | null): string {
   return d;
 }
 
-/** Escape tab characters in field values */
+/**
+ * Sanitize a field value for the pipe-separated FEC flavor. Any literal `|`
+ * is replaced with a space (it would be read as a field separator by the
+ * DGI ALTO tool), and stray line breaks are stripped so a single field can
+ * never spill over multiple rows.
+ */
 function escapeField(value: string | null | undefined): string {
   if (!value) return '';
-  return value.replace(/\t/g, ' ').replace(/\n/g, ' ').replace(/\r/g, '');
+  return value
+    .replace(/\|/g, ' ')
+    .replace(/\t/g, ' ')
+    .replace(/\r?\n/g, ' ');
 }
 
 // ---------------------------------------------------------------------------
@@ -240,13 +248,15 @@ export async function generateFEC(
     return { content: '', filename: '', lineCount: 0, errors };
   }
 
-  // Build file content: header + lines, tab-separated
-  const headerLine = FEC_HEADERS.join('\t');
+  // Build file content: pipe-separated rows, CRLF terminated. No header line
+  // per DGI TXT flavor — the ALTO validator accepts files without one and
+  // several EC tools trip over a stray header.
   const dataLines = fecLines.map((line) =>
-    FEC_HEADERS.map((h) => escapeField(line[h])).join('\t'),
+    FEC_HEADERS.map((h) => escapeField(line[h])).join('|'),
   );
 
-  const content = [headerLine, ...dataLines].join('\n');
+  // Trailing CRLF so the file ends on a newline, matching the DGI sample.
+  const content = dataLines.length > 0 ? dataLines.join('\r\n') + '\r\n' : '';
 
   // Filename per spec: SIRENFECyyyymmdd.txt
   const endDate = exercise.end_date.replace(/-/g, '');
@@ -266,6 +276,7 @@ export async function generateFEC(
 
 /**
  * Validate FEC content against art. A47 A-1 requirements.
+ * Expects the pipe-separated, header-less flavor written by generateFEC.
  */
 export function validateFECContent(content: string): FECValidationResult {
   const errors: string[] = [];
@@ -275,35 +286,21 @@ export function validateFECContent(content: string): FECValidationResult {
     return { valid: false, errors: ['FEC vide'], warnings: [], lineCount: 0 };
   }
 
-  const lines = content.split('\n');
+  const lines = content.split(/\r?\n/);
 
-  if (lines.length < 2) {
-    return { valid: false, errors: ['FEC sans donnees (en-tete seul)'], warnings: [], lineCount: 0 };
-  }
-
-  // Validate header
-  const headers = lines[0].split('\t');
-  if (headers.length !== 18) {
-    errors.push(`En-tete: ${headers.length} colonnes au lieu de 18`);
-  } else {
-    for (let i = 0; i < FEC_HEADERS.length; i++) {
-      if (headers[i].trim() !== FEC_HEADERS[i]) {
-        errors.push(`Colonne ${i + 1}: "${headers[i].trim()}" au lieu de "${FEC_HEADERS[i]}"`);
-      }
-    }
-  }
-
-  // Validate data lines
+  // Validate data lines (no header line in this flavor)
   let prevValidDate = '';
   let prevEntryNum = '';
   const entryNumbers = new Set<string>();
+  let dataLineCount = 0;
 
-  for (let i = 1; i < lines.length; i++) {
+  for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (!line.trim()) continue;
 
-    const fields = line.split('\t');
+    const fields = line.split('|');
     const lineNum = i + 1;
+    dataLineCount++;
 
     // 18 fields check
     if (fields.length !== 18) {
@@ -372,11 +369,15 @@ export function validateFECContent(content: string): FECValidationResult {
     }
   }
 
+  if (dataLineCount === 0) {
+    return { valid: false, errors: ['FEC sans donnees'], warnings: [], lineCount: 0 };
+  }
+
   return {
     valid: errors.length === 0,
     errors,
     warnings,
-    lineCount: lines.length - 1, // exclude header
+    lineCount: dataLineCount,
   };
 }
 
@@ -386,7 +387,9 @@ export function validateFECContent(content: string): FECValidationResult {
 
 /**
  * Generate FEC and return as a downloadable Blob-ready object.
- * Encoding: UTF-8 with BOM for Excel compatibility.
+ * Encoding: UTF-8 *without* BOM per DGI Art. A47 A-1 TXT flavor — most EC
+ * tools (ALTO, ACD, Cegid) reject the BOM byte as a spurious first character
+ * on the JournalCode column.
  */
 export async function exportFEC(
   supabase: SupabaseClient,
@@ -406,12 +409,7 @@ export async function exportFEC(
     return { errors: validation.errors };
   }
 
-  // UTF-8 BOM + content
-  const bom = new Uint8Array([0xef, 0xbb, 0xbf]);
-  const contentBytes = new TextEncoder().encode(result.content);
-  const blob = new Uint8Array(bom.length + contentBytes.length);
-  blob.set(bom, 0);
-  blob.set(contentBytes, bom.length);
+  const blob = new TextEncoder().encode(result.content);
 
   return {
     blob,
