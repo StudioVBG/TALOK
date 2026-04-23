@@ -9,6 +9,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { STORAGE_BUCKETS } from "@/lib/config/storage-buckets";
 import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { validateCsrfOrCronSecret, logCsrfFailure } from "@/lib/security/csrf";
 
 export const dynamic = "force-dynamic";
 
@@ -150,6 +151,12 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
+    const check = await validateCsrfOrCronSecret(request);
+    if (!check.valid) {
+      await logCsrfFailure(request, check.reason!, "admin.maintenance.cleanup");
+      return NextResponse.json({ error: "CSRF ou cron secret requis" }, { status: 403 });
+    }
+
     const auth = await requireAdminPermissions(request, ["admin.compliance.write"], {
       rateLimit: "adminCritical",
       auditAction: "Nettoyage données orphelines",

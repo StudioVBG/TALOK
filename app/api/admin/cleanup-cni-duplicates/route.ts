@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { validateCsrfOrCronSecret, logCsrfFailure } from "@/lib/security/csrf";
 
 /**
  * @maintenance Route utilitaire admin — usage ponctuel
@@ -12,6 +13,12 @@ import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admi
  */
 export async function POST(request: Request) {
   try {
+    const check = await validateCsrfOrCronSecret(request);
+    if (!check.valid) {
+      await logCsrfFailure(request, check.reason!, "admin.maintenance.cleanup-cni-duplicates");
+      return NextResponse.json({ error: "CSRF ou cron secret requis" }, { status: 403 });
+    }
+
     const auth = await requireAdminPermissions(request, ["admin.compliance.write"], {
       rateLimit: "adminCritical",
       auditAction: "cleanup-cni-duplicates",

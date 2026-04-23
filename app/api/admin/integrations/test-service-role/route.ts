@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { validateCsrfOrCronSecret, logCsrfFailure } from "@/lib/security/csrf";
 
 /**
  * @maintenance Route utilitaire admin — usage ponctuel
@@ -10,6 +11,12 @@ import { requireAdmin } from "@/lib/helpers/auth-helper";
  * @usage POST /api/admin/integrations/test-service-role
  */
 export async function POST(request: Request) {
+  const check = await validateCsrfOrCronSecret(request);
+  if (!check.valid) {
+    await logCsrfFailure(request, check.reason!, "admin.maintenance.test-service-role");
+    return NextResponse.json({ error: "CSRF ou cron secret requis" }, { status: 403 });
+  }
+
   const { error, user } = await requireAdmin(request);
 
   if (error) {

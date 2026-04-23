@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { validateCsrfOrCronSecret, logCsrfFailure } from "@/lib/security/csrf";
 import { handleLeaseFullySigned } from "@/lib/services/lease-post-signature.service";
 
 /**
@@ -12,6 +13,12 @@ import { handleLeaseFullySigned } from "@/lib/services/lease-post-signature.serv
  * pour bypasser la garde d'idempotence et re-générer proprement.
  */
 export async function POST(request: Request) {
+  const check = await validateCsrfOrCronSecret(request);
+  if (!check.valid) {
+    await logCsrfFailure(request, check.reason!, "admin.maintenance.reseal-lease");
+    return NextResponse.json({ error: "CSRF ou cron secret requis" }, { status: 403 });
+  }
+
   const { error: authError, user, supabase } = await requireAdmin(request);
 
   if (authError || !supabase) {

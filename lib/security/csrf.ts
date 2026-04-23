@@ -158,6 +158,25 @@ export async function validateCsrfFromRequest(request: Request): Promise<boolean
 }
 
 /**
+ * Variante hybride pour les routes admin @maintenance sans caller UI
+ * (cleanup, sync-*, reseal-*, etc.). Accepte soit un token CSRF navigateur,
+ * soit un header `Authorization: Bearer $CRON_SECRET` pour permettre
+ * l'invocation via curl/scripts de dev ou tâches planifiées.
+ *
+ * Pattern aligné sur les routes /api/cron/* existantes.
+ */
+export async function validateCsrfOrCronSecret(
+  request: Request
+): Promise<CsrfValidationResult> {
+  const authHeader = request.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && authHeader === `Bearer ${cronSecret}`) {
+    return { valid: true };
+  }
+  return validateCsrfFromRequestDetailed(request);
+}
+
+/**
  * Logue un échec CSRF via Sentry + console (format JSON structuré).
  * À appeler côté route handler lorsque `validateCsrfFromRequestDetailed`
  * renvoie `valid: false`.
@@ -272,6 +291,7 @@ export default {
   validateCsrfToken,
   validateCsrfFromRequest,
   validateCsrfFromRequestDetailed,
+  validateCsrfOrCronSecret,
   logCsrfFailure,
   setCsrfCookie,
   getClientCsrfToken,
