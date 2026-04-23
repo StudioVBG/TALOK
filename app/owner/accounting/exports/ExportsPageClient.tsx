@@ -23,6 +23,7 @@ import { FECExportPanel, type FECPreviewResult } from "./components/FECExportPan
 import { GrandLivreExportPanel } from "./components/GrandLivreExportPanel";
 import { BalanceExportPanel } from "./components/BalanceExportPanel";
 import { CahierExportPanel } from "./components/CahierExportPanel";
+import { JournalExportPanel } from "./components/JournalExportPanel";
 
 // ── Types ───────────────────────────────────────────────────────────
 
@@ -64,12 +65,19 @@ function ExportsContent() {
   const { profile } = useAuth();
   const { getActiveEntity } = useEntityStore();
   const activeEntity = getActiveEntity() as
-    | { id?: string; siret?: string | null }
+    | {
+        id?: string;
+        siret?: string | null;
+        fiscalRegime?: string | null;
+      }
     | null;
   const entityId =
     activeEntity?.id ??
     (profile as { default_entity_id?: string | null } | null)?.default_entity_id ??
     undefined;
+  const fiscalRegime = activeEntity?.fiscalRegime ?? null;
+  const isMicroFoncier = fiscalRegime === "micro_foncier";
+  const isIs = fiscalRegime === "is";
 
   // ── Exercise selector ─────────────────────────────────────────────
 
@@ -346,24 +354,47 @@ function ExportsContent() {
           <GrandLivreExportPanel
             exerciseId={exerciseId}
             exerciseLabel={currentExercise?.label ?? "exercice"}
+            entityId={entityId}
             onDownload={handleDownload}
             loadingMap={loadingMap}
           />
           <BalanceExportPanel
             exerciseId={exerciseId}
             exerciseLabel={currentExercise?.label ?? "exercice"}
+            entityId={entityId}
             onDownload={handleDownload}
             loadingMap={loadingMap}
           />
-          <FECExportPanel
+          <JournalExportPanel
             exerciseId={exerciseId}
-            fecPreview={fecPreview}
-            fecPreviewLoading={fecPreviewLoading}
-            fecDownloading={fecDownloading}
-            onLoadPreview={loadFECPreview}
-            onDownload={handleFECDownload}
+            exerciseLabel={currentExercise?.label ?? "exercice"}
+            entityId={entityId}
+            onDownload={handleDownload}
+            loadingMap={loadingMap}
           />
+          <div className="space-y-2">
+            {isMicroFoncier && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                Le FEC n&apos;est pas requis en micro-foncier. Le fichier reste
+                telechargeable si votre expert-comptable en a besoin.
+              </div>
+            )}
+            <FECExportPanel
+              exerciseId={exerciseId}
+              fecPreview={fecPreview}
+              fecPreviewLoading={fecPreviewLoading}
+              fecDownloading={fecDownloading}
+              onLoadPreview={loadFECPreview}
+              onDownload={handleFECDownload}
+            />
+          </div>
         </div>
+        {isIs && (
+          <div className="rounded-lg border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+            Regime IS detecte — la liasse fiscale preparatoire est incluse dans
+            le pack complet envoye a votre expert-comptable.
+          </div>
+        )}
       </section>
 
       {/* ── Section: Expert-comptable ──────────────────────────────── */}
