@@ -34,6 +34,17 @@ const CATEGORY_LABELS: Record<string, string> = {
   non_categorise: "Non catégorisé",
 };
 
+const PRIORITY_LABELS: Record<string, string> = {
+  basse: "Basse",
+  low: "Basse",
+  normale: "Normale",
+  normal: "Normale",
+  haute: "Haute",
+  urgent: "Urgent",
+  urgente: "Urgente",
+  emergency: "Urgence",
+};
+
 async function getPendingApprovalsCount(): Promise<number> {
   try {
     const supabase = await createClient();
@@ -72,13 +83,18 @@ async function getPendingApprovalsCount(): Promise<number> {
 }
 
 interface OwnerTicketsPageProps {
-  searchParams?: Promise<{ status?: string; category?: string }>;
+  searchParams?: Promise<{
+    status?: string;
+    category?: string;
+    priority?: string;
+  }>;
 }
 
 export default async function OwnerTicketsPage({ searchParams }: OwnerTicketsPageProps) {
   const params = (await searchParams) ?? {};
   const activeStatus = params.status ?? null;
   const activeCategory = params.category ?? null;
+  const activePriority = params.priority ?? null;
 
   const [allTickets, kpis, pendingApprovals] = await Promise.all([
     getTickets("owner"),
@@ -98,10 +114,13 @@ export default async function OwnerTicketsPage({ searchParams }: OwnerTicketsPag
       const cat = t.category || "non_categorise";
       if (cat !== activeCategory) return false;
     }
+    if (activePriority) {
+      if (t.priorite !== activePriority) return false;
+    }
     return true;
   });
 
-  const hasActiveFilter = Boolean(activeStatus || activeCategory);
+  const hasActiveFilter = Boolean(activeStatus || activeCategory || activePriority);
 
   return (
     <PullToRefreshContainer>
@@ -164,6 +183,7 @@ export default async function OwnerTicketsPage({ searchParams }: OwnerTicketsPag
             kpis={kpis}
             activeStatus={activeStatus}
             activeCategory={activeCategory}
+            activePriority={activePriority}
             basePath="/owner/tickets"
           />
         </Suspense>
@@ -182,6 +202,11 @@ export default async function OwnerTicketsPage({ searchParams }: OwnerTicketsPag
             {activeCategory && (
               <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
                 {CATEGORY_LABELS[activeCategory] ?? activeCategory}
+              </Badge>
+            )}
+            {activePriority && (
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
+                {PRIORITY_LABELS[activePriority] ?? activePriority}
               </Badge>
             )}
             <span className="text-xs text-blue-700/70 dark:text-blue-300/70">

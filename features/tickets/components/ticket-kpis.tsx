@@ -22,6 +22,7 @@ interface TicketKPIsProps {
   loading?: boolean;
   activeStatus?: string | null;
   activeCategory?: string | null;
+  activePriority?: string | null;
   basePath?: string;
 }
 
@@ -37,6 +38,28 @@ const CATEGORY_LABELS: Record<string, string> = {
   equipement: "Équipement",
   autre: "Autre",
   non_categorise: "Non catégorisé",
+};
+
+const PRIORITY_LABELS: Record<string, string> = {
+  basse: "Basse",
+  low: "Basse",
+  normale: "Normale",
+  normal: "Normale",
+  haute: "Haute",
+  urgent: "Urgent",
+  urgente: "Urgente",
+  emergency: "Urgence",
+};
+
+const PRIORITY_BAR_COLORS: Record<string, string> = {
+  basse: "bg-slate-400",
+  low: "bg-slate-400",
+  normale: "bg-blue-500",
+  normal: "bg-blue-500",
+  haute: "bg-orange-500",
+  urgent: "bg-orange-500",
+  urgente: "bg-red-500",
+  emergency: "bg-red-500",
 };
 
 function formatHours(hours: number | null): string {
@@ -61,6 +84,7 @@ export function TicketKPIs({
   loading,
   activeStatus = null,
   activeCategory = null,
+  activePriority = null,
   basePath = "/owner/tickets",
 }: TicketKPIsProps) {
   if (loading) {
@@ -127,6 +151,13 @@ export function TicketKPIs({
     ? sortedCategories[0][1]
     : 1;
 
+  // Sort priorities by count
+  const sortedPriorities = Object.entries(kpis.by_priority).sort(
+    ([, a], [, b]) => b - a
+  );
+  const maxPrioCount =
+    sortedPriorities.length > 0 ? sortedPriorities[0][1] : 1;
+
   return (
     <div className="space-y-6">
       {/* Main KPI Cards */}
@@ -137,6 +168,7 @@ export function TicketKPIs({
             ? buildHref(basePath, {
                 status: isActive ? null : card.filter,
                 category: activeCategory,
+                priority: activePriority,
               })
             : null;
 
@@ -213,6 +245,73 @@ export function TicketKPIs({
         )}
       </div>
 
+      {/* By priority pills */}
+      {sortedPriorities.length > 0 && (
+        <div className="p-5 rounded-2xl bg-card border border-border">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              <p className="text-sm font-semibold text-foreground">Par priorité</p>
+            </div>
+            {activePriority && (
+              <Link
+                href={buildHref(basePath, {
+                  status: activeStatus,
+                  category: activeCategory,
+                  priority: null,
+                })}
+                className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+              >
+                Réinitialiser
+              </Link>
+            )}
+          </div>
+          <div className="space-y-3">
+            {sortedPriorities.map(([prio, count]) => {
+              const isActive = activePriority === prio;
+              const barColor = PRIORITY_BAR_COLORS[prio] ?? "bg-blue-500";
+              return (
+                <Link
+                  key={prio}
+                  href={buildHref(basePath, {
+                    status: activeStatus,
+                    category: activeCategory,
+                    priority: isActive ? null : prio,
+                  })}
+                  aria-pressed={isActive}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-2 py-1.5 -mx-2 transition-colors",
+                    isActive
+                      ? "bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-400"
+                      : "hover:bg-muted/60"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "text-xs w-28 truncate",
+                      isActive
+                        ? "font-bold text-blue-700 dark:text-blue-300"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {PRIORITY_LABELS[prio] ?? prio}
+                  </span>
+                  <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                    <div
+                      className={cn("h-full rounded-full transition-all", barColor)}
+                      style={{ width: `${(count / maxPrioCount) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-bold text-foreground w-6 text-right">
+                    {count}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* By category mini chart */}
       {sortedCategories.length > 0 && (
         <div className="p-5 rounded-2xl bg-card border border-border">
@@ -223,7 +322,11 @@ export function TicketKPIs({
             </div>
             {activeCategory && (
               <Link
-                href={buildHref(basePath, { status: activeStatus, category: null })}
+                href={buildHref(basePath, {
+                  status: activeStatus,
+                  category: null,
+                  priority: activePriority,
+                })}
                 className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
               >
                 Réinitialiser
@@ -239,6 +342,7 @@ export function TicketKPIs({
                   href={buildHref(basePath, {
                     status: activeStatus,
                     category: isActive ? null : cat,
+                    priority: activePriority,
                   })}
                   aria-pressed={isActive}
                   className={cn(
