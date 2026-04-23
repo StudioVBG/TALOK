@@ -27,6 +27,7 @@ import {
   markEntryInformational,
   shouldMarkInformational,
 } from "@/lib/accounting/entity-config";
+import { resolveSystemActorForEntity } from "@/lib/accounting/system-actor";
 
 export type EnsureSubscriptionSkipReason =
   | "already_exists"
@@ -160,10 +161,16 @@ export async function ensureSubscriptionPaidEntry(
       invoiceRow.paid_at?.split("T")[0] ??
       new Date().toISOString().split("T")[0];
 
+    const actorUserId =
+      options.userId ?? (await resolveSystemActorForEntity(supabase, entityId));
+    if (!actorUserId) {
+      return { created: false, skippedReason: "error", error: "actor_unresolved" };
+    }
+
     const entry = await createAutoEntry(supabase, "subscription_paid", {
       entityId,
       exerciseId: exercise.id,
-      userId: options.userId ?? "system",
+      userId: actorUserId,
       amountCents,
       label: "Abonnement Talok",
       date: entryDate,

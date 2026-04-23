@@ -23,6 +23,7 @@ import {
   markEntryInformational,
   shouldMarkInformational,
 } from "@/lib/accounting/entity-config";
+import { resolveSystemActorForEntity } from "@/lib/accounting/system-actor";
 
 export interface EnsureReceiptAccountingEntryResult {
   created: boolean;
@@ -164,10 +165,16 @@ export async function ensureReceiptAccountingEntry(
       propertyAddress ? ` - ${propertyAddress}` : ""
     }`.trim();
 
+    const actorUserId =
+      options.userId ?? (await resolveSystemActorForEntity(supabase, entityId));
+    if (!actorUserId) {
+      return { created: false, skippedReason: "error", error: "actor_unresolved" };
+    }
+
     const entry = await createAutoEntry(supabase, "rent_received", {
       entityId,
       exerciseId: exercise.id,
-      userId: options.userId ?? "system",
+      userId: actorUserId,
       amountCents,
       label,
       date: entryDate,
