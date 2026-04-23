@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Card,
@@ -258,7 +259,7 @@ export default function AdminModerationPage() {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
 
-      const response = await fetch("/api/admin/moderation/rules", {
+      const response = await fetchWithCsrf("/api/admin/moderation/rules", {
         method: "POST",
         credentials: "include",
         headers: {
@@ -317,7 +318,7 @@ export default function AdminModerationPage() {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
 
-      const response = await fetch(`/api/admin/moderation/queue/${item.id}`, {
+      const response = await fetchWithCsrf(`/api/admin/moderation/queue/${item.id}`, {
         method: "PATCH",
         credentials: "include",
         headers: {
@@ -359,7 +360,7 @@ export default function AdminModerationPage() {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
 
-      const response = await fetch(`/api/admin/moderation/rules/${rule.id}`, {
+      const response = await fetchWithCsrf(`/api/admin/moderation/rules/${rule.id}`, {
         method: "PATCH",
         credentials: "include",
         headers: {
@@ -434,7 +435,7 @@ export default function AdminModerationPage() {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
 
-      const response = await fetch(`/api/admin/moderation/rules/${selectedRule.id}`, {
+      const response = await fetchWithCsrf(`/api/admin/moderation/rules/${selectedRule.id}`, {
         method: "PATCH",
         credentials: "include",
         headers: {
@@ -485,7 +486,7 @@ export default function AdminModerationPage() {
       const supabase = createClient();
       const { data: { session } } = await supabase.auth.getSession();
 
-      const response = await fetch(`/api/admin/moderation/rules/${selectedRule.id}`, {
+      const response = await fetchWithCsrf(`/api/admin/moderation/rules/${selectedRule.id}`, {
         method: "DELETE",
         credentials: "include",
         headers: {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2,
@@ -97,7 +98,7 @@ export function AdminBrandingClient({ organizations }: AdminBrandingClientProps)
   const handleSaveBranding = async (updates: Partial<OrganizationBranding>) => {
     if (!selectedOrg) return;
     try {
-      const response = await fetch(`/api/admin/branding/${selectedOrg.id}`, {
+      const response = await fetchWithCsrf(`/api/admin/branding/${selectedOrg.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
@@ -127,7 +128,7 @@ export function AdminBrandingClient({ organizations }: AdminBrandingClientProps)
       formData.append("type", type);
       formData.append("organization_id", selectedOrg.id);
 
-      const response = await fetch("/api/admin/branding/upload", {
+      const response = await fetchWithCsrf("/api/admin/branding/upload", {
         method: "POST",
         body: formData,
       });

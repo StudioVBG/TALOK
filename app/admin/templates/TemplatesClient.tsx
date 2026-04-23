@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText,
@@ -332,7 +333,7 @@ export function TemplatesClient({ templates }: TemplatesClientProps) {
   const handleUpdateLegislation = useCallback(async () => {
     setUpdatingLegislation(true);
     try {
-      const response = await fetch("/api/admin/templates/update-legislation", {
+      const response = await fetchWithCsrf("/api/admin/templates/update-legislation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

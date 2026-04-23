@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 import {
   Megaphone,
   Plus,
@@ -96,7 +97,7 @@ function AdminBroadcastsPageContent() {
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
-      const res = await fetch(`/api/admin/broadcasts/${id}`, {
+      const res = await fetchWithCsrf(`/api/admin/broadcasts/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ active }),
@@ -117,7 +118,7 @@ function AdminBroadcastsPageContent() {
 
   const deleteBroadcast = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/admin/broadcasts/${id}`, { method: "DELETE" });
+      const res = await fetchWithCsrf(`/api/admin/broadcasts/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || "Erreur suppression");
@@ -304,7 +305,7 @@ function CreateBroadcastDialog({
     }
     setSubmitting(true);
     try {
-      const res = await fetch("/api/admin/broadcasts", {
+      const res = await fetchWithCsrf("/api/admin/broadcasts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

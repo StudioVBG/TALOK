@@ -24,6 +24,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { adminKeys } from "@/lib/hooks/use-admin-queries";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 import { motion, AnimatePresence, Reorder, useDragControls } from "framer-motion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1714,7 +1715,7 @@ export default function AdminPlansPage() {
       );
       
       for (const plan of modifiedPlans) {
-        const res = await fetch("/api/admin/plans", {
+        const res = await fetchWithCsrf("/api/admin/plans", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(plan),

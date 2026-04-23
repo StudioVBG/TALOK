@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -193,7 +194,7 @@ export function OwnerDetailsClient({ owner }: OwnerDetailsClientProps) {
 
   // Actions de modération
   const handleModerationAction = async (action: ModerationActionType, reason: string) => {
-    const response = await fetch(`/api/admin/people/owners/${owner.id}/moderation`, {
+    const response = await fetchWithCsrf(`/api/admin/people/owners/${owner.id}/moderation`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, reason }),

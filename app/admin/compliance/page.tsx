@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { adminKeys } from "@/lib/hooks/use-admin-queries";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 import { motion } from "framer-motion";
 import {
   Card,
@@ -208,7 +209,7 @@ export default function AdminCompliancePage() {
   const handleNotifyProvider = async (doc: ExpiringDocument) => {
     setNotifying(doc.document_id);
     try {
-      const response = await fetch("/api/admin/compliance/documents/notify", {
+      const response = await fetchWithCsrf("/api/admin/compliance/documents/notify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

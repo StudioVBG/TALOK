@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +55,7 @@ function ImageCard({ config, onUpdated }: { config: SiteConfigEntry; onUpdated: 
       formData.append("file", file);
       formData.append("key", config.key);
 
-      const res = await fetch("/api/admin/landing-images/upload", {
+      const res = await fetchWithCsrf("/api/admin/landing-images/upload", {
         method: "POST",
         body: formData,
       });
@@ -77,7 +78,7 @@ function ImageCard({ config, onUpdated }: { config: SiteConfigEntry; onUpdated: 
 
     setSavingUrl(true);
     try {
-      const res = await fetch("/api/admin/site-config", {
+      const res = await fetchWithCsrf("/api/admin/site-config", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: config.key, value: urlInput.trim() }),

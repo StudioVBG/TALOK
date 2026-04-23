@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 import {
   Tag,
   Plus,
@@ -115,7 +116,7 @@ function AdminPromoCodesPageContent() {
 
   const toggleActive = useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
-      const res = await fetch(`/api/admin/promo-codes/${id}`, {
+      const res = await fetchWithCsrf(`/api/admin/promo-codes/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ is_active: active }),
@@ -135,7 +136,7 @@ function AdminPromoCodesPageContent() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/admin/promo-codes/${id}`, { method: "DELETE" });
+      const res = await fetchWithCsrf(`/api/admin/promo-codes/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || "Erreur suppression");
@@ -414,7 +415,7 @@ function CreatePromoDialog({
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/admin/promo-codes", {
+      const res = await fetchWithCsrf("/api/admin/promo-codes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

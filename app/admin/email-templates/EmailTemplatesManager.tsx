@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 import {
   Mail,
   Search,
@@ -175,7 +176,7 @@ export function EmailTemplatesManager({
     if (!selected) return;
     setSaving(true);
     try {
-      const res = await fetch(`/api/admin/email-templates/${selected.id}`, {
+      const res = await fetchWithCsrf(`/api/admin/email-templates/${selected.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -203,7 +204,7 @@ export function EmailTemplatesManager({
   const handleToggleActive = async () => {
     if (!selected) return;
     try {
-      const res = await fetch(`/api/admin/email-templates/${selected.id}`, {
+      const res = await fetchWithCsrf(`/api/admin/email-templates/${selected.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ is_active: !selected.is_active }),
@@ -225,7 +226,7 @@ export function EmailTemplatesManager({
     if (!selected) return;
     setSendingTest(true);
     try {
-      const res = await fetch(
+      const res = await fetchWithCsrf(
         `/api/admin/email-templates/${selected.id}/test`,
         {
           method: "POST",

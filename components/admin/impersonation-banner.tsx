@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle, X, Clock, User } from "lucide-react";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +53,7 @@ export function ImpersonationBanner() {
 
   const endSession = async () => {
     try {
-      await fetch("/api/admin/impersonate", { method: "DELETE" });
+      await fetchWithCsrf("/api/admin/impersonate", { method: "DELETE" });
       setSession(null);
       // Recharger la page pour revenir à l'état normal
       window.location.reload();

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { adminKeys } from "@/lib/hooks/use-admin-queries";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -143,7 +144,7 @@ function PendingProvidersContent() {
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
 
-      const response = await fetch(`/api/admin/providers/${provider.profile_id}/approve`, {
+      const response = await fetchWithCsrf(`/api/admin/providers/${provider.profile_id}/approve`, {
         method: "POST",
         credentials: "include",
         headers,
@@ -214,7 +215,7 @@ function PendingProvidersContent() {
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
 
-      const response = await fetch(`/api/admin/providers/${provider.profile_id}/reject`, {
+      const response = await fetchWithCsrf(`/api/admin/providers/${provider.profile_id}/reject`, {
         method: "POST",
         credentials: "include",
         headers,
@@ -321,7 +322,7 @@ function PendingProvidersContent() {
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
 
-      const response = await fetch(`/api/admin/providers/${providerDetails.id}`, {
+      const response = await fetchWithCsrf(`/api/admin/providers/${providerDetails.id}`, {
         method: "PATCH",
         credentials: "include",
         headers,
@@ -368,7 +369,7 @@ function PendingProvidersContent() {
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
 
-      const response = await fetch("/api/admin/providers/invite", {
+      const response = await fetchWithCsrf("/api/admin/providers/invite", {
         method: "POST",
         credentials: "include",
         headers,
@@ -418,7 +419,7 @@ function PendingProvidersContent() {
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
 
-      const response = await fetch(`/api/admin/providers/${providerDetails.id}/suspend`, {
+      const response = await fetchWithCsrf(`/api/admin/providers/${providerDetails.id}/suspend`, {
         method: providerDetails.suspended ? "DELETE" : "POST",
         credentials: "include",
         headers,

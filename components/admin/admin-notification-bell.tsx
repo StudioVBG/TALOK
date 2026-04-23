@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { fetchWithCsrf } from "@/lib/security/csrf";
 import { useRouter } from "next/navigation";
 import { Bell, Check, UserPlus, CreditCard, Clock, Ticket } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -59,7 +60,7 @@ export function AdminNotificationBell() {
 
   const markRead = useMutation({
     mutationFn: async (id: string) => {
-      await fetch("/api/admin/notifications", {
+      await fetchWithCsrf("/api/admin/notifications", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
