@@ -465,7 +465,7 @@ export function UpgradeTrigger({ className, variant = "prominent" }: UpgradeTrig
     return null;
   }
 
-  const propertiesUsed = (usage as any)?.properties_count || 0;
+  const propertiesUsed = usage?.properties?.used ?? 0;
   const propertiesLimit = PLANS[currentPlan].limits.max_properties;
   const usagePercentage = propertiesLimit > 0 ? (propertiesUsed / propertiesLimit) * 100 : 0;
 
