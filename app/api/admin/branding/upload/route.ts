@@ -3,8 +3,15 @@ export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 export async function POST(request: Request) {
+  const csrf = await validateCsrfFromRequestDetailed(request);
+  if (!csrf.valid) {
+    await logCsrfFailure(request, csrf.reason!, "admin.branding.upload");
+    return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+  }
+
   const { error: authError, supabase } = await requireAdmin(request);
 
   if (authError || !supabase) {

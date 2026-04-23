@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 const ALLOWED_SEVERITIES = ["info", "success", "warning", "critical"] as const;
 const ALLOWED_ROLES = ["owner", "tenant", "provider", "agency", "guarantor", "syndic"] as const;
@@ -37,6 +38,12 @@ export async function GET(request: NextRequest) {
  * Crée un nouveau broadcast.
  */
 export async function POST(request: NextRequest) {
+  const csrf = await validateCsrfFromRequestDetailed(request);
+  if (!csrf.valid) {
+    await logCsrfFailure(request, csrf.reason!, "admin.broadcasts.create");
+    return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+  }
+
   const auth = await requireAdminPermissions(request, ["admin.broadcast"], {
     rateLimit: "adminBroadcast",
     auditAction: "broadcast_created",

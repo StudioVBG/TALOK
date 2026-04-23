@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 import { revalidatePath } from "next/cache";
 
 export async function GET(request: NextRequest) {
@@ -41,6 +42,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  const csrf = await validateCsrfFromRequestDetailed(request);
+  if (!csrf.valid) {
+    await logCsrfFailure(request, csrf.reason!, "admin.site-config.update");
+    return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+  }
+
   const { error: authError, supabase } = await requireAdmin(request);
 
   if (authError || !supabase) {

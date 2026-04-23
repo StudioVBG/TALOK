@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 interface LegislationChange {
   field: string;
@@ -29,6 +30,12 @@ interface UpdateLegislationBody {
  */
 export async function POST(request: Request) {
   try {
+    const csrf = await validateCsrfFromRequestDetailed(request);
+    if (!csrf.valid) {
+      await logCsrfFailure(request, csrf.reason!, "admin.templates.update-legislation");
+      return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+    }
+
     const auth = await requireAdminPermissions(request, ["admin.templates.write"], {
       rateLimit: "adminCritical",
       auditAction: "update-legislation",
