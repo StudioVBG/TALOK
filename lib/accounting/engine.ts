@@ -162,7 +162,8 @@ export async function createEntry(
 
   const entryNumber = entryNumberData as string;
 
-  // Insert entry
+  // Mirror header fields into the legacy agency columns so the insert works even
+  // when 20260423130000_accounting_entries_relax_legacy_not_null hasn't run yet.
   const { data: entry, error: entryError } = await supabase
     .from('accounting_entries')
     .insert({
@@ -175,6 +176,13 @@ export async function createEntry(
       source: params.source ?? null,
       reference: params.reference ?? null,
       created_by: params.userId,
+      ecriture_num: entryNumber,
+      ecriture_date: params.entryDate,
+      ecriture_lib: params.label,
+      piece_ref: params.reference ?? entryNumber,
+      piece_date: params.entryDate,
+      compte_num: '',
+      compte_lib: '',
     })
     .select()
     .single();
