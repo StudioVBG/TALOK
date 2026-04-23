@@ -269,29 +269,63 @@ export function TicketDetailView({ ticketId, userRole, backHref }: TicketDetailV
                 activeWo.statut === "work_completed" ||
                 activeWo.statut === "balance_pending";
               if (!canPay) return null;
-              const paymentType =
+
+              // Phase : acompte pas encore payé → split proposé.
+              //         acompte payé → solde uniquement.
+              const awaitingDeposit = activeWo.statut === "quote_accepted";
+              const awaitingBalance =
                 activeWo.statut === "deposit_paid" ||
-                activeWo.statut === "balance_pending"
-                  ? "balance"
-                  : "full";
+                activeWo.statut === "balance_pending" ||
+                activeWo.statut === "work_completed";
+
               return (
-                <div className="rounded-xl border border-border bg-card p-4 space-y-2">
-                  <p className="text-sm font-semibold text-foreground">
-                    {paymentType === "balance"
-                      ? "Solde à régler"
-                      : "Régler l'intervention"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Paiement sécurisé par carte. Les fonds sont transférés
-                    directement au prestataire.
-                  </p>
-                  <WorkOrderPayButton
-                    workOrderId={woId}
-                    paymentType={paymentType}
-                    hintLabel={
-                      paymentType === "balance" ? "Payer le solde" : "Payer"
-                    }
-                  />
+                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">
+                      {awaitingDeposit
+                        ? "Régler l'intervention"
+                        : "Solde à régler"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Paiement sécurisé par carte. Les fonds sont transférés
+                      directement au prestataire.
+                    </p>
+                  </div>
+
+                  {awaitingDeposit && (
+                    <>
+                      {/* Option par défaut : payer la totalité */}
+                      <WorkOrderPayButton
+                        workOrderId={woId}
+                        paymentType="full"
+                        hintLabel="Payer la totalité"
+                      />
+                      {/* Option alternative : split acompte / solde */}
+                      <div className="pt-2 border-t border-border">
+                        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                          ou paiement en deux fois
+                        </p>
+                        <WorkOrderPayButton
+                          workOrderId={woId}
+                          paymentType="deposit"
+                          hintLabel="Verser l'acompte (2/3)"
+                          variant="outline"
+                          size="sm"
+                        />
+                        <p className="text-[11px] text-muted-foreground mt-2 leading-snug">
+                          Le solde d'1/3 sera dû à la fin des travaux.
+                        </p>
+                      </div>
+                    </>
+                  )}
+
+                  {awaitingBalance && !awaitingDeposit && (
+                    <WorkOrderPayButton
+                      workOrderId={woId}
+                      paymentType="balance"
+                      hintLabel="Payer le solde (1/3)"
+                    />
+                  )}
                 </div>
               );
             })()}

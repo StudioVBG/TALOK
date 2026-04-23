@@ -1957,6 +1957,28 @@ async function handleWorkOrderPaymentSucceeded(
     }
   }
 
+  // Résoudre la référence humaine du ticket lié pour l'email
+  let ticketReference: string | null = null;
+  try {
+    const { data: woRow } = await supabase
+      .from("work_orders")
+      .select("ticket_id")
+      .eq("id", workOrderId)
+      .maybeSingle();
+    const ticketId = (woRow as { ticket_id: string | null } | null)?.ticket_id ?? null;
+    if (ticketId) {
+      const { data: tRow } = await supabase
+        .from("tickets")
+        .select("reference")
+        .eq("id", ticketId)
+        .maybeSingle();
+      ticketReference =
+        (tRow as { reference: string | null } | null)?.reference ?? null;
+    }
+  } catch {
+    /* non-blocking — just means the email won't carry the reference */
+  }
+
   // Outbox : notifier le prestataire que les fonds sont transférés
   const payeeProfileId = paymentIntent.metadata?.payee_profile_id;
   if (payeeProfileId) {
@@ -1975,6 +1997,7 @@ async function handleWorkOrderPaymentSucceeded(
           work_order_id: workOrderId,
           payment_type: paymentType,
           amount_cents: paymentIntent.amount,
+          ticket_reference: ticketReference,
           recipient_user_id: payeeUserId,
         },
       });

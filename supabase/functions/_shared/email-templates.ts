@@ -706,3 +706,56 @@ export function ticketPartiesCommunesToSyndic(params: {
     ${ctaButton("Traiter le signalement", `${APP_URL()}/copro/tickets`, "#6366f1")}
   `);
 }
+
+/**
+ * Email au prestataire : paiement reçu sur le compte Stripe Connect.
+ * Déclenché depuis le webhook Stripe lorsque le PaymentIntent réussit,
+ * donc les fonds sont déjà transférés au moment où cet email part.
+ */
+export function workOrderPaymentReceived(params: {
+  providerName: string;
+  amountEuros: string;
+  paymentType: "deposit" | "balance" | "full";
+  workOrderId: string;
+  ticketReference: string | null;
+}): string {
+  const typeLabel =
+    params.paymentType === "deposit"
+      ? "l'acompte"
+      : params.paymentType === "balance"
+        ? "le solde"
+        : "le paiement";
+
+  const refLine = params.ticketReference
+    ? `<p style="margin: 0 0 8px; color: #64748b; font-size: 13px;">Référence&nbsp;: <span style="font-family: monospace; color: #1e293b;">${params.ticketReference}</span></p>`
+    : "";
+
+  return baseWrapper(`
+    <div style="background: #ecfdf5; border-left: 4px solid #10b981; padding: 16px; border-radius: 8px; margin: 0 0 24px;">
+      <p style="margin: 0; color: #065f46; font-weight: 600; font-size: 15px;">
+        💶 Paiement reçu
+      </p>
+    </div>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      Bonjour ${params.providerName},
+    </p>
+    <p style="color: #475569; font-size: 16px; line-height: 1.6; margin: 0 0 16px;">
+      ${typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1)} de votre
+      intervention a été versé sur votre compte.
+    </p>
+
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
+      ${refLine}
+      <p style="margin: 0; color: #1e293b; font-size: 32px; font-weight: 700;">
+        ${params.amountEuros}&nbsp;€
+      </p>
+    </div>
+
+    <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin: 0 0 24px;">
+      Les fonds sont disponibles sur votre compte Stripe. Le détail de la
+      commission plateforme est visible dans votre espace.
+    </p>
+
+    ${ctaButton("Voir l'intervention", `${APP_URL()}/provider/tickets`, "#10b981")}
+  `);
+}

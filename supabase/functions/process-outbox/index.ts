@@ -19,6 +19,7 @@ import {
   tenantServiceRejected as tenantServiceRejectedTemplate,
   workOrderAssignedToProvider as workOrderAssignedToProviderTemplate,
   ticketPartiesCommunesToSyndic as ticketPartiesCommunesToSyndicTemplate,
+  workOrderPaymentReceived as workOrderPaymentReceivedTemplate,
 } from "../_shared/email-templates.ts";
 import { normalizePhoneE164, maskPhone } from "../_shared/phone.ts";
 
@@ -580,6 +581,23 @@ async function processEvent(supabase: any, event: any) {
           );
         } catch {
           /* non-blocking */
+        }
+
+        const recipientInfo = await resolveEmailRecipient(supabase, recipient);
+        if (recipientInfo) {
+          const html = workOrderPaymentReceivedTemplate({
+            providerName: recipientInfo.name,
+            amountEuros,
+            paymentType: paymentType as "deposit" | "balance" | "full",
+            workOrderId: payload.work_order_id,
+            ticketReference: payload.ticket_reference ?? null,
+          });
+          await sendOutboxEmail({
+            to: recipientInfo.email,
+            subject: `Paiement de ${amountEuros} € reçu`,
+            html,
+            tags: [{ name: "type", value: "work_order_payment_received" }],
+          });
         }
       }
       break;

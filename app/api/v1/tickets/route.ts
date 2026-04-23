@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import {
   apiError,
   apiSuccess,
@@ -10,9 +11,9 @@ import {
   requireApiAccess,
   validateBody,
   getPaginationParams,
-  logAudit,
 } from "@/lib/api/middleware";
 import { CreateTicketSchema } from "@/lib/api/schemas";
+import { createTicket } from "@/lib/tickets/create-ticket.service";
 
 /**
  * GET /api/v1/tickets
@@ -116,120 +117,65 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/v1/tickets
- * Create a new ticket
- * Events: Ticket.Opened
+ * Create a new ticket.
+ *
+ * Depuis l'unification d'avril 2026, cette route partage intégralement la
+ * logique métier avec POST /api/tickets via `createTicket()` service :
+ *   - résolution property_id + lease_id par profile_id OU invited_email
+ *   - routage parties communes → syndic
+ *   - suggestion de classification charges récupérables (décret 87-713)
+ *   - outbox Ticket.Opened / Ticket.OpenedPartiesCommunes
+ *   - audit log
+ *
+ * Ce qui reste spécifique à la route v1 :
+ *   - wrapper auth (requireAuth), feature gating api_access (owners Pro+),
+ *     format de réponse apiSuccess/apiError, code 201 à la création.
  */
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuth(request);
     if (auth instanceof Response) return auth;
 
-    // Owners and tenants can create tickets
     if (!["owner", "tenant", "admin"].includes(auth.profile.role)) {
       return apiError("Accès non autorisé", 403);
     }
 
-    // SOTA 2026: Gating api_access (Pro+) - only for owners
     if (auth.profile.role === "owner") {
       const apiAccessCheck = await requireApiAccess(auth.profile);
       if (apiAccessCheck) return apiAccessCheck;
     }
 
-    const supabase = await createClient();
     const body = await request.json();
     const { data, error: validationError } = validateBody(CreateTicketSchema, body);
-
     if (validationError) return validationError;
 
-    // Verify access to property
-    const { data: property } = await supabase
-      .from("properties")
-      .select("owner_id")
-      .eq("id", data.property_id)
-      .single();
-
-    if (!property) {
-      return apiError("Propriété non trouvée", 404);
-    }
-
-    // Authorization check
-    if (auth.profile.role === "owner" && property.owner_id !== auth.profile.id) {
-      return apiError("Accès non autorisé à cette propriété", 403);
-    }
-
-    if (auth.profile.role === "tenant") {
-      // Tenant must have an active lease for this property
-      const { data: lease } = await supabase
-        .from("leases")
-        .select("id")
-        .eq("property_id", data.property_id)
-        .eq("statut", "active")
-        .single();
-
-      if (!lease) {
-        return apiError("Aucun bail actif pour cette propriété", 403);
-      }
-
-      const { data: signer } = await supabase
-        .from("lease_signers")
-        .select("id")
-        .eq("lease_id", lease.id)
-        .eq("profile_id", auth.profile.id)
-        .single();
-
-      if (!signer) {
-        return apiError("Vous n'êtes pas locataire de cette propriété", 403);
-      }
-    }
-
-    // Create ticket with SOTA fields
-    const { data: ticket, error } = await supabase
-      .from("tickets")
-      .insert({
+    const result = await createTicket({
+      serviceClient: getServiceClient(),
+      auth: {
+        user_id: auth.user.id,
+        user_email: auth.user.email ?? null,
+        profile_id: auth.profile.id,
+        profile_email: (auth.profile as { email?: string | null }).email ?? null,
+        profile_role: auth.profile.role,
+      },
+      input: {
         property_id: data.property_id,
-        lease_id: data.lease_id || null,
+        lease_id: data.lease_id ?? null,
         titre: data.titre,
         description: data.description,
-        category: data.category || null,
-        priorite: data.priorite || "normal",
-        photos: data.photos || [],
-        created_by_profile_id: auth.profile.id,
-        owner_id: property.owner_id,
-        statut: "open",
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("[POST /tickets] Error:", error);
-      return apiError("Erreur lors de la création", 500);
-    }
-
-    // Emit event
-    await supabase.from("outbox").insert({
-      event_type: "Ticket.Opened",
-      payload: {
-        ticket_id: ticket.id,
-        property_id: data.property_id,
-        created_by: auth.profile.id,
-        priority: data.priorite,
+        category: data.category ?? null,
+        priorite: data.priorite ?? "normal",
+        photos: data.photos ?? [],
       },
     });
 
-    // Audit log
-    await logAudit(
-      supabase,
-      "ticket.created",
-      "tickets",
-      ticket.id,
-      auth.user.id,
-      null,
-      ticket
-    );
+    if (!result.ok) {
+      return apiError(result.message, result.status);
+    }
 
-    return apiSuccess({ ticket }, 201);
+    return apiSuccess({ ticket: result.ticket }, 201);
   } catch (error: unknown) {
-    console.error("[POST /tickets] Error:", error);
+    console.error("[POST /v1/tickets] Error:", error);
     return apiError("Erreur serveur", 500);
   }
 }
