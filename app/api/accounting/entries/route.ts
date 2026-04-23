@@ -265,8 +265,8 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .single();
 
-    if (!profile || profile.role !== "admin") {
-      throw new ApiError(403, "Seuls les administrateurs peuvent créer des écritures");
+    if (!profile || (profile.role !== "admin" && profile.role !== "owner")) {
+      throw new ApiError(403, "Non autorisé");
     }
 
     // Feature gate: check subscription plan
@@ -284,6 +284,18 @@ export async function POST(request: Request) {
       }
 
       const data = validation.data;
+
+      if (profile.role !== "admin") {
+        const { data: entity } = await supabase
+          .from("legal_entities")
+          .select("id")
+          .eq("id", data.entity_id)
+          .eq("owner_profile_id", profile.id)
+          .maybeSingle();
+        if (!entity) {
+          throw new ApiError(403, "Accès refusé à cette entité");
+        }
+      }
 
       const entry = await createEntry(supabase, {
         entityId: data.entity_id,
@@ -309,6 +321,9 @@ export async function POST(request: Request) {
 
     const data = validation.data;
     const today = new Date().toISOString().split("T")[0];
+
+    // For non-admins, force owner_id = self so they cannot post to someone else.
+    const ownerId = profile.role === "admin" ? data.owner_id : profile.id;
 
     // Générer le numéro d'écriture
     const year = (data.ecriture_date || today).substring(0, 4);
@@ -343,7 +358,7 @@ export async function POST(request: Request) {
         ecriture_lib: data.ecriture_lib,
         debit: data.debit,
         credit: data.credit,
-        owner_id: data.owner_id,
+        owner_id: ownerId,
         property_id: data.property_id,
         invoice_id: data.invoice_id,
         payment_id: data.payment_id,

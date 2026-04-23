@@ -13,6 +13,7 @@ import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { z } from "zod";
 import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
 import { reverseEntry } from '@/lib/accounting/engine';
+import { isEntryOwnedByProfile } from '@/lib/accounting/entry-access';
 
 export const dynamic = "force-dynamic";
 
@@ -45,8 +46,8 @@ export async function POST(request: Request, context: Context) {
       .eq("user_id", user.id)
       .single();
 
-    if (!profile || profile.role !== "admin") {
-      throw new ApiError(403, "Seuls les administrateurs peuvent extourner des écritures");
+    if (!profile || (profile.role !== "admin" && profile.role !== "owner")) {
+      throw new ApiError(403, "Non autorisé");
     }
 
     // Feature gate: check subscription plan
@@ -71,6 +72,13 @@ export async function POST(request: Request, context: Context) {
 
     if (fetchError || !original) {
       throw new ApiError(404, "Écriture non trouvée");
+    }
+
+    if (profile.role !== "admin") {
+      const ok = await isEntryOwnedByProfile(supabase, original, profile.id);
+      if (!ok) {
+        throw new ApiError(404, "Écriture non trouvée");
+      }
     }
 
     // ---------- New double-entry mode (entry has entity_id) ----------
