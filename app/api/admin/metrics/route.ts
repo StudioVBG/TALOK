@@ -1,16 +1,13 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
 export async function GET(request: Request) {
-  const { error: authError } = await requireAdmin(request);
-
-  if (authError) {
-    return NextResponse.json(
-      { error: authError.message || "Accès non autorisé" },
-      { status: authError.status || 403 }
-    );
-  }
+  const auth = await requireAdminPermissions(request, ["admin.reports.read"], {
+    rateLimit: "adminStandard",
+    auditAction: "Consultation métriques admin",
+  });
+  if (isAdminAuthError(auth)) return auth;
 
   const serviceClient = createServiceRoleClient();
 

@@ -2,7 +2,8 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { createClient } from "@/lib/supabase/server";
 import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { sendEmail } from "@/lib/services/email-service";
@@ -19,18 +20,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
     }
 
-    const { error, user, supabase } = await requireAdmin(request);
-
-    if (error) {
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
-        { status: error.status }
-      );
-    }
-
-    if (!user || !supabase) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.users.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Invitation nouveau provider",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const user = auth.user;
+    const supabase = await createClient();
 
     const body = await request.json();
     const { email, prenom, nom, phone, type_services, zones_intervention } = body;

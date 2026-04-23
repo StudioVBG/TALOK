@@ -2,7 +2,8 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { createClient as createServerClient } from "@/lib/supabase/server";
 import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 import { createClient } from "@supabase/supabase-js";
 
@@ -17,18 +18,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { error, user, supabase } = await requireAdmin(request);
-
-    if (error) {
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
-        { status: error.status }
-      );
-    }
-
-    if (!user || !supabase) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.users.read"], {
+      rateLimit: "adminStandard",
+      auditAction: "Consultation détail provider",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const user = auth.user;
+    const supabase = await createServerClient();
 
     const providerId = id;
 
@@ -124,18 +120,13 @@ export async function PATCH(
     }
 
     const { id } = await params;
-    const { error, user, supabase } = await requireAdmin(request);
-
-    if (error) {
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue" },
-        { status: error.status }
-      );
-    }
-
-    if (!user || !supabase) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.users.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Mise à jour provider",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const user = auth.user;
+    const supabase = await createServerClient();
 
     const providerId = id;
     const body = await request.json();

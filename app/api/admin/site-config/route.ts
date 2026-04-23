@@ -2,19 +2,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { createClient } from "@/lib/supabase/server";
 import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 import { revalidatePath } from "next/cache";
 
 export async function GET(request: NextRequest) {
-  const { error: authError, supabase } = await requireAdmin(request);
-
-  if (authError || !supabase) {
-    return NextResponse.json(
-      { error: authError?.message || "Accès non autorisé" },
-      { status: authError?.status || 403 }
-    );
-  }
+  const auth = await requireAdminPermissions(request, ["admin.templates.read"], {
+    rateLimit: "adminStandard",
+    auditAction: "Consultation config site",
+  });
+  if (isAdminAuthError(auth)) return auth;
+  const supabase = await createClient();
 
   try {
     const section = request.nextUrl.searchParams.get("section");
@@ -48,14 +47,12 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
   }
 
-  const { error: authError, supabase } = await requireAdmin(request);
-
-  if (authError || !supabase) {
-    return NextResponse.json(
-      { error: authError?.message || "Accès non autorisé" },
-      { status: authError?.status || 403 }
-    );
-  }
+  const auth = await requireAdminPermissions(request, ["admin.templates.write"], {
+    rateLimit: "adminCritical",
+    auditAction: "Mise à jour config site",
+  });
+  if (isAdminAuthError(auth)) return auth;
+  const supabase = await createClient();
 
   try {
     const { key, value } = await request.json();

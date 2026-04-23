@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { createClient } from "@/lib/supabase/server";
 import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 /**
@@ -7,14 +8,12 @@ import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/
  * Liste toutes les pages de contenu (dernière version publiée de chaque page)
  */
 export async function GET(request: Request) {
-  const { error: authError, supabase } = await requireAdmin(request);
-
-  if (authError || !supabase) {
-    return NextResponse.json(
-      { error: authError?.message || "Accès non autorisé" },
-      { status: authError?.status || 403 }
-    );
-  }
+  const auth = await requireAdminPermissions(request, ["admin.templates.read"], {
+    rateLimit: "adminStandard",
+    auditAction: "Consultation contenu site",
+  });
+  if (isAdminAuthError(auth)) return auth;
+  const supabase = await createClient();
 
   // Récupérer toutes les pages (toutes versions)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -42,14 +41,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
   }
 
-  const { error: authError, user, supabase } = await requireAdmin(request);
-
-  if (authError || !supabase) {
-    return NextResponse.json(
-      { error: authError?.message || "Accès non autorisé" },
-      { status: authError?.status || 403 }
-    );
-  }
+  const auth = await requireAdminPermissions(request, ["admin.templates.write"], {
+    rateLimit: "adminCritical",
+    auditAction: "Mise à jour contenu site",
+  });
+  if (isAdminAuthError(auth)) return auth;
+  const user = auth.user;
+  const supabase = await createClient();
 
   const body = await request.json();
   const {

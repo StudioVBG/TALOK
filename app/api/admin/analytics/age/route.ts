@@ -2,7 +2,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { z } from "zod";
 
@@ -16,11 +17,13 @@ const roleQuerySchema = z.enum(["owner", "tenant"]).optional();
  */
 export async function GET(request: Request) {
   try {
-    const { error, user, supabase } = await requireAdmin(request);
-
-    if (error || !user || !supabase) {
-      throw new ApiError(error?.status || 401, error?.message || "Non authentifié");
-    }
+    const auth = await requireAdminPermissions(request, ["admin.reports.read"], {
+      rateLimit: "adminStandard",
+      auditAction: "Consultation analytics âge",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const user = auth.user;
+    const supabase = await createClient();
 
     const { searchParams } = new URL(request.url);
     const roleParam = searchParams.get("role");

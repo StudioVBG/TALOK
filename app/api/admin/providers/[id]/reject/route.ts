@@ -1,7 +1,8 @@
 export const runtime = 'nodejs';
 
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { createClient } from "@/lib/supabase/server";
 import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 /**
@@ -21,18 +22,13 @@ export async function POST(
     }
 
     const { id } = await params;
-    const { error, user, supabase } = await requireAdmin(request);
-
-    if (error) {
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
-        { status: error.status }
-      );
-    }
-
-    if (!user || !supabase) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.compliance.write"], {
+      rateLimit: "adminCritical",
+      auditAction: "Rejet provider",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const user = auth.user;
+    const supabase = await createClient();
 
     const body = await request.json().catch(() => ({}));
     const { reason } = body;

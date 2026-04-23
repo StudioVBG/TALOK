@@ -2,29 +2,21 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/helpers/auth-helper";
+import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { createClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/admin/providers/pending - Liste des prestataires en attente de validation
  */
 export async function GET(request: Request) {
   try {
-    const cookieHeader = request.headers.get("cookie");
-    
-    const { error, user, supabase } = await requireAdmin(request);
-
-    if (error) {
-      console.error("requireAdmin returned error:", error);
-      return NextResponse.json(
-        { error: error instanceof Error ? error.message : "Une erreur est survenue", details: (error as any).details },
-        { status: error.status }
-      );
-    }
-
-    if (!user || !supabase) {
-      console.error("No user or supabase returned from requireAdmin");
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
+    const auth = await requireAdminPermissions(request, ["admin.compliance.read"], {
+      rateLimit: "adminStandard",
+      auditAction: "Consultation queue providers en attente",
+    });
+    if (isAdminAuthError(auth)) return auth;
+    const user = auth.user;
+    const supabase = await createClient();
 
 
     const { searchParams } = new URL(request.url);
