@@ -87,6 +87,7 @@ export async function POST(request: Request) {
     const result = await runEntityBackfill(serviceClient as any, entityId, {
       from: from ?? null,
       dryRun: dryRun ?? false,
+      userId: user.id,
     });
 
     return NextResponse.json({ success: true, data: result });

@@ -31,6 +31,7 @@ import {
   markEntryInformational,
   shouldMarkInformational,
 } from "@/lib/accounting/entity-config";
+import { resolveSystemActorForEntity } from "@/lib/accounting/system-actor";
 
 export type EnsureDepositSkipReason =
   | "already_exists"
@@ -189,10 +190,16 @@ export async function ensureDepositReceivedEntry(
       propertyAddress ? ` - ${propertyAddress}` : ""
     }`;
 
+    const actorUserId =
+      options.userId ?? (await resolveSystemActorForEntity(supabase, entityId));
+    if (!actorUserId) {
+      return { created: false, skippedReason: "error", error: "actor_unresolved" };
+    }
+
     const entry = await createAutoEntry(supabase, "deposit_received", {
       entityId,
       exerciseId: exercise.id,
-      userId: options.userId ?? "system",
+      userId: actorUserId,
       amountCents,
       label,
       date: entryDate,
@@ -300,10 +307,16 @@ export async function ensureDepositRefundedEntry(
     const primaryCents = refundCents > 0 ? refundCents : retainedCents;
     const secondaryCents = refundCents > 0 ? retainedCents : 0;
 
+    const actorUserId =
+      options.userId ?? (await resolveSystemActorForEntity(supabase, entityId));
+    if (!actorUserId) {
+      return { created: false, skippedReason: "error", error: "actor_unresolved" };
+    }
+
     const entry = await createAutoEntry(supabase, "deposit_returned", {
       entityId,
       exerciseId: exercise.id,
-      userId: options.userId ?? "system",
+      userId: actorUserId,
       amountCents: primaryCents,
       secondaryAmountCents: secondaryCents,
       label,

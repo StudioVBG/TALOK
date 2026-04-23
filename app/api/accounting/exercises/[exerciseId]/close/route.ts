@@ -83,7 +83,7 @@ export async function POST(
     // Step 2: Compute amortizations
     try {
       const { error: amortErr } = await supabase.functions.invoke("amortization-compute", {
-        body: { entityId, exerciseId, exerciseYear },
+        body: { entityId, exerciseId, exerciseYear, userId: user.id },
       });
       if (!amortErr) amortizationEntries = 1; // Simplified count
     } catch {

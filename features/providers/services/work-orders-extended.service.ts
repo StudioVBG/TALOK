@@ -419,7 +419,6 @@ async function postWorkOrderAutoEntry(
     date: string;
     label: string;
     reference?: string;
-    userId: string;
     persistEntryIdOnWorkOrder?: boolean;
   },
 ): Promise<void> {
@@ -437,6 +436,7 @@ async function postWorkOrderAutoEntry(
     const { getOrCreateCurrentExercise } = await import('@/lib/accounting/auto-exercise');
     const { getEntityAccountingConfig, shouldMarkInformational, markEntryInformational } =
       await import('@/lib/accounting/entity-config');
+    const { resolveSystemActorForEntity } = await import('@/lib/accounting/system-actor');
 
     const config = await getEntityAccountingConfig(supabase, entityId);
     if (!config || !config.accountingEnabled) {
@@ -453,10 +453,20 @@ async function postWorkOrderAutoEntry(
       return;
     }
 
+    // accounting_entries.created_by is UUID NOT NULL REFERENCES auth.users(id).
+    // work_orders.owner_id is a profiles.id, not an auth.users.id, so we always
+    // resolve the entity owner's auth user id to avoid both UUID-syntax errors
+    // and FK violations.
+    const actorUserId = await resolveSystemActorForEntity(supabase, entityId);
+    if (!actorUserId) {
+      console.warn('[work-orders] Skipping auto-entry: no actor resolvable for entity', entityId);
+      return;
+    }
+
     const entry = await createAutoEntry(supabase, params.event, {
       entityId,
       exerciseId: exercise.id,
-      userId: params.userId,
+      userId: actorUserId,
       amountCents: params.amountCents,
       label: params.label,
       date: params.date,
@@ -514,7 +524,6 @@ export async function submitInvoice(
     date: new Date().toISOString().split('T')[0],
     label: `Facture prestataire - ${updatedWo.title ?? 'Work order'}`,
     reference: workOrderId,
-    userId: updatedWo.owner_id ?? 'system',
     persistEntryIdOnWorkOrder: true,
   });
 
@@ -555,7 +564,6 @@ export async function markAsPaid(
       date: new Date().toISOString().split('T')[0],
       label: `Paiement prestataire - ${updatedWo.title ?? 'Work order'}`,
       reference: workOrderId,
-      userId: updatedWo.owner_id ?? 'system',
     });
   }
 

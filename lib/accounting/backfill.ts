@@ -38,6 +38,12 @@ export interface BackfillOptions {
   from?: string | null;
   dryRun?: boolean;
   verbose?: boolean;
+  /**
+   * `auth.users.id` of the operator triggering the backfill — stamped onto
+   * every generated accounting entry as `created_by`. When omitted, each
+   * ensure* helper falls back to the entity owner's auth user id.
+   */
+  userId?: string;
 }
 
 const ERROR_MESSAGES_CAP = 20;
@@ -122,6 +128,7 @@ async function backfillRentPayments(
   supabase: SupabaseClient,
   entityId: string,
   from: string | null,
+  userId: string | undefined,
 ): Promise<BackfillStats> {
   const stats = newStats();
 
@@ -167,7 +174,7 @@ async function backfillRentPayments(
       stats.skipped++;
       continue;
     }
-    const result = await ensureReceiptAccountingEntry(supabase as any, p.id);
+    const result = await ensureReceiptAccountingEntry(supabase as any, p.id, { userId });
     recordResult(stats, result, { category: "rent", sourceId: p.id });
   }
   return stats;
@@ -177,6 +184,7 @@ async function backfillDepositReceived(
   supabase: SupabaseClient,
   entityId: string,
   from: string | null,
+  userId: string | undefined,
 ): Promise<BackfillStats> {
   const stats = newStats();
 
@@ -219,7 +227,7 @@ async function backfillDepositReceived(
       stats.skipped++;
       continue;
     }
-    const result = await ensureDepositReceivedEntry(supabase as any, m.id);
+    const result = await ensureDepositReceivedEntry(supabase as any, m.id, { userId });
     recordResult(stats, result, { category: "depositIn", sourceId: m.id });
   }
   return stats;
@@ -229,6 +237,7 @@ async function backfillDepositRefunded(
   supabase: SupabaseClient,
   entityId: string,
   from: string | null,
+  userId: string | undefined,
 ): Promise<BackfillStats> {
   const stats = newStats();
 
@@ -268,7 +277,7 @@ async function backfillDepositRefunded(
       stats.skipped++;
       continue;
     }
-    const result = await ensureDepositRefundedEntry(supabase as any, r.id);
+    const result = await ensureDepositRefundedEntry(supabase as any, r.id, { userId });
     recordResult(stats, result, { category: "depositOut", sourceId: r.id });
   }
   return stats;
@@ -278,6 +287,7 @@ async function backfillSubscriptions(
   supabase: SupabaseClient,
   entityId: string,
   from: string | null,
+  userId: string | undefined,
 ): Promise<BackfillStats> {
   const stats = newStats();
 
@@ -326,7 +336,7 @@ async function backfillSubscriptions(
       stats.skipped++;
       continue;
     }
-    const result = await ensureSubscriptionPaidEntry(supabase as any, inv.id);
+    const result = await ensureSubscriptionPaidEntry(supabase as any, inv.id, { userId });
     recordResult(stats, result, { category: "subscription", sourceId: inv.id });
   }
   return stats;
@@ -345,10 +355,11 @@ export async function runEntityBackfill(
     return runDryRun(supabase, entityId, from);
   }
 
-  const rent = await backfillRentPayments(supabase, entityId, from);
-  const depositIn = await backfillDepositReceived(supabase, entityId, from);
-  const depositOut = await backfillDepositRefunded(supabase, entityId, from);
-  const subscription = await backfillSubscriptions(supabase, entityId, from);
+  const userId = options.userId;
+  const rent = await backfillRentPayments(supabase, entityId, from, userId);
+  const depositIn = await backfillDepositReceived(supabase, entityId, from, userId);
+  const depositOut = await backfillDepositRefunded(supabase, entityId, from, userId);
+  const subscription = await backfillSubscriptions(supabase, entityId, from, userId);
 
   const totals = newStats();
   mergeInto(totals, rent);
