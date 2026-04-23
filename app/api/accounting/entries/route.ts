@@ -147,26 +147,68 @@ export async function GET(request: Request) {
       throw new ApiError(500, "Erreur lors de la récupération des écritures");
     }
 
-    // Calculer les totaux
-    const totals = (entries || []).reduce<{ debit: number; credit: number }>(
-      (acc, e) => ({
-        debit: acc.debit + ((e.debit as number) || 0),
-        credit: acc.credit + ((e.credit as number) || 0),
-      }),
-      { debit: 0, credit: 0 }
-    );
+    // Engine-driven entries store debit/credit=0 at the header and the real
+    // amounts in accounting_entry_lines, while legacy rows keep amounts inline.
+    // Batch-fetch lines for the page and aggregate so each row carries a
+    // total_debit_cents / total_credit_cents the client can read uniformly
+    // (see EntryRow.getEntryDebitCents).
+    const entryRows = (entries ?? []) as Array<{
+      id: string;
+      debit?: number | null;
+      credit?: number | null;
+      total_debit_cents?: number;
+      total_credit_cents?: number;
+    }>;
+    const entryIds = entryRows.map((e) => e.id);
+    const lineSums = new Map<string, { debit: number; credit: number }>();
+    if (entryIds.length > 0) {
+      const { data: lines, error: linesError } = await serviceClient
+        .from("accounting_entry_lines")
+        .select("entry_id, debit_cents, credit_cents")
+        .in("entry_id", entryIds);
+      if (linesError) {
+        console.error("[Entries API] Erreur lignes:", linesError);
+      } else {
+        for (const line of (lines ?? []) as Array<{
+          entry_id: string;
+          debit_cents: number | null;
+          credit_cents: number | null;
+        }>) {
+          const sums = lineSums.get(line.entry_id) ?? { debit: 0, credit: 0 };
+          sums.debit += line.debit_cents ?? 0;
+          sums.credit += line.credit_cents ?? 0;
+          lineSums.set(line.entry_id, sums);
+        }
+      }
+    }
+
+    let totalDebitCents = 0;
+    let totalCreditCents = 0;
+    for (const row of entryRows) {
+      const sums = lineSums.get(row.id);
+      const debitCents = sums
+        ? sums.debit
+        : Math.round(((row.debit as number) ?? 0) * 100);
+      const creditCents = sums
+        ? sums.credit
+        : Math.round(((row.credit as number) ?? 0) * 100);
+      row.total_debit_cents = debitCents;
+      row.total_credit_cents = creditCents;
+      totalDebitCents += debitCents;
+      totalCreditCents += creditCents;
+    }
 
     return NextResponse.json({
       success: true,
-      data: entries || [],
+      data: entryRows,
       meta: {
         total: count || 0,
         limit,
         offset,
         totals: {
-          debit: Math.round(totals.debit * 100) / 100,
-          credit: Math.round(totals.credit * 100) / 100,
-          balance: Math.round((totals.debit - totals.credit) * 100) / 100,
+          debit: totalDebitCents / 100,
+          credit: totalCreditCents / 100,
+          balance: (totalDebitCents - totalCreditCents) / 100,
         },
       },
     });
