@@ -4,6 +4,7 @@ export const dynamic = 'force-dynamic';
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 /**
  * GET /api/admin/addons - Lister tous les add-ons avec statistiques
@@ -53,6 +54,12 @@ export async function GET(request: Request) {
  */
 export async function POST(request: Request) {
   try {
+    const csrf = await validateCsrfFromRequestDetailed(request);
+    if (!csrf.valid) {
+      await logCsrfFailure(request, csrf.reason!, "admin.addons.create");
+      return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+    }
+
     const auth = await requireAdminPermissions(request, ["admin.plans.write"], {
       rateLimit: "adminStandard",
       auditAction: "Create addon",
@@ -119,6 +126,12 @@ export async function POST(request: Request) {
  */
 export async function PUT(request: Request) {
   try {
+    const csrf = await validateCsrfFromRequestDetailed(request);
+    if (!csrf.valid) {
+      await logCsrfFailure(request, csrf.reason!, "admin.addons.update");
+      return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+    }
+
     const auth = await requireAdminPermissions(request, ["admin.plans.write"], {
       rateLimit: "adminStandard",
       auditAction: "Update addon",
@@ -186,6 +199,12 @@ export async function PUT(request: Request) {
  */
 export async function DELETE(request: Request) {
   try {
+    const csrf = await validateCsrfFromRequestDetailed(request);
+    if (!csrf.valid) {
+      await logCsrfFailure(request, csrf.reason!, "admin.addons.delete");
+      return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+    }
+
     const auth = await requireAdminPermissions(request, ["admin.plans.write"], {
       rateLimit: "adminStandard",
       auditAction: "Delete addon",

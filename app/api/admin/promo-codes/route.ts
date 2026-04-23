@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 import {
   createPromoCode,
   listPromoCodes,
@@ -78,6 +79,12 @@ export async function GET(request: NextRequest) {
  * Rollback Stripe si la création DB échoue.
  */
 export async function POST(request: NextRequest) {
+  const csrf = await validateCsrfFromRequestDetailed(request);
+  if (!csrf.valid) {
+    await logCsrfFailure(request, csrf.reason!, "admin.promo-codes.create");
+    return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
+  }
+
   const auth = await requireAdminPermissions(request, ["admin.plans.write"], {
     rateLimit: "adminCritical",
     auditAction: "promo_code_created",
