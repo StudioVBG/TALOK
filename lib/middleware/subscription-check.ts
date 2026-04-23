@@ -314,12 +314,14 @@ export async function withFeatureAccess(
   const serviceClient = getServiceClient();
 
   try {
-    // Récupérer la subscription et le plan
+    // Seuls status + plan_slug (+ jointure slug en fallback) sont lus ici —
+    // éviter `*` réduit le payload et accélère le parse côté PostgREST.
     const { data: subscription, error } = await serviceClient
       .from("subscriptions")
       .select(`
-        *,
-        plan:subscription_plans!plan_id(*)
+        status,
+        plan_slug,
+        plan:subscription_plans!plan_id(slug)
       `)
       .eq("owner_id", ownerId)
       .maybeSingle();
