@@ -5,6 +5,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-client";
+import { EDL_OWNER_SIGNER_ROLES } from "@/lib/constants/roles";
 import { redirect } from "next/navigation";
 
 export interface OwnerDashboardData {
@@ -148,10 +149,11 @@ async function fetchDashboardDirect(
       .select("id, statut, created_at")
       .in("property_id", propertyIds),
     // ✅ SOTA 2026: EDL query — colonnes correctes: "status" (pas "statut"), pas de "owner_signed"
-    // La signature propriétaire se vérifie via la table edl_signatures
+    // La signature propriétaire se vérifie via la table edl_signatures.
+    // On joint les signatures pour pouvoir décider, comme la RPC, si l'owner a signé.
     supabase
       .from("edl")
-      .select("id, status")
+      .select("id, status, edl_signatures(signer_role, signed_at)")
       .in("property_id", propertyIds),
     // Activité récente - dernières factures et tickets pour le flux d'activité
     supabase
@@ -217,11 +219,24 @@ async function fetchDashboardDirect(
     },
     edl: {
       total: edls.length,
-      // ✅ SOTA 2026: Un EDL en "completed" est en attente de signature.
-      // Un EDL "signed" est entièrement signé. Pas de colonne "owner_signed".
-      pending_owner_signature: (edls as Array<{ status?: string }>).filter((e) =>
-        e.status === "completed"
-      ).length,
+      // ✅ SOTA 2026: Un EDL "completed" est en attente de signature ; "signed" = entièrement signé.
+      // Aligné avec la RPC owner_dashboard : on exclut les EDL déjà signés par l'owner
+      // même si `edl.status` n'a pas (encore) basculé à "signed" (trigger non déclenché,
+      // rollback PDF, etc.). Le rôle owner est accepté sous plusieurs variantes en base.
+      pending_owner_signature: (
+        edls as Array<{
+          status?: string;
+          edl_signatures?: Array<{ signer_role?: string | null; signed_at?: string | null }> | null;
+        }>
+      ).filter((e) => {
+        if (e.status !== "completed") return false;
+        const ownerSigned = (e.edl_signatures ?? []).some(
+          (s) =>
+            !!s.signed_at &&
+            (EDL_OWNER_SIGNER_ROLES as readonly string[]).includes(s.signer_role ?? "")
+        );
+        return !ownerSigned;
+      }).length,
     },
     zone3_portfolio: { compliance: [] },
     recentActivity,
