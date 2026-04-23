@@ -59,6 +59,32 @@ function pushError(stats: BackfillStats, message: string) {
   }
 }
 
+/**
+ * Detect the "source table does not exist in this Supabase project" error.
+ *
+ * Some optional tables (`deposit_movements`, `subscription_invoices`, …) are
+ * only present in environments where the related feature has been activated.
+ * When missing, PostgREST returns `PGRST205` with a message like
+ * `Could not find the table 'public.X' in the schema cache`, and Postgres
+ * itself returns `42P01` / `42703`. Treat all of these as "the category has
+ * no data in this environment" rather than as a backfill error — the run
+ * otherwise completes cleanly and the UI would show a spurious red banner.
+ */
+function isMissingRelationError(
+  error: { code?: string | null; message?: string | null } | null | undefined,
+): boolean {
+  if (!error) return false;
+  if (error.code === "PGRST205" || error.code === "42P01" || error.code === "42703") {
+    return true;
+  }
+  const msg = error.message ?? "";
+  return (
+    msg.includes("schema cache") ||
+    msg.includes("does not exist") ||
+    msg.includes("Could not find the table")
+  );
+}
+
 function recordResult(
   stats: BackfillStats,
   result: { created: boolean; skippedReason?: string; error?: string },
@@ -210,6 +236,12 @@ async function backfillDepositReceived(
 
   const { data: movements, error } = await q;
   if (error) {
+    if (isMissingRelationError(error)) {
+      console.info(
+        "[backfill/depositIn] deposit_movements not available in this environment — skipping category",
+      );
+      return stats;
+    }
     console.error("[backfill/depositIn] query failed:", error);
     pushError(stats, `query_failed: ${error.message}`);
     return stats;
@@ -260,6 +292,12 @@ async function backfillDepositRefunded(
 
   const { data: refunds, error } = await q;
   if (error) {
+    if (isMissingRelationError(error)) {
+      console.info(
+        "[backfill/depositOut] deposit_refunds not available in this environment — skipping category",
+      );
+      return stats;
+    }
     console.error("[backfill/depositOut] query failed:", error);
     pushError(stats, `query_failed: ${error.message}`);
     return stats;
@@ -319,6 +357,12 @@ async function backfillSubscriptions(
 
   const { data: invoices, error } = await q;
   if (error) {
+    if (isMissingRelationError(error)) {
+      console.info(
+        "[backfill/subscription] subscription_invoices not available in this environment — skipping category",
+      );
+      return stats;
+    }
     console.error("[backfill/subscription] query failed:", error);
     pushError(stats, `query_failed: ${error.message}`);
     return stats;
@@ -385,6 +429,12 @@ async function runDryRun(supabase: SupabaseClient, entityId: string, from: strin
     const s = newStats();
     const { data, error } = await builder;
     if (error) {
+      if (isMissingRelationError(error)) {
+        console.info(
+          `[backfill/${category}] source table not available in this environment — dry-run treats as empty`,
+        );
+        return s;
+      }
       console.error(`[backfill/${category}] dry-run query failed:`, error);
       pushError(s, `query_failed: ${error.message}`);
       return s;
