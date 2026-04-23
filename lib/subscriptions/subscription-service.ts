@@ -1087,6 +1087,68 @@ export async function adminGiftDays(
     // Table optionnelle
   }
 
+  if (notifyUser) {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email, prenom, nom, user_id')
+        .eq('id', profileId)
+        .single();
+
+      let recipientEmail = profile?.email ?? null;
+      if (!recipientEmail && profile?.user_id) {
+        const { data: authUser } = await supabase.auth.admin.getUserById(profile.user_id);
+        recipientEmail = authUser?.user?.email ?? null;
+      }
+
+      if (recipientEmail) {
+        const recipientName = [profile?.prenom, profile?.nom]
+          .filter(Boolean)
+          .join(' ')
+          .trim() || 'Bonjour';
+
+        const planName = planSlug ? PLANS[planSlug]?.name : undefined;
+        const trialEndDate = trialEnd.toLocaleDateString('fr-FR', {
+          day: '2-digit',
+          month: 'long',
+          year: 'numeric',
+        });
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr';
+
+        const { emailTemplates } = await import('@/lib/emails/templates');
+        const { sendEmail } = await import('@/lib/services/email-service');
+
+        const template = emailTemplates.giftDaysNotification({
+          recipientName,
+          days,
+          planName,
+          reason,
+          trialEndDate,
+          dashboardUrl: `${appUrl}/owner/dashboard`,
+        });
+
+        const emailResult = await sendEmail({
+          to: recipientEmail,
+          subject: template.subject,
+          html: template.html,
+          tags: [{ name: 'type', value: 'gift_days' }],
+        });
+
+        if (!emailResult.success) {
+          console.error('[adminGiftDays] Email notification failed:', emailResult.error);
+        }
+      } else {
+        console.warn('[adminGiftDays] No email found for target user', targetUserId);
+      }
+    } catch (emailError) {
+      console.error('[adminGiftDays] Email notification error:', emailError);
+      try {
+        const Sentry = await import('@sentry/nextjs');
+        Sentry.captureException(emailError, { tags: { route: 'admin.subscriptions.gift.email' } });
+      } catch {}
+    }
+  }
+
   return { success: true };
 }
 

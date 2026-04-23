@@ -2453,5 +2453,71 @@ export const emailTemplates = {
       `, `L'EDL ${kind} pour ${escapeHtml(data.propertyAddress)} est entièrement signé`),
     };
   },
+
+  /**
+   * Notification : jours d'essai offerts par un admin Talok
+   */
+  giftDaysNotification: (data: {
+    recipientName: string;
+    days: number;
+    planName?: string;
+    reason: string;
+    trialEndDate: string;
+    dashboardUrl: string;
+  }) => {
+    const daysLabel = data.days > 1 ? `${data.days} jours` : `${data.days} jour`;
+    const planLine = data.planName
+      ? `<tr>
+              <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]};">
+                <span style="color: ${COLORS.gray[500]}; font-size: 14px;">Plan activé</span>
+              </td>
+              <td style="padding: 12px 0; border-bottom: 1px solid ${COLORS.gray[200]}; text-align: right;">
+                <span style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 14px;">${escapeHtml(data.planName)}</span>
+              </td>
+            </tr>`
+      : "";
+    return {
+      subject: `🎁 ${daysLabel} offerts sur Talok`,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span class="badge badge-success">CADEAU TALOK</span>
+          </div>
+
+          <h1 style="text-align: center;">Vous avez reçu ${daysLabel} offerts 🎁</h1>
+          <p>Bonjour ${escapeHtml(data.recipientName)},</p>
+          <p>Bonne nouvelle ! L'équipe Talok vous offre <strong>${daysLabel}</strong> d'accès ${data.planName ? `au plan <strong>${escapeHtml(data.planName)}</strong>` : "à votre plan actuel"} en période d'essai.</p>
+
+          <div class="highlight-box" style="border-left-color: ${COLORS.success};">
+            <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 4px;">Durée offerte</p>
+            <div class="amount" style="color: ${COLORS.success};">${daysLabel}</div>
+            <p style="color: ${COLORS.gray[500]}; font-size: 14px;">Fin de l'essai : ${escapeHtml(data.trialEndDate)}</p>
+          </div>
+
+          <div class="info-grid">
+            <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse: collapse;">
+              ${planLine}
+              <tr>
+                <td style="padding: 12px 0;">
+                  <span style="color: ${COLORS.gray[500]}; font-size: 14px;">Motif</span>
+                </td>
+                <td style="padding: 12px 0; text-align: right;">
+                  <span style="color: ${COLORS.gray[900]}; font-weight: 500; font-size: 14px;">${escapeHtml(data.reason)}</span>
+                </td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="text-align: center;">
+            <a href="${data.dashboardUrl}" class="button button-success">Accéder à mon espace</a>
+          </div>
+
+          <p style="font-size: 14px; color: ${COLORS.gray[500]};">
+            Profitez-en pour explorer toutes les fonctionnalités de Talok. À l'issue de la période d'essai, votre abonnement reprendra normalement — aucune action n'est requise de votre part.
+          </p>
+        </div>
+      `, `L'équipe Talok vous offre ${daysLabel} d'essai, valables jusqu'au ${data.trialEndDate}.`),
+    };
+  },
 };
 
