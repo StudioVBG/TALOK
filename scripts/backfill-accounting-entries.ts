@@ -50,6 +50,9 @@ function log(label: string, stats: BackfillStats) {
   console.log(
     `  ${label}: processed=${stats.processed} created=${stats.created} skipped=${stats.skipped} errors=${stats.errors}`,
   );
+  for (const message of stats.errorMessages) {
+    console.log(`    ✗ ${message}`);
+  }
 }
 
 async function resolveEntities(
