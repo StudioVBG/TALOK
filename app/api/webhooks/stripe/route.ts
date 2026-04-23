@@ -21,6 +21,7 @@ import type { Json } from "@/lib/supabase/database.types";
 import { reconcileOwnerTransfer } from "@/lib/billing/owner-payout.service";
 import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
 import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
+import { ensureSecurityDepositForInvoice } from "@/lib/services/security-deposit-sync.service";
 import {
   handleRentPaymentSucceeded,
   handleRentPaymentFailed,
@@ -1032,6 +1033,24 @@ export async function POST(request: NextRequest) {
                 } as any)
                 .eq("id", targetLeaseId)
                 .eq("initial_payment_confirmed", false);
+            }
+
+            // Rattacher le dépôt de garantie à son suivi formel dès que la
+            // facture initiale est soldée, sans attendre l'activation du
+            // bail (le trigger SQL ne fire qu'à ce moment-là).
+            if (!isChargeRegularization) {
+              try {
+                await ensureSecurityDepositForInvoice(supabase as any, {
+                  invoiceId,
+                  paidAt,
+                  paymentMethod: paymentMethod === "sepa_debit" ? "sepa_debit" : "card",
+                });
+              } catch (depositSyncError) {
+                console.error(
+                  "[Stripe Webhook] security_deposits sync failed:",
+                  depositSyncError,
+                );
+              }
             }
           }
 

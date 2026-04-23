@@ -8,6 +8,7 @@ import { AccountingIntegrationService } from "@/features/accounting/services/acc
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
 import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
+import { ensureSecurityDepositForInvoice } from "@/lib/services/security-deposit-sync.service";
 
 /**
  * POST /api/invoices/[id]/mark-paid - Marquer une facture comme payée manuellement
@@ -261,6 +262,22 @@ export async function POST(
         receiptDocumentId = receiptResult?.documentId || null;
       } catch (receiptError) {
         console.error("[mark-paid] Erreur génération quittance:", receiptError);
+      }
+
+      // Rattacher le dépôt de garantie à son suivi formel si la facture
+      // initiale inclut un depot_amount. Non bloquant : un échec ici ne
+      // doit pas empêcher le propriétaire d'enregistrer son paiement.
+      try {
+        await ensureSecurityDepositForInvoice(serviceClient as any, {
+          invoiceId,
+          paidAt: paymentData.date_paiement as string,
+          paymentMethod: paymentMethod as any,
+        });
+      } catch (depositSyncError) {
+        console.error(
+          "[mark-paid] Rattachement dépôt de garantie (non bloquant):",
+          depositSyncError,
+        );
       }
 
       // Off-Stripe receipt → ensure the double-entry `rent_received` is
