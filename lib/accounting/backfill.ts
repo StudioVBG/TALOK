@@ -22,6 +22,8 @@ export interface BackfillStats {
   created: number;
   skipped: number;
   errors: number;
+  /** First N error messages encountered in this category (capped). */
+  errorMessages: string[];
 }
 
 export interface BackfillResult {
@@ -38,15 +40,36 @@ export interface BackfillOptions {
   verbose?: boolean;
 }
 
+const ERROR_MESSAGES_CAP = 20;
+
 export function newStats(): BackfillStats {
-  return { processed: 0, created: 0, skipped: 0, errors: 0 };
+  return { processed: 0, created: 0, skipped: 0, errors: 0, errorMessages: [] };
 }
 
-function recordResult(stats: BackfillStats, result: { created: boolean; skippedReason?: string; error?: string }) {
+function pushError(stats: BackfillStats, message: string) {
+  stats.errors++;
+  if (stats.errorMessages.length < ERROR_MESSAGES_CAP) {
+    stats.errorMessages.push(message);
+  }
+}
+
+function recordResult(
+  stats: BackfillStats,
+  result: { created: boolean; skippedReason?: string; error?: string },
+  context: { category: string; sourceId: string },
+) {
   stats.processed++;
-  if (result.created) stats.created++;
-  else if (result.skippedReason === "error") stats.errors++;
-  else stats.skipped++;
+  if (result.created) {
+    stats.created++;
+  } else if (result.skippedReason === "error") {
+    pushError(stats, `${context.sourceId}: ${result.error ?? "unknown"}`);
+    console.error(
+      `[backfill/${context.category}] ${context.sourceId} failed:`,
+      result.error ?? "unknown",
+    );
+  } else {
+    stats.skipped++;
+  }
 }
 
 function mergeInto(target: BackfillStats, source: BackfillStats) {
@@ -54,6 +77,10 @@ function mergeInto(target: BackfillStats, source: BackfillStats) {
   target.created += source.created;
   target.skipped += source.skipped;
   target.errors += source.errors;
+  for (const m of source.errorMessages) {
+    if (target.errorMessages.length >= ERROR_MESSAGES_CAP) break;
+    target.errorMessages.push(m);
+  }
 }
 
 async function backfillRentPayments(
@@ -88,13 +115,14 @@ async function backfillRentPayments(
 
   const { data: payments, error } = await q;
   if (error) {
-    stats.errors++;
+    console.error("[backfill/rent] query failed:", error);
+    pushError(stats, `query_failed: ${error.message}`);
     return stats;
   }
 
   for (const p of (payments as Array<{ id: string }> | null) ?? []) {
     const result = await ensureReceiptAccountingEntry(supabase as any, p.id);
-    recordResult(stats, result);
+    recordResult(stats, result, { category: "rent", sourceId: p.id });
   }
   return stats;
 }
@@ -128,13 +156,14 @@ async function backfillDepositReceived(
 
   const { data: movements, error } = await q;
   if (error) {
-    stats.errors++;
+    console.error("[backfill/depositIn] query failed:", error);
+    pushError(stats, `query_failed: ${error.message}`);
     return stats;
   }
 
   for (const m of (movements as Array<{ id: string }> | null) ?? []) {
     const result = await ensureDepositReceivedEntry(supabase as any, m.id);
-    recordResult(stats, result);
+    recordResult(stats, result, { category: "depositIn", sourceId: m.id });
   }
   return stats;
 }
@@ -165,13 +194,14 @@ async function backfillDepositRefunded(
 
   const { data: refunds, error } = await q;
   if (error) {
-    stats.errors++;
+    console.error("[backfill/depositOut] query failed:", error);
+    pushError(stats, `query_failed: ${error.message}`);
     return stats;
   }
 
   for (const r of (refunds as Array<{ id: string }> | null) ?? []) {
     const result = await ensureDepositRefundedEntry(supabase as any, r.id);
-    recordResult(stats, result);
+    recordResult(stats, result, { category: "depositOut", sourceId: r.id });
   }
   return stats;
 }
@@ -211,13 +241,14 @@ async function backfillSubscriptions(
 
   const { data: invoices, error } = await q;
   if (error) {
-    stats.errors++;
+    console.error("[backfill/subscription] query failed:", error);
+    pushError(stats, `query_failed: ${error.message}`);
     return stats;
   }
 
   for (const inv of (invoices as Array<{ id: string }> | null) ?? []) {
     const result = await ensureSubscriptionPaidEntry(supabase as any, inv.id);
-    recordResult(stats, result);
+    recordResult(stats, result, { category: "subscription", sourceId: inv.id });
   }
   return stats;
 }
@@ -246,15 +277,26 @@ export async function runEntityBackfill(
   mergeInto(totals, depositOut);
   mergeInto(totals, subscription);
 
+  if (totals.errors > 0) {
+    console.info("[backfill] completed with errors", {
+      entityId,
+      rent: { errors: rent.errors, samples: rent.errorMessages },
+      depositIn: { errors: depositIn.errors, samples: depositIn.errorMessages },
+      depositOut: { errors: depositOut.errors, samples: depositOut.errorMessages },
+      subscription: { errors: subscription.errors, samples: subscription.errorMessages },
+    });
+  }
+
   return { rent, depositIn, depositOut, subscription, totals };
 }
 
 async function runDryRun(supabase: SupabaseClient, entityId: string, from: string | null): Promise<BackfillResult> {
-  async function countQuery(builder: any): Promise<BackfillStats> {
+  async function countQuery(builder: any, category: string): Promise<BackfillStats> {
     const s = newStats();
     const { data, error } = await builder;
     if (error) {
-      s.errors++;
+      console.error(`[backfill/${category}] dry-run query failed:`, error);
+      pushError(s, `query_failed: ${error.message}`);
       return s;
     }
     const rows = (data as Array<unknown> | null) ?? [];
@@ -299,12 +341,12 @@ async function runDryRun(supabase: SupabaseClient, entityId: string, from: strin
       .eq("status", "paid")
       .eq("subscription.owner_id", ownerProfileId);
     if (from) subQ = subQ.gte("paid_at", from);
-    subscription = await countQuery(subQ);
+    subscription = await countQuery(subQ, "subscription");
   }
 
-  const rent = await countQuery(rentQ);
-  const depositIn = await countQuery(depInQ);
-  const depositOut = await countQuery(depOutQ);
+  const rent = await countQuery(rentQ, "rent");
+  const depositIn = await countQuery(depInQ, "depositIn");
+  const depositOut = await countQuery(depOutQ, "depositOut");
 
   const totals = newStats();
   mergeInto(totals, rent);

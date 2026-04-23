@@ -106,11 +106,38 @@ function SettingsContent() {
     },
     onSuccess: ({ data }) => {
       const t = data.totals;
-      toast({
-        title: "Import historique terminé",
-        description: `${t.created} écriture(s) créée(s), ${t.skipped} déjà existante(s)${t.errors > 0 ? `, ${t.errors} erreur(s)` : ""}.`,
-        variant: t.errors > 0 ? "destructive" : undefined,
-      });
+      if (t.errors === 0) {
+        toast({
+          title: "Import historique terminé",
+          description: `${t.created} écriture(s) créée(s), ${t.skipped} déjà existante(s).`,
+        });
+      } else {
+        // Always log the full payload — devtools is where the next debugging
+        // step happens.
+        console.warn("[backfill] completed with errors", data);
+        const perCategory = [
+          { label: "Loyers", stats: data.rent },
+          { label: "Dépôts reçus", stats: data.depositIn },
+          { label: "Dépôts restitués", stats: data.depositOut },
+          { label: "Abonnement Talok", stats: data.subscription },
+        ]
+          .filter((row) => row.stats.errors > 0)
+          .map((row) => `${row.label}: ${row.stats.errors}`)
+          .join(" · ");
+        const sampleMessages = t.errorMessages.slice(0, 3);
+        const description = [
+          `${t.created} créée(s), ${t.skipped} déjà existante(s), ${t.errors} en erreur.`,
+          perCategory ? `Catégories en erreur — ${perCategory}.` : null,
+          sampleMessages.length > 0 ? `Premières erreurs : ${sampleMessages.join(" | ")}` : null,
+        ]
+          .filter(Boolean)
+          .join("\n");
+        toast({
+          title: "Import historique terminé avec des erreurs",
+          description,
+          variant: "destructive",
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ["accounting-entries"] });
       queryClient.invalidateQueries({ queryKey: ["accounting-journal"] });
     },
