@@ -83,6 +83,41 @@ function mergeInto(target: BackfillStats, source: BackfillStats) {
   }
 }
 
+/**
+ * Bulk-fetch the set of source IDs that already have a matching auto-entry.
+ * Running this once per category replaces N individual idempotency probes
+ * from ensure* helpers — the short-circuit is the common path on re-runs
+ * and saves ~6 round-trips per already-booked item.
+ */
+async function fetchAlreadyBookedReferences(
+  supabase: SupabaseClient,
+  references: string[],
+  sourcePrefix: string,
+): Promise<Set<string>> {
+  if (references.length === 0) return new Set();
+  const CHUNK = 500;
+  const booked = new Set<string>();
+  for (let i = 0; i < references.length; i += CHUNK) {
+    const slice = references.slice(i, i + CHUNK);
+    const { data, error } = await (supabase as any)
+      .from("accounting_entries")
+      .select("reference")
+      .in("reference", slice)
+      .like("source", `${sourcePrefix}%`);
+    if (error) {
+      console.warn(
+        `[backfill] bulk idempotency probe failed for ${sourcePrefix}; falling back to per-item check`,
+        error,
+      );
+      return new Set();
+    }
+    for (const row of (data as Array<{ reference: string | null }> | null) ?? []) {
+      if (row.reference) booked.add(row.reference);
+    }
+  }
+  return booked;
+}
+
 async function backfillRentPayments(
   supabase: SupabaseClient,
   entityId: string,
@@ -120,7 +155,18 @@ async function backfillRentPayments(
     return stats;
   }
 
-  for (const p of (payments as Array<{ id: string }> | null) ?? []) {
+  const rows = (payments as Array<{ id: string }> | null) ?? [];
+  const alreadyBooked = await fetchAlreadyBookedReferences(
+    supabase,
+    rows.map((r) => r.id),
+    "auto:rent_received",
+  );
+  for (const p of rows) {
+    if (alreadyBooked.has(p.id)) {
+      stats.processed++;
+      stats.skipped++;
+      continue;
+    }
     const result = await ensureReceiptAccountingEntry(supabase as any, p.id);
     recordResult(stats, result, { category: "rent", sourceId: p.id });
   }
@@ -161,7 +207,18 @@ async function backfillDepositReceived(
     return stats;
   }
 
-  for (const m of (movements as Array<{ id: string }> | null) ?? []) {
+  const rows = (movements as Array<{ id: string }> | null) ?? [];
+  const alreadyBooked = await fetchAlreadyBookedReferences(
+    supabase,
+    rows.map((r) => r.id),
+    "auto:deposit_received",
+  );
+  for (const m of rows) {
+    if (alreadyBooked.has(m.id)) {
+      stats.processed++;
+      stats.skipped++;
+      continue;
+    }
     const result = await ensureDepositReceivedEntry(supabase as any, m.id);
     recordResult(stats, result, { category: "depositIn", sourceId: m.id });
   }
@@ -199,7 +256,18 @@ async function backfillDepositRefunded(
     return stats;
   }
 
-  for (const r of (refunds as Array<{ id: string }> | null) ?? []) {
+  const rows = (refunds as Array<{ id: string }> | null) ?? [];
+  const alreadyBooked = await fetchAlreadyBookedReferences(
+    supabase,
+    rows.map((row) => row.id),
+    "auto:deposit_returned",
+  );
+  for (const r of rows) {
+    if (alreadyBooked.has(r.id)) {
+      stats.processed++;
+      stats.skipped++;
+      continue;
+    }
     const result = await ensureDepositRefundedEntry(supabase as any, r.id);
     recordResult(stats, result, { category: "depositOut", sourceId: r.id });
   }
@@ -246,7 +314,18 @@ async function backfillSubscriptions(
     return stats;
   }
 
-  for (const inv of (invoices as Array<{ id: string }> | null) ?? []) {
+  const rows = (invoices as Array<{ id: string }> | null) ?? [];
+  const alreadyBooked = await fetchAlreadyBookedReferences(
+    supabase,
+    rows.map((r) => r.id),
+    "auto:subscription_paid",
+  );
+  for (const inv of rows) {
+    if (alreadyBooked.has(inv.id)) {
+      stats.processed++;
+      stats.skipped++;
+      continue;
+    }
     const result = await ensureSubscriptionPaidEntry(supabase as any, inv.id);
     recordResult(stats, result, { category: "subscription", sourceId: inv.id });
   }
