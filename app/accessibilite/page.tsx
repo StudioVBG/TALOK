@@ -88,14 +88,36 @@ export default function AccessibilitePage() {
                   peuvent être inférieurs au ratio 4,5:1 recommandé.
                 </li>
                 <li>
-                  Certaines animations au défilement (framer-motion) ne sont pas
-                  encore intégralement désactivées par la préférence{" "}
-                  <code className="text-emerald-300">prefers-reduced-motion</code>.
-                </li>
-                <li>
                   Quelques images décoratives du site vitrine n&apos;ont pas
                   d&apos;attribut <code className="text-emerald-300">alt</code>{" "}
                   explicite.
+                </li>
+                <li>
+                  L&apos;audit complet par un organisme tiers certifié reste à
+                  programmer pour vérifier l&apos;ensemble des 106 critères RGAA.
+                </li>
+              </ul>
+
+              <h3 className="text-lg font-semibold text-white mt-6 mb-2">
+                Points conformes
+              </h3>
+              <ul className="list-disc list-inside text-slate-300 space-y-2">
+                <li>
+                  Les animations au défilement respectent la préférence
+                  système <code className="text-emerald-300">prefers-reduced-motion</code>{" "}
+                  (conforme WCAG 2.1 AA critère 2.3.3).
+                </li>
+                <li>
+                  Lien d&apos;évitement « Aller au contenu principal » en haut
+                  de chaque page (critère RGAA 12.7).
+                </li>
+                <li>
+                  Navigation clavier complète (menu, dropdowns, formulaires)
+                  via Radix UI (composants ARIA natifs).
+                </li>
+                <li>
+                  Hiérarchie de titres sémantique (h1 unique par page, h2/h3
+                  structurés).
                 </li>
               </ul>
 
