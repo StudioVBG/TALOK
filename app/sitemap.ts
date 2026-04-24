@@ -128,6 +128,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
+  const corporatePages: MetadataRoute.Sitemap = [
+    {
+      url: `${BASE_URL}/presse`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
+      url: `${BASE_URL}/statut`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.4,
+    },
+    {
+      url: `${BASE_URL}/accessibilite`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.4,
+    },
+  ];
+
   // /auth/signup redirige (307) vers /signup/role. Seule la cible finale
   // est listee pour eviter un redirect dans le sitemap.
   const authPages: MetadataRoute.Sitemap = [
@@ -221,6 +242,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...solutionPages,
     ...toolPages,
     ...roiCalculatorPage,
+    ...corporatePages,
     ...authPages,
     ...contentHubPages,
     ...blogPages,

@@ -651,6 +651,22 @@ export const PAGE_METADATA = {
     keywords: ["calculateur roi gestion locative", "talok vs agence", "economie frais agence", "commission agence immobiliere"],
     canonical: `${SITE_URL}/calculateur-roi`,
   }),
+  accessibilite: generatePageMetadata({
+    title: "Déclaration d'accessibilité",
+    description: "Déclaration d'accessibilité RGAA 4.1 de Talok. État de conformité, dérogations, voies de recours, contact accessibilité.",
+    canonical: `${SITE_URL}/accessibilite`,
+  }),
+  presse: generatePageMetadata({
+    title: "Espace presse",
+    description: "Logos, identité visuelle, chiffres clés et contact presse de Talok — logiciel de gestion locative né en Martinique.",
+    keywords: ["talok presse", "media kit talok", "logo talok", "contact presse gestion locative"],
+    canonical: `${SITE_URL}/presse`,
+  }),
+  statut: generatePageMetadata({
+    title: "Statut des services",
+    description: "État en temps réel des services Talok : application, paiements, emails, notifications. Historique des incidents.",
+    canonical: `${SITE_URL}/statut`,
+  }),
 
   // === Pages About/Témoignages ===
   aPropos: generatePageMetadata({
