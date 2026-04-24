@@ -95,6 +95,7 @@ import { CapacitorProvider } from "@/components/providers/capacitor-provider";
 import { MotionProvider } from "@/components/providers/motion-provider";
 import { AccessibilityProvider } from "@/components/providers/accessibility-provider";
 import { CookieBanner } from "@/components/rgpd/CookieBanner";
+import { AutoBreadcrumbSchema } from "@/components/seo/AutoBreadcrumbSchema";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -307,6 +308,8 @@ export default function RootLayout({
             __html: JSON.stringify(websiteJsonLd),
           }}
         />
+        {/* BreadcrumbList genere automatiquement a partir de l'URL (client component) */}
+        <AutoBreadcrumbSchema />
       </head>
       <body className={`${inter.className} antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
