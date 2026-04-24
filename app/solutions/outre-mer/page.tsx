@@ -22,14 +22,13 @@ import {
   Euro,
   Sun,
   MapPin,
-  Sparkles,
   Heart,
   Ship,
   Building2,
   Calculator,
 } from "lucide-react";
 
-const DOM_REGIONS = [
+const DROM_REGIONS = [
   { name: "Martinique", flag: "🇲🇶", users: "+800" },
   { name: "Guadeloupe", flag: "🇬🇵", users: "+650" },
   { name: "Guyane", flag: "🇬🇫", users: "+150" },
@@ -37,55 +36,63 @@ const DOM_REGIONS = [
   { name: "Mayotte", flag: "🇾🇹", users: "+50" },
 ];
 
-const DOM_SPECIFICITIES = [
+const DROM_SPECIFICITIES = [
   {
     icon: Clock,
     title: "Support fuseau horaire Antilles",
-    description: "Notre équipe est disponible sur le fuseau des Antilles. Plus besoin d'attendre minuit pour avoir une réponse.",
+    description:
+      "Notre équipe est disponible sur le fuseau des Antilles. Plus besoin d'attendre minuit pour avoir une réponse.",
   },
   {
     icon: Ship,
     title: "Délais postaux compris",
-    description: "Les courriers mettent 2 semaines ? On le sait. Nos relances sont calibrées pour les délais DOM.",
+    description:
+      "Les courriers mettent 2 semaines ? On le sait. Nos relances sont calibrées pour les délais DROM-COM.",
   },
   {
     icon: Euro,
     title: "Fiscalité Pinel Outre-Mer",
-    description: "Exports adaptés aux spécificités fiscales DOM : Pinel OM, Girardin, réductions majorées.",
+    description:
+      "Exports adaptés aux spécificités fiscales DROM-COM : Pinel OM, Girardin, réductions majorées.",
   },
   {
     icon: FileText,
     title: "Réglementations locales",
-    description: "Documents conformes aux arrêtés préfectoraux locaux. Zones tendues, encadrement des loyers.",
+    description:
+      "Documents conformes aux arrêtés préfectoraux locaux. Zones tendues, encadrement des loyers.",
   },
   {
     icon: Building2,
     title: "Spécificités construction",
-    description: "Normes cycloniques, parasismiques... Nos EDL intègrent les points de contrôle locaux.",
+    description:
+      "Normes cycloniques, parasismiques... Nos EDL intègrent les points de contrôle locaux.",
   },
   {
     icon: Sun,
     title: "Saisonnalité comprise",
-    description: "Haute saison touristique, carnaval, vacances scolaires décalées. On connaît votre calendrier.",
+    description:
+      "Haute saison touristique, carnaval, vacances scolaires décalées. On connaît votre calendrier.",
   },
 ];
 
 const TESTIMONIALS = [
   {
-    quote: "Enfin un logiciel qui comprend nos réalités ! Le support répond à mes heures, les documents sont adaptés.",
+    quote:
+      "Enfin un logiciel qui comprend nos réalités ! Le support répond à mes heures, les documents sont adaptés.",
     author: "Jean-Marc P.",
     location: "Schœlcher, Martinique",
     properties: "4 biens",
   },
   {
-    quote: "J'ai testé 3 logiciels métropolitains avant. Talok est le seul qui gère correctement mes spécificités fiscales Pinel OM.",
+    quote:
+      "J'ai testé 3 logiciels métropolitains avant. Talok est le seul qui gère correctement mes spécificités fiscales Pinel OM.",
     author: "Corine D.",
     location: "Pointe-à-Pitre, Guadeloupe",
     properties: "SCI · 8 biens",
   },
 ];
 
-export default function DomTomPage() {
+export default function OutreMerPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
       {/* Hero */}
@@ -116,7 +123,7 @@ export default function DomTomPage() {
             </p>
 
             <div className="flex flex-wrap justify-center gap-4 mb-8">
-              <Link href="/auth/signup">
+              <Link href="/essai-gratuit">
                 <Button size="lg" className="bg-gradient-to-r from-teal-600 to-cyan-600 hover:opacity-90">
                   Essayer gratuitement
                   <ArrowRight className="w-4 h-4 ml-2" />
@@ -130,9 +137,9 @@ export default function DomTomPage() {
               </a>
             </div>
 
-            {/* DOM Regions */}
+            {/* DROM Regions */}
             <div className="flex flex-wrap justify-center gap-4 mt-8">
-              {DOM_REGIONS.map((region) => (
+              {DROM_REGIONS.map((region) => (
                 <div
                   key={region.name}
                   className="flex items-center gap-2 bg-slate-800/30 rounded-full px-4 py-2 border border-slate-700/50"
@@ -167,7 +174,7 @@ export default function DomTomPage() {
           </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-            {DOM_SPECIFICITIES.map((spec, index) => (
+            {DROM_SPECIFICITIES.map((spec, index) => (
               <motion.div
                 key={spec.title}
                 initial={{ opacity: 0, y: 20 }}
@@ -257,7 +264,7 @@ export default function DomTomPage() {
                 Pinel Outre-Mer, Girardin... On gère
               </h2>
               <p className="text-slate-400">
-                Les dispositifs fiscaux DOM ont leurs spécificités. Nos exports sont adaptés.
+                Les dispositifs fiscaux DROM-COM ont leurs spécificités. Nos exports sont adaptés.
               </p>
             </div>
 
@@ -267,7 +274,7 @@ export default function DomTomPage() {
                 <ul className="space-y-2">
                   {[
                     "Réduction Pinel OM majorée (jusqu'à 32%)",
-                    "Plafonds de loyers spécifiques DOM",
+                    "Plafonds de loyers spécifiques DROM-COM",
                     "Plafonds de ressources locataires",
                     "Zones éligibles A, B1, B2",
                     "Girardin industriel et logement social",
@@ -365,7 +372,7 @@ export default function DomTomPage() {
               Essayez gratuitement pendant 14 jours.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/auth/signup">
+              <Link href="/essai-gratuit">
                 <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100">
                   Créer mon compte gratuit
                   <ArrowRight className="w-4 h-4 ml-2" />

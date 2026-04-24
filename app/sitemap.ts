@@ -90,7 +90,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const solutionPages: MetadataRoute.Sitemap = [
     "administrateurs-biens",
-    "dom-tom",
+    "outre-mer",
     "investisseurs",
     "proprietaires-particuliers",
     "sci-familiales",

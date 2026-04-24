@@ -226,6 +226,9 @@ const nextConfig = {
       { source: '/admin/tenants/:id', destination: '/admin/people/tenants/:id', permanent: true },
       // /admin/emails → /admin/email-templates (page consolidee avec editeur)
       { source: '/admin/emails', destination: '/admin/email-templates', permanent: true },
+
+      // === Terminologie corrigée : DOM-TOM obsolète depuis 2003 ===
+      { source: '/solutions/dom-tom', destination: '/solutions/outre-mer', permanent: true },
     ];
   },
 

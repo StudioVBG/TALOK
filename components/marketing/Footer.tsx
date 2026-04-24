@@ -18,7 +18,8 @@ const columns = [
       { label: "Propriétaires", href: "/solutions/proprietaires-particuliers" },
       { label: "Investisseurs", href: "/solutions/investisseurs" },
       { label: "Agences", href: "/solutions/administrateurs-biens" },
-      { label: "France d\u2019outre-mer", href: "/solutions/dom-tom" },
+      { label: "France d\u2019outre-mer", href: "/solutions/outre-mer" },
+      { label: "Syndics", href: "/solutions/syndics" },
     ],
   },
   {
