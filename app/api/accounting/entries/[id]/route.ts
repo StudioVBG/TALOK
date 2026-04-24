@@ -10,6 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { z } from "zod";
 import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
+import { isEntryOwnedByProfile } from '@/lib/accounting/entry-access';
 
 export const dynamic = "force-dynamic";
 
@@ -52,23 +53,27 @@ export async function GET(request: Request, context: Context) {
     const featureGate = await requireAccountingAccess(profile.id, 'entries');
     if (featureGate) return featureGate;
 
-    let query = supabase
+    const { data: entry, error } = await supabase
       .from("accounting_entries")
       .select(`
         *,
         invoice:invoices(id, periode, montant_total, statut),
         payment:payments(id, montant, statut, date_paiement)
       `)
-      .eq("id", id);
-
-    if (profile.role !== "admin") {
-      query = query.eq("owner_id", profile.id);
-    }
-
-    const { data: entry, error } = await query.single();
+      .eq("id", id)
+      .single();
 
     if (error || !entry) {
       throw new ApiError(404, "Écriture non trouvée");
+    }
+
+    // Ownership scoping for non-admin. Engine-posted entries carry entity_id
+    // (owner_id is NULL), legacy flat entries carry owner_id directly.
+    if (profile.role !== "admin") {
+      const ok = await isEntryOwnedByProfile(supabase, entry, profile.id);
+      if (!ok) {
+        throw new ApiError(404, "Écriture non trouvée");
+      }
     }
 
     return NextResponse.json({ success: true, data: entry });
@@ -97,8 +102,8 @@ export async function PUT(request: Request, context: Context) {
       .eq("user_id", user.id)
       .single();
 
-    if (!profile || profile.role !== "admin") {
-      throw new ApiError(403, "Seuls les administrateurs peuvent modifier les écritures");
+    if (!profile || (profile.role !== "admin" && profile.role !== "owner")) {
+      throw new ApiError(403, "Non autorisé");
     }
 
     // Feature gate: check subscription plan
@@ -108,7 +113,7 @@ export async function PUT(request: Request, context: Context) {
     // Vérifier que l'écriture existe et n'est pas validée
     const { data: existing } = await supabase
       .from("accounting_entries")
-      .select("id, valid_date")
+      .select("id, valid_date, is_validated, entity_id, owner_id")
       .eq("id", id)
       .single();
 
@@ -116,7 +121,14 @@ export async function PUT(request: Request, context: Context) {
       throw new ApiError(404, "Écriture non trouvée");
     }
 
-    if (existing.valid_date) {
+    if (profile.role !== "admin") {
+      const ok = await isEntryOwnedByProfile(supabase, existing, profile.id);
+      if (!ok) {
+        throw new ApiError(404, "Écriture non trouvée");
+      }
+    }
+
+    if (existing.valid_date || existing.is_validated) {
       throw new ApiError(400, "Impossible de modifier une écriture validée");
     }
 
@@ -165,8 +177,8 @@ export async function DELETE(request: Request, context: Context) {
       .eq("user_id", user.id)
       .single();
 
-    if (!profile || profile.role !== "admin") {
-      throw new ApiError(403, "Seuls les administrateurs peuvent supprimer les écritures");
+    if (!profile || (profile.role !== "admin" && profile.role !== "owner")) {
+      throw new ApiError(403, "Non autorisé");
     }
 
     // Feature gate: check subscription plan
@@ -176,7 +188,7 @@ export async function DELETE(request: Request, context: Context) {
     // Vérifier que l'écriture existe et n'est pas validée
     const { data: existing } = await supabase
       .from("accounting_entries")
-      .select("id, valid_date, ecriture_num")
+      .select("id, valid_date, is_validated, ecriture_num, entity_id, owner_id")
       .eq("id", id)
       .single();
 
@@ -184,7 +196,14 @@ export async function DELETE(request: Request, context: Context) {
       throw new ApiError(404, "Écriture non trouvée");
     }
 
-    if (existing.valid_date) {
+    if (profile.role !== "admin") {
+      const ok = await isEntryOwnedByProfile(supabase, existing, profile.id);
+      if (!ok) {
+        throw new ApiError(404, "Écriture non trouvée");
+      }
+    }
+
+    if (existing.valid_date || existing.is_validated) {
       throw new ApiError(400, "Impossible de supprimer une écriture validée. Utilisez une écriture d'extourne.");
     }
 
