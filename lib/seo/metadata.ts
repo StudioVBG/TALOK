@@ -645,6 +645,12 @@ export const PAGE_METADATA = {
     keywords: ["outils propriétaire gratuit", "calculateur immobilier", "simulateur locatif"],
     canonical: `${SITE_URL}/outils`,
   }),
+  calculateurROI: generatePageMetadata({
+    title: "Calculateur d'économies Talok vs agence",
+    description: "Combien économisez-vous en gérant vos biens avec Talok plutôt qu'avec une agence à 8 % ? Simulateur instantané, résultat en temps réel.",
+    keywords: ["calculateur roi gestion locative", "talok vs agence", "economie frais agence", "commission agence immobiliere"],
+    canonical: `${SITE_URL}/calculateur-roi`,
+  }),
 
   // === Pages About/Témoignages ===
   aPropos: generatePageMetadata({

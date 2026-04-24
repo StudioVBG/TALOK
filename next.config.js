@@ -229,6 +229,9 @@ const nextConfig = {
 
       // === Terminologie corrigée : DOM-TOM obsolète depuis 2003 ===
       { source: '/solutions/dom-tom', destination: '/solutions/outre-mer', permanent: true },
+
+      // === Legal : terms legacy → CGU canonique ===
+      { source: '/legal/terms', destination: '/legal/cgu', permanent: true },
     ];
   },
 

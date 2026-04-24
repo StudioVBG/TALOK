@@ -119,6 +119,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority,
   }));
 
+  const roiCalculatorPage: MetadataRoute.Sitemap = [
+    {
+      url: `${BASE_URL}/calculateur-roi`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+  ];
+
   // /auth/signup redirige (307) vers /signup/role. Seule la cible finale
   // est listee pour eviter un redirect dans le sitemap.
   const authPages: MetadataRoute.Sitemap = [
@@ -211,6 +220,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...featureSubpages,
     ...solutionPages,
     ...toolPages,
+    ...roiCalculatorPage,
     ...authPages,
     ...contentHubPages,
     ...blogPages,
