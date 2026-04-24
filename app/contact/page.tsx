@@ -37,7 +37,6 @@ import { PublicFooter } from "@/components/layout/public-footer";
 
 const SUBJECTS = [
   { value: "general", label: "Question générale" },
-  { value: "demo", label: "Demander une démo" },
   { value: "enterprise", label: "Offre Enterprise" },
   { value: "support", label: "Support technique" },
   { value: "partnership", label: "Partenariat" },

@@ -125,7 +125,7 @@ export default function AdministrateursBiensPage() {
             <div className="flex flex-wrap justify-center gap-4 mb-8">
               <Link href="/contact?subject=enterprise">
                 <Button size="lg" className="bg-gradient-to-r from-amber-600 to-orange-600 hover:opacity-90">
-                  Demander une démo
+                  Nous contacter
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               </Link>
@@ -241,7 +241,7 @@ export default function AdministrateursBiensPage() {
                 </ul>
                 <Link href="/contact?subject=enterprise">
                   <Button className="w-full" variant={tier.popular ? "default" : "outline"}>
-                    {tier.price === "Sur devis" ? "Nous contacter" : "Demander une démo"}
+                    Nous contacter
                   </Button>
                 </Link>
               </motion.div>
