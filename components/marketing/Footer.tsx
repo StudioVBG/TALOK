@@ -29,7 +29,10 @@ const columns = [
       { label: "Guides", href: "/guides" },
       { label: "FAQ", href: "/faq" },
       { label: "Témoignages", href: "/temoignages" },
-      { label: "Outils gratuits", href: "/outils/calcul-rendement-locatif" },
+      { label: "Outils gratuits", href: "/outils" },
+      { label: "Calculateur d’économies", href: "/calculateur-roi" },
+      { label: "Presse", href: "/presse" },
+      { label: "Statut", href: "/statut" },
     ],
   },
   {
@@ -38,7 +41,9 @@ const columns = [
       { label: "CGU", href: "/legal/cgu" },
       { label: "CGV", href: "/legal/cgv" },
       { label: "Confidentialité", href: "/legal/privacy" },
+      { label: "Cookies", href: "/legal/cookies" },
       { label: "Mentions légales", href: "/legal/mentions" },
+      { label: "Accessibilité", href: "/accessibilite" },
     ],
   },
 ]

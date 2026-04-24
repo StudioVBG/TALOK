@@ -94,7 +94,7 @@ const FEATURES = [
     icon: CheckmarkCircle01Icon,
     image:
       "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?q=80&w=1200",
-    description: "Diagnostics et règles spécifiques DOM-TOM inclus.",
+    description: "Diagnostics et règles spécifiques DROM-COM inclus.",
   },
 ];
 

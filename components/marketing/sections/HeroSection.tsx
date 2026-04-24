@@ -133,12 +133,6 @@ export function HeroSection() {
               className="mt-8 flex flex-col gap-3 sm:flex-row"
             >
               <MagneticCTA />
-              <a
-                href="#fonctionnalites"
-                className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-card px-8 py-3.5 text-base font-semibold text-slate-700 transition-colors hover:bg-slate-50"
-              >
-                Voir une démo
-              </a>
             </motion.div>
 
             {/* Reassurances — stagger blur-in */}

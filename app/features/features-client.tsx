@@ -46,7 +46,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { TrustBar, Guarantees } from "@/components/marketing/TrustBadges";
-import { DemoVideoModalFeatures } from "@/components/marketing/DemoVideoModal";
 
 // ============================================
 // DATA
@@ -579,7 +578,6 @@ export default function FeaturesClient() {
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>
                 </Link>
-                <DemoVideoModalFeatures />
               </div>
             </div>
           </motion.div>
