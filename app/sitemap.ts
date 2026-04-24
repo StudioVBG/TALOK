@@ -75,12 +75,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const featureSubpages: MetadataRoute.Sitemap = [
     "comptabilite-fiscalite",
+    "documents",
     "etats-des-lieux",
     "gestion-biens",
+    "gestion-des-baux",
     "gestion-locataires",
+    "immeuble-copropriete",
     "paiements-en-ligne",
     "quittances-loyers",
     "signature-electronique",
+    "tickets-et-travaux",
   ].map((slug) => ({
     url: `${BASE_URL}/fonctionnalites/${slug}`,
     lastModified: now,
@@ -94,6 +98,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "investisseurs",
     "proprietaires-particuliers",
     "sci-familiales",
+    "syndics",
   ].map((slug) => ({
     url: `${BASE_URL}/solutions/${slug}`,
     lastModified: now,
@@ -102,15 +107,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const toolPages: MetadataRoute.Sitemap = [
-    "calcul-frais-notaire",
-    "calcul-rendement-locatif",
-    "calcul-revision-irl",
-    "simulateur-charges",
-  ].map((slug) => ({
-    url: `${BASE_URL}/outils/${slug}`,
+    { slug: "", priority: 0.8 },
+    { slug: "calcul-frais-notaire", priority: 0.7 },
+    { slug: "calcul-rendement-locatif", priority: 0.7 },
+    { slug: "calcul-revision-irl", priority: 0.7 },
+    { slug: "simulateur-charges", priority: 0.7 },
+  ].map(({ slug, priority }) => ({
+    url: slug ? `${BASE_URL}/outils/${slug}` : `${BASE_URL}/outils`,
     lastModified: now,
     changeFrequency: "monthly" as const,
-    priority: 0.7,
+    priority,
   }));
 
   // /auth/signup redirige (307) vers /signup/role. Seule la cible finale
@@ -125,12 +131,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   const contentHubPages: MetadataRoute.Sitemap = [
-    {
-      url: `${BASE_URL}/blog`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.8,
-    },
+    // /blog retire du sitemap tant que la page est en noindex (stub).
+    // A reintegrer des que le feed dynamique est branche.
     {
       url: `${BASE_URL}/guides`,
       lastModified: now,

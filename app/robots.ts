@@ -22,18 +22,41 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "*",
         allow: "/",
         disallow: [
-          "/app/",        // Zones privées
-          "/admin/",      // Administration
-          "/api/",        // APIs
-          "/auth/",       // Authentification (sauf signin/signup)
-          "/signature/",  // Signatures privées
-          "/_next/",      // Assets Next.js
+          "/app/",
+          "/admin/",
+          "/api/",
+          "/auth/",
+          "/signature/",
+          "/_next/",
+          // Espaces authentifiés par rôle — ne doivent pas être crawlés
+          "/owner/",
+          "/tenant/",
+          "/agency/",
+          "/provider/",
+          "/copro/",
+          "/syndic/",
+          "/guarantor/",
+          // Route de redirection, pas indexable
+          "/essai-gratuit",
         ],
       },
       {
         userAgent: "Googlebot",
         allow: ["/", "/blog/", "/legal/"],
-        disallow: ["/app/", "/admin/", "/api/", "/signature/"],
+        disallow: [
+          "/app/",
+          "/admin/",
+          "/api/",
+          "/auth/",
+          "/signature/",
+          "/owner/",
+          "/tenant/",
+          "/agency/",
+          "/provider/",
+          "/copro/",
+          "/syndic/",
+          "/guarantor/",
+        ],
       },
     ],
     sitemap: `${BASE_URL}/sitemap.xml`,
