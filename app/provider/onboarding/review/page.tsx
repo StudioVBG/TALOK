@@ -22,6 +22,9 @@ export default function ProviderReviewPage() {
       // Marquer l'onboarding comme terminé
       // Dans une version complète, cela déclencherait une modération admin
       await onboardingService.saveDraft("provider_review", { submitted: true }, "provider");
+      // Pose profiles.onboarding_completed_at côté API, annule les rappels pending
+      // et déclenche la notif "Bienvenue". Best-effort, non bloquant.
+      await fetch("/api/me/onboarding-complete", { method: "POST" }).catch(() => {});
 
       setSubmitted(true);
       toast({
