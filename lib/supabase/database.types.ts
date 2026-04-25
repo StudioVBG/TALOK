@@ -193,7 +193,7 @@ export type ProfileRow = {
   login_count?: number
   onboarding_completed_at?: string | null
   onboarding_skipped_at?: string | null
-  identity_status?: 'unverified' | 'phone_verified' | 'document_uploaded' | 'identity_review' | 'identity_verified' | 'identity_rejected'
+  identity_status?: 'unverified' | 'phone_skipped' | 'phone_verified' | 'document_uploaded' | 'identity_review' | 'identity_verified' | 'identity_rejected'
   onboarding_step?: 'account_created' | 'phone_pending' | 'phone_done' | 'profile_pending' | 'profile_done' | 'document_pending' | 'document_done' | 'complete'
   identity_verified_at?: string | null
   phone_verified?: boolean

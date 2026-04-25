@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 
 type IdentityStatus =
   | "unverified"
+  | "phone_skipped"
   | "phone_verified"
   | "document_uploaded"
   | "identity_review"
@@ -48,6 +49,7 @@ const ROUTE_GATES: RouteGate[] = [
 
 const STATUS_ORDER: IdentityStatus[] = [
   "unverified",
+  "phone_skipped",
   "phone_verified",
   "document_uploaded",
   "identity_review",
@@ -58,6 +60,9 @@ const STATUS_ORDER: IdentityStatus[] = [
 function meetsRequirement(current: IdentityStatus, required: RequiredLevel): boolean {
   if (current === "identity_rejected") return false;
   if (current === "identity_review" && required !== "identity_verified") return true;
+  // phone_skipped débloque uniquement les pages dashboard standard ;
+  // les actions sensibles (document_uploaded, identity_verified) restent gardées.
+  if (current === "phone_skipped") return required === "phone_verified";
   return STATUS_ORDER.indexOf(current) >= STATUS_ORDER.indexOf(required);
 }
 
@@ -65,6 +70,8 @@ function getRedirectPath(status: IdentityStatus, role?: string): string {
   // La page /onboarding/phone est mutualisée pour tous les rôles.
   // Elle lit le rôle du profil et propose le parcours approprié.
   if (status === "unverified") return "/onboarding/phone";
+  // phone_skipped accédant à une route qui exige plus → reprend la vérification.
+  if (status === "phone_skipped") return "/onboarding/phone";
   if (status === "phone_verified") {
     // Rediriger vers l'onboarding spécifique du rôle plutôt que /onboarding/profile
     if (role && ["owner", "tenant", "provider", "guarantor", "agency", "syndic"].includes(role)) {

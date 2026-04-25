@@ -13,6 +13,7 @@ import { TenantAppLayout } from "@/components/layout/tenant-app-layout";
 import { ErrorBoundary } from "@/components/error-boundary";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { checkIdentityGate } from "@/lib/helpers/identity-gate";
+import { PhoneVerificationBanner } from "@/components/identity/PhoneVerificationBanner";
 
 /**
  * Auto-link les lease_signers orphelins pour un locataire existant.
@@ -116,6 +117,7 @@ export default async function TenantLayout({
   return (
     <ErrorBoundary>
       <CsrfTokenInjector />
+      <PhoneVerificationBanner identityStatus={profile.identity_status} pathname={pathname} />
       <TenantDataProvider dashboard={dashboardData} profile={profile} error={dataError}>
         <TenantAppLayout profile={profile}>{children}</TenantAppLayout>
       </TenantDataProvider>

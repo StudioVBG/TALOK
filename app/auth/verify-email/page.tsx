@@ -1,5 +1,4 @@
 "use client";
-// @ts-nocheck
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -70,11 +69,12 @@ export default function VerifyEmailPage() {
       // Essayer d'envoyer l'email via le service
       try {
         await authService.resendConfirmationEmail(email);
-      } catch (serviceError: any) {
+      } catch (serviceError: unknown) {
+        const message = serviceError instanceof Error ? serviceError.message : "";
         // Si erreur de session, essayer directement avec Supabase
         if (
-          serviceError.message?.includes("session") ||
-          serviceError.message?.includes("Auth session missing")
+          message.includes("session") ||
+          message.includes("Auth session missing")
         ) {
           const supabase = (await import("@/lib/supabase/client")).createClient();
           const { getAuthCallbackUrl } = await import("@/lib/utils/redirect-url");
@@ -123,12 +123,13 @@ export default function VerifyEmailPage() {
           router.push("/dashboard");
           return;
         }
-      } catch (sessionError: any) {
+      } catch (sessionError: unknown) {
         // Pas de session active, c'est normal après la création du compte
         // L'utilisateur doit cliquer sur le lien dans l'email pour créer la session
+        const message = sessionError instanceof Error ? sessionError.message : "";
         if (
-          !sessionError.message?.includes("session") &&
-          !sessionError.message?.includes("Auth session missing")
+          !message.includes("session") &&
+          !message.includes("Auth session missing")
         ) {
           throw sessionError;
         }

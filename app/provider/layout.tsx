@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
 import { checkIdentityGate } from "@/lib/helpers/identity-gate";
+import { PhoneVerificationBanner } from "@/components/identity/PhoneVerificationBanner";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { ProviderBottomNav } from "@/components/layout/provider-bottom-nav";
@@ -61,6 +62,7 @@ export default async function VendorLayout({
   return (
     <ErrorBoundary>
       <CsrfTokenInjector />
+      <PhoneVerificationBanner identityStatus={profile.identity_status} pathname={pathname} />
       <OnboardingWrapper
         role="provider"
         profileId={profile.id}
