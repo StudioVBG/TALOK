@@ -82,6 +82,13 @@ export function QuoteTemplatePicker({ onLoad }: QuoteTemplatePickerProps) {
   const handleSelect = (template: QuoteTemplate) => {
     onLoad(template);
     setOpen(false);
+    // Fire-and-forget : incrémente usage_count côté serveur (non bloquant)
+    fetch(`/api/provider/quote-templates/${template.id}/use`, {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => {
+      // ignore — pas critique pour le flux de creation de devis
+    });
   };
 
   return (

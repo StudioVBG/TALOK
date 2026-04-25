@@ -264,6 +264,16 @@ export default function QuoteDetailPage() {
                 Envoyer
               </Button>
             )}
+            <Button variant="outline" asChild>
+              <a
+                href={`/api/provider/quotes/${quoteId}/pdf?download=true`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                PDF
+              </a>
+            </Button>
             {canEdit && (
               <Button variant="outline" asChild>
                 <Link href={`/provider/quotes/${quoteId}/edit`}>
