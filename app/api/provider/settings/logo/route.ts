@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * API Routes pour le logo entreprise du prestataire
+ * GET    /api/provider/settings/logo - Recupere l'URL actuelle du logo
  * POST   /api/provider/settings/logo - Upload (ou remplace) le logo
  * DELETE /api/provider/settings/logo - Supprime le logo
  *
@@ -31,6 +32,43 @@ function pathFromPublicUrl(publicUrl: string, bucket: string): string | null {
   const idx = publicUrl.indexOf(marker);
   if (idx === -1) return null;
   return publicUrl.substring(idx + marker.length);
+}
+
+export async function GET() {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Non autorise' }, { status: 401 });
+    }
+
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
+      .from('profiles')
+      .select('id, role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (!profile || profile.role !== 'provider') {
+      return NextResponse.json({ error: 'Acces non autorise' }, { status: 403 });
+    }
+
+    const { data: providerProfile } = await serviceClient
+      .from('provider_profiles')
+      .select('company_logo_url')
+      .eq('profile_id', profile.id)
+      .single();
+
+    return NextResponse.json({
+      company_logo_url: providerProfile?.company_logo_url ?? null,
+    });
+  } catch (error: unknown) {
+    console.error('Error in GET /api/provider/settings/logo:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Erreur serveur' },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(request: NextRequest) {

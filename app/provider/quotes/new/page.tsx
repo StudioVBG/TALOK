@@ -27,6 +27,11 @@ import { useToast } from "@/components/ui/use-toast";
 import { format, addDays } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import {
+  QuoteTemplatePicker,
+  type QuoteTemplate,
+} from "@/components/provider/quote-template-picker";
+import { SaveQuoteTemplateDialog } from "@/components/provider/save-quote-template-dialog";
 
 interface QuoteLine {
   id: string;
@@ -74,6 +79,43 @@ export default function NewQuotePage() {
       lines.map((l) => (l.id === id ? { ...l, [field]: value } : l))
     );
   };
+
+  const handleLoadTemplate = (template: QuoteTemplate) => {
+    if (template.items.length === 0) {
+      toast({
+        title: "Template vide",
+        description: "Ce template ne contient aucune ligne.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setLines(
+      template.items.map((item, idx) => ({
+        id: `${template.id}-${item.id || idx}`,
+        description: item.title,
+        quantity: Number(item.quantity) || 1,
+        unit_price: (item.unit_price_cents || 0) / 100,
+      }))
+    );
+    setForm((prev) => ({
+      ...prev,
+      description: prev.description || template.name,
+      notes: prev.notes || template.default_terms || "",
+      valid_until: addDays(new Date(), template.default_validity_days || 30),
+    }));
+    toast({
+      title: "Template chargé",
+      description: `« ${template.name} » a été appliqué au devis.`,
+    });
+  };
+
+  const buildSnapshotForTemplate = () =>
+    lines.map((l) => ({
+      title: l.description,
+      quantity: l.quantity || 1,
+      unit_price_euros: l.unit_price || 0,
+      tax_rate: 20,
+    }));
 
   const calculateSubtotal = () => {
     return lines.reduce((sum, line) => sum + line.quantity * line.unit_price, 0);
@@ -166,12 +208,29 @@ export default function NewQuotePage() {
             <ArrowLeft className="h-4 w-4" />
             Retour aux devis
           </Link>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 via-orange-900 to-slate-900 bg-clip-text text-transparent">
-            Nouveau devis
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Créez un devis pour votre client
-          </p>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 via-orange-900 to-slate-900 bg-clip-text text-transparent">
+                Nouveau devis
+              </h1>
+              <p className="text-muted-foreground mt-1">
+                Créez un devis pour votre client
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <QuoteTemplatePicker onLoad={handleLoadTemplate} />
+              <SaveQuoteTemplateDialog
+                getCurrentLines={buildSnapshotForTemplate}
+                defaultValidityDays={Math.max(
+                  1,
+                  Math.round(
+                    (form.valid_until.getTime() - Date.now()) / (24 * 60 * 60 * 1000)
+                  )
+                )}
+                defaultTaxRate={20}
+              />
+            </div>
+          </div>
         </div>
 
         <div className="space-y-6">

@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
+import { ProviderLogoCard } from "@/components/provider/provider-logo-card";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -236,6 +237,11 @@ export default function ProviderSettingsPage() {
                 </div>
               </CardContent>
             </Card>
+          </motion.div>
+
+          {/* Logo entreprise */}
+          <motion.div variants={itemVariants}>
+            <ProviderLogoCard />
           </motion.div>
 
           {/* Activité */}
