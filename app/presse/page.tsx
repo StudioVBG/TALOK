@@ -1,5 +1,4 @@
 import Image from "next/image";
-import Link from "next/link";
 import {
   Newspaper,
   Download,
@@ -10,6 +9,7 @@ import {
   Building2,
   Heart,
 } from "lucide-react";
+import { PressContactForm } from "@/components/marketing/PressContactForm";
 
 const LOGOS = [
   {
@@ -192,40 +192,20 @@ export default function PressePage() {
         </section>
 
         {/* Contact presse */}
-        <section className="max-w-3xl mx-auto">
+        <section id="contact-presse" className="max-w-3xl mx-auto scroll-mt-24">
           <div className="bg-gradient-to-br from-blue-900/30 to-cyan-900/30 rounded-2xl p-8 border border-blue-500/20">
-            <div className="flex items-start gap-4">
+            <div className="flex items-center gap-4 mb-6">
               <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
                 <Mail className="w-6 h-6 text-blue-400" />
               </div>
-              <div className="flex-1">
-                <h2 className="text-xl font-bold text-white mb-2">Contact presse</h2>
-                <p className="text-slate-300 mb-4">
-                  Pour toute demande d&apos;interview, d&apos;information
-                  complémentaire ou de visuels spécifiques :
+              <div>
+                <h2 className="text-xl font-bold text-white">Contact presse</h2>
+                <p className="text-sm text-slate-300">
+                  Interview, visuels HD, chiffres, citation fondateur — on répond.
                 </p>
-                <div className="space-y-2 text-sm">
-                  <p>
-                    <span className="text-slate-400">Email : </span>
-                    <a
-                      href="mailto:presse@talok.fr"
-                      className="text-blue-400 hover:underline"
-                    >
-                      presse@talok.fr
-                    </a>
-                  </p>
-                  <p>
-                    <span className="text-slate-400">Contact général : </span>
-                    <Link
-                      href="/contact?subject=press"
-                      className="text-blue-400 hover:underline"
-                    >
-                      formulaire de contact
-                    </Link>
-                  </p>
-                </div>
               </div>
             </div>
+            <PressContactForm />
           </div>
         </section>
       </div>
