@@ -58,6 +58,34 @@ export default function OnboardingPhonePage() {
     }
   };
 
+  const handleSkip = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/identity/skip-phone", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Impossible de différer la vérification.");
+      }
+      toast({
+        title: "Vérification différée",
+        description:
+          "Vous pourrez vérifier votre téléphone plus tard. Certaines actions (signature de bail, paiements) resteront indisponibles.",
+      });
+      router.push(from);
+    } catch (error: unknown) {
+      toast({
+        title: "Erreur",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Impossible de différer la vérification.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleVerifyCode = async () => {
     if (!code.trim()) return;
     setLoading(true);
@@ -130,6 +158,14 @@ export default function OnboardingPhonePage() {
               )}
               Envoyer le code
             </Button>
+            <button
+              type="button"
+              onClick={handleSkip}
+              disabled={loading}
+              className="text-sm text-muted-foreground hover:text-foreground text-center block w-full disabled:opacity-50"
+            >
+              Vérifier plus tard
+            </button>
           </>
         ) : (
           <>

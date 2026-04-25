@@ -14,6 +14,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { EntityProvider } from "@/providers/EntityProvider";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { checkIdentityGate } from "@/lib/helpers/identity-gate";
+import { PhoneVerificationBanner } from "@/components/identity/PhoneVerificationBanner";
 
 /**
  * Layout Owner - Server Component
@@ -148,6 +149,7 @@ export default async function OwnerLayout({
     <ErrorBoundary>
       {/* Injection du token CSRF pour les mutations sécurisées */}
       <CsrfTokenInjector />
+      <PhoneVerificationBanner identityStatus={profile.identity_status} pathname={pathname} />
       <OwnerDataProvider
         properties={properties}
         dashboard={dashboard}

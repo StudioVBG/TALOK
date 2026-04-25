@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
 import { checkIdentityGate } from "@/lib/helpers/identity-gate";
+import { PhoneVerificationBanner } from "@/components/identity/PhoneVerificationBanner";
 import { getSecondaryRoleManifest } from "@/lib/navigation/secondary-role-manifest";
 import { ErrorBoundary } from "@/components/error-boundary";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
@@ -61,6 +62,7 @@ export default async function GuarantorLayout({ children }: { children: ReactNod
   return (
     <ErrorBoundary>
       <CsrfTokenInjector />
+      <PhoneVerificationBanner identityStatus={profile.identity_status} pathname={pathname} />
       <OnboardingWrapper
         role="guarantor"
         profileId={profile.id}
