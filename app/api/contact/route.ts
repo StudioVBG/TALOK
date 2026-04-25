@@ -31,6 +31,9 @@ const contactSchema = z.object({
   company: z.string().trim().max(150).optional().or(z.literal("")),
   subject: z.enum(["general", "enterprise", "support", "partnership", "press", "other"]),
   message: z.string().trim().min(10, "Message trop court (min 10 caractères)").max(5000),
+  // Champs optionnels presse-specific (formulaire /presse)
+  mediaOutlet: z.string().trim().max(150).optional().or(z.literal("")),
+  deadline: z.string().trim().max(100).optional().or(z.literal("")),
   // Honeypot : doit rester vide
   website: z.string().max(0).optional(),
 });
@@ -89,6 +92,8 @@ export async function POST(request: Request) {
     <p><strong>Email :</strong> <a href="mailto:${escapeHtml(data.email)}">${escapeHtml(data.email)}</a></p>
     ${data.phone ? `<p><strong>Téléphone :</strong> ${escapeHtml(data.phone)}</p>` : ""}
     ${data.company ? `<p><strong>Société :</strong> ${escapeHtml(data.company)}</p>` : ""}
+    ${data.mediaOutlet ? `<p><strong>Média :</strong> ${escapeHtml(data.mediaOutlet)}</p>` : ""}
+    ${data.deadline ? `<p><strong>Deadline :</strong> ${escapeHtml(data.deadline)}</p>` : ""}
     <hr>
     <p><strong>Message :</strong></p>
     <p style="white-space: pre-wrap;">${escapeHtml(data.message)}</p>
@@ -102,6 +107,8 @@ export async function POST(request: Request) {
     `Email : ${data.email}`,
     data.phone ? `Téléphone : ${data.phone}` : null,
     data.company ? `Société : ${data.company}` : null,
+    data.mediaOutlet ? `Média : ${data.mediaOutlet}` : null,
+    data.deadline ? `Deadline : ${data.deadline}` : null,
     ``,
     `Message :`,
     data.message,
