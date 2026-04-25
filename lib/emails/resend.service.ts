@@ -12,6 +12,14 @@
 
 import { Resend } from 'resend';
 import { emailTemplates } from './templates';
+import {
+  providerQuoteApprovedEmail,
+  type ProviderQuoteApprovedParams,
+} from './templates/provider-quote-approved';
+import {
+  providerComplianceReminderEmail,
+  type ProviderComplianceReminderParams,
+} from './templates/provider-compliance-reminder';
 import { withRetry } from './utils/retry';
 import { checkRateLimitBatch } from './utils/rate-limit';
 import { validateEmails } from './utils/validation';
@@ -1040,6 +1048,57 @@ export async function sendEDLFullySignedNotification(data: {
   });
 }
 
+/**
+ * Envoie au prestataire la notification d'acceptation d'un de ses devis.
+ *
+ * idempotencyKey: quote-accepted/<quoteId> — un seul email par devis,
+ * meme en cas de re-tentative.
+ */
+export async function sendProviderQuoteApprovedEmail(
+  data: ProviderQuoteApprovedParams & { providerEmail: string }
+): Promise<EmailResult> {
+  const template = providerQuoteApprovedEmail(data);
+  return sendEmail({
+    to: data.providerEmail,
+    subject: template.subject,
+    html: template.html,
+    idempotencyKey: `quote-accepted/${data.quoteId}`,
+    tags: [
+      { name: 'type', value: 'provider-quote-approved' },
+      { name: 'quote_id', value: data.quoteId },
+    ],
+  });
+}
+
+/**
+ * Envoie au prestataire un rappel d'expiration d'un document compliance.
+ *
+ * idempotencyKey: compliance-reminder/<provider>/<documentLabel>/<window>
+ *   ou window est 'expired' | 'j7' | 'j30' — evite les doublons quand le
+ *   cron passe deux fois dans la meme fenetre.
+ */
+export async function sendProviderComplianceReminderEmail(
+  data: ProviderComplianceReminderParams & {
+    providerEmail: string;
+    providerProfileId: string;
+    /** Fenetre d'envoi pour la cle d'idempotence */
+    window: 'expired' | 'j7' | 'j30';
+  }
+): Promise<EmailResult> {
+  const template = providerComplianceReminderEmail(data);
+  const labelKey = data.documentLabel.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  return sendEmail({
+    to: data.providerEmail,
+    subject: template.subject,
+    html: template.html,
+    idempotencyKey: `compliance-reminder/${data.providerProfileId}/${labelKey}/${data.window}`,
+    tags: [
+      { name: 'type', value: 'provider-compliance-reminder' },
+      { name: 'window', value: data.window },
+    ],
+  });
+}
+
 // Export du service
 export const emailService = {
   send: sendEmail,
@@ -1071,5 +1130,8 @@ export const emailService = {
   sendAccountDeletionConfirmation,
   // Alertes propriétaire impayés
   sendOwnerPaymentAlert,
+  // Prestataires
+  sendProviderQuoteApprovedEmail,
+  sendProviderComplianceReminderEmail,
 };
 
