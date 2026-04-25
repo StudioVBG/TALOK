@@ -14,7 +14,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { Phone, ArrowRight, RefreshCw } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 
 export default function OnboardingPhonePage() {
   const router = useRouter();
@@ -31,9 +30,15 @@ export default function OnboardingPhonePage() {
     if (!phone.trim()) return;
     setLoading(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOtp({ phone });
-      if (error) throw error;
+      const res = await fetch("/api/identity/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Impossible d'envoyer le code.");
+      }
       setStep("verify");
       toast({
         title: "Code envoyé",
@@ -57,29 +62,14 @@ export default function OnboardingPhonePage() {
     if (!code.trim()) return;
     setLoading(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.verifyOtp({
-        phone,
-        token: code,
-        type: "sms",
+      const res = await fetch("/api/identity/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
       });
-      if (error) throw error;
-
-      // Mettre à jour le profil
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from("profiles")
-          .update({
-            telephone: phone,
-            phone_verified: true,
-            phone_verified_at: new Date().toISOString(),
-            identity_status: "phone_verified",
-            onboarding_step: "phone_done",
-          })
-          .eq("user_id", user.id);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error || "Le code saisi est incorrect.");
       }
 
       toast({
