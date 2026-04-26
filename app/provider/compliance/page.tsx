@@ -398,7 +398,11 @@ export default function ProviderCompliancePage() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 md:grid-cols-2">
-                {status.missing_documents.map((doc) => {
+                {Array.from(
+                  new Map(
+                    status.missing_documents.map((d) => [d.document_type, d])
+                  ).values()
+                ).map((doc) => {
                   const requirement = status.requirements.find(
                     (r) => r.document_type === doc.document_type
                   );
