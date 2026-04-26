@@ -14,10 +14,12 @@ import {
   Download,
   FileText,
   TrendingDown,
+  TrendingUp,
   UserCheck,
   Scale,
   ListTree,
   ArrowRightLeft,
+  Building2,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -33,6 +35,7 @@ const accountingTabs: AccountingTab[] = [
   { label: "Écritures", href: "/owner/accounting/entries", icon: BookOpen },
   { label: "Grand livre", href: "/owner/accounting/grand-livre", icon: BookOpenCheck },
   { label: "Balance", href: "/owner/accounting/balance", icon: Scale },
+  { label: "Rendement par bien", href: "/owner/accounting/rendement", icon: TrendingUp },
   { label: "Plan comptable", href: "/owner/accounting/chart", icon: ListTree },
   { label: "Justificatifs", href: "/owner/accounting/upload", icon: ScanLine },
   { label: "Banque", href: "/owner/accounting/bank", icon: Landmark },
@@ -48,6 +51,11 @@ const accountingTabs: AccountingTab[] = [
     label: "Déclarations",
     href: "/owner/accounting/declarations",
     icon: FileText,
+  },
+  {
+    label: "Acquisitions",
+    href: "/owner/accounting/property-acquisitions",
+    icon: Building2,
   },
   {
     label: "Amortissements",

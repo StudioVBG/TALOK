@@ -46,9 +46,11 @@ interface InvoiceRow {
   date_echeance: string | null;
   periode: string | null;
   issuer_entity_id: string | null;
+  tenant_id: string | null;
   lease: {
     id: string;
     signatory_entity_id: string | null;
+    tenant_id: string | null;
     property: {
       id: string;
       legal_entity_id: string | null;
@@ -90,9 +92,11 @@ export async function ensureInvoiceIssuedEntry(
           date_echeance,
           periode,
           issuer_entity_id,
+          tenant_id,
           lease:leases!inner(
             id,
             signatory_entity_id,
+            tenant_id,
             property:properties!inner(
               id,
               legal_entity_id,
@@ -155,6 +159,13 @@ export async function ensureInvoiceIssuedEntry(
       return { created: false, skippedReason: "actor_unresolved" };
     }
 
+    // Axes analytiques propagés sur les 2 lignes de l'écriture (411 +
+    // 706000) — la substitution sous-compte auxiliaire 411T00001 sur la
+    // ligne 411 est faite par engine.createEntry → auxiliary-resolver.
+    const tenantId = row.tenant_id ?? row.lease?.tenant_id ?? undefined;
+    const propertyId = row.lease?.property?.id ?? undefined;
+    const leaseId = row.lease?.id ?? undefined;
+
     const entry = await createAutoEntry(supabase, "rent_invoiced", {
       entityId,
       exerciseId: exercise.id,
@@ -163,6 +174,10 @@ export async function ensureInvoiceIssuedEntry(
       label,
       date: entryDate,
       reference: invoiceId,
+      propertyId,
+      leaseId,
+      thirdPartyType: tenantId ? "tenant" : undefined,
+      thirdPartyId: tenantId,
     });
 
     if (shouldMarkInformational(config)) {

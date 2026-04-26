@@ -23,6 +23,17 @@ export interface EntryLine {
   debitCents: number;
   creditCents: number;
   pieceRef?: string;
+  // ── Axes analytiques (ajoutés par migration 20260427200000) ──
+  /** Type de tiers (tenant, vendor, landlord, mandant…) pour le sous-compte auxiliaire. */
+  thirdPartyType?: 'tenant' | 'landlord' | 'vendor' | 'mandant' | 'copro_owner' | 'employee' | 'tax_authority';
+  /** UUID du tiers (profiles.id, providers.id…). */
+  thirdPartyId?: string;
+  /** Bien immobilier impacté — pour P&L par bien. */
+  propertyId?: string;
+  /** Lot du bien (building_units.id). */
+  unitId?: string;
+  /** Bail concerné. */
+  leaseId?: string;
 }
 
 export interface CreateEntryParams {
@@ -74,6 +85,9 @@ export interface GrandLivreItem {
   accountNumber: string;
   accountLabel: string;
   entries: {
+    /** ID de la ligne (accounting_entry_lines.id) — utilisé pour le lettrage. */
+    lineId: string;
+    /** ID de l'écriture parente (accounting_entries.id). */
     entryId: string;
     entryNumber: string;
     entryDate: string;
@@ -117,6 +131,8 @@ export type AutoEntryEvent =
   | 'rent_received'
   | 'rent_invoiced'
   | 'rent_payment_clearing'
+  | 'provision_called'
+  | 'provision_received'
   | 'supplier_invoice'
   | 'supplier_payment'
   | 'deposit_received'
@@ -184,6 +200,20 @@ export async function createEntry(
   supabase: SupabaseClient,
   params: CreateEntryParams,
 ): Promise<AccountingEntry> {
+  // 1. Substitue les comptes collectifs par leurs sous-comptes auxiliaires
+  //    pour les lignes qui portent un thirdPartyId. Branché en amont de
+  //    validateLines pour que les amounts restent inchangés (substitution
+  //    de compte uniquement).
+  //    Import dynamique pour éviter une dépendance circulaire engine ↔
+  //    auxiliary-resolver (qui importe le type EntryLine d'engine).
+  const { resolveAuxiliaryAccounts } = await import(
+    './auxiliary-resolver'
+  );
+  params = {
+    ...params,
+    lines: await resolveAuxiliaryAccounts(supabase, params.entityId, params.lines),
+  };
+
   validateLines(params.lines);
 
   // Get next entry number via SQL function
@@ -233,6 +263,12 @@ export async function createEntry(
     debit_cents: line.debitCents,
     credit_cents: line.creditCents,
     piece_ref: line.pieceRef ?? null,
+    // Axes analytiques (cf. migration 20260427200000) — propagés tels quels.
+    third_party_type: line.thirdPartyType ?? null,
+    third_party_id: line.thirdPartyId ?? null,
+    property_id: line.propertyId ?? null,
+    unit_id: line.unitId ?? null,
+    lease_id: line.leaseId ?? null,
   }));
 
   const { error: linesError } = await supabase
@@ -430,6 +466,7 @@ export async function getGrandLivre(
   let query = supabase
     .from('accounting_entry_lines')
     .select(`
+      id,
       account_number,
       label,
       debit_cents,
@@ -482,6 +519,7 @@ export async function getGrandLivre(
 
     const item = grouped.get(acc)!;
     item.entries.push({
+      lineId: (line as { id: string }).id,
       entryId: entryData.id,
       entryNumber: entryData.entry_number,
       entryDate: entryData.entry_date,
@@ -626,6 +664,31 @@ interface AutoEntryContext {
   bankAccount?: string;
   /** Target copro lot account */
   coproAccount?: string;
+  // ── Axes analytiques (cf. migration 20260427200000) ──
+  // Propagés sur TOUTES les lignes de l'écriture pour permettre P&L par bien
+  // et grand livre par tiers. Optionnels : aucun changement de comportement
+  // pour les callers qui ne les renseignent pas.
+  propertyId?: string;
+  unitId?: string;
+  leaseId?: string;
+  /** Tiers (locataire/fournisseur/propriétaire) pour sous-compte auxiliaire. */
+  thirdPartyType?: 'tenant' | 'landlord' | 'vendor' | 'mandant' | 'copro_owner' | 'employee' | 'tax_authority';
+  thirdPartyId?: string;
+}
+
+/** Helper : applique les axes analytiques du contexte sur chaque ligne. */
+function withAxes(ctx: AutoEntryContext, lines: EntryLine[]): EntryLine[] {
+  if (!ctx.propertyId && !ctx.leaseId && !ctx.unitId && !ctx.thirdPartyId) {
+    return lines;
+  }
+  return lines.map((l) => ({
+    ...l,
+    propertyId: l.propertyId ?? ctx.propertyId,
+    unitId: l.unitId ?? ctx.unitId,
+    leaseId: l.leaseId ?? ctx.leaseId,
+    thirdPartyType: l.thirdPartyType ?? ctx.thirdPartyType,
+    thirdPartyId: l.thirdPartyId ?? ctx.thirdPartyId,
+  }));
 }
 
 /** Mapping of auto-entry events to their debit/credit accounts */
@@ -642,10 +705,10 @@ const AUTO_ENTRIES: Record<
     source: 'auto:rent_received',
     reference: ctx.reference,
     userId: ctx.userId,
-    lines: [
+    lines: withAxes(ctx, [
       { accountNumber: ctx.bankAccount ?? '512100', debitCents: ctx.amountCents, creditCents: 0 },
       { accountNumber: '706000', debitCents: 0, creditCents: ctx.amountCents },
-    ],
+    ]),
   }),
 
   /**
@@ -654,6 +717,48 @@ const AUTO_ENTRIES: Record<
    * declaration_mode='is_comptable' (BIC/IS), pas pour le revenu foncier reel
    * ni le micro-foncier qui restent en encaissement.
    */
+  /**
+   * Appel mensuel des provisions de charges au locataire (mode IS).
+   * D 411xxx Locataires / C 419100 Provisions reçues.
+   * Pour mode reel/micro, les provisions sont enregistrees au paiement
+   * via 'provision_received'.
+   */
+  provision_called: (ctx) => ({
+    entityId: ctx.entityId,
+    exerciseId: ctx.exerciseId,
+    journalCode: 'VE',
+    entryDate: ctx.date,
+    label: ctx.label || 'Appel provisions de charges',
+    source: 'auto:provision_called',
+    reference: ctx.reference,
+    userId: ctx.userId,
+    lines: withAxes(ctx, [
+      { accountNumber: '411000', debitCents: ctx.amountCents, creditCents: 0 },
+      { accountNumber: '419100', debitCents: 0, creditCents: ctx.amountCents },
+    ]),
+  }),
+
+  /**
+   * Encaissement de la portion 'provisions de charges' d'un loyer (mode reel/micro).
+   * D 512xxx Banque / C 419100 Provisions de charges recues.
+   * Permet de tracer separement le solde du compte 4191 mois apres mois pour
+   * preparer la regularisation annuelle.
+   */
+  provision_received: (ctx) => ({
+    entityId: ctx.entityId,
+    exerciseId: ctx.exerciseId,
+    journalCode: 'BQ',
+    entryDate: ctx.date,
+    label: ctx.label || 'Provisions de charges encaissees',
+    source: 'auto:provision_received',
+    reference: ctx.reference,
+    userId: ctx.userId,
+    lines: withAxes(ctx, [
+      { accountNumber: ctx.bankAccount ?? '512100', debitCents: ctx.amountCents, creditCents: 0 },
+      { accountNumber: '419100', debitCents: 0, creditCents: ctx.amountCents },
+    ]),
+  }),
+
   rent_invoiced: (ctx) => ({
     entityId: ctx.entityId,
     exerciseId: ctx.exerciseId,
@@ -663,10 +768,10 @@ const AUTO_ENTRIES: Record<
     source: 'auto:rent_invoiced',
     reference: ctx.reference,
     userId: ctx.userId,
-    lines: [
+    lines: withAxes(ctx, [
       { accountNumber: '411000', debitCents: ctx.amountCents, creditCents: 0 },
       { accountNumber: '706000', debitCents: 0, creditCents: ctx.amountCents },
-    ],
+    ]),
   }),
 
   /**
@@ -728,10 +833,10 @@ const AUTO_ENTRIES: Record<
     source: 'auto:deposit_received',
     reference: ctx.reference,
     userId: ctx.userId,
-    lines: [
+    lines: withAxes(ctx, [
       { accountNumber: '512300', debitCents: ctx.amountCents, creditCents: 0 },
       { accountNumber: '165000', debitCents: 0, creditCents: ctx.amountCents },
-    ],
+    ]),
   }),
 
   deposit_returned: (ctx) => {
@@ -1377,6 +1482,25 @@ export async function applyLettrage(
     .in('id', lineIds);
 
   if (updateError) throw new Error(`Failed to apply lettrage: ${updateError.message}`);
+}
+
+/**
+ * Remove the lettrage code from a set of entry lines (délettrage).
+ * Pas de check d'équilibre : on retire simplement le marker. Utile quand
+ * l'utilisateur veut refaire un lettrage différemment.
+ */
+export async function removeLettrage(
+  supabase: SupabaseClient,
+  lineIds: string[],
+): Promise<void> {
+  if (lineIds.length < 1) {
+    throw new Error('Délettrage requires at least 1 line');
+  }
+  const { error } = await supabase
+    .from('accounting_entry_lines')
+    .update({ lettrage: null })
+    .in('id', lineIds);
+  if (error) throw new Error(`Failed to remove lettrage: ${error.message}`);
 }
 
 // ---------------------------------------------------------------------------
