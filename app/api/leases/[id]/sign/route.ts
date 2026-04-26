@@ -44,7 +44,7 @@ export async function POST(
       .from("profiles")
       .select("id, prenom, nom, role")
       .eq("user_id", user.id as any)
-      .single();
+      .maybeSingle();
     if (!profile) return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
 
     // Find signer

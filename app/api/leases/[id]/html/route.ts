@@ -24,15 +24,17 @@ export async function GET(
 
     const serviceClient = getServiceClient();
 
-    // Access check
-    const { data: profile } = await supabase.from("profiles").select("id, role").eq("user_id", user.id).single();
+    // Service-role: profile + lease lookups (cf. docs/audits/rls-cascade-audit.md).
+    // La cascade leases→properties bloquait silencieusement le bail au
+    // propriétaire légitime. Sécurité = check explicite owner/signer/tenant/admin.
+    const { data: profile } = await serviceClient.from("profiles").select("id, role").eq("user_id", user.id).maybeSingle();
     if (!profile) return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
 
     const { data: leaseCheck } = await serviceClient
       .from("leases")
       .select("tenant_id, sealed_at, signed_pdf_path, property:properties(owner_id, ville)")
       .eq("id", leaseId)
-      .single();
+      .maybeSingle();
 
     if (!leaseCheck) return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
 
