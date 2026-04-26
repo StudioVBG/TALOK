@@ -7,12 +7,18 @@
 --   B7. FK manquante document_analyses.document_id -> documents(id)
 --   B8. FK manquante amortization_schedules.property_id -> properties(id)
 --   B9. Index composite manquant audit_log(entity_id, created_at)
+--
+-- IMPORTANT: les FK et CHECK sont ajoutees en NOT VALID puis validees
+-- separement. Cela evite l'AccessExclusiveLock long sur les tables
+-- parentes (documents, properties) qui produisait des deadlocks
+-- contre les requetes applicatives en cours.
 -- =====================================================
+
+SET lock_timeout = '10s';
 
 -- =====================================================
 -- B1. ec_annotations : permettre aux entity_members de modifier
---     les annotations EC (resolution, statut) tout en preservant
---     l'integrite cote EC.
+--     les annotations EC tout en preservant l'integrite cote EC.
 -- =====================================================
 
 DROP POLICY IF EXISTS "ec_annotations_access" ON ec_annotations;
@@ -61,28 +67,31 @@ CREATE POLICY "ec_annotations_delete" ON ec_annotations
   );
 
 -- =====================================================
--- B2. accounting_audit_log : retirer la possibilite
---     d'INSERT directe par n'importe quel user authentifie.
---     Seuls les triggers SECURITY DEFINER et le service role
---     peuvent ecrire l'audit trail.
+-- B2. accounting_audit_log : retirer la possibilite d'INSERT
+--     directe par n'importe quel user authentifie. Seuls les
+--     triggers SECURITY DEFINER et le service role peuvent
+--     ecrire l'audit trail.
 -- =====================================================
 
 DROP POLICY IF EXISTS "audit_log_system_insert" ON accounting_audit_log;
 
--- Pas de policy INSERT cote authenticated -> empeche toute insertion
--- depuis l'API publique. Les triggers fn_audit_entry_changes (deja
--- en SECURITY DEFINER ci-dessous) et le service role bypass-RLS
--- continuent a fonctionner.
-
 ALTER FUNCTION fn_audit_entry_changes() SECURITY DEFINER;
+
+-- =====================================================
+-- B9. Index composite pour requetes audit par periode
+-- =====================================================
+
+CREATE INDEX IF NOT EXISTS idx_audit_entity_date
+  ON accounting_audit_log(entity_id, created_at DESC);
 
 -- =====================================================
 -- B7. FK manquante : document_analyses.document_id -> documents(id)
 --     ON DELETE CASCADE car une analyse OCR n'a aucun sens
 --     sans son document source.
+--
+--     NOT VALID pour eviter le scan complet sous AccessExclusiveLock.
 -- =====================================================
 
--- Nettoyage des analyses orphelines avant ajout de la contrainte
 DELETE FROM document_analyses
 WHERE document_id NOT IN (SELECT id FROM documents);
 
@@ -93,7 +102,15 @@ ALTER TABLE document_analyses
   ADD CONSTRAINT document_analyses_document_id_fkey
   FOREIGN KEY (document_id)
   REFERENCES documents(id)
-  ON DELETE CASCADE;
+  ON DELETE CASCADE
+  NOT VALID;
+
+-- VALIDATE acquiert un lock plus leger (ShareUpdateExclusive)
+-- compatible avec les SELECT/INSERT applicatifs.
+SET lock_timeout = '60s';
+ALTER TABLE document_analyses
+  VALIDATE CONSTRAINT document_analyses_document_id_fkey;
+SET lock_timeout = '10s';
 
 CREATE INDEX IF NOT EXISTS idx_doc_analyses_document
   ON document_analyses(document_id);
@@ -111,21 +128,21 @@ ALTER TABLE amortization_schedules
   ADD CONSTRAINT amortization_schedules_property_id_fkey
   FOREIGN KEY (property_id)
   REFERENCES properties(id)
-  ON DELETE RESTRICT;
+  ON DELETE RESTRICT
+  NOT VALID;
+
+SET lock_timeout = '60s';
+ALTER TABLE amortization_schedules
+  VALIDATE CONSTRAINT amortization_schedules_property_id_fkey;
+SET lock_timeout = '10s';
 
 CREATE INDEX IF NOT EXISTS idx_amort_sched_property
   ON amortization_schedules(property_id);
 
 -- =====================================================
--- B9. Index composite pour requetes audit par periode
--- =====================================================
-
-CREATE INDEX IF NOT EXISTS idx_audit_entity_date
-  ON accounting_audit_log(entity_id, created_at DESC);
-
--- =====================================================
 -- B-extra. CHECK constraint stricte sur entry_lines
---     Empeche debit ET credit > 0 sur la meme ligne
+--     Empeche debit ET credit > 0 sur la meme ligne.
+--     NOT VALID + VALIDATE pour eviter le scan complet bloquant.
 -- =====================================================
 
 ALTER TABLE accounting_entry_lines
@@ -136,7 +153,11 @@ ALTER TABLE accounting_entry_lines
     (debit_cents = 0 AND credit_cents > 0)
     OR (debit_cents > 0 AND credit_cents = 0)
     OR (debit_cents = 0 AND credit_cents = 0)
-  );
+  ) NOT VALID;
+
+SET lock_timeout = '60s';
+ALTER TABLE accounting_entry_lines
+  VALIDATE CONSTRAINT check_single_side;
 
 -- =====================================================
 -- COMMENTAIRES
