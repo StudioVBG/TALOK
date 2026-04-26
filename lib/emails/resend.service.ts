@@ -24,6 +24,10 @@ import {
   ownerQuoteReceivedEmail,
   type OwnerQuoteReceivedParams,
 } from './templates/owner-quote-received';
+import {
+  ownerQuoteSignatureOtpEmail,
+  type OwnerQuoteSignatureOtpParams,
+} from './templates/owner-quote-signature-otp';
 import { withRetry } from './utils/retry';
 import { checkRateLimitBatch } from './utils/rate-limit';
 import { validateEmails } from './utils/validation';
@@ -1076,6 +1080,26 @@ export async function sendOwnerQuoteReceivedEmail(
 }
 
 /**
+ * Envoie au proprietaire un code OTP pour signer electroniquement un devis
+ * (eIDAS niveau 2). Pas d'idempotency — chaque demande envoie un nouveau code.
+ */
+export async function sendOwnerQuoteSignatureOtpEmail(
+  data: OwnerQuoteSignatureOtpParams & { ownerEmail: string; quoteId: string }
+): Promise<EmailResult> {
+  const template = ownerQuoteSignatureOtpEmail(data);
+  return sendEmail({
+    to: data.ownerEmail,
+    subject: template.subject,
+    html: template.html,
+    // Pas d'idempotency : chaque request-otp doit envoyer un nouveau code.
+    tags: [
+      { name: 'type', value: 'quote-signature-otp' },
+      { name: 'quote_id', value: data.quoteId },
+    ],
+  });
+}
+
+/**
  * Envoie au prestataire la notification d'acceptation d'un de ses devis.
  *
  * idempotencyKey: quote-accepted/<quoteId> — un seul email par devis,
@@ -1162,5 +1186,6 @@ export const emailService = {
   sendProviderComplianceReminderEmail,
   // Proprietaire <- Prestataire
   sendOwnerQuoteReceivedEmail,
+  sendOwnerQuoteSignatureOtpEmail,
 };
 

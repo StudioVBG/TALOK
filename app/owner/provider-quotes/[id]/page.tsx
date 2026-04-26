@@ -33,6 +33,8 @@ import {
   Download,
   FileText,
   Loader2,
+  Mail,
+  ShieldCheck,
   X,
 } from "lucide-react";
 
@@ -76,7 +78,10 @@ interface QuoteDetail {
   owner_name?: string | null;
   acceptance_signed_name?: string | null;
   acceptance_signed_at?: string | null;
+  signature_level?: "simple" | "advanced" | null;
 }
+
+const ADVANCED_SIGNATURE_THRESHOLD = 10000; // EUR TTC
 
 const statusLabels: Record<QuoteStatus, { label: string; className: string }> = {
   draft: { label: "Brouillon", className: "bg-gray-100 text-gray-700" },
@@ -120,6 +125,10 @@ export default function OwnerProviderQuoteDetailPage() {
   const [rejecting, setRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [signedName, setSignedName] = useState("");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpDestination, setOtpDestination] = useState<string | null>(null);
+  const [requestingOtp, setRequestingOtp] = useState(false);
 
   useEffect(() => {
     if (!quoteId) return;
@@ -149,6 +158,36 @@ export default function OwnerProviderQuoteDetailPage() {
     };
   }, [quoteId, toast]);
 
+  const isAdvancedRequired =
+    quote != null && Number(quote.total_amount) > ADVANCED_SIGNATURE_THRESHOLD;
+
+  const handleRequestOtp = async () => {
+    if (!quote || requestingOtp) return;
+    setRequestingOtp(true);
+    try {
+      const res = await fetch(
+        `/api/provider/quotes/${quote.id}/signature/request-otp`,
+        { method: "POST", credentials: "include" },
+      );
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Erreur d'envoi du code");
+      setOtpSent(true);
+      setOtpDestination(json.destination_hint || null);
+      toast({
+        title: "Code envoyé",
+        description: `Vérifiez votre boîte ${json.destination_hint || "email"}.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Action impossible",
+        variant: "destructive",
+      });
+    } finally {
+      setRequestingOtp(false);
+    }
+  };
+
   const handleAccept = async () => {
     if (!quote || accepting) return;
     if (signedName.trim().length < 2) {
@@ -159,13 +198,24 @@ export default function OwnerProviderQuoteDetailPage() {
       });
       return;
     }
+    if (isAdvancedRequired && !/^\d{6}$/.test(otpCode)) {
+      toast({
+        title: "Code à 6 chiffres requis",
+        description: "Saisissez le code reçu par email.",
+        variant: "destructive",
+      });
+      return;
+    }
     setAccepting(true);
     try {
+      const payload: Record<string, string> = { signed_name: signedName.trim() };
+      if (isAdvancedRequired) payload.signed_otp_code = otpCode;
+
       const res = await fetch(`/api/provider/quotes/${quote.id}/accept`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ signed_name: signedName.trim() }),
+        body: JSON.stringify(payload),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Erreur lors de l'acceptation");
@@ -173,15 +223,17 @@ export default function OwnerProviderQuoteDetailPage() {
         title: "Devis accepté",
         description: "Le prestataire a été notifié par email.",
       });
-      // Refresh
       setQuote({
         ...quote,
         status: "accepted",
         accepted_at: json.accepted_at,
         acceptance_signed_name: signedName.trim(),
         acceptance_signed_at: json.accepted_at,
+        signature_level: json.signature_level || "simple",
       });
       setSignedName("");
+      setOtpCode("");
+      setOtpSent(false);
     } catch (error) {
       toast({
         title: "Erreur",
@@ -395,13 +447,30 @@ export default function OwnerProviderQuoteDetailPage() {
 
           {quote.acceptance_signed_name && (
             <div className="pt-3 border-t bg-emerald-50 -mx-6 px-6 py-3 text-sm">
-              <p className="font-medium text-emerald-900 mb-1">Signature d'acceptation</p>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <p className="font-medium text-emerald-900">Signature d'acceptation</p>
+                {quote.signature_level === "advanced" ? (
+                  <Badge className="bg-emerald-600 text-white gap-1">
+                    <ShieldCheck className="h-3 w-3" />
+                    Signature avancée (eIDAS AES)
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-white text-emerald-700 border-emerald-300">
+                    Signature simple
+                  </Badge>
+                )}
+              </div>
               <p className="text-emerald-800">
                 Signé par <strong>{quote.acceptance_signed_name}</strong>
                 {quote.acceptance_signed_at
                   ? ` le ${formatDateFr(quote.acceptance_signed_at)}`
                   : ""}
               </p>
+              {quote.signature_level === "advanced" && (
+                <p className="text-xs text-emerald-700 mt-1">
+                  Intégrité protégée par hash SHA-256 + HMAC. Vérification possible à tout moment.
+                </p>
+              )}
             </div>
           )}
         </CardContent>
@@ -428,11 +497,27 @@ export default function OwnerProviderQuoteDetailPage() {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Confirmer l'acceptation</AlertDialogTitle>
+                  <AlertDialogTitle className="flex items-center gap-2">
+                    Confirmer l'acceptation
+                    {isAdvancedRequired && (
+                      <Badge className="bg-blue-600 text-white gap-1">
+                        <ShieldCheck className="h-3 w-3" />
+                        Signature avancée
+                      </Badge>
+                    )}
+                  </AlertDialogTitle>
                   <AlertDialogDescription>
                     En signant ci-dessous, vous acceptez le devis pour un montant de{" "}
                     <strong>{formatEur(quote.total_amount)}</strong>. Cette acceptation
                     a valeur d'engagement contractuel envers le prestataire.
+                    {isAdvancedRequired && (
+                      <>
+                        <br />
+                        <span className="text-blue-700 font-medium">
+                          Montant {">"} 10 000 € : un code de vérification par email est requis (eIDAS AES).
+                        </span>
+                      </>
+                    )}
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <div className="space-y-3 py-2">
@@ -447,16 +532,74 @@ export default function OwnerProviderQuoteDetailPage() {
                       autoComplete="name"
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">
+
+                  {isAdvancedRequired && (
+                    <div className="space-y-2 pt-2 border-t">
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="otp-code">Code reçu par email *</Label>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleRequestOtp}
+                          disabled={requestingOtp || accepting}
+                          className="h-7 text-xs"
+                        >
+                          {requestingOtp ? (
+                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                          ) : (
+                            <Mail className="h-3 w-3 mr-1" />
+                          )}
+                          {otpSent ? "Renvoyer un code" : "Recevoir un code"}
+                        </Button>
+                      </div>
+                      <Input
+                        id="otp-code"
+                        value={otpCode}
+                        onChange={(e) =>
+                          setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+                        }
+                        placeholder="123456"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        maxLength={6}
+                        className="text-center text-lg tracking-widest font-mono"
+                        disabled={!otpSent}
+                      />
+                      {otpSent && otpDestination && (
+                        <p className="text-xs text-muted-foreground">
+                          Code envoyé à {otpDestination} — valable 10 minutes.
+                        </p>
+                      )}
+                      {!otpSent && (
+                        <p className="text-xs text-muted-foreground">
+                          Cliquez sur "Recevoir un code" pour démarrer la vérification.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="text-xs text-muted-foreground pt-2 border-t">
                     Votre nom, l'horodatage, votre IP et votre navigateur seront
                     enregistrés à titre de preuve d'acceptation.
+                    {isAdvancedRequired && (
+                      <>
+                        {" "}
+                        Un hash SHA-256 du devis et sa signature HMAC garantiront
+                        l'intégrité du document.
+                      </>
+                    )}
                   </p>
                 </div>
                 <AlertDialogFooter>
                   <AlertDialogCancel disabled={accepting}>Annuler</AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleAccept}
-                    disabled={accepting || signedName.trim().length < 2}
+                    disabled={
+                      accepting ||
+                      signedName.trim().length < 2 ||
+                      (isAdvancedRequired && (!otpSent || otpCode.length !== 6))
+                    }
                     className="bg-emerald-600 hover:bg-emerald-700"
                   >
                     {accepting ? (

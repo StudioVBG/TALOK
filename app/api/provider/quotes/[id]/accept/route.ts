@@ -8,25 +8,35 @@ export const dynamic = 'force-dynamic';
  * ou un admin. Cote owner : action "Accepter ce devis" depuis la page
  * de detail du devis.
  *
- * Effets de bord :
- *   1. provider_quotes.status -> 'accepted' + accepted_at = NOW()
- *   2. Envoi email "Votre devis a ete accepte" au prestataire (Resend)
+ * Body :
+ *   - signed_name (string, requis) : nom complet (signature simple)
+ *   - signed_otp_code (string, requis si total > seuil) : code 6 chiffres
+ *     recu par email via /signature/request-otp.
  *
- * Idempotent : si le devis est deja en statut 'accepted', renvoie 200
- * sans rien re-faire (et n'envoie pas d'email — Resend l'aurait dedup
- * de toute facon via idempotencyKey).
+ * Niveaux de signature :
+ *   - 'simple' (eIDAS SES)  : nom + IP + UA + timestamp
+ *   - 'advanced' (eIDAS AES) : SES + OTP + hash SHA-256 + HMAC-SHA256.
+ *     Active automatiquement si total_amount > seuil (defaut 10 000 EUR).
+ *
+ * Idempotent : si le devis est deja en statut 'accepted', renvoie 200.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getServiceClient } from '@/lib/supabase/service-client';
 import { sendProviderQuoteApprovedEmail } from '@/lib/emails/resend.service';
+import {
+  computeQuoteHash,
+  hashOtpCode,
+  requiresAdvancedSignature,
+  signQuoteHash,
+} from '@/lib/signature/quote-signature';
 import { z } from 'zod';
 
 const acceptBodySchema = z
   .object({
-    /** Nom complet saisi par l'acceptant (preuve simple). */
     signed_name: z.string().trim().min(2).max(120).optional(),
+    signed_otp_code: z.string().regex(/^\d{6}$/).optional(),
   })
   .partial()
   .default({});
@@ -43,14 +53,13 @@ export async function POST(
       return NextResponse.json({ error: 'Non autorise' }, { status: 401 });
     }
 
-    // Body optionnel pour signature
     let body: z.infer<typeof acceptBodySchema> = {};
     try {
       const raw = await request.json();
       const parsed = acceptBodySchema.safeParse(raw);
       if (parsed.success) body = parsed.data;
     } catch {
-      // body absent — accept sans signature (compat retro)
+      // body absent
     }
 
     const serviceClient = getServiceClient();
@@ -64,14 +73,19 @@ export async function POST(
       return NextResponse.json({ error: 'Profil introuvable' }, { status: 404 });
     }
 
+    // Fetch devis + items pour le hash canonique
     const { data: quote, error: fetchError } = await serviceClient
       .from('provider_quotes')
       .select(`
         id, status, accepted_at,
-        title, reference, total_amount,
+        title, reference, description,
+        subtotal, tax_amount, total_amount,
+        valid_until, created_at,
+        terms_and_conditions,
         owner_profile_id,
         provider_profile_id,
         property_id,
+        ticket_id,
         provider:profiles!provider_quotes_provider_profile_id_fkey (
           email, prenom, nom
         ),
@@ -80,6 +94,9 @@ export async function POST(
         ),
         property:properties (
           adresse_complete, code_postal, ville
+        ),
+        items:provider_quote_items (
+          description, quantity, unit, unit_price, tax_rate, sort_order
         )
       `)
       .eq('id', id)
@@ -98,12 +115,10 @@ export async function POST(
       );
     }
 
-    // Idempotent : deja accepte
     if (quote.status === 'accepted') {
       return NextResponse.json({ ok: true, already: true });
     }
 
-    // Statuts qu'on accepte de transitionner -> accepted
     const transitionable = ['sent', 'viewed'];
     if (!transitionable.includes(quote.status)) {
       return NextResponse.json(
@@ -114,9 +129,17 @@ export async function POST(
       );
     }
 
+    if (!body.signed_name) {
+      return NextResponse.json(
+        { error: 'Signature requise : saisissez votre nom complet (signed_name).' },
+        { status: 400 },
+      );
+    }
+
+    const needsAdvanced = requiresAdvancedSignature(quote.total_amount);
     const acceptedAt = new Date().toISOString();
 
-    // Capture preuves de signature (best-effort)
+    // Capture preuves
     const headers = request.headers;
     const ip =
       headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
@@ -127,12 +150,137 @@ export async function POST(
     const updatePayload: Record<string, unknown> = {
       status: 'accepted',
       accepted_at: acceptedAt,
+      acceptance_signed_name: body.signed_name,
+      acceptance_signed_at: acceptedAt,
+      acceptance_signed_ip: ip,
+      acceptance_signed_user_agent: userAgent,
+      signature_level: 'simple',
     };
-    if (body.signed_name) {
-      updatePayload.acceptance_signed_name = body.signed_name;
-      updatePayload.acceptance_signed_at = acceptedAt;
-      updatePayload.acceptance_signed_ip = ip;
-      updatePayload.acceptance_signed_user_agent = userAgent;
+
+    // Signature avancee : exige + valide OTP, calcule hash + HMAC
+    if (needsAdvanced) {
+      if (!body.signed_otp_code) {
+        return NextResponse.json(
+          {
+            error: 'Code de signature requis pour ce montant. Demandez un code via /signature/request-otp.',
+            requires_otp: true,
+          },
+          { status: 400 },
+        );
+      }
+
+      // Recuperer l'OTP actif le plus recent du profil sur ce devis
+      const { data: otp } = await serviceClient
+        .from('quote_signature_otps')
+        .select('id, code_hash, salt, expires_at, attempts, used_at')
+        .eq('quote_id', quote.id)
+        .eq('profile_id', profile.id)
+        .is('used_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!otp) {
+        return NextResponse.json(
+          { error: 'Aucun code actif. Demandez un nouveau code.', requires_otp: true },
+          { status: 400 },
+        );
+      }
+      if (new Date(otp.expires_at as string) < new Date()) {
+        return NextResponse.json(
+          { error: 'Code expire. Demandez un nouveau code.', requires_otp: true },
+          { status: 400 },
+        );
+      }
+      if ((otp.attempts as number) >= 3) {
+        // Brule cet OTP (impossible de reessayer)
+        await serviceClient
+          .from('quote_signature_otps')
+          .update({ used_at: new Date().toISOString() })
+          .eq('id', otp.id);
+        return NextResponse.json(
+          { error: 'Trop de tentatives. Demandez un nouveau code.', requires_otp: true },
+          { status: 400 },
+        );
+      }
+
+      const expectedHash = hashOtpCode(body.signed_otp_code, otp.salt as string);
+      if (expectedHash !== otp.code_hash) {
+        await serviceClient
+          .from('quote_signature_otps')
+          .update({ attempts: (otp.attempts as number) + 1 })
+          .eq('id', otp.id);
+        return NextResponse.json(
+          {
+            error: 'Code incorrect.',
+            attempts_remaining: Math.max(0, 3 - ((otp.attempts as number) + 1)),
+          },
+          { status: 400 },
+        );
+      }
+
+      // OTP valide -> bruler + calculer hash + HMAC
+      await serviceClient
+        .from('quote_signature_otps')
+        .update({ used_at: acceptedAt })
+        .eq('id', otp.id);
+
+      const items = ((quote.items || []) as Array<{
+        description: string;
+        quantity: number | string;
+        unit?: string | null;
+        unit_price: number | string;
+        tax_rate: number | string;
+        sort_order?: number | null;
+      }>).map((it) => ({
+        description: it.description,
+        quantity: it.quantity,
+        unit: it.unit ?? null,
+        unit_price: it.unit_price,
+        tax_rate: it.tax_rate,
+        sort_order: it.sort_order ?? 0,
+      }));
+
+      const documentHash = computeQuoteHash({
+        id: quote.id,
+        reference: quote.reference,
+        title: quote.title,
+        description: quote.description ?? null,
+        subtotal: quote.subtotal,
+        tax_amount: quote.tax_amount,
+        total_amount: quote.total_amount,
+        valid_until: quote.valid_until ?? null,
+        created_at: quote.created_at,
+        provider_profile_id: quote.provider_profile_id,
+        owner_profile_id: quote.owner_profile_id ?? null,
+        property_id: quote.property_id ?? null,
+        ticket_id: quote.ticket_id ?? null,
+        terms_and_conditions: quote.terms_and_conditions ?? null,
+        items,
+      });
+
+      let hmac: string;
+      try {
+        hmac = signQuoteHash({
+          documentHash,
+          quoteId: quote.id,
+          signedAtIso: acceptedAt,
+        });
+      } catch (err) {
+        console.error('[provider/quotes/:id/accept] HMAC error:', err);
+        return NextResponse.json(
+          {
+            error: 'Configuration serveur incomplete (SIGNATURE_HMAC_KEY manquant). Contactez le support.',
+          },
+          { status: 500 },
+        );
+      }
+
+      updatePayload.signature_level = 'advanced';
+      updatePayload.signature_otp_method = 'email';
+      updatePayload.signature_otp_verified_at = acceptedAt;
+      updatePayload.signature_document_hash = documentHash;
+      updatePayload.signature_hmac = hmac;
     }
 
     const { error: updateError } = await serviceClient
@@ -172,7 +320,6 @@ export async function POST(
             .filter(Boolean)
             .join(', ')
         : null;
-
       const totalEuros =
         typeof quote.total_amount === 'string'
           ? parseFloat(quote.total_amount)
@@ -193,7 +340,11 @@ export async function POST(
       });
     }
 
-    return NextResponse.json({ ok: true, accepted_at: acceptedAt });
+    return NextResponse.json({
+      ok: true,
+      accepted_at: acceptedAt,
+      signature_level: updatePayload.signature_level,
+    });
   } catch (error: unknown) {
     console.error('Error in POST /api/provider/quotes/[id]/accept:', error);
     return NextResponse.json(
