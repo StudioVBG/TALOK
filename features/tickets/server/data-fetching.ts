@@ -324,3 +324,56 @@ function avgOfNumbers(values: Array<number | null>): number | null {
   if (nums.length === 0) return null;
   return nums.reduce((s, v) => s + v, 0) / nums.length;
 }
+
+/**
+ * Compteurs pour les cartes "Actions rapides" du dashboard tickets owner.
+ * - workOrdersInProgress: travaux non termines/annules sur les biens du proprietaire
+ * - providersAvailable: prestataires actifs et verifies dans la marketplace
+ */
+export async function getTicketsActionStats(): Promise<{
+  workOrdersInProgress: number;
+  providersAvailable: number;
+}> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { workOrdersInProgress: 0, providersAvailable: 0 };
+
+  const serviceClient = getServiceClient();
+
+  const { data: profile } = await serviceClient
+    .from("profiles")
+    .select("id")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!profile) return { workOrdersInProgress: 0, providersAvailable: 0 };
+
+  const { data: properties } = await serviceClient
+    .from("properties")
+    .select("id")
+    .eq("owner_id", (profile as { id: string }).id);
+
+  const propertyIds = (properties || []).map((p) => (p as { id: string }).id);
+
+  const [woResult, provResult] = await Promise.all([
+    propertyIds.length === 0
+      ? Promise.resolve({ count: 0 })
+      : (serviceClient as any)
+          .from("work_orders")
+          .select("id", { count: "exact", head: true })
+          .in("property_id", propertyIds)
+          .not("statut", "in", "(done,cancelled)"),
+    (serviceClient as any)
+      .from("providers")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active")
+      .eq("is_verified", true),
+  ]);
+
+  return {
+    workOrdersInProgress: (woResult as { count: number | null }).count ?? 0,
+    providersAvailable: (provResult as { count: number | null }).count ?? 0,
+  };
+}

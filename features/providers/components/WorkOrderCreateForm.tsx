@@ -82,6 +82,33 @@ export function WorkOrderCreateForm() {
       .catch(() => setProviders([]));
   }, []);
 
+  // Pre-fill from ticket: arrive avec ?ticket_id=xxx sans property_id,
+  // on charge le ticket pour en deduire bien, titre, description, categorie
+  useEffect(() => {
+    if (!ticketId || propertyId) return;
+    fetch(`/api/v1/tickets/${ticketId}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const ticket = data?.ticket ?? data;
+        if (!ticket) return;
+        if (ticket.property_id) {
+          setValue('property_id', ticket.property_id, { shouldValidate: true });
+        }
+        if (ticket.titre && !watch('title')) {
+          setValue('title', ticket.titre);
+        }
+        if (ticket.description && !watch('description')) {
+          setValue('description', ticket.description);
+        }
+        if (ticket.category && !watch('category')) {
+          setValue('category', ticket.category as TradeCategory);
+        }
+      })
+      .catch(() => {
+        // silent: l'utilisateur peut toujours selectionner manuellement
+      });
+  }, [ticketId, propertyId, setValue, watch]);
+
   const onSubmit = async (data: CreateWorkOrderInput) => {
     setSubmitting(true);
     setError(null);

@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { ChevronRight, Wrench, User, MessageSquare, Hammer, MapPin } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -54,6 +55,8 @@ interface Ticket {
   ticket_comments?: unknown[];
   work_orders?: WorkOrder[];
 }
+
+const CLOSED_TICKET_STATUSES = new Set(["resolved", "closed", "cancelled"]);
 
 interface TicketListProps {
   tickets: Ticket[];
@@ -267,9 +270,32 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
               {/* Right: status + action */}
               <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 pl-4 border-l-0 sm:border-l border-border">
                 <TicketStatusBadge status={ticket.statut} />
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform">
-                  Voir <ChevronRight className="h-4 w-4" />
-                </span>
+                <div className="flex flex-col items-stretch gap-1.5">
+                  {variant === "owner" &&
+                    !activeWorkOrder &&
+                    !CLOSED_TICKET_STATUSES.has(ticket.statut) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        asChild
+                        className="relative z-10 gap-1.5"
+                      >
+                        <Link
+                          href={`/owner/work-orders/create?ticket_id=${ticket.id}${
+                            ticket.property_id
+                              ? `&property_id=${ticket.property_id}`
+                              : ""
+                          }`}
+                        >
+                          <Hammer className="h-3.5 w-3.5" />
+                          Demander des travaux
+                        </Link>
+                      </Button>
+                    )}
+                  <span className="inline-flex items-center justify-end gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform">
+                    Voir <ChevronRight className="h-4 w-4" />
+                  </span>
+                </div>
               </div>
             </div>
 

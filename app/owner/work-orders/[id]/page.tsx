@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   ArrowLeft, MapPin, User, Calendar, Euro, FileText, Send,
-  Play, CreditCard, AlertTriangle, Loader2, Plus,
+  Play, CreditCard, Loader2, Plus,
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
