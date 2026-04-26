@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -17,6 +18,7 @@ export async function PATCH(
   const { id } = await params;
   try {
     const supabase = await createClient();
+    const serviceClient = getServiceClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -35,18 +37,20 @@ export async function PATCH(
       );
     }
 
-    // Récupérer le ticket
-    const { data: ticket } = await supabase
+    const { data: ticket } = await serviceClient
       .from("tickets")
       .select(`
         id,
         statut,
         created_by_profile_id,
-        property:properties!inner(owner_id),
-        lease:leases(roommates(user_id))
+        owner_id,
+        assigned_to,
+        property:properties(owner_id),
+        lease:leases(roommates(user_id)),
+        work_orders(provider_id)
       `)
       .eq("id", id as any)
-      .single();
+      .maybeSingle();
 
     if (!ticket) {
       return NextResponse.json(
@@ -55,17 +59,19 @@ export async function PATCH(
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
-      .select("id, role")
+      .select("id, role, prenom, nom")
       .eq("user_id", user.id as any)
-      .single();
+      .maybeSingle();
 
     const profileData = profile as any;
 
     const ticketData = ticket as any;
     const isAdmin = profileData?.role === "admin";
-    const isOwner = ticketData.property?.owner_id === profileData?.id;
+    const isOwner =
+      ticketData.property?.owner_id === profileData?.id ||
+      ticketData.owner_id === profileData?.id;
     const isCreator = ticketData.created_by_profile_id === profileData?.id;
     const isProvider = profileData?.role === "provider" && ticketData.work_orders?.some((wo: any) => wo.provider_id === profileData.id);
     const isTenant = ticketData.lease?.roommates?.some((r: any) => r.user_id === user.id);
@@ -91,8 +97,7 @@ export async function PATCH(
       );
     }
 
-    // Mettre à jour le statut
-    const { data: updated, error } = await supabase
+    const { data: updated, error } = await serviceClient
       .from("tickets")
       .update({ statut } as any)
       .eq("id", id as any)
@@ -101,24 +106,22 @@ export async function PATCH(
 
     if (error) throw error;
 
-    // Si le ticket passe en resolved/closed, fermer la conversation liée
     if (["resolved", "closed"].includes(statut)) {
-      const { data: linkedConv } = await supabase
+      const { data: linkedConv } = await serviceClient
         .from("conversations")
         .select("id")
         .eq("ticket_id", id)
         .eq("status", "active")
-        .single();
+        .maybeSingle();
 
       if (linkedConv) {
-        await supabase
+        await serviceClient
           .from("conversations")
           .update({ status: "closed" })
           .eq("id", linkedConv.id);
 
-        // Envoyer un message système dans la conversation
         const statusLabel = statut === "resolved" ? "résolu" : "clôturé";
-        await supabase
+        await serviceClient
           .from("messages")
           .insert({
             conversation_id: linkedConv.id,
@@ -149,7 +152,7 @@ export async function PATCH(
         eventType = "Ticket.StatusUpdated";
     }
 
-    await supabase.from("outbox").insert({
+    await serviceClient.from("outbox").insert({
       event_type: eventType,
       payload: {
         ticket_id: id,
@@ -159,8 +162,7 @@ export async function PATCH(
       },
     } as any);
 
-    // Journaliser
-    await supabase.from("audit_log").insert({
+    await serviceClient.from("audit_log").insert({
       user_id: user.id,
       action: "ticket_status_updated",
       entity_type: "ticket",

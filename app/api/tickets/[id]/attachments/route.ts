@@ -28,43 +28,47 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const { data: profile } = await supabase
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    const serviceClient = getServiceClient();
     const { data: ticket, error: ticketError } = await serviceClient
       .from("tickets")
-      .select("id, property_id, created_by_profile_id")
+      .select("id, property_id, owner_id, created_by_profile_id, assigned_to")
       .eq("id", ticketId)
-      .single();
+      .maybeSingle();
 
     if (ticketError || !ticket) {
       return NextResponse.json({ error: "Ticket non trouvé" }, { status: 404 });
     }
 
-    const ticketAny = ticket as { created_by_profile_id?: string; property_id?: string };
+    const ticketAny = ticket as {
+      created_by_profile_id?: string;
+      property_id?: string;
+      owner_id?: string;
+      assigned_to?: string;
+    };
+    const isAdmin = profile.role === "admin";
     const isCreator = ticketAny.created_by_profile_id === profile.id;
-    if (!isCreator && profile.role !== "admin" && profile.role !== "owner") {
-      const propertyId = ticketAny.property_id;
-      if (!propertyId) {
-        return NextResponse.json({ error: "Ticket has no property" }, { status: 400 });
-      }
+    const isAssigned = ticketAny.assigned_to === profile.id;
+    let isOwner = ticketAny.owner_id === profile.id;
+    if (!isOwner && ticketAny.property_id) {
       const { data: property } = await serviceClient
         .from("properties")
         .select("owner_id")
-        .eq("id", propertyId)
-        .single();
-      const isOwner = (property as { owner_id?: string } | null)?.owner_id === profile.id;
-      if (!isOwner) {
-        return NextResponse.json({ error: "Accès non autorisé à ce ticket" }, { status: 403 });
-      }
+        .eq("id", ticketAny.property_id)
+        .maybeSingle();
+      isOwner = (property as { owner_id?: string } | null)?.owner_id === profile.id;
+    }
+    if (!isAdmin && !isCreator && !isOwner && !isAssigned) {
+      return NextResponse.json({ error: "Accès non autorisé à ce ticket" }, { status: 403 });
     }
 
     const formData = await request.formData();
@@ -99,20 +103,13 @@ export async function POST(
       );
     }
 
-    let ownerId: string | null = null;
-    if (profile.role === "owner" && ticketAny.property_id) {
+    let ownerId: string | null = ticketAny.owner_id ?? null;
+    if (!ownerId && ticketAny.property_id) {
       const { data: prop } = await serviceClient
         .from("properties")
         .select("owner_id")
         .eq("id", ticketAny.property_id)
-        .single();
-      ownerId = (prop as { owner_id?: string } | null)?.owner_id ?? null;
-    } else if (profile.role !== "owner" && ticketAny.property_id) {
-      const { data: prop } = await serviceClient
-        .from("properties")
-        .select("owner_id")
-        .eq("id", ticketAny.property_id)
-        .single();
+        .maybeSingle();
       ownerId = (prop as { owner_id?: string } | null)?.owner_id ?? null;
     }
 

@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -19,6 +20,7 @@ export async function GET(
   const { id } = await params;
   try {
     const supabase = await createClient();
+    const serviceClient = getServiceClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -27,37 +29,44 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Vérifier l'accès au ticket
-    const { data: ticket, error: ticketError } = await supabase
+    const { data: ticket, error: ticketError } = await serviceClient
       .from("tickets")
       .select(`
         id,
+        owner_id,
+        created_by_profile_id,
+        assigned_to,
         created_at,
         updated_at,
         statut,
         priorite,
-        property:properties!inner(owner_id)
+        property:properties(owner_id)
       `)
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
     if (ticketError || !ticket) {
       return NextResponse.json({ error: "Ticket non trouvé" }, { status: 404 });
     }
 
-    // Vérifier que l'utilisateur est le propriétaire
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
-      .select("id")
+      .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (ticket.property?.owner_id !== profile?.id) {
+    const profileId = profile?.id;
+    const isAdmin = profile?.role === "admin";
+    const isCreator = ticket.created_by_profile_id === profileId;
+    const isOwner =
+      ticket.property?.owner_id === profileId || ticket.owner_id === profileId;
+    const isAssigned = ticket.assigned_to === profileId;
+
+    if (!isAdmin && !isOwner && !isCreator && !isAssigned) {
       return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
     }
 
-    // Récupérer l'historique depuis audit_log
-    const { data: auditLogs, error: auditError } = await supabase
+    const { data: auditLogs } = await serviceClient
       .from("audit_log")
       .select(`
         id,
