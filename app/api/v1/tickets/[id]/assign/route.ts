@@ -11,6 +11,10 @@ import {
   logAudit,
 } from "@/lib/api/middleware";
 import { AssignTicketSchema } from "@/lib/api/schemas";
+import {
+  sendProviderMissionAssignedSms,
+  sendProviderSmsBestEffort,
+} from "@/lib/sms/provider-notifications";
 
 /**
  * POST /api/v1/tickets/[id]/assign
@@ -33,7 +37,7 @@ export async function POST(
     // Fetch ticket
     const { data: ticket } = await supabase
       .from("tickets")
-      .select("*, property:properties(owner_id)")
+      .select("*, property:properties(owner_id, adresse_complete, ville)")
       .eq("id", id)
       .single();
 
@@ -49,7 +53,7 @@ export async function POST(
     // Verify provider exists
     const { data: provider } = await supabase
       .from("profiles")
-      .select("id, role")
+      .select("id, role, telephone")
       .eq("id", data.provider_id)
       .single();
 
@@ -82,6 +86,30 @@ export async function POST(
     });
 
     await logAudit(supabase, "ticket.assigned", "tickets", id, auth.user.id, ticket, updated);
+
+    // SMS prestataire (best-effort, non bloquant)
+    if ((provider as { telephone?: string | null }).telephone) {
+      const property = ticket.property as {
+        adresse_complete?: string | null;
+        ville?: string | null;
+      } | null;
+      // Adresse courte : "rue X, Ville" sans CP
+      const shortAddress = property
+        ? [property.adresse_complete, property.ville].filter(Boolean).join(", ")
+        : null;
+
+      sendProviderSmsBestEffort(
+        () =>
+          sendProviderMissionAssignedSms({
+            phone: (provider as { telephone: string }).telephone,
+            providerProfileId: data.provider_id,
+            title: ticket.titre || "Nouvelle intervention",
+            shortAddress,
+            relatedId: id,
+          }),
+        "mission_assigned",
+      );
+    }
 
     return apiSuccess({ ticket: updated });
   } catch (error) {

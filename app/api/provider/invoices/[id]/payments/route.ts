@@ -10,6 +10,10 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getServiceClient } from '@/lib/supabase/service-client';
+import {
+  sendProviderPaymentReceivedSms,
+  sendProviderSmsBestEffort,
+} from '@/lib/sms/provider-notifications';
 import { z } from 'zod';
 
 interface RouteParams {
@@ -195,9 +199,33 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Le statut de la facture sera mis à jour automatiquement par le trigger
     const { data: updatedInvoice } = await serviceClient
       .from('provider_invoices')
-      .select('status')
+      .select('status, reference, provider_profile_id')
       .eq('id', invoiceId)
       .single();
+
+    // SMS au prestataire si la facture vient de passer entierement payee
+    // (best-effort, non bloquant). Skip si c'est l'admin qui a deja vu le retour.
+    if (updatedInvoice?.status === 'paid' && updatedInvoice.provider_profile_id) {
+      const { data: providerProfile } = await serviceClient
+        .from('profiles')
+        .select('telephone')
+        .eq('id', updatedInvoice.provider_profile_id)
+        .single();
+
+      if (providerProfile?.telephone) {
+        sendProviderSmsBestEffort(
+          () =>
+            sendProviderPaymentReceivedSms({
+              phone: providerProfile.telephone as string,
+              providerProfileId: updatedInvoice.provider_profile_id as string,
+              invoiceReference: (updatedInvoice.reference as string) || invoiceId,
+              amountEuros: data.amount,
+              invoiceId,
+            }),
+          'payment_received',
+        );
+      }
+    }
 
     return NextResponse.json(
       {

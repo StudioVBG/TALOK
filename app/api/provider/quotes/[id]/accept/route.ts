@@ -26,6 +26,10 @@ import { createClient } from '@/lib/supabase/server';
 import { getServiceClient } from '@/lib/supabase/service-client';
 import { sendProviderQuoteApprovedEmail } from '@/lib/emails/resend.service';
 import {
+  sendProviderQuoteApprovedSms,
+  sendProviderSmsBestEffort,
+} from '@/lib/sms/provider-notifications';
+import {
   computeQuoteHash,
   hashOtpCode,
   requiresAdvancedSignature,
@@ -87,7 +91,7 @@ export async function POST(
         property_id,
         ticket_id,
         provider:profiles!provider_quotes_provider_profile_id_fkey (
-          email, prenom, nom
+          email, prenom, nom, telephone
         ),
         owner:profiles!provider_quotes_owner_profile_id_fkey (
           prenom, nom
@@ -298,6 +302,7 @@ export async function POST(
       email?: string | null;
       prenom?: string | null;
       nom?: string | null;
+      telephone?: string | null;
     } | null;
     const owner = quote.owner as {
       prenom?: string | null;
@@ -338,6 +343,25 @@ export async function POST(
       }).catch((err) => {
         console.error('[provider/quotes/:id/accept] sendProviderQuoteApprovedEmail failed:', err);
       });
+    }
+
+    // SMS prestataire (best-effort, non bloquant) — uniquement si telephone connu
+    if (provider?.telephone) {
+      const totalEuros =
+        typeof quote.total_amount === 'string'
+          ? parseFloat(quote.total_amount)
+          : (quote.total_amount as number);
+      sendProviderSmsBestEffort(
+        () =>
+          sendProviderQuoteApprovedSms({
+            phone: provider.telephone!,
+            providerProfileId: quote.provider_profile_id,
+            quoteReference: quote.reference,
+            totalAmountEuros: Number.isFinite(totalEuros) ? totalEuros : 0,
+            quoteId: quote.id,
+          }),
+        'quote_approved',
+      );
     }
 
     return NextResponse.json({

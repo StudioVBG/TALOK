@@ -11,7 +11,10 @@ export type SmsTemplateKey =
   | 'payment_late'
   | 'ticket_urgent'
   | 'edl_reminder'
-  | 'lease_expiring';
+  | 'lease_expiring'
+  | 'provider_mission_assigned'
+  | 'provider_quote_approved'
+  | 'provider_payment_received';
 
 export interface TemplateData {
   amount?: string | number;
@@ -22,6 +25,10 @@ export interface TemplateData {
   time?: string;
   property?: string;
   daysLeft?: number;
+  /** Reference visible (devis, facture). */
+  reference?: string;
+  /** Adresse courte du bien (sans CP/ville pour limiter la longueur). */
+  shortAddress?: string;
 }
 
 export const SMS_TEMPLATES: Record<SmsTemplateKey, (data: TemplateData) => string> = {
@@ -35,6 +42,14 @@ export const SMS_TEMPLATES: Record<SmsTemplateKey, (data: TemplateData) => strin
     `[Talok] Rappel : état des lieux prévu le ${d.date} à ${d.time} pour ${d.property}.`,
   lease_expiring: (d) =>
     `[Talok] Votre bail pour ${d.property} expire dans ${d.daysLeft} jours. Contactez votre propriétaire.`,
+
+  // Prestataires — sous 160 caracteres = 1 segment GSM-7
+  provider_mission_assigned: (d) =>
+    `[Talok] Nouvelle mission : ${d.title}${d.shortAddress ? ` à ${d.shortAddress}` : ''}${d.date ? ` le ${d.date}` : ''}. Voir le détail dans l'app.`,
+  provider_quote_approved: (d) =>
+    `[Talok] Devis ${d.reference} accepté pour ${d.amount}€. Vous pouvez planifier l'intervention.`,
+  provider_payment_received: (d) =>
+    `[Talok] Paiement reçu : ${d.amount}€ pour la facture ${d.reference}. Merci !`,
 };
 
 export function renderTemplate(key: SmsTemplateKey, data: TemplateData): string {
