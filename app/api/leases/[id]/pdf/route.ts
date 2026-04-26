@@ -26,17 +26,17 @@ export async function GET(request: Request, { params }: RouteParams) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
-    const { data: profile } = await serviceClient.from("profiles").select("id, role").eq("user_id", user.id).single();
+    const { data: profile } = await serviceClient.from("profiles").select("id, role").eq("user_id", user.id).maybeSingle();
     if (!profile) return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
 
     // Quick lease check for permissions + sealed status
-    const { data: lease, error: leaseError } = await serviceClient
+    const { data: lease } = await serviceClient
       .from("leases")
       .select("sealed_at, signed_pdf_path, statut, updated_at, type_bail, loyer, charges_forfaitaires, depot_de_garantie, date_debut, date_fin, property:properties(id, owner_id, ville, adresse_complete), signers:lease_signers(id, profile_id)")
       .eq("id", leaseId)
-      .single();
+      .maybeSingle();
 
-    if (leaseError || !lease) return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
+    if (!lease) return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
 
     const property = lease.property as any;
     const isOwner = property?.owner_id === profile.id;

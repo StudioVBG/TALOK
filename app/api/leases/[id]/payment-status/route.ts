@@ -36,7 +36,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile) {
       return NextResponse.json({ error: "Profil introuvable" }, { status: 404 });
@@ -49,7 +49,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
         "id, initial_payment_confirmed, initial_payment_date, properties!leases_property_id_fkey(owner_id)"
       )
       .eq("id", leaseId)
-      .single();
+      .maybeSingle();
 
     if (!lease) {
       return NextResponse.json({ error: "Bail introuvable" }, { status: 404 });
