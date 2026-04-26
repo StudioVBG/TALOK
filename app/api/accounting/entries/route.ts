@@ -107,6 +107,10 @@ export async function GET(request: Request) {
     const statusParam = searchParams.get("status");
     // Source filter (new column): 'manual' | 'stripe' | 'ocr' | 'bank' | ...
     const sourceParam = searchParams.get("source");
+    // Legacy phantom entries (mono-line, créées par l'ancien
+    // recordRentPayment) sont masquées par défaut. Opt-in pour les admins
+    // qui font de l'audit / forensic via `?include_legacy_phantom=true`.
+    const includePhantom = searchParams.get("include_legacy_phantom") === "true";
     const MAX_LIMIT = 500;
     const limit = Math.min(parseInt(searchParams.get("limit") || "100") || 100, MAX_LIMIT);
     const offset = Math.max(parseInt(searchParams.get("offset") || "0") || 0, 0);
@@ -159,6 +163,10 @@ export async function GET(request: Request) {
     if (statusParam === "draft") query = query.eq("is_validated", false);
     else if (statusParam === "validated") query = query.eq("is_validated", true);
     if (sourceParam) query = query.eq("source", sourceParam);
+    // Filtre par défaut : exclure les écritures fantômes legacy. Suppose
+    // que la migration 20260427150000 (ajout colonne is_legacy_phantom +
+    // marquage) est appliquée avant le déploiement de ce code.
+    if (!includePhantom) query = query.eq("is_legacy_phantom", false);
 
     query = query
       .order("entry_date", { ascending: false })
