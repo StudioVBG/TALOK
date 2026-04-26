@@ -12,6 +12,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+import { createHash } from "crypto";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
@@ -219,13 +220,44 @@ export async function GET(request: Request) {
     const rows = lines.map((l) => FEC_HEADERS.map((h) => String(l[h] ?? "")).join("\t"));
     const content = [header, ...rows].join("\n");
     const dateExport = new Date().toISOString().split("T")[0].replace(/-/g, "");
+    const filename = `FEC_TALOK_${year}_${dateExport}.txt`;
+    const contentBytes = Buffer.from(content, "utf-8");
+    const sha256 = createHash("sha256").update(contentBytes).digest("hex");
 
-    return new NextResponse(content, {
+    // Record an integrity manifest so the company can prove later that
+    // the file delivered to the tax authority was not tampered with.
+    // Best-effort: a manifest insert failure must not block the download.
+    let manifestId: string | null = null;
+    try {
+      const { data: manifest } = await serviceClient
+        .from("fec_manifests")
+        .insert({
+          entity_id: entityId,
+          fec_year: year,
+          filename,
+          file_size_bytes: contentBytes.byteLength,
+          line_count: lines.length,
+          sha256_hex: sha256,
+          generated_by: user.id,
+        } as Record<string, unknown>)
+        .select("id")
+        .single();
+      manifestId = (manifest as { id: string } | null)?.id ?? null;
+    } catch (manifestErr) {
+      console.warn(
+        "[FEC] manifest insert failed (non-blocking):",
+        manifestErr,
+      );
+    }
+
+    return new NextResponse(contentBytes, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
-        "Content-Disposition": `attachment; filename="FEC_TALOK_${year}_${dateExport}.txt"`,
+        "Content-Disposition": `attachment; filename="${filename}"`,
         "X-FEC-Year": String(year),
         "X-FEC-Records": String(lines.length),
+        "X-FEC-SHA256": sha256,
+        ...(manifestId ? { "X-FEC-Manifest-Id": manifestId } : {}),
       },
     });
   } catch (error) {

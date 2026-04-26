@@ -226,6 +226,52 @@ export async function GET(
         throw new ApiError(400, `Type non supporte: ${type}`);
     }
 
+    if (format === "pdf" && type === "2072") {
+      const d = declaration as Awaited<ReturnType<typeof compute2072>>;
+
+      const { data: entity } = await supabase
+        .from("legal_entities")
+        .select("name, siren")
+        .eq("id", entityId)
+        .maybeSingle();
+
+      const { data: exercise } = await supabase
+        .from("accounting_exercises")
+        .select("end_date")
+        .eq("id", exerciseId)
+        .maybeSingle();
+
+      const year = exercise?.end_date
+        ? new Date(exercise.end_date as string).getUTCFullYear()
+        : new Date().getUTCFullYear();
+
+      const { generateCerfa2072Pdf } = await import(
+        "@/lib/accounting/exports/cerfa-2072-pdf"
+      );
+      const pdf = await generateCerfa2072Pdf({
+        year,
+        ownerName: (entity?.name as string | undefined) ?? "Societe civile",
+        siren: (entity?.siren as string | undefined) ?? undefined,
+        revenus_bruts_cents: d.revenus_bruts,
+        charges_deductibles_cents: d.charges_deductibles,
+        resultat_cents: d.resultat,
+        associates: d.resultat_par_associe.map((a) => ({
+          name: a.name,
+          quotePartPct: a.quotePartPct,
+          resultatCents: a.resultatCents,
+        })),
+      });
+
+      return new NextResponse(Buffer.from(pdf), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="cerfa-2072-${year}.pdf"`,
+          "Cache-Control": "private, no-store",
+        },
+      });
+    }
+
     if (format === "pdf" && type === "2044") {
       const d = declaration as ReturnType<typeof compute2044>;
 

@@ -338,6 +338,35 @@ export async function getBalance(
   entityId: string,
   exerciseId: string,
 ): Promise<BalanceItem[]> {
+  // Fast path: read from the pre-aggregated materialized view exposed
+  // through fn_balance_for_exercise. Falls back to the legacy aggregation
+  // if the function isn't deployed yet (e.g. local dev without latest migration).
+  try {
+    const { data: mvRows, error: mvErr } = await supabase.rpc(
+      'fn_balance_for_exercise',
+      { p_entity_id: entityId, p_exercise_id: exerciseId },
+    );
+    if (!mvErr && Array.isArray(mvRows)) {
+      return (mvRows as Array<{
+        account_number: string;
+        account_label: string;
+        total_debit_cents: number;
+        total_credit_cents: number;
+        solde_debit_cents: number;
+        solde_credit_cents: number;
+      }>).map((r) => ({
+        accountNumber: r.account_number,
+        label: r.account_label,
+        totalDebitCents: Number(r.total_debit_cents),
+        totalCreditCents: Number(r.total_credit_cents),
+        soldeDebitCents: Number(r.solde_debit_cents),
+        soldeCreditCents: Number(r.solde_credit_cents),
+      }));
+    }
+  } catch {
+    // ignore and fall through to live aggregation
+  }
+
   const { data, error } = await supabase
     .from('accounting_entry_lines')
     .select(`
@@ -997,6 +1026,18 @@ export async function closeExercise(
     .eq('id', exerciseId);
 
   if (error) throw new Error(`Failed to close exercise: ${error.message}`);
+
+  // Refresh the materialized views so the just-closed exercise's reports
+  // (balance, GL, FEC) reflect the closing entry immediately. Best-effort:
+  // failing to refresh must not undo a successful close.
+  try {
+    await supabase.rpc('fn_refresh_accounting_views');
+  } catch (refreshErr) {
+    console.warn(
+      '[closeExercise] fn_refresh_accounting_views failed (non-blocking):',
+      refreshErr,
+    );
+  }
 }
 
 /**
