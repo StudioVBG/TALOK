@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
@@ -18,10 +19,10 @@ export async function POST(
   const { id } = await params;
   try {
     const supabase = await createClient();
-    const supabaseClient = getTypedSupabaseClient(supabase);
+    const supabaseClient = getTypedSupabaseClient(getServiceClient());
     const {
       data: { user },
-    } = await supabaseClient.auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -50,7 +51,7 @@ export async function POST(
         work_orders!inner(provider_id, statut)
       `)
       .eq("id", id as any)
-      .single();
+      .maybeSingle();
 
     if (!ticket) {
       return NextResponse.json(
@@ -63,7 +64,7 @@ export async function POST(
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
-      .single();
+      .maybeSingle();
 
     const profileData = profile as any;
 

@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import {
   apiError,
   apiSuccess,
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const auth = await requireAuth(request);
     if (auth instanceof Response) return auth;
 
-    const supabase = await createClient();
+    const supabase = createServiceRoleClient();
     const profileId = auth.profile.id;
 
     // Build base query filter

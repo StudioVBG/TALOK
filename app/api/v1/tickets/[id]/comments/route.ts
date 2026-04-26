@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import {
   apiError,
   apiSuccess,
@@ -25,14 +25,14 @@ export async function GET(
     if (auth instanceof Response) return auth;
 
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = createServiceRoleClient();
 
     // Verify ticket exists and access
     const { data: ticket } = await supabase
       .from("tickets")
-      .select("id, created_by_profile_id, assigned_to, owner_id, property:properties(owner_id)")
+      .select("id, statut, created_by_profile_id, assigned_to, owner_id, property:properties(owner_id)")
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
     if (!ticket) return apiError("Ticket non trouvé", 404);
 
@@ -87,7 +87,7 @@ export async function POST(
     if (auth instanceof Response) return auth;
 
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = createServiceRoleClient();
     const body = await request.json();
     const { data, error: validationError } = validateBody(CreateTicketCommentSchema, body);
     if (validationError) return validationError;
@@ -95,9 +95,9 @@ export async function POST(
     // Verify ticket exists and access
     const { data: ticket } = await supabase
       .from("tickets")
-      .select("id, created_by_profile_id, assigned_to, owner_id, property:properties(owner_id)")
+      .select("id, statut, created_by_profile_id, assigned_to, owner_id, property:properties(owner_id)")
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
     if (!ticket) return apiError("Ticket non trouvé", 404);
 

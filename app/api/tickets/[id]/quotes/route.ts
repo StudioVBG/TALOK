@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
@@ -22,10 +23,10 @@ export async function POST(
   const { id } = await params;
   try {
     const supabase = await createClient();
-    const supabaseClient = getTypedSupabaseClient(supabase);
+    const supabaseClient = getTypedSupabaseClient(getServiceClient());
     const {
       data: { user },
-    } = await supabaseClient.auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -33,12 +34,11 @@ export async function POST(
 
     const body = await request.json();
     
-    // Récupérer le profil de l'utilisateur
     const { data: profile } = await supabaseClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
-      .single();
+      .maybeSingle();
 
     const profileData = profile as any;
     
@@ -52,24 +52,27 @@ export async function POST(
         );
       }
 
-      // Vérifier l'accès au ticket
       const { data: ticket } = await supabaseClient
         .from("tickets")
         .select(`
           id,
           titre,
+          owner_id,
           property_id,
-          property:properties!inner(owner_id, adresse_complete)
+          property:properties(owner_id, adresse_complete)
         `)
         .eq("id", id as any)
-        .single();
+        .maybeSingle();
 
       if (!ticket) {
         return NextResponse.json({ error: "Ticket non trouvé" }, { status: 404 });
       }
 
       const ticketData = ticket as any;
-      if (ticketData.property?.owner_id !== profileData.id) {
+      const isTicketOwner =
+        ticketData.property?.owner_id === profileData.id ||
+        ticketData.owner_id === profileData.id;
+      if (!isTicketOwner) {
         return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
       }
 
@@ -81,7 +84,7 @@ export async function POST(
           .select("id")
           .eq("ticket_id", id as any)
           .eq("provider_id", providerId as any)
-          .single();
+          .maybeSingle();
 
         if (existing) {
           return { id: (existing as any).id, status: "existing" };
@@ -150,7 +153,6 @@ export async function POST(
       );
     }
 
-    // Vérifier que l'utilisateur est prestataire assigné
     const { data: ticket } = await supabaseClient
       .from("tickets")
       .select(`
@@ -158,7 +160,7 @@ export async function POST(
         work_orders(provider_id)
       `)
       .eq("id", id as any)
-      .single();
+      .maybeSingle();
 
     if (!ticket) {
       return NextResponse.json(
@@ -235,25 +237,26 @@ export async function GET(
   const { id } = await params;
   try {
     const supabase = await createClient();
-    const supabaseClient = getTypedSupabaseClient(supabase);
+    const supabaseClient = getTypedSupabaseClient(getServiceClient());
     const {
       data: { user },
-    } = await supabaseClient.auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Vérifier l'accès au ticket
     const { data: ticket } = await supabaseClient
       .from("tickets")
       .select(`
         id,
-        property:properties!inner(owner_id),
+        owner_id,
+        created_by_profile_id,
+        property:properties(owner_id),
         lease:leases(roommates(user_id))
       `)
       .eq("id", id as any)
-      .single();
+      .maybeSingle();
 
     if (!ticket) {
       return NextResponse.json(
@@ -264,14 +267,19 @@ export async function GET(
 
     const { data: profile } = await supabaseClient
       .from("profiles")
-      .select("id")
+      .select("id, role")
       .eq("user_id", user.id as any)
-      .single();
+      .maybeSingle();
 
     const ticketData = ticket as any;
     const profileDataGet = profile as any;
-    const hasAccess = ticketData.property.owner_id === profileDataGet?.id ||
-      ticketData.lease?.roommates?.some((r: any) => r.user_id === user.id);
+    const isAdmin = profileDataGet?.role === "admin";
+    const isOwner =
+      ticketData.property?.owner_id === profileDataGet?.id ||
+      ticketData.owner_id === profileDataGet?.id;
+    const isCreator = ticketData.created_by_profile_id === profileDataGet?.id;
+    const isTenant = ticketData.lease?.roommates?.some((r: any) => r.user_id === user.id);
+    const hasAccess = isAdmin || isOwner || isCreator || isTenant;
 
     if (!hasAccess) {
       return NextResponse.json(

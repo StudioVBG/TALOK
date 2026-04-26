@@ -5,6 +5,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { getTypedSupabaseClient } from "@/lib/helpers/supabase-client";
 
@@ -18,24 +19,24 @@ export async function POST(
   const { id, qid } = await params;
   try {
     const supabase = await createClient();
-    const supabaseClient = getTypedSupabaseClient(supabase);
+    const supabaseClient = getTypedSupabaseClient(getServiceClient());
     const {
       data: { user },
-    } = await supabaseClient.auth.getUser();
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Vérifier que l'utilisateur est propriétaire du logement
     const { data: ticket } = await supabaseClient
       .from("tickets")
       .select(`
         id,
-        property:properties!inner(owner_id)
+        owner_id,
+        property:properties(owner_id)
       `)
       .eq("id", id as any)
-      .single();
+      .maybeSingle();
 
     if (!ticket) {
       return NextResponse.json(
@@ -48,12 +49,14 @@ export async function POST(
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id as any)
-      .single();
+      .maybeSingle();
 
     const ticketData = ticket as any;
     const profileData = profile as any;
     const isAdmin = profileData?.role === "admin";
-    const isOwner = ticketData.property?.owner_id === profileData?.id;
+    const isOwner =
+      ticketData.property?.owner_id === profileData?.id ||
+      ticketData.owner_id === profileData?.id;
 
     if (!isOwner && !isAdmin) {
       return NextResponse.json(
@@ -62,13 +65,12 @@ export async function POST(
       );
     }
 
-    // Vérifier que le devis existe et est en attente
     const { data: quote } = await supabaseClient
       .from("quotes")
       .select("*")
       .eq("id", qid as any)
       .eq("ticket_id", id as any)
-      .single();
+      .maybeSingle();
 
     if (!quote) {
       return NextResponse.json(

@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceRoleClient } from "@/lib/supabase/service-client";
 import {
   apiError,
   apiSuccess,
@@ -29,17 +29,16 @@ export async function POST(
     if (auth instanceof Response) return auth;
 
     const { id } = await params;
-    const supabase = await createClient();
+    const supabase = createServiceRoleClient();
     const body = await request.json();
     const { data, error: validationError } = validateBody(AssignTicketSchema, body);
     if (validationError) return validationError;
 
-    // Fetch ticket
     const { data: ticket } = await supabase
       .from("tickets")
       .select("*, property:properties(owner_id, adresse_complete, ville)")
       .eq("id", id)
-      .single();
+      .maybeSingle();
 
     if (!ticket) return apiError("Ticket non trouvé", 404);
 

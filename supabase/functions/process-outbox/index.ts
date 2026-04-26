@@ -325,6 +325,71 @@ async function processEvent(supabase: any, event: any) {
       break;
     }
 
+    case "Ticket.Assigned": {
+      const assigneeUserId = await resolveProfileUserId(supabase, payload.assigned_to);
+      if (assigneeUserId) {
+        await sendNotification(supabase, {
+          type: "ticket_assigned",
+          user_id: assigneeUserId,
+          title: "Nouveau ticket assigné",
+          message: "Un ticket de maintenance vous a été assigné.",
+          metadata: { ticket_id: payload.ticket_id },
+        });
+      }
+      const assignedCreator = await resolveTicketCreatorUserId(supabase, payload.ticket_id);
+      if (assignedCreator && assignedCreator !== assigneeUserId) {
+        await sendNotification(supabase, {
+          type: "ticket_assigned",
+          user_id: assignedCreator,
+          title: "Prestataire assigné",
+          message: "Un prestataire a été assigné à votre demande.",
+          metadata: { ticket_id: payload.ticket_id },
+        });
+      }
+      break;
+    }
+
+    case "Ticket.Reopened": {
+      const reopenedCreator = await resolveTicketCreatorUserId(supabase, payload.ticket_id);
+      if (reopenedCreator) {
+        await sendNotification(supabase, {
+          type: "ticket_reopened",
+          user_id: reopenedCreator,
+          title: "Demande rouverte",
+          message: "Votre demande de maintenance a été rouverte.",
+          metadata: { ticket_id: payload.ticket_id },
+        });
+      }
+      const reopenedAssignee = await resolveTicketAssigneeUserId(supabase, payload.ticket_id);
+      if (reopenedAssignee && reopenedAssignee !== reopenedCreator) {
+        await sendNotification(supabase, {
+          type: "ticket_reopened",
+          user_id: reopenedAssignee,
+          title: "Ticket rouvert",
+          message: "Un ticket que vous suivez a été rouvert.",
+          metadata: { ticket_id: payload.ticket_id },
+        });
+      }
+      break;
+    }
+
+    case "WorkOrder.Created": {
+      const providerUserId = await resolveProfileUserId(supabase, payload.provider_id);
+      if (providerUserId) {
+        await sendNotification(supabase, {
+          type: "work_order_created",
+          user_id: providerUserId,
+          title: "Nouvelle intervention planifiée",
+          message: "Une intervention vous a été confiée.",
+          metadata: {
+            ticket_id: payload.ticket_id,
+            work_order_id: payload.work_order_id,
+          },
+        });
+      }
+      break;
+    }
+
     case "ticket.message.created": {
       // Notifier le destinataire : si le sender est owner → notifier le tenant (créateur), et vice versa
       const msgTicket = await resolveTicketForMessage(supabase, payload.ticket_id, payload.sender_user);
@@ -1246,10 +1311,39 @@ async function resolveTicketCreatorUserId(supabase: any, ticketId: string): Prom
       .eq("id", ticketId)
       .single();
     if (!ticket?.created_by_profile_id) return null;
+    return await resolveProfileUserId(supabase, ticket.created_by_profile_id);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Résout le user_id de l'assigné d'un ticket (prestataire).
+ */
+async function resolveTicketAssigneeUserId(supabase: any, ticketId: string): Promise<string | null> {
+  try {
+    const { data: ticket } = await supabase
+      .from("tickets")
+      .select("assigned_to")
+      .eq("id", ticketId)
+      .single();
+    if (!ticket?.assigned_to) return null;
+    return await resolveProfileUserId(supabase, ticket.assigned_to);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Convertit un profile.id en auth user_id pour cibler les notifications.
+ */
+async function resolveProfileUserId(supabase: any, profileId: string | null | undefined): Promise<string | null> {
+  if (!profileId) return null;
+  try {
     const { data: profile } = await supabase
       .from("profiles")
       .select("user_id")
-      .eq("id", ticket.created_by_profile_id)
+      .eq("id", profileId)
       .single();
     return profile?.user_id || null;
   } catch {
