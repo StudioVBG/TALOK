@@ -49,6 +49,10 @@ export interface AccountingEntryRow {
   // Computed totals from entry lines (set by server)
   total_debit_cents?: number;
   total_credit_cents?: number;
+  // Account numbers mouvementés par l'écriture (nouveau schéma : lignes ;
+  // schéma legacy : repli sur `compte_num`). Affiché dans la liste pour que
+  // l'utilisateur sache quels comptes sont impactés sans ouvrir le détail.
+  account_numbers?: string[];
 }
 
 export interface EntriesApiResponse {

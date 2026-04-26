@@ -157,6 +157,11 @@ export function EntryRow({ entry, isSelected, onToggleSelect }: EntryRowProps) {
         >
           {entryLabel}
         </Link>
+        {entry.account_numbers && entry.account_numbers.length > 0 && (
+          <div className="font-mono text-[11px] text-muted-foreground mt-0.5">
+            {entry.account_numbers.join(" / ")}
+          </div>
+        )}
       </td>
       <td className="px-3 py-3 text-right font-medium text-foreground whitespace-nowrap">
         {debitCents > 0 ? formatCents(debitCents) : "-"}
@@ -210,6 +215,11 @@ export function EntryCard({ entry, isSelected, onToggleSelect }: EntryRowProps) 
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 {entryDate ? formatDate(entryDate) : ""} - {entry.journal_code}
+                {entry.account_numbers && entry.account_numbers.length > 0 && (
+                  <span className="font-mono ml-2">
+                    {entry.account_numbers.join(" / ")}
+                  </span>
+                )}
               </p>
             </div>
             <p className="text-sm font-medium text-foreground whitespace-nowrap">

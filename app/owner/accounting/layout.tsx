@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   BookOpen,
+  BookOpenCheck,
   ScanLine,
   Landmark,
   GitMerge,
@@ -14,6 +15,9 @@ import {
   FileText,
   TrendingDown,
   UserCheck,
+  Scale,
+  ListTree,
+  ArrowRightLeft,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -27,6 +31,9 @@ interface AccountingTab {
 const accountingTabs: AccountingTab[] = [
   { label: "Tableau de bord", href: "/owner/accounting", icon: LayoutDashboard },
   { label: "Écritures", href: "/owner/accounting/entries", icon: BookOpen },
+  { label: "Grand livre", href: "/owner/accounting/grand-livre", icon: BookOpenCheck },
+  { label: "Balance", href: "/owner/accounting/balance", icon: Scale },
+  { label: "Plan comptable", href: "/owner/accounting/chart", icon: ListTree },
   { label: "Justificatifs", href: "/owner/accounting/upload", icon: ScanLine },
   { label: "Banque", href: "/owner/accounting/bank", icon: Landmark },
   {
@@ -34,6 +41,7 @@ const accountingTabs: AccountingTab[] = [
     href: "/owner/accounting/bank/reconciliation",
     icon: GitMerge,
   },
+  { label: "Virements", href: "/owner/accounting/transfers", icon: ArrowRightLeft },
   { label: "Exercices", href: "/owner/accounting/exercises", icon: Calendar },
   { label: "Exports", href: "/owner/accounting/exports", icon: Download },
   {

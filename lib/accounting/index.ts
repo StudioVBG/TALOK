@@ -91,6 +91,32 @@ export {
 } from './deposit-entry';
 
 export {
+  ensureDepositOperationEntry,
+  type DepositOperationEntryResult,
+  type DepositOperationSkipReason,
+} from './deposit-operation-entry';
+
+export {
+  ensureIrlRevisionEntry,
+  type IrlRevisionEntryResult,
+  type IrlRevisionSkipReason,
+} from './irl-revision-entry';
+
+export {
+  ensureInternalTransferEntry,
+  type InternalTransferEntryResult,
+  type InternalTransferSkipReason,
+  type InternalTransferParams,
+} from './internal-transfer-entry';
+
+export {
+  ensureTeomRecoveryEntry,
+  type TeomRecoveryEntryResult,
+  type TeomRecoverySkipReason,
+  type TeomRecoveryParams,
+} from './teom-recovery-entry';
+
+export {
   ensureSubscriptionPaidEntry,
   type EnsureSubscriptionEntryResult,
   type EnsureSubscriptionSkipReason,

@@ -72,11 +72,14 @@ export async function ensureReceiptAccountingEntry(
     // We match on `reference` + source prefix because the Stripe webhook
     // writes source = "auto:rent_received" and the non-Stripe path will
     // do the same through createAutoEntry.
+    // Match either source — rent_received (cash basis) OR
+    // rent_payment_clearing (IS accrual). Both are payment-time entries
+    // keyed on the same payment.id, only one fires per payment.
     const { data: existing } = await (supabase as unknown as {
       from: (t: string) => {
         select: (s: string) => {
           eq: (k: string, v: string) => {
-            like: (k: string, pattern: string) => {
+            or: (filter: string) => {
               limit: (n: number) => {
                 maybeSingle: () => Promise<{ data: { id: string } | null }>;
               };
@@ -88,7 +91,7 @@ export async function ensureReceiptAccountingEntry(
       .from("accounting_entries")
       .select("id")
       .eq("reference", paymentId)
-      .like("source", "auto:rent_received%")
+      .or("source.like.auto:rent_received%,source.like.auto:rent_payment_clearing%")
       .limit(1)
       .maybeSingle();
 
@@ -161,7 +164,18 @@ export async function ensureReceiptAccountingEntry(
     const propertyAddress =
       paymentRow.invoice?.lease?.property?.adresse_complete ?? "";
     const periode = paymentRow.invoice?.periode ?? "";
-    const label = `Loyer${periode ? ` ${periode}` : ""}${
+
+    // Mode de déclaration → événement comptable.
+    //   - is_comptable (BIC/IS) : la créance 411 a été posée à l'émission
+    //     de la facture par invoice-entry.ts (rent_invoiced). Au paiement,
+    //     on solde la créance : D 512 / C 411 (rent_payment_clearing).
+    //   - reel / micro_foncier : pas d'écriture à l'émission, comptabilité
+    //     cash. Au paiement, on enregistre le revenu : D 512 / C 706
+    //     (rent_received).
+    const isAccrual = config.declarationMode === "is_comptable";
+    const event = isAccrual ? "rent_payment_clearing" : "rent_received";
+    const labelPrefix = isAccrual ? "Règlement loyer" : "Loyer";
+    const label = `${labelPrefix}${periode ? ` ${periode}` : ""}${
       propertyAddress ? ` - ${propertyAddress}` : ""
     }`.trim();
 
@@ -171,7 +185,7 @@ export async function ensureReceiptAccountingEntry(
       return { created: false, skippedReason: "error", error: "actor_unresolved" };
     }
 
-    const entry = await createAutoEntry(supabase, "rent_received", {
+    const entry = await createAutoEntry(supabase, event, {
       entityId,
       exerciseId: exercise.id,
       userId: actorUserId,

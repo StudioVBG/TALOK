@@ -4,7 +4,6 @@ export const runtime = 'nodejs';
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
-import { AccountingIntegrationService } from "@/features/accounting/services/accounting-integration.service";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
 import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
@@ -212,48 +211,11 @@ export async function POST(
       throw new Error("Impossible de synchroniser le statut de la facture");
     }
 
-    // =============================================
-    // INTÉGRATION COMPTABLE
-    // =============================================
-    try {
-      const accountingService = new AccountingIntegrationService(serviceClient as any);
-
-      // Récupérer les informations nécessaires pour la comptabilité
-      const { data: leaseDetails } = await serviceClient
-        .from("leases")
-        .select(`
-          id,
-          tenant_id,
-          property:properties(
-            owner_id,
-            code_postal,
-            adresse_complete
-          )
-        `)
-        .eq("id", invoiceData.lease_id)
-        .single();
-
-      if (leaseDetails) {
-        const propertyData = (leaseDetails as any).property;
-
-        await accountingService.recordRentPayment({
-          invoiceId,
-          leaseId: (leaseDetails as any).id,
-          ownerId: propertyData?.owner_id,
-          tenantId: (leaseDetails as any).tenant_id || "",
-          periode: invoiceData.periode,
-          montantLoyer: invoiceData.montant_loyer || 0,
-          montantCharges: invoiceData.montant_charges || 0,
-          montantTotal: paymentAmount,
-          paymentDate: paymentData.date_paiement as string,
-          propertyCodePostal: propertyData?.code_postal || "75000",
-        });
-
-      }
-    } catch (accountingError) {
-      // Log mais ne pas bloquer le paiement si la comptabilité échoue
-      console.error("[mark-paid] Erreur comptabilité (non bloquante):", accountingError);
-    }
+    // Comptabilité : la double-écriture équilibrée est posée plus bas par
+    // `ensureReceiptAccountingEntry` (cf. branche `settlement.isSettled`).
+    // L'ancien appel `accountingService.recordRentPayment` créait 7 écritures
+    // mono-ligne déséquilibrées en parallèle, ce qui faisait diverger les
+    // totaux de la liste (250€ ≠ 310€) et cassait la partie double.
 
     let receiptDocumentId: string | null = null;
     if (settlement.isSettled && payment?.id) {

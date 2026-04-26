@@ -326,6 +326,28 @@ export async function POST(request: Request) {
       .limit(1)
       .single();
 
+    // Pose l'écriture comptable double-entrée correspondante. Non bloquant :
+    // si le moteur échoue (entité sans `accounting_enabled`, exercice
+    // indisponible…), on continue à renvoyer l'opération métier au front.
+    // Idempotent via reference = operation.id.
+    if (operation && (operation as { id?: string }).id) {
+      try {
+        const { ensureDepositOperationEntry } = await import(
+          "@/lib/accounting/deposit-operation-entry"
+        );
+        await ensureDepositOperationEntry(
+          supabase,
+          (operation as { id: string }).id,
+          { userId: user.id },
+        );
+      } catch (entryError) {
+        console.error(
+          "[accounting/deposits] Écriture comptable (non bloquante):",
+          entryError,
+        );
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: operation,
