@@ -162,6 +162,39 @@ export async function POST(request: NextRequest) {
       // déclenché ultérieurement (ex: après confirmation dans /auth/callback), mais
       // JAMAIS en parallèle de l'inscription.
 
+      // Planifier les rappels d'onboarding (24h, 72h, 7j) consommés par le cron
+      // /api/cron/onboarding-reminders. Sans ces lignes, le cron n'a rien à envoyer
+      // et les utilisateurs qui n'ont pas terminé l'onboarding ne sont jamais relancés.
+      // Upsert idempotent sur (user_id, reminder_type) : un re-signup ne duplique pas.
+      try {
+        const now = Date.now();
+        const HOUR = 60 * 60 * 1000;
+        const reminders = [
+          { reminder_type: "24h", delay: 24 * HOUR },
+          { reminder_type: "72h", delay: 72 * HOUR },
+          { reminder_type: "7d", delay: 7 * 24 * HOUR },
+        ];
+        await adminClient.from("onboarding_reminders").upsert(
+          reminders.map((r) => ({
+            user_id: authData.user!.id,
+            profile_id: profile.id,
+            role: profile.role,
+            reminder_type: r.reminder_type,
+            scheduled_at: new Date(now + r.delay).toISOString(),
+            email_sent_to: data.email,
+            status: "pending" as const,
+          })),
+          { onConflict: "user_id,reminder_type", ignoreDuplicates: true }
+        );
+      } catch (reminderError) {
+        console.error("[register] onboarding_reminders upsert failed:", {
+          user_id: authData.user.id,
+          role: profile.role,
+          error: reminderError,
+        });
+        // Non bloquant : un job de réparation peut planifier les rappels plus tard.
+      }
+
       // Notify admins of new registration
       import("@/lib/services/admin-notification.service").then(({ notifyAdmins }) =>
         notifyAdmins({

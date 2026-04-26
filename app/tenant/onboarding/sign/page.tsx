@@ -109,6 +109,10 @@ export default function TenantSignLeasePage() {
 
       // Marquer l'étape d'onboarding comme complétée
       await onboardingService.markStepCompleted("lease_signed", "tenant");
+      // Marquer l'onboarding comme terminé côté API (best-effort, non bloquant) :
+      // pose profiles.onboarding_completed_at, annule les rappels pending et
+      // déclenche la notif "Bienvenue".
+      await fetch("/api/me/onboarding-complete", { method: "POST" }).catch(() => {});
 
       setSigned(true);
       toast({
