@@ -51,6 +51,10 @@ export interface QuotePdfData {
   // Conditions
   termsAndConditions?: string | null;
   paymentConditions?: string | null;
+
+  // Signature acceptation (si acceptee)
+  acceptanceSignedName?: string | null;
+  acceptanceSignedAt?: string | null;
 }
 
 const A4_WIDTH = 595.28;
@@ -415,6 +419,45 @@ export async function generateQuotePDF(data: QuotePdfData): Promise<Uint8Array> 
       y -= 12;
     }
     y -= 8;
+  }
+
+  // ===== SIGNATURE D'ACCEPTATION =====
+  if (data.acceptanceSignedName) {
+    if (y < MARGIN + 80) {
+      page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
+      y = A4_HEIGHT - MARGIN;
+    }
+    page.drawRectangle({
+      x: MARGIN,
+      y: y - 60,
+      width: A4_WIDTH - 2 * MARGIN,
+      height: 60,
+      color: rgb(0.945, 0.996, 0.957), // emerald-50
+      borderColor: rgb(0.435, 0.717, 0.518), // emerald-400
+      borderWidth: 1,
+    });
+    drawText(page, "Devis accepté", MARGIN + 16, y - 20, helvB, 11, rgb(0.027, 0.42, 0.31));
+    drawText(
+      page,
+      `Signé par : ${data.acceptanceSignedName}`,
+      MARGIN + 16,
+      y - 38,
+      helv,
+      10,
+      TEXT,
+    );
+    if (data.acceptanceSignedAt) {
+      drawText(
+        page,
+        `Le ${formatDateFr(data.acceptanceSignedAt)}`,
+        MARGIN + 16,
+        y - 52,
+        helv,
+        9,
+        MUTED,
+      );
+    }
+    y -= 75;
   }
 
   // ===== FOOTER =====

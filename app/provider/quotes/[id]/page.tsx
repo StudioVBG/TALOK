@@ -74,6 +74,8 @@ interface Quote {
   rejected_at?: string;
   rejection_reason?: string;
   terms_and_conditions?: string;
+  acceptance_signed_name?: string | null;
+  acceptance_signed_at?: string | null;
   items: QuoteItem[];
   owner?: {
     id: string;
@@ -500,6 +502,11 @@ export default function QuoteDetailPage() {
                     <p className="text-sm text-green-700">
                       Accepté le {quote.accepted_at && format(new Date(quote.accepted_at), "dd/MM/yyyy", { locale: fr })}
                     </p>
+                    {quote.acceptance_signed_name && (
+                      <p className="text-xs text-green-700 mt-1">
+                        Signé par <strong>{quote.acceptance_signed_name}</strong>
+                      </p>
+                    )}
                   </div>
                 </div>
                 <Button asChild>

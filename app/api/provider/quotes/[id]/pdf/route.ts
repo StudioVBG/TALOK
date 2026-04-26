@@ -180,6 +180,9 @@ export async function GET(
 
       termsAndConditions: quote.terms_and_conditions ?? null,
       paymentConditions: null,
+
+      acceptanceSignedName: quote.acceptance_signed_name ?? null,
+      acceptanceSignedAt: quote.acceptance_signed_at ?? null,
     });
 
     const filename = `devis-${quote.reference}.pdf`;

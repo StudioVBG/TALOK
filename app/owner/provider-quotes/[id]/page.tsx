@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
@@ -73,6 +74,8 @@ interface QuoteDetail {
   items: QuoteItem[];
   property_address?: string | null;
   owner_name?: string | null;
+  acceptance_signed_name?: string | null;
+  acceptance_signed_at?: string | null;
 }
 
 const statusLabels: Record<QuoteStatus, { label: string; className: string }> = {
@@ -116,6 +119,7 @@ export default function OwnerProviderQuoteDetailPage() {
   const [accepting, setAccepting] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  const [signedName, setSignedName] = useState("");
 
   useEffect(() => {
     if (!quoteId) return;
@@ -147,11 +151,21 @@ export default function OwnerProviderQuoteDetailPage() {
 
   const handleAccept = async () => {
     if (!quote || accepting) return;
+    if (signedName.trim().length < 2) {
+      toast({
+        title: "Signature requise",
+        description: "Saisissez votre nom complet pour valider l'acceptation.",
+        variant: "destructive",
+      });
+      return;
+    }
     setAccepting(true);
     try {
       const res = await fetch(`/api/provider/quotes/${quote.id}/accept`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         credentials: "include",
+        body: JSON.stringify({ signed_name: signedName.trim() }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Erreur lors de l'acceptation");
@@ -160,7 +174,14 @@ export default function OwnerProviderQuoteDetailPage() {
         description: "Le prestataire a été notifié par email.",
       });
       // Refresh
-      setQuote({ ...quote, status: "accepted", accepted_at: json.accepted_at });
+      setQuote({
+        ...quote,
+        status: "accepted",
+        accepted_at: json.accepted_at,
+        acceptance_signed_name: signedName.trim(),
+        acceptance_signed_at: json.accepted_at,
+      });
+      setSignedName("");
     } catch (error) {
       toast({
         title: "Erreur",
@@ -371,6 +392,18 @@ export default function OwnerProviderQuoteDetailPage() {
               <p className="text-red-700">{quote.rejection_reason}</p>
             </div>
           )}
+
+          {quote.acceptance_signed_name && (
+            <div className="pt-3 border-t bg-emerald-50 -mx-6 px-6 py-3 text-sm">
+              <p className="font-medium text-emerald-900 mb-1">Signature d'acceptation</p>
+              <p className="text-emerald-800">
+                Signé par <strong>{quote.acceptance_signed_name}</strong>
+                {quote.acceptance_signed_at
+                  ? ` le ${formatDateFr(quote.acceptance_signed_at)}`
+                  : ""}
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -379,22 +412,63 @@ export default function OwnerProviderQuoteDetailPage() {
           <CardHeader>
             <CardTitle>Votre décision</CardTitle>
             <CardDescription>
-              L'acceptation notifiera le prestataire par email. Le refus est définitif.
+              L'acceptation engage votre responsabilité et notifiera le prestataire par email. Le refus est définitif.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col sm:flex-row gap-3">
-            <Button
-              onClick={handleAccept}
-              disabled={accepting || rejecting}
-              className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-            >
-              {accepting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Check className="h-4 w-4 mr-2" />
-              )}
-              Accepter le devis
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  disabled={accepting || rejecting}
+                  className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Accepter le devis
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmer l'acceptation</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    En signant ci-dessous, vous acceptez le devis pour un montant de{" "}
+                    <strong>{formatEur(quote.total_amount)}</strong>. Cette acceptation
+                    a valeur d'engagement contractuel envers le prestataire.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="space-y-3 py-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="signed-name">Votre nom complet *</Label>
+                    <Input
+                      id="signed-name"
+                      value={signedName}
+                      onChange={(e) => setSignedName(e.target.value)}
+                      placeholder="Prénom NOM"
+                      maxLength={120}
+                      autoComplete="name"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Votre nom, l'horodatage, votre IP et votre navigateur seront
+                    enregistrés à titre de preuve d'acceptation.
+                  </p>
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={accepting}>Annuler</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleAccept}
+                    disabled={accepting || signedName.trim().length < 2}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                  >
+                    {accepting ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Check className="h-4 w-4 mr-2" />
+                    )}
+                    Signer et accepter
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
             <AlertDialog>
               <AlertDialogTrigger asChild>

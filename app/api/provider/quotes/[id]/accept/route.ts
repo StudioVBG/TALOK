@@ -21,9 +21,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getServiceClient } from '@/lib/supabase/service-client';
 import { sendProviderQuoteApprovedEmail } from '@/lib/emails/resend.service';
+import { z } from 'zod';
+
+const acceptBodySchema = z
+  .object({
+    /** Nom complet saisi par l'acceptant (preuve simple). */
+    signed_name: z.string().trim().min(2).max(120).optional(),
+  })
+  .partial()
+  .default({});
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -32,6 +41,16 @@ export async function POST(
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: 'Non autorise' }, { status: 401 });
+    }
+
+    // Body optionnel pour signature
+    let body: z.infer<typeof acceptBodySchema> = {};
+    try {
+      const raw = await request.json();
+      const parsed = acceptBodySchema.safeParse(raw);
+      if (parsed.success) body = parsed.data;
+    } catch {
+      // body absent — accept sans signature (compat retro)
     }
 
     const serviceClient = getServiceClient();
@@ -96,12 +115,29 @@ export async function POST(
     }
 
     const acceptedAt = new Date().toISOString();
+
+    // Capture preuves de signature (best-effort)
+    const headers = request.headers;
+    const ip =
+      headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+      headers.get('x-real-ip') ||
+      null;
+    const userAgent = headers.get('user-agent') || null;
+
+    const updatePayload: Record<string, unknown> = {
+      status: 'accepted',
+      accepted_at: acceptedAt,
+    };
+    if (body.signed_name) {
+      updatePayload.acceptance_signed_name = body.signed_name;
+      updatePayload.acceptance_signed_at = acceptedAt;
+      updatePayload.acceptance_signed_ip = ip;
+      updatePayload.acceptance_signed_user_agent = userAgent;
+    }
+
     const { error: updateError } = await serviceClient
       .from('provider_quotes')
-      .update({
-        status: 'accepted',
-        accepted_at: acceptedAt,
-      })
+      .update(updatePayload)
       .eq('id', id);
 
     if (updateError) {
