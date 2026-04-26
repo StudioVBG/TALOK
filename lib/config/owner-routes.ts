@@ -97,6 +97,13 @@ export const OWNER_ROUTES = {
     auth: ["owner"],
     icon: "UserCog",
   },
+  providerQuotes: {
+    path: "/owner/provider-quotes",
+    name: "Devis prestataires",
+    component: "OwnerProviderQuotesPage",
+    auth: ["owner"],
+    icon: "Receipt",
+  },
   documents: {
     path: "/owner/documents",
     name: "Documents",

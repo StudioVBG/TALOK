@@ -20,6 +20,10 @@ import {
   providerComplianceReminderEmail,
   type ProviderComplianceReminderParams,
 } from './templates/provider-compliance-reminder';
+import {
+  ownerQuoteReceivedEmail,
+  type OwnerQuoteReceivedParams,
+} from './templates/owner-quote-received';
 import { withRetry } from './utils/retry';
 import { checkRateLimitBatch } from './utils/rate-limit';
 import { validateEmails } from './utils/validation';
@@ -1049,6 +1053,29 @@ export async function sendEDLFullySignedNotification(data: {
 }
 
 /**
+ * Envoie au proprietaire la notification de reception d'un nouveau devis
+ * de la part d'un prestataire (compagnon de sendProviderQuoteApprovedEmail).
+ *
+ * idempotencyKey: quote-received/<quoteId> — un seul email par devis envoye,
+ * meme en cas de retry du POST /send.
+ */
+export async function sendOwnerQuoteReceivedEmail(
+  data: OwnerQuoteReceivedParams & { ownerEmail: string }
+): Promise<EmailResult> {
+  const template = ownerQuoteReceivedEmail(data);
+  return sendEmail({
+    to: data.ownerEmail,
+    subject: template.subject,
+    html: template.html,
+    idempotencyKey: `quote-received/${data.quoteId}`,
+    tags: [
+      { name: 'type', value: 'owner-quote-received' },
+      { name: 'quote_id', value: data.quoteId },
+    ],
+  });
+}
+
+/**
  * Envoie au prestataire la notification d'acceptation d'un de ses devis.
  *
  * idempotencyKey: quote-accepted/<quoteId> — un seul email par devis,
@@ -1133,5 +1160,7 @@ export const emailService = {
   // Prestataires
   sendProviderQuoteApprovedEmail,
   sendProviderComplianceReminderEmail,
+  // Proprietaire <- Prestataire
+  sendOwnerQuoteReceivedEmail,
 };
 
