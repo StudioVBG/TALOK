@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { pdfService } from "@/lib/services/pdf.service";
 import { resolveOwnerIdentity } from "@/lib/entities/resolveOwnerIdentity";
@@ -79,10 +80,10 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const supabase = await createClient();
+    const authClient = await createClient();
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await authClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -91,32 +92,43 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const month = searchParams.get("month");
 
-    // Vérifier que l'utilisateur est locataire du bail
+    // Service-role + check tenant/signer/owner/admin
+    // (cf. docs/audits/rls-cascade-audit.md)
+    const supabase = getServiceClient();
+
     const { data: roommate } = await supabase
       .from("roommates")
       .select("id")
-      .eq("lease_id", id as any)
-      .eq("user_id", user.id as any)
+      .eq("lease_id", id)
+      .eq("user_id", user.id)
       .is("left_on", null)
-      .single();
+      .maybeSingle();
 
     if (!roommate) {
-      // Vérifier via lease_signers
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id")
-        .eq("user_id", user.id as any)
-        .single();
+        .select("id, role")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
       if (profile) {
+        const profileData = profile as { id: string; role: string };
         const { data: signer } = await supabase
           .from("lease_signers")
           .select("id")
-          .eq("lease_id", id as any)
-          .eq("profile_id", (profile as any).id as any)
-          .single();
+          .eq("lease_id", id)
+          .eq("profile_id", profileData.id)
+          .maybeSingle();
 
-        if (!signer) {
+        const { data: lease } = await supabase
+          .from("leases")
+          .select("property:properties(owner_id)")
+          .eq("id", id)
+          .maybeSingle();
+        const isOwner = (lease as any)?.property?.owner_id === profileData.id;
+        const isAdmin = profileData.role === "admin";
+
+        if (!signer && !isOwner && !isAdmin) {
           return NextResponse.json(
             { error: "Non autorisé" },
             { status: 403 }
@@ -130,7 +142,6 @@ export async function GET(
       }
     }
 
-    // Récupérer les factures payées (quittances)
     let query = supabase
       .from("invoices")
       .select(

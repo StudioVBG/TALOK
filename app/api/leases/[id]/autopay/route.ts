@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { paymentSharesService } from "@/features/tenant/services/payment-shares.service";
 
@@ -35,14 +36,16 @@ export async function POST(
       );
     }
 
-    // Vérifier que la part appartient à l'utilisateur
-    const { data: roommate } = await supabase
+    // Service-role + check métier roommate actif (cf. docs/audits/rls-cascade-audit.md)
+    const serviceClient = getServiceClient();
+
+    const { data: roommate } = await serviceClient
       .from("roommates")
       .select("id")
-      .eq("lease_id", id as any)
-      .eq("user_id", user.id as any)
+      .eq("lease_id", id)
+      .eq("user_id", user.id)
       .is("left_on", null)
-      .single();
+      .maybeSingle();
 
     if (!roommate) {
       return NextResponse.json(
@@ -51,11 +54,11 @@ export async function POST(
       );
     }
 
-    const { data: paymentShare } = await supabase
+    const { data: paymentShare } = await serviceClient
       .from("payment_shares")
       .select("id, roommate_id")
-      .eq("id", paymentShareId as any)
-      .single();
+      .eq("id", paymentShareId)
+      .maybeSingle();
 
     if (!paymentShare || !("roommate_id" in paymentShare) || !("id" in roommate) || (paymentShare as any).roommate_id !== (roommate as any).id) {
       return NextResponse.json(

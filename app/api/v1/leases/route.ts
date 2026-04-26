@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import {
   apiError,
   apiSuccess,
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       if (apiAccessCheck) return apiAccessCheck;
     }
 
-    const supabase = await createClient();
+    const supabase = getServiceClient();
     const { searchParams } = new URL(request.url);
     const { page, limit, offset } = getPaginationParams(searchParams);
 
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
     const apiAccessCheck = await requireApiAccess(auth.profile);
     if (apiAccessCheck) return apiAccessCheck;
 
-    const supabase = await createClient();
+    const supabase = getServiceClient();
     const body = await request.json();
     const { data, error: validationError } = validateBody(CreateLeaseSchema, body);
 

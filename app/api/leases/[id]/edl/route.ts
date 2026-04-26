@@ -2,6 +2,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -17,10 +18,10 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const supabase = await createClient();
+    const authClient = await createClient();
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await authClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
@@ -30,28 +31,29 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type"); // "entree" | "sortie"
 
-    // Vérifier les permissions
+    // Service-role + check métier (cf. docs/audits/rls-cascade-audit.md)
+    const supabase = getServiceClient();
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    // Vérifier l'accès au bail
-    const { data: lease, error: leaseError } = await supabase
+    const { data: lease } = await supabase
       .from("leases")
       .select(`
         id,
-        property:properties!inner(id, owner_id)
+        property:properties(id, owner_id)
       `)
       .eq("id", leaseId)
-      .single();
+      .maybeSingle();
 
-    if (leaseError || !lease) {
+    if (!lease) {
       return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
     }
 
@@ -59,7 +61,6 @@ export async function GET(
     const isOwner = leaseData.property?.owner_id === profile.id;
     const isAdmin = profile.role === "admin";
 
-    // Vérifier si locataire
     let isTenant = false;
     if (!isOwner && !isAdmin) {
       const { data: signer } = await supabase
@@ -67,8 +68,8 @@ export async function GET(
         .select("id")
         .eq("lease_id", leaseId)
         .eq("profile_id", profile.id)
-        .single();
-      
+        .maybeSingle();
+
       isTenant = !!signer;
     }
 
