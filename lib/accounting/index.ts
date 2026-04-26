@@ -97,6 +97,12 @@ export {
 } from './deposit-operation-entry';
 
 export {
+  ensureIrlRevisionEntry,
+  type IrlRevisionEntryResult,
+  type IrlRevisionSkipReason,
+} from './irl-revision-entry';
+
+export {
   ensureSubscriptionPaidEntry,
   type EnsureSubscriptionEntryResult,
   type EnsureSubscriptionSkipReason,

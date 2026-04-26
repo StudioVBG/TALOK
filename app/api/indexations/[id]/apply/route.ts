@@ -150,6 +150,24 @@ export async function POST(
       },
     });
 
+    // Pose l'écriture mémo dans le journal OD pour historiser la révision.
+    // Non bloquant : si la compta n'est pas activée pour cette entité, on
+    // continue à renvoyer le succès au front. Idempotent via reference =
+    // indexation.id.
+    try {
+      const { ensureIrlRevisionEntry } = await import(
+        "@/lib/accounting/irl-revision-entry"
+      );
+      await ensureIrlRevisionEntry(serviceClient as any, indexationId, {
+        userId: user.id,
+      });
+    } catch (entryError) {
+      console.error(
+        "[apply] Écriture comptable IRL (non bloquante):",
+        entryError,
+      );
+    }
+
     // Journaliser
     await serviceClient.from("audit_log").insert({
       user_id: user.id,
