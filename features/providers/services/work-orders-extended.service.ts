@@ -357,6 +357,13 @@ export async function startIntervention(
     .single();
 
   if (error) throw error;
+
+  // Escrow : libère automatiquement l'acompte vers le compte Connect du
+  // prestataire au démarrage des travaux. Fire-and-forget — un échec
+  // (compte Connect KO, charge_id manquant…) ne doit pas bloquer la
+  // transition de statut.
+  void releaseDepositOnStart(supabase, workOrderId);
+
   return data as WorkOrderExtended;
 }
 
@@ -384,7 +391,69 @@ export async function completeIntervention(
     .single();
 
   if (error) throw error;
+
+  // Escrow : à la complétion, on pose la dispute_deadline = now + 7j sur
+  // tous les paiements 'balance'/'full' encore en escrow_status='held'.
+  // Le cron /api/cron/release-escrow libérera ces fonds après la deadline
+  // si le proprio ne valide pas explicitement avant.
+  void setDisputeDeadlineOnComplete(supabase, workOrderId);
+
   return data as WorkOrderExtended;
+}
+
+/**
+ * Libère l'acompte (escrow) vers le compte Connect du prestataire au
+ * démarrage de l'intervention. Fire-and-forget : log mais ne throw pas.
+ */
+async function releaseDepositOnStart(
+  supabase: SupabaseClient,
+  workOrderId: string
+): Promise<void> {
+  try {
+    const { findHeldPayments, releaseEscrowToProvider } = await import(
+      '@/lib/work-orders/release-escrow'
+    );
+    const heldDeposits = await findHeldPayments(supabase, workOrderId, 'deposit');
+    for (const payment of heldDeposits) {
+      try {
+        await releaseEscrowToProvider(supabase, {
+          paymentId: payment.id,
+          reason: 'deposit_release_on_start',
+        });
+      } catch (err) {
+        console.error(
+          `[startIntervention] Escrow deposit release failed for payment ${payment.id}:`,
+          err
+        );
+      }
+    }
+  } catch (err) {
+    console.error('[startIntervention] releaseDepositOnStart fatal:', err);
+  }
+}
+
+/**
+ * Pose dispute_deadline = NOW() + 7 jours sur les paiements balance/full
+ * en escrow held. Idempotent : si déjà posée, ne touche pas.
+ */
+async function setDisputeDeadlineOnComplete(
+  supabase: SupabaseClient,
+  workOrderId: string
+): Promise<void> {
+  try {
+    const deadline = new Date();
+    deadline.setDate(deadline.getDate() + 7);
+
+    await (supabase as SupabaseClient)
+      .from('work_order_payments')
+      .update({ dispute_deadline: deadline.toISOString() })
+      .eq('work_order_id', workOrderId)
+      .eq('escrow_status', 'held')
+      .in('payment_type', ['balance', 'full'])
+      .is('dispute_deadline', null);
+  } catch (err) {
+    console.error('[completeIntervention] setDisputeDeadlineOnComplete failed:', err);
+  }
 }
 
 /**
