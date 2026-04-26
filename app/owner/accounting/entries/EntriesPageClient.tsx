@@ -260,6 +260,9 @@ function EntriesPageContent() {
                     <th className="text-center px-3 py-2.5 font-medium">
                       Source
                     </th>
+                    <th className="text-center px-3 py-2.5 font-medium">
+                      Action
+                    </th>
                   </tr>
                 </thead>
                 <tbody>

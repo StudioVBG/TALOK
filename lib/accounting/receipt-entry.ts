@@ -46,8 +46,12 @@ interface PaymentRow {
   invoice: {
     id: string;
     periode: string | null;
+    montant_loyer: number | null;
+    montant_charges: number | null;
+    tenant_id: string | null;
     lease: {
       id: string;
+      tenant_id: string | null;
       property: {
         id: string;
         legal_entity_id: string | null;
@@ -111,8 +115,12 @@ export async function ensureReceiptAccountingEntry(
           invoice:invoices!inner(
             id,
             periode,
+            montant_loyer,
+            montant_charges,
+            tenant_id,
             lease:leases!inner(
               id,
+              tenant_id,
               property:properties!inner(
                 id,
                 legal_entity_id,
@@ -169,15 +177,12 @@ export async function ensureReceiptAccountingEntry(
     //   - is_comptable (BIC/IS) : la créance 411 a été posée à l'émission
     //     de la facture par invoice-entry.ts (rent_invoiced). Au paiement,
     //     on solde la créance : D 512 / C 411 (rent_payment_clearing).
+    //     Les provisions sont aussi soldées via 411 par cette même écriture.
     //   - reel / micro_foncier : pas d'écriture à l'émission, comptabilité
-    //     cash. Au paiement, on enregistre le revenu : D 512 / C 706
-    //     (rent_received).
+    //     cash. Au paiement, on split le montant : la portion loyer va sur
+    //     706 (rent_received), la portion provisions sur 419100
+    //     (provision_received) pour traçabilité de la régul annuelle.
     const isAccrual = config.declarationMode === "is_comptable";
-    const event = isAccrual ? "rent_payment_clearing" : "rent_received";
-    const labelPrefix = isAccrual ? "Règlement loyer" : "Loyer";
-    const label = `${labelPrefix}${periode ? ` ${periode}` : ""}${
-      propertyAddress ? ` - ${propertyAddress}` : ""
-    }`.trim();
 
     const actorUserId =
       options.userId ?? (await resolveSystemActorForEntity(supabase, entityId));
@@ -185,21 +190,107 @@ export async function ensureReceiptAccountingEntry(
       return { created: false, skippedReason: "error", error: "actor_unresolved" };
     }
 
-    const entry = await createAutoEntry(supabase, event, {
+    // Axes analytiques propagés sur toutes les écritures (P&L par bien,
+    // grand livre par locataire). Optionnels — n'altèrent pas la balance.
+    const propertyId = paymentRow.invoice?.lease?.property?.id ?? undefined;
+    const leaseId = paymentRow.invoice?.lease?.id ?? undefined;
+    const tenantId =
+      paymentRow.invoice?.tenant_id ??
+      paymentRow.invoice?.lease?.tenant_id ??
+      undefined;
+
+    if (isAccrual) {
+      const label = `Règlement loyer${periode ? ` ${periode}` : ""}${
+        propertyAddress ? ` - ${propertyAddress}` : ""
+      }`.trim();
+      const entry = await createAutoEntry(supabase, "rent_payment_clearing", {
+        entityId,
+        exerciseId: exercise.id,
+        userId: actorUserId,
+        amountCents,
+        label,
+        date: entryDate,
+        reference: paymentId,
+        propertyId,
+        leaseId,
+        thirdPartyType: tenantId ? "tenant" : undefined,
+        thirdPartyId: tenantId,
+      });
+      if (shouldMarkInformational(config)) {
+        await markEntryInformational(supabase, entry.id);
+      }
+      return { created: true, entryId: entry.id };
+    }
+
+    // Mode cash basis : split loyer / provisions si l'invoice détaille les
+    // deux. Si pas de provisions, l'ancien comportement mono-entry est
+    // conservé (rent_received pour le total).
+    const provisionEuros = Number(paymentRow.invoice?.montant_charges ?? 0);
+    const rentEuros = Number(paymentRow.invoice?.montant_loyer ?? 0);
+    const totalDeclared = provisionEuros + rentEuros;
+
+    let provisionCents = 0;
+    let rentCents = amountCents;
+
+    // Calcule le ratio loyer/provisions seulement si la facture est cohérente
+    // avec le payment (totaux qui matchent). Sinon on tombe back sur
+    // 100% loyer pour éviter d'inventer des montants.
+    if (
+      provisionEuros > 0 &&
+      totalDeclared > 0 &&
+      Math.abs(totalDeclared - Number(paymentRow.montant ?? 0)) < 0.01
+    ) {
+      provisionCents = Math.round(provisionEuros * 100);
+      rentCents = amountCents - provisionCents;
+    }
+
+    const baseLabel = periode ? ` ${periode}` : "";
+    const addrSuffix = propertyAddress ? ` - ${propertyAddress}` : "";
+
+    // Écriture loyer (706000)
+    const rentEntry = await createAutoEntry(supabase, "rent_received", {
       entityId,
       exerciseId: exercise.id,
       userId: actorUserId,
-      amountCents,
-      label,
+      amountCents: rentCents,
+      label: `Loyer${baseLabel}${addrSuffix}`.trim(),
       date: entryDate,
       reference: paymentId,
+      propertyId,
+      leaseId,
+      thirdPartyType: tenantId ? "tenant" : undefined,
+      thirdPartyId: tenantId,
     });
-
     if (shouldMarkInformational(config)) {
-      await markEntryInformational(supabase, entry.id);
+      await markEntryInformational(supabase, rentEntry.id);
     }
 
-    return { created: true, entryId: entry.id };
+    // Écriture provisions (419100) — seulement si > 0
+    if (provisionCents > 0) {
+      const provisionEntry = await createAutoEntry(
+        supabase,
+        "provision_received",
+        {
+          entityId,
+          exerciseId: exercise.id,
+          userId: actorUserId,
+          amountCents: provisionCents,
+          label: `Provisions charges${baseLabel}${addrSuffix}`.trim(),
+          date: entryDate,
+          // Référence dérivée pour idempotence séparée de l'écriture loyer.
+          reference: `${paymentId}:provision`,
+          propertyId,
+          leaseId,
+          thirdPartyType: tenantId ? "tenant" : undefined,
+          thirdPartyId: tenantId,
+        },
+      );
+      if (shouldMarkInformational(config)) {
+        await markEntryInformational(supabase, provisionEntry.id);
+      }
+    }
+
+    return { created: true, entryId: rentEntry.id };
   } catch (err) {
     console.error("[ensureReceiptAccountingEntry] failed:", err);
     return {
