@@ -1898,12 +1898,16 @@ export async function POST(request: NextRequest) {
 // ============================================================================
 // Work Order payment — handler dédié
 // ============================================================================
-// Déclenché quand un paiement Stripe (Connect) d'une intervention aboutit.
-// Le montant net est déjà routé vers le compte du prestataire par Stripe
-// (transfer_data.destination + application_fee). Ici on met à jour la
-// ligne work_order_payments, on fait avancer le work_order, et — si la
-// classification marque l'intervention comme récupérable — on injecte
-// automatiquement l'écriture dans charge_entries.
+// Déclenché quand un paiement Stripe Connect d'une intervention aboutit.
+//
+// Mode ESCROW (Separate charges and transfers) : la charge est encaissée sur
+// le compte plateforme Talok et y reste jusqu'à libération explicite. Ce
+// handler ne fait DONC PAS de Transfer vers le compte Connect du prestataire :
+// il se contente de marquer le paiement 'succeeded' / escrow 'held' et
+// d'avancer le statut WO. La libération (Transfer + déduction commission)
+// est gérée par la route /api/work-orders/[id]/release-transfer (Sprint B)
+// et le cron de libération automatique 7j après 'completed'.
+// ============================================================================
 
 async function handleWorkOrderPaymentSucceeded(
   supabase: any,
@@ -1926,18 +1930,22 @@ async function handleWorkOrderPaymentSucceeded(
     .eq("stripe_payment_intent_id", paymentIntent.id)
     .maybeSingle();
 
-  const transferId =
+  const chargeId =
     typeof paymentIntent.latest_charge === "string"
       ? paymentIntent.latest_charge
-      : (paymentIntent.latest_charge as any)?.transfer || null;
+      : (paymentIntent.latest_charge as any)?.id || null;
 
+  // Escrow held : fonds sur compte Talok, en attente de libération vers
+  // le compte Connect du prestataire (Sprint B).
+  const nowIso = new Date().toISOString();
   if (existing) {
     await supabase
       .from("work_order_payments")
       .update({
         status: "succeeded",
-        escrow_status: "released",
-        stripe_transfer_id: transferId,
+        escrow_status: "held",
+        stripe_charge_id: chargeId,
+        escrow_held_at: nowIso,
       })
       .eq("id", (existing as { id: string }).id);
   } else {
@@ -1947,9 +1955,10 @@ async function handleWorkOrderPaymentSucceeded(
       .from("work_order_payments")
       .update({
         status: "succeeded",
-        escrow_status: "released",
+        escrow_status: "held",
         stripe_payment_intent_id: paymentIntent.id,
-        stripe_transfer_id: transferId,
+        stripe_charge_id: chargeId,
+        escrow_held_at: nowIso,
       })
       .eq("work_order_id", workOrderId)
       .eq("payment_type", paymentType)
@@ -1959,6 +1968,9 @@ async function handleWorkOrderPaymentSucceeded(
   // Avancer le statut du work_order :
   //   'deposit' → deposit_paid
   //   'balance' ou 'full' → fully_paid
+  // Note : 'fully_paid' signifie ici "le proprio a tout payé", pas "les
+  // fonds sont arrivés chez le prestataire". Le transfer effectif dépend
+  // de la libération escrow (Sprint B).
   const nextStatut =
     paymentType === "deposit" ? "deposit_paid" : "fully_paid";
   await supabase
@@ -1967,9 +1979,9 @@ async function handleWorkOrderPaymentSucceeded(
     .eq("id", workOrderId);
 
   // Injection automatique dans charge_entries si is_tenant_chargeable=true
-  // (idempotent côté helper — safe à appeler même si le WO n'est pas
-  // complètement payé, il ne fera rien tant qu'aucun paiement n'est
-  // succeeded avec montant > 0).
+  // (idempotent côté helper). On le déclenche dès que le proprio a tout payé,
+  // même si l'escrow n'est pas encore libéré côté prestataire — la dépense
+  // est bien engagée pour le proprio.
   if (nextStatut === "fully_paid") {
     try {
       const { injectChargeEntryForWorkOrder } = await import(
@@ -2006,7 +2018,9 @@ async function handleWorkOrderPaymentSucceeded(
     /* non-blocking — just means the email won't carry the reference */
   }
 
-  // Outbox : notifier le prestataire que les fonds sont transférés
+  // Outbox : notifier le prestataire que le paiement est confirmé (mais
+  // les fonds sont encore en escrow, ils seront transférés au démarrage
+  // des travaux ou après le délai de contestation 7j).
   const payeeProfileId = paymentIntent.metadata?.payee_profile_id;
   if (payeeProfileId) {
     const { data: payeeProfile } = await supabase
@@ -2024,6 +2038,7 @@ async function handleWorkOrderPaymentSucceeded(
           work_order_id: workOrderId,
           payment_type: paymentType,
           amount_cents: paymentIntent.amount,
+          escrow_status: "held",
           ticket_reference: ticketReference,
           recipient_user_id: payeeUserId,
         },
