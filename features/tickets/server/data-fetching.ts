@@ -1,16 +1,82 @@
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 
+type Role = "owner" | "tenant" | "provider";
+
+type ProfileSummary = {
+  id: string;
+  nom: string | null;
+  prenom: string | null;
+  role: string | null;
+};
+
+type ProviderSummary = {
+  id: string;
+  nom: string | null;
+  prenom: string | null;
+  telephone: string | null;
+};
+
+type PropertySummary = {
+  id: string;
+  adresse_complete: string | null;
+};
+
+type LeaseSummary = {
+  id: string;
+  date_debut: string | null;
+  date_fin: string | null;
+  statut: string | null;
+};
+
+type WorkOrderRow = {
+  id: string;
+  ticket_id: string;
+  statut: string | null;
+  date_intervention_prevue: string | null;
+  cout_estime: number | null;
+  cout_final: number | null;
+  provider: ProviderSummary | null;
+};
+
+type EnrichedTicket = Record<string, unknown> & {
+  id: string;
+  property: PropertySummary | null;
+  lease: LeaseSummary | null;
+  creator: ProfileSummary | null;
+  assignee: ProfileSummary | null;
+  work_orders: Array<Omit<WorkOrderRow, "ticket_id">>;
+  ticket_comments: Array<Record<string, never>>;
+  messages: [{ count: number }];
+};
+
 /**
  * getTickets — SSR fetcher for the owner/tenant/provider tickets list.
  *
- * Fetches tickets with a minimal base query, then hydrates joined relations
- * (property, lease, creator, assignee, work_orders + provider, comment count)
- * separately. This prevents a single broken embed / RLS recursion on any
- * related table from blanking the whole list (previously surfaced as a
- * "Ouverts: N" KPI alongside a misleading "Aucun ticket" empty state).
+ * **Design intentionnel (ne pas fusionner en un seul SELECT avec embeds) :**
+ * la liste tickets se construit en deux temps :
+ *   1. Une requête de base sur `tickets` (filtrée par rôle) pour récupérer
+ *      les rows brutes — c'est ce qui détermine la complétude de la liste.
+ *   2. Six fetchs parallèles d'hydratation (properties, leases, creator,
+ *      assignee, work_orders + provider embed, comment count) qui enrichissent
+ *      les rows en mémoire via des Maps id→row.
+ *
+ * Pourquoi pas un seul SELECT avec embeds Supabase ? Parce qu'une RLS cassée
+ * ou récursive sur n'importe quelle table jointe (ex. `properties` via
+ * `lease_signers`) blanke alors la requête entière, ce qui se manifeste par
+ * un KPI "Ouverts: N" affiché à côté d'un trompeur "Aucun ticket". Les fetchs
+ * indépendants isolent ces ratés : si l'hydratation des baux casse, les
+ * tickets restent affichés sans `lease`, plutôt que disparaître.
+ *
+ * Le service-role bypasse la RLS sur les hydratations elles-mêmes — la
+ * sécurité est garantie en amont par le filtre métier (par owner_id /
+ * created_by_profile_id / work_orders.provider_id).
+ *
+ * Le provider est embarqué directement dans la requête `work_orders` :
+ * c'est sûr car service-role contourne la RLS profiles, et un FK orphelin
+ * sur un work_order isole le `null` à cette row sans casser les autres.
  */
-export async function getTickets(role: "owner" | "tenant" | "provider") {
+export async function getTickets(role: Role): Promise<EnrichedTicket[]> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -19,34 +85,29 @@ export async function getTickets(role: "owner" | "tenant" | "provider") {
 
   const serviceClient = getServiceClient();
 
-  const { data: profile } = await serviceClient.from("profiles").select("id").eq("user_id", user.id).single();
+  const { data: profile } = await serviceClient
+    .from("profiles")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
 
   if (!profile) return [];
+  const profileId = (profile as { id: string }).id;
 
-  let baseQuery = (serviceClient as any).from("tickets").select("*").order("created_at", { ascending: false });
+  const ticketIdsForRole = await resolveTicketScope(serviceClient, role, profileId);
+  if (ticketIdsForRole.kind === "empty") return [];
 
-  if (role === "tenant") {
-    baseQuery = baseQuery.eq("created_by_profile_id", profile.id);
-  } else if (role === "owner") {
-    const { data: properties } = await serviceClient.from("properties").select("id").eq("owner_id", profile.id);
+  let baseQuery = serviceClient
+    .from("tickets")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-    const propertyIds = (properties || []).map((p) => (p as { id: string }).id);
-    if (propertyIds.length === 0) return [];
-    baseQuery = baseQuery.in("property_id", propertyIds);
-  } else if (role === "provider") {
-    const { data: jobs } = await serviceClient.from("work_orders").select("ticket_id").eq("provider_id", profile.id);
-
-    const woTicketIds = (jobs || [])
-      .map((j) => (j as { ticket_id: string | null }).ticket_id)
-      .filter((id): id is string => Boolean(id));
-
-    const { data: assigned } = await serviceClient.from("tickets").select("id").eq("assigned_to", profile.id);
-
-    const assignedIds = (assigned || []).map((t) => (t as { id: string }).id);
-
-    const allIds = [...new Set([...woTicketIds, ...assignedIds])];
-    if (allIds.length === 0) return [];
-    baseQuery = baseQuery.in("id", allIds);
+  if (ticketIdsForRole.kind === "by_creator") {
+    baseQuery = baseQuery.eq("created_by_profile_id", ticketIdsForRole.profileId);
+  } else if (ticketIdsForRole.kind === "by_property") {
+    baseQuery = baseQuery.in("property_id", ticketIdsForRole.propertyIds);
+  } else if (ticketIdsForRole.kind === "by_id") {
+    baseQuery = baseQuery.in("id", ticketIdsForRole.ticketIds);
   }
 
   const { data: base, error } = await baseQuery;
@@ -56,93 +117,153 @@ export async function getTickets(role: "owner" | "tenant" | "provider") {
     return [];
   }
 
-  const tickets = (base || []) as Array<Record<string, any>>;
+  const tickets = (base ?? []) as Array<Record<string, unknown> & { id: string }>;
   if (tickets.length === 0) return [];
 
-  const ticketIds = tickets.map((t) => t.id as string);
-  const propertyIds = uniq(tickets.map((t) => t.property_id).filter(Boolean));
-  const leaseIds = uniq(tickets.map((t) => t.lease_id).filter(Boolean));
-  const creatorIds = uniq(tickets.map((t) => t.created_by_profile_id).filter(Boolean));
-  const assigneeIds = uniq(tickets.map((t) => t.assigned_to).filter(Boolean));
+  const ticketIds = tickets.map((t) => t.id);
+  const propertyIds = uniq(tickets.map((t) => t.property_id as string | null).filter(isNonNullString));
+  const leaseIds = uniq(tickets.map((t) => t.lease_id as string | null).filter(isNonNullString));
+  const creatorIds = uniq(tickets.map((t) => t.created_by_profile_id as string | null).filter(isNonNullString));
+  const assigneeIds = uniq(tickets.map((t) => t.assigned_to as string | null).filter(isNonNullString));
 
   const [propertiesRes, leasesRes, creatorsRes, assigneesRes, workOrdersRes, commentsRes] = await Promise.all([
-    safeFetch(() =>
+    safeFetch<PropertySummary>(() =>
       propertyIds.length
         ? serviceClient.from("properties").select("id, adresse_complete").in("id", propertyIds)
-        : Promise.resolve({ data: [] as any[], error: null }),
+        : emptyResult(),
     ),
-    safeFetch(() =>
+    safeFetch<LeaseSummary>(() =>
       leaseIds.length
         ? serviceClient.from("leases").select("id, date_debut, date_fin, statut").in("id", leaseIds)
-        : Promise.resolve({ data: [] as any[], error: null }),
+        : emptyResult(),
     ),
-    safeFetch(() =>
+    safeFetch<ProfileSummary>(() =>
       creatorIds.length
         ? serviceClient.from("profiles").select("id, nom, prenom, role").in("id", creatorIds)
-        : Promise.resolve({ data: [] as any[], error: null }),
+        : emptyResult(),
     ),
-    safeFetch(() =>
+    safeFetch<ProfileSummary>(() =>
       assigneeIds.length
         ? serviceClient.from("profiles").select("id, nom, prenom, role").in("id", assigneeIds)
-        : Promise.resolve({ data: [] as any[], error: null }),
+        : emptyResult(),
     ),
-    safeFetch(() =>
+    // provider is embedded directly: service-role bypasses profiles RLS, and a
+    // missing/orphan provider FK isolates the null to that single work_order
+    // row instead of dropping the whole batch.
+    safeFetch<WorkOrderRow>(() =>
       serviceClient
         .from("work_orders")
-        .select("id, ticket_id, statut, date_intervention_prevue, cout_estime, cout_final, provider_id")
+        .select(
+          "id, ticket_id, statut, date_intervention_prevue, cout_estime, cout_final, provider:profiles!provider_id(id, nom, prenom, telephone)",
+        )
         .in("ticket_id", ticketIds),
     ),
-    safeFetch(() => serviceClient.from("ticket_comments").select("id, ticket_id").in("ticket_id", ticketIds)),
+    safeFetch<{ id: string; ticket_id: string }>(() =>
+      serviceClient.from("ticket_comments").select("id, ticket_id").in("ticket_id", ticketIds),
+    ),
   ]);
-
-  const providerIds = uniq((workOrdersRes as any[]).map((w) => w.provider_id).filter(Boolean));
-  const providersRes = await safeFetch(() =>
-    providerIds.length
-      ? serviceClient.from("profiles").select("id, nom, prenom, telephone").in("id", providerIds)
-      : Promise.resolve({ data: [] as any[], error: null }),
-  );
 
   const propertyMap = indexById(propertiesRes);
   const leaseMap = indexById(leasesRes);
   const creatorMap = indexById(creatorsRes);
   const assigneeMap = indexById(assigneesRes);
-  const providerMap = indexById(providersRes);
 
-  const workOrdersByTicket: Record<string, any[]> = {};
-  (workOrdersRes as any[]).forEach((wo) => {
-    if (!workOrdersByTicket[wo.ticket_id]) workOrdersByTicket[wo.ticket_id] = [];
-    workOrdersByTicket[wo.ticket_id].push({
+  const workOrdersByTicket = new Map<string, Array<Omit<WorkOrderRow, "ticket_id">>>();
+  for (const wo of workOrdersRes) {
+    const list = workOrdersByTicket.get(wo.ticket_id) ?? [];
+    list.push({
       id: wo.id,
       statut: wo.statut,
       date_intervention_prevue: wo.date_intervention_prevue,
       cout_estime: wo.cout_estime,
       cout_final: wo.cout_final,
-      provider: wo.provider_id ? providerMap[wo.provider_id] || null : null,
+      provider: wo.provider ?? null,
     });
-  });
+    workOrdersByTicket.set(wo.ticket_id, list);
+  }
 
-  const commentCountByTicket: Record<string, number> = {};
-  (commentsRes as any[]).forEach((c) => {
-    commentCountByTicket[c.ticket_id] = (commentCountByTicket[c.ticket_id] || 0) + 1;
-  });
+  const commentCountByTicket = new Map<string, number>();
+  for (const c of commentsRes) {
+    commentCountByTicket.set(c.ticket_id, (commentCountByTicket.get(c.ticket_id) ?? 0) + 1);
+  }
 
-  return tickets.map((t) => ({
-    ...t,
-    property: t.property_id ? propertyMap[t.property_id] || null : null,
-    lease: t.lease_id ? leaseMap[t.lease_id] || null : null,
-    creator: t.created_by_profile_id ? creatorMap[t.created_by_profile_id] || null : null,
-    assignee: t.assigned_to ? assigneeMap[t.assigned_to] || null : null,
-    work_orders: workOrdersByTicket[t.id] || [],
-    ticket_comments: new Array(commentCountByTicket[t.id] || 0).fill({}),
-    messages: [{ count: commentCountByTicket[t.id] || 0 }],
-  }));
+  return tickets.map((t): EnrichedTicket => {
+    const propertyId = (t.property_id as string | null) ?? null;
+    const leaseId = (t.lease_id as string | null) ?? null;
+    const creatorId = (t.created_by_profile_id as string | null) ?? null;
+    const assigneeId = (t.assigned_to as string | null) ?? null;
+    const commentCount = commentCountByTicket.get(t.id) ?? 0;
+
+    return {
+      ...t,
+      property: propertyId ? propertyMap.get(propertyId) ?? null : null,
+      lease: leaseId ? leaseMap.get(leaseId) ?? null : null,
+      creator: creatorId ? creatorMap.get(creatorId) ?? null : null,
+      assignee: assigneeId ? assigneeMap.get(assigneeId) ?? null : null,
+      work_orders: workOrdersByTicket.get(t.id) ?? [],
+      ticket_comments: new Array(commentCount).fill({}) as Array<Record<string, never>>,
+      messages: [{ count: commentCount }],
+    };
+  });
+}
+
+type TicketScope =
+  | { kind: "empty" }
+  | { kind: "by_creator"; profileId: string }
+  | { kind: "by_property"; propertyIds: string[] }
+  | { kind: "by_id"; ticketIds: string[] };
+
+async function resolveTicketScope(
+  serviceClient: ReturnType<typeof getServiceClient>,
+  role: Role,
+  profileId: string,
+): Promise<TicketScope> {
+  if (role === "tenant") {
+    return { kind: "by_creator", profileId };
+  }
+
+  if (role === "owner") {
+    const { data: properties } = await serviceClient
+      .from("properties")
+      .select("id")
+      .eq("owner_id", profileId);
+
+    const propertyIds = ((properties ?? []) as Array<{ id: string }>)
+      .map((p) => p.id)
+      .filter(isNonNullString);
+    if (propertyIds.length === 0) return { kind: "empty" };
+    return { kind: "by_property", propertyIds };
+  }
+
+  // provider
+  const [{ data: jobs }, { data: assigned }] = await Promise.all([
+    serviceClient.from("work_orders").select("ticket_id").eq("provider_id", profileId),
+    serviceClient.from("tickets").select("id").eq("assigned_to", profileId),
+  ]);
+
+  const woTicketIds = ((jobs ?? []) as Array<{ ticket_id: string | null }>)
+    .map((j) => j.ticket_id)
+    .filter(isNonNullString);
+  const assignedIds = ((assigned ?? []) as Array<{ id: string }>)
+    .map((t) => t.id)
+    .filter(isNonNullString);
+
+  const ticketIds = uniq([...woTicketIds, ...assignedIds]);
+  if (ticketIds.length === 0) return { kind: "empty" };
+  return { kind: "by_id", ticketIds };
 }
 
 function uniq<T>(values: T[]): T[] {
   return [...new Set(values)];
 }
 
-async function safeFetch(fn: () => PromiseLike<{ data: any; error: unknown }>): Promise<any[]> {
+function isNonNullString(v: unknown): v is string {
+  return typeof v === "string" && v.length > 0;
+}
+
+async function safeFetch<T>(
+  fn: () => PromiseLike<{ data: unknown; error: unknown }>,
+): Promise<T[]> {
   try {
     const { data, error } = await fn();
     if (error) {
@@ -150,18 +271,22 @@ async function safeFetch(fn: () => PromiseLike<{ data: any; error: unknown }>): 
       console.error("[getTickets] hydration error:", e.code, e.message);
       return [];
     }
-    return (data as any[]) || [];
+    return (data as T[]) ?? [];
   } catch (err) {
     console.error("[getTickets] hydration threw:", err);
     return [];
   }
 }
 
-function indexById(rows: any[]): Record<string, any> {
-  const out: Record<string, any> = {};
-  rows.forEach((r) => {
-    if (r && typeof r.id === "string") out[r.id] = r;
-  });
+function emptyResult(): Promise<{ data: unknown[]; error: null }> {
+  return Promise.resolve({ data: [], error: null });
+}
+
+function indexById<T extends { id: string }>(rows: T[]): Map<string, T> {
+  const out = new Map<string, T>();
+  for (const r of rows) {
+    if (r && typeof r.id === "string") out.set(r.id, r);
+  }
   return out;
 }
 
@@ -226,7 +351,7 @@ export async function getTicketKPIs() {
 
   if (profile.role === "owner") {
     const { data: properties } = await serviceClient.from("properties").select("id").eq("owner_id", profile.id);
-    propertyIds = (properties || []).map((p) => (p as { id: string }).id) || [];
+    propertyIds = ((properties ?? []) as Array<{ id: string }>).map((p) => p.id);
     if (propertyIds.length === 0) return null;
   } else if (profile.role !== "admin") {
     return null;
@@ -355,7 +480,7 @@ export async function getTicketsActionStats(): Promise<{
     .select("id")
     .eq("owner_id", (profile as { id: string }).id);
 
-  const propertyIds = (properties || []).map((p) => (p as { id: string }).id);
+  const propertyIds = ((properties ?? []) as Array<{ id: string }>).map((p) => p.id);
 
   const [woResult, provResult] = await Promise.all([
     propertyIds.length === 0
