@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import {
   authenticateAPIKey,
   requireScope,
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     const scopeCheck = requireScope(auth, "documents");
     if (scopeCheck) return scopeCheck;
 
-    const supabase = await createClient();
+    const supabase = getServiceClient();
     const { searchParams } = new URL(request.url);
     const { page, limit, offset } = getPaginationParams(searchParams);
 
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     const permCheck = requirePermission(auth, "write");
     if (permCheck) return permCheck;
 
-    const supabase = await createClient();
+    const supabase = getServiceClient();
     const body = await request.json();
 
     const { title, type, property_id, lease_id, file_name, mime_type } = body;
@@ -108,12 +108,11 @@ export async function POST(request: NextRequest) {
       return apiError("title, type, and property_id are required", 400, "VALIDATION_ERROR");
     }
 
-    // Verify property ownership
     const { data: property } = await supabase
       .from("properties")
       .select("owner_id")
       .eq("id", property_id)
-      .single();
+      .maybeSingle();
 
     if (!property || property.owner_id !== auth.profileId) {
       return apiError("Propriété non trouvée", 404, "NOT_FOUND");

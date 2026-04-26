@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
@@ -84,7 +84,8 @@ export async function GET(request: Request) {
         .replace(/_/g, "\\_")
         .replace(/[(),.'"/;]/g, "");
 
-      let baseQuery = supabase
+      // Service-role + filtres explicites owner_id / tenant_id (sécurité métier)
+      let baseQuery = serviceClient
         .from("documents")
         .select(`
           id,
