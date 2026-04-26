@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextRequest, NextResponse } from "next/server";
 import { sendTicketUpdateNotification } from "@/lib/services/email-service";
 
@@ -16,21 +17,24 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
+    const authClient = await createClient();
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await authClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le profil et vérifier le rôle
+    // Service-role + check métier provider assigné
+    // (cf. docs/audits/rls-cascade-audit.md)
+    const supabase = getServiceClient();
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("id, role, prenom, nom")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile || profile.role !== "provider") {
       return NextResponse.json(
@@ -39,15 +43,14 @@ export async function POST(
       );
     }
 
-    // Récupérer l'ordre de travail
-    const { data: workOrder, error: woError } = await supabase
+    const { data: workOrder } = await supabase
       .from("work_orders")
       .select(`
         *,
-        ticket:tickets!inner(
+        ticket:tickets(
           id,
           titre,
-          property:properties!inner(
+          property:properties(
             owner_id,
             adresse_complete
           )
@@ -55,9 +58,9 @@ export async function POST(
       `)
       .eq("id", id)
       .eq("provider_id", profile.id)
-      .single();
+      .maybeSingle();
 
-    if (woError || !workOrder) {
+    if (!workOrder) {
       return NextResponse.json(
         { error: "Ordre de travail non trouvé ou non assigné à vous" },
         { status: 404 }
