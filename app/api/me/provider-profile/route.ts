@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { createClient as createServerClient } from "@supabase/supabase-js";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError } from "@/lib/helpers/api-error";
-import { providerProfileSchema } from "@/lib/validations";
+import { providerSettingsSchema } from "@/lib/validations";
 
 function serviceClient() {
   return createServerClient(
@@ -85,7 +85,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const validated = providerProfileSchema.parse(body);
+    const validated = providerSettingsSchema.parse(body);
 
     // Normaliser : transformer les chaînes vides en null pour les colonnes scalaires
     const payload: Record<string, unknown> = {};

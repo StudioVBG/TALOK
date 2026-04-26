@@ -152,9 +152,10 @@ export const ownerProfileExtendedSchema = ownerProfileSchema.extend({
   notes_fiscales: z.string().optional().nullable(),
 });
 
-// Validation des prestataires
-// Champs alignés sur la table provider_profiles (migrations 20240101 + 20251205200000_provider_compliance_sota)
-export const providerProfileSchema = z.object({
+// Validation des paramètres prestataire (page /provider/settings — update partiel)
+// Distinct de providerProfileSchema (création) défini plus bas et utilisé par
+// features/profiles/services/provider-profiles.service.ts.
+export const providerSettingsSchema = z.object({
   raison_sociale: z.string().max(255).optional().nullable(),
   siret: z
     .string()
