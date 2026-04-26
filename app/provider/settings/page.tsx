@@ -2,6 +2,7 @@
 // @ts-nocheck
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { useProfileQuery } from "@/lib/hooks/use-profile-query";
@@ -298,6 +299,30 @@ export default function ProviderSettingsPage() {
                     )}
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Compte de paiement (Stripe Connect) */}
+          <motion.div variants={itemVariants}>
+            <Card className="bg-card/80 backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-emerald-500" />
+                  Compte de paiement
+                </CardTitle>
+                <CardDescription>
+                  Configurez votre compte bancaire pour recevoir vos paiements
+                  d'intervention
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild variant="outline" className="w-full sm:w-auto">
+                  <Link href="/provider/settings/payouts">
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Gérer mon compte de paiement
+                  </Link>
+                </Button>
               </CardContent>
             </Card>
           </motion.div>

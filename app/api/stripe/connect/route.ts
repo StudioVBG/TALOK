@@ -112,10 +112,13 @@ async function getAuthenticatedOwnerProfile() {
     .eq("user_id", user.id)
     .single();
 
-  if (!profile || !["owner", "syndic"].includes(profile.role)) {
+  if (!profile || !["owner", "syndic", "provider"].includes(profile.role)) {
     return {
       error: NextResponse.json(
-        { error: "Seuls les propriétaires et syndics peuvent avoir un compte Connect" },
+        {
+          error:
+            "Seuls les propriétaires, syndics et prestataires peuvent avoir un compte Connect",
+        },
         { status: 403 }
       ),
     };

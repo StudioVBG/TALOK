@@ -1669,15 +1669,41 @@ export async function POST(request: NextRequest) {
             .eq("id", connectAccount.id as string);
 
           if (!updateError) {
-
-            // Notifier le propriétaire si l'onboarding est terminé
+            // Notifier le titulaire du compte si l'onboarding est terminé.
+            // Le message + lien dépendent du rôle (owner / syndic / provider).
             if (account.charges_enabled && account.payouts_enabled && connectAccount.profile_id) {
+              const { data: ownerProfile } = await supabase
+                .from("profiles")
+                .select("role")
+                .eq("id", connectAccount.profile_id)
+                .maybeSingle();
+              const role = (ownerProfile as { role: string } | null)?.role;
+
+              const notif =
+                role === "provider"
+                  ? {
+                      message:
+                        "Votre compte Stripe est actif. Vous recevrez vos paiements d'intervention directement.",
+                      link: "/provider/settings/payouts",
+                    }
+                  : role === "syndic"
+                    ? {
+                        message:
+                          "Votre compte Stripe est actif. Vous pourrez encaisser les charges de copropriété.",
+                        link: "/syndic/settings/payouts",
+                      }
+                    : {
+                        message:
+                          "Votre compte Stripe est actif. Vous recevrez les loyers directement.",
+                        link: "/owner/money?tab=banque",
+                      };
+
               await supabase.rpc("create_notification", {
                 p_recipient_id: connectAccount.profile_id,
                 p_type: "success",
                 p_title: "Compte de paiement activé !",
-                p_message: "Votre compte Stripe est maintenant actif. Vous recevrez les loyers directement.",
-                p_link: "/owner/money?tab=banque",
+                p_message: notif.message,
+                p_link: notif.link,
               });
             }
           }
