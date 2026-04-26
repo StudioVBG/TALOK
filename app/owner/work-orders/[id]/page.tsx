@@ -265,6 +265,19 @@ export default function WorkOrderDetailPage() {
                     Marquer comme paye
                   </Button>
                 )}
+                {/* Validation explicite : libère le solde en escrow sans
+                    attendre les 7 jours de délai de contestation */}
+                {(status === 'completed' || status === 'invoiced') && (
+                  <Button
+                    variant="outline"
+                    onClick={() => performAction('release-transfer', {})}
+                    disabled={actionLoading}
+                    title="Confirme la fin des travaux et libère immédiatement les fonds vers le prestataire (sans attendre le délai de 7 jours)."
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Valider et libérer les fonds
+                  </Button>
+                )}
                 {!['paid', 'cancelled'].includes(status) && (
                   <Button
                     variant="outline"

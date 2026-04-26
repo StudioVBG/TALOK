@@ -1691,7 +1691,25 @@ export async function POST(request: NextRequest) {
       case "transfer.created": {
         const transfer = event.data.object as Stripe.Transfer;
 
-        // Enregistrer le transfert en base
+        // Cas 1 : libération d'escrow work_order_payment.
+        // releaseEscrowToProvider() a déjà fait l'UPDATE synchrone, le
+        // webhook sert ici de filet de sécurité (idempotent).
+        if (transfer.metadata?.type === "work_order_escrow_release") {
+          const wopPaymentId = transfer.metadata?.payment_id;
+          if (wopPaymentId) {
+            await supabase
+              .from("work_order_payments")
+              .update({
+                stripe_transfer_id: transfer.id,
+                escrow_status: "released",
+                escrow_released_at: new Date().toISOString(),
+              })
+              .eq("id", wopPaymentId)
+              .neq("escrow_status", "released");
+          }
+        }
+
+        // Cas 2 (legacy) : transfert flux rent — enregistrer dans stripe_transfers
         const { data: connectAccount } = await supabase
           .from("stripe_connect_accounts")
           .select("id")
@@ -1747,17 +1765,49 @@ export async function POST(request: NextRequest) {
       }
 
       // ===============================================
-      // STRIPE CONNECT - TRANSFERT ÉCHOUÉ
+      // STRIPE CONNECT - TRANSFERT ÉCHOUÉ / REVERSED
       // ===============================================
-      case "transfer.failed" as any: {
+      case "transfer.failed" as any:
+      case "transfer.reversed" as any: {
         const transfer = (event as any).data.object as Stripe.Transfer;
 
-        // Mettre à jour le statut du transfert
+        // Cas 1 : libération escrow work_order qui a échoué — on revient
+        // à escrow_status='held' pour retry et on clear le stripe_transfer_id.
+        if (transfer.metadata?.type === "work_order_escrow_release") {
+          const wopPaymentId = transfer.metadata?.payment_id;
+          if (wopPaymentId) {
+            await supabase
+              .from("work_order_payments")
+              .update({
+                escrow_status: "held",
+                escrow_released_at: null,
+                stripe_transfer_id: null,
+                escrow_release_reason: `transfer_failed: ${event.type}`,
+              })
+              .eq("id", wopPaymentId);
+
+            // Outbox : alerter pour intervention humaine
+            await supabase.from("outbox").insert({
+              event_type: "WorkOrder.EscrowReleaseFailed",
+              payload: {
+                payment_id: wopPaymentId,
+                work_order_id: transfer.metadata?.work_order_id ?? null,
+                stripe_transfer_id: transfer.id,
+                stripe_event: event.type,
+              },
+            });
+          }
+        }
+
+        // Cas 2 (legacy) : transferts rent
         await supabase
           .from("stripe_transfers")
           .update({
-            status: "failed",
-            failure_reason: "Transfer failed",
+            status: event.type === "transfer.reversed" ? "reversed" : "failed",
+            failure_reason:
+              event.type === "transfer.reversed"
+                ? "Transfer reversed"
+                : "Transfer failed",
           })
           .eq("stripe_transfer_id", transfer.id);
 
