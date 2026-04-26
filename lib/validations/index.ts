@@ -152,6 +152,23 @@ export const ownerProfileExtendedSchema = ownerProfileSchema.extend({
   notes_fiscales: z.string().optional().nullable(),
 });
 
+// Validation des paramètres prestataire (page /provider/settings — update partiel)
+// Distinct de providerProfileSchema (création) défini plus bas et utilisé par
+// features/profiles/services/provider-profiles.service.ts.
+export const providerSettingsSchema = z.object({
+  raison_sociale: z.string().max(255).optional().nullable(),
+  siret: z
+    .string()
+    .regex(/^[0-9]{14}$/, "Le SIRET doit contenir 14 chiffres")
+    .optional()
+    .nullable()
+    .or(z.literal("")),
+  adresse: z.string().max(500).optional().nullable(),
+  bio: z.string().max(2000).optional().nullable(),
+  type_services: z.array(z.string().max(100)).optional(),
+  zones_intervention: z.string().max(500).optional().nullable(),
+});
+
 // Validation des locataires
 export const tenantProfileSchema = z.object({
   situation_pro: z.string().optional().nullable(),
