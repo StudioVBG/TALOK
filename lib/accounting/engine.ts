@@ -115,6 +115,8 @@ export interface JournalItem {
 
 export type AutoEntryEvent =
   | 'rent_received'
+  | 'rent_invoiced'
+  | 'rent_payment_clearing'
   | 'supplier_invoice'
   | 'supplier_payment'
   | 'deposit_received'
@@ -617,6 +619,47 @@ const AUTO_ENTRIES: Record<
     ],
   }),
 
+  /**
+   * Reconnaissance en droit du loyer a l'emission de la facture (mode IS).
+   * D 411xxx Locataires / C 706000 Loyers. Reserve aux entites en
+   * declaration_mode='is_comptable' (BIC/IS), pas pour le revenu foncier reel
+   * ni le micro-foncier qui restent en encaissement.
+   */
+  rent_invoiced: (ctx) => ({
+    entityId: ctx.entityId,
+    exerciseId: ctx.exerciseId,
+    journalCode: 'VE',
+    entryDate: ctx.date,
+    label: ctx.label || 'Loyer facture (creance)',
+    source: 'auto:rent_invoiced',
+    reference: ctx.reference,
+    userId: ctx.userId,
+    lines: [
+      { accountNumber: '411000', debitCents: ctx.amountCents, creditCents: 0 },
+      { accountNumber: '706000', debitCents: 0, creditCents: ctx.amountCents },
+    ],
+  }),
+
+  /**
+   * Lettrage du paiement loyer en mode IS : la creance posee par
+   * rent_invoiced est soldee par le reglement bancaire.
+   * D 512xxx / C 411xxx
+   */
+  rent_payment_clearing: (ctx) => ({
+    entityId: ctx.entityId,
+    exerciseId: ctx.exerciseId,
+    journalCode: 'BQ',
+    entryDate: ctx.date,
+    label: ctx.label || 'Reglement loyer',
+    source: 'auto:rent_payment_clearing',
+    reference: ctx.reference,
+    userId: ctx.userId,
+    lines: [
+      { accountNumber: ctx.bankAccount ?? '512100', debitCents: ctx.amountCents, creditCents: 0 },
+      { accountNumber: '411000', debitCents: 0, creditCents: ctx.amountCents },
+    ],
+  }),
+
   supplier_invoice: (ctx) => ({
     entityId: ctx.entityId,
     exerciseId: ctx.exerciseId,
@@ -939,12 +982,286 @@ export async function closeExercise(
     throw new Error(`Cannot close: ${count} unvalidated entries remain`);
   }
 
+  // Post the annual amortization charges (D:681100 / C:280xxx) for every
+  // active schedule before closing — the charges must hit class 6 so they
+  // flow into the resultat via generateClosingEntry below.
+  await postAnnualAmortizationEntries(supabase, exerciseId, userId);
+
+  // Generate the closing entry (virement classes 6 et 7 vers compte 120)
+  // before flipping the exercise to closed.
+  await generateClosingEntry(supabase, exerciseId, userId);
+
   const { error } = await supabase
     .from('accounting_exercises')
     .update({ status: 'closed', closed_by: userId, closed_at: new Date().toISOString() })
     .eq('id', exerciseId);
 
   if (error) throw new Error(`Failed to close exercise: ${error.message}`);
+}
+
+/**
+ * Generate the closing entry for an exercise: zero out every class 6 (charges)
+ * and class 7 (products) account against compte 120 (resultat de l'exercice).
+ *
+ * Skips informational entries (micro_foncier mode) so they do not contaminate
+ * the official result.
+ *
+ * Idempotent: if a CL entry tagged source='auto:closing' already exists for
+ * this exercise we skip generation.
+ */
+export async function generateClosingEntry(
+  supabase: SupabaseClient,
+  exerciseId: string,
+  userId: string,
+): Promise<{ entryId: string | null; netResultCents: number; lineCount: number }> {
+  // Idempotency guard
+  const { data: existing } = await (supabase as unknown as {
+    from: (t: string) => {
+      select: (s: string) => {
+        eq: (k: string, v: string) => {
+          eq: (k: string, v: string) => {
+            limit: (n: number) => {
+              maybeSingle: () => Promise<{ data: { id: string } | null }>;
+            };
+          };
+        };
+      };
+    };
+  })
+    .from('accounting_entries')
+    .select('id')
+    .eq('exercise_id', exerciseId)
+    .eq('source', 'auto:closing')
+    .limit(1)
+    .maybeSingle();
+
+  if (existing?.id) {
+    return { entryId: existing.id, netResultCents: 0, lineCount: 0 };
+  }
+
+  // Fetch exercise to know entity_id and end_date
+  const { data: exercise, error: exErr } = await supabase
+    .from('accounting_exercises')
+    .select('id, entity_id, end_date')
+    .eq('id', exerciseId)
+    .single();
+
+  if (exErr || !exercise) {
+    throw new Error(`Closing entry: exercise lookup failed: ${exErr?.message ?? 'not found'}`);
+  }
+
+  // Aggregate class 6 and class 7 balances on non-informational entries
+  const { data: rows, error: aggErr } = await supabase
+    .from('accounting_entry_lines')
+    .select(
+      `account_number, debit_cents, credit_cents,
+       accounting_entries!inner(exercise_id, informational, is_validated)`,
+    )
+    .eq('accounting_entries.exercise_id', exerciseId)
+    .eq('accounting_entries.is_validated', true);
+
+  if (aggErr) {
+    throw new Error(`Closing entry: aggregation failed: ${aggErr.message}`);
+  }
+
+  const balances = new Map<string, { debit: number; credit: number }>();
+  for (const r of (rows ?? []) as Array<{
+    account_number: string;
+    debit_cents: number;
+    credit_cents: number;
+    accounting_entries: { informational: boolean } | { informational: boolean }[];
+  }>) {
+    const entryMeta = Array.isArray(r.accounting_entries)
+      ? r.accounting_entries[0]
+      : r.accounting_entries;
+    if (entryMeta?.informational) continue;
+    const acc = r.account_number;
+    if (!acc.startsWith('6') && !acc.startsWith('7')) continue;
+    const cur = balances.get(acc) ?? { debit: 0, credit: 0 };
+    cur.debit += r.debit_cents ?? 0;
+    cur.credit += r.credit_cents ?? 0;
+    balances.set(acc, cur);
+  }
+
+  if (balances.size === 0) {
+    return { entryId: null, netResultCents: 0, lineCount: 0 };
+  }
+
+  const lines: EntryLine[] = [];
+  let class6Net = 0; // total debit balance on charges (positive = real charge)
+  let class7Net = 0; // total credit balance on products (positive = real revenue)
+
+  for (const [acc, bal] of balances.entries()) {
+    const net = bal.debit - bal.credit;
+    if (net === 0) continue;
+    if (acc.startsWith('6')) {
+      // Charges normally have a debit balance — zero it with a credit
+      class6Net += net;
+      if (net > 0) {
+        lines.push({ accountNumber: acc, debitCents: 0, creditCents: net });
+      } else {
+        lines.push({ accountNumber: acc, debitCents: -net, creditCents: 0 });
+      }
+    } else {
+      // Products normally have a credit balance — zero it with a debit
+      // For products: balance "net" = debit - credit, so product credit balance = -net
+      class7Net += -net;
+      if (-net > 0) {
+        lines.push({ accountNumber: acc, debitCents: -net, creditCents: 0 });
+      } else {
+        lines.push({ accountNumber: acc, debitCents: 0, creditCents: net });
+      }
+    }
+  }
+
+  // Net result = class 7 credit balance - class 6 debit balance
+  const netResultCents = class7Net - class6Net;
+
+  // Compte 120 absorbs the net result so the closing entry is balanced
+  if (netResultCents > 0) {
+    // Profit: D 120 to make it balanced (we credited products, debited 120)
+    // Wait — products were debited to zero. So debit side = class7Net.
+    // Charges were credited to zero. So credit side = class6Net.
+    // To balance we need credit side += netResult, hence credit 120 of netResult.
+    lines.push({ accountNumber: '120', debitCents: 0, creditCents: netResultCents });
+  } else if (netResultCents < 0) {
+    // Loss: debit 120
+    lines.push({ accountNumber: '120', debitCents: -netResultCents, creditCents: 0 });
+  } else if (lines.length > 0) {
+    // Exactly break-even but we still need a reference to 120 for traceability.
+    lines.push({ accountNumber: '120', debitCents: 0, creditCents: 0 });
+  }
+
+  if (lines.length === 0) {
+    return { entryId: null, netResultCents: 0, lineCount: 0 };
+  }
+
+  const entry = await createEntry(supabase, {
+    entityId: exercise.entity_id as string,
+    exerciseId,
+    journalCode: 'CL',
+    entryDate: exercise.end_date as string,
+    label: 'Cloture exercice — virement charges et produits au compte de resultat',
+    source: 'auto:closing',
+    reference: `CL-${exerciseId.slice(0, 8)}`,
+    userId,
+    autoValidate: true,
+    lines,
+  });
+
+  return { entryId: entry.id, netResultCents, lineCount: lines.length };
+}
+
+/**
+ * Post annual depreciation entries for every active amortization schedule of
+ * the exercise's entity. For each schedule we look up the amortization_lines
+ * row matching the exercise year and post a single OD entry:
+ *   D 681100 Dotations aux amortissements
+ *   C 280<component> Amortissements <component>
+ *
+ * Idempotent: skipped if an entry with source='auto:depreciation' already
+ * exists for that schedule and exercise.
+ */
+export async function postAnnualAmortizationEntries(
+  supabase: SupabaseClient,
+  exerciseId: string,
+  userId: string,
+): Promise<{ posted: number; skipped: number }> {
+  const { data: exercise, error: exErr } = await supabase
+    .from('accounting_exercises')
+    .select('id, entity_id, end_date')
+    .eq('id', exerciseId)
+    .single();
+
+  if (exErr || !exercise) {
+    throw new Error(
+      `Amortization: exercise lookup failed: ${exErr?.message ?? 'not found'}`,
+    );
+  }
+
+  const exerciseYear = new Date(exercise.end_date as string).getUTCFullYear();
+  const entityId = exercise.entity_id as string;
+
+  const { data: schedules, error: schedErr } = await supabase
+    .from('amortization_schedules')
+    .select('id, component')
+    .eq('entity_id', entityId)
+    .eq('is_active', true);
+
+  if (schedErr) {
+    throw new Error(`Amortization: schedules lookup failed: ${schedErr.message}`);
+  }
+
+  let posted = 0;
+  let skipped = 0;
+
+  for (const sched of (schedules ?? []) as Array<{ id: string; component: string }>) {
+    const { data: line } = await supabase
+      .from('amortization_lines')
+      .select('id, annual_amount_cents')
+      .eq('schedule_id', sched.id)
+      .eq('exercise_year', exerciseYear)
+      .maybeSingle();
+
+    if (!line || (line.annual_amount_cents as number) <= 0) {
+      skipped += 1;
+      continue;
+    }
+
+    const reference = `AMORT-${sched.id.slice(0, 8)}-${exerciseYear}`;
+
+    const { data: existing } = await supabase
+      .from('accounting_entries')
+      .select('id')
+      .eq('entity_id', entityId)
+      .eq('reference', reference)
+      .eq('source', 'auto:depreciation')
+      .limit(1)
+      .maybeSingle();
+
+    if (existing?.id) {
+      skipped += 1;
+      continue;
+    }
+
+    const componentCode = mapComponentToAmortizationAccount(sched.component);
+    const amount = line.annual_amount_cents as number;
+
+    await createEntry(supabase, {
+      entityId,
+      exerciseId,
+      journalCode: 'OD',
+      entryDate: exercise.end_date as string,
+      label: `Dotation amortissement ${exerciseYear} — ${sched.component}`,
+      source: 'auto:depreciation',
+      reference,
+      userId,
+      autoValidate: true,
+      lines: [
+        { accountNumber: '681100', debitCents: amount, creditCents: 0 },
+        { accountNumber: componentCode, debitCents: 0, creditCents: amount },
+      ],
+    });
+
+    posted += 1;
+  }
+
+  return { posted, skipped };
+}
+
+/**
+ * Map a property component to its 280xxx (amortissements des immobilisations)
+ * account. Defaults to 280100 for unknown components.
+ */
+function mapComponentToAmortizationAccount(component: string): string {
+  const map: Record<string, string> = {
+    gros_oeuvre: '281310',
+    facade: '281320',
+    installations: '281330',
+    agencements: '281410',
+    equipements: '281510',
+  };
+  return map[component] ?? '281000';
 }
 
 // ---------------------------------------------------------------------------
