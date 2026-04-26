@@ -35,8 +35,10 @@ import {
   useStripeConnectBalance,
   useStripeTransfers,
   useStripePayouts,
+  useStripeConnectAccounts,
   type StripeTransfer,
   type StripePayout,
+  type ConnectAccountListItem,
 } from "@/lib/hooks/use-stripe-connect";
 
 const TRANSFER_STATUS: Record<string, { label: string; icon: React.ReactNode; classes: string }> = {
@@ -171,6 +173,7 @@ export function CompteBancaireTab() {
   // une entité juridique (SCI, SARL…).
   const entities = useEntityStore((s) => s.entities);
   const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const { data: allAccounts } = useStripeConnectAccounts();
 
   const {
     data: connectData,
@@ -353,6 +356,16 @@ export function CompteBancaireTab() {
             />
           </CardContent>
         </Card>
+      )}
+
+      {/* Tableau de bord : tous les comptes Connect existants
+          (utile dès qu'on a 2+ comptes pour visualiser le statut global). */}
+      {allAccounts && allAccounts.length >= 2 && (
+        <ConnectAccountsOverview
+          accounts={allAccounts}
+          selectedEntityId={selectedEntityId}
+          onSelect={setSelectedEntityId}
+        />
       )}
 
       {/* Statut du compte bancaire */}
@@ -727,5 +740,76 @@ export function CompteBancaireTab() {
         </div>
       )}
     </div>
+  );
+}
+
+interface ConnectAccountsOverviewProps {
+  accounts: ConnectAccountListItem[];
+  selectedEntityId: string | null;
+  onSelect: (entityId: string | null) => void;
+}
+
+function ConnectAccountsOverview({
+  accounts,
+  selectedEntityId,
+  onSelect,
+}: ConnectAccountsOverviewProps) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-violet-600" /> Mes comptes bancaires
+        </CardTitle>
+        <CardDescription>
+          {accounts.length} comptes Stripe Connect actifs. Cliquez pour consulter le détail.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {accounts.map((account) => {
+            const isSelected = (account.entity_id ?? null) === selectedEntityId;
+            const isReady = account.charges_enabled && account.payouts_enabled;
+            const statusBadge = isReady
+              ? { label: "Activé", classes: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" }
+              : account.details_submitted
+              ? { label: "En vérification", classes: "bg-amber-500/15 text-amber-700 border-amber-500/30" }
+              : { label: "À configurer", classes: "bg-slate-500/15 text-slate-600 border-slate-500/30" };
+
+            return (
+              <button
+                type="button"
+                key={account.id}
+                onClick={() => onSelect(account.entity_id)}
+                className={cn(
+                  "text-left rounded-xl border p-4 transition-all hover:border-violet-400 hover:bg-violet-50/50 dark:hover:bg-violet-950/20",
+                  isSelected
+                    ? "border-violet-500 bg-violet-50/70 dark:bg-violet-950/30 ring-2 ring-violet-500/20"
+                    : "border-border bg-background"
+                )}
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="font-medium truncate">{account.entity_label}</span>
+                  </div>
+                  <Badge variant="outline" className={cn("shrink-0 text-[10px]", statusBadge.classes)}>
+                    {statusBadge.label}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {account.bank_account_last4
+                    ? `IBAN •••• ${account.bank_account_last4}${
+                        account.bank_account_bank_name
+                          ? ` — ${account.bank_account_bank_name}`
+                          : ""
+                      }`
+                    : "Coordonnées bancaires à renseigner"}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
