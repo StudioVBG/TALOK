@@ -35,6 +35,13 @@ export interface CreateEntryParams {
   reference?: string;
   lines: EntryLine[];
   userId: string;
+  /**
+   * If true, validate the entry immediately after creation (locks it,
+   * sets is_validated/validated_by). Defaults to false to preserve the
+   * existing manual-validation flow on direct user-driven CRUD; auto-entry
+   * helpers always pass true so business events produce closeable books.
+   */
+  autoValidate?: boolean;
 }
 
 export interface AccountingEntry {
@@ -231,6 +238,11 @@ export async function createEntry(
     .insert(lineInserts);
 
   if (linesError) throw new Error(`Failed to create entry lines: ${linesError.message}`);
+
+  if (params.autoValidate) {
+    await validateEntry(supabase, entry.id, params.userId);
+    return mapEntry({ ...entry, is_validated: true, validated_by: params.userId });
+  }
 
   return mapEntry(entry);
 }
@@ -850,11 +862,18 @@ const AUTO_ENTRIES: Record<
 /**
  * Create an automatic entry from a business event.
  * Validates and inserts the entry with proper journal and accounts.
+ *
+ * Auto-entries are validated immediately (autoValidate=true) so that
+ * business events (rent received, deposits, fund calls, etc.) produce
+ * closeable books — closeExercise() requires every entry to be validated.
+ * Pass `{ skipAutoValidate: true }` to keep the entry as a draft (rare,
+ * mostly used for replay/backfill flows that want a human review).
  */
 export async function createAutoEntry(
   supabase: SupabaseClient,
   event: AutoEntryEvent,
   context: AutoEntryContext,
+  options: { skipAutoValidate?: boolean } = {},
 ): Promise<AccountingEntry> {
   const builder = AUTO_ENTRIES[event];
   if (!builder) {
@@ -862,7 +881,10 @@ export async function createAutoEntry(
   }
 
   const params = builder(context);
-  return createEntry(supabase, params);
+  return createEntry(supabase, {
+    ...params,
+    autoValidate: !options.skipAutoValidate,
+  });
 }
 
 // ---------------------------------------------------------------------------
