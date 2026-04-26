@@ -304,6 +304,40 @@ export async function POST(
       );
     }
 
+    // 9b. Pose l'écriture de reclassement TEOM (D 635200 / C 708000) si un
+    // avis de taxe foncière existe pour cette propriété + année et que le
+    // TEOM net y est renseigné. Non bloquant : on ne bloque pas le settle
+    // si l'écriture échoue. Idempotent via reference = tax_notice.id.
+    try {
+      const { data: taxNotice } = await supabase
+        .from("tax_notices")
+        .select("id, teom_net, reom_applicable")
+        .eq("property_id", reg.property_id)
+        .eq("year", reg.fiscal_year)
+        .maybeSingle();
+      const notice = taxNotice as
+        | { id: string; teom_net: number | null; reom_applicable: boolean }
+        | null;
+      if (notice && !notice.reom_applicable && (notice.teom_net ?? 0) > 0) {
+        const { ensureTeomRecoveryEntry } = await import(
+          "@/lib/accounting/teom-recovery-entry"
+        );
+        await ensureTeomRecoveryEntry(supabase, {
+          entityId,
+          reference: notice.id,
+          amountCents: notice.teom_net ?? 0,
+          date: settleDate,
+          label: `TEOM ${reg.fiscal_year} refacturée locataire`,
+          userId: user.id,
+        });
+      }
+    } catch (teomError) {
+      console.error(
+        "[apply] Reclassement TEOM (non bloquant):",
+        teomError,
+      );
+    }
+
     // 10. Emit outbox (non-blocking)
     try {
       await supabase.from("outbox").insert({

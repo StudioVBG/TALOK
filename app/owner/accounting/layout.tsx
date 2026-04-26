@@ -17,6 +17,7 @@ import {
   UserCheck,
   Scale,
   ListTree,
+  ArrowRightLeft,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -40,6 +41,7 @@ const accountingTabs: AccountingTab[] = [
     href: "/owner/accounting/bank/reconciliation",
     icon: GitMerge,
   },
+  { label: "Virements", href: "/owner/accounting/transfers", icon: ArrowRightLeft },
   { label: "Exercices", href: "/owner/accounting/exercises", icon: Calendar },
   { label: "Exports", href: "/owner/accounting/exports", icon: Download },
   {

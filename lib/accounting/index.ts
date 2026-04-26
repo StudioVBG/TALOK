@@ -103,6 +103,20 @@ export {
 } from './irl-revision-entry';
 
 export {
+  ensureInternalTransferEntry,
+  type InternalTransferEntryResult,
+  type InternalTransferSkipReason,
+  type InternalTransferParams,
+} from './internal-transfer-entry';
+
+export {
+  ensureTeomRecoveryEntry,
+  type TeomRecoveryEntryResult,
+  type TeomRecoverySkipReason,
+  type TeomRecoveryParams,
+} from './teom-recovery-entry';
+
+export {
   ensureSubscriptionPaidEntry,
   type EnsureSubscriptionEntryResult,
   type EnsureSubscriptionSkipReason,
