@@ -24,20 +24,60 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le compteur
-    const { data: meter, error } = await supabase
+    // Service-role + check explicite owner/tenant/admin (le GET n'avait
+    // aucun contrôle d'accès métier — voir docs/audits/rls-cascade-audit.md).
+    const serviceClient = createServiceRoleClient();
+
+    const { data: property } = await serviceClient
+      .from("properties")
+      .select("id, owner_id")
+      .eq("id", propertyId)
+      .maybeSingle();
+
+    if (!property) {
+      return NextResponse.json({ error: "Logement non trouvé" }, { status: 404 });
+    }
+
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const propertyData = property as { owner_id?: string };
+    const profileData = profile as { id: string; role: string } | null;
+    const isAdmin = profileData?.role === "admin";
+    const isOwner = propertyData.owner_id === profileData?.id;
+
+    // Locataire actif sur le bien (via roommates de leases actifs)
+    let isTenant = false;
+    if (!isAdmin && !isOwner) {
+      const { data: roommate } = await serviceClient
+        .from("roommates")
+        .select("id, leases!inner(property_id, statut)")
+        .eq("user_id", user.id)
+        .is("left_on", null)
+        .maybeSingle();
+      const r = roommate as { leases?: { property_id?: string; statut?: string } | null } | null;
+      isTenant = r?.leases?.property_id === propertyId && r?.leases?.statut === "active";
+    }
+
+    if (!isAdmin && !isOwner && !isTenant) {
+      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+    }
+
+    const { data: meter } = await serviceClient
       .from("meters")
       .select("*")
       .eq("id", meterId)
       .eq("property_id", propertyId)
-      .single();
+      .maybeSingle();
 
-    if (error || !meter) {
+    if (!meter) {
       return NextResponse.json({ error: "Compteur non trouvé" }, { status: 404 });
     }
 
-    // Récupérer les 10 derniers relevés
-    const { data: readings } = await supabase
+    const { data: readings } = await serviceClient
       .from("meter_readings")
       .select("*")
       .eq("meter_id", meterId)
@@ -85,7 +125,7 @@ export async function PATCH(
       .from("properties")
       .select("id, owner_id")
       .eq("id", propertyId)
-      .single();
+      .maybeSingle();
 
     if (!property) {
       return NextResponse.json({ error: "Logement non trouvé" }, { status: 404 });
@@ -95,7 +135,7 @@ export async function PATCH(
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     const propertyData = property as any;
     const profileData = profile as any;
@@ -113,7 +153,7 @@ export async function PATCH(
       .select("id")
       .eq("id", meterId)
       .eq("property_id", propertyId)
-      .single();
+      .maybeSingle();
 
     if (!existingMeter) {
       return NextResponse.json({ error: "Compteur non trouvé" }, { status: 404 });
@@ -198,7 +238,7 @@ export async function DELETE(
       .from("properties")
       .select("id, owner_id")
       .eq("id", propertyId)
-      .single();
+      .maybeSingle();
 
     if (!property) {
       return NextResponse.json({ error: "Logement non trouvé" }, { status: 404 });
@@ -208,7 +248,7 @@ export async function DELETE(
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     const propertyData = property as any;
     const profileData = profile as any;
@@ -226,7 +266,7 @@ export async function DELETE(
       .select("id, type, serial_number")
       .eq("id", meterId)
       .eq("property_id", propertyId)
-      .single();
+      .maybeSingle();
 
     if (!meter) {
       return NextResponse.json({ error: "Compteur non trouvé" }, { status: 404 });

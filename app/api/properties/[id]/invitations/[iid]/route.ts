@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -23,12 +24,15 @@ export async function DELETE(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Vérifier que l'utilisateur est propriétaire
-    const { data: property } = await supabase
+    // Service-role + check explicite owner/admin
+    // (cf. docs/audits/rls-cascade-audit.md)
+    const serviceClient = getServiceClient();
+
+    const { data: property } = await serviceClient
       .from("properties")
       .select("id, owner_id")
-      .eq("id", id as any)
-      .single();
+      .eq("id", id)
+      .maybeSingle();
 
     if (!property) {
       return NextResponse.json(
@@ -37,28 +41,29 @@ export async function DELETE(
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
-      .select("id")
-      .eq("user_id", user.id as any)
-      .single();
+      .select("id, role")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    const propertyData = property as any;
-    const profileData = profile as any;
-    if (propertyData.owner_id !== profileData?.id) {
+    const propertyData = property as { owner_id?: string };
+    const profileData = profile as { id: string; role: string } | null;
+    const isAdmin = profileData?.role === "admin";
+    const isOwner = propertyData.owner_id === profileData?.id;
+    if (!isAdmin && !isOwner) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
       );
     }
 
-    // Récupérer le code
-    const { data: accessCode } = await supabase
+    const { data: accessCode } = await serviceClient
       .from("unit_access_codes")
       .select("*")
-      .eq("id", iid as any)
-      .eq("property_id", id as any)
-      .single();
+      .eq("id", iid)
+      .eq("property_id", id)
+      .maybeSingle();
 
     if (!accessCode) {
       return NextResponse.json(

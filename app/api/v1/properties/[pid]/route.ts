@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import {
   apiError,
   apiSuccess,
@@ -27,9 +27,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const auth = await requireAuth(request);
     if (auth instanceof Response) return auth;
 
-    const supabase = await createClient();
+    // Service-role + check explicite owner/admin
+    // (cf. docs/audits/rls-cascade-audit.md). La cascade lease_signers→profiles
+    // pouvait blanker la propriété au propriétaire légitime.
+    const supabase = getServiceClient();
 
-    const { data: property, error } = await supabase
+    const { data: property } = await supabase
       .from("properties")
       .select(`
         *,
@@ -43,9 +46,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         meters(*)
       `)
       .eq("id", pid)
-      .single();
+      .maybeSingle();
 
-    if (error || !property) {
+    if (!property) {
       return apiError("Propriété non trouvée", 404, "NOT_FOUND");
     }
 
@@ -74,16 +77,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const roleCheck = requireRole(auth.profile, ["owner", "admin"]);
     if (roleCheck) return roleCheck;
 
-    const supabase = await createClient();
+    const supabase = getServiceClient();
 
-    // Verify ownership
-    const { data: existing, error: fetchError } = await supabase
+    const { data: existing } = await supabase
       .from("properties")
       .select("*")
       .eq("id", pid)
-      .single();
+      .maybeSingle();
 
-    if (fetchError || !existing) {
+    if (!existing) {
       return apiError("Propriété non trouvée", 404, "NOT_FOUND");
     }
 
@@ -96,7 +98,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     if (validationError) return validationError;
 
-    // Update
     const { data: property, error } = await supabase
       .from("properties")
       .update(data)
@@ -140,16 +141,15 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const roleCheck = requireRole(auth.profile, ["owner", "admin"]);
     if (roleCheck) return roleCheck;
 
-    const supabase = await createClient();
+    const supabase = getServiceClient();
 
-    // Verify ownership
-    const { data: existing, error: fetchError } = await supabase
+    const { data: existing } = await supabase
       .from("properties")
       .select("owner_id, unique_code")
       .eq("id", pid)
-      .single();
+      .maybeSingle();
 
-    if (fetchError || !existing) {
+    if (!existing) {
       return apiError("Propriété non trouvée", 404, "NOT_FOUND");
     }
 
