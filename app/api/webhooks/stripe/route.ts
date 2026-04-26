@@ -1931,6 +1931,115 @@ export async function POST(request: NextRequest) {
             }
           }
         }
+
+        // Cas work_order_payment : un dispute Stripe (chargeback bancaire)
+        // sur la charge d'un paiement WO. On bloque la libération + crée
+        // une ligne work_order_disputes pour audit + notif.
+        if (chargeId) {
+          const { data: woPayment } = await supabase
+            .from("work_order_payments")
+            .select("id, work_order_id, payer_profile_id, escrow_status")
+            .eq("stripe_charge_id", chargeId)
+            .maybeSingle();
+
+          if (woPayment) {
+            const wp = woPayment as {
+              id: string;
+              work_order_id: string;
+              payer_profile_id: string;
+              escrow_status: string;
+            };
+
+            // Bloquer la libération si encore possible
+            if (["held", "released"].includes(wp.escrow_status)) {
+              await supabase
+                .from("work_order_payments")
+                .update({ escrow_status: "disputed" })
+                .eq("id", wp.id);
+            }
+
+            // Insérer un litige (idempotent via stripe_dispute_id ?
+            // Pas de colonne dédiée, on utilise idempotency par
+            // upsert sur (work_order_payment_id + reason='unauthorized'
+            // + status='open') pour éviter doublon en cas de re-livraison
+            // du webhook — best effort.
+            const { data: existing } = await supabase
+              .from("work_order_disputes")
+              .select("id")
+              .eq("work_order_payment_id", wp.id)
+              .eq("status", "open")
+              .maybeSingle();
+
+            if (!existing) {
+              await supabase.from("work_order_disputes").insert({
+                work_order_payment_id: wp.id,
+                work_order_id: wp.work_order_id,
+                raised_by_profile_id: wp.payer_profile_id,
+                reason: "unauthorized",
+                description:
+                  `Chargeback bancaire Stripe — motif: ${dispute.reason || "non spécifié"}. ` +
+                  `Dispute ID: ${dispute.id}.`,
+                status: "open",
+              });
+            }
+
+            // Notifier l'admin via outbox
+            await supabase.from("outbox").insert({
+              event_type: "WorkOrder.StripeChargeback",
+              payload: {
+                work_order_payment_id: wp.id,
+                work_order_id: wp.work_order_id,
+                stripe_dispute_id: dispute.id,
+                reason: dispute.reason,
+                amount_cents: dispute.amount,
+              },
+            });
+          }
+        }
+        break;
+      }
+
+      // ===============================================
+      // CHARGE REFUNDED (manuel ou via dispute)
+      // ===============================================
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+
+        // Détecter si la charge appartient à un work_order_payment
+        const { data: woPayment } = await supabase
+          .from("work_order_payments")
+          .select("id, work_order_id, gross_amount, escrow_status")
+          .eq("stripe_charge_id", charge.id)
+          .maybeSingle();
+
+        if (woPayment) {
+          const wp = woPayment as {
+            id: string;
+            work_order_id: string;
+            gross_amount: number | string;
+            escrow_status: string;
+          };
+
+          const refundedCents = charge.amount_refunded ?? 0;
+          const grossCents = Math.round(Number(wp.gross_amount) * 100);
+          const isFullRefund = refundedCents >= grossCents;
+
+          await supabase
+            .from("work_order_payments")
+            .update({
+              status: isFullRefund ? "refunded" : "succeeded",
+              escrow_status: isFullRefund ? "refunded" : wp.escrow_status,
+            })
+            .eq("id", wp.id);
+
+          // Si plein refund → revert le statut WO si tout est refundé
+          if (isFullRefund) {
+            await supabase
+              .from("work_orders")
+              .update({ statut: "cancelled" })
+              .eq("id", wp.work_order_id);
+          }
+        }
         break;
       }
 
