@@ -91,6 +91,12 @@ export {
 } from './deposit-entry';
 
 export {
+  ensureDepositOperationEntry,
+  type DepositOperationEntryResult,
+  type DepositOperationSkipReason,
+} from './deposit-operation-entry';
+
+export {
   ensureSubscriptionPaidEntry,
   type EnsureSubscriptionEntryResult,
   type EnsureSubscriptionSkipReason,
