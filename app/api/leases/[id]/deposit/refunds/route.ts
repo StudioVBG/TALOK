@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -41,15 +42,17 @@ export async function POST(
       );
     }
 
-    // Vérifier que l'utilisateur est propriétaire du bail
-    const { data: lease } = await supabase
+    // Service-role + check métier owner/admin (cf. docs/audits/rls-cascade-audit.md).
+    const serviceClient = getServiceClient();
+
+    const { data: lease } = await serviceClient
       .from("leases")
       .select(`
         id,
-        property:properties!inner(owner_id)
+        property:properties(owner_id)
       `)
-      .eq("id", id as any)
-      .single();
+      .eq("id", id)
+      .maybeSingle();
 
     if (!lease) {
       return NextResponse.json(
@@ -58,15 +61,18 @@ export async function POST(
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
-      .select("id")
-      .eq("user_id", user.id as any)
-      .single();
+      .select("id, role")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    const leaseData = lease as any;
-    const profileData = profile as any;
-    if (leaseData.property.owner_id !== profileData?.id) {
+    const leaseData = lease as { property?: { owner_id?: string } | null };
+    const profileData = profile as { id: string; role: string } | null;
+    const isAdmin = profileData?.role === "admin";
+    const isOwner = leaseData.property?.owner_id === profileData?.id;
+
+    if (!isAdmin && !isOwner) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
@@ -74,13 +80,13 @@ export async function POST(
     }
 
     // Vérifier le solde disponible
-    const { data: balance } = await supabase
+    const { data: balance } = await serviceClient
       .from("deposit_balance")
       .select("balance")
-      .eq("lease_id", id as any)
+      .eq("lease_id", id)
       .maybeSingle();
 
-    const balanceData = balance as any;
+    const balanceData = balance as { balance?: number } | null;
     const availableBalance = balanceData?.balance || 0;
 
     if (amount > availableBalance) {
@@ -92,11 +98,11 @@ export async function POST(
 
     // Vérifier que l'EDL de sortie est signé (pour restitution totale)
     if (!is_partial) {
-      const { data: edl } = await supabase
+      const { data: edl } = await serviceClient
         .from("edl")
         .select("id, signed_at")
-        .eq("lease_id", id as any)
-        .eq("type", "sortie" as any)
+        .eq("lease_id", id)
+        .eq("type", "sortie")
         .is("signed_at", null)
         .maybeSingle();
 

@@ -1,16 +1,20 @@
 export const dynamic = "force-dynamic";
-export const runtime = 'nodejs';
+export const runtime = "nodejs";
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
  * GET /api/leases/[id]/summary - Fiche synthèse d'un bail
  *
- * @version 2026-01-22 - Fix: Next.js 15 params Promise pattern
+ * Service-role + check métier explicite (cf. docs/audits/rls-cascade-audit.md) :
+ * accès accordé aux signataires du bail, au propriétaire de la propriété
+ * et aux admins. Avant ce fix, la cascade RLS sur properties/units/profiles
+ * pouvait blanker la jointure et renvoyer 404 à un signataire légitime.
  */
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -24,8 +28,9 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le bail avec les détails
-    const { data: lease, error: leaseError } = await supabase
+    const serviceClient = getServiceClient();
+
+    const { data: lease } = await serviceClient
       .from("leases")
       .select(
         `
@@ -38,34 +43,42 @@ export async function GET(
         )
       `
       )
-      .eq("id", id as any)
-      .single();
+      .eq("id", id)
+      .maybeSingle();
 
-    if (leaseError || !lease) {
+    if (!lease) {
       return NextResponse.json(
         { error: "Bail non trouvé" },
         { status: 404 }
       );
     }
 
-    const leaseData = lease as any;
+    const leaseData = lease as Record<string, unknown> & {
+      type_bail?: string;
+      property?: { owner_id?: string } | null;
+      signers?: Array<{ profile?: { user_id?: string } | null }> | null;
+    };
 
-    // Vérifier que l'utilisateur est signataire
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const profileData = profile as { id: string; role: string } | null;
+    const isAdmin = profileData?.role === "admin";
+    const isOwner = leaseData.property?.owner_id === profileData?.id;
     const isSigner = leaseData.signers?.some(
-      (s: any) => s.profile?.user_id === user.id
-    );
+      (s) => s.profile?.user_id === user.id
+    ) ?? false;
 
-    if (!isSigner) {
-      return NextResponse.json(
-        { error: "Non autorisé" },
-        { status: 403 }
-      );
+    if (!isAdmin && !isOwner && !isSigner) {
+      return NextResponse.json({ error: "Non autorisé" }, { status: 403 });
     }
 
-    // Récupérer les colocataires si colocation
     let roommates = null;
     if (leaseData.type_bail === "colocation") {
-      const { data: roommatesData } = await supabase
+      const { data: roommatesData } = await serviceClient
         .from("roommates")
         .select(
           `
@@ -73,33 +86,32 @@ export async function GET(
           profile:profiles(prenom, nom, avatar_url)
         `
         )
-        .eq("lease_id", id as any)
+        .eq("lease_id", id)
         .is("left_on", null);
 
       roommates = roommatesData;
     }
 
-    // Récupérer le dernier paiement
-    const { data: lastPayment } = await supabase
+    const { data: lastPayment } = await serviceClient
       .from("payment_shares")
       .select("*")
-        .eq("lease_id", id as any)
-        .order("month", { ascending: false })
+      .eq("lease_id", id)
+      .order("month", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     return NextResponse.json({
       lease: {
-        id: leaseData.id,
+        id: (leaseData as Record<string, unknown>).id,
         type_bail: leaseData.type_bail,
-        loyer: leaseData.loyer,
-        charges_forfaitaires: leaseData.charges_forfaitaires,
-        depot_de_garantie: leaseData.depot_de_garantie,
-        date_debut: leaseData.date_debut,
-        date_fin: leaseData.date_fin,
-        statut: leaseData.statut,
+        loyer: (leaseData as Record<string, unknown>).loyer,
+        charges_forfaitaires: (leaseData as Record<string, unknown>).charges_forfaitaires,
+        depot_de_garantie: (leaseData as Record<string, unknown>).depot_de_garantie,
+        date_debut: (leaseData as Record<string, unknown>).date_debut,
+        date_fin: (leaseData as Record<string, unknown>).date_fin,
+        statut: (leaseData as Record<string, unknown>).statut,
         property: leaseData.property,
-        unit: leaseData.unit,
+        unit: (leaseData as Record<string, unknown>).unit,
         signers: leaseData.signers,
         roommates,
         last_payment: lastPayment,
@@ -112,4 +124,3 @@ export async function GET(
     );
   }
 }
-

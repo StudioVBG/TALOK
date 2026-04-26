@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 
@@ -25,16 +26,20 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Récupérer le bail
-    const { data: lease } = await supabase
+    // Service-role pour la lecture : la cascade RLS leases → properties
+    // pouvait masquer un bail au propriétaire légitime. Sécurité garantie
+    // par le check owner_id ci-dessous.
+    const serviceClient = getServiceClient();
+
+    const { data: lease } = await serviceClient
       .from("leases")
       .select(`
         id,
         statut,
-        property:properties!inner(owner_id)
+        property:properties(owner_id)
       `)
-      .eq("id", id as any)
-      .single();
+      .eq("id", id)
+      .maybeSingle();
 
     if (!lease) {
       return NextResponse.json(
@@ -43,14 +48,14 @@ export async function POST(
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
-      .eq("user_id", user.id as any)
-      .single();
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    const leaseData = lease as any;
-    const profileData = profile as any;
+    const leaseData = lease as { statut?: string; property?: { owner_id?: string } | null };
+    const profileData = profile as { id: string; role: string } | null;
     const isAdmin = profileData?.role === "admin";
     const isOwner = leaseData.property?.owner_id === profileData?.id;
 

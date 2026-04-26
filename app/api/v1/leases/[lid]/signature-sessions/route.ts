@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import {
   apiError,
   apiSuccess,
@@ -29,14 +29,15 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const roleCheck = requireRole(auth.profile, ["owner", "admin"]);
     if (roleCheck) return roleCheck;
 
-    const supabase = await createClient();
+    // Service-role + check explicite owner/admin
+    // (cf. docs/audits/rls-cascade-audit.md)
+    const supabase = getServiceClient();
 
-    // Get lease with property and signers
-    const { data: lease, error: leaseError } = await supabase
+    const { data: lease } = await supabase
       .from("leases")
       .select(`
         *,
-        properties!inner(owner_id, adresse_complete),
+        properties(owner_id, adresse_complete),
         lease_signers(
           id,
           profile_id,
@@ -46,14 +47,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         )
       `)
       .eq("id", lid)
-      .single();
+      .maybeSingle();
 
-    if (leaseError || !lease) {
+    if (!lease) {
       return apiError("Bail non trouvé", 404);
     }
 
-    // Verify ownership
-    if (auth.profile.role === "owner" && lease.properties.owner_id !== auth.profile.id) {
+    if (auth.profile.role === "owner" && lease.properties?.owner_id !== auth.profile.id) {
       return apiError("Accès non autorisé", 403);
     }
 

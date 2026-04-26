@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import {
   apiError,
   apiSuccess,
@@ -34,9 +34,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const roleCheck = requireRole(auth.profile, ["owner", "admin"]);
     if (roleCheck) return roleCheck;
 
-    const supabase = await createClient();
+    // Service-role + check explicite owner/admin
+    // (cf. docs/audits/rls-cascade-audit.md)
+    const supabase = getServiceClient();
 
-    // Check idempotency
     const idempotencyKey = request.headers.get("Idempotency-Key");
     if (idempotencyKey) {
       const cached = await checkIdempotency(supabase, idempotencyKey, "invoice");
@@ -48,46 +49,41 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Get lease with property
-    const { data: lease, error: leaseError } = await supabase
+    const { data: lease } = await supabase
       .from("leases")
       .select(`
         *,
-        properties!inner(owner_id),
+        properties(owner_id),
         lease_signers(profile_id, role)
       `)
       .eq("id", lid)
-      .single();
+      .maybeSingle();
 
-    if (leaseError || !lease) {
+    if (!lease) {
       return apiError("Bail non trouvé", 404);
     }
 
-    // Verify ownership
-    if (auth.profile.role === "owner" && lease.properties.owner_id !== auth.profile.id) {
+    if (auth.profile.role === "owner" && lease.properties?.owner_id !== auth.profile.id) {
       return apiError("Accès non autorisé", 403);
     }
 
-    // Check lease is active
     if (lease.statut !== "active") {
       return apiError("Le bail doit être actif pour émettre une facture", 400);
     }
 
     const body = await request.json();
 
-    // Use lease values if not provided
     const periode = body.periode || new Date().toISOString().slice(0, 7);
     const montantLoyer = body.montant_loyer ?? lease.loyer;
     const montantCharges = body.montant_charges ?? lease.charges_forfaitaires;
     const montantTotal = montantLoyer + montantCharges;
 
-    // Check for existing invoice for this period
     const { data: existingInvoice } = await supabase
       .from("invoices")
       .select("id")
       .eq("lease_id", lid)
       .eq("periode", periode)
-      .single();
+      .maybeSingle();
 
     if (existingInvoice) {
       return apiError("Une facture existe déjà pour cette période", 409, "DUPLICATE_INVOICE");
