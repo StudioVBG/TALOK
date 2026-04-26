@@ -255,6 +255,7 @@ export async function POST(request: Request, context: Context) {
         source: "auto:copro_payment",
         reference: `AF-${callId}`,
         userId: user.id,
+        autoValidate: true,
         lines: [
           {
             accountNumber: "512000",

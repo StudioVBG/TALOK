@@ -85,12 +85,27 @@ export async function GET(
     // Générer la situation
     const situation = await accountingService.generateSituationLocataire(tenantId);
 
-    // Format PDF (à implémenter)
+    // Format PDF
     if (format === "pdf") {
-      return NextResponse.json(
-        { error: "Export PDF non encore implémenté" },
-        { status: 501 }
+      const { renderTenantStatementPdf } = await import(
+        "@/lib/accounting/exports/tenant-statement-pdf"
       );
+      const pdf = await renderTenantStatementPdf(situation);
+      const safeName = `${situation.locataire.nom || "locataire"}`
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+      const filename = `releve-${safeName}-${
+        new Date().toISOString().split("T")[0]
+      }.pdf`;
+      return new NextResponse(pdf, {
+        status: 200,
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+          "Cache-Control": "private, no-store",
+        },
+      });
     }
 
     return NextResponse.json({

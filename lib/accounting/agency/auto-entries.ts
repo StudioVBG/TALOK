@@ -76,6 +76,7 @@ export async function createAgencyLoyerEntries(
     source: "auto:agency_loyer_mandant",
     reference: params.reference,
     userId: "system",
+    autoValidate: true,
     lines: [
       {
         accountNumber: "512000",
@@ -102,6 +103,7 @@ export async function createAgencyLoyerEntries(
     source: "auto:agency_commission",
     reference: params.reference,
     userId: "system",
+    autoValidate: true,
     lines: [
       {
         accountNumber: params.mandantAccountNumber,
@@ -146,6 +148,7 @@ export async function createReversementEntry(
     label: `Reversement ${params.mandantName}`,
     source: "auto:agency_reversement",
     userId: "system",
+    autoValidate: true,
     lines: [
       {
         accountNumber: params.mandantAccountNumber,

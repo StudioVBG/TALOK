@@ -36,6 +36,8 @@ const ACCOUNTING_FEATURE_MAP: Record<string, FeatureKey> = {
   open_banking: 'open_banking',
   // Scoring / AI (Pro+)
   scoring: 'scoring_tenant',
+  // TALO accounting agent (Pro+) — same gate as scoring for now
+  agent: 'scoring_tenant',
 } as const;
 
 /**

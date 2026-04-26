@@ -293,6 +293,22 @@ export const POST = withSecurity(async function POST(request: Request) {
       },
     } as any);
 
+    // Reconnaissance en droit (mode IS uniquement). Le helper se gate
+    // lui-meme sur declaration_mode='is_comptable' et accounting_enabled.
+    try {
+      const { ensureInvoiceIssuedEntry } = await import(
+        "@/lib/accounting/invoice-entry"
+      );
+      await ensureInvoiceIssuedEntry(svcClient as any, (invoice as any).id, {
+        userId: user.id,
+      });
+    } catch (accErr) {
+      console.error(
+        "[POST /api/invoices] ensureInvoiceIssuedEntry failed (non-blocking):",
+        accErr,
+      );
+    }
+
     // Journaliser
     await supabaseClient.from("audit_log").insert({
       user_id: user.id,

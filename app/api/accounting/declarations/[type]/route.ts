@@ -16,9 +16,9 @@ import type { BalanceItem, GrandLivreItem } from "@/lib/accounting/engine";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-type DeclarationType = "2044" | "2072" | "micro-foncier" | "2042-cpro";
+type DeclarationType = "2044" | "2072" | "2065" | "2031" | "micro-foncier" | "2042-cpro";
 
-const VALID_TYPES: DeclarationType[] = ["2044", "2072", "micro-foncier", "2042-cpro"];
+const VALID_TYPES: DeclarationType[] = ["2044", "2072", "2065", "2031", "micro-foncier", "2042-cpro"];
 
 /**
  * Sum credit cents for accounts matching a prefix pattern (706xxx, etc.)
@@ -138,6 +138,123 @@ async function compute2072(
 }
 
 /**
+ * Compute 2065 declaration (SCI / societe a l'IS).
+ *
+ * Fournit les agregats du compte de resultat (charges, produits) et le
+ * resultat fiscal avant impot. Le calcul de l'IS lui-meme reste de la
+ * responsabilite de l'EC : il depend de reintegrations / deductions
+ * extra-comptables que TALOK ne tracke pas (provisions reglementees,
+ * amortissements derogatoires, etc.).
+ */
+function compute2065(balance: BalanceItem[]) {
+  // Produits d'exploitation
+  const produits_loyers = sumCredit(balance, "706");
+  const produits_charges_recup = sumCredit(balance, "708");
+  const produits_financiers = sumCredit(balance, "76");
+  const produits_exceptionnels = sumCredit(balance, "77");
+  const produits_total =
+    produits_loyers +
+    produits_charges_recup +
+    produits_financiers +
+    produits_exceptionnels;
+
+  // Charges
+  const charges_externes =
+    sumDebit(balance, "61") + sumDebit(balance, "62"); // services exterieurs
+  const charges_impots = sumDebit(balance, "63"); // impots et taxes
+  const charges_personnel = sumDebit(balance, "64"); // personnel
+  const charges_financieres = sumDebit(balance, "66"); // interets emprunt
+  const dotations_amortissements = sumDebit(balance, "681");
+  const charges_exceptionnelles = sumDebit(balance, "67");
+  const charges_total =
+    charges_externes +
+    charges_impots +
+    charges_personnel +
+    charges_financieres +
+    dotations_amortissements +
+    charges_exceptionnelles;
+
+  const resultat_avant_impot = produits_total - charges_total;
+  // Taux IS reduit (15%) jusqu'a 42 500 EUR de benefice, taux normal 25% au-dela
+  const seuil_taux_reduit_cents = 42_500_00;
+  const is_taux_reduit_cents =
+    resultat_avant_impot > 0
+      ? Math.round(Math.min(resultat_avant_impot, seuil_taux_reduit_cents) * 0.15)
+      : 0;
+  const is_taux_normal_cents =
+    resultat_avant_impot > seuil_taux_reduit_cents
+      ? Math.round((resultat_avant_impot - seuil_taux_reduit_cents) * 0.25)
+      : 0;
+  const is_total_cents = is_taux_reduit_cents + is_taux_normal_cents;
+  const resultat_apres_impot = resultat_avant_impot - is_total_cents;
+
+  return {
+    type: "2065" as const,
+    produits: {
+      loyers: produits_loyers,
+      charges_recuperees: produits_charges_recup,
+      financiers: produits_financiers,
+      exceptionnels: produits_exceptionnels,
+      total: produits_total,
+    },
+    charges: {
+      externes: charges_externes,
+      impots_taxes: charges_impots,
+      personnel: charges_personnel,
+      financieres: charges_financieres,
+      dotations_amortissements,
+      exceptionnelles: charges_exceptionnelles,
+      total: charges_total,
+    },
+    resultat_avant_impot,
+    is_taux_reduit_cents,
+    is_taux_normal_cents,
+    is_total_cents,
+    resultat_apres_impot,
+  };
+}
+
+/**
+ * Compute 2031 declaration (BIC reel - location meublee professionnelle).
+ *
+ * Equivalent du regime reel pour les revenus de location meublee : le
+ * loyer est traite comme une recette commerciale, les charges et amortis
+ * sements sont deductibles, et le resultat est impose au bareme IR.
+ *
+ * La distinction LMP / LMNP impacte l'imputation du deficit (revenu
+ * global pour LMP, BIC seulement pour LMNP) — TALOK ne tranche pas, on
+ * fournit le resultat brut et l'EC rattache au bon regime.
+ */
+function compute2031(balance: BalanceItem[]) {
+  const recettes = sumCredit(balance, "706") + sumCredit(balance, "708");
+  const charges_externes =
+    sumDebit(balance, "61") + sumDebit(balance, "62");
+  const charges_impots = sumDebit(balance, "63");
+  const charges_financieres = sumDebit(balance, "66");
+  const dotations_amortissements = sumDebit(balance, "681");
+  const total_charges =
+    charges_externes +
+    charges_impots +
+    charges_financieres +
+    dotations_amortissements;
+  const resultat_bic = recettes - total_charges;
+
+  return {
+    type: "2031" as const,
+    recettes_bic: recettes,
+    charges: {
+      externes: charges_externes,
+      impots_taxes: charges_impots,
+      financieres: charges_financieres,
+      dotations_amortissements,
+      total: total_charges,
+    },
+    resultat_bic,
+    deficit_lmnp_reportable: resultat_bic < 0 ? -resultat_bic : 0,
+  };
+}
+
+/**
  * Compute 2042-CPRO (micro-BIC / location meublee)
  */
 function compute2042Cpro(balance: BalanceItem[]) {
@@ -191,6 +308,7 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const exerciseId = searchParams.get("exerciseId");
     const entityId = searchParams.get("entityId");
+    const format = searchParams.get("format") ?? "json";
 
     if (!exerciseId || !entityId) {
       throw new ApiError(400, "exerciseId et entityId sont requis");
@@ -218,11 +336,187 @@ export async function GET(
       case "2072":
         declaration = await compute2072(supabase, entityId, balance);
         break;
+      case "2065":
+        declaration = compute2065(balance);
+        break;
+      case "2031":
+        declaration = compute2031(balance);
+        break;
       case "2042-cpro":
         declaration = compute2042Cpro(balance);
         break;
       default:
         throw new ApiError(400, `Type non supporte: ${type}`);
+    }
+
+    if (format === "pdf" && (type === "2065" || type === "2031")) {
+      const { data: entity } = await supabase
+        .from("legal_entities")
+        .select("name, siren")
+        .eq("id", entityId)
+        .maybeSingle();
+
+      const { data: exercise } = await supabase
+        .from("accounting_exercises")
+        .select("end_date")
+        .eq("id", exerciseId)
+        .maybeSingle();
+
+      const year = exercise?.end_date
+        ? new Date(exercise.end_date as string).getUTCFullYear()
+        : new Date().getUTCFullYear();
+      const ownerName =
+        (entity?.name as string | undefined) ?? "Societe";
+      const siren = (entity?.siren as string | undefined) ?? undefined;
+
+      let pdf: Uint8Array;
+      let filename: string;
+
+      if (type === "2065") {
+        const d = declaration as ReturnType<typeof compute2065>;
+        const { generateCerfa2065Pdf } = await import(
+          "@/lib/accounting/exports/cerfa-2065-pdf"
+        );
+        pdf = await generateCerfa2065Pdf({
+          year,
+          ownerName,
+          siren,
+          produits: d.produits,
+          charges: d.charges,
+          resultat_avant_impot: d.resultat_avant_impot,
+          is_taux_reduit_cents: d.is_taux_reduit_cents,
+          is_taux_normal_cents: d.is_taux_normal_cents,
+          is_total_cents: d.is_total_cents,
+          resultat_apres_impot: d.resultat_apres_impot,
+        });
+        filename = `cerfa-2065-${year}.pdf`;
+      } else {
+        const d = declaration as ReturnType<typeof compute2031>;
+        const { generateCerfa2031Pdf } = await import(
+          "@/lib/accounting/exports/cerfa-2031-pdf"
+        );
+        pdf = await generateCerfa2031Pdf({
+          year,
+          ownerName,
+          siren,
+          recettes_bic: d.recettes_bic,
+          charges: d.charges,
+          resultat_bic: d.resultat_bic,
+          deficit_lmnp_reportable: d.deficit_lmnp_reportable,
+        });
+        filename = `cerfa-2031-${year}.pdf`;
+      }
+
+      return new NextResponse(Buffer.from(pdf), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+          "Cache-Control": "private, no-store",
+        },
+      });
+    }
+
+    if (format === "pdf" && type === "2072") {
+      const d = declaration as Awaited<ReturnType<typeof compute2072>>;
+
+      const { data: entity } = await supabase
+        .from("legal_entities")
+        .select("name, siren")
+        .eq("id", entityId)
+        .maybeSingle();
+
+      const { data: exercise } = await supabase
+        .from("accounting_exercises")
+        .select("end_date")
+        .eq("id", exerciseId)
+        .maybeSingle();
+
+      const year = exercise?.end_date
+        ? new Date(exercise.end_date as string).getUTCFullYear()
+        : new Date().getUTCFullYear();
+
+      const { generateCerfa2072Pdf } = await import(
+        "@/lib/accounting/exports/cerfa-2072-pdf"
+      );
+      const pdf = await generateCerfa2072Pdf({
+        year,
+        ownerName: (entity?.name as string | undefined) ?? "Societe civile",
+        siren: (entity?.siren as string | undefined) ?? undefined,
+        revenus_bruts_cents: d.revenus_bruts,
+        charges_deductibles_cents: d.charges_deductibles,
+        resultat_cents: d.resultat,
+        associates: d.resultat_par_associe.map(
+          (a: {
+            name: string;
+            quotePartPct: number;
+            resultatCents: number;
+          }) => ({
+            name: a.name,
+            quotePartPct: a.quotePartPct,
+            resultatCents: a.resultatCents,
+          }),
+        ),
+      });
+
+      return new NextResponse(Buffer.from(pdf), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="cerfa-2072-${year}.pdf"`,
+          "Cache-Control": "private, no-store",
+        },
+      });
+    }
+
+    if (format === "pdf" && type === "2044") {
+      const d = declaration as ReturnType<typeof compute2044>;
+
+      const { data: entity } = await supabase
+        .from("legal_entities")
+        .select("name, siren")
+        .eq("id", entityId)
+        .maybeSingle();
+
+      const { data: exercise } = await supabase
+        .from("accounting_exercises")
+        .select("end_date")
+        .eq("id", exerciseId)
+        .maybeSingle();
+
+      const year = exercise?.end_date
+        ? new Date(exercise.end_date as string).getUTCFullYear()
+        : new Date().getUTCFullYear();
+
+      const { generateCerfa2044Pdf } = await import(
+        "@/lib/accounting/exports/cerfa-2044-pdf"
+      );
+      const pdf = await generateCerfa2044Pdf({
+        year,
+        ownerName:
+          (entity?.name as string | undefined) ?? "Proprietaire",
+        siren: (entity?.siren as string | undefined) ?? undefined,
+        ligne_215_cents: d.ligne_215,
+        ligne_221_cents: d.ligne_221,
+        ligne_222_cents: d.ligne_222,
+        ligne_223_cents: d.ligne_223,
+        ligne_224_cents: d.ligne_224,
+        ligne_227_cents: d.ligne_227,
+        ligne_229_cents: d.ligne_229,
+        ligne_230_cents: d.ligne_230,
+        case_4BA_cents: d.case_4BA,
+        case_4BB_cents: d.case_4BB,
+        case_4BC_cents: d.case_4BC,
+      });
+
+      return new NextResponse(Buffer.from(pdf), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="cerfa-2044-${year}.pdf"`,
+          "Cache-Control": "private, no-store",
+        },
+      });
     }
 
     return NextResponse.json({

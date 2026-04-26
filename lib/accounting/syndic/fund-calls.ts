@@ -190,6 +190,7 @@ export async function generateFundCalls(
         source: 'auto:copro_fund_call',
         reference: call.call_number as string,
         userId,
+        autoValidate: true,
         lines: [
           { accountNumber: coproAccount, debitCents: lotAmountCents, creditCents: 0 },
           { accountNumber: '701000', debitCents: 0, creditCents: lotAmountCents },
@@ -234,6 +235,7 @@ export async function generateFundCalls(
           source: 'auto:copro_works_fund',
           reference: call.call_number as string,
           userId,
+          autoValidate: true,
           lines: [
             { accountNumber: coproAccount, debitCents: lotWorksCents, creditCents: 0 },
             { accountNumber: '105000', debitCents: 0, creditCents: lotWorksCents },
