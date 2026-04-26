@@ -19,6 +19,7 @@ import {
   Scale,
   ListTree,
   ArrowRightLeft,
+  Building2,
   Settings,
   type LucideIcon,
 } from "lucide-react";
@@ -50,6 +51,11 @@ const accountingTabs: AccountingTab[] = [
     label: "Déclarations",
     href: "/owner/accounting/declarations",
     icon: FileText,
+  },
+  {
+    label: "Acquisitions",
+    href: "/owner/accounting/property-acquisitions",
+    icon: Building2,
   },
   {
     label: "Amortissements",

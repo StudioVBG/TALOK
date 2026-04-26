@@ -117,6 +117,13 @@ export {
 } from './teom-recovery-entry';
 
 export {
+  ensurePropertyAcquisitionEntry,
+  type PropertyAcquisitionEntryResult,
+  type PropertyAcquisitionSkipReason,
+  type PropertyAcquisitionParams,
+} from './property-acquisition-entry';
+
+export {
   ensureSubscriptionPaidEntry,
   type EnsureSubscriptionEntryResult,
   type EnsureSubscriptionSkipReason,
