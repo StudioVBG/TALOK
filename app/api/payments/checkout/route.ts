@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = 'force-dynamic';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { z } from "zod";
@@ -65,8 +66,25 @@ export async function POST(request: Request) {
 
     const { invoiceId } = parseResult.data;
 
-    // Récupérer les détails de la facture et du bien
-    const { data: invoice, error: invoiceError } = await supabase
+    // Service-role pour la lecture : la RLS sur leases/properties cascadait
+    // silencieusement et faisait apparaître les factures du locataire comme
+    // "non trouvées" alors qu'il en était bien le tenant_id légitime.
+    // La sécurité est garantie par le check explicite tenant_id ci-dessous.
+    // Voir docs/audits/rls-cascade-audit.md.
+    const serviceClient = getServiceClient();
+
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("id, role")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
+    const profileData = profile as { id: string; role: string };
+
+    const { data: invoice } = await serviceClient
       .from("invoices")
       .select(`
         *,
@@ -79,14 +97,24 @@ export async function POST(request: Request) {
         )
       `)
       .eq("id", invoiceId)
-      .eq("tenant_id", (await supabase.from("profiles").select("id").eq("user_id", user.id).single()).data?.id as string)
-      .single();
+      .maybeSingle();
 
-    if (invoiceError || !invoice) {
-      return NextResponse.json({ error: "Facture non trouvée ou accès refusé" }, { status: 404 });
+    if (!invoice) {
+      return NextResponse.json({ error: "Facture non trouvée" }, { status: 404 });
     }
 
-    if (invoice.statut === "paid") {
+    const invoiceData = invoice as Record<string, unknown> & {
+      tenant_id?: string | null;
+      statut?: string | null;
+    };
+
+    const isAdmin = profileData.role === "admin";
+    const isTenant = invoiceData.tenant_id === profileData.id;
+    if (!isAdmin && !isTenant) {
+      return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+    }
+
+    if (invoiceData.statut === "paid") {
       return NextResponse.json({ error: "Cette facture est déjà payée" }, { status: 400 });
     }
 
