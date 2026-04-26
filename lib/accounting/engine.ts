@@ -85,6 +85,9 @@ export interface GrandLivreItem {
   accountNumber: string;
   accountLabel: string;
   entries: {
+    /** ID de la ligne (accounting_entry_lines.id) — utilisé pour le lettrage. */
+    lineId: string;
+    /** ID de l'écriture parente (accounting_entries.id). */
     entryId: string;
     entryNumber: string;
     entryDate: string;
@@ -463,6 +466,7 @@ export async function getGrandLivre(
   let query = supabase
     .from('accounting_entry_lines')
     .select(`
+      id,
       account_number,
       label,
       debit_cents,
@@ -515,6 +519,7 @@ export async function getGrandLivre(
 
     const item = grouped.get(acc)!;
     item.entries.push({
+      lineId: (line as { id: string }).id,
       entryId: entryData.id,
       entryNumber: entryData.entry_number,
       entryDate: entryData.entry_date,
@@ -1477,6 +1482,25 @@ export async function applyLettrage(
     .in('id', lineIds);
 
   if (updateError) throw new Error(`Failed to apply lettrage: ${updateError.message}`);
+}
+
+/**
+ * Remove the lettrage code from a set of entry lines (délettrage).
+ * Pas de check d'équilibre : on retire simplement le marker. Utile quand
+ * l'utilisateur veut refaire un lettrage différemment.
+ */
+export async function removeLettrage(
+  supabase: SupabaseClient,
+  lineIds: string[],
+): Promise<void> {
+  if (lineIds.length < 1) {
+    throw new Error('Délettrage requires at least 1 line');
+  }
+  const { error } = await supabase
+    .from('accounting_entry_lines')
+    .update({ lettrage: null })
+    .in('id', lineIds);
+  if (error) throw new Error(`Failed to remove lettrage: ${error.message}`);
 }
 
 // ---------------------------------------------------------------------------

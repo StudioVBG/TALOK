@@ -1,16 +1,25 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { PlanGate } from "@/components/subscription/plan-gate";
 import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useEntityStore } from "@/stores/useEntityStore";
 import { formatCents } from "@/lib/utils/format-cents";
-import { Loader2, BookOpenCheck, ChevronDown, ChevronRight } from "lucide-react";
+import {
+  Loader2,
+  BookOpenCheck,
+  ChevronDown,
+  ChevronRight,
+  Link2,
+  Link2Off,
+  X,
+} from "lucide-react";
 
 interface GrandLivreEntry {
+  lineId: string;
   entryId: string;
   entryNumber: string;
   entryDate: string;
@@ -85,8 +94,26 @@ function GrandLivreContent() {
   const exercise = exerciseQuery.data ?? null;
   const exerciseId = exercise?.id;
 
+  const queryClient = useQueryClient();
   const [accountFilter, setAccountFilter] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // ── Lettrage selection ────────────────────────────────────────────
+  // On stocke les lineId sélectionnés (cross-account possible mais
+  // typiquement on lettré sur un même compte 411 pour un même tiers).
+  const [selectedLineIds, setSelectedLineIds] = useState<Set<string>>(new Set());
+  const [lettrageModalOpen, setLettrageModalOpen] = useState(false);
+  const [lettrageCode, setLettrageCode] = useState("");
+  const [lettrageError, setLettrageError] = useState<string | null>(null);
+
+  const toggleLine = (lineId: string) =>
+    setSelectedLineIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(lineId)) next.delete(lineId);
+      else next.add(lineId);
+      return next;
+    });
+  const clearSelection = () => setSelectedLineIds(new Set());
 
   const glQuery = useQuery({
     queryKey: ["accounting", "grand-livre", entityId, exerciseId, accountFilter],
@@ -109,6 +136,64 @@ function GrandLivreContent() {
     () => [...items].sort((a, b) => a.accountNumber.localeCompare(b.accountNumber)),
     [items],
   );
+
+  // Aggregate stats sur la sélection courante (pour valider le lettrage)
+  const selectionStats = useMemo(() => {
+    let debit = 0;
+    let credit = 0;
+    let lettered = 0;
+    let unlettered = 0;
+    for (const account of items) {
+      for (const entry of account.entries) {
+        if (selectedLineIds.has(entry.lineId)) {
+          debit += entry.debitCents;
+          credit += entry.creditCents;
+          if (entry.lettrage) lettered++;
+          else unlettered++;
+        }
+      }
+    }
+    return {
+      count: selectedLineIds.size,
+      debit,
+      credit,
+      balanced: debit === credit,
+      lettered,
+      unlettered,
+    };
+  }, [items, selectedLineIds]);
+
+  // Mutations
+  const applyMutation = useMutation({
+    mutationFn: async (code: string) =>
+      apiClient.post("/accounting/entries/lettrage", {
+        line_ids: Array.from(selectedLineIds),
+        lettrage_code: code,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["accounting", "grand-livre"] });
+      queryClient.invalidateQueries({ queryKey: ["accounting", "balance-generale"] });
+      clearSelection();
+      setLettrageModalOpen(false);
+      setLettrageCode("");
+      setLettrageError(null);
+    },
+    onError: (err: Error) => {
+      setLettrageError(err.message ?? "Erreur lors du lettrage");
+    },
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: async () =>
+      apiClient.post("/accounting/entries/lettrage", {
+        line_ids: Array.from(selectedLineIds),
+        lettrage_code: null,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["accounting", "grand-livre"] });
+      clearSelection();
+    },
+  });
 
   const totals = useMemo(() => {
     let totalDebit = 0;
@@ -247,6 +332,7 @@ function GrandLivreContent() {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="text-muted-foreground bg-muted/10 border-b border-border">
+                            <th className="w-8 px-2 py-2"></th>
                             <th className="text-left font-medium px-4 py-2">Date</th>
                             <th className="text-left font-medium px-4 py-2">N° écriture</th>
                             <th className="text-left font-medium px-4 py-2">Libellé</th>
@@ -256,40 +342,57 @@ function GrandLivreContent() {
                           </tr>
                         </thead>
                         <tbody>
-                          {account.entries.map((entry, i) => (
-                            <tr
-                              key={`${entry.entryId}-${i}`}
-                              className="border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors"
-                            >
-                              <td className="px-4 py-2 text-muted-foreground whitespace-nowrap">
-                                {formatDate(entry.entryDate)}
-                              </td>
-                              <td className="px-4 py-2 font-mono text-xs text-muted-foreground whitespace-nowrap">
-                                <Link
-                                  href={`/owner/accounting/entries/${entry.entryId}`}
-                                  className="hover:text-primary transition-colors"
-                                >
-                                  {entry.entryNumber}
-                                </Link>
-                              </td>
-                              <td className="px-4 py-2 text-foreground">{entry.label}</td>
-                              <td className="px-4 py-2 text-right font-medium text-foreground whitespace-nowrap">
-                                {entry.debitCents > 0 ? formatCents(entry.debitCents) : "—"}
-                              </td>
-                              <td className="px-4 py-2 text-right font-medium text-foreground whitespace-nowrap">
-                                {entry.creditCents > 0 ? formatCents(entry.creditCents) : "—"}
-                              </td>
-                              <td className="px-4 py-2 text-center text-xs">
-                                {entry.lettrage ? (
-                                  <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-                                    {entry.lettrage}
-                                  </span>
-                                ) : (
-                                  "—"
-                                )}
-                              </td>
-                            </tr>
-                          ))}
+                          {account.entries.map((entry, i) => {
+                            const isSelected = selectedLineIds.has(entry.lineId);
+                            return (
+                              <tr
+                                key={`${entry.lineId}-${i}`}
+                                className={`border-b border-border last:border-b-0 transition-colors ${
+                                  isSelected
+                                    ? "bg-primary/5"
+                                    : "hover:bg-muted/30"
+                                }`}
+                              >
+                                <td className="px-2 py-2 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => toggleLine(entry.lineId)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="rounded border-border"
+                                    aria-label={`Sélectionner ligne ${entry.entryNumber}`}
+                                  />
+                                </td>
+                                <td className="px-4 py-2 text-muted-foreground whitespace-nowrap">
+                                  {formatDate(entry.entryDate)}
+                                </td>
+                                <td className="px-4 py-2 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                                  <Link
+                                    href={`/owner/accounting/entries/${entry.entryId}`}
+                                    className="hover:text-primary transition-colors"
+                                  >
+                                    {entry.entryNumber}
+                                  </Link>
+                                </td>
+                                <td className="px-4 py-2 text-foreground">{entry.label}</td>
+                                <td className="px-4 py-2 text-right font-medium text-foreground whitespace-nowrap">
+                                  {entry.debitCents > 0 ? formatCents(entry.debitCents) : "—"}
+                                </td>
+                                <td className="px-4 py-2 text-right font-medium text-foreground whitespace-nowrap">
+                                  {entry.creditCents > 0 ? formatCents(entry.creditCents) : "—"}
+                                </td>
+                                <td className="px-4 py-2 text-center text-xs">
+                                  {entry.lettrage ? (
+                                    <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+                                      {entry.lettrage}
+                                    </span>
+                                  ) : (
+                                    "—"
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -298,6 +401,37 @@ function GrandLivreContent() {
               );
             })}
           </div>
+
+          {/* Action bar lettrage — fixed bottom quand sélection > 0 */}
+          {selectionStats.count > 0 && (
+            <LettrageActionBar
+              stats={selectionStats}
+              onLettrer={() => {
+                setLettrageError(null);
+                setLettrageCode("");
+                setLettrageModalOpen(true);
+              }}
+              onDelettrer={() => removeMutation.mutate()}
+              onClear={clearSelection}
+              isPending={removeMutation.isPending}
+            />
+          )}
+
+          {lettrageModalOpen && (
+            <LettrageModal
+              stats={selectionStats}
+              code={lettrageCode}
+              onCodeChange={setLettrageCode}
+              error={lettrageError}
+              onClose={() => {
+                setLettrageModalOpen(false);
+                setLettrageCode("");
+                setLettrageError(null);
+              }}
+              onSubmit={() => applyMutation.mutate(lettrageCode)}
+              isPending={applyMutation.isPending}
+            />
+          )}
 
           <div className="bg-card rounded-xl border border-border px-4 py-3">
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -325,6 +459,216 @@ function GrandLivreContent() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function LettrageActionBar({
+  stats,
+  onLettrer,
+  onDelettrer,
+  onClear,
+  isPending,
+}: {
+  stats: {
+    count: number;
+    debit: number;
+    credit: number;
+    balanced: boolean;
+    lettered: number;
+    unlettered: number;
+  };
+  onLettrer: () => void;
+  onDelettrer: () => void;
+  onClear: () => void;
+  isPending: boolean;
+}) {
+  return (
+    <div className="sticky bottom-4 z-20 mx-auto max-w-4xl">
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-lg">
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-muted-foreground hover:text-foreground"
+          aria-label="Désélectionner"
+        >
+          <X className="w-4 h-4" />
+        </button>
+        <span className="text-sm font-medium text-foreground">
+          {stats.count} ligne{stats.count > 1 ? "s" : ""} sélectionnée
+          {stats.count > 1 ? "s" : ""}
+        </span>
+        <div className="flex items-center gap-2 text-xs">
+          <span className="text-muted-foreground">D :</span>
+          <span className="font-medium">{formatCents(stats.debit)}</span>
+          <span className="text-muted-foreground ml-2">C :</span>
+          <span className="font-medium">{formatCents(stats.credit)}</span>
+          {stats.balanced ? (
+            <span className="ml-1 inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600">
+              équilibré
+            </span>
+          ) : (
+            <span className="ml-1 inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600">
+              ≠
+            </span>
+          )}
+        </div>
+        <div className="flex-1" />
+        {stats.unlettered > 0 && stats.balanced && stats.count >= 2 && (
+          <button
+            type="button"
+            onClick={onLettrer}
+            disabled={isPending}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            <Link2 className="w-3.5 h-3.5" />
+            Lettrer
+          </button>
+        )}
+        {stats.lettered > 0 && (
+          <button
+            type="button"
+            onClick={onDelettrer}
+            disabled={isPending}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs hover:bg-rose-500/10 hover:text-rose-600 hover:border-rose-500/40 disabled:opacity-50"
+          >
+            {isPending ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Link2Off className="w-3.5 h-3.5" />
+            )}
+            Délettrer
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LettrageModal({
+  stats,
+  code,
+  onCodeChange,
+  error,
+  onClose,
+  onSubmit,
+  isPending,
+}: {
+  stats: {
+    count: number;
+    debit: number;
+    credit: number;
+    balanced: boolean;
+  };
+  code: string;
+  onCodeChange: (v: string) => void;
+  error: string | null;
+  onClose: () => void;
+  onSubmit: () => void;
+  isPending: boolean;
+}) {
+  const isValid =
+    code.trim().length >= 1 &&
+    code.trim().length <= 8 &&
+    /^[A-Z0-9]+$/i.test(code.trim()) &&
+    stats.balanced;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm"
+      onClick={() => !isPending && onClose()}
+    >
+      <form
+        onClick={(e) => e.stopPropagation()}
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (isValid) onSubmit();
+        }}
+        className="bg-card rounded-xl border border-border w-full max-w-md mx-4 p-5 space-y-4 shadow-xl"
+      >
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">
+              Lettrer les lignes sélectionnées
+            </h2>
+            <p className="text-xs text-muted-foreground mt-1">
+              Le lettrage marque ces {stats.count} lignes avec un code commun
+              pour signifier qu'elles se compensent (créance ↔ encaissement).
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="rounded-lg bg-muted/30 border border-border px-3 py-2 text-xs space-y-0.5">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Lignes</span>
+            <span>{stats.count}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Débit total</span>
+            <span className="font-medium">{formatCents(stats.debit)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">Crédit total</span>
+            <span className="font-medium">{formatCents(stats.credit)}</span>
+          </div>
+        </div>
+
+        <label className="space-y-1 block">
+          <span className="text-xs font-medium text-muted-foreground">
+            Code de lettrage <span className="text-rose-600">*</span>
+          </span>
+          <input
+            type="text"
+            value={code}
+            onChange={(e) => onCodeChange(e.target.value.toUpperCase())}
+            placeholder="A, AB, L1, 2026M01…"
+            maxLength={8}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono uppercase"
+            autoFocus
+            required
+          />
+          <span className="text-[11px] text-muted-foreground">
+            Alphanumérique, 1 à 8 caractères. Convention française : lettres
+            seules (A, B, AA…) ou lettre + numéro de période (M01, T1…).
+          </span>
+        </label>
+
+        {!stats.balanced && (
+          <p className="text-xs text-amber-600">
+            ⚠️ Le débit ne correspond pas au crédit (écart{" "}
+            {formatCents(Math.abs(stats.debit - stats.credit))}). Le lettrage
+            sera rejeté par le serveur.
+          </p>
+        )}
+        {error && <p className="text-xs text-destructive">{error}</p>}
+
+        <div className="flex items-center justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="rounded-lg border border-border bg-card px-3 py-2 text-xs hover:bg-muted/50 disabled:opacity-50"
+          >
+            Annuler
+          </button>
+          <button
+            type="submit"
+            disabled={!isValid || isPending}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            Lettrer
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
