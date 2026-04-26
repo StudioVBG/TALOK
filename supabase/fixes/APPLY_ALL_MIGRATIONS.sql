@@ -185,7 +185,13 @@ CREATE TABLE IF NOT EXISTS provider_kyc_requirements (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Données de référence
+-- Données de référence — DÉSACTIVÉ
+-- Le seed est porté par la migration 20251205200000_provider_compliance_sota.sql.
+-- Le rejouer ici (fixes/APPLY_ALL_MIGRATIONS) crée des doublons car la table
+-- n'avait pas de UNIQUE (provider_type, document_type) à l'origine — ce qui
+-- rendait ON CONFLICT DO NOTHING inopérant. Cf. migration 20260426160000.
+-- Si tu dois ré-initialiser, utilise UNIQUEMENT les migrations.
+/*
 INSERT INTO provider_kyc_requirements (provider_type, document_type, is_required, has_expiration, max_age_months, description, help_text) VALUES
 -- Indépendant
 ('independant', 'rc_pro', true, true, NULL, 'Responsabilité Civile Professionnelle', 'Attestation RC Pro en cours de validité'),
@@ -210,6 +216,7 @@ INSERT INTO provider_kyc_requirements (provider_type, document_type, is_required
 ('btp', 'qualification', false, false, NULL, 'Qualification professionnelle', 'RGE, Qualibat, QualiPV, etc.')
 
 ON CONFLICT DO NOTHING;
+*/
 
 -- =====================================================
 -- 5. FONCTIONS: Calcul compliance et alertes
