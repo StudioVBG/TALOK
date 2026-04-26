@@ -28,13 +28,17 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
+import { useEntityStore } from "@/stores/useEntityStore";
+import { EntitySelector } from "@/components/entities/EntitySelector";
 import {
   useStripeConnectStatus,
   useStripeConnectBalance,
   useStripeTransfers,
   useStripePayouts,
+  useStripeConnectAccounts,
   type StripeTransfer,
   type StripePayout,
+  type ConnectAccountListItem,
 } from "@/lib/hooks/use-stripe-connect";
 
 const TRANSFER_STATUS: Record<string, { label: string; icon: React.ReactNode; classes: string }> = {
@@ -164,13 +168,20 @@ export function CompteBancaireTab() {
   const { toast } = useToast();
   const [connectLoading, setConnectLoading] = useState(false);
 
+  // Multi-entité : null = compte personnel, sinon scopé à une entité juridique.
+  // L'EntitySelector ne s'affiche que si le propriétaire a déjà créé au moins
+  // une entité juridique (SCI, SARL…).
+  const entities = useEntityStore((s) => s.entities);
+  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const { data: allAccounts } = useStripeConnectAccounts();
+
   const {
     data: connectData,
     isLoading: statusLoading,
     isError: statusError,
     error: statusErrorValue,
     refetch: refetchStatus,
-  } = useStripeConnectStatus();
+  } = useStripeConnectStatus(selectedEntityId);
   const connectAccount = connectData?.account ?? null;
   const isReady = Boolean(connectData?.has_account && connectAccount?.is_ready);
   const hasAccount = Boolean(connectData?.has_account);
@@ -181,21 +192,21 @@ export function CompteBancaireTab() {
     isError: balanceError,
     error: balanceErrorValue,
     refetch: refetchBalance,
-  } = useStripeConnectBalance(isReady);
+  } = useStripeConnectBalance(isReady, selectedEntityId);
   const {
     data: transfers,
     isLoading: transfersLoading,
     isError: transfersError,
     error: transfersErrorValue,
     refetch: refetchTransfers,
-  } = useStripeTransfers(isReady);
+  } = useStripeTransfers(isReady, selectedEntityId);
   const {
     data: payouts,
     isLoading: payoutsLoading,
     isError: payoutsError,
     error: payoutsErrorValue,
     refetch: refetchPayouts,
-  } = useStripePayouts(isReady);
+  } = useStripePayouts(isReady, selectedEntityId);
 
   useEffect(() => {
     const success = searchParams.get("success");
@@ -247,7 +258,7 @@ export function CompteBancaireTab() {
       const res = await fetch("/api/stripe/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: "{}",
+        body: JSON.stringify({ entityId: selectedEntityId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erreur");
@@ -266,7 +277,11 @@ export function CompteBancaireTab() {
 
   const openConnectDashboard = async () => {
     try {
-      const res = await fetch("/api/stripe/connect/dashboard", { method: "POST" });
+      const res = await fetch("/api/stripe/connect/dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entityId: selectedEntityId }),
+      });
       const data = await res.json();
       const url = data.dashboard_url ?? data.url;
       if (res.ok && url) window.location.href = url;
@@ -322,8 +337,37 @@ export function CompteBancaireTab() {
     );
   }
 
+  const selectedEntity = selectedEntityId
+    ? entities.find((e) => e.id === selectedEntityId) ?? null
+    : null;
+  const scopeLabel = selectedEntity ? selectedEntity.nom : "compte personnel";
+
   return (
     <div className="space-y-6">
+      {/* Sélecteur d'entité — n'apparaît qu'avec au moins une entité juridique */}
+      {entities.length > 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <EntitySelector
+              value={selectedEntityId}
+              onChange={setSelectedEntityId}
+              label="Compte affiché"
+              hint="Choisissez le compte bancaire à consulter ou à configurer."
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Tableau de bord : tous les comptes Connect existants
+          (utile dès qu'on a 2+ comptes pour visualiser le statut global). */}
+      {allAccounts && allAccounts.length >= 2 && (
+        <ConnectAccountsOverview
+          accounts={allAccounts}
+          selectedEntityId={selectedEntityId}
+          onSelect={setSelectedEntityId}
+        />
+      )}
+
       {/* Statut du compte bancaire */}
       <Card>
         <CardHeader>
@@ -331,7 +375,9 @@ export function CompteBancaireTab() {
             <Building2 className="h-5 w-5 text-violet-600" /> Réception des loyers
           </CardTitle>
           <CardDescription>
-            Compte bancaire pour recevoir les paiements de vos locataires via Stripe Connect.
+            {entities.length > 0
+              ? `Compte bancaire pour ${scopeLabel} — encaissez les paiements des locataires via Stripe Connect.`
+              : "Compte bancaire pour recevoir les paiements de vos locataires via Stripe Connect."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -354,7 +400,7 @@ export function CompteBancaireTab() {
                 </div>
               </div>
               <Button variant="outline" onClick={openConnectDashboard} className="gap-2">
-                <ExternalLink className="h-4 w-4" /> Gérer le compte bancaire
+                <ExternalLink className="h-4 w-4" /> Voir mes versements
               </Button>
             </div>
           ) : isOnboardingIncomplete ? (
@@ -694,5 +740,76 @@ export function CompteBancaireTab() {
         </div>
       )}
     </div>
+  );
+}
+
+interface ConnectAccountsOverviewProps {
+  accounts: ConnectAccountListItem[];
+  selectedEntityId: string | null;
+  onSelect: (entityId: string | null) => void;
+}
+
+function ConnectAccountsOverview({
+  accounts,
+  selectedEntityId,
+  onSelect,
+}: ConnectAccountsOverviewProps) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-violet-600" /> Mes comptes bancaires
+        </CardTitle>
+        <CardDescription>
+          {accounts.length} comptes Stripe Connect actifs. Cliquez pour consulter le détail.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {accounts.map((account) => {
+            const isSelected = (account.entity_id ?? null) === selectedEntityId;
+            const isReady = account.charges_enabled && account.payouts_enabled;
+            const statusBadge = isReady
+              ? { label: "Activé", classes: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" }
+              : account.details_submitted
+              ? { label: "En vérification", classes: "bg-amber-500/15 text-amber-700 border-amber-500/30" }
+              : { label: "À configurer", classes: "bg-slate-500/15 text-slate-600 border-slate-500/30" };
+
+            return (
+              <button
+                type="button"
+                key={account.id}
+                onClick={() => onSelect(account.entity_id)}
+                className={cn(
+                  "text-left rounded-xl border p-4 transition-all hover:border-violet-400 hover:bg-violet-50/50 dark:hover:bg-violet-950/20",
+                  isSelected
+                    ? "border-violet-500 bg-violet-50/70 dark:bg-violet-950/30 ring-2 ring-violet-500/20"
+                    : "border-border bg-background"
+                )}
+              >
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="font-medium truncate">{account.entity_label}</span>
+                  </div>
+                  <Badge variant="outline" className={cn("shrink-0 text-[10px]", statusBadge.classes)}>
+                    {statusBadge.label}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {account.bank_account_last4
+                    ? `IBAN •••• ${account.bank_account_last4}${
+                        account.bank_account_bank_name
+                          ? ` — ${account.bank_account_bank_name}`
+                          : ""
+                      }`
+                    : "Coordonnées bancaires à renseigner"}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
