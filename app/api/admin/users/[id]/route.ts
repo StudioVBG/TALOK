@@ -1,10 +1,29 @@
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
-import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
 import { z } from "zod";
+
+/**
+ * ⚠️ DEPRECATED — `/api/admin/users/[id]` n'est plus appelée par l'UI Talok
+ * (zéro consommateur dans le repo au 2026-04-26). Les opérations admin
+ * sur les utilisateurs passent désormais par les surfaces spécialisées :
+ *
+ *   - GET    `/api/admin/people/owners/[id]`     (+ /financials, /activity, /moderation, /properties)
+ *   - GET    `/api/admin/people/tenants` (+ détail à venir)
+ *   - GET    `/api/admin/people/vendors/[id]`
+ *
+ * La route est conservée pour compatibilité avec d'éventuels appels
+ * admin manuels (curl / scripts de maintenance) mais loggée pour
+ * surveillance. Si aucun appel n'est observé pendant 90 jours, elle
+ * peut être supprimée.
+ *
+ * Le PATCH (suspension / changement de rôle) n'a pas d'équivalent dans
+ * la nouvelle surface — à porter sous `/api/admin/people/[role]/[id]`
+ * si le besoin se confirme.
+ */
 
 const patchUserSchema = z.object({
   suspended: z.boolean().optional(),
@@ -30,8 +49,13 @@ export async function PATCH(
     });
     if (isAdminAuthError(auth)) return auth;
 
+    console.warn(
+      "[DEPRECATED] PATCH /api/admin/users/:id called",
+      { admin_user_id: auth.user.id, target_user_id: id }
+    );
+
     const user = auth.user;
-    const supabase = await createClient();
+    const supabase = getServiceClient();
 
     const body = await request.json();
     const parsed = patchUserSchema.safeParse(body);
@@ -41,12 +65,11 @@ export async function PATCH(
 
     const { suspended, reason, role } = parsed.data;
 
-    // Vérifier que l'utilisateur cible existe
     const { data: targetProfile } = await supabase
       .from("profiles")
       .select("id, user_id, role")
-      .eq("user_id", id as any)
-      .single();
+      .eq("user_id", id)
+      .maybeSingle();
 
     if (!targetProfile) {
       return NextResponse.json(
@@ -89,7 +112,7 @@ export async function PATCH(
     const { data: updated, error } = await supabase
       .from("profiles")
       .update(updates)
-      .eq("user_id", id as any)
+      .eq("user_id", id)
       .select()
       .single();
 
@@ -148,16 +171,22 @@ export async function GET(
     });
     if (isAdminAuthError(auth)) return auth;
 
-    const supabase = await createClient();
+    console.warn(
+      "[DEPRECATED] GET /api/admin/users/:id called",
+      { admin_user_id: auth.user.id, target_user_id: id }
+    );
 
-    // Récupérer le profil
-    const { data: targetProfile, error } = await supabase
+    const supabase = getServiceClient();
+
+    const { data: targetProfile } = await supabase
       .from("profiles")
       .select("*")
-      .eq("user_id", id as any)
-      .single();
+      .eq("user_id", id)
+      .maybeSingle();
 
-    if (error) throw error;
+    if (!targetProfile) {
+      return NextResponse.json({ error: "Utilisateur non trouvé" }, { status: 404 });
+    }
 
     return NextResponse.json({ user: targetProfile });
   } catch (error: unknown) {
