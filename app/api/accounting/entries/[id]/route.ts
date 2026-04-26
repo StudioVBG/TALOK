@@ -57,6 +57,7 @@ export async function GET(request: Request, context: Context) {
       .from("accounting_entries")
       .select(`
         *,
+        lines:accounting_entry_lines(id, account_number, label, debit_cents, credit_cents, lettrage, piece_ref),
         invoice:invoices(id, periode, montant_total, statut),
         payment:payments(id, montant, statut, date_paiement)
       `)
@@ -70,7 +71,10 @@ export async function GET(request: Request, context: Context) {
     // Ownership scoping for non-admin. Engine-posted entries carry entity_id
     // (owner_id is NULL), legacy flat entries carry owner_id directly.
     if (profile.role !== "admin") {
-      const ok = await isEntryOwnedByProfile(supabase, entry, profile.id);
+      // Cast: the joined relations widen the inferred row type beyond what
+      // `EntryOwnership` (entity_id/owner_id only) needs.
+      const ownership = entry as { entity_id?: string | null; owner_id?: string | null };
+      const ok = await isEntryOwnedByProfile(supabase, ownership, profile.id);
       if (!ok) {
         throw new ApiError(404, "Écriture non trouvée");
       }
