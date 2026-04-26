@@ -73,46 +73,104 @@ export default function ProviderSettingsPage() {
 
   // Charger le profil via React Query (cache partagé, pas de duplication)
   const { data: profileData, isLoading: profileLoading } = useProfileQuery();
+
+  // Charger le profil prestataire (siret, adresse, services, etc.) en parallèle
   useEffect(() => {
-    if (profileLoading) {
-      setLoading(true);
-      return;
-    }
-    setLoading(false);
-    if (profileData) {
-      setProfile({
-        prenom: profileData.prenom || "",
-        nom: profileData.nom || "",
-        email: (profileData as any).email || "",
-        telephone: profileData.telephone || "",
-        adresse: (profileData as any).adresse || "",
-        siret: (profileData as any).siret || "",
-        description: (profileData as any).description || "",
-        zones_intervention: (profileData as any).zones_intervention || [],
-        services: (profileData as any).services || [],
-      });
-    }
+    let cancelled = false;
+    const load = async () => {
+      if (profileLoading) {
+        setLoading(true);
+        return;
+      }
+      try {
+        const res = await fetch("/api/me/provider-profile", { credentials: "include" });
+        const providerData = res.ok ? await res.json() : null;
+        if (cancelled) return;
+
+        setProfile({
+          prenom: profileData?.prenom || "",
+          nom: profileData?.nom || "",
+          email: (profileData as any)?.email || "",
+          telephone: profileData?.telephone || "",
+          adresse: providerData?.adresse || "",
+          siret: providerData?.siret || "",
+          description: providerData?.bio || "",
+          zones_intervention: providerData?.zones_intervention
+            ? String(providerData.zones_intervention)
+                .split(",")
+                .map((s: string) => s.trim())
+                .filter(Boolean)
+            : [],
+          services: Array.isArray(providerData?.type_services) ? providerData.type_services : [],
+        });
+      } catch (err) {
+        console.error("[provider/settings] load provider profile failed", err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, [profileData, profileLoading]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await fetch("/api/me/profile", {
+      // 1) Champs liés au compte utilisateur (table profiles) — n'envoyer que les champs non vides
+      const profilePayload: Record<string, string> = {};
+      if (profile.prenom?.trim()) profilePayload.prenom = profile.prenom.trim();
+      if (profile.nom?.trim()) profilePayload.nom = profile.nom.trim();
+      if (profile.telephone?.trim()) profilePayload.telephone = profile.telephone.trim();
+
+      if (Object.keys(profilePayload).length > 0) {
+        const profileRes = await fetch("/api/me/profile", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(profilePayload),
+        });
+        if (!profileRes.ok) {
+          const err = await profileRes.json().catch(() => ({}));
+          throw new Error(err?.error || "Erreur mise à jour du profil");
+        }
+      }
+
+      // 2) Champs métier prestataire (table provider_profiles)
+      const providerPayload = {
+        adresse: profile.adresse?.trim() || null,
+        siret: profile.siret?.trim() || null,
+        bio: profile.description?.trim() || null,
+        type_services: profile.services,
+        zones_intervention: profile.zones_intervention?.length
+          ? profile.zones_intervention.join(", ")
+          : null,
+      };
+
+      const providerRes = await fetch("/api/me/provider-profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(profile),
+        credentials: "include",
+        body: JSON.stringify(providerPayload),
       });
-
-      if (!response.ok) throw new Error("Erreur sauvegarde");
+      if (!providerRes.ok) {
+        const err = await providerRes.json().catch(() => ({}));
+        throw new Error(err?.error || "Erreur mise à jour du profil prestataire");
+      }
 
       toast({
         title: "Paramètres sauvegardés",
         description: "Vos modifications ont été enregistrées.",
       });
     } catch (error) {
+      console.error("[provider/settings] save failed", error);
       toast({
         title: "Erreur",
-        description: "Impossible de sauvegarder les paramètres.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Impossible de sauvegarder les paramètres.",
         variant: "destructive",
       });
     } finally {
@@ -191,8 +249,9 @@ export default function ProviderSettingsPage() {
                       id="email"
                       type="email"
                       value={profile.email}
-                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                      className="bg-card"
+                      readOnly
+                      disabled
+                      className="bg-muted cursor-not-allowed"
                     />
                   </div>
                   <div className="space-y-2">
