@@ -1,3 +1,22 @@
+/**
+ * /api/v1/tickets/** — Famille **API publique versionnée**.
+ *
+ * Surface destinée aux **clients externes** (intégrations tiers, scripts,
+ * webhooks Pro+). Activée par le forfait `api_access` :
+ * pro / enterprise_s / enterprise_m / enterprise_l / enterprise_xl.
+ *
+ * Caractéristiques :
+ * - Feature gating `requireApiAccess` sur les opérations de listing/création
+ *   (voir GET et POST ci-dessous) — un owner Free obtiendra 403 API_ACCESS_REQUIRED.
+ * - Les routes d'action (`[id]/assign`, `[id]/resolve`, `[id]/close`, etc.) ne
+ *   gatent pas, pour ne pas casser les workflows en cours quand un plan expire.
+ * - Format de réponse normalisé (`apiSuccess` / `apiError`).
+ * - Lecture via `createServiceRoleClient()` + check métier explicite
+ *   (creator / owner / assignee / admin) — voir commit 71907d5 (PR #499).
+ *
+ * Pour les appels **internes UI**, utiliser la famille `/api/tickets/**`
+ * (sans gating) via `features/tickets/services/tickets.service.ts`.
+ */
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
