@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import {
   apiError,
   apiSuccess,
@@ -46,7 +46,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const auth = await requireAuth(request);
     if (auth instanceof Response) return auth;
 
-    const supabase = await createClient();
+    // Service-role pour la lecture : la cascade RLS invoices → leases →
+    // properties faisait disparaître les factures du locataire légitime
+    // (jointures !inner). Sécurité garantie par le check tenant_id /
+    // owner / admin ci-dessous. Voir docs/audits/rls-cascade-audit.md.
+    const supabase = getServiceClient();
 
     // Require idempotency key for payment operations
     const idempotencyKey = request.headers.get("Idempotency-Key");
@@ -63,25 +67,32 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       });
     }
 
-    // Get invoice
-    const { data: invoice, error: invoiceError } = await supabase
+    // Get invoice (no !inner: keep the row even if RLS would have stripped
+    // a child; the business check below validates access).
+    const { data: invoice } = await supabase
       .from("invoices")
       .select(`
         *,
-        leases!inner(
+        leases(
           id,
-          properties!inner(adresse_complete)
+          properties(adresse_complete, owner_id)
         )
       `)
       .eq("id", iid)
-      .single();
+      .maybeSingle();
 
-    if (invoiceError || !invoice) {
+    if (!invoice) {
       return apiError("Facture non trouvée", 404);
     }
 
-    // Check authorization (tenant can pay their own, owner can see)
-    if (auth.profile.role === "tenant" && invoice.tenant_id !== auth.profile.id) {
+    // Explicit business check: tenant of the invoice, owner of the
+    // underlying property, or admin.
+    const isAdmin = auth.profile.role === "admin";
+    const isTenant = invoice.tenant_id === auth.profile.id;
+    const isOwner =
+      invoice.leases?.properties?.owner_id === auth.profile.id;
+
+    if (!isAdmin && !isTenant && !isOwner) {
       return apiError("Accès non autorisé", 403);
     }
 
