@@ -60,6 +60,17 @@ async function adminMutate<T>(
 }
 
 // ─── Stats ─────────────────────────────────────────────────
+/**
+ * @deprecated `useAdminStats` n'est plus consommée par aucune page (au
+ * 2026-04-26). Les KPIs admin passent par :
+ *   - `fetchAdminStatsV2()` (server-side, dashboard principal)
+ *   - `useAdminMetrics()` (page `/admin/metrics`)
+ *   - hooks dédiés MRR / health (`metrics-saas`, `platform-health`)
+ *
+ * Conservé pour ne pas casser un éventuel usage hors-repo. À supprimer
+ * en même temps que `/api/admin/stats/route.ts` si aucun warn prod n'est
+ * remonté pendant 90 jours.
+ */
 export function useAdminStats() {
   return useQuery({
     queryKey: adminKeys.stats(),
