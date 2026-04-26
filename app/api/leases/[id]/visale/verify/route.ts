@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -34,16 +35,18 @@ export async function POST(
       );
     }
 
-    // Vérifier l'accès au bail
-    const { data: lease } = await supabase
+    // Service-role + check métier (cf. docs/audits/rls-cascade-audit.md)
+    const serviceClient = getServiceClient();
+
+    const { data: lease } = await serviceClient
       .from("leases")
       .select(`
         id,
-        property:properties!inner(owner_id),
+        property:properties(owner_id),
         roommates(user_id)
       `)
-      .eq("id", id as any)
-      .single();
+      .eq("id", id)
+      .maybeSingle();
 
     if (!lease) {
       return NextResponse.json(
@@ -52,19 +55,19 @@ export async function POST(
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
-      .eq("user_id", user.id as any)
-      .single();
+      .eq("user_id", user.id)
+      .maybeSingle();
 
     const leaseData = lease as any;
     const profileData = profile as any;
     const isAdmin = profileData?.role === "admin";
-    const isOwner = leaseData.property.owner_id === profileData?.id;
+    const isOwner = leaseData.property?.owner_id === profileData?.id;
     const isTenant = leaseData.roommates?.some((r: any) => r.user_id === user.id);
 
-    if (!isOwner && !isTenant) {
+    if (!isAdmin && !isOwner && !isTenant) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }

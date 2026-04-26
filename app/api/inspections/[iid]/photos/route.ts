@@ -94,7 +94,7 @@ export async function POST(
         )
       `)
       .eq("id", iid)
-      .single();
+      .maybeSingle();
 
     if (edlError || !edl) {
       console.error(`[Photos] EDL ${iid} error:`, edlError);
@@ -120,7 +120,7 @@ export async function POST(
         .from("properties")
         .select("owner_id")
         .eq("id", propId)
-        .single();
+        .maybeSingle();
       if (property?.owner_id === profile.id) isOwner = true;
     } else if (edlData.lease?.property?.owner_id === profile.id) {
       isOwner = true;
@@ -277,7 +277,7 @@ export async function GET(
         )
       `)
       .eq("id", iid)
-      .single();
+      .maybeSingle();
 
     if (edlError || !edl) {
       return NextResponse.json(
@@ -302,7 +302,7 @@ export async function GET(
         .from("properties")
         .select("owner_id")
         .eq("id", propId)
-        .single();
+        .maybeSingle();
       if (property?.owner_id === profile.id) isOwner = true;
     } else if (edlData.lease?.property?.owner_id === profile.id) {
       isOwner = true;

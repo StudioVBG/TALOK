@@ -9,54 +9,58 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: leaseId } = await params;
-  const supabase = await createClient();
+  const authClient = await createClient();
 
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
+  } = await authClient.auth.getUser();
 
   if (authError || !user) {
     return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
   }
 
-  // Vérifier que l'utilisateur est propriétaire de ce bail
+  // Service-role + check explicite owner/admin
+  // (cf. docs/audits/rls-cascade-audit.md)
+  const supabase = getServiceClient();
+
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id")
+    .select("id, role")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (!profile) {
     return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
   }
 
-  const { data: lease, error: leaseError } = await supabase
+  const { data: lease } = await supabase
     .from("leases")
     .select("id, owner_id")
     .eq("id", leaseId)
-    .single();
+    .maybeSingle();
 
-  if (leaseError || !lease) {
+  if (!lease) {
     return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
   }
 
-  if (lease.owner_id !== profile.id) {
+  const isAdmin = profile.role === "admin";
+  if (lease.owner_id !== profile.id && !isAdmin) {
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
   }
 
-  // punctuality_score exists in DB (migration 20260329170000) but not yet in generated types
   const { data: scoreRow } = await supabase
     .from("leases")
     .select("punctuality_score" as any)
     .eq("id", leaseId)
-    .single();
+    .maybeSingle();
 
   const score = (scoreRow as any)?.punctuality_score != null
     ? Number((scoreRow as any).punctuality_score)

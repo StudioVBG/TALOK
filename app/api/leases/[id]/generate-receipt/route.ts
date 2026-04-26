@@ -43,7 +43,7 @@ export async function POST(
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile || profile.role !== "owner") {
       return NextResponse.json(
@@ -52,12 +52,11 @@ export async function POST(
       );
     }
 
-    // 3. Vérifier que le bail appartient au propriétaire
     const { data: lease } = await serviceClient
       .from("leases")
-      .select("id, property:properties!inner(owner_id)")
+      .select("id, property:properties(owner_id)")
       .eq("id", leaseId)
-      .single();
+      .maybeSingle();
 
     if (!lease) {
       return NextResponse.json(
@@ -94,7 +93,7 @@ export async function POST(
       .select("id, lease_id")
       .eq("id", invoice_id)
       .eq("lease_id", leaseId)
-      .single();
+      .maybeSingle();
 
     if (!invoice) {
       return NextResponse.json(
@@ -103,7 +102,6 @@ export async function POST(
       );
     }
 
-    // 6. Trouver le dernier paiement succeeded pour cette facture
     const { data: payment } = await serviceClient
       .from("payments")
       .select("id")
@@ -111,7 +109,7 @@ export async function POST(
       .eq("statut", "succeeded")
       .order("date_paiement", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (!payment) {
       return NextResponse.json(

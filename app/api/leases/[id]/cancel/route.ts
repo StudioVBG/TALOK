@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { sendEmail } from "@/lib/emails/resend.service";
@@ -33,24 +34,27 @@ export async function POST(
   const { id: leaseId } = await params;
 
   try {
-    const supabase = await createClient();
+    const authClient = await createClient();
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await authClient.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // 1. Récupérer le bail avec les infos nécessaires
-    const { data: lease, error: leaseError } = await supabase
+    // Service-role + check explicite owner/admin
+    // (cf. docs/audits/rls-cascade-audit.md)
+    const supabase = getServiceClient();
+
+    const { data: lease } = await supabase
       .from("leases")
       .select(`
         id,
         statut,
         type_bail,
         property_id,
-        property:properties!inner(
+        property:properties(
           id,
           owner_id,
           name,
@@ -65,21 +69,20 @@ export async function POST(
           profile:profiles(id, prenom, nom, email)
         )
       `)
-      .eq("id", leaseId as any)
-      .single();
+      .eq("id", leaseId)
+      .maybeSingle();
 
-    if (leaseError || !lease) {
+    if (!lease) {
       return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
     }
 
     const leaseData = lease as any;
 
-    // 2. Vérifier les permissions
     const { data: profile } = await supabase
       .from("profiles")
       .select("id, role")
-      .eq("user_id", user.id as any)
-      .single();
+      .eq("user_id", user.id)
+      .maybeSingle();
 
     const profileData = profile as any;
     const isAdmin = profileData?.role === "admin";
