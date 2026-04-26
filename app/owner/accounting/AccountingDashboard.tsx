@@ -47,6 +47,10 @@ import {
   Receipt,
   Trash2,
   Loader2,
+  BookOpenCheck,
+  Scale,
+  ArrowRightLeft,
+  Home,
 } from "lucide-react";
 import {
   BarChart,
@@ -248,6 +252,49 @@ function AccountingDashboardContent() {
               href="/owner/accounting/exports"
               icon={<Download className="w-5 h-5" />}
               label="Exporter FEC"
+            />
+          </div>
+
+          {/* Consultation comptable */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <QuickAction
+              href="/owner/accounting/grand-livre"
+              icon={<BookOpenCheck className="w-5 h-5" />}
+              label="Grand livre"
+            />
+            <QuickAction
+              href="/owner/accounting/balance"
+              icon={<Scale className="w-5 h-5" />}
+              label="Balance générale"
+            />
+            <QuickAction
+              href="/owner/accounting/rendement"
+              icon={<Home className="w-5 h-5" />}
+              label="Rendement par bien"
+            />
+            <QuickAction
+              href="/owner/accounting/declarations/tva"
+              icon={<Receipt className="w-5 h-5" />}
+              label="Déclaration TVA"
+            />
+          </div>
+
+          {/* Saisie & gestion */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <QuickAction
+              href="/owner/accounting/property-acquisitions"
+              icon={<Building2 className="w-5 h-5" />}
+              label="Acquisition immobilière"
+            />
+            <QuickAction
+              href="/owner/accounting/transfers"
+              icon={<ArrowRightLeft className="w-5 h-5" />}
+              label="Virement interne"
+            />
+            <QuickAction
+              href="/owner/accounting/chart"
+              icon={<Calculator className="w-5 h-5" />}
+              label="Plan comptable"
             />
           </div>
 
