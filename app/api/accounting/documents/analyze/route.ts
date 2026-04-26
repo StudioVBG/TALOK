@@ -5,6 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { requireAccountingAccess } from "@/lib/accounting/feature-gates";
 import { getSubscriptionByProfileId } from "@/lib/subscriptions/subscription-service";
@@ -28,37 +29,40 @@ const OCR_QUOTAS: Record<string, number> = {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    const authClient = await createClient();
+    const { data: { user } } = await authClient.auth.getUser();
 
     if (!user) {
       throw new ApiError(401, "Non authentifié");
     }
 
+    // Service-role pour profile/membership/document/analysis lookups.
+    // Sécurité = check explicite owner via entity_members + entity_id sur
+    // documents/document_analyses. Voir docs/audits/rls-cascade-audit.md.
+    const supabase = getServiceClient();
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile) {
       throw new ApiError(403, "Profil non trouvé");
     }
 
-    // Feature gate
     const featureGate = await requireAccountingAccess(profile.id, "entries");
     if (featureGate) return featureGate;
 
     const body = await request.json();
     const { documentId } = AnalyzeBodySchema.parse(body);
 
-    // Get entity from user's membership
     const { data: membership } = await (supabase as any)
       .from("entity_members")
       .select("entity_id")
       .eq("user_id", user.id)
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (!membership) {
       throw new ApiError(403, "Aucune entité associée à votre compte");
@@ -107,7 +111,7 @@ export async function POST(request: Request) {
       .from("documents")
       .select("id, sha256, entity_id")
       .eq("id", documentId)
-      .single();
+      .maybeSingle();
 
     if (docError || !document) {
       throw new ApiError(404, "Document non trouvé");

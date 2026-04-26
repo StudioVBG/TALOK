@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import {
   authenticateAPIKey,
   requireScope,
@@ -26,19 +26,27 @@ export async function GET(
     if (scopeCheck) return scopeCheck;
 
     const { did } = await params;
-    const supabase = await createClient();
+    // Service-role + check explicite owner (cf. docs/audits/rls-cascade-audit.md).
+    // L'embed `properties!inner` cascadait sur la RLS de properties et faisait
+    // 404 sur des documents légitimes du propriétaire.
+    const supabase = getServiceClient();
 
-    const { data: document, error } = await supabase
+    const { data: document } = await supabase
       .from("documents")
-      .select("*, properties!inner(owner_id)")
+      .select("*, properties(owner_id)")
       .eq("id", did)
-      .single();
+      .maybeSingle();
 
-    if (error || !document) {
+    if (!document) {
       return apiError("Document non trouvé", 404, "NOT_FOUND");
     }
 
-    if ((document as any).properties?.owner_id !== auth.profileId) {
+    const docAny = document as Record<string, unknown> & {
+      owner_id?: string | null;
+      properties?: { owner_id?: string | null } | null;
+    };
+    const propertyOwnerId = docAny.properties?.owner_id ?? docAny.owner_id ?? null;
+    if (propertyOwnerId !== auth.profileId) {
       return apiError("Document non trouvé", 404, "NOT_FOUND");
     }
 

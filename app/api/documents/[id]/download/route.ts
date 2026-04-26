@@ -19,12 +19,15 @@ export async function GET(
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
 
+    // Service-role pour la lecture document/profile/lease_signers : la RLS
+    // sur documents pouvait blanker un document légitime via la cascade
+    // tenant_id → profiles. Voir docs/audits/rls-cascade-audit.md.
     const serviceClient = createServiceRoleClient();
-    const { data: document } = await supabase.from("documents").select("*").eq("id", id as any).single();
+    const { data: document } = await serviceClient.from("documents").select("*").eq("id", id).maybeSingle();
     if (!document) return NextResponse.json({ error: "Document non trouvé" }, { status: 404 });
 
     const docData = document as any;
-    const { data: profile } = await serviceClient.from("profiles").select("id, role").eq("user_id", user.id as any).single();
+    const { data: profile } = await serviceClient.from("profiles").select("id, role").eq("user_id", user.id).maybeSingle();
     const profileData = profile as any;
 
     const isTenantRole = profileData?.role === "tenant";
@@ -33,7 +36,7 @@ export async function GET(
       || docData.owner_id === profileData?.id
       || (docData.tenant_id === profileData?.id && tenantVisibleOk);
     if (docData.lease_id && !hasAccess && tenantVisibleOk) {
-      const { data: signer } = await supabase.from("lease_signers").select("id").eq("lease_id", docData.lease_id).eq("profile_id", profileData?.id).maybeSingle();
+      const { data: signer } = await serviceClient.from("lease_signers").select("id").eq("lease_id", docData.lease_id).eq("profile_id", profileData?.id).maybeSingle();
       hasAccess = !!signer;
     }
     if (!hasAccess) return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
@@ -71,14 +74,16 @@ export async function POST(
     const body = await request.json();
     const { expires_in = 3600 } = body; // 1 heure par défaut
 
-    // Récupérer le document
-    const { data: document, error: docError } = await supabase
+    // Service-role + check explicite (cf. docs/audits/rls-cascade-audit.md)
+    const serviceClient = createServiceRoleClient();
+
+    const { data: document } = await serviceClient
       .from("documents")
       .select("*")
-      .eq("id", documentId as any)
-      .single();
+      .eq("id", documentId)
+      .maybeSingle();
 
-    if (docError || !document) {
+    if (!document) {
       return NextResponse.json(
         { error: "Document non trouvé" },
         { status: 404 }
@@ -87,13 +92,11 @@ export async function POST(
 
     const docData = document as any;
 
-    // Vérifier les permissions
-    const serviceClient = createServiceRoleClient();
     const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
-      .eq("user_id", user.id as any)
-      .single();
+      .eq("user_id", user.id)
+      .maybeSingle();
 
     const profileData = profile as any;
     const isOwner = docData.owner_id === profileData?.id;
@@ -105,7 +108,7 @@ export async function POST(
     // Vérifier si signataire du bail (colocataire ou locataire principal)
     let hasAccess = isOwner || isTenant || isAdmin;
     if (docData.lease_id && !hasAccess && tenantVisibleOk) {
-      const { data: signer } = await supabase
+      const { data: signer } = await serviceClient
         .from("lease_signers")
         .select("id")
         .eq("lease_id", docData.lease_id)
