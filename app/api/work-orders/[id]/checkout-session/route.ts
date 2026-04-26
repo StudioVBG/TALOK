@@ -7,29 +7,73 @@ import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { withSecurity } from "@/lib/api/with-security";
-import { stripe, formatAmountForStripe } from "@/lib/stripe";
+import { stripe } from "@/lib/stripe";
 
 /**
  * POST /api/work-orders/[id]/checkout-session
  *
- * Crée une Stripe Checkout Session pour payer l'intervention au prestataire.
- * Le propriétaire paie par CB (ou moyen configuré) via la page Stripe hébergée,
- * puis est redirigé vers success_url. Les side-effects (marquer le paiement
- * succeeded, avancer le work_order, injecter en charge récupérable) sont
- * déclenchés par le webhook Stripe (checkout.session.completed).
+ * Crée une Stripe Checkout Session pour qu'un propriétaire paie l'intervention
+ * d'un prestataire.
  *
- * Architecture : Stripe Connect — le montant net va sur le compte Connect
- * du prestataire, les frais plateforme restent sur le compte plateforme.
+ * Architecture : ESCROW via Separate charges and transfers (Stripe Connect).
+ *   1. Le proprio paie -> charge sur le compte plateforme Talok (PAS de
+ *      transfer_data.destination, donc PAS de routage immédiat).
+ *   2. Les fonds sont retenus sur le compte Talok (escrow_status = 'held').
+ *   3. La libération vers le compte Connect du prestataire (Transfer Stripe
+ *      avec déduction de la commission) est faite plus tard, à des moments
+ *      contrôlés par la plateforme :
+ *        - Acompte (30%) libéré quand le prestataire démarre l'intervention
+ *          (statut 'in_progress')
+ *        - Solde (70%) libéré après le délai de contestation 7j ou validation
+ *          explicite par le proprio.
+ *
+ * Cette logique de libération sera implémentée dans le Sprint B (route
+ * /release-transfer + cron de libération automatique).
  */
 const bodySchema = z.object({
   /** Par défaut 'full' — on paye la totalité en un coup. */
   payment_type: z.enum(["deposit", "balance", "full"]).default("full"),
-  /** Montant surchargé si fourni (cents). Sinon auto : basé sur quote ou split 2/3-1/3. */
+  /** Montant surchargé si fourni (cents). Sinon auto : basé sur quote ou split deposit/balance. */
   amount_cents: z.number().int().positive().optional(),
 });
 
-const PLATFORM_FEE_PCT = 0.01; // 1% — aligné payment_fee_config default
-const PLATFORM_FEE_FIXED_CENTS = 50; // 0,50 €
+interface FeeConfig {
+  stripe_percent: number;
+  stripe_fixed: number;
+  platform_percent: number;
+  platform_fixed: number;
+  deposit_percent: number;
+}
+
+const FEE_CONFIG_FALLBACK: FeeConfig = {
+  stripe_percent: 0.014,
+  stripe_fixed: 0.25,
+  platform_percent: 0.01,
+  platform_fixed: 0.5,
+  deposit_percent: 30,
+};
+
+async function loadFeeConfig(serviceClient: any): Promise<FeeConfig> {
+  const { data } = await serviceClient
+    .from("payment_fee_config")
+    .select(
+      "stripe_percent, stripe_fixed, platform_percent, platform_fixed, deposit_percent"
+    )
+    .eq("config_key", "default")
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!data) return FEE_CONFIG_FALLBACK;
+
+  const row = data as Record<string, string | number | null>;
+  return {
+    stripe_percent: Number(row.stripe_percent ?? FEE_CONFIG_FALLBACK.stripe_percent),
+    stripe_fixed: Number(row.stripe_fixed ?? FEE_CONFIG_FALLBACK.stripe_fixed),
+    platform_percent: Number(row.platform_percent ?? FEE_CONFIG_FALLBACK.platform_percent),
+    platform_fixed: Number(row.platform_fixed ?? FEE_CONFIG_FALLBACK.platform_fixed),
+    deposit_percent: Number(row.deposit_percent ?? FEE_CONFIG_FALLBACK.deposit_percent),
+  };
+}
 
 export const POST = withSecurity(
   async function POST(
@@ -66,7 +110,7 @@ export const POST = withSecurity(
         nom: string | null;
       };
 
-      // 2. Work order + vérif accès + résolution provider Stripe Connect
+      // 2. Work order + vérif accès
       const { data: wo } = await serviceClient
         .from("work_orders")
         .select(
@@ -101,30 +145,43 @@ export const POST = withSecurity(
         throw new ApiError(409, "Aucun prestataire n'est assigné à cette intervention");
       }
 
-      // 3. Compte Stripe Connect du prestataire
-      const { data: payoutAccount } = await serviceClient
-        .from("provider_payout_accounts")
-        .select("stripe_account_id, stripe_account_status")
+      // 3. Vérifier que le prestataire a un compte Connect actif.
+      //    Note: en mode escrow on ne passe PAS transfer_data au Checkout
+      //    (charge sur compte Talok), mais il faut quand même que le compte
+      //    Connect soit prêt pour la future libération (Sprint B).
+      const { data: connectAccount } = await serviceClient
+        .from("stripe_connect_accounts")
+        .select("stripe_account_id, charges_enabled, payouts_enabled")
         .eq("profile_id", workOrder.provider_id)
+        .is("entity_id", null)
         .maybeSingle();
-      const payout = payoutAccount as
-        | { stripe_account_id: string; stripe_account_status: string }
+      const connect = connectAccount as
+        | {
+            stripe_account_id: string;
+            charges_enabled: boolean;
+            payouts_enabled: boolean;
+          }
         | null;
-      if (!payout?.stripe_account_id) {
+      if (!connect?.stripe_account_id) {
         throw new ApiError(
           409,
           "Le prestataire n'a pas encore configuré son compte de paiement"
         );
       }
-      if (payout.stripe_account_status !== "enabled") {
+      if (!connect.charges_enabled || !connect.payouts_enabled) {
         throw new ApiError(
           409,
-          "Le compte de paiement du prestataire n'est pas encore actif"
+          "Le compte de paiement du prestataire n'est pas encore actif (KYC en cours)"
         );
       }
 
-      // 4. Montant : soit surchargé, soit résolu depuis le devis accepté
+      // 4. Charger la config des frais
+      const feeConfig = await loadFeeConfig(serviceClient);
+      const depositRatio = feeConfig.deposit_percent / 100;
+
+      // 5. Montant : soit surchargé, soit résolu depuis le devis accepté
       let grossCents = amount_cents ?? 0;
+      let percentageOfTotal: number | null = null;
       if (grossCents === 0 && workOrder.accepted_quote_id) {
         const { data: quote } = await serviceClient
           .from("provider_quotes")
@@ -137,13 +194,23 @@ export const POST = withSecurity(
         if (quoteTotal > 0) {
           const fullCents = Math.round(quoteTotal * 100);
           if (payment_type === "deposit") {
-            grossCents = Math.round(fullCents * (2 / 3));
+            grossCents = Math.round(fullCents * depositRatio);
+            percentageOfTotal = feeConfig.deposit_percent;
           } else if (payment_type === "balance") {
-            grossCents = fullCents - Math.round(fullCents * (2 / 3));
+            grossCents = fullCents - Math.round(fullCents * depositRatio);
+            percentageOfTotal = 100 - feeConfig.deposit_percent;
           } else {
             grossCents = fullCents;
+            percentageOfTotal = 100;
           }
         }
+      } else if (grossCents > 0) {
+        percentageOfTotal =
+          payment_type === "deposit"
+            ? feeConfig.deposit_percent
+            : payment_type === "balance"
+              ? 100 - feeConfig.deposit_percent
+              : 100;
       }
       if (grossCents <= 0) {
         throw new ApiError(
@@ -152,18 +219,31 @@ export const POST = withSecurity(
         );
       }
 
-      // 5. Frais plateforme (à retenir sur le transfer vers le provider)
-      const applicationFeeCents =
-        Math.round(grossCents * PLATFORM_FEE_PCT) + PLATFORM_FEE_FIXED_CENTS;
+      // 6. Calcul des frais (à appliquer au moment du Transfer en Sprint B,
+      //    on les enregistre dès maintenant pour traçabilité).
+      //    Stripe : 1.4% + 0,25 € (incompressible, prélevé par Stripe sur
+      //              la charge plateforme à l'encaissement).
+      //    Plateforme : 1.0% + 0,50 € (commission Talok, déduite du transfer).
+      const stripeFeeCents =
+        Math.round(grossCents * feeConfig.stripe_percent) +
+        Math.round(feeConfig.stripe_fixed * 100);
+      const platformFeeCents =
+        Math.round(grossCents * feeConfig.platform_percent) +
+        Math.round(feeConfig.platform_fixed * 100);
+      const totalFeesCents = stripeFeeCents + platformFeeCents;
+      const netToProviderCents = grossCents - totalFeesCents;
 
-      // 6. URLs de retour
-      const appUrl =
-        process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+      // 7. URLs de retour
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
       const successUrl = `${appUrl}/owner/tickets?wo_paid=${workOrder.id}`;
       const cancelUrl = `${appUrl}/owner/tickets?wo_cancel=${workOrder.id}`;
 
-      // 7. Création de la Checkout Session — Stripe Connect (destination charge)
+      // 8. Création de la Checkout Session — ESCROW MODE
+      //    Pas de transfer_data.destination -> charge encaissée sur le compte
+      //    plateforme Talok et y reste jusqu'à la libération manuelle/cron.
       const customerEmail = payerProfile.email ?? user.email ?? undefined;
+      const depositLabel = `Acompte (${feeConfig.deposit_percent.toFixed(0)}%)`;
+      const balanceLabel = `Solde (${(100 - feeConfig.deposit_percent).toFixed(0)}%)`;
       const session = await stripe.checkout.sessions.create({
         mode: "payment",
         payment_method_types: ["card"],
@@ -177,9 +257,9 @@ export const POST = withSecurity(
                 name: `Intervention : ${workOrder.title || "Prestation"}`,
                 description:
                   payment_type === "deposit"
-                    ? "Acompte (2/3)"
+                    ? depositLabel
                     : payment_type === "balance"
-                      ? "Solde (1/3)"
+                      ? balanceLabel
                       : "Paiement intégral",
               },
             },
@@ -187,10 +267,7 @@ export const POST = withSecurity(
           },
         ],
         payment_intent_data: {
-          application_fee_amount: applicationFeeCents,
-          transfer_data: {
-            destination: payout.stripe_account_id,
-          },
+          // Pas d'application_fee_amount ni transfer_data : escrow.
           metadata: {
             type: "work_order_payment",
             work_order_id: workOrder.id,
@@ -209,23 +286,26 @@ export const POST = withSecurity(
         cancel_url: cancelUrl,
       });
 
-      // 8. Insertion work_order_payments en 'pending' pour traçabilité
-      //    Le webhook passera status='succeeded' à réception.
+      // 9. Insertion work_order_payments en 'pending' pour traçabilité.
+      //    Le webhook passera status='succeeded' + escrow_status='held' à
+      //    réception (pas 'released' : la libération est différée).
       await serviceClient.from("work_order_payments").insert({
         work_order_id: workOrder.id,
         payment_type,
         payer_profile_id: payerProfile.id,
         payee_profile_id: workOrder.provider_id,
         gross_amount: formatAmountFromCents(grossCents),
-        platform_fee: formatAmountFromCents(applicationFeeCents),
-        stripe_fee: 0,
-        total_fees: formatAmountFromCents(applicationFeeCents),
-        net_amount: formatAmountFromCents(grossCents - applicationFeeCents),
+        percentage_of_total: percentageOfTotal,
+        stripe_fee: formatAmountFromCents(stripeFeeCents),
+        platform_fee: formatAmountFromCents(platformFeeCents),
+        total_fees: formatAmountFromCents(totalFeesCents),
+        net_amount: formatAmountFromCents(netToProviderCents),
         status: "pending",
         escrow_status: "pending",
         stripe_payment_intent_id: session.payment_intent as string | null,
         metadata: {
           checkout_session_id: session.id,
+          fee_config_snapshot: feeConfig,
         },
       } as any);
 
