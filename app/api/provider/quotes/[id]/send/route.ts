@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getServiceClient } from '@/lib/supabase/service-client';
+import { sendOwnerQuoteReceivedEmail } from '@/lib/emails/resend.service';
 
 interface RouteParams {
   params: { id: string };
@@ -47,7 +48,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           id,
           prenom,
           nom,
+          email,
           user_id
+        ),
+        provider:profiles!provider_quotes_provider_profile_id_fkey (
+          prenom,
+          nom
+        ),
+        provider_profile:provider_profiles!provider_quotes_provider_profile_id_fkey (
+          raison_sociale
+        ),
+        property:properties (
+          adresse_complete,
+          code_postal,
+          ville
         )
       `)
       .eq('id', quoteId)
@@ -93,6 +107,53 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
           reference: quote.reference,
           amount: quote.total_amount,
         },
+      });
+    }
+
+    // Email Resend "Nouveau devis recu" au proprietaire (best-effort, non bloquant)
+    const ownerObj = quote.owner as {
+      id?: string;
+      email?: string | null;
+      prenom?: string | null;
+      nom?: string | null;
+    } | null;
+    const providerObj = quote.provider as { prenom?: string | null; nom?: string | null } | null;
+    const providerInfo = quote.provider_profile as { raison_sociale?: string | null } | null;
+    const propertyObj = quote.property as {
+      adresse_complete?: string | null;
+      code_postal?: string | null;
+      ville?: string | null;
+    } | null;
+
+    if (ownerObj?.email) {
+      const recipientName =
+        `${ownerObj.prenom || ''} ${ownerObj.nom || ''}`.trim() || 'Propriétaire';
+      const providerName =
+        providerInfo?.raison_sociale ||
+        `${providerObj?.prenom || ''} ${providerObj?.nom || ''}`.trim() ||
+        'Prestataire';
+      const propertyAddress = propertyObj
+        ? [propertyObj.adresse_complete, [propertyObj.code_postal, propertyObj.ville].filter(Boolean).join(' ')]
+            .filter(Boolean)
+            .join(', ')
+        : null;
+      const totalEuros =
+        typeof quote.total_amount === 'string'
+          ? parseFloat(quote.total_amount)
+          : (quote.total_amount as number);
+
+      sendOwnerQuoteReceivedEmail({
+        ownerEmail: ownerObj.email,
+        recipientName,
+        quoteId: quoteId,
+        quoteReference: quote.reference,
+        quoteTitle: quote.title,
+        providerName,
+        propertyAddress,
+        totalAmountEuros: Number.isFinite(totalEuros) ? totalEuros : 0,
+        validUntil: quote.valid_until ?? null,
+      }).catch((err) => {
+        console.error('[provider/quotes/:id/send] sendOwnerQuoteReceivedEmail failed:', err);
       });
     }
 

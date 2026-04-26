@@ -22,6 +22,7 @@ import {
   Wrench,
   MessageSquare,
   Settings,
+  Receipt,
 } from "lucide-react";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import { SharedBottomNav } from "./shared-bottom-nav";
@@ -87,6 +88,7 @@ const navigationGroups: NavGroup[] = [
     items: [
       { name: "Documents", href: OWNER_ROUTES.documents.path, icon: FileCheck, tourId: "nav-documents" },
       { name: "Tickets", href: OWNER_ROUTES.tickets.path, icon: Wrench, tourId: "nav-tickets" },
+      { name: "Devis prestataires", href: "/owner/provider-quotes", icon: Receipt },
       { name: "Messages", href: "/owner/messages", icon: MessageSquare },
     ],
   },
