@@ -1,3 +1,22 @@
+/**
+ * /api/tickets/** — Famille **API interne UI**.
+ *
+ * Routes consommées par l'application Talok elle-même (UI propriétaire,
+ * locataire, prestataire, syndic) via `features/tickets/services/tickets.service.ts`
+ * et l'app router pages.
+ *
+ * Caractéristiques :
+ * - **Aucun feature gating de plan** : accessibles à tous les owners (gratuit → enterprise),
+ *   parce qu'on ne peut pas refuser à un owner Free de gérer ses propres tickets.
+ * - Auth cookie (Supabase session) requise.
+ * - Lecture/écriture via `getServiceClient()` (service-role) après vérification métier
+ *   explicite (creator / owner / assignee / admin) — voir commit 7518520 (PR #499).
+ *
+ * Pour exposer ces opérations en **API publique** (clients externes), utiliser
+ * la famille `/api/v1/tickets/**` qui ajoute `requireApiAccess` (Pro+ requis).
+ *
+ * Ne pas fusionner les deux familles tant que ce gating est intentionnel.
+ */
 export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 

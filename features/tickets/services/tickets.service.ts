@@ -1,3 +1,18 @@
+/**
+ * `ticketsService` — Client typé pour la famille `/api/tickets/**`
+ * (API **interne UI**, sans feature gating de plan).
+ *
+ * Utilisé par l'application Talok elle-même : pages owner/tenant/provider/syndic,
+ * hooks React (`useTickets`), composants (`ticket-form`, `ticket-card`).
+ *
+ * **Ne pas migrer ces appels vers `/api/v1/tickets/**`** : la famille v1 ajoute
+ * un gating `requireApiAccess` qui retournerait 403 pour les owners en plan
+ * Free / Starter / Confort. Voir le commentaire d'en-tête dans
+ * `app/api/tickets/route.ts` pour la justification.
+ *
+ * Pour exposer ces opérations à des intégrations tiers (API publique), utiliser
+ * directement la famille v1 — elle existe pour cet usage.
+ */
 import { apiClient } from "@/lib/api-client";
 import type { Ticket, TicketStatus, TicketPriority, TicketCategory, TicketComment } from "@/lib/types";
 
