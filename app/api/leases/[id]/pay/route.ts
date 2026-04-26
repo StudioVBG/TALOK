@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { getRateLimiterByUser, rateLimitPresets } from "@/lib/middleware/rate-limit";
 import { isLegacyTenantPaymentRouteEnabled } from "@/lib/payments/tenant-payment-flow";
@@ -71,14 +72,18 @@ export async function POST(
       );
     }
 
-    // Vérifier que l'utilisateur est bien locataire de ce bail
-    const { data: roommate } = await supabase
+    // Service-role: la RLS sur roommates retournait null pour des locataires
+    // pourtant légitimes (cascade via lease_signers). Le check métier ci-dessous
+    // garantit qu'on n'accepte le paiement que pour un roommate actif sur ce bail.
+    const serviceClient = getServiceClient();
+
+    const { data: roommate } = await serviceClient
       .from("roommates")
       .select("id")
-      .eq("lease_id", id as any)
-      .eq("user_id", user.id as any)
+      .eq("lease_id", id)
+      .eq("user_id", user.id)
       .is("left_on", null)
-      .single();
+      .maybeSingle();
 
     if (!roommate) {
       return NextResponse.json(
@@ -87,15 +92,14 @@ export async function POST(
       );
     }
 
-    // Récupérer la part de paiement
-    const { data: paymentShare, error: shareError } = await supabase
+    const { data: paymentShare } = await serviceClient
       .from("payment_shares")
       .select("*")
-      .eq("id", paymentShareId as any)
-      .eq("roommate_id", (roommate as any).id as any)
-      .single();
+      .eq("id", paymentShareId)
+      .eq("roommate_id", (roommate as { id: string }).id)
+      .maybeSingle();
 
-    if (shareError || !paymentShare) {
+    if (!paymentShare) {
       return NextResponse.json(
         { error: "Part de paiement non trouvée" },
         { status: 404 }

@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -34,15 +35,18 @@ export async function POST(
       );
     }
 
-    // Vérifier que l'utilisateur est propriétaire du bail
-    const { data: lease } = await supabase
+    // Service-role pour la lecture (RLS cascade leases→properties).
+    // Sécurité garantie par le check owner_id ci-dessous.
+    const serviceClient = getServiceClient();
+
+    const { data: lease } = await serviceClient
       .from("leases")
       .select(`
         id,
-        property:properties!inner(owner_id)
+        property:properties(owner_id)
       `)
-      .eq("id", id as any)
-      .single();
+      .eq("id", id)
+      .maybeSingle();
 
     if (!lease) {
       return NextResponse.json(
@@ -51,15 +55,18 @@ export async function POST(
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
-      .select("id")
-      .eq("user_id", user.id as any)
-      .single();
+      .select("id, role")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    const leaseData = lease as any;
-    const profileData = profile as any;
-    if (leaseData.property.owner_id !== profileData?.id) {
+    const leaseData = lease as { property?: { owner_id?: string } | null };
+    const profileData = profile as { id: string; role: string } | null;
+    const isAdmin = profileData?.role === "admin";
+    const isOwner = leaseData.property?.owner_id === profileData?.id;
+
+    if (!isAdmin && !isOwner) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
@@ -67,11 +74,11 @@ export async function POST(
     }
 
     // Vérifier le montant du dépôt dans le bail
-    const { data: leaseDetails } = await supabase
+    const { data: leaseDetails } = await serviceClient
       .from("leases")
       .select("depot_de_garantie")
-      .eq("id", id as any)
-      .single();
+      .eq("id", id)
+      .maybeSingle();
 
     // Créer le mouvement d'encaissement
     const { data: movement, error } = await supabase
@@ -159,32 +166,42 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Vérifier l'accès au bail
-    const { data: roommate } = await supabase
-      .from("roommates")
-      .select("id")
-      .eq("lease_id", id as any)
-      .eq("user_id", user.id as any)
-      .maybeSingle();
+    // Service-role + check métier explicite (locataire actif via roommates,
+    // propriétaire via property, ou admin).
+    const serviceClient = getServiceClient();
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_id", user.id as any)
-      .single();
+    const [{ data: roommate }, { data: profile }, { data: lease }] = await Promise.all([
+      serviceClient
+        .from("roommates")
+        .select("id")
+        .eq("lease_id", id)
+        .eq("user_id", user.id)
+        .is("left_on", null)
+        .maybeSingle(),
+      serviceClient
+        .from("profiles")
+        .select("id, role")
+        .eq("user_id", user.id)
+        .maybeSingle(),
+      serviceClient
+        .from("leases")
+        .select(`
+          id,
+          property:properties(owner_id)
+        `)
+        .eq("id", id)
+        .maybeSingle(),
+    ]);
 
-    const { data: lease } = await supabase
-      .from("leases")
-      .select(`
-        id,
-        property:properties!inner(owner_id)
-      `)
-      .eq("id", id as any)
-      .single();
+    if (!lease) {
+      return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
+    }
 
-    const leaseData = lease as any;
-    const profileData = profile as any;
-    const hasAccess = roommate || leaseData?.property?.owner_id === profileData?.id;
+    const leaseData = lease as { property?: { owner_id?: string } | null };
+    const profileData = profile as { id: string; role: string } | null;
+    const isAdmin = profileData?.role === "admin";
+    const isOwner = leaseData.property?.owner_id === profileData?.id;
+    const hasAccess = !!roommate || isOwner || isAdmin;
 
     if (!hasAccess) {
       return NextResponse.json(
@@ -193,20 +210,18 @@ export async function GET(
       );
     }
 
-    // Récupérer les mouvements
-    const { data: movements, error } = await supabase
+    const { data: movements, error } = await serviceClient
       .from("deposit_movements")
       .select("*")
-      .eq("lease_id", id as any)
+      .eq("lease_id", id)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
 
-    // Récupérer le solde
-    const { data: balance } = await supabase
+    const { data: balance } = await serviceClient
       .from("deposit_balance")
       .select("*")
-      .eq("lease_id", id as any)
+      .eq("lease_id", id)
       .maybeSingle();
 
     return NextResponse.json({

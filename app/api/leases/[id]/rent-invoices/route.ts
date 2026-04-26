@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 
 /**
@@ -34,18 +35,21 @@ export async function POST(
       );
     }
 
-    // Vérifier que l'utilisateur est propriétaire
-    const { data: lease } = await supabase
+    // Service-role + check explicite owner/admin
+    // (cf. docs/audits/rls-cascade-audit.md)
+    const serviceClient = getServiceClient();
+
+    const { data: lease } = await serviceClient
       .from("leases")
       .select(`
         id,
         statut,
         loyer,
         charges_forfaitaires,
-        property:properties!inner(owner_id)
+        property:properties(owner_id)
       `)
-      .eq("id", id as any)
-      .single();
+      .eq("id", id)
+      .maybeSingle();
 
     if (!lease) {
       return NextResponse.json(
@@ -54,7 +58,12 @@ export async function POST(
       );
     }
 
-    const leaseData = lease as any;
+    const leaseData = lease as {
+      statut?: string;
+      loyer?: number;
+      charges_forfaitaires?: number;
+      property?: { owner_id?: string } | null;
+    };
     if (leaseData.statut !== "active") {
       return NextResponse.json(
         { error: "Le bail doit être actif" },
@@ -62,14 +71,17 @@ export async function POST(
       );
     }
 
-    const { data: profile } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
-      .select("id")
-      .eq("user_id", user.id as any)
-      .single();
+      .select("id, role")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    const profileData = profile as any;
-    if (leaseData.property.owner_id !== profileData?.id) {
+    const profileData = profile as { id: string; role: string } | null;
+    const isAdmin = profileData?.role === "admin";
+    const isOwner = leaseData.property?.owner_id === profileData?.id;
+
+    if (!isAdmin && !isOwner) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
@@ -77,10 +89,10 @@ export async function POST(
     }
 
     // Vérifier si une facture existe déjà pour ce mois
-    const { data: existing } = await supabase
+    const { data: existing } = await serviceClient
       .from("invoices")
       .select("id")
-      .eq("lease_id", id as any)
+      .eq("lease_id", id)
       .eq("periode", month)
       .maybeSingle();
 
@@ -127,10 +139,14 @@ export async function POST(
       );
     }
 
-    const montant_loyer = parsedLoyerOverride ?? leaseData.loyer;
+    const montant_loyer = parsedLoyerOverride ?? leaseData.loyer ?? 0;
     const montant_charges = parsedChargesOverride ?? leaseData.charges_forfaitaires ?? 0;
     const montant_total = montant_loyer + montant_charges;
     const dueDate = `${month}-05`;
+
+    if (!profileData) {
+      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+    }
 
     // Créer la facture
     const { data: invoice, error: invoiceError } = await supabase
