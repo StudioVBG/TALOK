@@ -18,6 +18,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceClient } from '@/lib/supabase/service-client';
 import { z } from 'zod';
 
 interface RouteParams {
@@ -59,15 +60,19 @@ const ACTION_STATUS_MAP: Record<string, { from: string[]; to: string }> = {
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const authClient = await createClient();
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser();
+    } = await authClient.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
+
+    // Service-role + check métier explicite
+    // (cf. docs/audits/rls-cascade-audit.md)
+    const supabase = getServiceClient();
 
     const { id: workOrderId } = await params;
 
@@ -89,7 +94,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile) {
       return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
@@ -107,7 +112,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         )
       `)
       .eq('id', workOrderId)
-      .single();
+      .maybeSingle();
 
     if (woError || !workOrder) {
       return NextResponse.json({ error: 'Intervention non trouvée' }, { status: 404 });
@@ -282,15 +287,19 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const authClient = await createClient();
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser();
+    } = await authClient.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
+
+    // Service-role + check métier explicite
+    // (cf. docs/audits/rls-cascade-audit.md)
+    const supabase = getServiceClient();
 
     const { id: workOrderId } = await params;
 
@@ -299,7 +308,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile) {
       return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
@@ -319,13 +328,21 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         provider:profiles!work_orders_provider_id_fkey(id, prenom, nom)
       `)
       .eq('id', workOrderId)
-      .single();
+      .maybeSingle();
 
     if (woError || !workOrder) {
       return NextResponse.json({ error: 'Intervention non trouvée' }, { status: 404 });
     }
 
-    // Récupérer le timeline
+    // Check métier explicite : provider, owner du bien ou admin (le GET
+    // n'avait aucun contrôle d'accès auparavant — fuite potentielle).
+    const isProviderGet = workOrder.provider_id === profile.id;
+    const isOwnerGet = workOrder.ticket?.properties?.owner_id === profile.id;
+    const isAdminGet = profile.role === 'admin';
+    if (!isProviderGet && !isOwnerGet && !isAdminGet) {
+      return NextResponse.json({ error: 'Accès non autorisé' }, { status: 403 });
+    }
+
     const { data: timeline } = await supabase
       .from('work_order_timeline')
       .select('*')

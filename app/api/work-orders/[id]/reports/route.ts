@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { getServiceClient } from '@/lib/supabase/service-client';
 
 interface RouteParams {
   params: { id: string };
@@ -16,15 +17,18 @@ interface RouteParams {
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const authClient = await createClient();
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser();
+    } = await authClient.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
+
+    // Service-role + check métier (cf. docs/audits/rls-cascade-audit.md)
+    const supabase = getServiceClient();
 
     const workOrderId = params.id;
 
@@ -33,7 +37,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile) {
       return NextResponse.json({ error: 'Profil non trouvé' }, { status: 404 });
@@ -52,7 +56,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
         )
       `)
       .eq('id', workOrderId)
-      .single();
+      .maybeSingle();
 
     if (!workOrder) {
       return NextResponse.json({ error: 'Intervention non trouvée' }, { status: 404 });
@@ -88,15 +92,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
-    const supabase = await createClient();
+    const authClient = await createClient();
     const {
       data: { user },
       error: authError,
-    } = await supabase.auth.getUser();
+    } = await authClient.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
+
+    // Service-role + check métier (cf. docs/audits/rls-cascade-audit.md)
+    const supabase = getServiceClient();
 
     const workOrderId = params.id;
 
@@ -105,7 +112,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .from('profiles')
       .select('id, role')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile || profile.role !== 'provider') {
       return NextResponse.json({ error: 'Seuls les prestataires peuvent créer des rapports' }, { status: 403 });
@@ -117,7 +124,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .select('id, provider_id, statut')
       .eq('id', workOrderId)
       .eq('provider_id', profile.id)
-      .single();
+      .maybeSingle();
 
     if (!workOrder) {
       return NextResponse.json({ error: 'Intervention non trouvée ou non autorisée' }, { status: 404 });
@@ -151,7 +158,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         .select('id')
         .eq('work_order_id', workOrderId)
         .eq('report_type', report_type)
-        .single();
+        .maybeSingle();
 
       if (existingReport) {
         return NextResponse.json(
