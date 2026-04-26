@@ -1,3 +1,22 @@
+/**
+ * Page dispatcher `/admin/people/[id]`.
+ *
+ * **Ce n'est PAS un doublon** des pages `/admin/people/{owners,tenants,vendors}/[id]` —
+ * c'est une porte d'entrée unique qui redirige selon le rôle du profile :
+ *   - owner   → `/admin/people/owners/[id]`
+ *   - tenant  → `/admin/people/tenants/[id]`
+ *   - provider → `/admin/people/vendors/[id]`
+ *   - syndic / agency / guarantor → rendu inline ici (pas de page dédiée)
+ *
+ * Permet à l'admin d'arriver depuis n'importe quel lien (`/admin/people/<uuid>`)
+ * sans connaître le rôle à l'avance. Next.js privilégie les routes plus
+ * spécifiques (`/people/owners/[id]`) quand elles matchent — pas de
+ * conflit de routing.
+ *
+ * Ne pas "consolider" en un seul layout sous prétexte de DRY : les pages
+ * spécialisées ont leurs propres data-loaders et clients (OwnerDetailsClient,
+ * etc.) qui dépendent de hooks et d'écrans propres au rôle.
+ */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
