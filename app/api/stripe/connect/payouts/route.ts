@@ -1,9 +1,9 @@
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient, createServiceRoleClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createRouteHandlerClient();
     const serviceClient = createServiceRoleClient();
@@ -22,20 +22,27 @@ export async function GET() {
       .eq("user_id", user.id)
       .single();
 
-    if (!profile || profile.role !== "owner") {
+    if (!profile || !["owner", "syndic"].includes(profile.role)) {
       return NextResponse.json(
-        { error: "Seuls les propriétaires peuvent consulter leurs versements bancaires" },
+        { error: "Seuls les propriétaires et syndics peuvent consulter leurs versements bancaires" },
         { status: 403 }
       );
     }
 
-    // S2-2 : compte personnel uniquement (entity_id IS NULL)
-    const { data: connectAccount } = await serviceClient
+    const entityId = request.nextUrl.searchParams.get("entityId");
+
+    let query = serviceClient
       .from("stripe_connect_accounts")
       .select("id")
-      .eq("profile_id", profile.id)
-      .is("entity_id", null)
-      .maybeSingle();
+      .eq("profile_id", profile.id);
+
+    if (entityId) {
+      query = query.eq("entity_id", entityId);
+    } else {
+      query = query.is("entity_id", null);
+    }
+
+    const { data: connectAccount } = await query.maybeSingle();
 
     if (!connectAccount?.id) {
       return NextResponse.json([]);

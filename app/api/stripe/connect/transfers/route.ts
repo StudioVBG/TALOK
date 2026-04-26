@@ -4,12 +4,14 @@ export const runtime = "nodejs";
  * API Route pour récupérer l'historique des transferts Stripe Connect
  *
  * GET /api/stripe/connect/transfers - Liste les transferts vers le compte du propriétaire
+ *   - Sans entityId : compte personnel (entity_id IS NULL)
+ *   - Avec entityId : compte scopé à l'entité juridique
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient, createServiceRoleClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createRouteHandlerClient();
     const serviceClient = createServiceRoleClient();
@@ -22,34 +24,39 @@ export async function GET() {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
-    // Récupérer le profil
     const { data: profile } = await supabase
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
       .single();
 
-    if (!profile || profile.role !== "owner") {
+    if (!profile || !["owner", "syndic"].includes(profile.role)) {
       return NextResponse.json(
-        { error: "Seuls les propriétaires peuvent consulter leurs transferts" },
+        { error: "Seuls les propriétaires et syndics peuvent consulter leurs transferts" },
         { status: 403 }
       );
     }
 
-    // Récupérer le compte Connect personnel (S2-2 : entity_id IS NULL)
-    const { data: connectAccount } = await serviceClient
+    const entityId = request.nextUrl.searchParams.get("entityId");
+
+    let query = serviceClient
       .from("stripe_connect_accounts")
       .select("id")
-      .eq("profile_id", profile.id)
-      .is("entity_id", null)
-      .maybeSingle();
+      .eq("profile_id", profile.id);
+
+    if (entityId) {
+      query = query.eq("entity_id", entityId);
+    } else {
+      query = query.is("entity_id", null);
+    }
+
+    const { data: connectAccount } = await query.maybeSingle();
 
     const connectAccountId = connectAccount?.id;
     if (!connectAccountId) {
       return NextResponse.json([]);
     }
 
-    // Récupérer les transferts
     const { data: transfers, error: transfersError } = await serviceClient
       .from("stripe_transfers")
       .select(

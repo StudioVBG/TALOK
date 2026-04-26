@@ -2,6 +2,10 @@
 
 /**
  * SOTA 2026 : Hooks React Query pour Stripe Connect (compte bancaire propriétaire).
+ *
+ * Multi-entité : chaque hook accepte un `entityId` optionnel.
+ *   - undefined → compte personnel (entity_id IS NULL)
+ *   - UUID      → compte scopé à une entité juridique (SCI, copropriété…)
  */
 
 import { useQuery } from "@tanstack/react-query";
@@ -51,20 +55,39 @@ export interface StripePayout {
   created_at: string;
 }
 
+export interface ConnectAccountListItem {
+  id: string;
+  entity_id: string | null;
+  entity_label: string;
+  stripe_account_id: string;
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
+  details_submitted: boolean;
+  bank_account_last4: string | null;
+  bank_account_bank_name: string | null;
+}
+
 // ── Hooks ──
 
 const CONNECT_STATUS_KEY = "stripe-connect-status";
 const CONNECT_BALANCE_KEY = "stripe-connect-balance";
 const CONNECT_TRANSFERS_KEY = "stripe-connect-transfers";
 const CONNECT_PAYOUTS_KEY = "stripe-connect-payouts";
+const CONNECT_ACCOUNTS_KEY = "stripe-connect-accounts";
 
-export function useStripeConnectStatus() {
+function buildScopedUrl(base: string, entityId?: string | null): string {
+  if (!entityId) return base;
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}entityId=${encodeURIComponent(entityId)}`;
+}
+
+export function useStripeConnectStatus(entityId?: string | null) {
   const { profile } = useAuth();
 
   return useQuery<ConnectAccountData>({
-    queryKey: [CONNECT_STATUS_KEY, profile?.id],
+    queryKey: [CONNECT_STATUS_KEY, profile?.id, entityId ?? null],
     queryFn: async () => {
-      const res = await fetch("/api/stripe/connect");
+      const res = await fetch(buildScopedUrl("/api/stripe/connect", entityId));
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error ?? "Erreur chargement compte Connect");
@@ -76,13 +99,13 @@ export function useStripeConnectStatus() {
   });
 }
 
-export function useStripeConnectBalance(enabled = true) {
+export function useStripeConnectBalance(enabled = true, entityId?: string | null) {
   const { profile } = useAuth();
 
   return useQuery<ConnectBalanceData>({
-    queryKey: [CONNECT_BALANCE_KEY, profile?.id],
+    queryKey: [CONNECT_BALANCE_KEY, profile?.id, entityId ?? null],
     queryFn: async () => {
-      const res = await fetch("/api/stripe/connect/balance");
+      const res = await fetch(buildScopedUrl("/api/stripe/connect/balance", entityId));
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error ?? "Erreur chargement solde");
@@ -94,13 +117,13 @@ export function useStripeConnectBalance(enabled = true) {
   });
 }
 
-export function useStripeTransfers(enabled = true) {
+export function useStripeTransfers(enabled = true, entityId?: string | null) {
   const { profile } = useAuth();
 
   return useQuery<StripeTransfer[]>({
-    queryKey: [CONNECT_TRANSFERS_KEY, profile?.id],
+    queryKey: [CONNECT_TRANSFERS_KEY, profile?.id, entityId ?? null],
     queryFn: async () => {
-      const res = await fetch("/api/stripe/connect/transfers");
+      const res = await fetch(buildScopedUrl("/api/stripe/connect/transfers", entityId));
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error ?? "Erreur chargement transferts");
@@ -112,16 +135,34 @@ export function useStripeTransfers(enabled = true) {
   });
 }
 
-export function useStripePayouts(enabled = true) {
+export function useStripePayouts(enabled = true, entityId?: string | null) {
   const { profile } = useAuth();
 
   return useQuery<StripePayout[]>({
-    queryKey: [CONNECT_PAYOUTS_KEY, profile?.id],
+    queryKey: [CONNECT_PAYOUTS_KEY, profile?.id, entityId ?? null],
     queryFn: async () => {
-      const res = await fetch("/api/stripe/connect/payouts");
+      const res = await fetch(buildScopedUrl("/api/stripe/connect/payouts", entityId));
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error ?? "Erreur chargement versements");
+      }
+      return data;
+    },
+    enabled: !!profile?.id && enabled,
+    staleTime: 60_000,
+  });
+}
+
+export function useStripeConnectAccounts(enabled = true) {
+  const { profile } = useAuth();
+
+  return useQuery<ConnectAccountListItem[]>({
+    queryKey: [CONNECT_ACCOUNTS_KEY, profile?.id],
+    queryFn: async () => {
+      const res = await fetch("/api/stripe/connect/accounts");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "Erreur chargement comptes Connect");
       }
       return data;
     },

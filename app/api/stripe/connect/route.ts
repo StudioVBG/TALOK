@@ -15,6 +15,8 @@ import {
   buildConnectAccountResponse,
   type StoredConnectAccount,
 } from "@/lib/stripe/connect-account";
+import { PLAN_LIMITS } from "@/lib/subscriptions/plan-limits";
+import { resolveCurrentPlan } from "@/lib/subscriptions/resolve-current-plan";
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
 const CONNECT_CONFLICT_RETRY_ERROR =
@@ -286,6 +288,31 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json().catch(() => ({}));
     const entityId: string | undefined = body.entityId || undefined;
+
+    // Plan gating : la création d'un compte scopé à une entité juridique
+    // requiert un plan supportant le multi-entité (Confort+ pour les owners).
+    // Les syndics sont exemptés (obligation légale ALUR de séparation des comptes
+    // par copropriété) ; les comptes personnels (entityId vide) restent ouverts à tous.
+    if (entityId && profile.role === "owner") {
+      const { data: subscription } = await serviceClient
+        .from("subscriptions")
+        .select("plan_slug")
+        .eq("profile_id", profile.id)
+        .maybeSingle();
+
+      const planSlug = resolveCurrentPlan(subscription?.plan_slug as string | undefined);
+      if (!PLAN_LIMITS[planSlug].hasMultiEntity) {
+        return NextResponse.json(
+          {
+            error:
+              "La gestion multi-entités (SCI) est disponible à partir du plan Confort.",
+            upgrade_required: true,
+            feature: "hasMultiEntity",
+          },
+          { status: 402 }
+        );
+      }
+    }
 
     // Vérifier si un compte existe déjà (personnel ou scopé par entité)
     const existingAccount = await getStoredConnectAccountReference(

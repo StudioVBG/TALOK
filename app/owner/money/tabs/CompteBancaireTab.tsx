@@ -354,7 +354,7 @@ export function CompteBancaireTab() {
                 </div>
               </div>
               <Button variant="outline" onClick={openConnectDashboard} className="gap-2">
-                <ExternalLink className="h-4 w-4" /> Gérer le compte bancaire
+                <ExternalLink className="h-4 w-4" /> Voir mes versements
               </Button>
             </div>
           ) : isOnboardingIncomplete ? (
