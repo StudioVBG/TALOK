@@ -28,6 +28,8 @@ import { GlassCard } from "@/components/ui/glass-card";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
+import { useEntityStore } from "@/stores/useEntityStore";
+import { EntitySelector } from "@/components/entities/EntitySelector";
 import {
   useStripeConnectStatus,
   useStripeConnectBalance,
@@ -164,13 +166,19 @@ export function CompteBancaireTab() {
   const { toast } = useToast();
   const [connectLoading, setConnectLoading] = useState(false);
 
+  // Multi-entité : null = compte personnel, sinon scopé à une entité juridique.
+  // L'EntitySelector ne s'affiche que si le propriétaire a déjà créé au moins
+  // une entité juridique (SCI, SARL…).
+  const entities = useEntityStore((s) => s.entities);
+  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+
   const {
     data: connectData,
     isLoading: statusLoading,
     isError: statusError,
     error: statusErrorValue,
     refetch: refetchStatus,
-  } = useStripeConnectStatus();
+  } = useStripeConnectStatus(selectedEntityId);
   const connectAccount = connectData?.account ?? null;
   const isReady = Boolean(connectData?.has_account && connectAccount?.is_ready);
   const hasAccount = Boolean(connectData?.has_account);
@@ -181,21 +189,21 @@ export function CompteBancaireTab() {
     isError: balanceError,
     error: balanceErrorValue,
     refetch: refetchBalance,
-  } = useStripeConnectBalance(isReady);
+  } = useStripeConnectBalance(isReady, selectedEntityId);
   const {
     data: transfers,
     isLoading: transfersLoading,
     isError: transfersError,
     error: transfersErrorValue,
     refetch: refetchTransfers,
-  } = useStripeTransfers(isReady);
+  } = useStripeTransfers(isReady, selectedEntityId);
   const {
     data: payouts,
     isLoading: payoutsLoading,
     isError: payoutsError,
     error: payoutsErrorValue,
     refetch: refetchPayouts,
-  } = useStripePayouts(isReady);
+  } = useStripePayouts(isReady, selectedEntityId);
 
   useEffect(() => {
     const success = searchParams.get("success");
@@ -247,7 +255,7 @@ export function CompteBancaireTab() {
       const res = await fetch("/api/stripe/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: "{}",
+        body: JSON.stringify({ entityId: selectedEntityId }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erreur");
@@ -266,7 +274,11 @@ export function CompteBancaireTab() {
 
   const openConnectDashboard = async () => {
     try {
-      const res = await fetch("/api/stripe/connect/dashboard", { method: "POST" });
+      const res = await fetch("/api/stripe/connect/dashboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entityId: selectedEntityId }),
+      });
       const data = await res.json();
       const url = data.dashboard_url ?? data.url;
       if (res.ok && url) window.location.href = url;
@@ -322,8 +334,27 @@ export function CompteBancaireTab() {
     );
   }
 
+  const selectedEntity = selectedEntityId
+    ? entities.find((e) => e.id === selectedEntityId) ?? null
+    : null;
+  const scopeLabel = selectedEntity ? selectedEntity.nom : "compte personnel";
+
   return (
     <div className="space-y-6">
+      {/* Sélecteur d'entité — n'apparaît qu'avec au moins une entité juridique */}
+      {entities.length > 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <EntitySelector
+              value={selectedEntityId}
+              onChange={setSelectedEntityId}
+              label="Compte affiché"
+              hint="Choisissez le compte bancaire à consulter ou à configurer."
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Statut du compte bancaire */}
       <Card>
         <CardHeader>
@@ -331,7 +362,9 @@ export function CompteBancaireTab() {
             <Building2 className="h-5 w-5 text-violet-600" /> Réception des loyers
           </CardTitle>
           <CardDescription>
-            Compte bancaire pour recevoir les paiements de vos locataires via Stripe Connect.
+            {entities.length > 0
+              ? `Compte bancaire pour ${scopeLabel} — encaissez les paiements des locataires via Stripe Connect.`
+              : "Compte bancaire pour recevoir les paiements de vos locataires via Stripe Connect."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
