@@ -191,6 +191,7 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const exerciseId = searchParams.get("exerciseId");
     const entityId = searchParams.get("entityId");
+    const format = searchParams.get("format") ?? "json";
 
     if (!exerciseId || !entityId) {
       throw new ApiError(400, "exerciseId et entityId sont requis");
@@ -223,6 +224,56 @@ export async function GET(
         break;
       default:
         throw new ApiError(400, `Type non supporte: ${type}`);
+    }
+
+    if (format === "pdf" && type === "2044") {
+      const d = declaration as ReturnType<typeof compute2044>;
+
+      const { data: entity } = await supabase
+        .from("legal_entities")
+        .select("name, siren")
+        .eq("id", entityId)
+        .maybeSingle();
+
+      const { data: exercise } = await supabase
+        .from("accounting_exercises")
+        .select("end_date")
+        .eq("id", exerciseId)
+        .maybeSingle();
+
+      const year = exercise?.end_date
+        ? new Date(exercise.end_date as string).getUTCFullYear()
+        : new Date().getUTCFullYear();
+
+      const { generateCerfa2044Pdf } = await import(
+        "@/lib/accounting/exports/cerfa-2044-pdf"
+      );
+      const pdf = await generateCerfa2044Pdf({
+        year,
+        ownerName:
+          (entity?.name as string | undefined) ?? "Proprietaire",
+        siren: (entity?.siren as string | undefined) ?? undefined,
+        ligne_215_cents: d.ligne_215,
+        ligne_221_cents: d.ligne_221,
+        ligne_222_cents: d.ligne_222,
+        ligne_223_cents: d.ligne_223,
+        ligne_224_cents: d.ligne_224,
+        ligne_227_cents: d.ligne_227,
+        ligne_229_cents: d.ligne_229,
+        ligne_230_cents: d.ligne_230,
+        case_4BA_cents: d.case_4BA,
+        case_4BB_cents: d.case_4BB,
+        case_4BC_cents: d.case_4BC,
+      });
+
+      return new NextResponse(Buffer.from(pdf), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="cerfa-2044-${year}.pdf"`,
+          "Cache-Control": "private, no-store",
+        },
+      });
     }
 
     return NextResponse.json({

@@ -20,6 +20,7 @@ import {
   FileSearch,
   Scale,
   Eye,
+  Receipt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -76,6 +77,7 @@ const allNavItems = [
   { name: "Documents", href: "/tenant/documents", icon: FileText, tourId: "nav-documents", group: "Mes Documents" },
   { name: "États des lieux", href: "/tenant/inspections", icon: ClipboardCheck, tourId: "nav-inspections", group: "Mes Documents" },
   { name: "Loyers & Paiements", href: "/tenant/payments", icon: CreditCard, tourId: "nav-payments", group: "Mes Finances" },
+  { name: "Relevé de compte", href: "/tenant/account-statement", icon: Receipt, tourId: "nav-statement", group: "Mes Finances" },
   { name: "Compteurs", href: "/tenant/meters", icon: Gauge, tourId: "nav-meters", group: "Mes Finances" },
   { name: "Demandes", href: "/tenant/requests", icon: Wrench, tourId: "nav-requests", group: "Assistance" },
   { name: "Messages", href: "/tenant/messages", icon: MessageSquare, tourId: "nav-messages", group: "Assistance" },
