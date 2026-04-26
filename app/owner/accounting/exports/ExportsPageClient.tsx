@@ -101,10 +101,13 @@ function ExportsContent() {
     null
   );
 
+  const exerciseList: AccountingExercise[] = Array.isArray(exercises)
+    ? exercises
+    : [];
   const currentExercise: AccountingExercise | null =
-    exercises?.find((e) => e.id === selectedExerciseId) ??
-    exercises?.find((e) => e.status === "open") ??
-    exercises?.[0] ??
+    exerciseList.find((e) => e.id === selectedExerciseId) ??
+    exerciseList.find((e) => e.status === "open") ??
+    exerciseList[0] ??
     null;
 
   const exerciseId = currentExercise?.id ?? null;
@@ -141,10 +144,13 @@ function ExportsContent() {
     queryFn: async () => {
       try {
         const response = await apiClient.get<
-          { success?: boolean; data?: ECAccess[] } | ECAccess[]
+          | { success?: boolean; data?: { accesses?: ECAccess[] } | ECAccess[] }
+          | ECAccess[]
         >(`/accounting/ec/access?entityId=${entityId}`);
         if (Array.isArray(response)) return response;
-        return response?.data ?? [];
+        const inner = response?.data;
+        if (Array.isArray(inner)) return inner;
+        return inner?.accesses ?? [];
       } catch (err) {
         // Endpoint may not exist in all environments — degrade gracefully.
         console.warn("[ExportsPageClient] ec-access query failed:", err);
@@ -155,7 +161,9 @@ function ExportsContent() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const activeEC = ecAccess?.find((ec) => ec.is_active) ?? null;
+  const activeEC = Array.isArray(ecAccess)
+    ? ecAccess.find((ec) => ec.is_active) ?? null
+    : null;
 
   // ── FEC preview ───────────────────────────────────────────────────
 
@@ -285,7 +293,7 @@ function ExportsContent() {
         </div>
 
         {/* Exercise selector */}
-        {exercises && exercises.length > 0 && (
+        {exerciseList.length > 0 && (
           <div className="relative">
             <select
               value={currentExercise?.id ?? ""}
@@ -295,7 +303,7 @@ function ExportsContent() {
               }}
               className="appearance-none bg-card border border-border rounded-lg px-3 py-2 pr-8 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
-              {exercises.map((ex) => (
+              {exerciseList.map((ex) => (
                 <option key={ex.id} value={ex.id}>
                   {ex.label} ({ex.status === "open" ? "En cours" : "Cloture"})
                 </option>
