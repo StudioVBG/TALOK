@@ -424,6 +424,7 @@ export default function TenantDocumentsPage() {
   const handlePreview = useCallback(async (doc: DocumentCardDoc) => {
     setPreviewTitle(getDocumentDisplayName(doc));
     setPreviewUrl(null);
+    setPreviewType(doc.metadata?.mime_type);
     setPreviewOpen(true);
 
     const data = await fetchSignedUrlData(doc.id);
@@ -862,9 +863,13 @@ export default function TenantDocumentsPage() {
                 onPreview={async (doc) => {
                   setPreviewTitle(doc.title || "Document");
                   setPreviewUrl(null);
+                  setPreviewType(undefined);
                   setPreviewOpen(true);
                   const data = await fetchSignedUrlData(doc.id);
-                  if (data?.signedUrl) setPreviewUrl(data.signedUrl);
+                  if (data?.signedUrl) {
+                    setPreviewUrl(data.signedUrl);
+                    setPreviewType(data.mimeType);
+                  }
                 }}
                 onDownload={async (doc) => {
                   const data = await fetchSignedUrlData(doc.id);
@@ -941,7 +946,7 @@ export default function TenantDocumentsPage() {
         onClose={() => setPreviewOpen(false)}
         documentUrl={previewUrl}
         documentTitle={previewTitle}
-        documentType={previewType}
+        mimeType={previewType}
       />
     </PageTransition>
   );
