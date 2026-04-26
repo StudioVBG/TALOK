@@ -393,12 +393,17 @@ export async function ensureKeyHandoverAttestation(
     .from("documents")
     .insert({
       type: "attestation_remise_cles",
+      category: "legal",
       property_id: handoverData.property_id,
       lease_id: handoverData.lease_id,
       owner_id: handoverData.owner_profile_id,
       tenant_id: handoverData.tenant_profile_id,
       title: "Attestation de remise des clés",
+      original_filename: `attestation-remise-cles-${handoverId}.pdf`,
       storage_path: storagePath,
+      file_size: pdfBytes.byteLength,
+      mime_type: "application/pdf",
+      is_generated: true,
       visible_tenant: true,
       is_archived: false,
       metadata: {

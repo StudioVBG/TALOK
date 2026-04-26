@@ -141,6 +141,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewDocument, setPreviewDocument] = useState<any | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewMimeType, setPreviewMimeType] = useState<string | null>(null);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   
   // État pour la suppression
@@ -150,6 +151,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
   // 🔐 Générer une URL signée avant d'ouvrir la prévisualisation
   const openPreview = async (doc: any) => {
     setPreviewDocument(doc);
+    setPreviewMimeType(doc?.mime_type ?? doc?.metadata?.mime_type ?? null);
     setIsLoadingPreview(true);
     setPreviewOpen(true);
 
@@ -158,6 +160,7 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
       if (response.ok) {
         const data = await response.json();
         setPreviewUrl(data.signedUrl);
+        if (data.mimeType) setPreviewMimeType(data.mimeType);
       } else {
         console.error("Erreur génération URL signée");
         setPreviewUrl(null);
@@ -939,10 +942,12 @@ export function OwnerDocumentsClient({ initialDocuments, properties }: OwnerDocu
         onClose={() => {
           setPreviewOpen(false);
           setPreviewUrl(null);
+          setPreviewMimeType(null);
         }}
         documentUrl={previewUrl}
         documentTitle={previewDocument ? formatDocumentTitle(previewDocument) : "Document"}
         documentType={previewDocument?.type}
+        mimeType={previewMimeType}
       />
     </PageTransition>
   );
