@@ -224,6 +224,36 @@ export async function GET(request: Request) {
     const contentBytes = Buffer.from(content, "utf-8");
     const sha256 = createHash("sha256").update(contentBytes).digest("hex");
 
+    // Optional RFC 3161 timestamp from the configured TSA. Best-effort:
+    // we still return the FEC if the TSA is unreachable. The timestamp,
+    // when present, is stored alongside the SHA-256 manifest and binds
+    // the file to a moment in time signed by an external authority.
+    let rfc3161: {
+      tokenBase64: string;
+      tsaUrl: string;
+      receivedAt: string;
+      tokenBytes: number;
+    } | null = null;
+    if (process.env.TALOK_TSA_ENABLED === "true") {
+      try {
+        const { requestFecTimestamp } = await import(
+          "@/lib/accounting/fec-timestamp"
+        );
+        const ts = await requestFecTimestamp(contentBytes);
+        rfc3161 = {
+          tokenBase64: ts.tokenBase64,
+          tsaUrl: ts.tsaUrl,
+          receivedAt: ts.receivedAt,
+          tokenBytes: ts.tokenBytes,
+        };
+      } catch (tsErr) {
+        console.warn(
+          "[FEC] RFC 3161 timestamping failed (non-blocking):",
+          tsErr,
+        );
+      }
+    }
+
     // Record an integrity manifest so the company can prove later that
     // the file delivered to the tax authority was not tampered with.
     // Best-effort: a manifest insert failure must not block the download.
@@ -239,6 +269,10 @@ export async function GET(request: Request) {
           line_count: lines.length,
           sha256_hex: sha256,
           generated_by: user.id,
+          rfc3161_token_b64: rfc3161?.tokenBase64 ?? null,
+          rfc3161_tsa_url: rfc3161?.tsaUrl ?? null,
+          rfc3161_received_at: rfc3161?.receivedAt ?? null,
+          rfc3161_token_bytes: rfc3161?.tokenBytes ?? null,
         } as Record<string, unknown>)
         .select("id")
         .single();
@@ -258,6 +292,7 @@ export async function GET(request: Request) {
         "X-FEC-Records": String(lines.length),
         "X-FEC-SHA256": sha256,
         ...(manifestId ? { "X-FEC-Manifest-Id": manifestId } : {}),
+        ...(rfc3161 ? { "X-FEC-RFC3161": "present", "X-FEC-TSA": rfc3161.tsaUrl } : {}),
       },
     });
   } catch (error) {
