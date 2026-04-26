@@ -179,23 +179,30 @@ export async function GET(request: Request) {
     // (see EntryRow.getEntryDebitCents).
     const entryRows = (entries ?? []) as Array<{
       id: string;
+      compte_num?: string | null;
       debit?: number | null;
       credit?: number | null;
       total_debit_cents?: number;
       total_credit_cents?: number;
+      account_numbers?: string[];
     }>;
     const entryIds = entryRows.map((e) => e.id);
     const lineSums = new Map<string, { debit: number; credit: number }>();
+    // Account numbers per entry, in insertion order (debit lines first by
+    // convention) so the UI shows "512100 / 706000" rather than a random order.
+    const accountsByEntry = new Map<string, string[]>();
     if (entryIds.length > 0) {
       const { data: lines, error: linesError } = await serviceClient
         .from("accounting_entry_lines")
-        .select("entry_id, debit_cents, credit_cents")
-        .in("entry_id", entryIds);
+        .select("entry_id, account_number, debit_cents, credit_cents")
+        .in("entry_id", entryIds)
+        .order("debit_cents", { ascending: false });
       if (linesError) {
         console.error("[Entries API] Erreur lignes:", linesError);
       } else {
         for (const line of (lines ?? []) as Array<{
           entry_id: string;
+          account_number: string | null;
           debit_cents: number | null;
           credit_cents: number | null;
         }>) {
@@ -203,6 +210,14 @@ export async function GET(request: Request) {
           sums.debit += line.debit_cents ?? 0;
           sums.credit += line.credit_cents ?? 0;
           lineSums.set(line.entry_id, sums);
+
+          if (line.account_number) {
+            const accounts = accountsByEntry.get(line.entry_id) ?? [];
+            if (!accounts.includes(line.account_number)) {
+              accounts.push(line.account_number);
+              accountsByEntry.set(line.entry_id, accounts);
+            }
+          }
         }
       }
     }
@@ -219,6 +234,17 @@ export async function GET(request: Request) {
         : Math.round(((row.credit as number) ?? 0) * 100);
       row.total_debit_cents = debitCents;
       row.total_credit_cents = creditCents;
+
+      // Account numbers: lines (new schema) take precedence; fall back to the
+      // legacy single `compte_num` column for flat entries that predate the
+      // engine rewrite.
+      const accounts = accountsByEntry.get(row.id);
+      if (accounts && accounts.length > 0) {
+        row.account_numbers = accounts;
+      } else if (row.compte_num) {
+        row.account_numbers = [row.compte_num];
+      }
+
       totalDebitCents += debitCents;
       totalCreditCents += creditCents;
     }
