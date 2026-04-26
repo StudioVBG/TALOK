@@ -197,6 +197,20 @@ export async function createEntry(
   supabase: SupabaseClient,
   params: CreateEntryParams,
 ): Promise<AccountingEntry> {
+  // 1. Substitue les comptes collectifs par leurs sous-comptes auxiliaires
+  //    pour les lignes qui portent un thirdPartyId. Branché en amont de
+  //    validateLines pour que les amounts restent inchangés (substitution
+  //    de compte uniquement).
+  //    Import dynamique pour éviter une dépendance circulaire engine ↔
+  //    auxiliary-resolver (qui importe le type EntryLine d'engine).
+  const { resolveAuxiliaryAccounts } = await import(
+    './auxiliary-resolver'
+  );
+  params = {
+    ...params,
+    lines: await resolveAuxiliaryAccounts(supabase, params.entityId, params.lines),
+  };
+
   validateLines(params.lines);
 
   // Get next entry number via SQL function
