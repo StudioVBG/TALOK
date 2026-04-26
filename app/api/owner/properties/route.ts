@@ -29,13 +29,13 @@ export async function GET(request: Request) {
     // Service role pour bypass RLS (évite récursion et 403)
     const { supabaseAdmin } = await import("@/app/api/_lib/supabase");
     const adminClient = supabaseAdmin();
-    const { data: profile, error: profileError } = await adminClient
+    const { data: profile } = await adminClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (profileError || !profile) {
+    if (!profile) {
       throw new ApiError(404, "Profil non trouvé");
     }
 

@@ -8,22 +8,27 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const authClient = await createClient();
+    const { data: { user }, error: authError } = await authClient.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
 
-    // Récupérer le profil
+    // Service-role + check explicite agency/admin (mandats + biens lus
+    // directement, sécurité = filtre métier sur agency_profile_id).
+    // Voir docs/audits/rls-cascade-audit.md.
+    const supabase = getServiceClient();
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });

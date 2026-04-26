@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { NextResponse } from "next/server";
 import { generateCode } from "@/lib/helpers/code-generator";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
@@ -34,12 +35,15 @@ export async function POST(
     const body = await request.json();
     const { unit_id, role = "locataire_principal" } = body;
 
-    // Vérifier que l'utilisateur est propriétaire
-    const { data: property } = await supabase
+    // Service-role + check explicite owner/admin
+    // (cf. docs/audits/rls-cascade-audit.md)
+    const serviceClient = getServiceClient();
+
+    const { data: property } = await serviceClient
       .from("properties")
       .select("id, owner_id")
-      .eq("id", id as any)
-      .single();
+      .eq("id", id)
+      .maybeSingle();
 
     if (!property) {
       return NextResponse.json(
@@ -48,22 +52,24 @@ export async function POST(
       );
     }
 
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
-      .select("id")
-      .eq("user_id", user.id as any)
-      .single();
+      .select("id, role")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    // SOTA 2026: Vérifier que le profil existe AVANT de comparer
-    if (profileError || !profile) {
+    if (!profile) {
       return NextResponse.json(
         { error: "Profil non trouvé" },
         { status: 404 }
       );
     }
 
-    const propertyData = property as any;
-    if (propertyData.owner_id !== profile.id) {
+    const propertyData = property as { owner_id?: string };
+    const profileData = profile as { id: string; role: string };
+    const isAdmin = profileData.role === "admin";
+    const isOwner = propertyData.owner_id === profileData.id;
+    if (!isAdmin && !isOwner) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }
@@ -158,12 +164,15 @@ export async function GET(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Vérifier que l'utilisateur est propriétaire
-    const { data: property } = await supabase
+    // Service-role + check explicite owner/admin
+    // (cf. docs/audits/rls-cascade-audit.md)
+    const serviceClient = getServiceClient();
+
+    const { data: property } = await serviceClient
       .from("properties")
       .select("id, owner_id")
-      .eq("id", id as any)
-      .single();
+      .eq("id", id)
+      .maybeSingle();
 
     if (!property) {
       return NextResponse.json(
@@ -172,22 +181,24 @@ export async function GET(
       );
     }
 
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile } = await serviceClient
       .from("profiles")
-      .select("id")
-      .eq("user_id", user.id as any)
-      .single();
+      .select("id, role")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-    // SOTA 2026: Vérifier que le profil existe AVANT de comparer
-    if (profileError || !profile) {
+    if (!profile) {
       return NextResponse.json(
         { error: "Profil non trouvé" },
         { status: 404 }
       );
     }
 
-    const propertyData = property as any;
-    if (propertyData.owner_id !== profile.id) {
+    const propertyData = property as { owner_id?: string };
+    const profileData = profile as { id: string; role: string };
+    const isAdmin = profileData.role === "admin";
+    const isOwner = propertyData.owner_id === profileData.id;
+    if (!isAdmin && !isOwner) {
       return NextResponse.json(
         { error: "Accès non autorisé" },
         { status: 403 }

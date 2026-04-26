@@ -62,13 +62,13 @@ export async function POST(request: Request) {
 
     // 2. Récupérer le profil propriétaire via service role (évite la récursion RLS 42P17 sur profiles)
     const serviceClient = createServiceRoleClient();
-    const { data: profile, error: profileError } = await serviceClient
+    const { data: profile } = await serviceClient
       .from("profiles")
       .select("id, role")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (profileError || !profile || profile.role !== "owner") {
+    if (!profile || profile.role !== "owner") {
       return NextResponse.json({ error: "Profil propriétaire requis" }, { status: 403 });
     }
 

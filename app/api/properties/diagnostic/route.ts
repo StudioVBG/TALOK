@@ -6,9 +6,15 @@ import { createClient } from "@/lib/supabase/server";
 
 /**
  * GET /api/properties/diagnostic - Diagnostic complet de l'endpoint /api/properties
- * 
+ *
  * Cet endpoint teste chaque étape isolément et retourne un rapport détaillé
  * pour identifier précisément où l'erreur se produit.
+ *
+ * NOTE (audit RLS) : cette route utilise volontairement le client RLS-aware
+ * (`createClient()` + `.single()`) parce que son but est exactement de
+ * détecter les blocages RLS silencieux. Ne PAS migrer vers `getServiceClient()`
+ * — ça la rendrait incapable de remonter le bug qu'elle est conçue à
+ * diagnostiquer. Voir docs/audits/rls-cascade-audit.md.
  */
 export async function GET(request: Request) {
   const diagnostic: any = {
