@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
-import { validateCsrfFromRequest } from "@/lib/security/csrf";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 /**
  * @maintenance Route utilitaire admin — usage ponctuel
@@ -13,14 +13,10 @@ import { validateCsrfFromRequest } from "@/lib/security/csrf";
  */
 
 export async function POST(request: Request) {
-  // CSRF validation
-  try {
-    const csrfValid = await validateCsrfFromRequest(request);
-    if (!csrfValid) {
-      return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
-    }
-  } catch {
-    // CSRF_SECRET not configured — degrade gracefully
+  const csrf = await validateCsrfFromRequestDetailed(request);
+  if (!csrf.valid) {
+    await logCsrfFailure(request, csrf.reason!, "admin.apply-migration");
+    return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
   }
 
   // 1. Vérifier que l'utilisateur est admin

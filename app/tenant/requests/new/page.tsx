@@ -149,15 +149,6 @@ export default function NewTenantRequestPage() {
   };
 
   const handleTomTicketCreated = async (args: CreateTicketArgs) => {
-    if (!propertyId) {
-      toast({
-        title: "Erreur",
-        description: "Impossible d'identifier votre logement.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setLoading(true);
     try {
       const response = await fetch("/api/tickets", {
@@ -168,23 +159,27 @@ export default function NewTenantRequestPage() {
           description: args.description,
           priorite: args.priorite,
           category: "autre",
-          property_id: propertyId,
+          // property_id optionnel : résolu côté serveur à partir du bail actif
+          ...(propertyId ? { property_id: propertyId } : {}),
         }),
       });
 
-      if (!response.ok) throw new Error("Erreur");
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || "Erreur lors de la création du ticket.");
+      }
 
       try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch { /* ignore */ }
       toast({
         title: "Demande créée !",
         description: "Votre ticket a été créé et qualifié par Tom.",
       });
-      
+
       setTimeout(() => router.push("/tenant/requests"), 1500);
     } catch (error) {
       toast({
          title: "Erreur",
-         description: "Erreur lors de la création du ticket.",
+         description: error instanceof Error ? error.message : "Erreur lors de la création du ticket.",
          variant: "destructive"
       });
     } finally {
@@ -199,15 +194,6 @@ export default function NewTenantRequestPage() {
       return;
     }
 
-    if (!propertyId) {
-      toast({
-        title: "Erreur",
-        description: "Impossible d'identifier votre logement.",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setLoading(true);
     try {
       const response = await fetch("/api/tickets", {
@@ -218,12 +204,13 @@ export default function NewTenantRequestPage() {
           description: form.description,
           priorite: form.priorite,
           category: form.categorie || null,
-          property_id: propertyId,
+          // property_id optionnel : résolu côté serveur à partir du bail actif
+          ...(propertyId ? { property_id: propertyId } : {}),
         }),
       });
 
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data?.error || "Erreur");
+      if (!response.ok) throw new Error(data?.error || "Impossible de créer la demande");
 
       const ticketId = data.ticket?.id;
       if (ticketId && files.length > 0) {
@@ -241,7 +228,11 @@ export default function NewTenantRequestPage() {
       toast({ title: "Demande envoyée", description: "Votre ticket est en cours de traitement." });
       router.push("/tenant/requests");
     } catch (error) {
-      toast({ title: "Erreur", description: "Impossible de créer la demande", variant: "destructive" });
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Impossible de créer la demande",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }

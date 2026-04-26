@@ -90,12 +90,6 @@ export function FinalCTA() {
           className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center"
         >
           <MagneticGlowCTA />
-          <a
-            href="#fonctionnalites"
-            className="inline-flex items-center justify-center rounded-xl border border-white/20 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/5"
-          >
-            Voir une démo
-          </a>
         </motion.div>
 
         <motion.p variants={blurUp} className="mt-6 text-xs text-slate-400">

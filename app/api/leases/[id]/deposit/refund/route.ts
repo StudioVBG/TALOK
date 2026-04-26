@@ -180,6 +180,26 @@ export async function POST(
       },
     });
 
+    // Accounting auto-entry (non-blocking, idempotent, gated by accounting_enabled)
+    if (refund?.id) {
+      try {
+        const { ensureDepositRefundedEntry } = await import(
+          "@/lib/accounting/deposit-entry"
+        );
+        const result = await ensureDepositRefundedEntry(serviceClient, refund.id, {
+          userId: user.id,
+        });
+        if (result.skippedReason === "error") {
+          console.error("[ACCOUNTING] deposit_returned failed:", result.error);
+        }
+      } catch (accountingError) {
+        console.error(
+          "[ACCOUNTING] deposit_returned hook exception (non-blocking):",
+          accountingError,
+        );
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: "Restitution enregistrée",

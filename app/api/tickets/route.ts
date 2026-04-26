@@ -6,9 +6,10 @@ import { ticketSchema } from "@/lib/validations";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { handleApiError } from "@/lib/helpers/api-error";
 import { createClient } from "@supabase/supabase-js";
-import type { ProfileRow, TicketRow } from "@/lib/supabase/typed-client";
+import type { TicketRow } from "@/lib/supabase/typed-client";
 import { ticketsQuerySchema, validateQueryParams } from "@/lib/validations/params";
 import { withSecurity } from "@/lib/api/with-security";
+import { createTicket } from "@/lib/tickets/create-ticket.service";
 
 /**
  * GET /api/tickets - Récupérer les tickets de l'utilisateur
@@ -221,128 +222,49 @@ export const POST = withSecurity(async function POST(request: Request) {
     // Récupérer le profil avec service client
     const { data: profile } = await serviceClient
       .from("profiles")
-      .select("id, role")
+      .select("id, role, email")
       .eq("user_id", user.id as any)
       .single();
 
     if (!profile) {
-      return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Profil non trouvé", code: "NO_PROFILE" },
+        { status: 404 }
+      );
     }
 
-    const profileData = profile as any;
+    const profileData = profile as { id: string; role: string; email: string | null };
 
-    // Vérifier que l'utilisateur a accès à cette propriété (propriétaire ou locataire signataire)
-    if (validated.property_id) {
-      const isAdmin = profileData.role === "admin";
-      const { data: property } = await serviceClient
-        .from("properties")
-        .select("owner_id")
-        .eq("id", validated.property_id)
-        .single();
-      const isOwner = property?.owner_id === profileData.id;
-
-      if (!isAdmin && !isOwner) {
-        const { data: leasesForProperty } = await serviceClient
-          .from("leases")
-          .select("id")
-          .eq("property_id", validated.property_id);
-        const leaseIds = (leasesForProperty || []).map((l: { id: string }) => l.id);
-
-        if (leaseIds.length > 0) {
-          const { data: signer } = await serviceClient
-            .from("lease_signers")
-            .select("id")
-            .eq("profile_id", profileData.id)
-            .in("lease_id", leaseIds)
-            .maybeSingle();
-          if (!signer) {
-            return NextResponse.json(
-              { error: "Vous n'avez pas accès à cette propriété" },
-              { status: 403 }
-            );
-          }
-        } else {
-          return NextResponse.json(
-            { error: "Vous n'avez pas accès à cette propriété" },
-            { status: 403 }
-          );
-        }
-      }
-    }
-
-    // Résoudre owner_id depuis la propriété
-    let propertyOwnerId: string | null = null;
-    if (validated.property_id) {
-      const { data: propOwner } = await serviceClient
-        .from("properties")
-        .select("owner_id")
-        .eq("id", validated.property_id)
-        .single();
-      propertyOwnerId = propOwner?.owner_id || null;
-    }
-
-    // Créer le ticket avec service client
-    const { data: ticket, error: insertError } = await serviceClient
-      .from("tickets")
-      .insert({
-        ...validated,
-        created_by_profile_id: profileData.id,
-        owner_id: propertyOwnerId,
-        statut: "open",
-      })
-      .select()
-      .single();
-
-    if (insertError) throw insertError;
-
-    // Émettre un événement — résoudre le owner_id pour la notification
-    let ownerUserId: string | null = null;
-    if (validated.property_id) {
-      const { data: propForOwner } = await serviceClient
-        .from("properties")
-        .select("owner_id")
-        .eq("id", validated.property_id)
-        .single();
-      if (propForOwner?.owner_id) {
-        const { data: ownerProfile } = await serviceClient
-          .from("profiles")
-          .select("user_id")
-          .eq("id", propForOwner.owner_id)
-          .single();
-        ownerUserId = ownerProfile?.user_id || null;
-      }
-    }
-
-    await serviceClient.from("outbox").insert({
-      event_type: "Ticket.Opened",
-      payload: {
-        ticket_id: ticket.id,
-        property_id: validated.property_id,
-        priority: validated.priorite,
-        title: validated.titre,
-        owner_id: ownerUserId,
-        created_by: profileData.id,
+    // Délégation au service partagé (source unique pour la création ticket).
+    const result = await createTicket({
+      serviceClient,
+      auth: {
+        user_id: user.id,
+        user_email: user.email ?? null,
+        profile_id: profileData.id,
+        profile_email: profileData.email,
+        profile_role: profileData.role,
       },
-    } as any);
+      input: validated,
+    });
 
-    // AI Analysis Trigger (Async but awaited here for serverless environment safety)
-    try {
-        // En background job idéalement, mais ici on l'exécute
-        await maintenanceAiService.analyzeAndEnrichTicket(ticket.id);
-    } catch (aiError) {
-        console.error("AI Maintenance analysis failed:", aiError);
+    if (!result.ok) {
+      return NextResponse.json(
+        { error: result.message, code: result.code },
+        { status: result.status }
+      );
     }
 
-    // Journaliser
-    await serviceClient.from("audit_log").insert({
-      user_id: user.id,
-      action: "ticket_created",
-      entity_type: "ticket",
-      entity_id: ticket.id,
-      metadata: { priority: validated.priorite },
-    } as any);
+    // AI Analysis (fire-and-forget, non-blocking)
+    void (async () => {
+      try {
+        await maintenanceAiService.analyzeAndEnrichTicket(result.ticket.id);
+      } catch (aiError) {
+        console.error("AI Maintenance analysis failed:", aiError);
+      }
+    })();
 
-    return NextResponse.json({ ticket });
+    return NextResponse.json({ ticket: result.ticket });
   } catch (error: unknown) {
     return handleApiError(error);
   }

@@ -24,6 +24,9 @@ export default function GuarantorSignPage() {
       // Sauvegarder la signature
       await onboardingService.saveDraft("guarantor_signed", { signature_payload: signaturePayload }, "guarantor" as any);
       await onboardingService.markStepCompleted("guarantor_signed", "guarantor" as any);
+      // Pose profiles.onboarding_completed_at côté API, annule les rappels pending
+      // et déclenche la notif "Bienvenue". Best-effort, non bloquant.
+      await fetch("/api/me/onboarding-complete", { method: "POST" }).catch(() => {});
 
       setSigned(true);
       toast({

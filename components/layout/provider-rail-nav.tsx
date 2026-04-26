@@ -39,6 +39,7 @@ export function ProviderRailNav() {
                 <TooltipTrigger asChild>
                   <Link
                     href={item.href}
+                    data-tour={item.tourId}
                     className={cn(
                       "flex items-center justify-center w-10 h-10 rounded-lg transition-all duration-200 touch-target",
                       active

@@ -75,12 +75,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const featureSubpages: MetadataRoute.Sitemap = [
     "comptabilite-fiscalite",
+    "documents",
     "etats-des-lieux",
     "gestion-biens",
+    "gestion-des-baux",
     "gestion-locataires",
+    "immeuble-copropriete",
     "paiements-en-ligne",
     "quittances-loyers",
     "signature-electronique",
+    "tickets-et-travaux",
   ].map((slug) => ({
     url: `${BASE_URL}/fonctionnalites/${slug}`,
     lastModified: now,
@@ -90,10 +94,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const solutionPages: MetadataRoute.Sitemap = [
     "administrateurs-biens",
-    "dom-tom",
+    "outre-mer",
     "investisseurs",
     "proprietaires-particuliers",
     "sci-familiales",
+    "syndics",
   ].map((slug) => ({
     url: `${BASE_URL}/solutions/${slug}`,
     lastModified: now,
@@ -102,24 +107,51 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const toolPages: MetadataRoute.Sitemap = [
-    "calcul-frais-notaire",
-    "calcul-rendement-locatif",
-    "calcul-revision-irl",
-    "simulateur-charges",
-  ].map((slug) => ({
-    url: `${BASE_URL}/outils/${slug}`,
+    { slug: "", priority: 0.8 },
+    { slug: "calcul-frais-notaire", priority: 0.7 },
+    { slug: "calcul-rendement-locatif", priority: 0.7 },
+    { slug: "calcul-revision-irl", priority: 0.7 },
+    { slug: "simulateur-charges", priority: 0.7 },
+  ].map(({ slug, priority }) => ({
+    url: slug ? `${BASE_URL}/outils/${slug}` : `${BASE_URL}/outils`,
     lastModified: now,
     changeFrequency: "monthly" as const,
-    priority: 0.7,
+    priority,
   }));
 
-  const authPages: MetadataRoute.Sitemap = [
+  const roiCalculatorPage: MetadataRoute.Sitemap = [
     {
-      url: `${BASE_URL}/auth/signup`,
+      url: `${BASE_URL}/calculateur-roi`,
       lastModified: now,
       changeFrequency: "monthly",
-      priority: 0.7,
+      priority: 0.8,
     },
+  ];
+
+  const corporatePages: MetadataRoute.Sitemap = [
+    {
+      url: `${BASE_URL}/presse`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    {
+      url: `${BASE_URL}/statut`,
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.4,
+    },
+    {
+      url: `${BASE_URL}/accessibilite`,
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.4,
+    },
+  ];
+
+  // /auth/signup redirige (307) vers /signup/role. Seule la cible finale
+  // est listee pour eviter un redirect dans le sitemap.
+  const authPages: MetadataRoute.Sitemap = [
     {
       url: `${BASE_URL}/signup/role`,
       lastModified: now,
@@ -129,12 +161,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   const contentHubPages: MetadataRoute.Sitemap = [
-    {
-      url: `${BASE_URL}/blog`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.8,
-    },
+    // /blog retire du sitemap tant que la page est en noindex (stub).
+    // A reintegrer des que le feed dynamique est branche.
     {
       url: `${BASE_URL}/guides`,
       lastModified: now,
@@ -213,6 +241,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...featureSubpages,
     ...solutionPages,
     ...toolPages,
+    ...roiCalculatorPage,
+    ...corporatePages,
     ...authPages,
     ...contentHubPages,
     ...blogPages,

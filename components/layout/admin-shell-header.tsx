@@ -109,7 +109,7 @@ export function AdminShellHeader() {
                 disabled={isSigningOut}
               >
                 <LogOut className="mr-2 h-4 w-4" />
-                {isSigningOut ? "Deconnexion..." : "Deconnexion"}
+                {isSigningOut ? "Déconnexion..." : "Déconnexion"}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -99,6 +99,96 @@ describe("CSRF Token Validation", () => {
   });
 });
 
+describe("validateCsrfFromRequestDetailed", () => {
+  beforeAll(() => {
+    vi.stubEnv("CSRF_SECRET", MOCK_SECRET);
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
+  const buildRequest = (init: { method?: string; headers?: Record<string, string> } = {}) =>
+    new Request("https://example.com/api/admin/subscriptions/gift", {
+      method: init.method ?? "POST",
+      headers: init.headers ?? {},
+    });
+
+  it("accepte un GET sans token (méthode sûre)", async () => {
+    const { validateCsrfFromRequestDetailed } = await import("@/lib/security/csrf");
+    const result = await validateCsrfFromRequestDetailed(buildRequest({ method: "GET" }));
+    expect(result.valid).toBe(true);
+  });
+
+  it("accepte un POST avec token valide (header seul)", async () => {
+    const { generateCsrfToken, validateCsrfFromRequestDetailed } = await import("@/lib/security/csrf");
+    const token = generateCsrfToken();
+    const result = await validateCsrfFromRequestDetailed(
+      buildRequest({ headers: { "x-csrf-token": token } })
+    );
+    expect(result.valid).toBe(true);
+  });
+
+  it("accepte un POST avec header et cookie identiques (double-submit OK)", async () => {
+    const { generateCsrfToken, validateCsrfFromRequestDetailed } = await import("@/lib/security/csrf");
+    const token = generateCsrfToken();
+    const result = await validateCsrfFromRequestDetailed(
+      buildRequest({
+        headers: {
+          "x-csrf-token": token,
+          cookie: `sb-auth=foo; csrf_token=${token}; other=bar`,
+        },
+      })
+    );
+    expect(result.valid).toBe(true);
+  });
+
+  it("rejette un POST sans header x-csrf-token (missing_header)", async () => {
+    const { validateCsrfFromRequestDetailed } = await import("@/lib/security/csrf");
+    const result = await validateCsrfFromRequestDetailed(buildRequest());
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe("missing_header");
+  });
+
+  it("rejette un POST avec header à signature falsifiée (invalid_signature_or_expired)", async () => {
+    const { generateCsrfToken, validateCsrfFromRequestDetailed } = await import("@/lib/security/csrf");
+    const token = generateCsrfToken();
+    const [value, expiry] = token.split(":");
+    const tampered = `${value}:${expiry}:${"f".repeat(64)}`;
+    const result = await validateCsrfFromRequestDetailed(
+      buildRequest({ headers: { "x-csrf-token": tampered } })
+    );
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe("invalid_signature_or_expired");
+  });
+
+  it("rejette un POST avec token expiré (invalid_signature_or_expired)", async () => {
+    const { validateCsrfFromRequestDetailed } = await import("@/lib/security/csrf");
+    const expired = `${"a".repeat(64)}:${Date.now() - 1000}:${"b".repeat(64)}`;
+    const result = await validateCsrfFromRequestDetailed(
+      buildRequest({ headers: { "x-csrf-token": expired } })
+    );
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe("invalid_signature_or_expired");
+  });
+
+  it("rejette un POST avec cookie et header divergents (cookie_mismatch)", async () => {
+    const { generateCsrfToken, validateCsrfFromRequestDetailed } = await import("@/lib/security/csrf");
+    const tokenHeader = generateCsrfToken();
+    const tokenCookie = generateCsrfToken();
+    const result = await validateCsrfFromRequestDetailed(
+      buildRequest({
+        headers: {
+          "x-csrf-token": tokenHeader,
+          cookie: `csrf_token=${tokenCookie}`,
+        },
+      })
+    );
+    expect(result.valid).toBe(false);
+    expect(result.reason).toBe("cookie_mismatch");
+  });
+});
+
 describe("CSRF Secret Validation", () => {
   it("rejette un secret trop court", async () => {
     vi.stubEnv("CSRF_SECRET", "short");

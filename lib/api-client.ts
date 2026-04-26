@@ -10,11 +10,37 @@ const API_BASE = '/api';
 // Empêcher plusieurs redirections simultanées vers la page de connexion
 let isRedirectingToSignIn = false;
 
+// Marge de sécurité : on considère qu'une session va expirer sous peu et
+// on déclenche un refresh proactif (évite d'envoyer une requête avec un
+// access_token qui va expirer pendant le vol).
+const SESSION_EXPIRY_BUFFER_SEC = 30;
+
 export class ResourceNotFoundError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "ResourceNotFoundError";
   }
+}
+
+export class SessionExpiredError extends Error {
+  constructor(message = 'Session expirée. Veuillez vous reconnecter.') {
+    super(message);
+    this.name = 'SessionExpiredError';
+  }
+}
+
+function isRefreshTokenError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const e = err as { name?: string; code?: string; message?: string };
+  if (e.name === 'AuthApiError' || e.name === 'AuthSessionMissingError') return true;
+  const code = e.code ?? '';
+  if (code === 'refresh_token_not_found' || code === 'invalid_refresh_token') return true;
+  const msg = e.message ?? '';
+  return (
+    msg.includes('Refresh Token Not Found') ||
+    msg.includes('Invalid Refresh Token') ||
+    msg.includes('refresh_token')
+  );
 }
 
 export class ApiClient {
@@ -33,7 +59,7 @@ export class ApiClient {
       }
       window.location.href = '/auth/signin?error=session_expired';
     }
-    throw new Error('Session expirée. Veuillez vous reconnecter.');
+    throw new SessionExpiredError();
   }
 
   private async request<T>(
@@ -45,18 +71,14 @@ export class ApiClient {
 
     // Si une redirection est déjà en cours, ne pas envoyer de requête
     if (isRedirectingToSignIn) {
-      throw new Error('Session expirée. Veuillez vous reconnecter.');
+      throw new SessionExpiredError();
     }
 
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      // Gérer l'erreur de refresh token invalide
-      if (sessionError && (
-        sessionError.message?.includes('refresh_token') ||
-        sessionError.message?.includes('Invalid Refresh Token') ||
-        sessionError.message?.includes('Refresh Token Not Found')
-      )) {
+      // Refresh token invalide / absent → redirection propre
+      if (sessionError && isRefreshTokenError(sessionError)) {
         await this.handleSessionExpired(supabase);
       }
 
@@ -65,12 +87,28 @@ export class ApiClient {
         await this.handleSessionExpired(supabase);
       }
 
+      // Refresh proactif si le token expire dans les prochaines secondes. On
+      // évite ainsi qu'une requête en vol échoue côté serveur avec 401, et on
+      // capture explicitement un refresh_token invalide.
+      let accessToken = session!.access_token;
+      const expiresAt = session!.expires_at ?? 0;
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (expiresAt && expiresAt - nowSec < SESSION_EXPIRY_BUFFER_SEC) {
+        const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError && isRefreshTokenError(refreshError)) {
+          await this.handleSessionExpired(supabase);
+        }
+        if (refreshed?.session?.access_token) {
+          accessToken = refreshed.session.access_token;
+        }
+      }
+
       const headers = new Headers({
         'Content-Type': 'application/json',
         ...options.headers,
       });
 
-      headers.set('Authorization', `Bearer ${session!.access_token}`);
+      headers.set('Authorization', `Bearer ${accessToken}`);
 
       // Inclure le token CSRF pour les requêtes de mutation (POST, PUT, DELETE, PATCH)
       const method = options.method?.toUpperCase() || 'GET';
@@ -146,6 +184,14 @@ export class ApiClient {
         clearTimeout(timeoutId);
       }
 
+      // Les erreurs de session doivent remonter telles quelles : elles
+      // déclenchent déjà une redirection côté handleSessionExpired et ne
+      // doivent surtout pas être reformulées en timeout.
+      if (error instanceof SessionExpiredError) throw error;
+      if (isRefreshTokenError(error)) {
+        await this.handleSessionExpired(supabase);
+      }
+
       // Gérer les erreurs de timeout/abort
       if ((error as any).name === 'AbortError' || (error as Error).message?.includes('aborted')) {
         const timeoutError = new Error("Le chargement prend trop de temps. Veuillez réessayer.");
@@ -153,7 +199,7 @@ export class ApiClient {
         throw timeoutError;
       }
 
-      // Propager les autres erreurs (y compris les erreurs de session)
+      // Propager les autres erreurs
       throw error;
     }
   }

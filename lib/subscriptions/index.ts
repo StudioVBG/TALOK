@@ -32,6 +32,23 @@ export {
   adminUnsuspendAccount,
 } from './subscription-service';
 
+// Promo codes — Stripe Coupons wrapper (Option A de l'audit)
+// Usage tracking via Stripe webhook checkout.session.completed +
+// DB trigger trg_promo_code_uses_increment.
+export {
+  listPromoCodes,
+  createPromoCode,
+  archivePromoCode,
+  reactivatePromoCode,
+  validatePromoCodeForCheckout,
+  recordPromoCodeUse,
+  type Territory,
+  type CreatePromoInput,
+  type PromoCodeRecord,
+  type ValidatePromoContext,
+  type ValidatePromoResult,
+} from './promo-codes.service';
+
 // Stubs for planned but not yet implemented functions
 // WARNING: These are no-ops. Callers should check for null returns.
 export async function getUserUsage(_userId: string) {
@@ -45,10 +62,6 @@ export async function updateUserUsage(_userId: string, _resource: string, _count
 export async function incrementSignatureUsage(_userId: string) {
   console.warn("[subscriptions] incrementSignatureUsage is not yet implemented — no-op");
   return;
-}
-export async function usePromoCode(_code: string, _userId: string) {
-  console.warn("[subscriptions] usePromoCode is not yet implemented — returning null");
-  return null;
 }
 export async function upsertSubscription(_data: Record<string, unknown>) {
   console.warn("[subscriptions] upsertSubscription is not yet implemented — returning null");

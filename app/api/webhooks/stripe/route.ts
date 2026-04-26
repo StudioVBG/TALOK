@@ -21,10 +21,12 @@ import type { Json } from "@/lib/supabase/database.types";
 import { reconcileOwnerTransfer } from "@/lib/billing/owner-payout.service";
 import { ensureReceiptDocument } from "@/lib/services/final-documents.service";
 import { syncInvoiceStatusFromPayments } from "@/lib/services/invoice-status.service";
+import { ensureSecurityDepositForInvoice } from "@/lib/services/security-deposit-sync.service";
 import {
   handleRentPaymentSucceeded,
   handleRentPaymentFailed,
 } from "@/lib/payments/rent-collection.service";
+import { recordPromoCodeUse } from "@/lib/subscriptions/promo-codes.service";
 import {
   buildSubscriptionUpdateFromStripe,
   resolvePlanIdentifiers,
@@ -746,6 +748,52 @@ export async function POST(request: NextRequest) {
         const session = event.data.object as Stripe.Checkout.Session;
         await syncSubscriptionFromCheckoutSession(supabase, stripe, session);
 
+        // ── Promo code usage log ──
+        // Enregistre l'utilisation d'un code promo Talok si la session en
+        // embarquait un. Source de vérité = promo_code_uses. Le trigger
+        // DB trg_promo_code_uses_increment bumpe promo_codes.uses_count.
+        // Non bloquant : une erreur de log ne doit pas faire échouer le
+        // webhook (Stripe ne réessaierait pas pour une raison métier).
+        const promoCodeId = session.metadata?.promo_code_id;
+        if (session.mode === "subscription" && promoCodeId) {
+          try {
+            const profileId = session.metadata?.profile_id;
+            if (profileId) {
+              const { data: profile } = await supabase
+                .from("profiles")
+                .select("user_id")
+                .eq("id", profileId)
+                .single();
+
+              const userId = (profile as { user_id?: string } | null)?.user_id;
+              if (userId) {
+                const { data: sub } = await supabase
+                  .from("subscriptions")
+                  .select("id")
+                  .eq("owner_id", profileId)
+                  .maybeSingle();
+
+                const amountSubtotal = session.amount_subtotal ?? 0;
+                const amountTotal = session.amount_total ?? 0;
+                await recordPromoCodeUse({
+                  promo_code_id: promoCodeId,
+                  user_id: userId,
+                  subscription_id: (sub as { id?: string } | null)?.id ?? null,
+                  original_amount: amountSubtotal,
+                  final_amount: amountTotal,
+                  discount_amount: amountSubtotal - amountTotal,
+                  applied_plan_slug: session.metadata?.plan_slug ?? "",
+                  applied_billing_cycle:
+                    (session.metadata?.billing_cycle as "monthly" | "yearly") ?? "monthly",
+                  stripe_session_id: session.id,
+                });
+              }
+            }
+          } catch (promoErr) {
+            console.error("[stripe webhook] recordPromoCodeUse failed:", promoErr);
+          }
+        }
+
         // ── Add-on activation ──
         const addonId = session.metadata?.addon_id;
         if (addonId) {
@@ -904,6 +952,19 @@ export async function POST(request: NextRequest) {
         const paymentIntent = event.data.object as Stripe.PaymentIntent;
         const invoiceId = paymentIntent.metadata?.invoice_id;
 
+        // Paiement d'intervention (work_order_payment) — parcours isolé :
+        // aucun invoiceId, le flux est complètement séparé des loyers.
+        if (paymentIntent.metadata?.type === "work_order_payment") {
+          try {
+            await handleWorkOrderPaymentSucceeded(supabase, paymentIntent);
+          } catch (woErr) {
+            console.error("[Stripe Webhook] work_order payment handling failed:", woErr);
+          }
+          // On sort ici : le reste du handler traite uniquement les invoices
+          // (loyer / régul charges).
+          return new Response(JSON.stringify({ received: true }), { status: 200 });
+        }
+
         // Sync rent_payments if this is a Connect rent payment
         if (paymentIntent.metadata?.type === "rent") {
           try {
@@ -972,6 +1033,24 @@ export async function POST(request: NextRequest) {
                 } as any)
                 .eq("id", targetLeaseId)
                 .eq("initial_payment_confirmed", false);
+            }
+
+            // Rattacher le dépôt de garantie à son suivi formel dès que la
+            // facture initiale est soldée, sans attendre l'activation du
+            // bail (le trigger SQL ne fire qu'à ce moment-là).
+            if (!isChargeRegularization) {
+              try {
+                await ensureSecurityDepositForInvoice(supabase as any, {
+                  invoiceId,
+                  paidAt,
+                  paymentMethod: paymentMethod === "sepa_debit" ? "sepa_debit" : "card",
+                });
+              } catch (depositSyncError) {
+                console.error(
+                  "[Stripe Webhook] security_deposits sync failed:",
+                  depositSyncError,
+                );
+              }
             }
           }
 
@@ -1043,22 +1122,35 @@ export async function POST(request: NextRequest) {
 
               const entityId = invoiceForEntity?.lease?.property?.legal_entity_id;
               if (entityId) {
-                const exercise = await getOrCreateCurrentExercise(supabase, entityId);
-                if (exercise) {
-                  const tenantName = invoiceForEntity?.tenant
-                    ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
-                    : '';
-                  const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
+                const { getEntityAccountingConfig, shouldMarkInformational, markEntryInformational } =
+                  await import('@/lib/accounting/entity-config');
+                const config = await getEntityAccountingConfig(supabase, entityId);
+                if (config?.accountingEnabled) {
+                  const exercise = await getOrCreateCurrentExercise(supabase, entityId);
+                  if (exercise) {
+                    const { resolveSystemActorForEntity } = await import('@/lib/accounting/system-actor');
+                    const actorUserId = await resolveSystemActorForEntity(supabase, entityId);
+                    if (actorUserId) {
+                      const tenantName = invoiceForEntity?.tenant
+                        ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
+                        : '';
+                      const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
 
-                  await createAutoEntry(supabase, 'rent_received', {
-                    entityId,
-                    exerciseId: exercise.id,
-                    userId: 'system',
-                    amountCents: paymentIntent.amount, // already in cents from Stripe
-                    label: `Loyer ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
-                    date: new Date().toISOString().split('T')[0],
-                    reference: paymentIntent.id,
-                  });
+                      const entry = await createAutoEntry(supabase, 'rent_received', {
+                        entityId,
+                        exerciseId: exercise.id,
+                        userId: actorUserId,
+                        amountCents: paymentIntent.amount, // already in cents from Stripe
+                        label: `Loyer ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
+                        date: new Date().toISOString().split('T')[0],
+                        reference: paymentIntent.id,
+                      });
+
+                      if (shouldMarkInformational(config)) {
+                        await markEntryInformational(supabase, entry.id);
+                      }
+                    }
+                  }
                 }
               }
             } catch (accountingError) {
@@ -1143,22 +1235,35 @@ export async function POST(request: NextRequest) {
 
             const entityId = invoiceForEntity?.lease?.property?.legal_entity_id;
             if (entityId) {
-              const exercise = await getOrCreateCurrentExercise(supabase, entityId);
-              if (exercise) {
-                const tenantName = invoiceForEntity?.tenant
-                  ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
-                  : '';
-                const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
+              const { getEntityAccountingConfig, shouldMarkInformational, markEntryInformational } =
+                await import('@/lib/accounting/entity-config');
+              const config = await getEntityAccountingConfig(supabase, entityId);
+              if (config?.accountingEnabled) {
+                const exercise = await getOrCreateCurrentExercise(supabase, entityId);
+                if (exercise) {
+                  const { resolveSystemActorForEntity } = await import('@/lib/accounting/system-actor');
+                  const actorUserId = await resolveSystemActorForEntity(supabase, entityId);
+                  if (actorUserId) {
+                    const tenantName = invoiceForEntity?.tenant
+                      ? `${invoiceForEntity.tenant.prenom || ''} ${invoiceForEntity.tenant.nom || ''}`.trim()
+                      : '';
+                    const propertyAddress = invoiceForEntity?.lease?.property?.adresse_complete || '';
 
-                await createAutoEntry(supabase, 'sepa_rejected', {
-                  entityId,
-                  exerciseId: exercise.id,
-                  userId: 'system',
-                  amountCents: paymentIntent.amount,
-                  label: `Rejet prelevement ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
-                  date: new Date().toISOString().split('T')[0],
-                  reference: paymentIntent.id,
-                });
+                    const entry = await createAutoEntry(supabase, 'sepa_rejected', {
+                      entityId,
+                      exerciseId: exercise.id,
+                      userId: actorUserId,
+                      amountCents: paymentIntent.amount,
+                      label: `Rejet prelevement ${tenantName}${tenantName && propertyAddress ? ' - ' : ''}${propertyAddress}`,
+                      date: new Date().toISOString().split('T')[0],
+                      reference: paymentIntent.id,
+                    });
+
+                    if (shouldMarkInformational(config)) {
+                      await markEntryInformational(supabase, entry.id);
+                    }
+                  }
+                }
               }
             }
           } catch (accountingError) {
@@ -1248,23 +1353,52 @@ export async function POST(request: NextRequest) {
               .eq("id", subscription.id);
           }
 
-          await supabase.from("subscription_invoices").upsert(
-            {
-              subscription_id: subscription.id,
-              stripe_invoice_id: invoice.id,
-              amount_due: invoice.amount_due || 0,
-              amount_paid: invoice.amount_paid || 0,
-              amount_remaining: invoice.amount_remaining || 0,
-              status: invoice.status || "paid",
-              hosted_invoice_url: invoice.hosted_invoice_url,
-              invoice_pdf: invoice.invoice_pdf,
-              paid_at: invoice.status_transitions?.paid_at
-                ? new Date(invoice.status_transitions.paid_at * 1000).toISOString()
-                : new Date().toISOString(),
-            },
-            { onConflict: "stripe_invoice_id" }
-          );
+          const { data: upsertedInvoice } = await supabase
+            .from("subscription_invoices")
+            .upsert(
+              {
+                subscription_id: subscription.id,
+                stripe_invoice_id: invoice.id,
+                amount_due: invoice.amount_due || 0,
+                amount_paid: invoice.amount_paid || 0,
+                amount_remaining: invoice.amount_remaining || 0,
+                status: invoice.status || "paid",
+                hosted_invoice_url: invoice.hosted_invoice_url,
+                invoice_pdf: invoice.invoice_pdf,
+                paid_at: invoice.status_transitions?.paid_at
+                  ? new Date(invoice.status_transitions.paid_at * 1000).toISOString()
+                  : new Date().toISOString(),
+              },
+              { onConflict: "stripe_invoice_id" }
+            )
+            .select("id")
+            .maybeSingle();
 
+          // Accounting auto-entry for the paid subscription (non-blocking, idempotent,
+          // gated by accounting_enabled on the owner's primary entity)
+          const subscriptionInvoiceId = (upsertedInvoice as { id?: string } | null)?.id;
+          if (subscriptionInvoiceId) {
+            try {
+              const { ensureSubscriptionPaidEntry } = await import(
+                "@/lib/accounting/subscription-entry"
+              );
+              const result = await ensureSubscriptionPaidEntry(
+                supabase,
+                subscriptionInvoiceId,
+              );
+              if (result.skippedReason === "error") {
+                console.error(
+                  "[ACCOUNTING] subscription_paid failed:",
+                  result.error,
+                );
+              }
+            } catch (accountingError) {
+              console.error(
+                "[ACCOUNTING] subscription_paid hook exception (non-blocking):",
+                accountingError,
+              );
+            }
+          }
         }
 
         // Vérifier si cette invoice Stripe est aussi liée à une facture locative
@@ -1758,6 +1892,143 @@ export async function POST(request: NextRequest) {
       { error: error instanceof Error ? error.message : "Une erreur est survenue" },
       { status: 500 }
     );
+  }
+}
+
+// ============================================================================
+// Work Order payment — handler dédié
+// ============================================================================
+// Déclenché quand un paiement Stripe (Connect) d'une intervention aboutit.
+// Le montant net est déjà routé vers le compte du prestataire par Stripe
+// (transfer_data.destination + application_fee). Ici on met à jour la
+// ligne work_order_payments, on fait avancer le work_order, et — si la
+// classification marque l'intervention comme récupérable — on injecte
+// automatiquement l'écriture dans charge_entries.
+
+async function handleWorkOrderPaymentSucceeded(
+  supabase: any,
+  paymentIntent: Stripe.PaymentIntent
+) {
+  const workOrderId = paymentIntent.metadata?.work_order_id;
+  const paymentType = paymentIntent.metadata?.payment_type || "full";
+  if (!workOrderId) {
+    console.warn("[Stripe Webhook] work_order_payment: missing work_order_id in metadata");
+    return;
+  }
+
+  // Marquer la ligne work_order_payments correspondante comme succeeded.
+  // On matche par stripe_payment_intent_id (posé à la création de la session)
+  // sinon fallback sur metadata.checkout_session_id.
+  const { data: existing } = await supabase
+    .from("work_order_payments")
+    .select("id")
+    .eq("work_order_id", workOrderId)
+    .eq("stripe_payment_intent_id", paymentIntent.id)
+    .maybeSingle();
+
+  const transferId =
+    typeof paymentIntent.latest_charge === "string"
+      ? paymentIntent.latest_charge
+      : (paymentIntent.latest_charge as any)?.transfer || null;
+
+  if (existing) {
+    await supabase
+      .from("work_order_payments")
+      .update({
+        status: "succeeded",
+        escrow_status: "released",
+        stripe_transfer_id: transferId,
+      })
+      .eq("id", (existing as { id: string }).id);
+  } else {
+    // Fallback : la Checkout Session a été créée sans PaymentIntent connu,
+    // on cherche par payment_type restant en 'pending'.
+    await supabase
+      .from("work_order_payments")
+      .update({
+        status: "succeeded",
+        escrow_status: "released",
+        stripe_payment_intent_id: paymentIntent.id,
+        stripe_transfer_id: transferId,
+      })
+      .eq("work_order_id", workOrderId)
+      .eq("payment_type", paymentType)
+      .eq("status", "pending");
+  }
+
+  // Avancer le statut du work_order :
+  //   'deposit' → deposit_paid
+  //   'balance' ou 'full' → fully_paid
+  const nextStatut =
+    paymentType === "deposit" ? "deposit_paid" : "fully_paid";
+  await supabase
+    .from("work_orders")
+    .update({ statut: nextStatut })
+    .eq("id", workOrderId);
+
+  // Injection automatique dans charge_entries si is_tenant_chargeable=true
+  // (idempotent côté helper — safe à appeler même si le WO n'est pas
+  // complètement payé, il ne fera rien tant qu'aucun paiement n'est
+  // succeeded avec montant > 0).
+  if (nextStatut === "fully_paid") {
+    try {
+      const { injectChargeEntryForWorkOrder } = await import(
+        "@/lib/tickets/inject-charge-entry"
+      );
+      await injectChargeEntryForWorkOrder(supabase, workOrderId);
+    } catch (err) {
+      console.error(
+        "[Stripe Webhook] work_order auto-inject charge failed:",
+        err
+      );
+    }
+  }
+
+  // Résoudre la référence humaine du ticket lié pour l'email
+  let ticketReference: string | null = null;
+  try {
+    const { data: woRow } = await supabase
+      .from("work_orders")
+      .select("ticket_id")
+      .eq("id", workOrderId)
+      .maybeSingle();
+    const ticketId = (woRow as { ticket_id: string | null } | null)?.ticket_id ?? null;
+    if (ticketId) {
+      const { data: tRow } = await supabase
+        .from("tickets")
+        .select("reference")
+        .eq("id", ticketId)
+        .maybeSingle();
+      ticketReference =
+        (tRow as { reference: string | null } | null)?.reference ?? null;
+    }
+  } catch {
+    /* non-blocking — just means the email won't carry the reference */
+  }
+
+  // Outbox : notifier le prestataire que les fonds sont transférés
+  const payeeProfileId = paymentIntent.metadata?.payee_profile_id;
+  if (payeeProfileId) {
+    const { data: payeeProfile } = await supabase
+      .from("profiles")
+      .select("user_id")
+      .eq("id", payeeProfileId)
+      .maybeSingle();
+    const payeeUserId =
+      (payeeProfile as { user_id: string | null } | null)?.user_id ?? null;
+
+    if (payeeUserId) {
+      await supabase.from("outbox").insert({
+        event_type: "WorkOrder.PaymentReceived",
+        payload: {
+          work_order_id: workOrderId,
+          payment_type: paymentType,
+          amount_cents: paymentIntent.amount,
+          ticket_reference: ticketReference,
+          recipient_user_id: payeeUserId,
+        },
+      });
+    }
   }
 }
 

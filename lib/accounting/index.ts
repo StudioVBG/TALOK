@@ -67,3 +67,31 @@ export {
   validateOCRAmounts,
   saveDocumentAnalysis,
 } from './chart-amort-ocr';
+
+// Entity-level accounting configuration
+export {
+  getEntityAccountingConfig,
+  shouldMarkInformational,
+  markEntryInformational,
+  type DeclarationMode,
+  type EntityAccountingConfig,
+} from './entity-config';
+
+// Event → entry bridges (idempotent helpers)
+export {
+  ensureReceiptAccountingEntry,
+  type EnsureReceiptAccountingEntryResult,
+} from './receipt-entry';
+
+export {
+  ensureDepositReceivedEntry,
+  ensureDepositRefundedEntry,
+  type EnsureDepositEntryResult,
+  type EnsureDepositSkipReason,
+} from './deposit-entry';
+
+export {
+  ensureSubscriptionPaidEntry,
+  type EnsureSubscriptionEntryResult,
+  type EnsureSubscriptionSkipReason,
+} from './subscription-entry';

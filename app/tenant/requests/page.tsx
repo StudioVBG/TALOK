@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Plus, Wrench, MessageSquare, Info, ShieldAlert, Calendar } from "lucide-react";
+import { Plus, Wrench, MessageSquare, Info, ShieldAlert, Calendar, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -64,11 +64,18 @@ export default async function TenantRequestsPage() {
             </p>
           </div>
           
-          <Button asChild className="h-12 px-6 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30 font-bold rounded-xl transition-all hover:scale-105 active:scale-95">
-            <Link href="/tenant/requests/new">
-              <Plus className="mr-2 h-5 w-5" /> Nouvelle demande
-            </Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" className="h-12 px-5 rounded-xl font-bold">
+              <Link href="/tenant/services">
+                <Sparkles className="mr-2 h-5 w-5" /> Réserver un service
+              </Link>
+            </Button>
+            <Button asChild className="h-12 px-6 bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/30 font-bold rounded-xl transition-all hover:scale-105 active:scale-95">
+              <Link href="/tenant/requests/new">
+                <Plus className="mr-2 h-5 w-5" /> Nouvelle demande
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Note informative SOTA */}

@@ -79,6 +79,33 @@ export interface GrandLivreItem {
   totalCreditCents: number;
 }
 
+export interface JournalLineItem {
+  accountNumber: string;
+  accountLabel: string;
+  debitCents: number;
+  creditCents: number;
+  lettrage: string | null;
+}
+
+export interface JournalEntryItem {
+  entryId: string;
+  entryNumber: string;
+  entryDate: string;
+  label: string;
+  reference: string | null;
+  lines: JournalLineItem[];
+  totalDebitCents: number;
+  totalCreditCents: number;
+}
+
+export interface JournalItem {
+  journalCode: string;
+  journalLabel: string;
+  entries: JournalEntryItem[];
+  totalDebitCents: number;
+  totalCreditCents: number;
+}
+
 export type AutoEntryEvent =
   | 'rent_received'
   | 'supplier_invoice'
@@ -93,7 +120,8 @@ export type AutoEntryEvent =
   | 'copro_works_fund'
   | 'copro_closing'
   | 'teom_recovered'
-  | 'charge_regularization';
+  | 'charge_regularization'
+  | 'subscription_paid';
 
 // ---------------------------------------------------------------------------
 // Validation helpers
@@ -161,7 +189,8 @@ export async function createEntry(
 
   const entryNumber = entryNumberData as string;
 
-  // Insert entry
+  // Mirror header fields into the legacy agency columns so the insert works even
+  // when 20260423130000_accounting_entries_relax_legacy_not_null hasn't run yet.
   const { data: entry, error: entryError } = await supabase
     .from('accounting_entries')
     .insert({
@@ -174,6 +203,13 @@ export async function createEntry(
       source: params.source ?? null,
       reference: params.reference ?? null,
       created_by: params.userId,
+      ecriture_num: entryNumber,
+      ecriture_date: params.entryDate,
+      ecriture_lib: params.label,
+      piece_ref: params.reference ?? entryNumber,
+      piece_date: params.entryDate,
+      compte_num: '',
+      compte_lib: '',
     })
     .select()
     .single();
@@ -417,6 +453,115 @@ export async function getGrandLivre(
 
   return Array.from(grouped.values()).sort(
     (a, b) => a.accountNumber.localeCompare(b.accountNumber),
+  );
+}
+
+/**
+ * Get the journal (écritures par journal), grouped by journal_code then
+ * chronologically inside each group. Each entry includes all of its lines,
+ * so the output is self-sufficient for rendering a PDF/XLSX journal général.
+ */
+export async function getJournal(
+  supabase: SupabaseClient,
+  entityId: string,
+  exerciseId: string,
+  journalCode?: string,
+): Promise<JournalItem[]> {
+  let entriesQuery = supabase
+    .from('accounting_entries')
+    .select(`
+      id, journal_code, entry_number, entry_date, label, reference, is_validated,
+      accounting_entry_lines(account_number, label, debit_cents, credit_cents, lettrage)
+    `)
+    .eq('entity_id', entityId)
+    .eq('exercise_id', exerciseId)
+    .eq('is_validated', true)
+    .order('entry_date', { ascending: true })
+    .order('entry_number', { ascending: true });
+
+  if (journalCode) {
+    entriesQuery = entriesQuery.eq('journal_code', journalCode);
+  }
+
+  const { data: entries, error } = await entriesQuery;
+  if (error) throw new Error(`Failed to fetch journal: ${error.message}`);
+
+  const [{ data: accounts }, { data: journals }] = await Promise.all([
+    supabase
+      .from('chart_of_accounts')
+      .select('account_number, label')
+      .eq('entity_id', entityId),
+    supabase
+      .from('accounting_journals')
+      .select('code, label')
+      .eq('entity_id', entityId),
+  ]);
+
+  const accountLabels = new Map(
+    (accounts ?? []).map((a: { account_number: string; label: string }) => [
+      a.account_number,
+      a.label,
+    ]),
+  );
+  const journalLabels = new Map(
+    (journals ?? []).map((j: { code: string; label: string }) => [j.code, j.label]),
+  );
+
+  const grouped = new Map<string, JournalItem>();
+
+  for (const entry of (entries ?? []) as Array<{
+    id: string;
+    journal_code: string;
+    entry_number: string;
+    entry_date: string;
+    label: string;
+    reference: string | null;
+    accounting_entry_lines: Array<{
+      account_number: string;
+      label: string | null;
+      debit_cents: number;
+      credit_cents: number;
+      lettrage: string | null;
+    }>;
+  }>) {
+    const code = entry.journal_code;
+    if (!grouped.has(code)) {
+      grouped.set(code, {
+        journalCode: code,
+        journalLabel: journalLabels.get(code) ?? code,
+        entries: [],
+        totalDebitCents: 0,
+        totalCreditCents: 0,
+      });
+    }
+
+    const lines: JournalLineItem[] = (entry.accounting_entry_lines ?? []).map((l) => ({
+      accountNumber: l.account_number,
+      accountLabel: accountLabels.get(l.account_number) ?? l.account_number,
+      debitCents: l.debit_cents,
+      creditCents: l.credit_cents,
+      lettrage: l.lettrage,
+    }));
+    const totalDebit = lines.reduce((s, l) => s + l.debitCents, 0);
+    const totalCredit = lines.reduce((s, l) => s + l.creditCents, 0);
+
+    const item = grouped.get(code)!;
+    item.entries.push({
+      entryId: entry.id,
+      entryNumber: entry.entry_number,
+      entryDate: entry.entry_date,
+      label: entry.label,
+      reference: entry.reference,
+      lines,
+      totalDebitCents: totalDebit,
+      totalCreditCents: totalCredit,
+    });
+    item.totalDebitCents += totalDebit;
+    item.totalCreditCents += totalCredit;
+  }
+
+  return Array.from(grouped.values()).sort((a, b) =>
+    a.journalCode.localeCompare(b.journalCode),
   );
 }
 
@@ -683,6 +828,23 @@ const AUTO_ENTRIES: Record<
       lines,
     };
   },
+
+  subscription_paid: (ctx) => ({
+    entityId: ctx.entityId,
+    exerciseId: ctx.exerciseId,
+    journalCode: 'BQ',
+    entryDate: ctx.date,
+    label: ctx.label || 'Abonnement Talok',
+    source: 'auto:subscription_paid',
+    reference: ctx.reference,
+    userId: ctx.userId,
+    // Platform subscription is booked as a miscellaneous fee (honoraires)
+    // debited against the bank account at settlement date.
+    lines: [
+      { accountNumber: '622800', debitCents: ctx.amountCents, creditCents: 0 },
+      { accountNumber: ctx.bankAccount ?? '512100', debitCents: 0, creditCents: ctx.amountCents },
+    ],
+  }),
 };
 
 /**

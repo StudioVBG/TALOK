@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   ArrowLeft, MapPin, User, Calendar, Euro, FileText, Send,
-  Play, CreditCard, AlertTriangle, Loader2, Plus,
+  Play, CreditCard, Loader2, Plus,
 } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
@@ -275,20 +275,6 @@ export default function WorkOrderDetailPage() {
                   </Button>
                 )}
               </div>
-
-              {status === 'invoiced' && (
-                <Alert className="mt-4 border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30">
-                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-                  <AlertDescription className="text-sm text-amber-800 dark:text-amber-200">
-                    <strong>Paiement hors plateforme.</strong> Le paiement Stripe
-                    intégré n'est pas encore disponible pour les ordres de
-                    travail. Réglez le prestataire via votre moyen habituel
-                    (virement, chèque, espèces) puis cliquez sur « Marquer
-                    comme payé » — cela enregistre l'écriture comptable et
-                    déclenche la demande d'avis.
-                  </AlertDescription>
-                </Alert>
-              )}
             </CardContent>
           </Card>
         </div>

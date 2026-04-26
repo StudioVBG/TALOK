@@ -881,22 +881,23 @@ export default function TenantDocumentsPage() {
             ) : (
               // ── Vue grille ──
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {displayDocs.map((doc: any) => {
-                  if (doc.kind === "group") {
+                {displayDocs.map((item: any) => {
+                  if (item.kind === "group") {
                     return (
                       <GroupedDocumentCard
-                        key={doc.key}
-                        item={doc}
+                        key={item.key}
+                        item={item}
                       />
                     );
                   }
+                  // groupDocuments() wraps singles as { kind: "single", document, key, ... }
+                  const doc = item.document ?? item;
                   const type = detectType(doc);
-                  const config = DOCUMENT_CONFIG[type] || DOCUMENT_CONFIG.autre;
                   const source = profile?.id ? getDocumentSource(doc, profile.id) : undefined;
                   const isCrossAccountNew = source === "shared" && isRecent(doc);
                   return (
                     <DocumentCard
-                      key={doc.id}
+                      key={item.key ?? doc.id}
                       doc={doc}
                       resolvedType={type}
                       displayTitle={getDocumentDisplayName(doc)}

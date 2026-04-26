@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
 import { checkIdentityGate } from "@/lib/helpers/identity-gate";
+import { PhoneVerificationBanner } from "@/components/identity/PhoneVerificationBanner";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { ProviderBottomNav } from "@/components/layout/provider-bottom-nav";
@@ -15,6 +16,8 @@ import { ProviderSidebar } from "@/components/layout/provider-sidebar";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
+import { OnboardingWrapper } from "@/components/onboarding/OnboardingWrapper";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 
 export default async function VendorLayout({
   children,
@@ -59,6 +62,12 @@ export default async function VendorLayout({
   return (
     <ErrorBoundary>
       <CsrfTokenInjector />
+      <PhoneVerificationBanner identityStatus={profile.identity_status} pathname={pathname} />
+      <OnboardingWrapper
+        role="provider"
+        profileId={profile.id}
+        userName={profile.prenom || ""}
+      >
       <div className="min-h-screen bg-gradient-to-br from-background via-orange-50/10 to-background dark:from-background dark:via-background dark:to-background">
         {/* Offline indicator */}
         <OfflineIndicator />
@@ -79,6 +88,7 @@ export default async function VendorLayout({
             <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center text-orange-600 dark:text-orange-400 font-semibold text-sm">
               {initials}
             </div>
+            <SignOutButton variant="mobile-icon" />
           </div>
         </div>
 
@@ -94,6 +104,7 @@ export default async function VendorLayout({
               <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center text-orange-600 dark:text-orange-400 font-semibold text-sm">
                 {initials}
               </div>
+              <SignOutButton variant="mobile-icon" />
             </div>
           </div>
 
@@ -125,6 +136,7 @@ export default async function VendorLayout({
         {/* Mobile bottom navigation (< md) */}
         <ProviderBottomNav />
       </div>
+      </OnboardingWrapper>
     </ErrorBoundary>
   );
   } catch (e) {

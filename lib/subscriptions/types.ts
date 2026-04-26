@@ -194,6 +194,7 @@ export interface PromoCode {
   discount_value: number;
   
   applicable_plans: PlanSlug[];
+  eligible_territories: string[];
   min_billing_cycle: BillingCycle | null;
   first_subscription_only: boolean;
   
@@ -205,7 +206,8 @@ export interface PromoCode {
   valid_until: string | null;
   
   stripe_coupon_id: string | null;
-  
+  stripe_promotion_code_id: string | null;
+
   is_active: boolean;
   created_by: string | null;
   created_at: string;

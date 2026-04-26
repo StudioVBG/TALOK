@@ -91,6 +91,10 @@ export async function GET(request: Request) {
     const journalCode = searchParams.get("journal_code");
     const compteNum = searchParams.get("compte_num");
     const ownerId = searchParams.get("owner_id");
+    // New double-entry schema filters on `entity_id` (legal_entities.id). The
+    // legacy `owner_id` (profiles.id) is kept as a fallback for flat entries
+    // that predate the engine rewrite.
+    const entityId = searchParams.get("entity_id");
     const propertyId = searchParams.get("property_id");
     const invoiceId = searchParams.get("invoice_id");
     const startDate = searchParams.get("start_date");
@@ -113,14 +117,35 @@ export async function GET(request: Request) {
 
     // Filtrage par rôle — obligatoire car on utilise le service client qui
     // bypass RLS. L'enforcement d'accès passe donc par ce filtre explicite.
-    if (profile.role !== "admin") {
+    //
+    // Two paths:
+    //   - New double-entry path: caller passes `entity_id`. We validate the
+    //     user owns that legal entity (or is admin) and filter on entity_id.
+    //     Engine-created entries have owner_id = NULL, so filtering on
+    //     owner_id here would hide every auto-posted entry.
+    //   - Legacy flat path: no entity_id → keep the historical owner_id
+    //     filter so old entries created via the flat insert still scope.
+    if (entityId) {
+      if (profile.role !== "admin") {
+        const { data: entity } = await serviceClient
+          .from("legal_entities")
+          .select("id")
+          .eq("id", entityId)
+          .eq("owner_profile_id", profile.id)
+          .maybeSingle();
+        if (!entity) {
+          throw new ApiError(403, "Accès refusé à cette entité");
+        }
+      }
+      query = query.eq("entity_id", entityId);
+    } else if (profile.role !== "admin") {
       query = query.eq("owner_id", profile.id);
     }
 
     // Filtres
     if (journalCode) query = query.eq("journal_code", journalCode);
     if (compteNum) query = query.ilike("compte_num", `${compteNum}%`);
-    if (ownerId) query = query.eq("owner_id", ownerId);
+    if (ownerId && !entityId) query = query.eq("owner_id", ownerId);
     if (propertyId) query = query.eq("property_id", propertyId);
     if (invoiceId) query = query.eq("invoice_id", invoiceId);
     if (search) {
@@ -147,26 +172,68 @@ export async function GET(request: Request) {
       throw new ApiError(500, "Erreur lors de la récupération des écritures");
     }
 
-    // Calculer les totaux
-    const totals = (entries || []).reduce<{ debit: number; credit: number }>(
-      (acc, e) => ({
-        debit: acc.debit + ((e.debit as number) || 0),
-        credit: acc.credit + ((e.credit as number) || 0),
-      }),
-      { debit: 0, credit: 0 }
-    );
+    // Engine-driven entries store debit/credit=0 at the header and the real
+    // amounts in accounting_entry_lines, while legacy rows keep amounts inline.
+    // Batch-fetch lines for the page and aggregate so each row carries a
+    // total_debit_cents / total_credit_cents the client can read uniformly
+    // (see EntryRow.getEntryDebitCents).
+    const entryRows = (entries ?? []) as Array<{
+      id: string;
+      debit?: number | null;
+      credit?: number | null;
+      total_debit_cents?: number;
+      total_credit_cents?: number;
+    }>;
+    const entryIds = entryRows.map((e) => e.id);
+    const lineSums = new Map<string, { debit: number; credit: number }>();
+    if (entryIds.length > 0) {
+      const { data: lines, error: linesError } = await serviceClient
+        .from("accounting_entry_lines")
+        .select("entry_id, debit_cents, credit_cents")
+        .in("entry_id", entryIds);
+      if (linesError) {
+        console.error("[Entries API] Erreur lignes:", linesError);
+      } else {
+        for (const line of (lines ?? []) as Array<{
+          entry_id: string;
+          debit_cents: number | null;
+          credit_cents: number | null;
+        }>) {
+          const sums = lineSums.get(line.entry_id) ?? { debit: 0, credit: 0 };
+          sums.debit += line.debit_cents ?? 0;
+          sums.credit += line.credit_cents ?? 0;
+          lineSums.set(line.entry_id, sums);
+        }
+      }
+    }
+
+    let totalDebitCents = 0;
+    let totalCreditCents = 0;
+    for (const row of entryRows) {
+      const sums = lineSums.get(row.id);
+      const debitCents = sums
+        ? sums.debit
+        : Math.round(((row.debit as number) ?? 0) * 100);
+      const creditCents = sums
+        ? sums.credit
+        : Math.round(((row.credit as number) ?? 0) * 100);
+      row.total_debit_cents = debitCents;
+      row.total_credit_cents = creditCents;
+      totalDebitCents += debitCents;
+      totalCreditCents += creditCents;
+    }
 
     return NextResponse.json({
       success: true,
-      data: entries || [],
+      data: entryRows,
       meta: {
         total: count || 0,
         limit,
         offset,
         totals: {
-          debit: Math.round(totals.debit * 100) / 100,
-          credit: Math.round(totals.credit * 100) / 100,
-          balance: Math.round((totals.debit - totals.credit) * 100) / 100,
+          debit: totalDebitCents / 100,
+          credit: totalCreditCents / 100,
+          balance: (totalDebitCents - totalCreditCents) / 100,
         },
       },
     });
@@ -198,8 +265,8 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .single();
 
-    if (!profile || profile.role !== "admin") {
-      throw new ApiError(403, "Seuls les administrateurs peuvent créer des écritures");
+    if (!profile || (profile.role !== "admin" && profile.role !== "owner")) {
+      throw new ApiError(403, "Non autorisé");
     }
 
     // Feature gate: check subscription plan
@@ -217,6 +284,18 @@ export async function POST(request: Request) {
       }
 
       const data = validation.data;
+
+      if (profile.role !== "admin") {
+        const { data: entity } = await supabase
+          .from("legal_entities")
+          .select("id")
+          .eq("id", data.entity_id)
+          .eq("owner_profile_id", profile.id)
+          .maybeSingle();
+        if (!entity) {
+          throw new ApiError(403, "Accès refusé à cette entité");
+        }
+      }
 
       const entry = await createEntry(supabase, {
         entityId: data.entity_id,
@@ -242,6 +321,9 @@ export async function POST(request: Request) {
 
     const data = validation.data;
     const today = new Date().toISOString().split("T")[0];
+
+    // For non-admins, force owner_id = self so they cannot post to someone else.
+    const ownerId = profile.role === "admin" ? data.owner_id : profile.id;
 
     // Générer le numéro d'écriture
     const year = (data.ecriture_date || today).substring(0, 4);
@@ -276,7 +358,7 @@ export async function POST(request: Request) {
         ecriture_lib: data.ecriture_lib,
         debit: data.debit,
         credit: data.credit,
-        owner_id: data.owner_id,
+        owner_id: ownerId,
         property_id: data.property_id,
         invoice_id: data.invoice_id,
         payment_id: data.payment_id,

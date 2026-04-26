@@ -507,4 +507,178 @@ export const PAGE_METADATA = {
     description: "Créez votre compte Talok gratuitement. Gérez vos locations en quelques clics.",
     keywords: ["inscription gestion locative", "créer compte bailleur"],
   }),
+
+  // === Pages Fonctionnalités (détail) ===
+  featureGestionBiens: generatePageMetadata({
+    title: "Gestion des biens immobiliers",
+    description: "Centralisez tous vos biens locatifs : photos, documents, diagnostics, historique des travaux. Une fiche claire par bien, alertes automatiques.",
+    keywords: ["gestion bien immobilier", "logiciel bailleur", "fiche logement"],
+    canonical: `${SITE_URL}/fonctionnalites/gestion-biens`,
+  }),
+  featureGestionLocataires: generatePageMetadata({
+    title: "Gestion des locataires",
+    description: "Suivez vos locataires, scoring IA des candidatures, historique des échanges, portail locataire dédié. Tout sur chaque dossier.",
+    keywords: ["gestion locataire", "scoring candidat bail", "dossier locataire"],
+    canonical: `${SITE_URL}/fonctionnalites/gestion-locataires`,
+  }),
+  featurePaiements: generatePageMetadata({
+    title: "Paiements en ligne des loyers",
+    description: "Encaissez vos loyers automatiquement : prélèvement SEPA, CB, virement, Open Banking. Réconciliation automatique, relances intégrées.",
+    keywords: ["paiement loyer en ligne", "prélèvement loyer automatique", "SEPA loyer", "open banking loyer"],
+    canonical: `${SITE_URL}/fonctionnalites/paiements-en-ligne`,
+  }),
+  featureEDL: generatePageMetadata({
+    title: "États des lieux numériques",
+    description: "Réalisez vos états des lieux d'entrée et de sortie en 30 min sur mobile. Photos, signature électronique, PDF conforme à la loi ALUR.",
+    keywords: ["état des lieux numérique", "EDL mobile", "état des lieux signature électronique"],
+    canonical: `${SITE_URL}/fonctionnalites/etats-des-lieux`,
+  }),
+  featureQuittances: generatePageMetadata({
+    title: "Quittances de loyer automatiques",
+    description: "Quittances générées automatiquement à chaque paiement, envoyées par email au locataire, archivées 10 ans. Zéro manipulation.",
+    keywords: ["quittance de loyer automatique", "quittance PDF", "envoi quittance email"],
+    canonical: `${SITE_URL}/fonctionnalites/quittances-loyers`,
+  }),
+  featureCompta: generatePageMetadata({
+    title: "Comptabilité & fiscalité locative",
+    description: "Comptabilité double-entrée, export FEC, déclarations 2044/2072, amortissements, rapprochement bancaire automatique. Adapté aux SCI.",
+    keywords: ["comptabilité locative", "export FEC", "déclaration 2044", "revenus fonciers"],
+    canonical: `${SITE_URL}/fonctionnalites/comptabilite-fiscalite`,
+  }),
+  featureSignature: generatePageMetadata({
+    title: "Signature électronique eIDAS",
+    description: "Signature électronique à valeur légale (même valeur qu'un original papier). Bail signé en 5 minutes, depuis n'importe où, sur mobile.",
+    keywords: ["signature électronique bail", "eIDAS immobilier", "bail en ligne signé"],
+    canonical: `${SITE_URL}/fonctionnalites/signature-electronique`,
+  }),
+  featureGestionDesBaux: generatePageMetadata({
+    title: "Gestion des baux locatifs",
+    description: "Créez, signez et gérez vos baux ALUR/ELAN. Modèles meublé, non-meublé, colocation, bail mobilité. Révision IRL automatique.",
+    keywords: ["gestion bail locatif", "bail ALUR", "bail mobilité", "renouvellement bail"],
+    canonical: `${SITE_URL}/fonctionnalites/gestion-des-baux`,
+  }),
+  featureDocuments: generatePageMetadata({
+    title: "Coffre-fort documents locatifs",
+    description: "Tous vos documents centralisés et chiffrés : baux, quittances, diagnostics, CNI, attestations. Partage sécurisé en un clic.",
+    keywords: ["coffre-fort documents", "GED locative", "partage document bail sécurisé"],
+    canonical: `${SITE_URL}/fonctionnalites/documents`,
+  }),
+  featureTickets: generatePageMetadata({
+    title: "Tickets & travaux locatifs",
+    description: "Vos locataires signalent les problèmes, vous pilotez artisans, devis et factures sans quitter Talok. Suivi temps réel.",
+    keywords: ["ticket maintenance bien", "travaux locatif", "artisan gestion locative"],
+    canonical: `${SITE_URL}/fonctionnalites/tickets-et-travaux`,
+  }),
+  featureImmeuble: generatePageMetadata({
+    title: "Immeuble & copropriété",
+    description: "Gérez vos immeubles, lots, tantièmes, copropriétaires. Assemblées générales, appels de fonds, comptabilité syndic intégrée.",
+    keywords: ["gestion immeuble", "copropriété logiciel", "appel de fonds syndic"],
+    canonical: `${SITE_URL}/fonctionnalites/immeuble-copropriete`,
+  }),
+
+  // === Pages Solutions (segments) ===
+  solutionProprios: generatePageMetadata({
+    title: "Solution pour propriétaires particuliers",
+    description: "Gérez 1 à 5 biens locatifs sans agence. Baux, loyers, fiscalité, déclarations : Talok simplifie tout. À partir de 0€/mois.",
+    keywords: ["propriétaire bailleur particulier", "gestion locative 1 bien", "alternative agence"],
+    canonical: `${SITE_URL}/solutions/proprietaires-particuliers`,
+  }),
+  solutionInvestisseurs: generatePageMetadata({
+    title: "Solution pour investisseurs immobiliers",
+    description: "Consolidez votre portefeuille multi-biens : SCI, indivision, Pinel, LMNP. Comptabilité, rentabilité, fiscalité — tout sous contrôle.",
+    keywords: ["investisseur immobilier logiciel", "gestion SCI", "portefeuille locatif"],
+    canonical: `${SITE_URL}/solutions/investisseurs`,
+  }),
+  solutionAdministrateurs: generatePageMetadata({
+    title: "Solution pour administrateurs de biens",
+    description: "Logiciel d'agence immobilière : multi-propriétaires, gestion équipe, CRG mandant, extranet client, white-label. Adapté aux DROM.",
+    keywords: ["logiciel administrateur biens", "logiciel agence immobilière", "gestion mandant"],
+    canonical: `${SITE_URL}/solutions/administrateurs-biens`,
+  }),
+  solutionSCI: generatePageMetadata({
+    title: "Solution pour SCI familiales",
+    description: "Gérez votre SCI familiale : comptes d'associés, quote-parts, déclaration 2072, assemblées. Talok centralise tout pour l'expert-comptable.",
+    keywords: ["logiciel SCI familiale", "comptabilité SCI", "déclaration 2072"],
+    canonical: `${SITE_URL}/solutions/sci-familiales`,
+  }),
+  solutionSyndics: generatePageMetadata({
+    title: "Solution pour syndics de copropriété",
+    description: "Logiciel complet pour syndics : copropriétés, AG en ligne, appels de fonds, comptabilité copropriété, extranet copropriétaires.",
+    keywords: ["logiciel syndic copropriété", "syndic bénévole", "AG en ligne copropriété"],
+    canonical: `${SITE_URL}/solutions/syndics`,
+  }),
+  solutionOutreMer: generatePageMetadata({
+    title: "Gestion locative en France d'outre-mer",
+    description: "Seul logiciel né en Martinique, adapté aux réalités DROM-COM : TVA 8,5 %, Pinel OM, Girardin, normes cycloniques, délais postaux.",
+    keywords: ["gestion locative martinique", "logiciel bailleur guadeloupe", "location réunion", "pinel outre-mer"],
+    canonical: `${SITE_URL}/solutions/outre-mer`,
+  }),
+
+  // === Pages Outils (calculateurs) ===
+  outilRendement: generatePageMetadata({
+    title: "Calculateur de rentabilité locative",
+    description: "Calculez la rentabilité brute et nette de votre bien locatif : cash-flow, rendement, TRI. Simulateur gratuit, sans inscription.",
+    keywords: ["calcul rentabilité locative", "rendement locatif", "simulateur investissement"],
+    canonical: `${SITE_URL}/outils/calcul-rendement-locatif`,
+  }),
+  outilFraisNotaire: generatePageMetadata({
+    title: "Calculateur de frais de notaire",
+    description: "Estimez les frais de notaire pour l'achat d'un bien immobilier : ancien, neuf, terrain. Mise à jour des barèmes 2026.",
+    keywords: ["calcul frais de notaire", "émoluments notaire", "frais acquisition immobilier"],
+    canonical: `${SITE_URL}/outils/calcul-frais-notaire`,
+  }),
+  outilIRL: generatePageMetadata({
+    title: "Calculateur de révision IRL du loyer",
+    description: "Calculez automatiquement la révision annuelle de votre loyer selon l'IRL (Indice de Référence des Loyers). Gratuit et conforme ALUR.",
+    keywords: ["calcul révision IRL", "indice référence loyers", "augmentation loyer annuelle"],
+    canonical: `${SITE_URL}/outils/calcul-revision-irl`,
+  }),
+  outilCharges: generatePageMetadata({
+    title: "Simulateur de charges locatives",
+    description: "Estimez les charges récupérables et non-récupérables de votre bien locatif. Provisions, forfait, régularisation annuelle.",
+    keywords: ["calcul charges locatives", "charges récupérables", "provision charges"],
+    canonical: `${SITE_URL}/outils/simulateur-charges`,
+  }),
+  outilsHub: generatePageMetadata({
+    title: "Outils gratuits pour propriétaires bailleurs",
+    description: "4 calculateurs gratuits : rentabilité, frais de notaire, révision IRL, charges locatives. Sans inscription, mis à jour 2026.",
+    keywords: ["outils propriétaire gratuit", "calculateur immobilier", "simulateur locatif"],
+    canonical: `${SITE_URL}/outils`,
+  }),
+  calculateurROI: generatePageMetadata({
+    title: "Calculateur d'économies Talok vs agence",
+    description: "Combien économisez-vous en gérant vos biens avec Talok plutôt qu'avec une agence à 8 % ? Simulateur instantané, résultat en temps réel.",
+    keywords: ["calculateur roi gestion locative", "talok vs agence", "economie frais agence", "commission agence immobiliere"],
+    canonical: `${SITE_URL}/calculateur-roi`,
+  }),
+  accessibilite: generatePageMetadata({
+    title: "Déclaration d'accessibilité",
+    description: "Déclaration d'accessibilité RGAA 4.1 de Talok. État de conformité, dérogations, voies de recours, contact accessibilité.",
+    canonical: `${SITE_URL}/accessibilite`,
+  }),
+  presse: generatePageMetadata({
+    title: "Espace presse",
+    description: "Logos, identité visuelle, chiffres clés et contact presse de Talok — logiciel de gestion locative né en Martinique.",
+    keywords: ["talok presse", "media kit talok", "logo talok", "contact presse gestion locative"],
+    canonical: `${SITE_URL}/presse`,
+  }),
+  statut: generatePageMetadata({
+    title: "Statut des services",
+    description: "État en temps réel des services Talok : application, paiements, emails, notifications. Historique des incidents.",
+    canonical: `${SITE_URL}/statut`,
+  }),
+
+  // === Pages About/Témoignages ===
+  aPropos: generatePageMetadata({
+    title: "À propos de Talok",
+    description: "Talok, logiciel de gestion locative né en Martinique en 2026. Notre mission : démocratiser l'autogestion locative en France.",
+    keywords: ["talok équipe", "logiciel locatif français", "entreprise martinique"],
+    canonical: `${SITE_URL}/a-propos`,
+  }),
+  temoignages: generatePageMetadata({
+    title: "Témoignages clients",
+    description: "Ils utilisent Talok au quotidien : propriétaires particuliers, investisseurs, SCI, agences. +2 000 clients, 98 % satisfaction.",
+    keywords: ["avis talok", "témoignages gestion locative", "clients bailleurs"],
+    canonical: `${SITE_URL}/temoignages`,
+  }),
 };

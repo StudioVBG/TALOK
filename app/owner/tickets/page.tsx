@@ -1,8 +1,17 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { ArrowRight, Hammer, Plus, Users, Wrench } from "lucide-react";
+import {
+  ArrowRight,
+  ClipboardCheck,
+  Hammer,
+  Plus,
+  Users,
+  Wrench,
+  X,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TicketListUnified } from "@/features/tickets/components/ticket-list-unified";
 import { TicketKPIs } from "@/features/tickets/components/ticket-kpis";
@@ -12,14 +21,119 @@ import {
   getTicketsActionStats,
 } from "@/features/tickets/server/data-fetching";
 import { PullToRefreshContainer } from "@/components/ui/pull-to-refresh-container";
+import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
+import { TICKET_OPEN_STATUSES } from "@/lib/tickets/statuses";
 import { TicketsTabNav } from "./TicketsTabNav";
 
-export default async function OwnerTicketsPage() {
-  const [tickets, kpis, actionStats] = await Promise.all([
+const STATUS_LABELS: Record<string, string> = {
+  open: "Ouverts",
+  in_progress: "En cours",
+  resolved: "Résolus",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  plomberie: "Plomberie",
+  electricite: "Électricité",
+  serrurerie: "Serrurerie",
+  chauffage: "Chauffage",
+  humidite: "Humidité",
+  nuisibles: "Nuisibles",
+  bruit: "Bruit",
+  parties_communes: "Parties communes",
+  equipement: "Équipement",
+  autre: "Autre",
+  non_categorise: "Non catégorisé",
+};
+
+const PRIORITY_LABELS: Record<string, string> = {
+  basse: "Basse",
+  low: "Basse",
+  normale: "Normale",
+  normal: "Normale",
+  haute: "Haute",
+  urgent: "Urgent",
+  urgente: "Urgente",
+  emergency: "Urgence",
+};
+
+async function getPendingApprovalsCount(): Promise<number> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return 0;
+
+    const serviceClient = getServiceClient();
+    const { data: profile } = await serviceClient
+      .from("profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (!profile) return 0;
+
+    const { data: properties } = await serviceClient
+      .from("properties")
+      .select("id")
+      .eq("owner_id", (profile as { id: string }).id);
+
+    const propertyIds = (properties || []).map((p) => (p as { id: string }).id);
+    if (propertyIds.length === 0) return 0;
+
+    const { count } = await serviceClient
+      .from("work_orders")
+      .select("id", { count: "exact", head: true })
+      .in("property_id", propertyIds)
+      .eq("owner_approval_status", "pending")
+      .eq("requester_role", "tenant");
+
+    return count ?? 0;
+  } catch {
+    return 0;
+  }
+}
+
+interface OwnerTicketsPageProps {
+  searchParams?: Promise<{
+    status?: string;
+    category?: string;
+    priority?: string;
+  }>;
+}
+
+export default async function OwnerTicketsPage({ searchParams }: OwnerTicketsPageProps) {
+  const params = (await searchParams) ?? {};
+  const activeStatus = params.status ?? null;
+  const activeCategory = params.category ?? null;
+  const activePriority = params.priority ?? null;
+
+  const [allTickets, kpis, actionStats, pendingApprovals] = await Promise.all([
     getTickets("owner"),
     getTicketKPIs(),
     getTicketsActionStats(),
+    getPendingApprovalsCount(),
   ]);
+
+  const tickets = (allTickets as any[]).filter((t) => {
+    if (activeStatus === "open") {
+      if (!(TICKET_OPEN_STATUSES as readonly string[]).includes(t.statut)) return false;
+    } else if (activeStatus === "in_progress") {
+      if (t.statut !== "in_progress") return false;
+    } else if (activeStatus === "resolved") {
+      if (t.statut !== "resolved" && t.statut !== "closed") return false;
+    }
+    if (activeCategory) {
+      const cat = t.category || "non_categorise";
+      if (cat !== activeCategory) return false;
+    }
+    if (activePriority) {
+      if (t.priorite !== activePriority) return false;
+    }
+    return true;
+  });
+
+  const hasActiveFilter = Boolean(activeStatus || activeCategory || activePriority);
 
   return (
     <PullToRefreshContainer>
@@ -35,11 +149,31 @@ export default async function OwnerTicketsPage() {
             </p>
           </div>
 
-          <Button asChild className="shadow-lg shadow-blue-500/20 w-full sm:w-auto">
-            <Link href="/owner/tickets/new">
-              <Plus className="mr-2 h-4 w-4" /> Nouveau ticket
-            </Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {pendingApprovals > 0 && (
+              <Button
+                asChild
+                variant="outline"
+                className="border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300"
+              >
+                <Link href="/owner/approvals">
+                  <ClipboardCheck className="mr-2 h-4 w-4" />
+                  {pendingApprovals} à valider
+                  <Badge
+                    variant="secondary"
+                    className="ml-2 bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+                  >
+                    {pendingApprovals}
+                  </Badge>
+                </Link>
+              </Button>
+            )}
+            <Button asChild className="shadow-lg shadow-blue-500/20">
+              <Link href="/owner/tickets/new">
+                <Plus className="mr-2 h-4 w-4" /> Nouveau ticket
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Tab navigation */}
@@ -106,8 +240,47 @@ export default async function OwnerTicketsPage() {
             </div>
           }
         >
-          <TicketKPIs kpis={kpis} />
+          <TicketKPIs
+            kpis={kpis}
+            activeStatus={activeStatus}
+            activeCategory={activeCategory}
+            activePriority={activePriority}
+            basePath="/owner/tickets"
+          />
         </Suspense>
+
+        {/* Active filters banner */}
+        {hasActiveFilter && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-blue-200 bg-blue-50/60 px-4 py-3 dark:border-blue-900/50 dark:bg-blue-950/30">
+            <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+              Filtres actifs :
+            </span>
+            {activeStatus && (
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
+                {STATUS_LABELS[activeStatus] ?? activeStatus}
+              </Badge>
+            )}
+            {activeCategory && (
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
+                {CATEGORY_LABELS[activeCategory] ?? activeCategory}
+              </Badge>
+            )}
+            {activePriority && (
+              <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
+                {PRIORITY_LABELS[activePriority] ?? activePriority}
+              </Badge>
+            )}
+            <span className="text-xs text-blue-700/70 dark:text-blue-300/70">
+              {tickets.length} ticket{tickets.length > 1 ? "s" : ""}
+            </span>
+            <Button asChild size="sm" variant="ghost" className="ml-auto h-7 text-blue-700 hover:bg-blue-100 dark:text-blue-300 dark:hover:bg-blue-900/40">
+              <Link href="/owner/tickets">
+                <X className="mr-1 h-3.5 w-3.5" />
+                Réinitialiser
+              </Link>
+            </Button>
+          </div>
+        )}
 
         {/* Ticket list */}
         {!tickets || tickets.length === 0 ? (

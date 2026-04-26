@@ -37,7 +37,6 @@ import { PublicFooter } from "@/components/layout/public-footer";
 
 const SUBJECTS = [
   { value: "general", label: "Question générale" },
-  { value: "demo", label: "Demander une démo" },
   { value: "enterprise", label: "Offre Enterprise" },
   { value: "support", label: "Support technique" },
   { value: "partnership", label: "Partenariat" },
@@ -55,19 +54,43 @@ function ContactContent() {
     company: "",
     subject: initialSubject,
     message: "",
+    website: "", // honeypot anti-bot — doit rester vide
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorMessage(null);
 
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-    setIsSubmitted(true);
-    setIsSubmitting(false);
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok || !result?.ok) {
+        const message =
+          result?.error ||
+          "Échec de l'envoi du message. Réessayez ou contactez support@talok.fr.";
+        setErrorMessage(message);
+        setIsSubmitting(false);
+        return;
+      }
+
+      setIsSubmitted(true);
+    } catch {
+      setErrorMessage(
+        "Impossible de contacter le serveur. Vérifiez votre connexion ou écrivez-nous à support@talok.fr."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (field: string, value: string) => {
@@ -219,7 +242,32 @@ function ContactContent() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-6">
+                    <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+                      {/* Honeypot anti-bot : invisible aux humains, rempli par les bots */}
+                      <div
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          left: "-9999px",
+                          width: "1px",
+                          height: "1px",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <label htmlFor="contact-website">
+                          Ne remplissez pas ce champ
+                        </label>
+                        <input
+                          id="contact-website"
+                          name="website"
+                          type="text"
+                          tabIndex={-1}
+                          autoComplete="off"
+                          value={formData.website}
+                          onChange={(e) => handleChange("website", e.target.value)}
+                        />
+                      </div>
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label className="text-slate-300">Nom complet *</Label>
@@ -295,6 +343,15 @@ function ContactContent() {
                           placeholder="Comment pouvons-nous vous aider ?"
                         />
                       </div>
+
+                      {errorMessage && (
+                        <div
+                          role="alert"
+                          className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"
+                        >
+                          {errorMessage}
+                        </div>
+                      )}
 
                       <Button
                         type="submit"

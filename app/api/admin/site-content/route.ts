@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/helpers/auth-helper";
-import { validateCsrfFromRequest } from "@/lib/security/csrf";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 /**
  * GET /api/admin/site-content
@@ -36,14 +36,10 @@ export async function GET(request: Request) {
  * Créer ou mettre à jour le contenu d'une page
  */
 export async function POST(request: NextRequest) {
-  // CSRF validation
-  try {
-    const csrfValid = await validateCsrfFromRequest(request);
-    if (!csrfValid) {
-      return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
-    }
-  } catch {
-    // CSRF_SECRET not configured — degrade gracefully
+  const csrf = await validateCsrfFromRequestDetailed(request);
+  if (!csrf.valid) {
+    await logCsrfFailure(request, csrf.reason!, "admin.site-content");
+    return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
   }
 
   const { error: authError, user, supabase } = await requireAdmin(request);

@@ -173,6 +173,10 @@ export default function OwnerReviewPage() {
       await propertiesService.submitProperty(property.id);
       await onboardingService.markStepCompleted("final_review", "owner");
       await onboardingService.clearDraft();
+      // Marquer l'onboarding comme terminé côté API : pose
+      // profiles.onboarding_completed_at, annule les rappels pending et
+      // déclenche la notif "Bienvenue". Best-effort, ne bloque pas la redirection.
+      await fetch("/api/me/onboarding-complete", { method: "POST" }).catch(() => {});
       toast({
         title: "Logement soumis",
         description: "Votre logement est désormais en attente de validation.",

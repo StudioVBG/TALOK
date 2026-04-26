@@ -11,12 +11,15 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { checkIdentityGate } from "@/lib/helpers/identity-gate";
+import { PhoneVerificationBanner } from "@/components/identity/PhoneVerificationBanner";
 import { ErrorBoundary } from "@/components/error-boundary";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { AgencySidebar } from "./_components/AgencySidebar";
 import { AgencyThemeWrapper } from "./_components/AgencyThemeWrapper";
 import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
+import { OnboardingWrapper } from "@/components/onboarding/OnboardingWrapper";
+import type { TourRole } from "@/components/onboarding/OnboardingTour";
 
 /**
  * Layout Agency - Server Component
@@ -75,9 +78,17 @@ export default async function AgencyLayout({
     .single();
 
   // 5. Rendre le layout
+  // admin / platform_admin → tour admin (0 étape) pour ne pas polluer l'UI agence
+  const tourRole: TourRole = profile.role === "agency" ? "agency" : "admin";
   return (
     <ErrorBoundary>
       <CsrfTokenInjector />
+      <PhoneVerificationBanner identityStatus={profile.identity_status} pathname={pathname} />
+      <OnboardingWrapper
+        role={tourRole}
+        profileId={profile.id}
+        userName={profile.prenom || ""}
+      >
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950/30">
         <OfflineIndicator />
 
@@ -103,6 +114,7 @@ export default async function AgencyLayout({
           </main>
         </div>
       </div>
+      </OnboardingWrapper>
     </ErrorBoundary>
   );
 }

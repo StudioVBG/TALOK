@@ -36,7 +36,7 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { UnifiedFAB } from "@/components/layout/unified-fab";
 import { SharedBottomNav, type NavItem } from "@/components/layout/shared-bottom-nav";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
-import { OnboardingTourProvider, AutoTourPrompt } from "@/components/onboarding";
+import { OnboardingTourProvider, AutoTourPrompt, FirstLoginOrchestrator } from "@/components/onboarding";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -416,13 +416,13 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
       {/* AUDIT UX SOTA 2026: Parité mobile/desktop — même pages accessibles, plus de doublons */}
       <SharedBottomNav
         items={[
-          { href: "/tenant/dashboard", label: "Accueil", icon: LayoutDashboard },
-          { href: "/tenant/documents", label: "Documents", icon: FileText },
-          { href: "/tenant/payments", label: "Paiements", icon: CreditCard },
-          { href: "/tenant/requests", label: "Demandes", icon: Wrench },
+          { href: "/tenant/dashboard", label: "Accueil", icon: LayoutDashboard, tourId: "nav-dashboard" },
+          { href: "/tenant/documents", label: "Documents", icon: FileText, tourId: "nav-documents" },
+          { href: "/tenant/payments", label: "Paiements", icon: CreditCard, tourId: "nav-payments" },
+          { href: "/tenant/requests", label: "Demandes", icon: Wrench, tourId: "nav-requests" },
         ]}
         moreItems={[
-          { href: "/tenant/lease", label: "Mon Logement", icon: Home },
+          { href: "/tenant/lease", label: "Mon Logement", icon: Home, tourId: "nav-lease" },
           { href: "/tenant/messages", label: "Messages", icon: MessageSquare },
           { href: "/tenant/applications", label: "Candidatures", icon: FileSearch },
           { href: "/tenant/settings", label: "Mon Profil", icon: Settings },
@@ -443,6 +443,15 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
 
       {/* SOTA 2026 - Tour guidé d'onboarding */}
       <AutoTourPrompt />
+
+      {/* SOTA 2026 - Orchestrateur première connexion (WelcomeModal → Tour) */}
+      {profile?.id && (
+        <FirstLoginOrchestrator
+          profileId={profile.id}
+          role="tenant"
+          userName={profile.prenom || ""}
+        />
+      )}
     </div>
     </TooltipProvider>
     </OnboardingTourProvider>

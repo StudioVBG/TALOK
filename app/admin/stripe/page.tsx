@@ -27,7 +27,7 @@ export default function AdminStripePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Stripe Connect</h1>
-        <p className="text-muted-foreground">Comptes Connect des proprietaires pour les reversements de loyers</p>
+        <p className="text-muted-foreground">Comptes Connect des propriétaires pour les reversements de loyers</p>
       </div>
 
       {/* Stats */}

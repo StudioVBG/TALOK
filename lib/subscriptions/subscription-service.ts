@@ -25,15 +25,72 @@ import type {
 
 async function getOwnerProfileId(userId: string): Promise<string | null> {
   const supabase = createServiceRoleClient();
-  
+
   const { data, error } = await supabase
     .from('profiles')
     .select('id')
     .eq('user_id', userId)
     .single();
-  
+
   if (error || !data) return null;
   return data.id;
+}
+
+/**
+ * Envoi d'un email de notification pour une action admin sur un abonnement.
+ * Résout l'email via profiles puis fallback auth.users, et n'échoue jamais
+ * l'action admin appelante en cas de problème d'envoi (log + Sentry).
+ */
+async function sendAdminActionEmail(
+  profileId: string,
+  targetUserIdForLog: string,
+  tagValue: string,
+  buildTemplate: (recipientName: string) => { subject: string; html: string }
+): Promise<void> {
+  try {
+    const supabase = createServiceRoleClient();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('email, prenom, nom, user_id')
+      .eq('id', profileId)
+      .single();
+
+    let recipientEmail = profile?.email ?? null;
+    if (!recipientEmail && profile?.user_id) {
+      const { data: authUser } = await supabase.auth.admin.getUserById(profile.user_id);
+      recipientEmail = authUser?.user?.email ?? null;
+    }
+
+    if (!recipientEmail) {
+      console.warn(`[adminAction:${tagValue}] No email found for target user`, targetUserIdForLog);
+      return;
+    }
+
+    const recipientName = [profile?.prenom, profile?.nom]
+      .filter(Boolean)
+      .join(' ')
+      .trim() || 'Bonjour';
+
+    const template = buildTemplate(recipientName);
+
+    const { sendEmail } = await import('@/lib/services/email-service');
+    const emailResult = await sendEmail({
+      to: recipientEmail,
+      subject: template.subject,
+      html: template.html,
+      tags: [{ name: 'type', value: tagValue }],
+    });
+
+    if (!emailResult.success) {
+      console.error(`[adminAction:${tagValue}] Email notification failed:`, emailResult.error);
+    }
+  } catch (emailError) {
+    console.error(`[adminAction:${tagValue}] Email notification error:`, emailError);
+    try {
+      const Sentry = await import('@sentry/nextjs');
+      Sentry.captureException(emailError, { tags: { route: `admin.subscriptions.${tagValue}.email` } });
+    } catch {}
+  }
 }
 
 // ============================================
@@ -971,6 +1028,21 @@ export async function adminOverridePlan(
     // Table n'existe peut-être pas
   }
 
+  if (notifyUser) {
+    const { emailTemplates } = await import('@/lib/emails/templates');
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr';
+    const newPlanName = PLANS[newPlanSlug]?.name ?? newPlanSlug;
+
+    await sendAdminActionEmail(profileId, targetUserId, 'plan_override', (recipientName) =>
+      emailTemplates.adminPlanOverride({
+        recipientName,
+        newPlanName,
+        reason,
+        dashboardUrl: `${appUrl}/owner/dashboard`,
+      })
+    );
+  }
+
   return { success: true };
 }
 
@@ -1087,6 +1159,28 @@ export async function adminGiftDays(
     // Table optionnelle
   }
 
+  if (notifyUser) {
+    const { emailTemplates } = await import('@/lib/emails/templates');
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr';
+    const planName = planSlug ? PLANS[planSlug]?.name : undefined;
+    const trialEndDate = trialEnd.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    });
+
+    await sendAdminActionEmail(profileId, targetUserId, 'gift_days', (recipientName) =>
+      emailTemplates.giftDaysNotification({
+        recipientName,
+        days,
+        planName,
+        reason,
+        trialEndDate,
+        dashboardUrl: `${appUrl}/owner/dashboard`,
+      })
+    );
+  }
+
   return { success: true };
 }
 
@@ -1147,6 +1241,19 @@ export async function adminSuspendAccount(
     // Table optionnelle
   }
 
+  if (notifyUser) {
+    const { emailTemplates } = await import('@/lib/emails/templates');
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr';
+
+    await sendAdminActionEmail(profileId, targetUserId, 'suspend', (recipientName) =>
+      emailTemplates.adminAccountSuspended({
+        recipientName,
+        reason,
+        supportUrl: `${appUrl}/support`,
+      })
+    );
+  }
+
   return { success: true };
 }
 
@@ -1205,6 +1312,19 @@ export async function adminUnsuspendAccount(
     });
   } catch {
     // Table optionnelle
+  }
+
+  if (notifyUser) {
+    const { emailTemplates } = await import('@/lib/emails/templates');
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://talok.fr';
+
+    await sendAdminActionEmail(profileId, targetUserId, 'unsuspend', (recipientName) =>
+      emailTemplates.adminAccountReactivated({
+        recipientName,
+        reason,
+        dashboardUrl: `${appUrl}/owner/dashboard`,
+      })
+    );
   }
 
   return { success: true };

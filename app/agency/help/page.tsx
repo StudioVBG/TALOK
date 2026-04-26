@@ -195,7 +195,7 @@ export default function AgencyHelpPage() {
             </div>
           </div>
           <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100">
-            Demander une démo
+            Nous contacter
           </Button>
         </CardContent>
       </Card>

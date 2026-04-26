@@ -3,19 +3,13 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import {
-  ChevronRight,
-  Wrench,
-  User,
-  MessageSquare,
-  Hammer,
-} from "lucide-react";
+import { ChevronRight, Wrench, User, MessageSquare, Hammer, MapPin } from "lucide-react";
 
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { cn } from "@/lib/utils";
+import { getWorkOrderStatusLabel } from "@/lib/tickets/statuses";
 import { TicketStatusBadge } from "./ticket-status-badge";
 import { PriorityBadge } from "./priority-badge";
 
@@ -32,13 +26,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   autre: "Autre",
 };
 
-const WORK_ORDER_STATUS_LABELS: Record<string, string> = {
-  assigned: "Assigné",
-  scheduled: "Planifié",
-  done: "Terminé",
-  cancelled: "Annulé",
-};
-
 interface WorkOrder {
   id: string;
   statut: string;
@@ -50,6 +37,7 @@ interface WorkOrder {
 
 interface Ticket {
   id: string;
+  reference?: string | null;
   titre: string;
   description: string;
   statut: string;
@@ -59,7 +47,7 @@ interface Ticket {
   lease_id?: string | null;
   property_id?: string | null;
   assigned_to?: string | null;
-  property?: { adresse_complete: string };
+  property?: { id?: string; adresse_complete: string } | null;
   lease?: { id: string; date_debut: string; date_fin?: string; statut: string } | null;
   creator?: { nom: string; prenom: string };
   assignee?: { nom: string; prenom: string } | null;
@@ -82,6 +70,12 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
       : variant === "tenant"
         ? "/tenant/requests"
         : "/provider/tickets";
+
+  const propertyBasePath =
+    variant === "owner" ? "/owner/properties" : null;
+
+  const providerBasePath =
+    variant === "owner" ? "/owner/providers" : null;
 
   if (tickets.length === 0) {
     return (
@@ -108,19 +102,36 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
           ticket.ticket_comments?.length ||
           ticket.messages?.[0]?.count ||
           0;
+        const detailHref = `${basePath}/${ticket.id}`;
+        const propertyId = ticket.property?.id ?? ticket.property_id ?? null;
+        const propertyHref =
+          propertyBasePath && propertyId
+            ? `${propertyBasePath}/${propertyId}`
+            : null;
+        const providerId = activeWorkOrder?.provider?.id ?? null;
+        const providerHref =
+          providerBasePath && providerId
+            ? `${providerBasePath}/${providerId}`
+            : null;
+        const commentsHref = `${detailHref}#comments`;
 
         return (
           <Card
             key={ticket.id}
-            className="group relative overflow-hidden transition-all hover:shadow-md"
+            className="group relative overflow-hidden transition-all hover:shadow-md hover:border-blue-400"
           >
             <div className="p-5 flex flex-col sm:flex-row gap-4">
               {/* Status indicator */}
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-border group-hover:bg-blue-500 transition-colors" />
 
               <div className="flex-1 space-y-1">
-                {/* Priority + Category + Date */}
+                {/* Reference + Priority + Category + Date */}
                 <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  {ticket.reference && (
+                    <span className="font-mono text-[11px] font-bold text-muted-foreground tracking-wide">
+                      {ticket.reference}
+                    </span>
+                  )}
                   <PriorityBadge priority={ticket.priorite} size="sm" />
                   {ticket.category && (
                     <Badge variant="secondary" className="text-[10px] py-0 capitalize">
@@ -150,9 +161,20 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
                 {/* Meta */}
                 <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground flex-wrap">
                   {ticket.property && (
-                    <span className="flex items-center gap-1">
-                      {ticket.property.adresse_complete}
-                    </span>
+                    propertyHref ? (
+                      <Link
+                        href={propertyHref}
+                        className="relative z-10 inline-flex items-center gap-1 hover:text-blue-600 hover:underline dark:hover:text-blue-400"
+                      >
+                        <MapPin className="h-3 w-3" />
+                        {ticket.property.adresse_complete}
+                      </Link>
+                    ) : (
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {ticket.property.adresse_complete}
+                      </span>
+                    )
                   )}
                   {ticket.lease && (
                     <Badge
@@ -164,53 +186,91 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
                     </Badge>
                   )}
                   {commentCount > 0 && (
-                    <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium">
+                    <Link
+                      href={commentsHref}
+                      className="relative z-10 flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium hover:underline"
+                    >
                       <MessageSquare className="h-3 w-3" />
                       {commentCount}
-                    </span>
+                    </Link>
                   )}
                 </div>
 
                 {/* Assigned provider */}
                 {activeWorkOrder && activeWorkOrder.provider && (
-                  <div className="mt-3 p-2.5 rounded-lg bg-indigo-50/80 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/50 flex items-center gap-3">
-                    <div className="h-7 w-7 rounded-full bg-indigo-100 dark:bg-indigo-800/50 flex items-center justify-center flex-shrink-0">
-                      <User className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300 truncate">
-                        {activeWorkOrder.provider.prenom}{" "}
-                        {activeWorkOrder.provider.nom}
-                      </p>
-                      <div className="flex items-center gap-2 text-[10px] text-indigo-500 dark:text-indigo-400/70">
-                        <span>
-                          {WORK_ORDER_STATUS_LABELS[activeWorkOrder.statut] ||
-                            activeWorkOrder.statut}
-                        </span>
-                        {activeWorkOrder.date_intervention_prevue && (
-                          <>
-                            <span>•</span>
-                            <span>
-                              Prévu le{" "}
-                              {format(
-                                new Date(activeWorkOrder.date_intervention_prevue),
-                                "d MMM",
-                                { locale: fr }
-                              )}
-                            </span>
-                          </>
-                        )}
+                  providerHref ? (
+                    <Link
+                      href={providerHref}
+                      className="relative z-10 mt-3 p-2.5 rounded-lg bg-indigo-50/80 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/50 flex items-center gap-3 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors"
+                    >
+                      <div className="h-7 w-7 rounded-full bg-indigo-100 dark:bg-indigo-800/50 flex items-center justify-center flex-shrink-0">
+                        <User className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300 truncate">
+                          {activeWorkOrder.provider.prenom}{" "}
+                          {activeWorkOrder.provider.nom}
+                        </p>
+                        <div className="flex items-center gap-2 text-[10px] text-indigo-500 dark:text-indigo-400/70">
+                          <span>
+                            {getWorkOrderStatusLabel(activeWorkOrder.statut)}
+                          </span>
+                          {activeWorkOrder.date_intervention_prevue && (
+                            <>
+                              <span>•</span>
+                              <span>
+                                Prévu le{" "}
+                                {format(
+                                  new Date(activeWorkOrder.date_intervention_prevue),
+                                  "d MMM",
+                                  { locale: fr }
+                                )}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <Wrench className="h-3.5 w-3.5 text-indigo-400 dark:text-indigo-500 flex-shrink-0" />
+                    </Link>
+                  ) : (
+                    <div className="mt-3 p-2.5 rounded-lg bg-indigo-50/80 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/50 flex items-center gap-3">
+                      <div className="h-7 w-7 rounded-full bg-indigo-100 dark:bg-indigo-800/50 flex items-center justify-center flex-shrink-0">
+                        <User className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300 truncate">
+                          {activeWorkOrder.provider.prenom}{" "}
+                          {activeWorkOrder.provider.nom}
+                        </p>
+                        <div className="flex items-center gap-2 text-[10px] text-indigo-500 dark:text-indigo-400/70">
+                          <span>
+                            {getWorkOrderStatusLabel(activeWorkOrder.statut)}
+                          </span>
+                          {activeWorkOrder.date_intervention_prevue && (
+                            <>
+                              <span>•</span>
+                              <span>
+                                Prévu le{" "}
+                                {format(
+                                  new Date(activeWorkOrder.date_intervention_prevue),
+                                  "d MMM",
+                                  { locale: fr }
+                                )}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <Wrench className="h-3.5 w-3.5 text-indigo-400 dark:text-indigo-500 flex-shrink-0" />
                     </div>
-                    <Wrench className="h-3.5 w-3.5 text-indigo-400 dark:text-indigo-500 flex-shrink-0" />
-                  </div>
+                  )
                 )}
               </div>
 
               {/* Right: status + action */}
               <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-4 pl-4 border-l-0 sm:border-l border-border">
                 <TicketStatusBadge status={ticket.statut} />
-                <div className="flex flex-col gap-1.5 items-stretch">
+                <div className="flex flex-col items-stretch gap-1.5">
                   {variant === "owner" &&
                     !activeWorkOrder &&
                     !CLOSED_TICKET_STATUSES.has(ticket.statut) && (
@@ -218,7 +278,7 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
                         variant="outline"
                         size="sm"
                         asChild
-                        className="gap-1.5"
+                        className="relative z-10 gap-1.5"
                       >
                         <Link
                           href={`/owner/work-orders/create?ticket_id=${ticket.id}${
@@ -232,19 +292,22 @@ export function TicketListUnified({ tickets, variant }: TicketListProps) {
                         </Link>
                       </Button>
                     )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    asChild
-                    className="gap-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400"
-                  >
-                    <Link href={`${basePath}/${ticket.id}`}>
-                      Voir <ChevronRight className="h-4 w-4" />
-                    </Link>
-                  </Button>
+                  <span className="inline-flex items-center justify-end gap-1 text-sm font-medium text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform">
+                    Voir <ChevronRight className="h-4 w-4" />
+                  </span>
                 </div>
               </div>
             </div>
+
+            {/* Stretched overlay link — last in DOM so it floats above static content
+                but inner Links with `relative z-10` still receive their clicks. */}
+            <Link
+              href={detailHref}
+              aria-label={`Voir le ticket ${ticket.reference || ticket.titre}`}
+              className="absolute inset-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-2xl"
+            >
+              <span className="sr-only">Voir le ticket</span>
+            </Link>
           </Card>
         );
       })}

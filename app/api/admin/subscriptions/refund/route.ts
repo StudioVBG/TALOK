@@ -19,7 +19,7 @@ import { z } from "zod";
 import { stripe, isStripeServerConfigured } from "@/lib/stripe";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { requireAdminPermissions, isAdminAuthError } from "@/lib/middleware/admin-rbac";
-import { validateCsrfFromRequest } from "@/lib/security/csrf";
+import { validateCsrfFromRequestDetailed, logCsrfFailure } from "@/lib/security/csrf";
 
 const refundSchema = z
   .object({
@@ -43,13 +43,10 @@ export async function POST(request: Request) {
       );
     }
 
-    try {
-      const csrfValid = await validateCsrfFromRequest(request);
-      if (!csrfValid) {
-        return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
-      }
-    } catch {
-      // CSRF_SECRET non configuré — on n'échoue pas
+    const csrf = await validateCsrfFromRequestDetailed(request);
+    if (!csrf.valid) {
+      await logCsrfFailure(request, csrf.reason!, "admin.subscriptions.refund");
+      return NextResponse.json({ error: "Token CSRF invalide" }, { status: 403 });
     }
 
     const auth = await requireAdminPermissions(request, ["admin.subscriptions.write"], {

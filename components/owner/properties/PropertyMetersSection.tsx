@@ -310,24 +310,24 @@ export function PropertyMetersSection({ propertyId, className }: PropertyMetersS
   return (
     <Card className={cn("", className)}>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex flex-col gap-3">
+          <div className="min-w-0">
             <CardTitle className="flex items-center gap-2">
-              <Zap className="w-5 h-5 text-yellow-500" />
-              Compteurs
+              <Zap className="w-5 h-5 text-yellow-500 shrink-0" />
+              <span className="truncate">Compteurs</span>
             </CardTitle>
             <CardDescription>
               Gérez les compteurs d'énergie du logement
             </CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => router.push(`/owner/properties/${propertyId}/meters`)}
             >
               <Wifi className="w-4 h-4 mr-1" />
-              Compteurs connectes
+              Compteurs connectés
             </Button>
             <Button onClick={handleOpenAdd} size="sm">
               <Plus className="w-4 h-4 mr-1" />

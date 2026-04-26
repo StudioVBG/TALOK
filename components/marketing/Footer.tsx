@@ -18,7 +18,8 @@ const columns = [
       { label: "Propriétaires", href: "/solutions/proprietaires-particuliers" },
       { label: "Investisseurs", href: "/solutions/investisseurs" },
       { label: "Agences", href: "/solutions/administrateurs-biens" },
-      { label: "France d\u2019outre-mer", href: "/solutions/dom-tom" },
+      { label: "France d\u2019outre-mer", href: "/solutions/outre-mer" },
+      { label: "Syndics", href: "/solutions/syndics" },
     ],
   },
   {
@@ -28,7 +29,10 @@ const columns = [
       { label: "Guides", href: "/guides" },
       { label: "FAQ", href: "/faq" },
       { label: "Témoignages", href: "/temoignages" },
-      { label: "Outils gratuits", href: "/outils/calcul-rendement-locatif" },
+      { label: "Outils gratuits", href: "/outils" },
+      { label: "Calculateur d’économies", href: "/calculateur-roi" },
+      { label: "Presse", href: "/presse" },
+      { label: "Statut", href: "/statut" },
     ],
   },
   {
@@ -37,7 +41,9 @@ const columns = [
       { label: "CGU", href: "/legal/cgu" },
       { label: "CGV", href: "/legal/cgv" },
       { label: "Confidentialité", href: "/legal/privacy" },
+      { label: "Cookies", href: "/legal/cookies" },
       { label: "Mentions légales", href: "/legal/mentions" },
+      { label: "Accessibilité", href: "/accessibilite" },
     ],
   },
 ]

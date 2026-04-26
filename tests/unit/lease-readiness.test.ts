@@ -212,6 +212,67 @@ describe("deriveLeaseReadinessState", () => {
     expect(state.nextAction.key).toBe("activate_lease");
   });
 
+  it("traite un EDL 'completed' avec 2/2 signatures comme signé (filet seal échoué)", () => {
+    const state = deriveLeaseReadinessState(
+      buildInput({
+        lease: {
+          id: "lease-1",
+          statut: "fully_signed",
+          has_signed_edl: true,
+        },
+        edl: {
+          id: "edl-1",
+          status: "completed",
+          signatures_count: 2,
+        },
+        invoices: [
+          {
+            id: "inv-1",
+            montant_total: 1200,
+            statut: "sent",
+            created_at: "2026-01-01T00:00:00.000Z",
+            metadata: { type: "initial_invoice" },
+          },
+        ],
+      })
+    );
+
+    expect(state.edlState.status).toBe("signed");
+    expect(state.documentState.edl).toBe("available");
+    expect(state.blockingReasons).not.toContain(
+      "L'état des lieux d'entrée n'est pas encore signé."
+    );
+  });
+
+  it("reste 'awaiting_signature' pour un EDL 'completed' avec <2 signatures", () => {
+    const state = deriveLeaseReadinessState(
+      buildInput({
+        lease: {
+          id: "lease-1",
+          statut: "fully_signed",
+          has_signed_edl: false,
+        },
+        edl: {
+          id: "edl-1",
+          status: "completed",
+          signatures_count: 1,
+        },
+        invoices: [
+          {
+            id: "inv-1",
+            montant_total: 1200,
+            statut: "sent",
+            created_at: "2026-01-01T00:00:00.000Z",
+            metadata: { type: "initial_invoice" },
+          },
+        ],
+      })
+    );
+
+    expect(state.edlState.status).toBe("awaiting_signature");
+    expect(state.edlState.label).toBe("Signature EDL requise");
+  });
+
   it("retourne active_stable quand le bail est actif et complet", () => {
     const state = deriveLeaseReadinessState(
       buildInput({

@@ -39,8 +39,8 @@ export async function POST(request: Request) {
       .eq("user_id", user.id)
       .single();
 
-    if (!profile || profile.role !== "admin") {
-      throw new ApiError(403, "Seuls les administrateurs peuvent valider les écritures");
+    if (!profile || (profile.role !== "admin" && profile.role !== "owner")) {
+      throw new ApiError(403, "Non autorisé");
     }
 
     // Feature gate: check subscription plan
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     // Fetch all entries to determine which mode to use
     const { data: entries, error: fetchError } = await supabase
       .from("accounting_entries")
-      .select("id, ecriture_num, entry_number, valid_date, is_validated, journal_code, debit, credit, entity_id")
+      .select("id, ecriture_num, entry_number, valid_date, is_validated, journal_code, debit, credit, entity_id, owner_id")
       .in("id", entry_ids);
 
     if (fetchError) {
@@ -69,6 +69,31 @@ export async function POST(request: Request) {
 
     if (!entries || entries.length !== entry_ids.length) {
       throw new ApiError(400, "Certaines écritures n'existent pas");
+    }
+
+    // Ownership scoping for non-admin. Engine-posted entries have owner_id=NULL
+    // and scope via entity_id → legal_entities.owner_profile_id, while legacy
+    // flat entries scope via owner_id directly.
+    if (profile.role !== "admin") {
+      const entityIds = Array.from(
+        new Set(entries.map(e => e.entity_id).filter(Boolean) as string[]),
+      );
+      let ownedEntityIds = new Set<string>();
+      if (entityIds.length > 0) {
+        const { data: owned } = await supabase
+          .from("legal_entities")
+          .select("id")
+          .in("id", entityIds)
+          .eq("owner_profile_id", profile.id);
+        ownedEntityIds = new Set((owned ?? []).map(e => e.id as string));
+      }
+      const unauthorized = entries.filter(e => {
+        if (e.entity_id) return !ownedEntityIds.has(e.entity_id as string);
+        return e.owner_id !== profile.id;
+      });
+      if (unauthorized.length > 0) {
+        throw new ApiError(403, "Accès refusé à certaines écritures");
+      }
     }
 
     // Separate entries into double-entry (have entity_id) and legacy

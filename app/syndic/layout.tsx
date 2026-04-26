@@ -12,11 +12,13 @@ import { createClient } from "@/lib/supabase/server";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
 import { checkIdentityGate } from "@/lib/helpers/identity-gate";
+import { PhoneVerificationBanner } from "@/components/identity/PhoneVerificationBanner";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { SyndicPlanBanner } from "@/components/syndic/SyndicPlanBanner";
 import { SyndicOnboardingWrapper } from "@/components/syndic/SyndicOnboardingWrapper";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
 import Link from "next/link";
 import {
@@ -90,6 +92,7 @@ export default async function SyndicLayout({
   return (
     <ErrorBoundary>
       <CsrfTokenInjector />
+      <PhoneVerificationBanner identityStatus={profile.identity_status} pathname={pathname} />
       <SyndicOnboardingWrapper profileId={profile.id} userName={userName}>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/30 to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-cyan-950/30">
         {/* Offline indicator - visible when device loses connectivity */}
@@ -142,8 +145,8 @@ export default async function SyndicLayout({
               ))}
             </nav>
 
-            {/* Footer avec profil */}
-            <div className="flex-shrink-0 p-4 border-t border-border/50">
+            {/* Footer avec profil et déconnexion */}
+            <div className="flex-shrink-0 p-4 border-t border-border/50 space-y-3">
               <div className="flex items-center gap-3">
                 <div
                   className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center text-white text-sm font-semibold"
@@ -161,6 +164,7 @@ export default async function SyndicLayout({
                   </p>
                 </div>
               </div>
+              <SignOutButton />
             </div>
           </div>
         </aside>
@@ -185,6 +189,7 @@ export default async function SyndicLayout({
               >
                 <Bell className="w-5 h-5" aria-hidden="true" />
               </button>
+              <SignOutButton variant="mobile-icon" />
             </div>
           </div>
         </div>

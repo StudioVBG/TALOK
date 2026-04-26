@@ -14,6 +14,12 @@ import {
   visitBookingCancelled as visitBookingCancelledTemplate,
   visitFeedbackRequest as visitFeedbackRequestTemplate,
   initialInvoiceEmail as initialInvoiceEmailTemplate,
+  tenantServiceBooked as tenantServiceBookedTemplate,
+  tenantServiceApprovalRequested as tenantServiceApprovalRequestedTemplate,
+  tenantServiceRejected as tenantServiceRejectedTemplate,
+  workOrderAssignedToProvider as workOrderAssignedToProviderTemplate,
+  ticketPartiesCommunesToSyndic as ticketPartiesCommunesToSyndicTemplate,
+  workOrderPaymentReceived as workOrderPaymentReceivedTemplate,
 } from "../_shared/email-templates.ts";
 import { normalizePhoneE164, maskPhone } from "../_shared/phone.ts";
 
@@ -330,6 +336,269 @@ async function processEvent(supabase: any, event: any) {
           message: "Vous avez reçu une réponse sur votre demande de maintenance.",
           metadata: { ticket_id: payload.ticket_id, message_id: payload.message_id },
         });
+      }
+      break;
+    }
+
+    // Ticket sur les parties communes routé vers le syndic
+    case "Ticket.OpenedPartiesCommunes": {
+      const recipient = payload.recipient_user_id || payload.syndic_user_id;
+      if (recipient) {
+        const refSuffix = payload.ticket_reference ? ` (${payload.ticket_reference})` : "";
+        await sendNotification(supabase, {
+          type: "ticket_parties_communes",
+          user_id: recipient,
+          title: "Signalement parties communes",
+          message: `Un locataire a signalé un incident sur les parties communes : ${payload.title || "sans titre"}${refSuffix}`,
+          metadata: {
+            ticket_id: payload.ticket_id,
+            entity_id: payload.entity_id,
+            category: payload.category,
+          },
+        });
+
+        const recipientInfo = await resolveEmailRecipient(supabase, recipient);
+        if (recipientInfo) {
+          const html = ticketPartiesCommunesToSyndicTemplate({
+            syndicName: recipientInfo.name,
+            reference: payload.ticket_reference ?? null,
+            title: payload.title || "Signalement",
+            priority: payload.priority ?? null,
+            ticketId: payload.ticket_id,
+          });
+          await sendOutboxEmail({
+            to: recipientInfo.email,
+            subject: `Signalement parties communes${refSuffix}`,
+            html,
+            tags: [{ name: "type", value: "ticket_parties_communes" }],
+          });
+        }
+      }
+      break;
+    }
+
+    // Réservation self-service locataire → prestataire, pas de validation owner requise
+    case "TenantService.Booked": {
+      const recipient = payload.recipient_user_id;
+      if (recipient) {
+        const refSuffix = payload.ticket_reference ? ` (${payload.ticket_reference})` : "";
+        await sendNotification(supabase, {
+          type: "tenant_service_booked",
+          user_id: recipient,
+          title: "Votre locataire a réservé un service",
+          message: `${payload.provider_company || "Un prestataire"} a été sollicité pour : ${payload.title || "service"}${refSuffix}`,
+          metadata: {
+            ticket_id: payload.ticket_id,
+            work_order_id: payload.work_order_id,
+            category: payload.category,
+          },
+        });
+
+        const recipientInfo = await resolveEmailRecipient(supabase, recipient);
+        if (recipientInfo) {
+          const html = tenantServiceBookedTemplate({
+            ownerName: recipientInfo.name,
+            tenantName: payload.tenant_name || "Votre locataire",
+            reference: payload.ticket_reference ?? null,
+            title: payload.title || "Service",
+            category: payload.category ?? null,
+            providerCompany: payload.provider_company ?? null,
+            preferredDate: payload.preferred_date ?? null,
+            ticketId: payload.ticket_id,
+          });
+          await sendOutboxEmail({
+            to: recipientInfo.email,
+            subject: `Votre locataire a réservé ${payload.provider_company || "un prestataire"}`,
+            html,
+            tags: [{ name: "type", value: "tenant_service_booked" }],
+          });
+        }
+      }
+      break;
+    }
+
+    // Réservation self-service en attente de validation propriétaire
+    case "TenantService.ApprovalRequested": {
+      const recipient = payload.recipient_user_id;
+      if (recipient) {
+        const refSuffix = payload.ticket_reference ? ` (${payload.ticket_reference})` : "";
+        await sendNotification(supabase, {
+          type: "tenant_service_approval_required",
+          user_id: recipient,
+          title: "Réservation à valider",
+          message: `Votre locataire souhaite réserver ${payload.provider_company || "un prestataire"} pour : ${payload.title || "service"}${refSuffix}`,
+          metadata: {
+            ticket_id: payload.ticket_id,
+            work_order_id: payload.work_order_id,
+            category: payload.category,
+            action: "approval_required",
+            action_url: "/owner/approvals",
+          },
+        });
+
+        const recipientInfo = await resolveEmailRecipient(supabase, recipient);
+        if (recipientInfo) {
+          const html = tenantServiceApprovalRequestedTemplate({
+            ownerName: recipientInfo.name,
+            tenantName: payload.tenant_name || "Votre locataire",
+            reference: payload.ticket_reference ?? null,
+            title: payload.title || "Service",
+            category: payload.category ?? null,
+            providerCompany: payload.provider_company ?? null,
+            preferredDate: payload.preferred_date ?? null,
+          });
+          await sendOutboxEmail({
+            to: recipientInfo.email,
+            subject: `Action requise : validation d'une réservation${refSuffix}`,
+            html,
+            tags: [{ name: "type", value: "tenant_service_approval_required" }],
+          });
+        }
+      }
+      break;
+    }
+
+    // Propriétaire a refusé la réservation
+    case "TenantService.Rejected": {
+      const recipient = payload.recipient_user_id;
+      if (recipient) {
+        const refSuffix = payload.ticket_reference ? ` (${payload.ticket_reference})` : "";
+        const reasonSuffix = payload.reason ? ` : « ${payload.reason} »` : ".";
+        await sendNotification(supabase, {
+          type: "tenant_service_rejected",
+          user_id: recipient,
+          title: "Réservation refusée",
+          message: `Votre propriétaire a refusé la réservation${refSuffix}${reasonSuffix}`,
+          metadata: {
+            ticket_id: payload.ticket_id,
+            work_order_id: payload.work_order_id,
+            reason: payload.reason,
+          },
+        });
+
+        const recipientInfo = await resolveEmailRecipient(supabase, recipient);
+        if (recipientInfo) {
+          const html = tenantServiceRejectedTemplate({
+            tenantName: recipientInfo.name,
+            reference: payload.ticket_reference ?? null,
+            title: payload.title || "votre réservation",
+            reason: payload.reason ?? null,
+          });
+          await sendOutboxEmail({
+            to: recipientInfo.email,
+            subject: `Votre réservation a été refusée${refSuffix}`,
+            html,
+            tags: [{ name: "type", value: "tenant_service_rejected" }],
+          });
+        }
+      }
+      break;
+    }
+
+    // Work order assigné à un prestataire (post self-service ou post validation owner)
+    case "WorkOrder.AssignedToProvider": {
+      const recipient = payload.recipient_user_id;
+      if (recipient) {
+        const refSuffix = payload.ticket_reference ? ` (${payload.ticket_reference})` : "";
+        const dateSuffix = payload.preferred_date
+          ? ` — souhaité le ${payload.preferred_date}`
+          : "";
+        await sendNotification(supabase, {
+          type: "work_order_assigned",
+          user_id: recipient,
+          title: "Nouvelle mission",
+          message: `${payload.title || "Mission"}${refSuffix}${dateSuffix}`,
+          metadata: {
+            ticket_id: payload.ticket_id,
+            work_order_id: payload.work_order_id,
+            action_url: `/provider/tickets`,
+          },
+        });
+        // SMS non-bloquant pour signaler la mission
+        try {
+          await sendSmsNotification(
+            supabase,
+            recipient,
+            `Talok : nouvelle mission assignée${refSuffix}. Connectez-vous pour répondre.`
+          );
+        } catch {
+          /* non-blocking */
+        }
+
+        const recipientInfo = await resolveEmailRecipient(supabase, recipient);
+        if (recipientInfo) {
+          const html = workOrderAssignedToProviderTemplate({
+            providerName: recipientInfo.name,
+            reference: payload.ticket_reference ?? null,
+            title: payload.title || "Mission",
+            category: payload.category ?? null,
+            preferredDate: payload.preferred_date ?? null,
+            workOrderId: payload.work_order_id,
+          });
+          await sendOutboxEmail({
+            to: recipientInfo.email,
+            subject: `Nouvelle mission${refSuffix}`,
+            html,
+            tags: [{ name: "type", value: "work_order_assigned" }],
+          });
+        }
+      }
+      break;
+    }
+
+    // Paiement reçu côté prestataire (Stripe Connect a transféré les fonds)
+    case "WorkOrder.PaymentReceived": {
+      const recipient = payload.recipient_user_id;
+      if (recipient) {
+        const amountCents = Number(payload.amount_cents || 0);
+        const amountEuros = (amountCents / 100).toFixed(2);
+        const paymentType = payload.payment_type || "full";
+        const label =
+          paymentType === "deposit"
+            ? "acompte"
+            : paymentType === "balance"
+              ? "solde"
+              : "paiement";
+
+        await sendNotification(supabase, {
+          type: "work_order_payment_received",
+          user_id: recipient,
+          title: "Paiement reçu",
+          message: `Le ${label} de ${amountEuros} € a été versé sur votre compte.`,
+          metadata: {
+            work_order_id: payload.work_order_id,
+            payment_type: paymentType,
+            amount_cents: amountCents,
+          },
+        });
+
+        // SMS non-bloquant : le prestataire est souvent sur le terrain
+        try {
+          await sendSmsNotification(
+            supabase,
+            recipient,
+            `Talok : ${amountEuros}€ versés sur votre compte. Détails dans votre espace.`
+          );
+        } catch {
+          /* non-blocking */
+        }
+
+        const recipientInfo = await resolveEmailRecipient(supabase, recipient);
+        if (recipientInfo) {
+          const html = workOrderPaymentReceivedTemplate({
+            providerName: recipientInfo.name,
+            amountEuros,
+            paymentType: paymentType as "deposit" | "balance" | "full",
+            workOrderId: payload.work_order_id,
+            ticketReference: payload.ticket_reference ?? null,
+          });
+          await sendOutboxEmail({
+            to: recipientInfo.email,
+            subject: `Paiement de ${amountEuros} € reçu`,
+            html,
+            tags: [{ name: "type", value: "work_order_payment_received" }],
+          });
+        }
       }
       break;
     }
@@ -1264,6 +1533,42 @@ async function sendSignatureEmail(supabase: any, params: {
     }
   } catch (error) {
     console.error(`[Email] Erreur envoi:`, error);
+  }
+}
+
+/**
+ * Résout l'email + prénom d'un user_id pour l'envoi d'email transactionnel.
+ * Honore la préférence notification_settings.email_enabled.
+ * Retourne null si l'email ne peut pas être envoyé.
+ */
+async function resolveEmailRecipient(
+  supabase: any,
+  userId: string
+): Promise<{ email: string; name: string } | null> {
+  try {
+    const { data: settings } = await supabase
+      .from("notification_settings")
+      .select("email_enabled")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (settings?.email_enabled === false) return null;
+
+    const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+    const email = authUser?.user?.email;
+    if (!email) return null;
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("prenom, nom")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const name =
+      profile?.prenom || profile?.nom || email.split("@")[0];
+    return { email, name };
+  } catch (error) {
+    console.error(`[Email] resolveEmailRecipient failed for ${userId}:`, error);
+    return null;
   }
 }
 

@@ -29,6 +29,8 @@ export interface NavItem {
   label: string;
   icon: LucideIcon;
   badge?: string | number;
+  /** ID propagé en `data-tour` pour cibler cet élément depuis le tour guidé. */
+  tourId?: string;
 }
 
 interface SharedBottomNavProps {
@@ -118,6 +120,7 @@ export function SharedBottomNav({
                 <Link
                   key={item.href}
                   href={item.href}
+                  data-tour={item.tourId}
                   className={cn(
                     "flex flex-col items-center justify-center",
                     "gap-0.5 xs:gap-1",
@@ -205,6 +208,7 @@ export function SharedBottomNav({
                   <Link
                     key={item.href}
                     href={item.href}
+                    data-tour={item.tourId}
                     onClick={() => setMoreOpen(false)}
                     className={cn(
                       "flex flex-col items-center justify-center gap-2",

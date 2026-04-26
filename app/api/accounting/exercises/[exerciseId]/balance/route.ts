@@ -9,6 +9,8 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { requireAccountingAccess } from "@/lib/accounting/feature-gates";
 import { getBalance } from "@/lib/accounting/engine";
+import { renderBalancePdf } from "@/lib/accounting/exports/pdf";
+import { buildBalanceWorkbook } from "@/lib/accounting/exports/xlsx";
 
 export const dynamic = "force-dynamic";
 
@@ -48,12 +50,62 @@ export async function GET(
 
     const { searchParams } = new URL(request.url);
     const entityId = searchParams.get("entityId");
+    const format = (searchParams.get("format") ?? "json") as "json" | "pdf" | "xlsx";
 
     if (!entityId) {
       throw new ApiError(400, "entityId est requis");
     }
 
+    // Ownership enforcement — service client bypasses RLS.
+    if (profile.role !== "admin") {
+      const { data: entity } = await serviceClient
+        .from("legal_entities")
+        .select("id")
+        .eq("id", entityId)
+        .eq("owner_profile_id", profile.id)
+        .maybeSingle();
+      if (!entity) throw new ApiError(403, "Accès refusé à cette entité");
+    }
+
     const balance = await getBalance(serviceClient, entityId, exerciseId);
+
+    if (format === "pdf" || format === "xlsx") {
+      const [{ data: exercise }, { data: entity }] = await Promise.all([
+        serviceClient
+          .from("accounting_exercises")
+          .select("start_date, end_date")
+          .eq("id", exerciseId)
+          .maybeSingle(),
+        serviceClient
+          .from("legal_entities")
+          .select("nom")
+          .eq("id", entityId)
+          .maybeSingle(),
+      ]);
+
+      if (format === "pdf") {
+        const pdf = await renderBalancePdf(balance, {
+          entityName: entity?.nom ?? "",
+          startDate: exercise?.start_date ?? "",
+          endDate: exercise?.end_date ?? "",
+        });
+        return new Response(pdf, {
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `attachment; filename="balance_${exerciseId}.pdf"`,
+          },
+        });
+      }
+
+      const xlsx = await buildBalanceWorkbook(balance);
+      return new Response(xlsx, {
+        headers: {
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="balance_${exerciseId}.xlsx"`,
+        },
+      });
+    }
 
     return NextResponse.json({ success: true, data: { balance } });
   } catch (error) {

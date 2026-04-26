@@ -168,9 +168,11 @@ export default function CoproTicketsPage() {
             Suivez les incidents et demandes de votre copropriété
           </p>
         </div>
-        <Button className="bg-gradient-to-r from-indigo-600 to-purple-600">
-          <Plus className="mr-2 h-4 w-4" />
-          Nouveau signalement
+        <Button asChild className="bg-gradient-to-r from-indigo-600 to-purple-600">
+          <Link href="/copro/tickets/new">
+            <Plus className="mr-2 h-4 w-4" />
+            Nouveau signalement
+          </Link>
         </Button>
       </motion.div>
 
@@ -256,9 +258,17 @@ export default function CoproTicketsPage() {
               <h3 className="text-lg font-semibold mb-2">Aucun signalement</h3>
               <p className="text-muted-foreground mb-6">
                 {tickets.length === 0
-                  ? "Aucun signalement n'a été créé."
+                  ? "Signalez un incident sur les parties communes pour alerter votre syndic."
                   : "Aucun résultat ne correspond à vos critères."}
               </p>
+              {tickets.length === 0 && (
+                <Button asChild className="bg-gradient-to-r from-indigo-600 to-purple-600">
+                  <Link href="/copro/tickets/new">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Nouveau signalement
+                  </Link>
+                </Button>
+              )}
             </CardContent>
           </Card>
         </motion.div>

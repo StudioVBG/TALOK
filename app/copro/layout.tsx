@@ -14,6 +14,7 @@ import { getSecondaryRoleManifest } from "@/lib/navigation/secondary-role-manife
 import { ErrorBoundary } from "@/components/error-boundary";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 import Link from "next/link";
 import {
   Building2, Euro, FileText, Calendar,
@@ -132,8 +133,8 @@ export default async function CoproLayout({
                 </div>
               )}
 
-              {/* Footer avec profil */}
-              <div className="flex-shrink-0 p-4 border-t border-border/50">
+              {/* Footer avec profil et déconnexion */}
+              <div className="flex-shrink-0 p-4 border-t border-border/50 space-y-3">
                 <div className="flex items-center gap-3">
                   <div
                     className="w-9 h-9 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center text-white text-sm font-semibold"
@@ -151,6 +152,7 @@ export default async function CoproLayout({
                     </p>
                   </div>
                 </div>
+                <SignOutButton />
               </div>
             </div>
           </aside>
@@ -167,13 +169,16 @@ export default async function CoproLayout({
                 </div>
                 <span className="font-semibold text-foreground">Mon espace</span>
               </div>
-              <button
-                type="button"
-                className="p-2 text-muted-foreground hover:text-foreground"
-                aria-label="Notifications"
-              >
-                <Bell className="w-5 h-5" aria-hidden="true" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  className="p-2 text-muted-foreground hover:text-foreground"
+                  aria-label="Notifications"
+                >
+                  <Bell className="w-5 h-5" aria-hidden="true" />
+                </button>
+                <SignOutButton variant="mobile-icon" />
+              </div>
             </div>
           </div>
 

@@ -14,11 +14,14 @@ import {
   getPasswordResetCookieOptions,
   validatePasswordResetRequestForCallback,
 } from "@/lib/auth/password-recovery.service";
+import { sendWelcomeEmail } from "@/lib/services/email-service";
 
 interface ProfilePartial {
   id?: string;
   role?: string;
   onboarding_completed_at?: string | null;
+  prenom?: string | null;
+  nom?: string | null;
 }
 
 function isValidRole(role: string | undefined | null): role is PublicRole {
@@ -27,6 +30,23 @@ function isValidRole(role: string | undefined | null): role is PublicRole {
 
 function isSafeRelativePath(path: string | null | undefined): path is string {
   return !!path && path.startsWith("/") && !path.startsWith("//");
+}
+
+function fireWelcomeEmail(params: {
+  userEmail: string | null | undefined;
+  prenom: string | null | undefined;
+  role: PublicRole;
+}): void {
+  if (!params.userEmail) return;
+  const userName = (params.prenom || params.userEmail.split("@")[0] || "").trim();
+  // Idempotent côté Resend grâce à idempotencyKey: welcome/<email>.
+  sendWelcomeEmail({
+    userEmail: params.userEmail,
+    userName,
+    role: params.role,
+  }).catch((err) => {
+    console.error("[auth/callback] sendWelcomeEmail failed:", err);
+  });
 }
 
 export async function GET(request: Request) {
@@ -91,7 +111,7 @@ export async function GET(request: Request) {
     if (data.user && data.user.email_confirmed_at) {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id, role, onboarding_completed_at")
+        .select("id, role, onboarding_completed_at, prenom, nom")
         .eq("user_id", data.user.id)
         .maybeSingle();
 
@@ -115,6 +135,12 @@ export async function GET(request: Request) {
       if (!role) {
         return NextResponse.redirect(new URL("/signup/role", origin));
       }
+
+      fireWelcomeEmail({
+        userEmail: data.user.email,
+        prenom: profileData?.prenom ?? (data.user.user_metadata?.prenom as string | undefined),
+        role,
+      });
 
       if (profileData?.onboarding_completed_at) {
         return NextResponse.redirect(new URL(getRoleDashboardUrl(role), origin));
@@ -180,7 +206,7 @@ export async function GET(request: Request) {
       // Récupérer le profil pour obtenir le rôle et le statut d'onboarding
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id, role, onboarding_completed_at")
+        .select("id, role, onboarding_completed_at, prenom, nom")
         .eq("user_id", data.user.id)
         .maybeSingle();
 
@@ -206,6 +232,12 @@ export async function GET(request: Request) {
       if (!role) {
         return NextResponse.redirect(new URL("/signup/role", origin));
       }
+
+      fireWelcomeEmail({
+        userEmail: data.user.email,
+        prenom: profileData?.prenom ?? (data.user.user_metadata?.prenom as string | undefined),
+        role,
+      });
 
       // Onboarding terminé → dashboard (ou redirect explicite)
       if (profileData?.onboarding_completed_at) {

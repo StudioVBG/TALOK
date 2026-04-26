@@ -10,6 +10,7 @@ import {
   X,
 } from "lucide-react";
 import { getSecondaryRoleManifest } from "@/lib/navigation/secondary-role-manifest";
+import { SignOutButton } from "@/components/auth/sign-out-button";
 
 interface AgencySidebarProps {
   profile: {
@@ -23,6 +24,15 @@ interface AgencySidebarProps {
 
 const manifest = getSecondaryRoleManifest("agency");
 const navigation = [...manifest.navigation, ...manifest.footerNavigation];
+
+/** Mappe un href agence à l'id ciblé par le tour guidé (data-tour). */
+function agencyTourId(href: string): string | undefined {
+  if (href.includes("/mandates")) return "nav-mandates";
+  if (href.includes("/owners")) return "nav-owners";
+  if (href.includes("/accounting")) return "nav-accounting";
+  if (href.includes("/dashboard")) return "nav-dashboard";
+  return undefined;
+}
 
 export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
   const pathname = usePathname();
@@ -68,6 +78,7 @@ export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
                 <Link
                   key={item.name}
                   href={item.href}
+                  data-tour={agencyTourId(item.href)}
                   className={cn(
                     "group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl transition-all duration-200",
                     isActive
@@ -93,7 +104,7 @@ export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
           </nav>
 
           {/* Footer */}
-          <div className="flex-shrink-0 p-4 border-t border-border/50">
+          <div className="flex-shrink-0 p-4 border-t border-border/50 space-y-3">
             <div className="flex items-center gap-3">
               <div
                 className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-sm font-semibold"
@@ -110,6 +121,7 @@ export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
                 </p>
               </div>
             </div>
+            <SignOutButton />
           </div>
         </div>
       </aside>
@@ -163,6 +175,10 @@ export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
                     </Link>
                   );
                 })}
+                <SignOutButton
+                  variant="mobile-tile"
+                  onAfterClick={() => setMoreOpen(false)}
+                />
               </div>
             </div>
           </>
@@ -175,6 +191,7 @@ export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
                 <Link
                   key={item.name}
                   href={item.href}
+                  data-tour={agencyTourId(item.href)}
                   className={cn(
                     "flex flex-col items-center justify-center gap-0.5 min-h-[44px] transition-colors",
                     isActive

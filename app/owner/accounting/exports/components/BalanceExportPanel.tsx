@@ -2,10 +2,6 @@
 
 /**
  * BalanceExportPanel — "Balance générale" export card.
- *
- * Mirror of GrandLivreExportPanel for the balance endpoint. Kept as a
- * separate component so the exports page reads as a flat list of
- * sections rather than a wall of ExportCard prop literals.
  */
 
 import { ExportCard } from "@/components/accounting/ExportCard";
@@ -14,6 +10,7 @@ import { Scale } from "lucide-react";
 interface BalanceExportPanelProps {
   exerciseId: string | null;
   exerciseLabel: string;
+  entityId: string | undefined;
   onDownload: (key: string, url: string, filename: string) => void;
   loadingMap: Record<string, boolean>;
 }
@@ -21,10 +18,15 @@ interface BalanceExportPanelProps {
 export function BalanceExportPanel({
   exerciseId,
   exerciseLabel,
+  entityId,
   onDownload,
   loadingMap,
 }: BalanceExportPanelProps) {
-  const disabled = !exerciseId;
+  const disabled = !exerciseId || !entityId;
+  const url = (format: "pdf" | "xlsx") =>
+    `/accounting/exercises/${exerciseId}/balance?entityId=${encodeURIComponent(
+      entityId ?? "",
+    )}&format=${format}`;
   return (
     <ExportCard
       title="Balance generale"
@@ -35,24 +37,16 @@ export function BalanceExportPanel({
           label: "PDF",
           loading: loadingMap["bal-pdf"],
           onClick: () =>
-            exerciseId &&
-            onDownload(
-              "bal-pdf",
-              `/accounting/exercises/${exerciseId}/balance?format=pdf`,
-              `balance_${exerciseLabel}.pdf`,
-            ),
+            !disabled &&
+            onDownload("bal-pdf", url("pdf"), `balance_${exerciseLabel}.pdf`),
           disabled,
         },
         {
-          label: "CSV",
-          loading: loadingMap["bal-csv"],
+          label: "Excel",
+          loading: loadingMap["bal-xlsx"],
           onClick: () =>
-            exerciseId &&
-            onDownload(
-              "bal-csv",
-              `/accounting/exercises/${exerciseId}/balance?format=csv`,
-              `balance_${exerciseLabel}.csv`,
-            ),
+            !disabled &&
+            onDownload("bal-xlsx", url("xlsx"), `balance_${exerciseLabel}.xlsx`),
           disabled,
         },
       ]}

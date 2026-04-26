@@ -95,7 +95,7 @@ export function TicketComments({
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+    <div id="comments" className="rounded-2xl border border-border bg-card overflow-hidden scroll-mt-20">
       {/* Header */}
       <div className="p-4 border-b border-border bg-muted/50 flex items-center justify-between">
         <h3 className="font-bold text-foreground flex items-center gap-2">

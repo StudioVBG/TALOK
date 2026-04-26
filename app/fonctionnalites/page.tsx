@@ -28,7 +28,7 @@ import {
   Zap,
 } from "lucide-react";
 import { PublicFooter } from "@/components/layout/public-footer";
-import { MarketingNavbar } from "@/components/marketing/Navbar";
+import { Header } from "@/components/marketing/header/Header";
 
 const FEATURES = [
   {
@@ -152,7 +152,7 @@ const BENEFITS = [
 export default function FonctionnalitesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      <MarketingNavbar />
+      <Header />
       {/* Hero Section */}
       <section className="relative pt-24 pb-16 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-transparent to-transparent" />

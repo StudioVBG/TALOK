@@ -137,6 +137,23 @@ export function isAnyTenantRole(role: string | null | undefined): boolean {
 }
 
 /**
+ * Variantes de `edl_signatures.signer_role` considérées comme "propriétaire".
+ * La contrainte CHECK accepte encore les 3 formes historiques (EN + FR).
+ * Utiliser ce tableau partout où l'on lit la table `edl_signatures`, pour éviter
+ * les faux positifs "EDL à signer" sur le dashboard.
+ */
+export const EDL_OWNER_SIGNER_ROLES = ["owner", "proprietaire", "bailleur"] as const;
+
+/**
+ * Variantes de `edl_signatures.signer_role` considérées comme "locataire".
+ */
+export const EDL_TENANT_SIGNER_ROLES = [
+  "tenant",
+  "locataire",
+  "locataire_principal",
+] as const;
+
+/**
  * Normalise un rôle vers la valeur standard
  * Utile pour la migration et l'uniformisation
  */

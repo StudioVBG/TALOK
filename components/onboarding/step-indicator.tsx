@@ -308,6 +308,8 @@ export const ONBOARDING_STEPS = {
     { id: "finance", label: "Finances", description: "Coordonnées bancaires" },
     { id: "property", label: "Bien", description: "Votre premier logement" },
     { id: "review", label: "Validation", description: "Vérification finale" },
+    { id: "invite", label: "Invitations", description: "Invitez vos locataires", optional: true },
+    { id: "automation", label: "Automatisation", description: "Activez les automatisations", optional: true },
   ],
   tenant: [
     { id: "context", label: "Contexte", description: "Type de location" },
@@ -342,6 +344,6 @@ export const ONBOARDING_STEPS = {
     { id: "team", label: "Équipe", description: "Vos collaborateurs" },
     { id: "review", label: "Validation", description: "Vérification finale" },
   ],
-} as Record<string, Array<{ id: string; label: string; description: string }>>;
+} as Record<string, Array<{ id: string; label: string; description: string; optional?: boolean }>>;
 
 export default StepIndicator;

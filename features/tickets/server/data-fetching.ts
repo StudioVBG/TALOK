@@ -4,9 +4,11 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 /**
  * getTickets — SSR fetcher for the owner/tenant/provider tickets list.
  *
- * Auth via user-scoped client, DB reads via service client to avoid RLS
- * recursion (42P17) on profiles/tickets that otherwise silently returns an
- * empty array (producing the faux "Aucun ticket" empty state).
+ * Fetches tickets with a minimal base query, then hydrates joined relations
+ * (property, lease, creator, assignee, work_orders + provider, comment count)
+ * separately. This prevents a single broken embed / RLS recursion on any
+ * related table from blanking the whole list (previously surfaced as a
+ * "Ouverts: N" KPI alongside a misleading "Aucun ticket" empty state).
  */
 export async function getTickets(role: "owner" | "tenant" | "provider") {
   const supabase = await createClient();
@@ -17,87 +19,150 @@ export async function getTickets(role: "owner" | "tenant" | "provider") {
 
   const serviceClient = getServiceClient();
 
-  const { data: profile } = await serviceClient
-    .from("profiles")
-    .select("id")
-    .eq("user_id", user.id)
-    .single();
+  const { data: profile } = await serviceClient.from("profiles").select("id").eq("user_id", user.id).single();
 
   if (!profile) return [];
 
-  let query = (serviceClient as any)
-    .from("tickets")
-    .select(
-      `
-      *,
-      property:properties(adresse_complete),
-      lease:leases(id, date_debut, date_fin, statut),
-      creator:profiles!created_by_profile_id(nom, prenom, role),
-      assignee:profiles!assigned_to(nom, prenom, role),
-      messages:ticket_messages(count),
-      ticket_comments(count),
-      work_orders(
-        id,
-        statut,
-        date_intervention_prevue,
-        cout_estime,
-        cout_final,
-        provider:profiles!provider_id(id, nom, prenom, telephone)
-      )
-    `,
-    )
-    .order("created_at", { ascending: false });
+  let baseQuery = (serviceClient as any).from("tickets").select("*").order("created_at", { ascending: false });
 
   if (role === "tenant") {
-    query = query.eq("created_by_profile_id", profile.id);
+    baseQuery = baseQuery.eq("created_by_profile_id", profile.id);
   } else if (role === "owner") {
-    const { data: properties } = await serviceClient
-      .from("properties")
-      .select("id")
-      .eq("owner_id", profile.id);
+    const { data: properties } = await serviceClient.from("properties").select("id").eq("owner_id", profile.id);
 
     const propertyIds = (properties || []).map((p) => (p as { id: string }).id);
     if (propertyIds.length === 0) return [];
-    query = query.in("property_id", propertyIds);
+    baseQuery = baseQuery.in("property_id", propertyIds);
   } else if (role === "provider") {
-    // Tickets assigned directly OR through work_orders
-    const { data: jobs } = await serviceClient
-      .from("work_orders")
-      .select("ticket_id")
-      .eq("provider_id", profile.id);
+    const { data: jobs } = await serviceClient.from("work_orders").select("ticket_id").eq("provider_id", profile.id);
 
-    const woTicketIds =
-      (jobs || [])
-        .map((j) => (j as { ticket_id: string | null }).ticket_id)
-        .filter((id): id is string => Boolean(id)) || [];
+    const woTicketIds = (jobs || [])
+      .map((j) => (j as { ticket_id: string | null }).ticket_id)
+      .filter((id): id is string => Boolean(id));
 
-    const { data: assigned } = await serviceClient
-      .from("tickets")
-      .select("id")
-      .eq("assigned_to", profile.id);
+    const { data: assigned } = await serviceClient.from("tickets").select("id").eq("assigned_to", profile.id);
 
     const assignedIds = (assigned || []).map((t) => (t as { id: string }).id);
 
     const allIds = [...new Set([...woTicketIds, ...assignedIds])];
     if (allIds.length === 0) return [];
-    query = query.in("id", allIds);
+    baseQuery = baseQuery.in("id", allIds);
   }
 
-  const { data, error } = await query;
+  const { data: base, error } = await baseQuery;
 
   if (error) {
-    // RLS infinite recursion (42P17) shouldn't happen anymore since we use
-    // the service client, but keep the safety net so any regression surfaces
-    // in logs instead of crashing the SSR render.
-    if (error.code === "42P17" || error.message?.includes("infinite recursion")) {
-      console.warn("[getTickets] RLS recursion detected, returning empty:", error.message);
-      return [];
-    }
-    console.error("[getTickets] Supabase error:", error.message);
+    console.error("[getTickets] base query error:", error.code, error.message);
     return [];
   }
 
-  return data || [];
+  const tickets = (base || []) as Array<Record<string, any>>;
+  if (tickets.length === 0) return [];
+
+  const ticketIds = tickets.map((t) => t.id as string);
+  const propertyIds = uniq(tickets.map((t) => t.property_id).filter(Boolean));
+  const leaseIds = uniq(tickets.map((t) => t.lease_id).filter(Boolean));
+  const creatorIds = uniq(tickets.map((t) => t.created_by_profile_id).filter(Boolean));
+  const assigneeIds = uniq(tickets.map((t) => t.assigned_to).filter(Boolean));
+
+  const [propertiesRes, leasesRes, creatorsRes, assigneesRes, workOrdersRes, commentsRes] = await Promise.all([
+    safeFetch(() =>
+      propertyIds.length
+        ? serviceClient.from("properties").select("id, adresse_complete").in("id", propertyIds)
+        : Promise.resolve({ data: [] as any[], error: null }),
+    ),
+    safeFetch(() =>
+      leaseIds.length
+        ? serviceClient.from("leases").select("id, date_debut, date_fin, statut").in("id", leaseIds)
+        : Promise.resolve({ data: [] as any[], error: null }),
+    ),
+    safeFetch(() =>
+      creatorIds.length
+        ? serviceClient.from("profiles").select("id, nom, prenom, role").in("id", creatorIds)
+        : Promise.resolve({ data: [] as any[], error: null }),
+    ),
+    safeFetch(() =>
+      assigneeIds.length
+        ? serviceClient.from("profiles").select("id, nom, prenom, role").in("id", assigneeIds)
+        : Promise.resolve({ data: [] as any[], error: null }),
+    ),
+    safeFetch(() =>
+      serviceClient
+        .from("work_orders")
+        .select("id, ticket_id, statut, date_intervention_prevue, cout_estime, cout_final, provider_id")
+        .in("ticket_id", ticketIds),
+    ),
+    safeFetch(() => serviceClient.from("ticket_comments").select("id, ticket_id").in("ticket_id", ticketIds)),
+  ]);
+
+  const providerIds = uniq((workOrdersRes as any[]).map((w) => w.provider_id).filter(Boolean));
+  const providersRes = await safeFetch(() =>
+    providerIds.length
+      ? serviceClient.from("profiles").select("id, nom, prenom, telephone").in("id", providerIds)
+      : Promise.resolve({ data: [] as any[], error: null }),
+  );
+
+  const propertyMap = indexById(propertiesRes);
+  const leaseMap = indexById(leasesRes);
+  const creatorMap = indexById(creatorsRes);
+  const assigneeMap = indexById(assigneesRes);
+  const providerMap = indexById(providersRes);
+
+  const workOrdersByTicket: Record<string, any[]> = {};
+  (workOrdersRes as any[]).forEach((wo) => {
+    if (!workOrdersByTicket[wo.ticket_id]) workOrdersByTicket[wo.ticket_id] = [];
+    workOrdersByTicket[wo.ticket_id].push({
+      id: wo.id,
+      statut: wo.statut,
+      date_intervention_prevue: wo.date_intervention_prevue,
+      cout_estime: wo.cout_estime,
+      cout_final: wo.cout_final,
+      provider: wo.provider_id ? providerMap[wo.provider_id] || null : null,
+    });
+  });
+
+  const commentCountByTicket: Record<string, number> = {};
+  (commentsRes as any[]).forEach((c) => {
+    commentCountByTicket[c.ticket_id] = (commentCountByTicket[c.ticket_id] || 0) + 1;
+  });
+
+  return tickets.map((t) => ({
+    ...t,
+    property: t.property_id ? propertyMap[t.property_id] || null : null,
+    lease: t.lease_id ? leaseMap[t.lease_id] || null : null,
+    creator: t.created_by_profile_id ? creatorMap[t.created_by_profile_id] || null : null,
+    assignee: t.assigned_to ? assigneeMap[t.assigned_to] || null : null,
+    work_orders: workOrdersByTicket[t.id] || [],
+    ticket_comments: new Array(commentCountByTicket[t.id] || 0).fill({}),
+    messages: [{ count: commentCountByTicket[t.id] || 0 }],
+  }));
+}
+
+function uniq<T>(values: T[]): T[] {
+  return [...new Set(values)];
+}
+
+async function safeFetch(fn: () => PromiseLike<{ data: any; error: unknown }>): Promise<any[]> {
+  try {
+    const { data, error } = await fn();
+    if (error) {
+      const e = error as { code?: string; message?: string };
+      console.error("[getTickets] hydration error:", e.code, e.message);
+      return [];
+    }
+    return (data as any[]) || [];
+  } catch (err) {
+    console.error("[getTickets] hydration threw:", err);
+    return [];
+  }
+}
+
+function indexById(rows: any[]): Record<string, any> {
+  const out: Record<string, any> = {};
+  rows.forEach((r) => {
+    if (r && typeof r.id === "string") out[r.id] = r;
+  });
+  return out;
 }
 
 export async function getTicketDetails(id: string) {
@@ -127,7 +192,7 @@ export async function getTicketDetails(id: string) {
         cout_final,
         provider:profiles!provider_id(id, nom, prenom, telephone)
       )
-    `
+    `,
     )
     .eq("id", id)
     .single();
@@ -153,104 +218,111 @@ export async function getTicketKPIs() {
 
   const serviceClient = getServiceClient();
 
-  const { data: profile } = await serviceClient
-    .from("profiles")
-    .select("id, role")
-    .eq("user_id", user.id)
-    .single();
+  const { data: profile } = await serviceClient.from("profiles").select("id, role").eq("user_id", user.id).single();
 
   if (!profile) return null;
 
   let propertyIds: string[] = [];
 
   if (profile.role === "owner") {
-    const { data: properties } = await serviceClient
-      .from("properties")
-      .select("id")
-      .eq("owner_id", profile.id);
-    propertyIds =
-      (properties || []).map((p) => (p as { id: string }).id) || [];
+    const { data: properties } = await serviceClient.from("properties").select("id").eq("owner_id", profile.id);
+    propertyIds = (properties || []).map((p) => (p as { id: string }).id) || [];
     if (propertyIds.length === 0) return null;
   } else if (profile.role !== "admin") {
     return null;
   }
 
-  let query = (serviceClient as any)
-    .from("tickets")
-    .select("id, statut, priorite, category, created_at, resolved_at, satisfaction_rating");
-
-  if (propertyIds.length > 0) {
-    query = query.in("property_id", propertyIds);
-  }
-
-  const { data: ticketsRaw } = await query;
-  if (!ticketsRaw) return null;
-
-  type TicketKPIRow = {
-    id: string;
-    statut: string;
-    priorite: string;
-    category: string | null;
-    created_at: string;
-    resolved_at: string | null;
-    satisfaction_rating: number | null;
+  // 1) Aggregated counts + averages come from the v_tickets_kpis_owner view
+  //    (security_invoker: RLS applies through the owner's profile).
+  //    For admins we aggregate across all owners below.
+  type ViewRow = {
+    owner_id: string;
+    open_count: number | null;
+    in_progress_count: number | null;
+    resolved_count: number | null;
+    closed_count: number | null;
+    avg_resolution_hours: number | null;
+    avg_satisfaction: number | null;
   };
-  const tickets = ticketsRaw as TicketKPIRow[];
 
-  const open = tickets.filter((t) =>
-    ["open", "acknowledged", "assigned", "reopened"].includes(t.statut)
-  ).length;
-  const inProgress = tickets.filter((t) => t.statut === "in_progress").length;
-  const resolved = tickets.filter((t) => t.statut === "resolved").length;
-  const closed = tickets.filter((t) => t.statut === "closed").length;
+  let viewRow: ViewRow | null = null;
 
-  // Average resolution time
-  const resolvedTickets = tickets.filter((t) => t.resolved_at);
-  let avgResolutionHours: number | null = null;
-  if (resolvedTickets.length > 0) {
-    const totalHours = resolvedTickets.reduce((sum: number, t) => {
-      const created = new Date(t.created_at).getTime();
-      const resolvedAt = new Date(t.resolved_at!).getTime();
-      return sum + (resolvedAt - created) / (1000 * 60 * 60);
-    }, 0);
-    avgResolutionHours = Math.round(totalHours / resolvedTickets.length);
+  if (profile.role === "owner") {
+    const { data } = await (serviceClient as any)
+      .from("v_tickets_kpis_owner")
+      .select("*")
+      .eq("owner_id", profile.id)
+      .maybeSingle();
+    viewRow = (data as ViewRow | null) ?? null;
+  } else {
+    // admin : sum across all rows
+    const { data } = await (serviceClient as any).from("v_tickets_kpis_owner").select("*");
+    const rows = (data || []) as ViewRow[];
+    if (rows.length > 0) {
+      const sum = (k: keyof ViewRow) =>
+        rows.reduce((acc, r) => acc + (Number(r[k]) || 0), 0);
+      viewRow = {
+        owner_id: "__admin__",
+        open_count: sum("open_count"),
+        in_progress_count: sum("in_progress_count"),
+        resolved_count: sum("resolved_count"),
+        closed_count: sum("closed_count"),
+        // Weighted averages are out of scope here — keep the simple mean
+        // of non-null per-owner averages to stay cheap.
+        avg_resolution_hours: avgOfNumbers(rows.map((r) => r.avg_resolution_hours)),
+        avg_satisfaction: avgOfNumbers(rows.map((r) => r.avg_satisfaction)),
+      };
+    }
   }
 
-  // Average satisfaction
-  const rated = tickets.filter((t) => t.satisfaction_rating);
-  const avgSatisfaction =
-    rated.length > 0
-      ? Math.round(
-          (rated.reduce((s: number, t) => s + (t.satisfaction_rating ?? 0), 0) /
-            rated.length) * 10
-        ) / 10
-      : null;
+  // 2) by_category / by_priority still need a lightweight grouping
+  //    (not exposed by the view). We fetch only the 2 columns we need.
+  let catPrioQuery = (serviceClient as any).from("tickets").select("priorite, category");
+  if (propertyIds.length > 0) {
+    catPrioQuery = catPrioQuery.in("property_id", propertyIds);
+  }
+  const { data: grouping } = await catPrioQuery;
+  const rows = (grouping || []) as Array<{ priorite: string; category: string | null }>;
 
-  // By category
   const byCategory: Record<string, number> = {};
-  tickets.forEach((t) => {
-    const cat = t.category || "non_categorise";
-    byCategory[cat] = (byCategory[cat] || 0) + 1;
-  });
-
-  // By priority
   const byPriority: Record<string, number> = {};
-  tickets.forEach((t) => {
-    byPriority[t.priorite] = (byPriority[t.priorite] || 0) + 1;
-  });
+  for (const r of rows) {
+    const cat = r.category || "non_categorise";
+    byCategory[cat] = (byCategory[cat] || 0) + 1;
+    byPriority[r.priorite] = (byPriority[r.priorite] || 0) + 1;
+  }
+
+  const open = Number(viewRow?.open_count ?? 0);
+  const inProgress = Number(viewRow?.in_progress_count ?? 0);
+  const resolved = Number(viewRow?.resolved_count ?? 0);
+  const closed = Number(viewRow?.closed_count ?? 0);
 
   return {
-    total: tickets.length,
+    total: rows.length,
     open,
     in_progress: inProgress,
     resolved,
     closed,
-    avg_resolution_hours: avgResolutionHours,
+    avg_resolution_hours:
+      viewRow?.avg_resolution_hours !== null && viewRow?.avg_resolution_hours !== undefined
+        ? Math.round(Number(viewRow.avg_resolution_hours))
+        : null,
     avg_first_response_hours: null,
-    avg_satisfaction: avgSatisfaction,
+    avg_satisfaction:
+      viewRow?.avg_satisfaction !== null && viewRow?.avg_satisfaction !== undefined
+        ? Number(viewRow.avg_satisfaction)
+        : null,
     by_category: byCategory,
     by_priority: byPriority,
   };
+}
+
+function avgOfNumbers(values: Array<number | null>): number | null {
+  const nums = values
+    .map((v) => (v === null || v === undefined ? null : Number(v)))
+    .filter((v): v is number => v !== null && !Number.isNaN(v));
+  if (nums.length === 0) return null;
+  return nums.reduce((s, v) => s + v, 0) / nums.length;
 }
 
 /**
@@ -281,7 +353,7 @@ export async function getTicketsActionStats(): Promise<{
   const { data: properties } = await serviceClient
     .from("properties")
     .select("id")
-    .eq("owner_id", profile.id);
+    .eq("owner_id", (profile as { id: string }).id);
 
   const propertyIds = (properties || []).map((p) => (p as { id: string }).id);
 

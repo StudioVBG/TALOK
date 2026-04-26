@@ -8,12 +8,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResponsiveTable } from "@/components/ui/responsive-table";
-import { Search, Eye, Building2, Users, Wrench, ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { Search, Eye, Building2, Users, Wrench, Briefcase, Landmark, ShieldCheck, ChevronLeft, ChevronRight, Download } from "lucide-react";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { exportCSV } from "@/lib/utils/export-csv";
 
+type PeopleTab = "owners" | "tenants" | "vendors" | "syndics" | "agencies" | "guarantors";
+
+const TAB_TO_ROLE: Record<PeopleTab, string> = {
+  owners: "owner",
+  tenants: "tenant",
+  vendors: "provider",
+  syndics: "syndic",
+  agencies: "agency",
+  guarantors: "guarantor",
+};
+
 interface PeopleClientProps {
-  activeTab: "owners" | "tenants" | "vendors";
+  activeTab: PeopleTab;
   initialData: { users: any[]; total: number }; // Données de l'onglet actif uniquement
   currentPage: number;
   currentSearch: string;
@@ -57,8 +68,13 @@ export function PeopleClient({ activeTab, initialData, currentPage, currentSearc
 
   const totalPages = Math.ceil(initialData.total / 20);
 
+  // Les 3 rôles historiques gardent leurs pages dédiées (UI riche existante).
+  // Les nouveaux rôles (syndic/agence/garant) utilisent la route unifiée /admin/people/[id].
+  const LEGACY_TABS: PeopleTab[] = ["owners", "tenants", "vendors"];
   const getDetailUrl = (userId: string) =>
-    `/admin/people/${activeTab}/${userId}`;
+    LEGACY_TABS.includes(activeTab)
+      ? `/admin/people/${activeTab}/${userId}`
+      : `/admin/people/${userId}`;
 
   const columns = [
     {
@@ -91,7 +107,7 @@ export function PeopleClient({ activeTab, initialData, currentPage, currentSearc
       <div>
         <h1 className="text-3xl font-bold">Annuaire</h1>
         <p className="text-muted-foreground">
-          Gestion des propriétaires, locataires et prestataires
+          Gestion des propriétaires, locataires, prestataires, syndics, agences et garants
         </p>
       </div>
 
@@ -123,7 +139,7 @@ export function PeopleClient({ activeTab, initialData, currentPage, currentSearc
                       nom: `${u.prenom || ""} ${u.nom || ""}`.trim() || "—",
                       email: u.user?.email || u.email || "",
                       telephone: u.telephone || "",
-                      role: activeTab === "owners" ? "owner" : activeTab === "tenants" ? "tenant" : "vendor",
+                      role: TAB_TO_ROLE[activeTab],
                       cree_le: u.created_at?.split("T")[0] || "",
                     })),
                     activeTab,
@@ -143,7 +159,7 @@ export function PeopleClient({ activeTab, initialData, currentPage, currentSearc
             value={activeTab} 
             onValueChange={(v) => updateUrl({ tab: v })}
           >
-            <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 mb-6">
               <TabsTrigger value="owners">
                 <Building2 className="mr-2 h-4 w-4" />
                 Propriétaires
@@ -155,6 +171,18 @@ export function PeopleClient({ activeTab, initialData, currentPage, currentSearc
               <TabsTrigger value="vendors">
                 <Wrench className="mr-2 h-4 w-4" />
                 Prestataires
+              </TabsTrigger>
+              <TabsTrigger value="syndics">
+                <Landmark className="mr-2 h-4 w-4" />
+                Syndics
+              </TabsTrigger>
+              <TabsTrigger value="agencies">
+                <Briefcase className="mr-2 h-4 w-4" />
+                Agences
+              </TabsTrigger>
+              <TabsTrigger value="guarantors">
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                Garants
               </TabsTrigger>
             </TabsList>
 
