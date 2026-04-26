@@ -744,6 +744,7 @@ export interface Charge {
 
 export interface Ticket {
   id: string;
+  reference: string;
   property_id: string;
   lease_id: string | null;
   created_by_profile_id: string;
