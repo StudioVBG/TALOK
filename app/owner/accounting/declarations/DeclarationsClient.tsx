@@ -85,18 +85,24 @@ function DeclarationsContent() {
     return rest as DeclarationPayload;
   })();
 
-  // Derive the fiscal year from the selected closed exercise. Fall back to
-  // the current calendar year if the exercise cannot be resolved.
+  // Derive the fiscal year from the selected closed exercise. Pas de
+  // fallback silencieux sur l'annee courante : avant, si exerciseId
+  // designait un exercice qu'on n'avait pas reussi a charger (changement
+  // d'entite, race condition), on retombait sur new Date().getFullYear()
+  // → le PDF telechargait avec "Exercice 2026" alors que la donnee
+  // venait de l'exercice clos 2025. selectedYear = null bloque les
+  // actions PDF en aval (handleDownloadPDF ouvre un toast explicite).
   const selectedExercise = (closedExercises ?? []).find((e) => e.id === exerciseId);
-  const selectedYear = selectedExercise
+  const selectedYear: number | null = selectedExercise
     ? parseInt(selectedExercise.start_date.slice(0, 4), 10)
-    : new Date().getFullYear();
+    : null;
 
   const handleDownloadPDF = async () => {
-    if (!activeEntityId || !exerciseId) {
+    if (!activeEntityId || !exerciseId || selectedYear == null) {
       toast({
         title: "Action impossible",
-        description: "Sélectionnez une entité et un exercice clôturé.",
+        description:
+          "Sélectionnez une entité et un exercice clôturé valide. Si l'exercice ne se charge pas, recharge la page.",
         variant: "destructive",
       });
       return;
@@ -134,10 +140,11 @@ function DeclarationsContent() {
   };
 
   const handleSendEC = async () => {
-    if (!activeEntityId || !exerciseId) {
+    if (!activeEntityId || !exerciseId || selectedYear == null) {
       toast({
         title: "Action impossible",
-        description: "Sélectionnez une entité et un exercice clôturé.",
+        description:
+          "Sélectionnez une entité et un exercice clôturé valide. Si l'exercice ne se charge pas, recharge la page.",
         variant: "destructive",
       });
       return;

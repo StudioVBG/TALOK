@@ -342,6 +342,24 @@ export async function GET(
       throw new ApiError(400, "exerciseId et entityId sont requis");
     }
 
+    // Ownership guard. getBalance/getGrandLivre passent par le client
+    // user-scoped donc RLS protege deja, mais on double l'enforcement
+    // avec une lecture explicite : si l'utilisateur passe un entityId
+    // qui ne lui appartient pas, on echoue 403 plutot que de retourner
+    // une declaration vide (ou pire, polluer le compteur de proprietes
+    // partage). Admin bypasse comme partout ailleurs.
+    if (profile.role !== "admin") {
+      const { data: entity } = await (supabase as any)
+        .from("legal_entities")
+        .select("id")
+        .eq("id", entityId)
+        .eq("owner_profile_id", profile.id)
+        .maybeSingle();
+      if (!entity) {
+        throw new ApiError(403, "Acces refuse a cette entite");
+      }
+    }
+
     // Fetch balance and grand livre for the exercise
     const balance = await getBalance(supabase, entityId, exerciseId);
     const grandLivre = await getGrandLivre(supabase, entityId, exerciseId);

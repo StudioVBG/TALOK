@@ -252,7 +252,7 @@ export async function generateCerfa2044Pdf(
     const lines = [
       "Methodologie",
       "• Loyers bruts = total credits comptes 706 sur l'exercice.",
-      "• Forfait gestion = 20 EUR par local declare (ligne 221).",
+      "• Frais d'administration et gestion (ligne 221) = max(forfait 20 EUR/local; reels 622xxx + 627).",
       "• Travaux = total debits 615; assurances = 616; interets = 661; taxes = 635.",
       "• Deficit foncier impute sur revenu global plafonne a 10 700 EUR (hors interets).",
     ];
