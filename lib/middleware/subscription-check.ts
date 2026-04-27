@@ -145,7 +145,8 @@ export async function withSubscriptionLimit(
             .from("properties")
             .select("id", { count: "exact", head: true })
             .eq("owner_id", ownerId)
-            .is("deleted_at", null);
+            .is("deleted_at", null)
+            .neq("type", "immeuble");
           current = propCount || 0;
           max = freeLimits.max_properties;
           break;
@@ -248,7 +249,8 @@ export async function withSubscriptionLimit(
           .from("properties")
           .select("id", { count: "exact", head: true })
           .eq("owner_id", ownerId)
-          .is("deleted_at", null);
+          .is("deleted_at", null)
+          .neq("type", "immeuble");
         current = propCount || 0;
         max = plan.max_properties ?? planConfig.limits.max_properties;
 
