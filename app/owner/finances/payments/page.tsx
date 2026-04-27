@@ -110,7 +110,34 @@ export default function PaymentsHistoryPage() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            {/* Mobile: card list (< md) */}
+            <div className="md:hidden divide-y">
+              {payments.map((payment) => (
+                <div key={payment.id} className="px-4 py-3">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <p className="text-sm font-medium">
+                      {formatDate(payment.date_paiement)}
+                    </p>
+                    <p className="text-sm font-semibold tabular-nums">
+                      {formatCurrency(payment.montant)}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      {METHOD_LABELS[payment.moyen] || payment.moyen}
+                    </p>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[payment.statut] || ""}`}
+                    >
+                      {payment.statut === "succeeded" ? "Confirmé" : payment.statut}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop: table (md+) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
