@@ -25,6 +25,23 @@ type BalanceItem = {
   soldeDebitCents: number;
   soldeCreditCents: number;
 };
+type GrandLivreEntry = {
+  lineId: string;
+  entryId: string;
+  entryNumber: string;
+  entryDate: string;
+  label: string;
+  debitCents: number;
+  creditCents: number;
+  lettrage: string | null;
+};
+type GrandLivreAccount = {
+  accountNumber: string;
+  accountLabel: string;
+  entries: GrandLivreEntry[];
+  totalDebitCents: number;
+  totalCreditCents: number;
+};
 type Annotation = {
   id: string;
   content: string;
@@ -92,6 +109,21 @@ export default function ECClientView() {
       ),
     enabled: !!entityId && !!activeExerciseId,
   });
+
+  // Grand-livre — chargé seulement quand l'onglet est activé pour
+  // éviter le coût d'un fetch sur tous les comptes inutilement.
+  const { data: glData, isLoading: glLoading } = useQuery<any>({
+    queryKey: ["ec-grand-livre", entityId, activeExerciseId],
+    queryFn: () =>
+      apiClient.get(
+        `/accounting/exercises/${activeExerciseId}/grand-livre?entityId=${encodeURIComponent(entityId as string)}`,
+      ),
+    enabled:
+      !!entityId && !!activeExerciseId && activeTab === "grand-livre",
+    staleTime: 60 * 1000,
+  });
+  const grandLivre: GrandLivreAccount[] =
+    glData?.data?.grandLivre ?? glData?.grandLivre ?? [];
 
   // Agrégats classes 6 / 7. On ne fait pas de calcul "métier" ici —
   // juste un sum direct sur la balance déjà calculée par l'engine.
@@ -206,7 +238,7 @@ export default function ECClientView() {
     }
   }
 
-  const tabs = ["ecritures", "annotations", "exports"];
+  const tabs = ["ecritures", "grand-livre", "annotations", "exports"];
   const entryList = (entries?.data?.entries ?? entries?.data ?? entries?.entries ?? []) as Entry[];
   const annotationList = (annotations?.data ?? annotations ?? []) as Annotation[];
 
@@ -355,6 +387,164 @@ export default function ECClientView() {
                 </button>
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "grand-livre" && (
+        <div className="space-y-3">
+          {glLoading ? (
+            <div className="space-y-3 animate-pulse">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-32 bg-muted rounded-xl" />
+              ))}
+            </div>
+          ) : grandLivre.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-8 text-center">
+              Aucune écriture comptable pour cet exercice.
+            </p>
+          ) : (
+            <>
+              {[...grandLivre]
+                .sort((a, b) => a.accountNumber.localeCompare(b.accountNumber))
+                .map((account) => {
+                  const solde =
+                    account.totalDebitCents - account.totalCreditCents;
+                  const lastDate =
+                    account.entries.length > 0
+                      ? new Date(
+                          account.entries[
+                            account.entries.length - 1
+                          ].entryDate,
+                        ).toLocaleDateString("fr-FR")
+                      : "";
+                  return (
+                    <section
+                      key={account.accountNumber}
+                      className="bg-card rounded-xl border border-border overflow-hidden"
+                    >
+                      <header className="px-4 py-2 bg-muted/30 border-b border-border">
+                        <span className="font-mono text-sm font-semibold">
+                          Compte {account.accountNumber}
+                        </span>
+                        <span className="ml-2 text-sm font-semibold">
+                          {account.accountLabel}
+                        </span>
+                      </header>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="text-muted-foreground bg-muted/10 border-b border-border">
+                              <th className="text-left font-medium px-4 py-2">
+                                Date
+                              </th>
+                              <th className="text-left font-medium px-4 py-2">
+                                Libellé
+                              </th>
+                              <th className="text-right font-medium px-4 py-2">
+                                Débit
+                              </th>
+                              <th className="text-right font-medium px-4 py-2">
+                                Crédit
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {account.entries.map((e) => (
+                              <tr
+                                key={e.lineId}
+                                className="border-b border-border last:border-b-0"
+                              >
+                                <td className="px-4 py-2 text-muted-foreground whitespace-nowrap">
+                                  {new Date(e.entryDate).toLocaleDateString(
+                                    "fr-FR",
+                                  )}
+                                </td>
+                                <td className="px-4 py-2">{e.label}</td>
+                                <td className="px-4 py-2 text-right tabular-nums">
+                                  {e.debitCents > 0
+                                    ? formatCents(e.debitCents)
+                                    : "—"}
+                                </td>
+                                <td className="px-4 py-2 text-right tabular-nums">
+                                  {e.creditCents > 0
+                                    ? formatCents(e.creditCents)
+                                    : "—"}
+                                </td>
+                              </tr>
+                            ))}
+                            <tr className="bg-muted/40 border-t-2 border-border font-semibold">
+                              <td className="px-4 py-2 text-muted-foreground whitespace-nowrap">
+                                {lastDate}
+                              </td>
+                              <td className="px-4 py-2">Total</td>
+                              <td className="px-4 py-2 text-right tabular-nums">
+                                {formatCents(account.totalDebitCents)}
+                              </td>
+                              <td className="px-4 py-2 text-right tabular-nums">
+                                {formatCents(account.totalCreditCents)}
+                              </td>
+                            </tr>
+                            <tr className="bg-muted/30 font-semibold">
+                              <td className="px-4 py-2 text-muted-foreground whitespace-nowrap">
+                                {lastDate}
+                              </td>
+                              <td className="px-4 py-2">Solde</td>
+                              <td className="px-4 py-2 text-right tabular-nums">
+                                {solde > 0
+                                  ? formatCents(solde)
+                                  : solde === 0
+                                    ? formatCents(0)
+                                    : ""}
+                              </td>
+                              <td className="px-4 py-2 text-right tabular-nums">
+                                {solde < 0
+                                  ? formatCents(-solde)
+                                  : solde === 0
+                                    ? formatCents(0)
+                                    : ""}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  );
+                })}
+
+              {/* Pied : TOTAL GRAND-LIVRE — somme D = somme C en double-partie */}
+              <section className="bg-card rounded-xl border-2 border-border overflow-hidden">
+                <table className="w-full text-sm">
+                  <tbody>
+                    <tr className="bg-muted/60 font-bold">
+                      <td className="px-4 py-3" colSpan={2}>
+                        TOTAL GRAND-LIVRE
+                        <span className="ml-3 text-xs font-normal text-muted-foreground">
+                          ({grandLivre.length} compte
+                          {grandLivre.length > 1 ? "s" : ""})
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {formatCents(
+                          grandLivre.reduce(
+                            (s, a) => s + a.totalDebitCents,
+                            0,
+                          ),
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">
+                        {formatCents(
+                          grandLivre.reduce(
+                            (s, a) => s + a.totalCreditCents,
+                            0,
+                          ),
+                        )}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </section>
+            </>
           )}
         </div>
       )}
