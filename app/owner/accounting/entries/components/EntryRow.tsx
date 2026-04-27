@@ -17,6 +17,7 @@ import type { AccountingEntryRow as AccountingEntryRowData } from "@/lib/hooks/u
 import { formatCents } from "@/lib/utils/format-cents";
 import { cn } from "@/lib/utils";
 import { ReverseEntryButton } from "./ReverseEntryButton";
+import { DeleteEntryButton } from "./DeleteEntryButton";
 
 // ── Helpers (shared with parent via re-export) ─────────────────────
 
@@ -180,13 +181,22 @@ export function EntryRow({ entry, isSelected, onToggleSelect }: EntryRowProps) {
         <SourceBadge source={entry.source} />
       </td>
       <td className="px-3 py-3 text-center">
-        {!entryIsDraft && !entry.reversal_of && (
-          <ReverseEntryButton
+        {entryIsDraft ? (
+          <DeleteEntryButton
             entryId={entry.id}
             entryNumber={entryNumber}
             entryLabel={entryLabel}
             variant="icon"
           />
+        ) : (
+          !entry.reversal_of && (
+            <ReverseEntryButton
+              entryId={entry.id}
+              entryNumber={entryNumber}
+              entryLabel={entryLabel}
+              variant="icon"
+            />
+          )
         )}
       </td>
     </tr>

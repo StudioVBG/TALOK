@@ -37,6 +37,7 @@ function ExercisesContent() {
     success?: boolean;
     data?: {
       closedExercise?: { id: string; year: number };
+      newExercise?: { id: string; start_date: string; end_date: string } | null;
       warnings?: string[];
     };
     error?: string;
@@ -85,12 +86,21 @@ function ExercisesContent() {
       queryClient.invalidateQueries({ queryKey: ["exercises"] });
       setClosingId(null);
       const warnings = result?.data?.warnings ?? [];
+      const newExercise = result?.data?.newExercise;
+      const parts: string[] = [];
+      if (newExercise) {
+        parts.push(
+          `Nouvel exercice ouvert : ${newExercise.start_date} → ${newExercise.end_date}.`,
+        );
+      } else {
+        parts.push("Amortissements, déficit et à-nouveaux ont été générés.");
+      }
+      if (warnings.length > 0) {
+        parts.push(`${warnings.length} avertissement(s) : ${warnings.join(" — ")}`);
+      }
       toast({
         title: "Exercice clôturé",
-        description:
-          warnings.length > 0
-            ? `Clôture effectuée avec ${warnings.length} avertissement(s) : ${warnings.join(" — ")}`
-            : "Amortissements, déficit et à-nouveaux ont été générés.",
+        description: parts.join(" "),
       });
     },
     onError: (err) => {

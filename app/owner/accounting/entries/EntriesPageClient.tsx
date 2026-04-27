@@ -78,6 +78,8 @@ function EntriesPageContent() {
     error,
     validateEntries,
     isValidating,
+    deleteEntries,
+    isDeleting,
   } = useAccountingEntries({
     journalCode: journalCode || undefined,
     search: search || undefined,
@@ -121,6 +123,17 @@ function EntriesPageContent() {
       setSelected(new Set());
     } catch {
       // Error handled by mutation
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selected.size === 0) return;
+    try {
+      await deleteEntries(Array.from(selected));
+      setSelected(new Set());
+    } catch {
+      // Error handled by mutation; the bulk dialog stays closed regardless
+      // because partial successes still landed and the list will refetch.
     }
   };
 
@@ -199,7 +212,9 @@ function EntriesPageContent() {
       <BulkActions
         selectedCount={selected.size}
         isValidating={isValidating}
+        isDeleting={isDeleting}
         onValidateSelected={handleValidateSelected}
+        onDeleteSelected={handleDeleteSelected}
       />
 
       {/* Loading */}
