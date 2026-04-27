@@ -24,15 +24,35 @@ export const runtime = "nodejs";
 
 const CreateAcquisitionSchema = z.object({
   property_id: z.string().uuid(),
+  /** Montant à immobiliser (prix d'achat HT + frais de notaire si capitalisés). */
   total_cents: z.number().int().positive(),
   loan_cents: z.number().int().min(0),
   acquisition_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   terrain_pct: z.number().min(0).max(50).optional(),
+  /** Frais de notaire en charges (si non capitalisés). */
+  notary_fees_expense_cents: z.number().int().min(0).optional(),
+  /** Frais bancaires (dossier, garantie, commission). */
+  bank_fees_cents: z.number().int().min(0).optional(),
+  /** Intérêts intercalaires. */
+  intercalary_interest_cents: z.number().int().min(0).optional(),
+  /** Compte d'apport : 512100 (banque, défaut) ou 455000 (CCA). */
+  apport_account: z.enum(["512100", "455000"]).optional(),
   bank_account: z.string().min(3).max(10).optional(),
   loan_account: z.string().min(3).max(10).optional(),
-}).refine((d) => d.loan_cents <= d.total_cents, {
-  message: "L'emprunt ne peut pas dépasser le prix d'acquisition",
-});
+}).refine(
+  (d) => {
+    const totalCashOut =
+      d.total_cents +
+      (d.notary_fees_expense_cents ?? 0) +
+      (d.bank_fees_cents ?? 0) +
+      (d.intercalary_interest_cents ?? 0);
+    return d.loan_cents <= totalCashOut;
+  },
+  {
+    message:
+      "L'emprunt ne peut pas dépasser le coût total d'acquisition (prix + frais)",
+  },
+);
 
 /**
  * POST /api/accounting/property-acquisitions
@@ -91,6 +111,10 @@ export async function POST(request: Request) {
         loanCents: data.loan_cents,
         acquisitionDate: data.acquisition_date,
         terrainPct: data.terrain_pct,
+        notaryFeesExpenseCents: data.notary_fees_expense_cents,
+        bankFeesCents: data.bank_fees_cents,
+        intercalaryInterestCents: data.intercalary_interest_cents,
+        apportAccount: data.apport_account,
         bankAccount: data.bank_account,
         loanAccount: data.loan_account,
         userId: user.id,

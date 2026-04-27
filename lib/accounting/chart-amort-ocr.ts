@@ -271,25 +271,58 @@ export async function addCustomAccount(
 
 export interface PropertyComponent {
   component: string;
+  /** % du total d'acquisition (calculé, varie avec le terrain) */
   percent: number;
+  /** % du bâti (constant pour les composants amortissables, undefined pour terrain) */
+  percentBati?: number;
   durationYears: number;
   amountCents: number;
 }
 
-/** Standard decomposition for residential property */
-export const STANDARD_COMPONENTS: Omit<PropertyComponent, 'amountCents'>[] = [
-  { component: 'terrain', percent: 15, durationYears: 0 }, // non amortissable
-  { component: 'gros_oeuvre', percent: 40, durationYears: 50 },
-  { component: 'facade', percent: 10, durationYears: 25 },
-  { component: 'installations_generales', percent: 15, durationYears: 25 },
-  { component: 'agencements', percent: 10, durationYears: 15 },
-  { component: 'equipements', percent: 10, durationYears: 10 },
+/**
+ * Décomposition standard du BÂTI (hors terrain) pour un immeuble résidentiel.
+ * Pourcentages exprimés EN % DU BÂTI (pas du total) — somme = 100%.
+ *
+ * Référence : recommandations CSOEC + EFL + Avis CNC pour la
+ * décomposition par composant d'un immeuble locatif. Les durées
+ * correspondent aux usages PCG bailleur les plus courants.
+ */
+export const STANDARD_BATI_COMPONENTS: ReadonlyArray<{
+  component: string;
+  percentBati: number;
+  durationYears: number;
+}> = [
+  { component: 'gros_oeuvre',              percentBati: 50, durationYears: 50 }, // structure porteuse
+  { component: 'facade',                   percentBati: 10, durationYears: 25 }, // façade + étanchéité + couverture
+  { component: 'installations_generales',  percentBati: 20, durationYears: 20 }, // élec, plomberie, CVC
+  { component: 'agencements',              percentBati: 10, durationYears: 15 }, // sols, murs, plafonds intérieurs
+  { component: 'equipements',              percentBati: 10, durationYears: 10 }, // cuisine, sanitaires, chaudière
 ];
 
 /**
- * Decompose a property into amortizable components.
- * @param totalCents Total acquisition cost in cents
- * @param terrainPct Terrain percentage (default 15%)
+ * @deprecated Conservé pour compatibilité — préférer STANDARD_BATI_COMPONENTS
+ * dont les % sont relatifs au bâti (convention PCG bailleur).
+ */
+export const STANDARD_COMPONENTS: Omit<PropertyComponent, 'amountCents'>[] = [
+  { component: 'terrain', percent: 15, durationYears: 0 },
+  ...STANDARD_BATI_COMPONENTS.map((c) => ({
+    component: c.component,
+    percent: c.percentBati * 0.85, // ré-exprimé en % du total (terrain=15%)
+    durationYears: c.durationYears,
+  })),
+];
+
+/**
+ * Décompose un bien immobilier en composants amortissables.
+ *
+ * Convention fiscale française (PCG bailleur) :
+ *   1. Le terrain est calculé EN PREMIER comme un % du total (non amortissable).
+ *   2. Le bâti = total − terrain.
+ *   3. Les 5 composants du bâti utilisent des % FIXES du bâti
+ *      (gros œuvre 50%, façade 10%, installations 20%, agencements 10%, équipements 10%).
+ *
+ * @param totalCents Coût total d'acquisition à immobiliser (centimes, entier)
+ * @param terrainPct Quote-part du terrain (défaut 15%, plage 0-50)
  */
 export function decomposeProperty(
   totalCents: number,
@@ -302,44 +335,48 @@ export function decomposeProperty(
     throw new Error('Terrain percentage must be between 0 and 50');
   }
 
-  // Adjust terrain percent in decomposition
-  const adjustedComponents = STANDARD_COMPONENTS.map((c) => {
-    if (c.component === 'terrain') return { ...c, percent: terrainPct };
-    return c;
-  });
+  const terrainCents = Math.round((totalCents * terrainPct) / 100);
+  const batiCents = totalCents - terrainCents;
 
-  // Recalculate remaining percentages proportionally
-  const nonTerrainTotal = adjustedComponents
-    .filter((c) => c.component !== 'terrain')
-    .reduce((s, c) => s + c.percent, 0);
+  const result: PropertyComponent[] = [
+    {
+      component: 'terrain',
+      percent: terrainPct,
+      durationYears: 0,
+      amountCents: terrainCents,
+    },
+  ];
 
-  const remainingPct = 100 - terrainPct;
-  const scaleFactor = remainingPct / nonTerrainTotal;
+  // Vérifie que la somme des % du bâti vaut bien 100 (sinon configuration invalide)
+  const batiPctTotal = STANDARD_BATI_COMPONENTS.reduce(
+    (s, c) => s + c.percentBati,
+    0,
+  );
+  if (batiPctTotal !== 100) {
+    throw new Error(
+      `STANDARD_BATI_COMPONENTS must sum to 100%, got ${batiPctTotal}`,
+    );
+  }
 
-  const result: PropertyComponent[] = [];
-  let allocatedCents = 0;
-
-  for (let i = 0; i < adjustedComponents.length; i++) {
-    const comp = adjustedComponents[i];
-    let pct: number;
-
-    if (comp.component === 'terrain') {
-      pct = terrainPct;
-    } else {
-      pct = comp.percent * scaleFactor;
-    }
-
-    // Last non-terrain component gets the remainder to avoid rounding issues
-    const isLast = i === adjustedComponents.length - 1;
+  let allocated = 0;
+  for (let i = 0; i < STANDARD_BATI_COMPONENTS.length; i++) {
+    const comp = STANDARD_BATI_COMPONENTS[i];
+    const isLast = i === STANDARD_BATI_COMPONENTS.length - 1;
+    // Dernier composant absorbe l'arrondi pour garantir somme = totalCents.
     const amountCents = isLast
-      ? totalCents - allocatedCents
-      : Math.round(totalCents * pct / 100);
+      ? batiCents - allocated
+      : Math.round((batiCents * comp.percentBati) / 100);
+    allocated += amountCents;
 
-    allocatedCents += amountCents;
+    // % du total = montant / total (recalculé pour rester exact)
+    const pctOfTotal = totalCents > 0
+      ? Math.round((amountCents / totalCents) * 10000) / 100
+      : 0;
 
     result.push({
       component: comp.component,
-      percent: Math.round(pct * 100) / 100,
+      percent: pctOfTotal,
+      percentBati: comp.percentBati,
       durationYears: comp.durationYears,
       amountCents,
     });
