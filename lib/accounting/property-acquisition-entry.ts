@@ -1,16 +1,24 @@
 /**
  * Bridge acquisition d'un bien immobilier → moteur double-entrée.
  *
- * Quand un propriétaire renseigne l'achat d'un bien (prix, financement,
- * date), on pose une écriture composée qui :
- *   1. Débite chaque compte d'immobilisation (classe 2) pour la quote-part
- *      du composant (terrain, gros oeuvre, façade, installations,
- *      agencements, équipements) — décomposition standard PCG bailleur.
- *   2. Crédite l'emprunt (164000) pour la portion empruntée.
- *   3. Crédite la banque (512100) pour la portion en apport.
+ * Quand un propriétaire renseigne l'achat d'un bien, on pose une écriture
+ * composée qui couvre l'intégralité du coût d'acquisition :
  *
- * Permet ensuite à l'amortissement automatique (681100 / 281xxx) de
- * fonctionner correctement, et au bilan d'être complet.
+ *   DÉBITS (immobilisations classe 2) :
+ *     - Décomposition standard PCG bailleur du PRIX D'ACHAT (et frais
+ *       de notaire si capitalisés) : terrain + 5 composants amortissables.
+ *
+ *   DÉBITS (charges classe 6, optionnelles) :
+ *     - 622600 Honoraires notaire (si frais notaire en charge, non capitalisés)
+ *     - 627000 Frais bancaires (frais de dossier, garantie hypothèque, commission)
+ *     - 661000 Intérêts d'emprunt (intérêts intercalaires)
+ *
+ *   CRÉDITS :
+ *     - 164000 Emprunts immobiliers (portion empruntée)
+ *     - 512100 Banque OU 455000 CCA (portion en apport)
+ *
+ * Permet à l'amortissement automatique (681100 / 281xxx) de fonctionner
+ * correctement, et au bilan d'être complet.
  *
  * Idempotent via `reference = property.id` + source 'auto:property_acquisition'.
  *
@@ -59,15 +67,40 @@ export interface PropertyAcquisitionEntryResult {
 export interface PropertyAcquisitionParams {
   /** ID du bien immobilier acquis. */
   propertyId: string;
-  /** Prix d'acquisition total en centimes (frais notariaux inclus si souhaité). */
+  /**
+   * Prix d'acquisition à immobiliser en centimes (= prix d'achat HT,
+   * + frais de notaire si capitalisés). C'est le montant qui sera
+   * décomposé en composants amortissables.
+   */
   totalCents: number;
-  /** Portion empruntée en centimes (le reste = apport via 512100). */
+  /** Portion empruntée en centimes. */
   loanCents: number;
   /** Date d'acquisition (YYYY-MM-DD). */
   acquisitionDate: string;
   /** Pourcentage du terrain (non amortissable), 15% par défaut. */
   terrainPct?: number;
-  /** Compte bancaire d'apport (défaut : 512100). */
+  /**
+   * Frais de notaire en CHARGES (centimes). Comptabilisés en 622600.
+   * NE PAS inclure ici les frais déjà capitalisés dans `totalCents`.
+   */
+  notaryFeesExpenseCents?: number;
+  /**
+   * Frais bancaires en CHARGES (centimes) — frais de dossier, garantie,
+   * commission courtier. Comptabilisés en 627000.
+   */
+  bankFeesCents?: number;
+  /**
+   * Intérêts intercalaires (1ère période) en CHARGES (centimes).
+   * Comptabilisés en 661000.
+   */
+  intercalaryInterestCents?: number;
+  /**
+   * Compte d'apport pour la portion non empruntée :
+   *   - '512100' (Banque, défaut) — apport puisé sur compte courant SCI
+   *   - '455000' (CCA) — apport via Compte Courant Associé
+   */
+  apportAccount?: string;
+  /** Compte bancaire d'apport (défaut : 512100). @deprecated use apportAccount */
   bankAccount?: string;
   /** Compte d'emprunt (défaut : 164000). */
   loanAccount?: string;
@@ -121,10 +154,29 @@ export async function ensurePropertyAcquisitionEntry(
     if (!Number.isFinite(params.totalCents) || params.totalCents <= 0) {
       return { created: false, skippedReason: "amount_invalid" };
     }
+
+    const notaryFeesExpenseCents = Math.max(
+      0,
+      Math.round(params.notaryFeesExpenseCents ?? 0),
+    );
+    const bankFeesCents = Math.max(0, Math.round(params.bankFeesCents ?? 0));
+    const intercalaryInterestCents = Math.max(
+      0,
+      Math.round(params.intercalaryInterestCents ?? 0),
+    );
+
+    // Total à financer = immobilisation + charges d'acquisition.
+    // C'est ce total qui doit être couvert par (emprunt + apport).
+    const totalCashOutCents =
+      params.totalCents +
+      notaryFeesExpenseCents +
+      bankFeesCents +
+      intercalaryInterestCents;
+
     if (
       !Number.isFinite(params.loanCents) ||
       params.loanCents < 0 ||
-      params.loanCents > params.totalCents
+      params.loanCents > totalCashOutCents
     ) {
       return { created: false, skippedReason: "amount_invalid" };
     }
@@ -175,25 +227,61 @@ export async function ensurePropertyAcquisitionEntry(
     // Décomposition par composant (terrain + 5 composants amortissables)
     const components = decomposeProperty(params.totalCents, params.terrainPct);
 
-    // Lignes débit : un compte par composant
-    const debitLines = components
-      .filter((c) => c.amountCents > 0)
-      .map((c) => ({
-        accountNumber: COMPONENT_ACCOUNT[c.component] ?? "218000",
-        debitCents: c.amountCents,
-        creditCents: 0,
-        label: `${c.component.replace(/_/g, " ")} (${c.percent}%)`,
-        propertyId: params.propertyId,
-      }));
-
-    // Lignes crédit : emprunt + apport selon split
-    const creditLines: Array<{
+    type Line = {
       accountNumber: string;
       debitCents: number;
       creditCents: number;
       label?: string;
       propertyId?: string;
-    }> = [];
+    };
+
+    // Lignes débit immobilisations : un compte par composant
+    const debitLines: Line[] = components
+      .filter((c) => c.amountCents > 0)
+      .map((c) => {
+        const pctBatiSuffix =
+          c.percentBati !== undefined ? `${c.percentBati}% du bâti` : `${c.percent}% du total`;
+        return {
+          accountNumber: COMPONENT_ACCOUNT[c.component] ?? "218000",
+          debitCents: c.amountCents,
+          creditCents: 0,
+          label: `${c.component.replace(/_/g, " ")} (${pctBatiSuffix})`,
+          propertyId: params.propertyId,
+        };
+      });
+
+    // Lignes débit charges d'acquisition (non capitalisées)
+    const expenseLines: Line[] = [];
+    if (notaryFeesExpenseCents > 0) {
+      expenseLines.push({
+        accountNumber: "622600",
+        debitCents: notaryFeesExpenseCents,
+        creditCents: 0,
+        label: "Honoraires notaire (frais d'acquisition)",
+        propertyId: params.propertyId,
+      });
+    }
+    if (bankFeesCents > 0) {
+      expenseLines.push({
+        accountNumber: "627000",
+        debitCents: bankFeesCents,
+        creditCents: 0,
+        label: "Frais bancaires (dossier, garantie, commission)",
+        propertyId: params.propertyId,
+      });
+    }
+    if (intercalaryInterestCents > 0) {
+      expenseLines.push({
+        accountNumber: "661000",
+        debitCents: intercalaryInterestCents,
+        creditCents: 0,
+        label: "Intérêts intercalaires",
+        propertyId: params.propertyId,
+      });
+    }
+
+    // Lignes crédit : emprunt + apport selon split
+    const creditLines: Line[] = [];
 
     if (params.loanCents > 0) {
       creditLines.push({
@@ -205,13 +293,17 @@ export async function ensurePropertyAcquisitionEntry(
       });
     }
 
-    const apportCents = params.totalCents - params.loanCents;
+    const apportCents = totalCashOutCents - params.loanCents;
     if (apportCents > 0) {
+      const apportAccount =
+        params.apportAccount ?? params.bankAccount ?? "512100";
+      const apportLabel =
+        apportAccount === "455000" ? "Apport via CCA" : "Apport (banque)";
       creditLines.push({
-        accountNumber: params.bankAccount ?? "512100",
+        accountNumber: apportAccount,
         debitCents: 0,
         creditCents: apportCents,
-        label: "Apport",
+        label: apportLabel,
         propertyId: params.propertyId,
       });
     }
@@ -229,7 +321,7 @@ export async function ensurePropertyAcquisitionEntry(
       source: "auto:property_acquisition",
       reference: params.propertyId,
       userId: actorUserId,
-      lines: [...debitLines, ...creditLines],
+      lines: [...debitLines, ...expenseLines, ...creditLines],
     });
 
     if (shouldMarkInformational(config)) {

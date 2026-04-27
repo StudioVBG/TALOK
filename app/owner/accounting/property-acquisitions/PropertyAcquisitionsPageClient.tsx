@@ -26,7 +26,10 @@ interface PropertiesResponse {
 
 interface ComponentResult {
   component: string;
+  /** % du total */
   percent: number;
+  /** % du bâti (constant pour les composants amortissables) */
+  percentBati?: number;
   durationYears: number;
   amountCents: number;
 }
@@ -40,11 +43,11 @@ interface AcquisitionResponse {
 
 const COMPONENT_LABELS: Record<string, string> = {
   terrain: "Terrain",
-  gros_oeuvre: "Gros œuvre",
-  facade: "Façade & étanchéité",
-  installations_generales: "Installations générales",
-  agencements: "Agencements",
-  equipements: "Équipements",
+  gros_oeuvre: "Gros œuvre (structure)",
+  facade: "Façade, étanchéité, couverture",
+  installations_generales: "Installations (élec, plomb, CVC)",
+  agencements: "Agencements intérieurs",
+  equipements: "Équipements (cuisine, sanitaires)",
 };
 
 const COMPONENT_ACCOUNTS: Record<string, string> = {
@@ -57,44 +60,62 @@ const COMPONENT_ACCOUNTS: Record<string, string> = {
 };
 
 /**
- * Décomposition standard recalculée côté client pour la preview avant
- * soumission. La logique miroir de `decomposeProperty` côté serveur.
+ * Décomposition standard PCG bailleur, miroir de `decomposeProperty` côté
+ * serveur. Le terrain est calculé EN PREMIER (% du total), puis les 5
+ * composants amortissables sont calculés sur le bâti avec des % FIXES
+ * (50/10/20/10/10 du bâti).
  */
+const STANDARD_BATI_COMPONENTS = [
+  { component: "gros_oeuvre", percentBati: 50, durationYears: 50 },
+  { component: "facade", percentBati: 10, durationYears: 25 },
+  { component: "installations_generales", percentBati: 20, durationYears: 20 },
+  { component: "agencements", percentBati: 10, durationYears: 15 },
+  { component: "equipements", percentBati: 10, durationYears: 10 },
+];
+
 function decomposePreview(
   totalCents: number,
   terrainPct: number,
 ): ComponentResult[] {
-  const standard = [
-    { component: "terrain", percent: terrainPct, durationYears: 0 },
-    { component: "gros_oeuvre", percent: 40, durationYears: 50 },
-    { component: "facade", percent: 10, durationYears: 25 },
-    { component: "installations_generales", percent: 15, durationYears: 25 },
-    { component: "agencements", percent: 10, durationYears: 15 },
-    { component: "equipements", percent: 10, durationYears: 10 },
+  const terrainCents = Math.round((totalCents * terrainPct) / 100);
+  const batiCents = totalCents - terrainCents;
+  const out: ComponentResult[] = [
+    {
+      component: "terrain",
+      percent: terrainPct,
+      percentBati: undefined,
+      durationYears: 0,
+      amountCents: terrainCents,
+    },
   ];
-  const nonTerrainTotal = standard
-    .filter((c) => c.component !== "terrain")
-    .reduce((s, c) => s + c.percent, 0);
-  const remainingPct = 100 - terrainPct;
-  const scaleFactor = remainingPct / nonTerrainTotal;
-  const out: ComponentResult[] = [];
   let allocated = 0;
-  for (let i = 0; i < standard.length; i++) {
-    const c = standard[i];
-    const pct = c.component === "terrain" ? terrainPct : c.percent * scaleFactor;
-    const isLast = i === standard.length - 1;
+  for (let i = 0; i < STANDARD_BATI_COMPONENTS.length; i++) {
+    const c = STANDARD_BATI_COMPONENTS[i];
+    const isLast = i === STANDARD_BATI_COMPONENTS.length - 1;
     const amountCents = isLast
-      ? totalCents - allocated
-      : Math.round((totalCents * pct) / 100);
+      ? batiCents - allocated
+      : Math.round((batiCents * c.percentBati) / 100);
     allocated += amountCents;
+    const pctOfTotal =
+      totalCents > 0
+        ? Math.round((amountCents / totalCents) * 10000) / 100
+        : 0;
     out.push({
       component: c.component,
-      percent: Math.round(pct * 100) / 100,
+      percent: pctOfTotal,
+      percentBati: c.percentBati,
       durationYears: c.durationYears,
       amountCents,
     });
   }
   return out;
+}
+
+function eurosToCents(input: string): number {
+  if (!input) return 0;
+  const v = parseFloat(input.replace(",", "."));
+  if (!Number.isFinite(v)) return 0;
+  return Math.round(v * 100);
 }
 
 export default function PropertyAcquisitionsPageClient() {
@@ -122,8 +143,8 @@ function Content() {
       if (Array.isArray(res)) return res;
       const data = (res as PropertiesResponse).data;
       if (Array.isArray(data)) return data;
-      if (data && typeof data === "object" && Array.isArray((data as any).properties)) {
-        return (data as any).properties;
+      if (data && typeof data === "object" && Array.isArray((data as { properties?: Property[] }).properties)) {
+        return (data as { properties: Property[] }).properties;
       }
       if ((res as PropertiesResponse).properties) {
         return (res as PropertiesResponse).properties as Property[];
@@ -133,7 +154,6 @@ function Content() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Filtre sur les biens de l'entité active uniquement (si entityId connu)
   const filteredProperties = useMemo(() => {
     const all = propertiesQuery.data ?? [];
     if (!entityId) return all;
@@ -143,53 +163,67 @@ function Content() {
   const [propertyId, setPropertyId] = useState("");
   const today = new Date().toISOString().split("T")[0];
   const [acquisitionDate, setAcquisitionDate] = useState(today);
-  const [totalEuros, setTotalEuros] = useState("");
-  const [loanEuros, setLoanEuros] = useState("");
+  const [priceEuros, setPriceEuros] = useState("");
   const [terrainPct, setTerrainPct] = useState("15");
+  const [notaryEuros, setNotaryEuros] = useState("");
+  const [notaryMode, setNotaryMode] = useState<"capitalize" | "expense">(
+    "capitalize",
+  );
+  const [bankFeesEuros, setBankFeesEuros] = useState("");
+  const [interestEuros, setInterestEuros] = useState("");
+  const [loanEuros, setLoanEuros] = useState("");
+  const [apportAccount, setApportAccount] = useState<"512100" | "455000">(
+    "512100",
+  );
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<{
     entryId: string;
     components: ComponentResult[];
   } | null>(null);
 
-  // Live preview de la décomposition
-  const preview = useMemo(() => {
-    const totalCents = Math.round(parseFloat(totalEuros.replace(",", ".")) * 100);
-    const pct = parseFloat(terrainPct.replace(",", ".")) || 15;
-    if (!Number.isFinite(totalCents) || totalCents <= 0) return null;
-    if (pct < 0 || pct > 50) return null;
-    return decomposePreview(totalCents, pct);
-  }, [totalEuros, terrainPct]);
+  // Centimes parsés
+  const priceCents = eurosToCents(priceEuros);
+  const notaryCents = eurosToCents(notaryEuros);
+  const bankFeesCents = eurosToCents(bankFeesEuros);
+  const interestCents = eurosToCents(interestEuros);
+  const loanCents = eurosToCents(loanEuros);
+  const terrainPctParsed = parseFloat(terrainPct.replace(",", ".")) || 15;
 
-  const totalCentsParsed = preview
-    ? preview.reduce((s, c) => s + c.amountCents, 0)
-    : 0;
-  const loanCentsParsed = Math.round(
-    parseFloat(loanEuros.replace(",", ".") || "0") * 100,
-  );
-  const apportCents = Math.max(0, totalCentsParsed - loanCentsParsed);
+  // Si frais notaire capitalisés → ajoutés à l'immobilisation
+  // Sinon → restent en charges 622600
+  const immobilisationCents =
+    notaryMode === "capitalize" ? priceCents + notaryCents : priceCents;
+  const notaryExpenseCents = notaryMode === "expense" ? notaryCents : 0;
+
+  // Total à financer (cash out) = immo + toutes les charges d'acquisition
+  const totalCashOutCents =
+    immobilisationCents + notaryExpenseCents + bankFeesCents + interestCents;
+
+  const apportCents = Math.max(0, totalCashOutCents - loanCents);
+
+  // Décomposition preview (uniquement sur la base immobilisable)
+  const preview = useMemo(() => {
+    if (immobilisationCents <= 0) return null;
+    if (terrainPctParsed < 0 || terrainPctParsed > 50) return null;
+    return decomposePreview(immobilisationCents, terrainPctParsed);
+  }, [immobilisationCents, terrainPctParsed]);
 
   const createMutation = useMutation({
-    mutationFn: async () => {
-      const totalCents = Math.round(
-        parseFloat(totalEuros.replace(",", ".")) * 100,
-      );
-      const loanCents = loanEuros
-        ? Math.round(parseFloat(loanEuros.replace(",", ".")) * 100)
-        : 0;
-      const pct = terrainPct ? parseFloat(terrainPct.replace(",", ".")) : 15;
-
-      return apiClient.post<AcquisitionResponse>(
+    mutationFn: async () =>
+      apiClient.post<AcquisitionResponse>(
         "/accounting/property-acquisitions",
         {
           property_id: propertyId,
-          total_cents: totalCents,
+          total_cents: immobilisationCents,
           loan_cents: loanCents,
           acquisition_date: acquisitionDate,
-          terrain_pct: pct,
+          terrain_pct: terrainPctParsed,
+          notary_fees_expense_cents: notaryExpenseCents,
+          bank_fees_cents: bankFeesCents,
+          intercalary_interest_cents: interestCents,
+          apport_account: apportAccount,
         },
-      );
-    },
+      ),
     onSuccess: (res: AcquisitionResponse) => {
       if (res.success && res.data) {
         setSuccess(res.data);
@@ -208,11 +242,11 @@ function Content() {
   const canSubmit =
     propertyId &&
     acquisitionDate &&
-    totalEuros &&
-    Number.isFinite(totalCentsParsed) &&
-    totalCentsParsed > 0 &&
-    loanCentsParsed >= 0 &&
-    loanCentsParsed <= totalCentsParsed;
+    priceCents > 0 &&
+    loanCents >= 0 &&
+    loanCents <= totalCashOutCents &&
+    terrainPctParsed >= 0 &&
+    terrainPctParsed <= 50;
 
   if (!entityId) {
     return (
@@ -233,9 +267,10 @@ function Content() {
           Acquisition immobilière
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Comptabilise l'achat d'un bien : décomposition automatique en
+          Comptabilise l&apos;achat d&apos;un bien : décomposition automatique en
           composants (terrain + 5 axes amortissables) selon le PCG bailleur,
-          avec ventilation emprunt / apport.
+          avec frais d&apos;acquisition (notaire, banque, intérêts) et
+          ventilation emprunt / apport.
         </p>
       </div>
 
@@ -253,10 +288,10 @@ function Content() {
               setError(null);
               createMutation.mutate();
             }}
-            className="bg-card rounded-xl border border-border p-4 space-y-3"
+            className="bg-card rounded-xl border border-border p-4 space-y-4"
           >
             <h2 className="text-sm font-semibold text-foreground">
-              Détails de l'acquisition
+              Détails de l&apos;acquisition
             </h2>
 
             <label className="block space-y-1">
@@ -283,14 +318,14 @@ function Content() {
               </select>
               {!propertiesQuery.isLoading && filteredProperties.length === 0 && (
                 <span className="text-[11px] text-amber-600">
-                  Aucun bien trouvé. Crée un bien dans « Mes biens » d'abord.
+                  Aucun bien trouvé. Crée un bien dans « Mes biens » d&apos;abord.
                 </span>
               )}
             </label>
 
             <label className="block space-y-1">
               <span className="text-xs font-medium text-muted-foreground">
-                Date d'acquisition
+                Date d&apos;acquisition
               </span>
               <input
                 type="date"
@@ -301,64 +336,172 @@ function Content() {
               />
             </label>
 
-            <div className="grid grid-cols-2 gap-3">
+            {/* --- Bloc immobilisation --- */}
+            <fieldset className="space-y-3 border border-border rounded-lg p-3">
+              <legend className="text-[11px] font-medium text-muted-foreground px-1">
+                Bien immobilier (à immobiliser)
+              </legend>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Prix d&apos;achat HT (€)
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={priceEuros}
+                    onChange={(e) => setPriceEuros(e.target.value)}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                    placeholder="250000"
+                    required
+                  />
+                </label>
+
+                <label className="block space-y-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    % terrain (non amortissable)
+                  </span>
+                  <input
+                    type="number"
+                    step="0.5"
+                    min="0"
+                    max="50"
+                    value={terrainPct}
+                    onChange={(e) => setTerrainPct(e.target.value)}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  />
+                  <span className="text-[11px] text-muted-foreground">
+                    Défaut 15%. Urbain dense 20-25%, rural 5-10%.
+                  </span>
+                </label>
+              </div>
+            </fieldset>
+
+            {/* --- Bloc frais d'acquisition --- */}
+            <fieldset className="space-y-3 border border-border rounded-lg p-3">
+              <legend className="text-[11px] font-medium text-muted-foreground px-1">
+                Frais d&apos;acquisition
+              </legend>
+
               <label className="block space-y-1">
                 <span className="text-xs font-medium text-muted-foreground">
-                  Prix total (€)
+                  Frais de notaire (€)
                 </span>
                 <input
                   type="number"
                   step="0.01"
-                  min="0.01"
-                  value={totalEuros}
-                  onChange={(e) => setTotalEuros(e.target.value)}
+                  min="0"
+                  value={notaryEuros}
+                  onChange={(e) => setNotaryEuros(e.target.value)}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  placeholder="250000"
-                  required
+                  placeholder="20000"
+                />
+                <div className="flex gap-3 mt-1">
+                  <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+                    <input
+                      type="radio"
+                      name="notaryMode"
+                      value="capitalize"
+                      checked={notaryMode === "capitalize"}
+                      onChange={() => setNotaryMode("capitalize")}
+                    />
+                    <span>Capitaliser (immobilisation)</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground cursor-pointer">
+                    <input
+                      type="radio"
+                      name="notaryMode"
+                      value="expense"
+                      checked={notaryMode === "expense"}
+                      onChange={() => setNotaryMode("expense")}
+                    />
+                    <span>En charges (622600)</span>
+                  </label>
+                </div>
+              </label>
+
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Frais bancaires : dossier, garantie, commission (€)
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={bankFeesEuros}
+                  onChange={(e) => setBankFeesEuros(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  placeholder="1500"
                 />
                 <span className="text-[11px] text-muted-foreground">
-                  Frais de notaire inclus si capitalisés.
+                  Comptabilisés en charges (627000).
                 </span>
               </label>
 
               <label className="block space-y-1">
                 <span className="text-xs font-medium text-muted-foreground">
-                  % terrain (non amortissable)
+                  Intérêts intercalaires (€)
                 </span>
                 <input
                   type="number"
-                  step="1"
+                  step="0.01"
                   min="0"
-                  max="50"
-                  value={terrainPct}
-                  onChange={(e) => setTerrainPct(e.target.value)}
+                  value={interestEuros}
+                  onChange={(e) => setInterestEuros(e.target.value)}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  placeholder="0"
                 />
                 <span className="text-[11px] text-muted-foreground">
-                  Défaut 15% (ajustable selon la situation : urbain dense
-                  20-25%, rural 5-10%).
+                  Comptabilisés en charges financières (661000).
                 </span>
               </label>
-            </div>
+            </fieldset>
 
-            <label className="block space-y-1">
-              <span className="text-xs font-medium text-muted-foreground">
-                Portion empruntée (€)
-              </span>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={loanEuros}
-                onChange={(e) => setLoanEuros(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                placeholder="200000"
-              />
-              <span className="text-[11px] text-muted-foreground">
-                Le reste sera ventilé en apport (compte 512100 banque).
-                Mettez 0 si achat 100% comptant.
-              </span>
-            </label>
+            {/* --- Bloc financement --- */}
+            <fieldset className="space-y-3 border border-border rounded-lg p-3">
+              <legend className="text-[11px] font-medium text-muted-foreground px-1">
+                Financement
+              </legend>
+
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Portion empruntée (€)
+                </span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={loanEuros}
+                  onChange={(e) => setLoanEuros(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  placeholder="200000"
+                />
+                <span className="text-[11px] text-muted-foreground">
+                  Crédité au compte 164000. 0 si achat 100% comptant.
+                </span>
+              </label>
+
+              <label className="block space-y-1">
+                <span className="text-xs font-medium text-muted-foreground">
+                  Compte d&apos;apport
+                </span>
+                <select
+                  value={apportAccount}
+                  onChange={(e) =>
+                    setApportAccount(e.target.value as "512100" | "455000")
+                  }
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="512100">512100 — Banque (compte courant)</option>
+                  <option value="455000">455000 — Compte courant associé (CCA)</option>
+                </select>
+                <span className="text-[11px] text-muted-foreground">
+                  Le reste après emprunt sera crédité sur ce compte.
+                </span>
+              </label>
+            </fieldset>
 
             {error && (
               <div className="flex items-start gap-2 rounded-lg bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
@@ -375,16 +518,21 @@ function Content() {
               {createMutation.isPending && (
                 <Loader2 className="w-4 h-4 animate-spin" />
               )}
-              Comptabiliser l'acquisition
+              Comptabiliser l&apos;acquisition
             </button>
           </form>
 
           {/* Preview */}
           <PreviewPanel
             preview={preview}
-            loanCents={loanCentsParsed}
+            immobilisationCents={immobilisationCents}
+            notaryExpenseCents={notaryExpenseCents}
+            bankFeesCents={bankFeesCents}
+            interestCents={interestCents}
+            loanCents={loanCents}
             apportCents={apportCents}
-            totalCents={totalCentsParsed}
+            apportAccount={apportAccount}
+            totalCashOutCents={totalCashOutCents}
           />
         </div>
       )}
@@ -394,32 +542,49 @@ function Content() {
 
 function PreviewPanel({
   preview,
+  immobilisationCents,
+  notaryExpenseCents,
+  bankFeesCents,
+  interestCents,
   loanCents,
   apportCents,
-  totalCents,
+  apportAccount,
+  totalCashOutCents,
 }: {
   preview: ComponentResult[] | null;
+  immobilisationCents: number;
+  notaryExpenseCents: number;
+  bankFeesCents: number;
+  interestCents: number;
   loanCents: number;
   apportCents: number;
-  totalCents: number;
+  apportAccount: "512100" | "455000";
+  totalCashOutCents: number;
 }) {
   if (!preview) {
     return (
       <div className="bg-card rounded-xl border border-border p-6 text-center text-sm text-muted-foreground">
         <Calculator className="w-8 h-8 mx-auto mb-2 text-muted-foreground/50" />
-        Saisis le prix total pour voir la décomposition prévue.
+        Saisis le prix d&apos;achat pour voir la décomposition prévue.
       </div>
     );
   }
 
+  const totalDebits =
+    immobilisationCents + notaryExpenseCents + bankFeesCents + interestCents;
+  const totalCredits = loanCents + apportCents;
+  const balanced = totalDebits === totalCredits;
+
   return (
     <div className="bg-card rounded-xl border border-border p-4 space-y-3">
       <h2 className="text-sm font-semibold text-foreground">
-        Aperçu de l'écriture comptable
+        Aperçu de l&apos;écriture comptable
       </h2>
 
       <div className="space-y-1.5 text-xs">
-        <p className="font-medium text-muted-foreground">Débits (immobilisations)</p>
+        <p className="font-medium text-muted-foreground">
+          Débits — Immobilisations (classe 2)
+        </p>
         {preview.map((c) => (
           <div
             key={c.component}
@@ -433,8 +598,12 @@ function PreviewPanel({
                 {COMPONENT_LABELS[c.component] ?? c.component}
               </span>
               <span className="text-[11px] text-muted-foreground shrink-0">
-                ({c.percent}%
-                {c.durationYears > 0 ? ` · ${c.durationYears} ans` : " · non amort."})
+                ({c.percentBati !== undefined
+                  ? `${c.percentBati}% du bâti`
+                  : `${c.percent}% du total`}
+                {c.durationYears > 0
+                  ? ` · ${c.durationYears} ans`
+                  : " · non amort."})
               </span>
             </div>
             <span className="font-medium text-foreground whitespace-nowrap">
@@ -444,12 +613,45 @@ function PreviewPanel({
         ))}
       </div>
 
+      {(notaryExpenseCents > 0 || bankFeesCents > 0 || interestCents > 0) && (
+        <div className="space-y-1.5 text-xs">
+          <p className="font-medium text-muted-foreground">
+            Débits — Charges d&apos;acquisition (classe 6)
+          </p>
+          {notaryExpenseCents > 0 && (
+            <ExpenseLine
+              account="622600"
+              label="Honoraires notaire"
+              amount={notaryExpenseCents}
+            />
+          )}
+          {bankFeesCents > 0 && (
+            <ExpenseLine
+              account="627000"
+              label="Frais bancaires (dossier, garantie)"
+              amount={bankFeesCents}
+            />
+          )}
+          {interestCents > 0 && (
+            <ExpenseLine
+              account="661000"
+              label="Intérêts intercalaires"
+              amount={interestCents}
+            />
+          )}
+        </div>
+      )}
+
       <div className="space-y-1.5 text-xs">
-        <p className="font-medium text-muted-foreground">Crédits (financement)</p>
+        <p className="font-medium text-muted-foreground">
+          Crédits — Financement
+        </p>
         {loanCents > 0 && (
           <div className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2.5 py-1.5">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] text-muted-foreground">164000</span>
+              <span className="font-mono text-[11px] text-muted-foreground">
+                164000
+              </span>
               <span className="text-foreground">Emprunt immobilier</span>
             </div>
             <span className="font-medium text-foreground">
@@ -460,8 +662,12 @@ function PreviewPanel({
         {apportCents > 0 && (
           <div className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2.5 py-1.5">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-[11px] text-muted-foreground">512100</span>
-              <span className="text-foreground">Apport (banque)</span>
+              <span className="font-mono text-[11px] text-muted-foreground">
+                {apportAccount}
+              </span>
+              <span className="text-foreground">
+                {apportAccount === "455000" ? "Apport via CCA" : "Apport (banque)"}
+              </span>
             </div>
             <span className="font-medium text-foreground">
               C {formatCents(apportCents)}
@@ -470,18 +676,47 @@ function PreviewPanel({
         )}
       </div>
 
-      <div className="border-t border-border pt-2 flex items-center justify-between text-xs font-medium">
-        <span className="text-muted-foreground">Total équilibre</span>
-        <span
-          className={
-            loanCents + apportCents === totalCents
-              ? "text-emerald-600"
-              : "text-rose-600"
-          }
-        >
-          D {formatCents(totalCents)} = C {formatCents(loanCents + apportCents)}
-        </span>
+      <div className="border-t border-border pt-2 space-y-1">
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+          <span>Coût total d&apos;acquisition</span>
+          <span className="font-medium text-foreground">
+            {formatCents(totalCashOutCents)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-xs font-medium">
+          <span className="text-muted-foreground">Équilibre</span>
+          <span
+            className={balanced ? "text-emerald-600" : "text-rose-600"}
+          >
+            D {formatCents(totalDebits)} {balanced ? "=" : "≠"} C{" "}
+            {formatCents(totalCredits)}
+          </span>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function ExpenseLine({
+  account,
+  label,
+  amount,
+}: {
+  account: string;
+  label: string;
+  amount: number;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-md bg-muted/30 px-2.5 py-1.5">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="font-mono text-[11px] text-muted-foreground shrink-0">
+          {account}
+        </span>
+        <span className="text-foreground truncate">{label}</span>
+      </div>
+      <span className="font-medium text-foreground whitespace-nowrap">
+        D {formatCents(amount)}
+      </span>
     </div>
   );
 }
@@ -500,7 +735,7 @@ function SuccessPanel({
         <h2 className="text-base font-semibold">Acquisition comptabilisée</h2>
       </div>
       <p className="text-sm text-foreground">
-        L'écriture composée a été créée dans le journal OD avec la
+        L&apos;écriture composée a été créée dans le journal OD avec la
         décomposition suivante :
       </p>
       <ul className="text-xs space-y-1 font-mono text-muted-foreground">
@@ -522,7 +757,7 @@ function SuccessPanel({
           href={`/owner/accounting/entries/${entryId}`}
           className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs hover:bg-muted/50"
         >
-          Voir l'écriture
+          Voir l&apos;écriture
         </Link>
         <Link
           href="/owner/accounting/amortization"
