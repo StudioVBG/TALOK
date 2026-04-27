@@ -30,13 +30,39 @@ export const PRO_TYPES = [
 ] as const;
 
 /**
- * Tous les types de biens
+ * Types agricoles (terrain nu ou exploitation avec bâtiments)
+ * Aligné avec la migration `20260331100000_add_agricultural_property_types.sql`.
+ */
+export const AGRICULTURAL_TYPES = [
+  "terrain_agricole",
+  "exploitation_agricole",
+] as const;
+
+/**
+ * Tous les types de biens (single source of truth).
+ * Doit rester aligné avec :
+ *   - `properties_type_check` en DB (migration 20260331100000)
+ *   - les enums Zod consommés par les routes API (POST /api/properties,
+ *     POST /api/properties/init) et le schéma de validation V3.
+ *
+ * Tuple littéral (pas de spread) pour rester compatible avec `z.enum(...)`,
+ * qui exige un tuple `readonly [string, ...string[]]`.
  */
 export const ALL_PROPERTY_TYPES = [
-  ...HABITATION_TYPES,
-  ...PARKING_TYPES,
-  ...PRO_TYPES,
+  "appartement",
+  "maison",
+  "studio",
+  "colocation",
+  "saisonnier",
+  "parking",
+  "box",
+  "local_commercial",
+  "bureaux",
+  "entrepot",
+  "fonds_de_commerce",
   "immeuble",
+  "terrain_agricole",
+  "exploitation_agricole",
 ] as const;
 
 /**
@@ -120,6 +146,10 @@ export function isParkingType(type: string): boolean {
 
 export function isProType(type: string): boolean {
   return (PRO_TYPES as readonly string[]).includes(type);
+}
+
+export function isAgriculturalType(type: string): boolean {
+  return (AGRICULTURAL_TYPES as readonly string[]).includes(type);
 }
 
 export function hasFloor(type: string): boolean {

@@ -34,14 +34,16 @@ const propertyTypeV3Enum = z.enum([
   "maison",
   "studio",
   "colocation",
-  "saisonnier",        // SOTA 2026: Location saisonnière
+  "saisonnier",            // SOTA 2026: Location saisonnière
   "parking",
   "box",
   "local_commercial",
   "bureaux",
   "entrepot",
   "fonds_de_commerce",
-  "immeuble",          // SOTA 2026: Immeuble entier multi-lots
+  "immeuble",              // SOTA 2026: Immeuble entier multi-lots
+  "terrain_agricole",      // SOTA 2026: Terrain nu agricole
+  "exploitation_agricole", // SOTA 2026: Exploitation avec bâtiments
 ]);
 
 const parkingTypeEnum = z.enum([
@@ -329,6 +331,91 @@ export const localProSchemaV3 = basePropertySchemaV3
   });
 
 // ============================================
+// SCHÉMA AGRICOLE (SOTA 2026)
+// ============================================
+// Source : migration `20260331100000_add_agricultural_property_types.sql`
+// Décision : schéma minimal — un terrain ou une exploitation agricole peut
+// être loué (fermage, bail rural) ou détenu sans bail. Loyer/charges/dépôt
+// rendus optionnels (un terrain en fermage n'a pas de charges mensuelles
+// classiques, et un terrain non loué n'a pas de loyer du tout).
+
+const typeBailAgricoleEnum = z.enum([
+  "fermage",
+  "metayage",
+  "bail_rural",
+  "bail_a_long_terme",
+  "convention_pluri_annuelle",
+  "occupation_precaire",
+  "autre",
+]);
+
+const typeCultureEnum = z.enum([
+  "cultivable",
+  "prairie",
+  "vignes",
+  "vergers",
+  "foret",
+  "elevage",
+  "maraichage",
+  "mixte",
+  "autre",
+]);
+
+export const agriculturalSchemaV3Base = basePropertySchemaV3
+  .omit({ loyer_hc: true, charges_mensuelles: true, depot_garantie: true })
+  .extend({
+    type_bien: z.enum(["terrain_agricole", "exploitation_agricole"]),
+    // Surface : strictement positive pour exploitation, optionnelle pour
+    // terrain (le wizard peut l'omettre, cf. TYPES_WITHOUT_SURFACE).
+    surface: z.number().positive("La surface doit être strictement positive").optional().nullable(),
+    type_culture: typeCultureEnum.optional().nullable(),
+    has_eau: z.boolean().optional(),
+    has_electricite: z.boolean().optional(),
+    has_acces_route: z.boolean().optional(),
+    has_batiments: z.boolean().optional(),
+    nb_batiments: z.number().int().min(0).optional().nullable(),
+    surface_batiments_m2: z.number().min(0).optional().nullable(),
+    // Bail / financier : tous optionnels (vente, fermage gratuit, etc.)
+    type_bail: typeBailAgricoleEnum.optional().nullable(),
+    loyer_hc: z.number().min(0).optional().nullable(),
+    charges_mensuelles: z.number().min(0).optional().nullable(),
+    depot_garantie: z.number().min(0).optional().nullable(),
+  });
+
+export const agriculturalSchemaV3 = agriculturalSchemaV3Base.superRefine((data, ctx) => {
+  // Exploitation : la surface est obligatoire (différence avec terrain nu)
+  if (data.type_bien === "exploitation_agricole" && (data.surface == null || data.surface <= 0)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["surface"],
+      message: "La surface est obligatoire pour une exploitation agricole",
+    });
+  }
+
+  // Cohérence has_batiments / nb_batiments
+  if (data.has_batiments === true && (data.nb_batiments == null || data.nb_batiments < 1)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["nb_batiments"],
+      message: "Le nombre de bâtiments doit être au moins 1 si has_batiments est vrai",
+    });
+  }
+
+  // Si nb_batiments > 0, surface_batiments_m2 attendue cohérente
+  if (
+    data.surface_batiments_m2 != null &&
+    data.surface != null &&
+    data.surface_batiments_m2 > data.surface
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["surface_batiments_m2"],
+      message: "La surface des bâtiments ne peut pas dépasser la surface totale du terrain",
+    });
+  }
+});
+
+// ============================================
 // SCHÉMA IMMEUBLE ENTIER (SOTA 2026)
 // ============================================
 // Source modèle V3 section 3.5 : règles pour immeubles multi-lots
@@ -407,7 +494,8 @@ export const propertySchemaV3Base = z.discriminatedUnion("type_bien", [
   habitationSchemaV3Base,
   parkingSchemaV3,
   localProSchemaV3,
-  immeubleSchemaV3Base,  // Use Base version (ZodObject) for discriminatedUnion compatibility
+  immeubleSchemaV3Base,    // Use Base version (ZodObject) for discriminatedUnion compatibility
+  agriculturalSchemaV3Base, // Idem : la version Base (sans superRefine) pour le discriminator
 ]);
 
 // Version avec validations avancées pour habitation (wrapper autour de la base)
@@ -456,6 +544,39 @@ export const propertySchemaV3 = propertySchemaV3Base.superRefine((data, ctx) => 
         code: z.ZodIssueCode.custom,
         path: ["surface_habitable_m2"],
         message: "La surface habitable minimale est de 9m2 pour un logement decent",
+      });
+    }
+  }
+
+  // Appliquer les validations conditionnelles pour agricole
+  if (data.type_bien === "terrain_agricole" || data.type_bien === "exploitation_agricole") {
+    const agri = data as z.infer<typeof agriculturalSchemaV3Base>;
+
+    if (agri.type_bien === "exploitation_agricole" && (agri.surface == null || agri.surface <= 0)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["surface"],
+        message: "La surface est obligatoire pour une exploitation agricole",
+      });
+    }
+
+    if (agri.has_batiments === true && (agri.nb_batiments == null || agri.nb_batiments < 1)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["nb_batiments"],
+        message: "Le nombre de bâtiments doit être au moins 1 si has_batiments est vrai",
+      });
+    }
+
+    if (
+      agri.surface_batiments_m2 != null &&
+      agri.surface != null &&
+      agri.surface_batiments_m2 > agri.surface
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["surface_batiments_m2"],
+        message: "La surface des bâtiments ne peut pas dépasser la surface totale du terrain",
       });
     }
   }
@@ -514,11 +635,16 @@ export const immeubleUpdateSchemaV3 = immeubleSchemaV3Base.partial().extend({
   type_bien: z.literal("immeuble").optional(),
 });
 
+export const agriculturalUpdateSchemaV3 = agriculturalSchemaV3Base.partial().extend({
+  type_bien: z.enum(["terrain_agricole", "exploitation_agricole"]).optional(),
+});
+
 export const propertyUpdateSchemaV3 = z.union([
   habitationUpdateSchemaV3,
   parkingUpdateSchemaV3,
   localProUpdateSchemaV3,
   immeubleUpdateSchemaV3,
+  agriculturalUpdateSchemaV3,
 ]);
 
 // ============================================
@@ -558,6 +684,7 @@ export type HabitationV3Input = z.infer<typeof habitationSchemaV3>;
 export type ParkingV3Input = z.infer<typeof parkingSchemaV3>;
 export type LocalProV3Input = z.infer<typeof localProSchemaV3>;
 export type ImmeubleV3Input = z.infer<typeof immeubleSchemaV3>;
+export type AgriculturalV3Input = z.infer<typeof agriculturalSchemaV3>;
 export type BuildingUnitInput = z.infer<typeof buildingUnitSchema>;
 export type RoomV3Input = z.infer<typeof roomSchemaV3>;
 export type PhotoV3Input = z.infer<typeof photoSchemaV3>;
@@ -566,4 +693,5 @@ export type HabitationV3UpdateInput = z.infer<typeof habitationUpdateSchemaV3>;
 export type ParkingV3UpdateInput = z.infer<typeof parkingUpdateSchemaV3>;
 export type LocalProV3UpdateInput = z.infer<typeof localProUpdateSchemaV3>;
 export type ImmeubleV3UpdateInput = z.infer<typeof immeubleUpdateSchemaV3>;
+export type AgriculturalV3UpdateInput = z.infer<typeof agriculturalUpdateSchemaV3>;
 

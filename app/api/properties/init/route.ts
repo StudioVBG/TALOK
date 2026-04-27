@@ -8,6 +8,7 @@ import { generateCode } from "@/lib/helpers/code-generator";
 import { withSubscriptionLimit } from "@/lib/middleware/subscription-check";
 import { syncPropertyBillingToStripe } from "@/lib/stripe/sync-property-billing";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
+import { ALL_PROPERTY_TYPES } from "@/lib/constants/property-types";
 
 /**
  * Extrait le code département depuis un code postal
@@ -33,12 +34,9 @@ function getDepartementFromCP(codePostal: string | null | undefined): string | n
   return codePostal.substring(0, 2);
 }
 
-const propertyTypeEnum = z.enum([
-  "appartement", "maison", "studio", "colocation", "saisonnier",
-  "parking", "box",
-  "local_commercial", "bureaux", "entrepot", "fonds_de_commerce",
-  "immeuble", "terrain_agricole", "exploitation_agricole",
-], { errorMap: () => ({ message: "Type de bien invalide" }) });
+const propertyTypeEnum = z.enum(ALL_PROPERTY_TYPES, {
+  errorMap: () => ({ message: "Type de bien invalide" }),
+});
 
 const initSchema = z.object({
   type: propertyTypeEnum,

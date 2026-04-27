@@ -12,6 +12,7 @@ import { withSubscriptionLimit, createSubscriptionErrorResponse } from "@/lib/mi
 import { syncPropertyBillingToStripe } from "@/lib/stripe/sync-property-billing";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
 import { createLogger } from "@/lib/logging/structured-logger";
+import { ALL_PROPERTY_TYPES } from "@/lib/constants/property-types";
 import type {
   ServiceSupabaseClient,
   TypedSupabaseClient,
@@ -548,21 +549,12 @@ async function createDraftProperty({
 
 /**
  * POST /api/properties - Créer une nouvelle propriété
+ *
+ * Source unique des types : ALL_PROPERTY_TYPES (lib/constants/property-types.ts).
+ * Doit rester aligné avec la contrainte SQL `properties_type_check` et avec
+ * l'enum équivalent dans /api/properties/init.
  */
-const typeBienEnum = z.enum([
-  "appartement",
-  "maison",
-  "studio",
-  "colocation",
-  "saisonnier",
-  "local_commercial",
-  "bureaux",
-  "entrepot",
-  "parking",
-  "box",
-  "fonds_de_commerce",
-  "immeuble",
-]);
+const typeBienEnum = z.enum(ALL_PROPERTY_TYPES);
 
 const usagePrincipalEnum = z.enum([
   "habitation",
