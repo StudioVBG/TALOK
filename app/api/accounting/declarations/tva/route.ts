@@ -132,6 +132,11 @@ export async function GET(request: Request) {
       )
       .eq("accounting_entries.entity_id", entityId)
       .eq("accounting_entries.is_validated", true)
+      // Exclut les ecritures informationnelles (mode micro-foncier qui pose
+      // des memo entries pour comparer aux donnees reelles). Sans ce filtre,
+      // une SCI hybride avec un bail micro et un bail reel verrait sa CA3
+      // polluee par les memos micro et la TVA serait calculee a faux.
+      .eq("accounting_entries.informational", false)
       .gte("accounting_entries.entry_date", startDate)
       .lte("accounting_entries.entry_date", endDate)
       .or(

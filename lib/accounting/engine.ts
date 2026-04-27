@@ -415,17 +415,22 @@ export async function getBalance(
     // ignore and fall through to live aggregation
   }
 
+  // La MV mv_accounting_balance filtre deja informational=false (cf.
+  // migration 20260426180000). Le fallback live doit faire pareil sinon
+  // les memos micro-foncier polluent la balance retournee quand la MV
+  // est vide ou stale.
   const { data, error } = await supabase
     .from('accounting_entry_lines')
     .select(`
       account_number,
       debit_cents,
       credit_cents,
-      accounting_entries!inner(entity_id, exercise_id, is_validated)
+      accounting_entries!inner(entity_id, exercise_id, is_validated, informational)
     `)
     .eq('accounting_entries.entity_id', entityId)
     .eq('accounting_entries.exercise_id', exerciseId)
-    .eq('accounting_entries.is_validated', true);
+    .eq('accounting_entries.is_validated', true)
+    .eq('accounting_entries.informational', false);
 
   if (error) throw new Error(`Failed to fetch balance: ${error.message}`);
 

@@ -64,9 +64,15 @@ function DeclarationsContent() {
   const declarationType = regime === "micro-foncier" ? "micro-foncier" : regime === "reel-2044" ? "2044" : regime === "reel-2072" ? "2072" : "2042-cpro";
 
   const { data: declaration, isLoading: declLoading } = useQuery<DeclarationResponse>({
-    queryKey: ["declaration", declarationType, exerciseId],
-    queryFn: () => apiClient.get<DeclarationResponse>(`/accounting/declarations/${declarationType}?exerciseId=${exerciseId}`),
-    enabled: !!exerciseId && step >= 2,
+    queryKey: ["declaration", declarationType, exerciseId, activeEntityId],
+    queryFn: () =>
+      apiClient.get<DeclarationResponse>(
+        // entityId est OBLIGATOIRE cote API (cf. /api/accounting/declarations/[type]/route.ts).
+        // L'oubli renvoyait 400 et cassait silencieusement la preview de
+        // toutes les declarations 2044 / 2065 / 2031 / 2072 / micro-foncier.
+        `/accounting/declarations/${declarationType}?exerciseId=${exerciseId}&entityId=${activeEntityId}`,
+      ),
+    enabled: !!exerciseId && !!activeEntityId && step >= 2,
   });
 
   const declData: DeclarationPayload = (() => {
