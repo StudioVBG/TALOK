@@ -377,14 +377,18 @@ export async function getBalance(
   exerciseId: string,
 ): Promise<BalanceItem[]> {
   // Fast path: read from the pre-aggregated materialized view exposed
-  // through fn_balance_for_exercise. Falls back to the legacy aggregation
-  // if the function isn't deployed yet (e.g. local dev without latest migration).
+  // through fn_balance_for_exercise. We only trust the MV when it
+  // returns rows — if it returns an empty array the MV may simply be
+  // stale (it is only refreshed at exercise close, nightly via pg_cron,
+  // or on-demand via fn_refresh_accounting_views), so we fall through
+  // to the live aggregation to stay correct on freshly-validated
+  // entries. Falls back the same way if the function isn't deployed.
   try {
     const { data: mvRows, error: mvErr } = await supabase.rpc(
       'fn_balance_for_exercise',
       { p_entity_id: entityId, p_exercise_id: exerciseId },
     );
-    if (!mvErr && Array.isArray(mvRows)) {
+    if (!mvErr && Array.isArray(mvRows) && mvRows.length > 0) {
       return (mvRows as Array<{
         account_number: string;
         account_label: string;
