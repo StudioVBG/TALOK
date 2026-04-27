@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { PlanGate } from "@/components/subscription/plan-gate";
@@ -98,6 +98,11 @@ function GrandLivreContent() {
   const queryClient = useQueryClient();
   const [accountFilter, setAccountFilter] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  // Trace si l'utilisateur a déjà interagi avec l'accordéon. Tant que ce
+  // n'est pas le cas, on auto-déplie tout au chargement (le grand-livre
+  // classique se lit en entier, pas plié). Une fois que l'utilisateur a
+  // touché un toggle, on respecte son intention.
+  const [userTouched, setUserTouched] = useState(false);
 
   // ── Lettrage selection ────────────────────────────────────────────
   // On stocke les lineId sélectionnés (cross-account possible mais
@@ -209,6 +214,7 @@ function GrandLivreContent() {
   }, [items]);
 
   const toggle = (accountNumber: string) => {
+    setUserTouched(true);
     setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(accountNumber)) next.delete(accountNumber);
@@ -217,8 +223,24 @@ function GrandLivreContent() {
     });
   };
 
-  const expandAll = () => setExpanded(new Set(items.map((i) => i.accountNumber)));
-  const collapseAll = () => setExpanded(new Set());
+  const expandAll = () => {
+    setUserTouched(true);
+    setExpanded(new Set(items.map((i) => i.accountNumber)));
+  };
+  const collapseAll = () => {
+    setUserTouched(true);
+    setExpanded(new Set());
+  };
+
+  // Auto-déploiement initial : un grand-livre classique est lu déplié.
+  // Se synchronise quand la liste des comptes change (changement
+  // d'exercice, filtrage). Cesse dès que l'utilisateur a manuellement
+  // toggle un compte pour ne pas écraser son choix.
+  useEffect(() => {
+    if (userTouched) return;
+    if (items.length === 0) return;
+    setExpanded(new Set(items.map((i) => i.accountNumber)));
+  }, [items, userTouched]);
 
   if (!entityId) {
     return <NeedsEntityState />;
@@ -309,10 +331,14 @@ function GrandLivreContent() {
                   key={account.accountNumber}
                   className="bg-card rounded-xl border border-border overflow-hidden"
                 >
+                  {/* Header de compte façon grand-livre classique : juste
+                      le numéro + libellé + bouton de pliage. Les D/C
+                      vivent dans le tbody (lignes Total + Solde) pour
+                      coller à la maquette EC/comptable. */}
                   <button
                     type="button"
                     onClick={() => toggle(account.accountNumber)}
-                    className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors text-left"
+                    className="w-full flex items-center justify-between px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors text-left border-b border-border"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       {isOpen ? (
@@ -320,25 +346,20 @@ function GrandLivreContent() {
                       ) : (
                         <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                       )}
-                      <span className="font-mono text-xs text-muted-foreground shrink-0">
-                        {account.accountNumber}
+                      <span className="font-mono text-sm font-semibold text-foreground shrink-0">
+                        Compte {account.accountNumber}
                       </span>
-                      <span className="text-sm font-medium text-foreground truncate">
+                      <span className="text-sm font-semibold text-foreground truncate">
                         {account.accountLabel}
                       </span>
                       <span className="text-xs text-muted-foreground shrink-0">
-                        ({account.entries.length})
+                        ({account.entries.length} ligne
+                        {account.entries.length > 1 ? "s" : ""})
                       </span>
                     </div>
-                    <div className="flex items-center gap-4 shrink-0 text-xs">
-                      <span className="text-foreground">
-                        D <strong className="font-medium">{formatCents(account.totalDebitCents)}</strong>
-                      </span>
-                      <span className="text-foreground">
-                        C <strong className="font-medium">{formatCents(account.totalCreditCents)}</strong>
-                      </span>
+                    {!isOpen && (
                       <span
-                        className={`font-medium ${solde > 0 ? "text-blue-600" : solde < 0 ? "text-rose-600" : "text-muted-foreground"}`}
+                        className={`text-xs font-medium shrink-0 ${solde > 0 ? "text-blue-600" : solde < 0 ? "text-rose-600" : "text-muted-foreground"}`}
                       >
                         {solde > 0
                           ? `Solde D ${formatCents(solde)}`
@@ -346,7 +367,7 @@ function GrandLivreContent() {
                             ? `Solde C ${formatCents(-solde)}`
                             : "Soldé"}
                       </span>
-                    </div>
+                    )}
                   </button>
                   {isOpen && (
                     <div className="overflow-x-auto border-t border-border">
@@ -406,10 +427,10 @@ function GrandLivreContent() {
                                   </Link>
                                 </td>
                                 <td className="px-4 py-2 text-foreground">{entry.label}</td>
-                                <td className="px-4 py-2 text-right font-medium text-foreground whitespace-nowrap">
+                                <td className="px-4 py-2 text-right font-medium text-foreground whitespace-nowrap tabular-nums">
                                   {entry.debitCents > 0 ? formatCents(entry.debitCents) : "—"}
                                 </td>
-                                <td className="px-4 py-2 text-right font-medium text-foreground whitespace-nowrap">
+                                <td className="px-4 py-2 text-right font-medium text-foreground whitespace-nowrap tabular-nums">
                                   {entry.creditCents > 0 ? formatCents(entry.creditCents) : "—"}
                                 </td>
                                 <td className="px-4 py-2 text-center text-xs">
@@ -424,6 +445,59 @@ function GrandLivreContent() {
                               </tr>
                             );
                           })}
+
+                          {/* Ligne Total : somme D / C de toutes les écritures
+                              du compte. Format identique à la maquette EC. */}
+                          <tr className="bg-muted/40 border-t-2 border-border font-semibold">
+                            <td className="px-2 py-2"></td>
+                            <td
+                              className="px-4 py-2 text-muted-foreground whitespace-nowrap tabular-nums"
+                              colSpan={1}
+                            >
+                              {account.entries.length > 0
+                                ? formatDate(
+                                    account.entries[account.entries.length - 1]
+                                      .entryDate,
+                                  )
+                                : ""}
+                            </td>
+                            <td className="px-4 py-2"></td>
+                            <td className="px-4 py-2 text-foreground">Total</td>
+                            <td className="px-4 py-2 text-right text-foreground whitespace-nowrap tabular-nums">
+                              {formatCents(account.totalDebitCents)}
+                            </td>
+                            <td className="px-4 py-2 text-right text-foreground whitespace-nowrap tabular-nums">
+                              {formatCents(account.totalCreditCents)}
+                            </td>
+                            <td className="px-4 py-2"></td>
+                          </tr>
+
+                          {/* Ligne Solde : montre la différence sur le côté
+                              où elle tombe (D si D>C, C sinon). Si soldé,
+                              0,00 / 0,00 comme dans la maquette. */}
+                          <tr className="bg-muted/30 font-semibold">
+                            <td className="px-2 py-2"></td>
+                            <td
+                              className="px-4 py-2 text-muted-foreground whitespace-nowrap tabular-nums"
+                              colSpan={1}
+                            >
+                              {account.entries.length > 0
+                                ? formatDate(
+                                    account.entries[account.entries.length - 1]
+                                      .entryDate,
+                                  )
+                                : ""}
+                            </td>
+                            <td className="px-4 py-2"></td>
+                            <td className="px-4 py-2 text-foreground">Solde</td>
+                            <td className="px-4 py-2 text-right text-foreground whitespace-nowrap tabular-nums">
+                              {solde > 0 ? formatCents(solde) : solde === 0 ? formatCents(0) : ""}
+                            </td>
+                            <td className="px-4 py-2 text-right text-foreground whitespace-nowrap tabular-nums">
+                              {solde < 0 ? formatCents(-solde) : solde === 0 ? formatCents(0) : ""}
+                            </td>
+                            <td className="px-4 py-2"></td>
+                          </tr>
                         </tbody>
                       </table>
                     </div>
@@ -464,30 +538,42 @@ function GrandLivreContent() {
             />
           )}
 
-          <div className="bg-card rounded-xl border border-border px-4 py-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-              <span className="text-muted-foreground">
-                {sorted.length} compte{sorted.length > 1 ? "s" : ""},{" "}
-                {totals.entryCount} ligne{totals.entryCount > 1 ? "s" : ""}
-              </span>
-              <div className="flex items-center gap-6">
-                <span className="text-foreground">
-                  <span className="text-muted-foreground mr-1">Total débit :</span>
-                  <span className="font-medium">{formatCents(totals.totalDebit)}</span>
-                </span>
-                <span className="text-foreground">
-                  <span className="text-muted-foreground mr-1">Total crédit :</span>
-                  <span className="font-medium">{formatCents(totals.totalCredit)}</span>
-                </span>
-              </div>
+          {/* Pied de grand-livre : ligne TOTAL GRAND-LIVRE en format
+              tableau pour s'aligner visuellement avec les sections. La
+              somme D doit toujours = somme C en compta double-partie. */}
+          <section className="bg-card rounded-xl border-2 border-border overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <tbody>
+                  <tr className="bg-muted/60 font-bold">
+                    <td className="px-2 py-3"></td>
+                    <td className="px-4 py-3 text-foreground" colSpan={3}>
+                      TOTAL GRAND-LIVRE
+                      <span className="ml-3 text-xs font-normal text-muted-foreground">
+                        ({sorted.length} compte{sorted.length > 1 ? "s" : ""},{" "}
+                        {totals.entryCount} ligne
+                        {totals.entryCount > 1 ? "s" : ""})
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-foreground whitespace-nowrap tabular-nums">
+                      {formatCents(totals.totalDebit)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-foreground whitespace-nowrap tabular-nums">
+                      {formatCents(totals.totalCredit)}
+                    </td>
+                    <td className="px-4 py-3"></td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
             {totals.totalDebit !== totals.totalCredit && (
-              <p className="mt-2 text-xs text-amber-600">
+              <p className="px-4 py-2 text-xs text-amber-600 border-t border-border bg-amber-500/5">
                 ⚠️ Grand livre déséquilibré : écart de{" "}
-                {formatCents(Math.abs(totals.totalDebit - totals.totalCredit))}
+                {formatCents(Math.abs(totals.totalDebit - totals.totalCredit))}{" "}
+                — la somme des débits doit égaler la somme des crédits.
               </p>
             )}
-          </div>
+          </section>
         </>
       )}
     </div>

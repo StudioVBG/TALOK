@@ -11,23 +11,46 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
-// Schéma de validation
-const createMandateSchema = z.object({
-  owner_profile_id: z.string().uuid("ID propriétaire invalide"),
-  type_mandat: z.enum(["gestion", "location", "vente", "syndic"]).default("gestion"),
-  date_debut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date invalide"),
-  date_fin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-  duree_mois: z.number().positive().optional(),
-  tacite_reconduction: z.boolean().default(true),
-  preavis_resiliation_mois: z.number().default(3),
-  properties_ids: z.array(z.string().uuid()).optional(),
-  inclut_tous_biens: z.boolean().default(true),
-  commission_pourcentage: z.number().min(0).max(100).default(7),
-  commission_fixe_mensuelle: z.number().optional(),
-  honoraires_mise_en_location: z.number().optional(),
-  honoraires_edl: z.number().optional(),
-  notes: z.string().optional(),
-});
+// Schéma de validation aligné sur agency_mandates (canonique Hoguet).
+// Les anciens noms FR (numero_mandat, type_mandat, commission_pourcentage…)
+// ne sont plus acceptés — la migration des callers est triviale (mapping
+// 1-pour-1) et la page /new ne fait pas encore d'appel réel, donc le
+// breaking change ne casse personne en pratique.
+const createMandateSchema = z
+  .object({
+    // Le caller fournit SOIT owner_profile_id (UUID — flow programmatique)
+    // SOIT owner_email (résolu serveur — pratique depuis le formulaire UI
+    // qui ne connaît que l'email saisi). Au moins l'un des deux requis.
+    owner_profile_id: z.string().uuid("ID propriétaire invalide").optional(),
+    owner_email: z.string().email("Email propriétaire invalide").optional(),
+    // agency_entity_id optionnel : on auto-résout via legal_entities
+    // owned by l'agence si absent (cas par défaut).
+    agency_entity_id: z.string().uuid().optional(),
+    mandate_type: z
+      .enum(["gestion", "location", "syndic", "transaction"])
+      .default("gestion"),
+    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date début invalide"),
+    end_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Date fin invalide")
+      .optional()
+      .nullable(),
+    tacit_renewal: z.boolean().default(true),
+    property_ids: z.array(z.string().uuid()).optional().default([]),
+    // Si true et property_ids est vide, le serveur charge toutes les
+    // properties dont owner_id = owner_profile_id résolu. Pratique
+    // pour le formulaire UI qui propose un toggle "tous les biens".
+    include_all_properties: z.boolean().optional().default(false),
+    management_fee_type: z.enum(["percentage", "fixed"]).default("percentage"),
+    management_fee_rate: z.number().min(0).max(100).optional(),
+    management_fee_fixed_cents: z.number().int().nonnegative().optional(),
+    mandant_bank_iban: z.string().optional(),
+    mandant_bank_bic: z.string().optional(),
+  })
+  .refine((d) => d.owner_profile_id || d.owner_email, {
+    message: "owner_profile_id OU owner_email requis",
+    path: ["owner_profile_id"],
+  });
 
 export async function GET(request: NextRequest) {
   try {
@@ -53,44 +76,109 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
     }
 
-    // Paramètres de requête
+    // Paramètres de requête. Le filtre `statut` (FR) est gardé pour
+    // compat ascendante avec l'UI legacy ; aligné en interne avec
+    // `status` côté agency_mandates (anglais Hoguet).
     const searchParams = request.nextUrl.searchParams;
-    const statut = searchParams.get("statut");
+    const statut = searchParams.get("statut") ?? searchParams.get("status");
     const type = searchParams.get("type");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const offset = (page - 1) * limit;
 
-    // Construire la requête
-    let query = supabase
-      .from("mandates")
-      .select(`
-        *,
-        owner:profiles!mandates_owner_profile_id_fkey(
-          id, prenom, nom, telephone
+    // Lecture sur agency_mandates (table canonique Hoguet, cf. décision 1
+    // de l'audit). La table legacy `mandates` reste en BDD pour les
+    // données historiques mais n'est plus exposée par cette route — la
+    // détail page (/api/agency/mandates/[id]) lit déjà agency_mandates,
+    // donc list et détail sont maintenant alignés.
+    let query = (supabase as any)
+      .from("agency_mandates")
+      .select(
+        `
+        id, mandate_number, mandate_type, status,
+        start_date, end_date,
+        management_fee_type, management_fee_rate, management_fee_fixed_cents,
+        property_ids, created_at,
+        owner:profiles!agency_mandates_owner_profile_id_fkey(
+          id, prenom, nom, email, telephone
+        ),
+        account:agency_mandant_accounts(
+          balance_cents, last_reversement_at, reversement_overdue
         )
-      `, { count: "exact" })
+      `,
+        { count: "exact" },
+      )
       .eq("agency_profile_id", profile.id);
 
     if (statut && statut !== "all") {
-      query = query.eq("statut", statut);
+      query = query.eq("status", statut);
     }
 
     if (type && type !== "all") {
-      query = query.eq("type_mandat", type);
+      query = query.eq("mandate_type", type);
     }
 
-    const { data: mandates, count, error } = await query
+    const { data: rows, count, error } = await query
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (error) {
       console.error("Erreur récupération mandats:", error);
-      return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error
+              ? (error as Error).message
+              : "Une erreur est survenue",
+        },
+        { status: 500 },
+      );
     }
 
+    // Normalise le payload pour que l'UI puisse afficher une vue
+    // lisible sans répliquer la logique fee-type / property_ids partout.
+    const mandates = ((rows ?? []) as any[]).map((m) => {
+      const account = Array.isArray(m.account) ? m.account[0] : m.account;
+      const owner = m.owner;
+      const ownerName = owner
+        ? `${owner.prenom ?? ""} ${owner.nom ?? ""}`.trim()
+        : "";
+      const commissionDisplay =
+        m.management_fee_type === "fixed"
+          ? m.management_fee_fixed_cents != null
+            ? `${(m.management_fee_fixed_cents / 100).toFixed(2)} €`
+            : null
+          : m.management_fee_rate != null
+            ? `${m.management_fee_rate}%`
+            : null;
+      const propertyIds = (m.property_ids ?? []) as string[];
+      return {
+        id: m.id,
+        numeroMandat: m.mandate_number,
+        type: m.mandate_type,
+        status: m.status,
+        dateDebut: m.start_date,
+        dateFin: m.end_date,
+        biensCount: propertyIds.length,
+        commission: m.management_fee_rate ?? null,
+        commissionFixedCents: m.management_fee_fixed_cents ?? null,
+        commissionType: m.management_fee_type,
+        commissionDisplay,
+        owner: {
+          id: owner?.id ?? null,
+          name: ownerName,
+          email: owner?.email ?? null,
+          phone: owner?.telephone ?? null,
+        },
+        balanceCents: account?.balance_cents ?? 0,
+        reversementOverdue: account?.reversement_overdue ?? false,
+        lastReversementAt: account?.last_reversement_at ?? null,
+        createdAt: m.created_at,
+      };
+    });
+
     return NextResponse.json({
-      mandates: mandates || [],
+      mandates,
       total: count || 0,
       page,
       limit,
@@ -125,29 +213,77 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
     }
 
-    // Vérifier que le profil agence existe
-    const { data: agencyProfile } = await supabase
-      .from("agency_profiles")
-      .select("profile_id")
-      .eq("profile_id", profile.id)
-      .single();
-
-    if (!agencyProfile) {
-      return NextResponse.json(
-        { error: "Profil agence requis. Veuillez compléter votre profil." },
-        { status: 400 }
-      );
-    }
-
     // Valider les données
     const body = await request.json();
     const validatedData = createMandateSchema.parse(body);
 
-    // Vérifier que le propriétaire existe
+    // Cohérence tarification : si percentage, rate doit être fourni ;
+    // si fixed, fixed_cents doit l'être. Sinon le mandat est créé sans
+    // tarification — autorisé mais l'agence devra éditer avant le 1er
+    // paiement (sinon la commission auto sera 0).
+    if (
+      validatedData.management_fee_type === "percentage" &&
+      validatedData.management_fee_rate == null
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "management_fee_rate requis quand management_fee_type='percentage'",
+        },
+        { status: 400 },
+      );
+    }
+    if (
+      validatedData.management_fee_type === "fixed" &&
+      validatedData.management_fee_fixed_cents == null
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "management_fee_fixed_cents requis quand management_fee_type='fixed'",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Résolution de l'owner. Deux chemins :
+    //   - owner_profile_id : on vérifie juste que la ligne existe et a
+    //     bien role='owner'.
+    //   - owner_email : on cherche un profile owner avec ce mail.
+    //     Refuse si non trouvé — l'agence doit avoir invité l'owner
+    //     à créer son compte avant de poser un mandat (Hoguet exige
+    //     une signature du mandant).
+    let ownerProfileId = validatedData.owner_profile_id;
+    if (!ownerProfileId && validatedData.owner_email) {
+      const { data: byEmail } = await supabase
+        .from("profiles")
+        .select("id, role")
+        .eq("email", validatedData.owner_email.toLowerCase())
+        .eq("role", "owner")
+        .maybeSingle();
+      if (!byEmail) {
+        return NextResponse.json(
+          {
+            error:
+              "Aucun propriétaire trouvé avec cet email. Invitez-le à créer son compte Talok avant de signer le mandat.",
+          },
+          { status: 404 },
+        );
+      }
+      ownerProfileId = byEmail.id;
+    }
+
+    if (!ownerProfileId) {
+      return NextResponse.json(
+        { error: "owner_profile_id ou owner_email requis" },
+        { status: 400 },
+      );
+    }
+
     const { data: owner } = await supabase
       .from("profiles")
       .select("id, role")
-      .eq("id", validatedData.owner_profile_id)
+      .eq("id", ownerProfileId)
       .eq("role", "owner")
       .single();
 
@@ -158,35 +294,77 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Générer un numéro de mandat
-    const { count } = await supabase
-      .from("mandates")
+    // Auto-résolution de property_ids si include_all_properties=true
+    // ET property_ids n'a pas été fourni explicitement. On charge
+    // toutes les properties dont owner_id pointe sur le mandant —
+    // l'agence accepte de gérer l'intégralité du portefeuille.
+    let propertyIds = validatedData.property_ids;
+    if (validatedData.include_all_properties && propertyIds.length === 0) {
+      const { data: ownerProperties } = await supabase
+        .from("properties")
+        .select("id")
+        .eq("owner_id", ownerProfileId);
+      propertyIds = (ownerProperties ?? []).map(
+        (p) => (p as { id: string }).id,
+      );
+    }
+
+    // Auto-résoudre l'entité juridique de l'agence si non fournie. La
+    // table agency_mandates exige agency_entity_id NOT NULL — sans
+    // entité, l'agence ne peut pas tenir de comptabilité Hoguet
+    // séparée (compte mandant 545, etc.). On erreur explicitement
+    // plutôt que d'inventer.
+    let agencyEntityId = validatedData.agency_entity_id;
+    if (!agencyEntityId) {
+      const { data: entity } = await supabase
+        .from("legal_entities")
+        .select("id")
+        .eq("owner_profile_id", profile.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      agencyEntityId = entity?.id;
+    }
+    if (!agencyEntityId) {
+      return NextResponse.json(
+        {
+          error:
+            "Aucune entité juridique trouvée pour cette agence. Créez d'abord votre entité via /agency/settings.",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Générer un numéro de mandat séquentiel par agence (UNIQUE par
+    // agency_profile_id + mandate_number — cf. index unique dans
+    // 20260408120000_whitelabel_agency_module.sql).
+    const { count } = await (supabase as any)
+      .from("agency_mandates")
       .select("id", { count: "exact", head: true })
       .eq("agency_profile_id", profile.id);
 
-    const numeroMandat = `MAN-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, "0")}`;
+    const mandateNumber = `MAN-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, "0")}`;
 
-    // Créer le mandat
-    const { data: mandate, error: createError } = await supabase
-      .from("mandates")
+    // Créer le mandat sur agency_mandates (canonique).
+    const { data: mandate, error: createError } = await (supabase as any)
+      .from("agency_mandates")
       .insert({
         agency_profile_id: profile.id,
-        owner_profile_id: validatedData.owner_profile_id,
-        numero_mandat: numeroMandat,
-        type_mandat: validatedData.type_mandat,
-        date_debut: validatedData.date_debut,
-        date_fin: validatedData.date_fin,
-        duree_mois: validatedData.duree_mois,
-        tacite_reconduction: validatedData.tacite_reconduction,
-        preavis_resiliation_mois: validatedData.preavis_resiliation_mois,
-        properties_ids: validatedData.properties_ids || [],
-        inclut_tous_biens: validatedData.inclut_tous_biens,
-        commission_pourcentage: validatedData.commission_pourcentage,
-        commission_fixe_mensuelle: validatedData.commission_fixe_mensuelle,
-        honoraires_mise_en_location: validatedData.honoraires_mise_en_location,
-        honoraires_edl: validatedData.honoraires_edl,
-        notes: validatedData.notes,
-        statut: "draft",
+        agency_entity_id: agencyEntityId,
+        owner_profile_id: ownerProfileId,
+        mandate_number: mandateNumber,
+        mandate_type: validatedData.mandate_type,
+        start_date: validatedData.start_date,
+        end_date: validatedData.end_date ?? null,
+        tacit_renewal: validatedData.tacit_renewal,
+        property_ids: propertyIds,
+        management_fee_type: validatedData.management_fee_type,
+        management_fee_rate: validatedData.management_fee_rate ?? null,
+        management_fee_fixed_cents:
+          validatedData.management_fee_fixed_cents ?? null,
+        mandant_bank_iban: validatedData.mandant_bank_iban ?? null,
+        mandant_bank_bic: validatedData.mandant_bank_bic ?? null,
+        status: "draft",
       })
       .select()
       .single();

@@ -7,6 +7,14 @@
 
 import { SupabaseClient } from "@supabase/supabase-js";
 import { CHARGES_RECUPERABLES } from "../constants/plan-comptable";
+import { createAutoEntry } from "@/lib/accounting/engine";
+import { getOrCreateCurrentExercise } from "@/lib/accounting/auto-exercise";
+import {
+  getEntityAccountingConfig,
+  markEntryInformational,
+  shouldMarkInformational,
+} from "@/lib/accounting/entity-config";
+import { resolveSystemActorForEntity } from "@/lib/accounting/system-actor";
 
 export interface ChargeProvision {
   periode: string;
@@ -246,13 +254,15 @@ export class ChargeRegularizationService {
       throw new Error("Cette régularisation a déjà été appliquée");
     }
 
-    // Récupérer le bail pour les infos propriétaire
+    // Récupérer le bail pour les infos propriétaire + l'entité comptable.
+    // legal_entity_id sur la property est requis pour pouvoir créer une
+    // écriture comptable ; adresse_complete sert juste au libellé.
     const { data: lease } = await this.supabase
       .from("leases")
       .select(`
         id,
         tenant_id,
-        property:properties!inner(owner_id)
+        property:properties!inner(id, owner_id, legal_entity_id, adresse_complete)
       `)
       .eq("id", regul.lease_id)
       .single();
@@ -262,6 +272,9 @@ export class ChargeRegularizationService {
     }
 
     const propertyData = lease.property as any;
+    const propertyId = propertyData?.id as string | undefined;
+    const propertyAddress = propertyData?.adresse_complete as string | undefined;
+    const legalEntityId = propertyData?.legal_entity_id as string | null;
 
     if (regul.balance < 0) {
       // Le locataire doit un complément → Créer une facture de régularisation
@@ -298,6 +311,18 @@ export class ChargeRegularizationService {
           invoice_id: invoice.id,
         })
         .eq("id", regularisationId);
+
+      // Écriture comptable de régul (non-bloquant). Idempotent via la
+      // référence regul:<id>. Le builder gère le diff provisions/réelles
+      // et balance automatiquement la ligne 411 (complément ou avoir).
+      await this.bookRegularisationEntry({
+        regularisationId,
+        legalEntityId,
+        regul,
+        lease,
+        propertyId,
+        propertyAddress,
+      });
 
       return {
         success: true,
@@ -340,13 +365,25 @@ export class ChargeRegularizationService {
         })
         .eq("id", regularisationId);
 
+      // Écriture comptable de régul (cas trop-perçu).
+      await this.bookRegularisationEntry({
+        regularisationId,
+        legalEntityId,
+        regul,
+        lease,
+        propertyId,
+        propertyAddress,
+      });
+
       return {
         success: true,
         credit_note_id: creditNote.id,
       };
     }
 
-    // Solde = 0, rien à faire
+    // Solde = 0, rien à faire côté facturation. On pose quand même
+    // l'écriture comptable si provisions_received > 0 — elle solde
+    // proprement le 419100 vers 708000 sans ligne 411 (diff = 0).
     await this.supabase
       .from("charge_regularisations")
       .update({
@@ -355,7 +392,154 @@ export class ChargeRegularizationService {
       })
       .eq("id", regularisationId);
 
+    await this.bookRegularisationEntry({
+      regularisationId,
+      legalEntityId,
+      regul,
+      lease,
+      propertyId,
+      propertyAddress,
+    });
+
     return { success: true };
+  }
+
+  /**
+   * Pose l'écriture comptable de régul charges via l'engine.
+   * Non-bloquant : toute erreur est loggée mais ne fait pas échouer
+   * l'application de la régul (qui a déjà créé son invoice/avoir et
+   * marqué le statut).
+   *
+   * Idempotence : skip silencieux si une écriture existe déjà avec
+   * reference="regul:<id>" et source="auto:charge_regularization".
+   *
+   * Skip explicite (avec log) si :
+   *   - la property n'a pas de legal_entity_id (compta non rattachable)
+   *   - la config compta de l'entité est désactivée
+   *   - aucun exercice ouvert pour l'entité
+   *   - les montants sont nuls des 2 côtés
+   */
+  private async bookRegularisationEntry(args: {
+    regularisationId: string;
+    legalEntityId: string | null;
+    regul: any;
+    lease: any;
+    propertyId: string | undefined;
+    propertyAddress: string | undefined;
+  }): Promise<void> {
+    const {
+      regularisationId,
+      legalEntityId,
+      regul,
+      lease,
+      propertyId,
+      propertyAddress,
+    } = args;
+
+    try {
+      if (!legalEntityId) {
+        console.warn(
+          "[charge-regul.bookEntry] property.legal_entity_id null → skip auto-entry",
+          { regularisationId },
+        );
+        return;
+      }
+
+      // Idempotence : un appel répété d'applyRegularisation ne doit pas
+      // dupliquer l'écriture. La ref est dérivée de l'id de la régul.
+      const reference = `regul:${regularisationId}`;
+      const { data: existing } = await this.supabase
+        .from("accounting_entries")
+        .select("id")
+        .eq("reference", reference)
+        .eq("source", "auto:charge_regularization")
+        .limit(1)
+        .maybeSingle();
+
+      if (existing && (existing as { id: string }).id) {
+        return;
+      }
+
+      const config = await getEntityAccountingConfig(
+        this.supabase,
+        legalEntityId,
+      );
+      if (!config || !config.accountingEnabled) {
+        return;
+      }
+
+      const exercise = await getOrCreateCurrentExercise(
+        this.supabase,
+        legalEntityId,
+      );
+      if (!exercise) {
+        console.warn(
+          "[charge-regul.bookEntry] no current exercise → skip",
+          { legalEntityId },
+        );
+        return;
+      }
+
+      const provisionsCents = Math.round(
+        Number(regul.provisions_received ?? regul.provisions_versees ?? 0) *
+          100,
+      );
+      const actualCents = Math.round(
+        Number(regul.actual_charges ?? regul.charges_reelles ?? 0) * 100,
+      );
+
+      if (provisionsCents <= 0 && actualCents <= 0) {
+        return;
+      }
+
+      const actorUserId = await resolveSystemActorForEntity(
+        this.supabase,
+        legalEntityId,
+      );
+      if (!actorUserId) {
+        console.warn("[charge-regul.bookEntry] no system actor", {
+          legalEntityId,
+        });
+        return;
+      }
+
+      const tenantId = (regul.tenant_id ?? lease?.tenant_id) as
+        | string
+        | undefined;
+      const leaseId = (lease?.id ?? regul.lease_id) as string | undefined;
+      const periodLabel =
+        regul.year != null ? `${regul.year}` : (regul.annee ?? "");
+      const addrSuffix = propertyAddress ? ` - ${propertyAddress}` : "";
+      const label = `Régularisation charges ${periodLabel}${addrSuffix}`.trim();
+
+      const entry = await createAutoEntry(
+        this.supabase,
+        "charge_regularization",
+        {
+          entityId: legalEntityId,
+          exerciseId: exercise.id,
+          userId: actorUserId,
+          // Le builder lit amountCents = provisions et
+          // secondaryAmountCents = actual ; il calcule le diff et ajoute
+          // la ligne 411 (complément ou avoir) automatiquement.
+          amountCents: provisionsCents,
+          secondaryAmountCents: actualCents,
+          label,
+          date: new Date().toISOString().split("T")[0],
+          reference,
+          propertyId,
+          leaseId,
+          thirdPartyType: tenantId ? "tenant" : undefined,
+          thirdPartyId: tenantId,
+        },
+      );
+
+      if (shouldMarkInformational(config)) {
+        await markEntryInformational(this.supabase, entry.id);
+      }
+    } catch (err) {
+      console.error("[charge-regul.bookEntry] failed (non-blocking):", err);
+    }
   }
 
   /**

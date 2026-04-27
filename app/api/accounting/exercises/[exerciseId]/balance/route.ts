@@ -45,9 +45,6 @@ export async function GET(
       throw new ApiError(403, "Profil non trouve");
     }
 
-    const featureGate = await requireAccountingAccess(profile.id, "balance");
-    if (featureGate) return featureGate;
-
     const { searchParams } = new URL(request.url);
     const entityId = searchParams.get("entityId");
     const format = (searchParams.get("format") ?? "json") as "json" | "pdf" | "xlsx";
@@ -56,15 +53,45 @@ export async function GET(
       throw new ApiError(400, "entityId est requis");
     }
 
-    // Ownership enforcement — service client bypasses RLS.
-    if (profile.role !== "admin") {
+    // Ownership enforcement — service client bypasses RLS. Trois chemins :
+    //   1. admin : bypass complet (gate aussi sauté)
+    //   2. propriétaire de l'entité → gating sur SON plan
+    //   3. expert-comptable invité (lookup ec_access par user.id ou
+    //      user.email) → gating sur le plan du PROPRIÉTAIRE
+    const isAdmin = profile.role === "admin";
+    let isOwner = false;
+    let ownerProfileId: string | null = null;
+
+    if (!isAdmin) {
       const { data: entity } = await serviceClient
         .from("legal_entities")
-        .select("id")
+        .select("id, owner_profile_id")
         .eq("id", entityId)
-        .eq("owner_profile_id", profile.id)
         .maybeSingle();
-      if (!entity) throw new ApiError(403, "Accès refusé à cette entité");
+      if (!entity) throw new ApiError(404, "Entité introuvable");
+
+      ownerProfileId = entity.owner_profile_id ?? null;
+      isOwner = ownerProfileId === profile.id;
+
+      if (!isOwner) {
+        const { data: ecAccess } = await serviceClient
+          .from("ec_access")
+          .select("id")
+          .eq("entity_id", entityId)
+          .eq("is_active", true)
+          .is("revoked_at", null)
+          .or(`ec_user_id.eq.${user.id},ec_email.eq.${user.email ?? ""}`)
+          .limit(1)
+          .maybeSingle();
+        if (!ecAccess) throw new ApiError(403, "Accès refusé à cette entité");
+      }
+
+      const gateProfileId = isOwner ? profile.id : ownerProfileId;
+      if (!gateProfileId) {
+        throw new ApiError(404, "Propriétaire de l'entité introuvable");
+      }
+      const featureGate = await requireAccountingAccess(gateProfileId, "balance");
+      if (featureGate) return featureGate;
     }
 
     const balance = await getBalance(serviceClient, entityId, exerciseId);

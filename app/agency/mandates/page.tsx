@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
 import {
   Plus,
   Search,
@@ -18,6 +19,7 @@ import {
   CheckCircle,
   Clock,
   AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -39,69 +41,35 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-// Données de démonstration
-const mockMandates = [
-  {
-    id: "1",
-    owner: { name: "Jean Dupont", email: "jean.dupont@email.com" },
-    type: "gestion",
-    numeroMandat: "MAN-2024-001",
-    dateDebut: "2024-01-15",
-    dateFin: null,
-    biensCount: 3,
-    commission: 7,
-    status: "active",
-    loyersMensuel: 3200,
-  },
-  {
-    id: "2",
-    owner: { name: "Marie Martin", email: "marie.martin@email.com" },
-    type: "gestion",
-    numeroMandat: "MAN-2024-002",
-    dateDebut: "2024-03-01",
-    dateFin: null,
-    biensCount: 5,
-    commission: 6.5,
-    status: "active",
-    loyersMensuel: 5800,
-  },
-  {
-    id: "3",
-    owner: { name: "SCI Les Oliviers", email: "contact@sci-oliviers.fr" },
-    type: "gestion",
-    numeroMandat: "MAN-2024-003",
-    dateDebut: "2024-06-01",
-    dateFin: null,
-    biensCount: 8,
-    commission: 6,
-    status: "pending_signature",
-    loyersMensuel: 9500,
-  },
-  {
-    id: "4",
-    owner: { name: "Pierre Lefebvre", email: "p.lefebvre@gmail.com" },
-    type: "location",
-    numeroMandat: "MAN-2024-004",
-    dateDebut: "2024-09-15",
-    dateFin: "2025-09-15",
-    biensCount: 2,
-    commission: 8,
-    status: "active",
-    loyersMensuel: 1800,
-  },
-  {
-    id: "5",
-    owner: { name: "Sophie Bernard", email: "s.bernard@outlook.com" },
-    type: "gestion",
-    numeroMandat: "MAN-2024-005",
-    dateDebut: "2024-11-01",
-    dateFin: null,
-    biensCount: 1,
-    commission: 8,
-    status: "draft",
-    loyersMensuel: 950,
-  },
-];
+// Forme normalisée renvoyée par GET /api/agency/mandates (cf. route).
+// Les noms de champs sont gardés FR pour s'aligner avec l'ancienne UI
+// mock — le mapping vers la BDD agency_mandates se fait côté API.
+interface MandateListItem {
+  id: string;
+  numeroMandat: string;
+  type: string;
+  status: string;
+  dateDebut: string | null;
+  dateFin: string | null;
+  biensCount: number;
+  commission: number | null;
+  commissionFixedCents: number | null;
+  commissionType: "percentage" | "fixed";
+  commissionDisplay: string | null;
+  owner: { id: string | null; name: string; email: string | null; phone: string | null };
+  balanceCents: number;
+  reversementOverdue: boolean;
+  lastReversementAt: string | null;
+  createdAt: string;
+}
+
+interface MandatesListResponse {
+  mandates: MandateListItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 
 const statusConfig = {
   active: { label: "Actif", color: "border-emerald-500 text-emerald-600 bg-emerald-50" },
@@ -123,22 +91,47 @@ export default function MandatesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
-  const filteredMandates = mockMandates.filter((mandate) => {
-    const matchesSearch =
-      mandate.owner.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      mandate.numeroMandat.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || mandate.status === statusFilter;
-    const matchesType = typeFilter === "all" || mandate.type === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
+  // Chargement réel depuis /api/agency/mandates (canonique
+  // agency_mandates Hoguet, cf. décision 1 audit). Filtres status/type
+  // poussés au serveur — la recherche libellée reste client-side.
+  const { data, isLoading, error } = useQuery<MandatesListResponse>({
+    queryKey: ["agency-mandates", { statusFilter, typeFilter }],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (typeFilter !== "all") params.set("type", typeFilter);
+      params.set("limit", "100");
+      const res = await fetch(`/api/agency/mandates?${params.toString()}`);
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `Erreur ${res.status}`);
+      }
+      return res.json();
+    },
+    staleTime: 30 * 1000,
+  });
+
+  const allMandates = data?.mandates ?? [];
+
+  const filteredMandates = allMandates.filter((mandate) => {
+    const q = searchQuery.toLowerCase();
+    if (!q) return true;
+    return (
+      (mandate.owner.name ?? "").toLowerCase().includes(q) ||
+      (mandate.numeroMandat ?? "").toLowerCase().includes(q)
+    );
   });
 
   const stats = {
-    total: mockMandates.length,
-    active: mockMandates.filter((m) => m.status === "active").length,
-    pending: mockMandates.filter((m) => m.status === "pending_signature").length,
-    totalCommission: mockMandates
+    total: allMandates.length,
+    active: allMandates.filter((m) => m.status === "active").length,
+    // status agency_mandates n'a pas 'pending_signature' (c'est un
+    // état UI legacy) — on retombe sur 'draft' qui couvre ce cas.
+    pending: allMandates.filter((m) => m.status === "draft").length,
+    overdueReversements: allMandates.filter((m) => m.reversementOverdue).length,
+    totalBalanceCents: allMandates
       .filter((m) => m.status === "active")
-      .reduce((sum, m) => sum + (m.loyersMensuel * m.commission) / 100, 0),
+      .reduce((sum, m) => sum + (m.balanceCents ?? 0), 0),
   };
 
   return (
@@ -200,14 +193,45 @@ export default function MandatesPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
+        <Card
+          className={cn(
+            "border-0 backdrop-blur-sm",
+            stats.overdueReversements > 0
+              ? "bg-red-50/60 dark:bg-red-900/20"
+              : "bg-white/60 dark:bg-slate-900/60",
+          )}
+        >
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-purple-100 dark:bg-purple-900/30">
-              <Percent className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            <div
+              className={cn(
+                "p-2.5 rounded-xl",
+                stats.overdueReversements > 0
+                  ? "bg-red-100 dark:bg-red-900/30"
+                  : "bg-purple-100 dark:bg-purple-900/30",
+              )}
+            >
+              <Percent
+                className={cn(
+                  "w-5 h-5",
+                  stats.overdueReversements > 0
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-purple-600 dark:text-purple-400",
+                )}
+              />
             </div>
             <div>
-              <p className="text-2xl font-bold">{stats.totalCommission.toFixed(0)}€</p>
-              <p className="text-xs text-muted-foreground">Commissions/mois</p>
+              <p className="text-2xl font-bold">
+                {(stats.totalBalanceCents / 100).toLocaleString("fr-FR", {
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                })}{" "}
+                €
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {stats.overdueReversements > 0
+                  ? `À reverser — ${stats.overdueReversements} en retard`
+                  : "À reverser aux mandants"}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -253,6 +277,34 @@ export default function MandatesPage() {
         </CardContent>
       </Card>
 
+      {/* Loading / Error states */}
+      {isLoading && (
+        <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
+          <CardContent className="p-6 flex items-center gap-3">
+            <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              Chargement des mandats…
+            </span>
+          </CardContent>
+        </Card>
+      )}
+
+      {error && !isLoading && (
+        <Card className="border-0 bg-red-50/60 dark:bg-red-900/20">
+          <CardContent className="p-4 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-medium text-red-700 dark:text-red-300">
+                Impossible de charger les mandats
+              </p>
+              <p className="text-xs text-red-600/80 dark:text-red-400/80 mt-1">
+                {error instanceof Error ? error.message : "Erreur inattendue"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Mandates List */}
       <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
         <CardContent className="p-0">
@@ -276,10 +328,10 @@ export default function MandatesPage() {
                     <div><p className="text-muted-foreground">Mandat</p><code className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">{mandate.numeroMandat}</code></div>
                     <div><p className="text-muted-foreground">Type</p><p>{type?.label}</p></div>
                     <div><p className="text-muted-foreground">Biens</p><p className="font-medium">{mandate.biensCount}</p></div>
-                    <div><p className="text-muted-foreground">Commission</p><p className="font-semibold text-indigo-600">{mandate.commission}%</p></div>
+                    <div><p className="text-muted-foreground">Commission</p><p className="font-semibold text-indigo-600">{mandate.commissionDisplay ?? "—"}</p></div>
                   </div>
                   <div className="flex items-center justify-between pt-2 border-t">
-                    <span className="font-semibold">{mandate.loyersMensuel.toLocaleString("fr-FR")}€/mois</span>
+                    <span className="font-semibold">{(mandate.balanceCents / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} € à reverser</span>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="w-4 h-4" /></Button></DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -345,10 +397,10 @@ export default function MandatesPage() {
                         <span className="font-medium">{mandate.biensCount}</span>
                       </td>
                       <td className="py-4 px-4 text-right">
-                        <span className="font-semibold text-indigo-600">{mandate.commission}%</span>
+                        <span className="font-semibold text-indigo-600">{mandate.commissionDisplay ?? "—"}</span>
                       </td>
                       <td className="py-4 px-4 text-right">
-                        <span className="font-semibold">{mandate.loyersMensuel.toLocaleString("fr-FR")}€</span>
+                        <span className="font-semibold">{(mandate.balanceCents / 100).toLocaleString("fr-FR", { minimumFractionDigits: 2 })} €</span>
                       </td>
                       <td className="py-4 px-4 text-center">
                         <Badge variant="outline" className={cn("text-xs", status.color)}>

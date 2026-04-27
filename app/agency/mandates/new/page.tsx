@@ -75,16 +75,64 @@ export default function NewMandatePage() {
   };
 
   const handleSubmit = async () => {
+    // Validation côté client minimale — l'API valide vraiment via Zod.
+    if (!formData.ownerEmail || !formData.dateDebut) {
+      toast({
+        title: "Champs manquants",
+        description:
+          "Email du propriétaire et date de début sont obligatoires.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsSubmitting(false);
-    
-    toast({
-      title: "Mandat créé !",
-      description: "Le mandat a été créé et une invitation a été envoyée au propriétaire.",
-    });
-    
-    router.push("/agency/mandates");
+    try {
+      const commissionRate = parseFloat(formData.commissionPourcentage);
+      const payload: Record<string, unknown> = {
+        owner_email: formData.ownerEmail,
+        mandate_type: formData.typeMandat,
+        start_date: formData.dateDebut,
+        end_date: formData.dateFin || null,
+        tacit_renewal: formData.taciteReconduction,
+        // L'UI propose un toggle "tous les biens" — mappé sur le
+        // serveur qui charge owner.properties si true.
+        include_all_properties: formData.inclutTousBiens,
+        property_ids: [],
+        management_fee_type: "percentage",
+        management_fee_rate: Number.isFinite(commissionRate)
+          ? commissionRate
+          : 0,
+      };
+
+      const res = await fetch("/api/agency/mandates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json?.error || `Erreur ${res.status}`);
+      }
+
+      toast({
+        title: "Mandat créé !",
+        description: `Mandat ${json?.mandate_number ?? json?.id?.slice(0, 8) ?? ""} en brouillon. Activez-le depuis la fiche.`,
+      });
+
+      // Redirige sur la fiche du mandat fraîchement créé pour que
+      // l'agence puisse compléter (signature, document, activation).
+      const newId = json?.id;
+      router.push(newId ? `/agency/mandates/${newId}` : "/agency/mandates");
+    } catch (err) {
+      toast({
+        title: "Erreur lors de la création",
+        description: err instanceof Error ? err.message : "Erreur inconnue",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

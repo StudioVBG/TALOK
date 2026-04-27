@@ -139,7 +139,9 @@ export type AutoEntryEvent =
   | 'deposit_returned'
   | 'internal_transfer'
   | 'copro_fund_call'
-  | 'agency_fee'
+  | 'agency_loyer_mandant'
+  | 'agency_commission'
+  | 'agency_reversement'
   | 'sepa_rejected'
   | 'irl_revision'
   | 'copro_works_fund'
@@ -893,20 +895,77 @@ const AUTO_ENTRIES: Record<
     ],
   }),
 
-  // Pour scoper sur un mandant précis, passer thirdPartyType='mandant' +
-  // thirdPartyId : l'auxiliary-resolver substituera 467000 par 467MXXXXX.
-  agency_fee: (ctx) => ({
+  // ─── Flux mandant (Loi Hoguet art. 6) ─────────────────────────────────
+  // Trois écritures liées au CRG (Compte Rendu de Gestion). Les sources
+  // sont normatives : crg-generator.ts, hoguet-report et crg-generate
+  // (edge function) les lisent telles quelles pour reconstituer les
+  // Sections 1/2/3. Tout renommage casse le CRG.
+  //
+  // ATTENTION : aucun de ces 3 builders n'est encore déclenché
+  // automatiquement. Le câblage du trigger (sur paiement de loyer pour
+  // une property sous mandat agence) reste à faire — voir le bridge
+  // approprié (probable extension de receipt-entry.ts conditionnée à
+  // l'existence d'une mandant_account liant property → mandant).
+
+  /**
+   * Loyer encaissé sur le compte bancaire mandant (banque dédiée Hoguet).
+   * D 545/512 (Banque mandant) / C 467MXXX (compte courant mandant).
+   * À déclencher quand le locataire paie sur la banque agence et non
+   * directement sur celle du propriétaire.
+   */
+  agency_loyer_mandant: (ctx) => ({
+    entityId: ctx.entityId,
+    exerciseId: ctx.exerciseId,
+    journalCode: 'BQ',
+    entryDate: ctx.date,
+    label: ctx.label || 'Loyer encaisse mandant',
+    source: 'auto:agency_loyer_mandant',
+    reference: ctx.reference,
+    userId: ctx.userId,
+    lines: withAxes(ctx, [
+      { accountNumber: ctx.bankAccount ?? '545000', debitCents: ctx.amountCents, creditCents: 0 },
+      { accountNumber: '467000', debitCents: 0, creditCents: ctx.amountCents },
+    ]),
+  }),
+
+  /**
+   * Commission agence prélevée sur le compte mandant.
+   * D 467MXXX (compte courant mandant) / C 706100 (Honoraires de gestion).
+   * Pour scoper sur un mandant précis, passer thirdPartyType='mandant' +
+   * thirdPartyId : l'auxiliary-resolver substitue 467000 par 467MXXXXX.
+   */
+  agency_commission: (ctx) => ({
     entityId: ctx.entityId,
     exerciseId: ctx.exerciseId,
     journalCode: 'VE',
     entryDate: ctx.date,
     label: ctx.label || 'Honoraires agence',
-    source: 'auto:agency_fee',
+    source: 'auto:agency_commission',
     reference: ctx.reference,
     userId: ctx.userId,
     lines: withAxes(ctx, [
       { accountNumber: '467000', debitCents: ctx.amountCents, creditCents: 0 },
       { accountNumber: '706100', debitCents: 0, creditCents: ctx.amountCents },
+    ]),
+  }),
+
+  /**
+   * Reversement net au propriétaire mandant (loyers - commissions - charges).
+   * D 467MXXX (compte courant mandant) / C 545/512 (Banque mandant).
+   * Solde la dette de l'agence envers le propriétaire à chaque période CRG.
+   */
+  agency_reversement: (ctx) => ({
+    entityId: ctx.entityId,
+    exerciseId: ctx.exerciseId,
+    journalCode: 'BQ',
+    entryDate: ctx.date,
+    label: ctx.label || 'Reversement mandant',
+    source: 'auto:agency_reversement',
+    reference: ctx.reference,
+    userId: ctx.userId,
+    lines: withAxes(ctx, [
+      { accountNumber: '467000', debitCents: ctx.amountCents, creditCents: 0 },
+      { accountNumber: ctx.bankAccount ?? '545000', debitCents: 0, creditCents: ctx.amountCents },
     ]),
   }),
 
