@@ -261,7 +261,37 @@ export async function createEntry(
     .select()
     .single();
 
-  if (entryError) throw new Error(`Failed to create entry: ${entryError.message}`);
+  if (entryError) {
+    // 23505 unique_violation sur uq_accounting_entries_reference_source
+    // (index unique partiel sur (reference, source) WHERE source LIKE
+    // 'auto:%') : un autre caller concurrent a gagné la course
+    // d'idempotence — l'écriture qu'on voulait poser existe déjà avec
+    // les mêmes (reference, source). On la récupère et la retourne
+    // comme si on venait de la créer. Le caller (ensure*Entry helper)
+    // distingue déjà created vs already_exists via son propre SELECT
+    // en amont — ici on ferme juste la fenêtre TOCTOU entre ce SELECT
+    // et l'INSERT.
+    //
+    // Note : on ne ré-insère PAS les lines (le caller gagnant l'a fait
+    // dans la même transaction côté DB) et on ne re-valide PAS
+    // l'écriture (le caller gagnant gère sa propre validation).
+    if (
+      (entryError as { code?: string }).code === '23505' &&
+      params.reference &&
+      params.source?.startsWith('auto:')
+    ) {
+      const { data: existing } = await supabase
+        .from('accounting_entries')
+        .select('*')
+        .eq('reference', params.reference)
+        .eq('source', params.source)
+        .maybeSingle();
+      if (existing) {
+        return mapEntry(existing as Record<string, unknown>);
+      }
+    }
+    throw new Error(`Failed to create entry: ${entryError.message}`);
+  }
 
   // Insert lines
   const lineInserts = params.lines.map((line) => ({
