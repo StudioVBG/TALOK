@@ -95,6 +95,10 @@ export async function GET(request: Request) {
     // legacy `owner_id` (profiles.id) is kept as a fallback for flat entries
     // that predate the engine rewrite.
     const entityId = searchParams.get("entity_id");
+    // Filtre par exercice — utilisé notamment par le portail EC pour
+    // scoper les écritures à l'exercice consulté. Optional (n filtré si
+    // absent — on garde le comportement multi-exercice par défaut).
+    const exerciseIdFilter = searchParams.get("exercise_id");
     const propertyId = searchParams.get("property_id");
     const invoiceId = searchParams.get("invoice_id");
     const startDate = searchParams.get("start_date");
@@ -150,6 +154,7 @@ export async function GET(request: Request) {
     if (journalCode) query = query.eq("journal_code", journalCode);
     if (compteNum) query = query.ilike("compte_num", `${compteNum}%`);
     if (ownerId && !entityId) query = query.eq("owner_id", ownerId);
+    if (exerciseIdFilter) query = query.eq("exercise_id", exerciseIdFilter);
     if (propertyId) query = query.eq("property_id", propertyId);
     if (invoiceId) query = query.eq("invoice_id", invoiceId);
     if (search) {

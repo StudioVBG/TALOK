@@ -169,6 +169,10 @@ export function middleware(request: NextRequest) {
     "/copro",
     "/syndic",
     "/admin",
+    "/ec", // Portail expert-comptable. Pas de rôle dédié — l'autorisation
+            // dynamique se fait via la table ec_access côté API/dashboard
+            // (un user authentifié sans accès EC voit "Aucun client"). On
+            // protège juste contre l'accès anonyme.
     "/messages",
     "/notifications",
     "/settings",

@@ -33,8 +33,15 @@ export default function ECClientView() {
   const [showAnnotationForm, setShowAnnotationForm] = useState<string | null>(null);
   const [packDownloading, setPackDownloading] = useState(false);
   const [packError, setPackError] = useState<string | null>(null);
+  // Exercice piloté par l'utilisateur EC. null = "auto" → exercice ouvert
+  // (ou plus récent à défaut). Les écritures ET le pack export sont
+  // scopés à cet exercice.
+  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(
+    null,
+  );
 
-  // Exercice ouvert pour l'entité — requis pour le pack export.
+  // Liste des exercices de l'entité — alimente le selector + détermine
+  // l'exercice courant pour le pack export.
   const { data: exercises } = useQuery<any>({
     queryKey: ["ec-exercises", entityId],
     queryFn: () =>
@@ -43,13 +50,25 @@ export default function ECClientView() {
   });
 
   const exerciseList = (exercises?.data?.exercises ?? exercises?.data ?? []) as Exercise[];
-  const currentExercise: Exercise | undefined =
+  const defaultExercise: Exercise | undefined =
     exerciseList.find((e) => e.status === "open") ?? exerciseList[0];
+  const activeExerciseId = selectedExerciseId ?? defaultExercise?.id ?? null;
+  const activeExercise = exerciseList.find((e) => e.id === activeExerciseId);
 
   const { data: entries } = useQuery<any>({
-    queryKey: ["ec-entries", entityId],
-    queryFn: () =>
-      apiClient.get(`/accounting/entries?entityId=${entityId}&limit=100`),
+    queryKey: ["ec-entries", entityId, activeExerciseId],
+    queryFn: () => {
+      // La route /api/accounting/entries lit `entity_id` (snake_case)
+      // pas `entityId` — l'envoi en camelCase, comme c'était le cas
+      // avant, faisait silencieusement tomber sur le filtre fallback
+      // owner_id=profile.id et l'EC voyait zéro écriture.
+      const params = new URLSearchParams({
+        entity_id: entityId as string,
+        limit: "100",
+      });
+      if (activeExerciseId) params.set("exercise_id", activeExerciseId);
+      return apiClient.get(`/accounting/entries?${params.toString()}`);
+    },
     enabled: !!entityId,
   });
 
@@ -101,13 +120,14 @@ export default function ECClientView() {
   });
 
   // Téléchargement pack export — pas via apiClient car on veut le blob brut.
+  // Scope sur l'exercice actuellement sélectionné dans le header.
   async function downloadPack() {
-    if (!currentExercise || !entityId) return;
+    if (!activeExercise || !entityId) return;
     setPackError(null);
     setPackDownloading(true);
     try {
       const res = await fetch(
-        `/api/accounting/exports/pack?entityId=${encodeURIComponent(entityId as string)}&exerciseId=${encodeURIComponent(currentExercise.id)}`,
+        `/api/accounting/exports/pack?entityId=${encodeURIComponent(entityId as string)}&exerciseId=${encodeURIComponent(activeExercise.id)}`,
       );
       if (!res.ok) {
         let msg = `Erreur ${res.status}`;
@@ -149,7 +169,7 @@ export default function ECClientView() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <Link
           href="/ec"
           className="text-muted-foreground hover:text-foreground"
@@ -159,11 +179,28 @@ export default function ECClientView() {
         <h1 className="text-xl font-bold text-foreground">
           Client {(entityId as string).slice(0, 8)}
         </h1>
-        {currentExercise && (
-          <span className="ml-auto text-xs text-muted-foreground">
-            Exercice {currentExercise.start_date.slice(0, 4)} —{" "}
-            {currentExercise.status === "open" ? "En cours" : "Clôturé"}
-          </span>
+        {exerciseList.length > 0 && (
+          <div className="ml-auto flex items-center gap-2">
+            <label
+              htmlFor="ec-exercise-select"
+              className="text-xs text-muted-foreground"
+            >
+              Exercice
+            </label>
+            <select
+              id="ec-exercise-select"
+              value={activeExerciseId ?? ""}
+              onChange={(e) => setSelectedExerciseId(e.target.value || null)}
+              className="text-xs rounded-md border border-border bg-background px-2 py-1"
+            >
+              {exerciseList.map((ex) => (
+                <option key={ex.id} value={ex.id}>
+                  {ex.start_date.slice(0, 4)}
+                  {ex.status === "open" ? " — en cours" : " — clôturé"}
+                </option>
+              ))}
+            </select>
+          </div>
         )}
       </div>
 
@@ -303,7 +340,7 @@ export default function ECClientView() {
         <div className="space-y-3">
           <button
             onClick={downloadPack}
-            disabled={packDownloading || !currentExercise}
+            disabled={packDownloading || !activeExercise}
             className="w-full bg-card border border-border rounded-xl p-4 text-left hover:border-primary flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {packDownloading ? (
@@ -317,9 +354,9 @@ export default function ECClientView() {
               </p>
               <p className="text-xs text-muted-foreground">
                 FEC + Balance + Grand livre + Journal{" "}
-                {currentExercise
-                  ? `(exercice ${currentExercise.start_date.slice(0, 4)})`
-                  : "— aucun exercice ouvert"}
+                {activeExercise
+                  ? `(exercice ${activeExercise.start_date.slice(0, 4)})`
+                  : "— aucun exercice disponible"}
               </p>
             </div>
           </button>
