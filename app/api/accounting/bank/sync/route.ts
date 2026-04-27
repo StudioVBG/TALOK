@@ -6,6 +6,13 @@
  *
  * For each connection: fetches balances + transactions since last_sync_at,
  * inserts new transactions, updates last_sync_at.
+ *
+ * Callers : aucun UI à ce jour. Le cron quotidien (6h UTC) passe par
+ * l'edge function `supabase/functions/bank-sync/` qui parle directement à
+ * la base. Cette route reste exposée comme point d'entrée manuel
+ * (ex. trigger admin via curl, intégration future "Synchroniser
+ * maintenant" dans l'UI banque). Ne pas supprimer sans avoir confirmé
+ * qu'aucun script ops ne l'appelle.
  */
 
 import { NextResponse } from "next/server";

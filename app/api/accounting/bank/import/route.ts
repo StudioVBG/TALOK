@@ -5,6 +5,13 @@
  * Accepts a CSV or OFX file via multipart FormData, parses transactions,
  * inserts them into bank_transactions with deduplication, then runs
  * automatic reconciliation.
+ *
+ * Callers : aucun UI à ce jour. Endpoint conçu comme fallback
+ * propriétaire/admin pour les banques non couvertes par GoCardless
+ * (Nordigen) ou pour réimporter un export OFX ponctuel. Ne pas
+ * supprimer — la connexion `bank/connections` (Open Banking) ne couvre
+ * pas tous les établissements. Brancher idéalement depuis la page
+ * `/owner/accounting/bank/connect` quand le besoin produit se confirme.
  */
 
 import { NextResponse } from "next/server";
