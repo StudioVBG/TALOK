@@ -18,7 +18,12 @@ type EcAccessItem = {
   read_only_access: boolean;
 };
 
-type EcAccessResponse = EcAccessItem[] | { data?: EcAccessItem[] };
+type EcAccessResponse =
+  | EcAccessItem[]
+  | { data?: EcAccessItem[] | { accesses?: EcAccessItem[] } | null }
+  | { accesses?: EcAccessItem[] }
+  | null
+  | undefined;
 
 export default function ECManageClient() {
   return (
@@ -60,9 +65,19 @@ function ECManageContent() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["ec-access"] }),
   });
 
-  const ecList: EcAccessItem[] = Array.isArray(data)
-    ? data
-    : (data?.data ?? []);
+  const ecList: EcAccessItem[] = (() => {
+    if (Array.isArray(data)) return data;
+    if (!data || typeof data !== "object") return [];
+    const inner = (data as { data?: unknown }).data;
+    if (Array.isArray(inner)) return inner as EcAccessItem[];
+    if (inner && typeof inner === "object") {
+      const accesses = (inner as { accesses?: unknown }).accesses;
+      if (Array.isArray(accesses)) return accesses as EcAccessItem[];
+    }
+    const topAccesses = (data as { accesses?: unknown }).accesses;
+    if (Array.isArray(topAccesses)) return topAccesses as EcAccessItem[];
+    return [];
+  })();
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-2xl mx-auto space-y-6">
