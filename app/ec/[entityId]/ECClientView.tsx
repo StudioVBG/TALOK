@@ -1,7 +1,7 @@
 // @ts-nocheck
 "use client";
 // @ts-nocheck — TODO: remove once database.types.ts is regenerated
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
@@ -13,10 +13,20 @@ import {
   Check,
   Loader2,
   AlertCircle,
+  TrendingUp,
+  TrendingDown,
+  Wallet,
 } from "lucide-react";
+import { formatCents } from "@/lib/utils/format-cents";
 
 type Exercise = { id: string; status: string; start_date: string; end_date: string };
 type Entry = { id: string; entry_date: string; label: string; entry_number: string };
+type BalanceItem = {
+  accountNumber: string;
+  label: string;
+  soldeDebitCents: number;
+  soldeCreditCents: number;
+};
 type Annotation = {
   id: string;
   content: string;
@@ -71,6 +81,41 @@ export default function ECClientView() {
     },
     enabled: !!entityId,
   });
+
+  // Balance de l'exercice actif, scopée à l'entité. Sert à dériver
+  // recettes / dépenses / résultat affichés en KPIs au-dessus des tabs.
+  // Note : la route balance vient d'être ouverte aux EC dans le commit
+  // P2.2 follow-up suivant (auth: ec_access lookup + gating sur owner).
+  const { data: balanceData, isLoading: balanceLoading } = useQuery<any>({
+    queryKey: ["ec-balance", entityId, activeExerciseId],
+    queryFn: () =>
+      apiClient.get(
+        `/accounting/exercises/${activeExerciseId}/balance?entityId=${encodeURIComponent(entityId as string)}`,
+      ),
+    enabled: !!entityId && !!activeExerciseId,
+  });
+
+  // Agrégats classes 6 / 7. On ne fait pas de calcul "métier" ici —
+  // juste un sum direct sur la balance déjà calculée par l'engine.
+  const kpis = useMemo(() => {
+    const items: BalanceItem[] =
+      balanceData?.data?.balance ?? balanceData?.balance ?? [];
+    let revenuesCents = 0;
+    let expensesCents = 0;
+    for (const it of items) {
+      const cls = it.accountNumber?.charAt(0);
+      if (cls === "7") {
+        revenuesCents += (it.soldeCreditCents ?? 0) - (it.soldeDebitCents ?? 0);
+      } else if (cls === "6") {
+        expensesCents += (it.soldeDebitCents ?? 0) - (it.soldeCreditCents ?? 0);
+      }
+    }
+    return {
+      revenuesCents,
+      expensesCents,
+      resultCents: revenuesCents - expensesCents,
+    };
+  }, [balanceData]);
 
   const { data: annotations } = useQuery<any>({
     queryKey: ["ec-annotations", entityId],
@@ -203,6 +248,34 @@ export default function ECClientView() {
           </div>
         )}
       </div>
+
+      {/* KPIs synthétiques pour l'exercice sélectionné. Reste visible
+          quel que soit l'onglet — repère permanent pour l'EC. */}
+      {activeExerciseId && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <KpiCard
+            label="Recettes"
+            valueCents={kpis.revenuesCents}
+            icon={<TrendingUp className="w-4 h-4" />}
+            tone="green"
+            loading={balanceLoading}
+          />
+          <KpiCard
+            label="Dépenses"
+            valueCents={kpis.expensesCents}
+            icon={<TrendingDown className="w-4 h-4" />}
+            tone="red"
+            loading={balanceLoading}
+          />
+          <KpiCard
+            label="Résultat"
+            valueCents={kpis.resultCents}
+            icon={<Wallet className="w-4 h-4" />}
+            tone={kpis.resultCents >= 0 ? "blue" : "red"}
+            loading={balanceLoading}
+          />
+        </div>
+      )}
 
       <div className="flex gap-2">
         {tabs.map((t) => (
@@ -368,6 +441,44 @@ export default function ECClientView() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// Carte KPI simple — volontairement locale au composant. Si on en a
+// besoin ailleurs côté EC, à extraire dans components/accounting/.
+function KpiCard({
+  label,
+  valueCents,
+  icon,
+  tone,
+  loading,
+}: {
+  label: string;
+  valueCents: number;
+  icon: React.ReactNode;
+  tone: "green" | "red" | "blue";
+  loading?: boolean;
+}) {
+  const toneClass =
+    tone === "green"
+      ? "text-emerald-600"
+      : tone === "red"
+        ? "text-destructive"
+        : "text-blue-600";
+  return (
+    <div className="bg-card rounded-xl border border-border p-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <span className={toneClass}>{icon}</span>
+      </div>
+      <p className={`text-xl font-bold tabular-nums mt-1 ${toneClass}`}>
+        {loading ? (
+          <span className="inline-block h-6 w-24 bg-muted rounded animate-pulse" />
+        ) : (
+          formatCents(valueCents)
+        )}
+      </p>
     </div>
   );
 }
