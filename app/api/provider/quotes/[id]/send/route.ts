@@ -53,10 +53,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         ),
         provider:profiles!provider_quotes_provider_profile_id_fkey (
           prenom,
-          nom
-        ),
-        provider_profile:provider_profiles!provider_quotes_provider_profile_id_fkey (
-          raison_sociale
+          nom,
+          provider_profile:provider_profiles (
+            raison_sociale
+          )
         ),
         property:properties (
           adresse_complete,
@@ -117,8 +117,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       prenom?: string | null;
       nom?: string | null;
     } | null;
-    const providerObj = quote.provider as { prenom?: string | null; nom?: string | null } | null;
-    const providerInfo = quote.provider_profile as { raison_sociale?: string | null } | null;
+    const providerObj = quote.provider as {
+      prenom?: string | null;
+      nom?: string | null;
+      provider_profile?: { raison_sociale?: string | null } | null;
+    } | null;
+    const providerInfo = providerObj?.provider_profile ?? null;
     const propertyObj = quote.property as {
       adresse_complete?: string | null;
       code_postal?: string | null;

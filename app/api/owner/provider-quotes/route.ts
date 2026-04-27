@@ -52,11 +52,11 @@ export async function GET(request: NextRequest) {
         created_at,
         provider:profiles!provider_quotes_provider_profile_id_fkey (
           prenom,
-          nom
-        ),
-        provider_profile:provider_profiles!provider_quotes_provider_profile_id_fkey (
-          raison_sociale,
-          company_logo_url
+          nom,
+          provider_profile:provider_profiles (
+            raison_sociale,
+            company_logo_url
+          )
         ),
         property:properties (
           adresse_complete,
@@ -79,11 +79,15 @@ export async function GET(request: NextRequest) {
     }
 
     const enriched = (quotes || []).map((q) => {
-      const provUser = q.provider as { prenom?: string; nom?: string } | null;
-      const provInfo = q.provider_profile as {
-        raison_sociale?: string | null;
-        company_logo_url?: string | null;
+      const provUser = q.provider as {
+        prenom?: string;
+        nom?: string;
+        provider_profile?: {
+          raison_sociale?: string | null;
+          company_logo_url?: string | null;
+        } | null;
       } | null;
+      const provInfo = provUser?.provider_profile ?? null;
       const property = q.property as {
         adresse_complete?: string | null;
         ville?: string | null;
