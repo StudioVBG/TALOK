@@ -20,6 +20,7 @@ import type {
   AccountingBalance,
 } from "@/lib/hooks/use-accounting-dashboard";
 import { FECExportPanel, type FECPreviewResult } from "./components/FECExportPanel";
+import { HelpHint } from "@/components/accounting/HelpHint";
 import { GrandLivreExportPanel } from "./components/GrandLivreExportPanel";
 import { BalanceExportPanel } from "./components/BalanceExportPanel";
 import { CahierExportPanel } from "./components/CahierExportPanel";
@@ -276,8 +277,28 @@ function ExportsContent() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-manrope)]">
+          <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-manrope)] inline-flex items-center gap-2">
             Exports comptables
+            <HelpHint
+              ariaLabel="Aide sur les exports comptables"
+              title="Exports comptables"
+              description={
+                <>
+                  <p>
+                    Le <strong>FEC</strong> (Fichier des Écritures
+                    Comptables) est obligatoire pour les régimes BIC/IS en
+                    cas de contrôle fiscal. Format imposé par l'arrêté
+                    A-47 LPF (18 colonnes, séparateur tabulation, UTF-8).
+                  </p>
+                  <p>
+                    Les <strong>CERFA</strong> (2044, 2065, 2031, 2072) sont
+                    des aides à la déclaration : ils pré-remplissent les
+                    montants à reporter ; ils ne se substituent pas à la
+                    télédéclaration sur impots.gouv.
+                  </p>
+                </>
+              }
+            />
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Documents fiscaux, grand livre, balance et FEC

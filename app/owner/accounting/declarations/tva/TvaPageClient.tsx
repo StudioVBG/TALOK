@@ -7,6 +7,7 @@ import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useEntityStore } from "@/stores/useEntityStore";
 import { formatCents } from "@/lib/utils/format-cents";
+import { HelpHint } from "@/components/accounting/HelpHint";
 import {
   Loader2,
   AlertCircle,
@@ -141,8 +142,31 @@ function Content() {
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-manrope)]">
+        <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-manrope)] inline-flex items-center gap-2">
           Déclaration TVA
+          <HelpHint
+            ariaLabel="CA3, CA12 : quelle déclaration choisir ?"
+            title="CA3 vs CA12 — quelle déclaration ?"
+            description={
+              <>
+                <p>
+                  <strong>CA3 (régime réel normal)</strong> : déclaration
+                  mensuelle ou trimestrielle. Obligatoire si CA HT &gt;
+                  840 k€ (vente) ou 254 k€ (prestations), ou sur option.
+                </p>
+                <p>
+                  <strong>CA12 (régime simplifié RSI)</strong> : déclaration
+                  annuelle avec acomptes semestriels (juillet et décembre).
+                  Réservé aux CA HT &lt; les seuils ci-dessus.
+                </p>
+                <p className="text-muted-foreground/80">
+                  La location nue est en principe exonérée de TVA. Cette page
+                  ne sert que si vous êtes sur option (BIC meublé pro ou
+                  location de locaux aménagés).
+                </p>
+              </>
+            }
+          />
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
           Calcul de la TVA collectée, déductible et nette à reverser sur la
@@ -225,16 +249,19 @@ function Content() {
               label="TVA collectée (445710)"
               value={formatCents(data.totalVatCollectedCents)}
               tone="positive"
+              hint="TVA facturée aux locataires/clients sur la période — vous la devez à l'État."
             />
             <StatCard
               label="TVA déductible (445660)"
               value={formatCents(data.totalVatDeductibleCents)}
               tone="negative"
+              hint="TVA payée à vos fournisseurs sur les achats professionnels — récupérable sur la TVA collectée."
             />
             <StatCard
               label={data.vatToPayCents >= 0 ? "TVA à reverser" : "Crédit TVA"}
               value={formatCents(Math.abs(data.vatToPayCents))}
               tone={data.vatToPayCents > 0 ? "negative" : "positive"}
+              hint="Net = collectée − déductible. Positif = à payer à l'État. Négatif = crédit reportable ou remboursable."
             />
           </div>
 
@@ -340,10 +367,12 @@ function StatCard({
   label,
   value,
   tone,
+  hint,
 }: {
   label: string;
   value: string;
   tone: "positive" | "negative" | "neutral";
+  hint?: string;
 }) {
   const colorClass =
     tone === "positive"
@@ -353,7 +382,10 @@ function StatCard({
         : "text-foreground";
   return (
     <div className="bg-card rounded-xl border border-border px-4 py-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className="text-xs text-muted-foreground inline-flex items-center gap-1">
+        {label}
+        {hint && <HelpHint tooltip={hint} />}
+      </p>
       <p className={`text-xl font-semibold mt-1 ${colorClass}`}>{value}</p>
     </div>
   );
