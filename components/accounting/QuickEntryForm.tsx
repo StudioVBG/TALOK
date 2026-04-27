@@ -49,6 +49,152 @@ function createEmptyLine(): EntryLine {
   };
 }
 
+// -- Templates --------------------------------------------------------------
+// Modeles d'ecritures pre-remplis pour les scenarios immobilier courants.
+// Chaque template positionne le journal + une liste de comptes attendus
+// (debit / credit), l'utilisateur n'a plus qu'a saisir les montants. Les
+// comptes choisis correspondent aux auto-entries de l'engine (loan_payment,
+// tax_paid, payroll, etc.) — l'ecriture posee manuellement est equivalente
+// a celle qu'aurait genere createAutoEntry().
+
+interface EntryTemplate {
+  id: string;
+  label: string;
+  journal: "ACH" | "VE" | "BQ" | "OD";
+  defaultLabel: string;
+  /** Tuple [accountNumber, lineLabel, side] — side indique sur quel cote
+   *  la ligne attend un montant (l'autre cote reste a 0). */
+  lines: Array<{
+    accountNumber: string;
+    label: string;
+    side: "debit" | "credit";
+  }>;
+}
+
+const ENTRY_TEMPLATES: EntryTemplate[] = [
+  {
+    id: "manual",
+    label: "Saisie libre",
+    journal: "BQ",
+    defaultLabel: "",
+    lines: [],
+  },
+  {
+    id: "loan_payment",
+    label: "Echeance credit immobilier",
+    journal: "BQ",
+    defaultLabel: "Echeance credit immobilier",
+    lines: [
+      { accountNumber: "661000", label: "Interets", side: "debit" },
+      { accountNumber: "164000", label: "Capital rembourse", side: "debit" },
+      { accountNumber: "512100", label: "Banque", side: "credit" },
+    ],
+  },
+  {
+    id: "tax_property",
+    label: "Paiement taxe fonciere",
+    journal: "BQ",
+    defaultLabel: "Taxe fonciere",
+    lines: [
+      { accountNumber: "635100", label: "Taxe fonciere", side: "debit" },
+      { accountNumber: "512100", label: "Banque", side: "credit" },
+    ],
+  },
+  {
+    id: "tax_cfe",
+    label: "Paiement CFE",
+    journal: "BQ",
+    defaultLabel: "CFE",
+    lines: [
+      { accountNumber: "635400", label: "CFE", side: "debit" },
+      { accountNumber: "512100", label: "Banque", side: "credit" },
+    ],
+  },
+  {
+    id: "tax_is",
+    label: "Paiement IS",
+    journal: "BQ",
+    defaultLabel: "IS",
+    lines: [
+      { accountNumber: "695000", label: "IS", side: "debit" },
+      { accountNumber: "512100", label: "Banque", side: "credit" },
+    ],
+  },
+  {
+    id: "social_charges_foncier",
+    label: "Prelevements sociaux 17,2% (revenus fonciers IR)",
+    journal: "BQ",
+    defaultLabel: "Prelevements sociaux 17,2%",
+    lines: [
+      { accountNumber: "695100", label: "Prelevements sociaux", side: "debit" },
+      { accountNumber: "512100", label: "Banque", side: "credit" },
+    ],
+  },
+  {
+    id: "payroll",
+    label: "Paie gardien / employe",
+    journal: "BQ",
+    defaultLabel: "Paie gardien",
+    lines: [
+      { accountNumber: "641100", label: "Salaire brut", side: "debit" },
+      { accountNumber: "645100", label: "Cotisations sociales patronales", side: "debit" },
+      { accountNumber: "512100", label: "Banque", side: "credit" },
+    ],
+  },
+  {
+    id: "insurance_indemnity",
+    label: "Indemnite assurance recue",
+    journal: "BQ",
+    defaultLabel: "Indemnite assurance",
+    lines: [
+      { accountNumber: "512100", label: "Banque", side: "debit" },
+      { accountNumber: "758100", label: "Indemnite assurance", side: "credit" },
+    ],
+  },
+  {
+    id: "recoverable_water",
+    label: "Recuperation charges — eau",
+    journal: "BQ",
+    defaultLabel: "Recuperation eau",
+    lines: [
+      { accountNumber: "512100", label: "Banque", side: "debit" },
+      { accountNumber: "708100", label: "Charges recuperees eau", side: "credit" },
+    ],
+  },
+  {
+    id: "recoverable_teom",
+    label: "Recuperation charges — TEOM",
+    journal: "BQ",
+    defaultLabel: "Recuperation TEOM",
+    lines: [
+      { accountNumber: "512100", label: "Banque", side: "debit" },
+      { accountNumber: "708200", label: "Charges recuperees TEOM", side: "credit" },
+    ],
+  },
+  {
+    id: "supplier_invoice_works",
+    label: "Facture fournisseur (travaux)",
+    journal: "ACH",
+    defaultLabel: "Facture travaux",
+    lines: [
+      { accountNumber: "615100", label: "Travaux et reparations", side: "debit" },
+      { accountNumber: "401000", label: "Fournisseur", side: "credit" },
+    ],
+  },
+];
+
+function createLineFromTemplate(
+  spec: EntryTemplate["lines"][number],
+): EntryLine {
+  return {
+    id: crypto.randomUUID(),
+    accountNumber: spec.accountNumber,
+    label: spec.label,
+    debitCents: 0,
+    creditCents: 0,
+  };
+}
+
 // -- Component ---------------------------------------------------------------
 
 export function QuickEntryForm({
@@ -71,12 +217,28 @@ export function QuickEntryForm({
   const [entryDate, setEntryDate] = useState(today);
   const [journalCode, setJournalCode] = useState("BQ");
   const [label, setLabel] = useState("");
+  const [templateId, setTemplateId] = useState<string>("manual");
   const [lines, setLines] = useState<EntryLine[]>([
     createEmptyLine(),
     createEmptyLine(),
   ]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const applyTemplate = useCallback((nextId: string) => {
+    setTemplateId(nextId);
+    const tpl = ENTRY_TEMPLATES.find((t) => t.id === nextId);
+    if (!tpl || tpl.id === "manual" || tpl.lines.length === 0) {
+      // Saisie libre : on garde au moins 2 lignes vides comme avant.
+      setLines([createEmptyLine(), createEmptyLine()]);
+      return;
+    }
+    setJournalCode(tpl.journal);
+    if (tpl.defaultLabel && !label.trim()) {
+      setLabel(tpl.defaultLabel);
+    }
+    setLines(tpl.lines.map(createLineFromTemplate));
+  }, [label]);
 
   // -- Balance computation ---------------------------------------------------
 
@@ -191,6 +353,7 @@ export function QuickEntryForm({
       setLines([createEmptyLine(), createEmptyLine()]);
       setEntryDate(today);
       setJournalCode("BQ");
+      setTemplateId("manual");
 
       // Refresh list
       queryClient.invalidateQueries({ queryKey: ["accounting", "entries"] });
@@ -228,6 +391,32 @@ export function QuickEntryForm({
         </SheetHeader>
 
         <div className="space-y-5">
+          {/* Modele d'ecriture — pre-remplit journal + lignes pour les
+              scenarios courants (credit immo, taxe, paie, indemnite,
+              recuperation charges...). "Saisie libre" reset a deux
+              lignes vides comme avant. */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Modele
+            </label>
+            <select
+              value={templateId}
+              onChange={(e) => applyTemplate(e.target.value)}
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              {ENTRY_TEMPLATES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            {templateId !== "manual" && (
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                Comptes pre-remplis. Saisissez les montants puis validez.
+              </p>
+            )}
+          </div>
+
           {/* Date */}
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">
