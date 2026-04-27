@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
@@ -18,7 +18,15 @@ import {
 import { formatCents } from "@/lib/utils/format-cents";
 
 type Exercise = { id: string; status: string; start_date: string; end_date: string };
-type Entry = { id: string; entry_date: string; label: string; entry_number: string };
+type Entry = {
+  id: string;
+  entry_date: string;
+  label: string;
+  entry_number: string;
+  is_validated?: boolean;
+  source?: string | null;
+};
+type EntryStatusFilter = "all" | "validated" | "draft";
 type BalanceItem = {
   accountNumber: string;
   label: string;
@@ -58,6 +66,19 @@ export default function ECClientView() {
   const [showAnnotationForm, setShowAnnotationForm] = useState<string | null>(null);
   const [packDownloading, setPackDownloading] = useState(false);
   const [packError, setPackError] = useState<string | null>(null);
+  // Filtres sur l'onglet Écritures. Côté serveur via query params (la
+  // route /accounting/entries supporte déjà status & search) — moins
+  // de bruit côté client.
+  const [entryStatusFilter, setEntryStatusFilter] =
+    useState<EntryStatusFilter>("all");
+  const [entrySearch, setEntrySearch] = useState("");
+  const [entrySearchDebounced, setEntrySearchDebounced] = useState("");
+  // Debounce 300ms sur la recherche pour ne pas hammer l'API à chaque
+  // frappe. La query useQuery dépend de la version débouncée.
+  useEffect(() => {
+    const t = setTimeout(() => setEntrySearchDebounced(entrySearch), 300);
+    return () => clearTimeout(t);
+  }, [entrySearch]);
   // Exercice piloté par l'utilisateur EC. null = "auto" → exercice ouvert
   // (ou plus récent à défaut). Les écritures ET le pack export sont
   // scopés à cet exercice.
@@ -80,8 +101,14 @@ export default function ECClientView() {
   const activeExerciseId = selectedExerciseId ?? defaultExercise?.id ?? null;
   const activeExercise = exerciseList.find((e) => e.id === activeExerciseId);
 
-  const { data: entries } = useQuery<any>({
-    queryKey: ["ec-entries", entityId, activeExerciseId],
+  const { data: entries, isFetching: entriesFetching } = useQuery<any>({
+    queryKey: [
+      "ec-entries",
+      entityId,
+      activeExerciseId,
+      entryStatusFilter,
+      entrySearchDebounced,
+    ],
     queryFn: () => {
       // La route /api/accounting/entries lit `entity_id` (snake_case)
       // pas `entityId` — l'envoi en camelCase, comme c'était le cas
@@ -92,6 +119,12 @@ export default function ECClientView() {
         limit: "100",
       });
       if (activeExerciseId) params.set("exercise_id", activeExerciseId);
+      if (entryStatusFilter !== "all") {
+        params.set("status", entryStatusFilter);
+      }
+      if (entrySearchDebounced.trim()) {
+        params.set("search", entrySearchDebounced.trim());
+      }
       return apiClient.get(`/accounting/entries?${params.toString()}`);
     },
     enabled: !!entityId,
@@ -324,7 +357,44 @@ export default function ECClientView() {
       </div>
 
       {activeTab === "ecritures" && (
-        <div className="space-y-2">
+        <div className="space-y-3">
+          {/* Barre de filtres : statut + recherche libellé/référence.
+              Côté serveur via params status + search. Recherche
+              débouncée 300ms pour ne pas hammer l'API. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex gap-1 rounded-lg border border-border bg-card p-1">
+              {(["all", "validated", "draft"] as EntryStatusFilter[]).map(
+                (s) => (
+                  <button
+                    key={s}
+                    onClick={() => setEntryStatusFilter(s)}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                      entryStatusFilter === s
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted/50"
+                    }`}
+                  >
+                    {s === "all"
+                      ? "Toutes"
+                      : s === "validated"
+                        ? "Validées"
+                        : "Brouillons"}
+                  </button>
+                ),
+              )}
+            </div>
+            <input
+              type="text"
+              value={entrySearch}
+              onChange={(e) => setEntrySearch(e.target.value)}
+              placeholder="Rechercher (libellé ou n° pièce)…"
+              className="flex-1 min-w-[200px] rounded-lg border border-border bg-background px-3 py-1.5 text-sm"
+            />
+            {entriesFetching && (
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+
           {entryList.map((e) => (
             <div
               key={e.id}
