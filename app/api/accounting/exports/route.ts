@@ -1,140 +1,38 @@
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
-
-import { createClient } from "@/lib/supabase/server";
-import { NextResponse } from "next/server";
-import { requireAccountingAccess } from '@/lib/accounting/feature-gates';
-
 /**
- * @deprecated Utiliser POST /api/exports avec type='accounting' pour un export asynchrone sécurisé.
- * GET /api/accounting/exports - Exporter la comptabilité (CSV/Excel)
+ * API Route: /api/accounting/exports — DEPRECATED
+ *
+ * The legacy GET handler aggregated `invoices` + `payments` rows directly
+ * (not the validated double-entry ledger) and emitted an incomplete FEC
+ * with hardcoded account numbers. Submitting the resulting file to DGFIP
+ * would have failed validation at minimum and could have triggered fines
+ * for non-conformance with art. A47 A-1 LPF.
+ *
+ * The route is now a 410 Gone marker. Callers should migrate to:
+ *   - GET /api/accounting/fec/{exerciseId}?siren=XXXXXXXXX
+ *     for a conformant 18-column FEC text file (uses the engine in
+ *     lib/accounting/fec.ts which reads only validated entries).
+ *   - POST /api/exports with type='accounting'
+ *     for an asynchronous CSV/Excel export.
+ *
+ * Grep `git log -- app/api/accounting/exports/route.ts` for the previous
+ * implementation if needed.
  */
-export async function GET(request: Request) {
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
 
-    if (!user) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-    const { searchParams } = new URL(request.url);
-    const scope = searchParams.get("scope") || "owner"; // 'global' | 'owner'
-    const period = searchParams.get("period"); // 'YYYY-MM'
-    const format = searchParams.get("format") || "csv"; // 'csv' | 'excel' | 'fec'
+import { NextResponse } from "next/server";
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, role")
-      .eq("user_id", user.id as any)
-      .single();
-
-    const profileData = profile as any;
-    const isAdmin = profileData?.role === "admin";
-
-    // Feature gate: check subscription plan
-    const featureGate = await requireAccountingAccess(profileData?.id, 'exports');
-    if (featureGate) return featureGate;
-
-    if (scope === "global" && !isAdmin) {
-      return NextResponse.json(
-        { error: "Seul l'admin peut exporter la comptabilité globale" },
-        { status: 403 }
-      );
-    }
-
-    // Construire la requête selon le scope.
-    // Type `any` assumé : la jointure imbriquée (lease → property) et la
-    // colonne `periode` ne sont pas typées dans database.types.ts (stub
-    // GenericRowType). Sans cette élision, TS rejette eq/.gte sur les
-    // colonnes filtrées. Cible : régénérer les types Supabase puis
-    // typer proprement la query (cf. P3.2 dans le backlog).
-    let invoicesQuery: any = supabase
-      .from("invoices")
-      .select(`
-        *,
-        lease:leases!inner(
-          id,
-          property:properties!inner(id, adresse_complete, owner_id)
-        )
-      `);
-
-    if (scope === "owner") {
-      invoicesQuery = invoicesQuery.eq("lease.property.owner_id", profileData?.id);
-    }
-
-    if (period) {
-      invoicesQuery = invoicesQuery.eq("periode", period);
-    }
-
-    const { data: invoices, error: invoicesError } = await invoicesQuery;
-
-    if (invoicesError) throw invoicesError;
-
-    // Récupérer les paiements
-    const invoiceIds = invoices?.map((i: any) => i.id) || [];
-    const { data: payments } = await supabase
-      .from("payments")
-      .select("*")
-      .in("invoice_id", invoiceIds);
-
-    // Formater les données selon le format
-    let exportData: any;
-    if (format === "fec") {
-      // Format FEC (Fichier des Écritures Comptables)
-      exportData = formatFEC(invoices || [], payments || []);
-    } else {
-      // Format CSV simple
-      exportData = formatCSV(invoices || [], payments || []);
-    }
-
-    return NextResponse.json({
-      data: exportData,
-      format,
-      period,
-      scope,
-      count: invoices?.length || 0,
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
-      { status: 500 }
-    );
-  }
+export async function GET() {
+  return NextResponse.json(
+    {
+      error:
+        "Cette route est depreciee et ne produisait pas un FEC conforme.",
+      migrate_to: {
+        fec: "GET /api/accounting/fec/{exerciseId}?siren=XXXXXXXXX",
+        csv_xlsx: "POST /api/exports avec type='accounting'",
+      },
+    },
+    { status: 410 },
+  );
 }
-
-function formatCSV(invoices: any[], payments: any[]): string {
-  const rows = ["Date,Type,Libellé,Montant,Statut"];
-  for (const invoice of invoices) {
-    rows.push(
-      `${invoice.periode},Facture,${invoice.lease?.property?.adresse_complete || ""},${invoice.montant_total},${invoice.statut}`
-    );
-  }
-  for (const payment of payments) {
-    rows.push(
-      `${payment.date_paiement},Paiement,${payment.moyen},${payment.montant},${payment.statut}`
-    );
-  }
-  return rows.join("\n");
-}
-
-function formatFEC(invoices: any[], payments: any[]): any[] {
-  // Format FEC simplifié (à compléter selon spécifications)
-  const entries: any[] = [];
-  for (const invoice of invoices) {
-    entries.push({
-      JournalCode: "VT",
-      JournalLib: "Ventes",
-      EcritureDate: invoice.periode + "-01",
-      EcritureNum: invoice.id.substring(0, 8),
-      CompteNum: "706000",
-      CompteLib: "Ventes de produits finis",
-      Debit: invoice.montant_total,
-      Credit: 0,
-    });
-  }
-  return entries;
-}
-
