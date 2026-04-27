@@ -148,7 +148,12 @@ export type AutoEntryEvent =
   | 'copro_closing'
   | 'teom_recovered'
   | 'charge_regularization'
-  | 'subscription_paid';
+  | 'subscription_paid'
+  | 'loan_payment'
+  | 'tax_paid'
+  | 'social_charges_foncier_paid'
+  | 'payroll'
+  | 'insurance_indemnity_received';
 
 // ---------------------------------------------------------------------------
 // Validation helpers
@@ -670,6 +675,23 @@ interface AutoEntryContext {
   bankAccount?: string;
   /** Target copro lot account */
   coproAccount?: string;
+  /**
+   * Override du compte de charge fiscale pour `tax_paid`. Permet de
+   * cibler 635100 (taxe fonciere), 635400 (CFE), 635600 (IFI), ou
+   * 695000 (IS) sans avoir un builder par taxe. Defaut : 635100.
+   */
+  taxAccount?: string;
+  /**
+   * Taux de TVA en basis points (1 % = 100 bps) pour les builders qui
+   * supportent la ventilation TVA. Quand renseigne et > 0, amountCents
+   * est interprete comme un montant TTC ; HT et TVA sont injectes
+   * automatiquement sur les comptes adequats (445660 deductible /
+   * 445710 collectee). 0 ou undefined → mode HT historique, aucune
+   * ligne TVA generee.
+   * Exemples : 2000 = 20 %, 1000 = 10 %, 850 = 8,5 % (DROM),
+   * 550 = 5,5 %, 210 = 2,1 % (presse), 0 = exonere.
+   */
+  vatRateBps?: number;
   // ── Axes analytiques (cf. migration 20260427200000) ──
   // Propagés sur TOUTES les lignes de l'écriture pour permettre P&L par bien
   // et grand livre par tiers. Optionnels : aucun changement de comportement
@@ -680,6 +702,32 @@ interface AutoEntryContext {
   /** Tiers (locataire/fournisseur/propriétaire) pour sous-compte auxiliaire. */
   thirdPartyType?: 'tenant' | 'landlord' | 'vendor' | 'mandant' | 'copro_owner' | 'employee' | 'tax_authority';
   thirdPartyId?: string;
+}
+
+/**
+ * Decompose un montant TTC en (HT, TVA) avec arrondi standard.
+ * Le ratio est `vatRateBps / (10000 + vatRateBps)` pour rester
+ * 100 % en INTEGER cents (jamais de float intermediaire).
+ *
+ * Exemple : splitTTC(120_00, 2000) → { htCents: 100_00, vatCents: 20_00 }
+ *
+ * REGLE : si vatRateBps <= 0, retourne { htCents: ttcCents, vatCents: 0 }
+ *         (tout le montant est HT/exonere).
+ */
+export function splitTTC(
+  ttcCents: number,
+  vatRateBps: number,
+): { htCents: number; vatCents: number } {
+  if (!Number.isInteger(ttcCents) || ttcCents < 0) {
+    throw new Error('splitTTC: ttcCents doit etre un entier positif');
+  }
+  if (!vatRateBps || vatRateBps <= 0) {
+    return { htCents: ttcCents, vatCents: 0 };
+  }
+  const denom = 10000 + vatRateBps;
+  const vatCents = Math.round((ttcCents * vatRateBps) / denom);
+  const htCents = ttcCents - vatCents;
+  return { htCents, vatCents };
 }
 
 /** Helper : applique les axes analytiques du contexte sur chaque ligne. */
@@ -800,20 +848,35 @@ const AUTO_ENTRIES: Record<
     ],
   }),
 
-  supplier_invoice: (ctx) => ({
-    entityId: ctx.entityId,
-    exerciseId: ctx.exerciseId,
-    journalCode: 'ACH',
-    entryDate: ctx.date,
-    label: ctx.label || 'Facture fournisseur',
-    source: 'auto:supplier_invoice',
-    reference: ctx.reference,
-    userId: ctx.userId,
-    lines: [
-      { accountNumber: '615100', debitCents: ctx.amountCents, creditCents: 0 },
-      { accountNumber: '401000', debitCents: 0, creditCents: ctx.amountCents },
-    ],
-  }),
+  supplier_invoice: (ctx) => {
+    // Si vatRateBps est renseigne et > 0, on traite amountCents comme
+    // un TTC : on ventile HT en 615100 et TVA en 445660 (deductible).
+    // Sinon (mode historique), tout le montant atterrit sur 615100.
+    const { htCents, vatCents } = splitTTC(ctx.amountCents, ctx.vatRateBps ?? 0);
+    const lines: EntryLine[] = [
+      { accountNumber: '615100', debitCents: htCents, creditCents: 0, label: 'Travaux HT' },
+    ];
+    if (vatCents > 0) {
+      lines.push({
+        accountNumber: '445660',
+        debitCents: vatCents,
+        creditCents: 0,
+        label: 'TVA deductible',
+      });
+    }
+    lines.push({ accountNumber: '401000', debitCents: 0, creditCents: ctx.amountCents });
+    return {
+      entityId: ctx.entityId,
+      exerciseId: ctx.exerciseId,
+      journalCode: 'ACH',
+      entryDate: ctx.date,
+      label: ctx.label || 'Facture fournisseur',
+      source: 'auto:supplier_invoice',
+      reference: ctx.reference,
+      userId: ctx.userId,
+      lines: withAxes(ctx, lines),
+    };
+  },
 
   supplier_payment: (ctx) => ({
     entityId: ctx.entityId,
@@ -937,21 +1000,36 @@ const AUTO_ENTRIES: Record<
    * D 467MXXX (compte courant mandant) / C 706100 (Honoraires de gestion).
    * Pour scoper sur un mandant précis, passer thirdPartyType='mandant' +
    * thirdPartyId : l'auxiliary-resolver substitue 467000 par 467MXXXXX.
+   *
+   * Avec vatRateBps > 0 : amountCents est traite comme TTC. La TVA
+   * collectee (445710) est ventilee, et le 706100 ne recoit que le HT.
    */
-  agency_commission: (ctx) => ({
-    entityId: ctx.entityId,
-    exerciseId: ctx.exerciseId,
-    journalCode: 'VE',
-    entryDate: ctx.date,
-    label: ctx.label || 'Honoraires agence',
-    source: 'auto:agency_commission',
-    reference: ctx.reference,
-    userId: ctx.userId,
-    lines: withAxes(ctx, [
+  agency_commission: (ctx) => {
+    const { htCents, vatCents } = splitTTC(ctx.amountCents, ctx.vatRateBps ?? 0);
+    const lines: EntryLine[] = [
       { accountNumber: '467000', debitCents: ctx.amountCents, creditCents: 0 },
-      { accountNumber: '706100', debitCents: 0, creditCents: ctx.amountCents },
-    ]),
-  }),
+      { accountNumber: '706100', debitCents: 0, creditCents: htCents, label: 'Honoraires HT' },
+    ];
+    if (vatCents > 0) {
+      lines.push({
+        accountNumber: '445710',
+        debitCents: 0,
+        creditCents: vatCents,
+        label: 'TVA collectee',
+      });
+    }
+    return {
+      entityId: ctx.entityId,
+      exerciseId: ctx.exerciseId,
+      journalCode: 'VE',
+      entryDate: ctx.date,
+      label: ctx.label || 'Honoraires agence',
+      source: 'auto:agency_commission',
+      reference: ctx.reference,
+      userId: ctx.userId,
+      lines: withAxes(ctx, lines),
+    };
+  },
 
   /**
    * Reversement net au propriétaire mandant (loyers - commissions - charges).
@@ -1048,9 +1126,12 @@ const AUTO_ENTRIES: Record<
     source: 'auto:teom_recovered',
     reference: ctx.reference,
     userId: ctx.userId,
+    // Credit 708200 (TEOM specifiquement) au lieu du 708000 generique :
+    // garde la tracabilite par type de charge recuperee pour la 2044
+    // et l'audit fiscal.
     lines: [
       { accountNumber: '635200', debitCents: ctx.amountCents, creditCents: 0 },
-      { accountNumber: '708000', debitCents: 0, creditCents: ctx.amountCents },
+      { accountNumber: '708200', debitCents: 0, creditCents: ctx.amountCents },
     ],
   }),
 
@@ -1098,6 +1179,143 @@ const AUTO_ENTRIES: Record<
       { accountNumber: '622800', debitCents: ctx.amountCents, creditCents: 0 },
       { accountNumber: ctx.bankAccount ?? '512100', debitCents: 0, creditCents: ctx.amountCents },
     ],
+  }),
+
+  /**
+   * Echeance d'un credit immobilier : split entre interets (charge
+   * deductible classe 6) et capital (remboursement de la dette
+   * classe 1). amountCents = montant total preleve, secondaryAmountCents
+   * = portion interets. Capital rembourse = amountCents - secondaryAmountCents.
+   * D 661000 (interets) / D 164000 (capital) / C 512100 (banque).
+   */
+  loan_payment: (ctx) => {
+    const interestCents = ctx.secondaryAmountCents ?? 0;
+    const capitalCents = ctx.amountCents - interestCents;
+    if (capitalCents < 0) {
+      throw new Error('loan_payment: secondaryAmountCents (interets) doit etre <= amountCents (echeance totale)');
+    }
+    const lines: EntryLine[] = [];
+    if (interestCents > 0) {
+      lines.push({ accountNumber: '661000', debitCents: interestCents, creditCents: 0, label: 'Interets' });
+    }
+    if (capitalCents > 0) {
+      lines.push({ accountNumber: '164000', debitCents: capitalCents, creditCents: 0, label: 'Capital rembourse' });
+    }
+    lines.push({
+      accountNumber: ctx.bankAccount ?? '512100',
+      debitCents: 0,
+      creditCents: ctx.amountCents,
+    });
+    return {
+      entityId: ctx.entityId,
+      exerciseId: ctx.exerciseId,
+      journalCode: 'BQ',
+      entryDate: ctx.date,
+      label: ctx.label || 'Echeance credit immobilier',
+      source: 'auto:loan_payment',
+      reference: ctx.reference,
+      userId: ctx.userId,
+      lines: withAxes(ctx, lines),
+    };
+  },
+
+  /**
+   * Paiement d'une taxe / impot. Le compte de charge est passe via
+   * ctx.taxAccount (defaut 635100 taxe fonciere). Exemples :
+   *   taxAccount=635100 → taxe fonciere
+   *   taxAccount=635400 → CFE
+   *   taxAccount=635600 → IFI
+   *   taxAccount=695000 → IS
+   * D taxAccount / C 512100.
+   */
+  tax_paid: (ctx) => ({
+    entityId: ctx.entityId,
+    exerciseId: ctx.exerciseId,
+    journalCode: 'BQ',
+    entryDate: ctx.date,
+    label: ctx.label || 'Paiement taxe / impot',
+    source: 'auto:tax_paid',
+    reference: ctx.reference,
+    userId: ctx.userId,
+    lines: withAxes(ctx, [
+      { accountNumber: ctx.taxAccount ?? '635100', debitCents: ctx.amountCents, creditCents: 0 },
+      { accountNumber: ctx.bankAccount ?? '512100', debitCents: 0, creditCents: ctx.amountCents },
+    ]),
+  }),
+
+  /**
+   * Prelevements sociaux 17,2 % sur revenus fonciers (regime IR).
+   * CSG 9,2 + CRDS 0,5 + solidarite 7,5 = 17,2 % du revenu foncier net.
+   * D 695100 / C 512100.
+   */
+  social_charges_foncier_paid: (ctx) => ({
+    entityId: ctx.entityId,
+    exerciseId: ctx.exerciseId,
+    journalCode: 'BQ',
+    entryDate: ctx.date,
+    label: ctx.label || 'Prelevements sociaux 17,2% sur revenus fonciers',
+    source: 'auto:social_charges_foncier_paid',
+    reference: ctx.reference,
+    userId: ctx.userId,
+    lines: withAxes(ctx, [
+      { accountNumber: '695100', debitCents: ctx.amountCents, creditCents: 0 },
+      { accountNumber: ctx.bankAccount ?? '512100', debitCents: 0, creditCents: ctx.amountCents },
+    ]),
+  }),
+
+  /**
+   * Paie d'un gardien / employe d'immeuble. Version simplifiee :
+   *   amountCents          = brut
+   *   secondaryAmountCents = cotisations patronales totales
+   * Le tout debite contre la banque pour eviter de gerer un cycle
+   * 421/431 separe (le comptable peut affiner manuellement si besoin).
+   * D 641100 (brut) + D 645100 (cotisations) / C 512100.
+   */
+  payroll: (ctx) => {
+    const cotisationsCents = ctx.secondaryAmountCents ?? 0;
+    const total = ctx.amountCents + cotisationsCents;
+    const lines: EntryLine[] = [
+      { accountNumber: '641100', debitCents: ctx.amountCents, creditCents: 0, label: 'Salaire brut' },
+    ];
+    if (cotisationsCents > 0) {
+      lines.push({
+        accountNumber: '645100',
+        debitCents: cotisationsCents,
+        creditCents: 0,
+        label: 'Cotisations sociales patronales',
+      });
+    }
+    lines.push({ accountNumber: ctx.bankAccount ?? '512100', debitCents: 0, creditCents: total });
+    return {
+      entityId: ctx.entityId,
+      exerciseId: ctx.exerciseId,
+      journalCode: 'BQ',
+      entryDate: ctx.date,
+      label: ctx.label || 'Paie gardien / employe',
+      source: 'auto:payroll',
+      reference: ctx.reference,
+      userId: ctx.userId,
+      lines: withAxes(ctx, lines),
+    };
+  },
+
+  /**
+   * Indemnite d'assurance recue suite a sinistre.
+   * D 512100 / C 758100.
+   */
+  insurance_indemnity_received: (ctx) => ({
+    entityId: ctx.entityId,
+    exerciseId: ctx.exerciseId,
+    journalCode: 'BQ',
+    entryDate: ctx.date,
+    label: ctx.label || 'Indemnite d\'assurance recue',
+    source: 'auto:insurance_indemnity_received',
+    reference: ctx.reference,
+    userId: ctx.userId,
+    lines: withAxes(ctx, [
+      { accountNumber: ctx.bankAccount ?? '512100', debitCents: ctx.amountCents, creditCents: 0 },
+      { accountNumber: '758100', debitCents: 0, creditCents: ctx.amountCents },
+    ]),
   }),
 };
 
