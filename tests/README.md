@@ -90,47 +90,59 @@ test, beaucoup moins de flakiness.
 Les fichiers `.auth/*.json` sont **gitignored** — ils contiennent des sessions
 authentifiées.
 
-## Migration des anciens specs
+## État de la migration
 
-Les specs créés avant le refactor partagent ces problèmes :
+**Tous les specs ont été migrés** vers le nouveau pattern (fixtures auth,
+routes catalog, credentials centralisés). Plus aucun email/mot de passe en
+dur, plus aucun helper `login()` local, plus aucune URL hardcodée.
 
-- credentials hardcodés (`contact.explore.mq@gmail.com`, etc.) ;
-- helper `login()` réimplémenté dans chaque fichier ;
-- mix d'env vars `TEST_*` et `E2E_*` ;
-- routes obsolètes (`/login` au lieu de `/auth/signin`, `/owner/money` qui a
-  été déplacé, etc.) ;
-- selecteurs fragiles (mélange `data-testid` + texte localisé).
+| Spec | Pattern utilisé |
+|------|-----------------|
+| `auth.spec.ts` | `test` brut + `login()` (teste le flux de login) |
+| `accounting-flow.spec.ts` | `ownerPage` |
+| `critical-flows.spec.ts` | `ownerPage` + `test` brut (redirections) |
+| `tenant-flow.spec.ts` | `tenantPage` + `test` brut (login form) |
+| `complete-journey.spec.ts` | `ownerPage` (mode serial) + `request` |
+| `lease-flow.spec.ts` | `ownerPage` |
+| `building-creation.spec.ts` | `ownerPage` |
+| `document-center.spec.ts` | `tenantPage` |
+| `add-property-flow.spec.ts` | `ownerPage` + `request` |
+| `properties.spec.ts` | `ownerPage` |
+| `property-wizard.spec.ts` | `ownerPage` |
+| `property-type-selection.spec.ts` | `ownerPage` |
+| `invoices.spec.ts` | `ownerPage` |
+| `payments.spec.ts` | `tenantPage` |
+| `meters-api.spec.ts` | `ownerRequest` (APIRequestContext authentifié) + `request` brut |
+| `security-audit.spec.ts` | `request` brut (tests sans auth) |
+| `onboarding.spec.ts` | `test` brut (parcours signup public) |
+| `password-recovery.spec.ts` | `test` brut (pages publiques) |
 
-**Specs déjà migrés** : `auth.spec.ts`, `accounting-flow.spec.ts`.
+### Fixture `ownerRequest`
 
-**À migrer** (par ordre de valeur décroissante) :
+Pour les tests d'API qui nécessitent une session, utilise `ownerRequest` :
 
-1. `critical-flows.spec.ts` (5 occurrences login)
-2. `tenant-flow.spec.ts` (5 occurrences login)
-3. `complete-journey.spec.ts`
-4. `lease-flow.spec.ts`
-5. `building-creation.spec.ts`
-6. `document-center.spec.ts`
-7. `add-property-flow.spec.ts`
-8. `properties.spec.ts`, `property-wizard.spec.ts`, `property-type-selection.spec.ts`
-9. `invoices.spec.ts`, `payments.spec.ts`
-10. `meters-api.spec.ts`, `security-audit.spec.ts`
-11. `onboarding.spec.ts`, `password-recovery.spec.ts`
+```ts
+import { test, expect } from "./fixtures/auth";
 
-Pour migrer un spec, suivre cette checklist :
+test("appel d'une API protégée", async ({ ownerRequest }) => {
+  const res = await ownerRequest.get("/api/meters/.../readings");
+  expect(res.status()).toBe(200);
+});
+```
 
-- [ ] Remplacer `import { test, expect } from "@playwright/test"` par
-      `import { test, expect } from "./fixtures/auth"` (si le test suppose un
-      utilisateur authentifié).
-- [ ] Supprimer le `beforeEach` qui appelle `login()` ; consommer la fixture
-      `ownerPage` / `tenantPage` / `adminPage`.
-- [ ] Remplacer les URLs hardcodées par `routes.*` (ajouter au catalogue si
-      manquant).
-- [ ] Supprimer les fonctions `login()` locales.
-- [ ] Supprimer toute référence à des emails/mots de passe en clair.
-- [ ] Vérifier que les sélecteurs ne pointent pas vers des routes obsolètes
-      (`/owner/money` → `/owner/finances`, `/agency/accounting/balance` →
-      `/owner/accounting/balance`, etc.).
+C'est un `APIRequestContext` Playwright pré-chargé avec le storage state du
+rôle, ce qui injecte les cookies de session automatiquement. Plus besoin de
+faire un login programmatique avant chaque test API.
+
+### Checklist pour un nouveau spec
+
+- [ ] Importer `test, expect` depuis `./fixtures/auth` si authentification
+      requise, sinon depuis `@playwright/test`.
+- [ ] Consommer `ownerPage` / `tenantPage` / `adminPage` au lieu de `page`
+      pour les tests authentifiés ; `ownerRequest` pour les API
+      authentifiées.
+- [ ] Utiliser `routes.*` du catalogue plutôt que des URLs en dur.
+- [ ] Aucun email / mot de passe / token de test en clair dans le fichier.
 
 ## Tests unitaires
 

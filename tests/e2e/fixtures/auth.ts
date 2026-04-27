@@ -19,7 +19,13 @@
  * `helpers/login.ts`.
  */
 
-import { test as base, type Browser, type Page } from "@playwright/test";
+import {
+  test as base,
+  request as playwrightRequest,
+  type APIRequestContext,
+  type Browser,
+  type Page,
+} from "@playwright/test";
 import path from "node:path";
 import type { TestRole } from "../helpers/credentials";
 
@@ -36,6 +42,8 @@ interface AuthFixtures {
   ownerPage: Page;
   tenantPage: Page;
   adminPage: Page;
+  /** Authenticated APIRequestContext for owner role (cookies preloaded). */
+  ownerRequest: APIRequestContext;
 }
 
 async function pageForRole(
@@ -54,6 +62,22 @@ async function pageForRole(
   }
 }
 
+async function requestForRole(
+  baseURL: string | undefined,
+  role: TestRole,
+  use: (request: APIRequestContext) => Promise<void>,
+): Promise<void> {
+  const ctx = await playwrightRequest.newContext({
+    baseURL,
+    storageState: storageStatePath(role),
+  });
+  try {
+    await use(ctx);
+  } finally {
+    await ctx.dispose();
+  }
+}
+
 export const test = base.extend<AuthFixtures>({
   ownerPage: async ({ browser }, use) => {
     await pageForRole(browser, "owner", use);
@@ -63,6 +87,9 @@ export const test = base.extend<AuthFixtures>({
   },
   adminPage: async ({ browser }, use) => {
     await pageForRole(browser, "admin", use);
+  },
+  ownerRequest: async ({ baseURL }, use) => {
+    await requestForRole(baseURL, "owner", use);
   },
 });
 

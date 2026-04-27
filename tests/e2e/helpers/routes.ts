@@ -6,19 +6,35 @@
  */
 
 export const routes = {
+  home: "/",
   auth: {
     signin: "/auth/signin",
     signup: "/auth/signup",
     forgotPassword: "/auth/forgot-password",
+    resetPassword: "/auth/reset-password",
     verifyEmail: "/auth/verify-email",
+  },
+  signup: {
+    role: "/signup/role",
+    account: "/signup/account",
+    verifyEmail: "/signup/verify-email",
+  },
+  recovery: {
+    password: (token: string) => `/recovery/password/${token}`,
+  },
+  signature: {
+    page: (token: string) => `/signature/${token}`,
   },
   owner: {
     dashboard: "/owner/dashboard",
     properties: "/owner/properties",
     propertiesNew: "/owner/properties/new",
     leases: "/owner/leases",
+    invoices: "/owner/invoices",
+    invoicesNew: "/owner/invoices/new",
     finances: "/owner/finances",
     documents: "/owner/documents",
+    profile: "/owner/profile",
     accounting: {
       root: "/owner/accounting",
       balance: "/owner/accounting/balance",
@@ -42,6 +58,10 @@ export const routes = {
   },
   tenant: {
     dashboard: "/tenant/dashboard",
+    payments: "/tenant/payments",
+    receipts: "/tenant/receipts",
+    documents: "/tenant/documents",
+    meters: "/tenant/meters",
   },
   admin: {
     dashboard: "/admin/dashboard",
