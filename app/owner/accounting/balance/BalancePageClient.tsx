@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/hooks/use-auth";
 import { useEntityStore } from "@/stores/useEntityStore";
 import { formatCents } from "@/lib/utils/format-cents";
 import { Loader2, Scale } from "lucide-react";
+import { HelpHint } from "@/components/accounting/HelpHint";
 
 interface BalanceItem {
   accountNumber: string;
@@ -146,8 +147,30 @@ function BalanceContent() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-manrope)]">
+          <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-manrope)] inline-flex items-center gap-2">
             Balance générale
+            <HelpHint
+              ariaLabel="Qu'est-ce que la balance générale ?"
+              title="Balance générale"
+              description={
+                <>
+                  <p>
+                    État qui liste TOUS les comptes mouvementés sur l'exercice
+                    avec, pour chacun, le total des débits, le total des crédits
+                    et le solde résultant.
+                  </p>
+                  <p>
+                    Chaque compte appartient à une classe (1 à 8 du plan
+                    comptable). Les classes 6 (charges) et 7 (produits)
+                    déterminent le résultat de l'exercice.
+                  </p>
+                  <p className="text-muted-foreground/80">
+                    Source de la déclaration 2044 et obligatoire en cas de
+                    contrôle fiscal.
+                  </p>
+                </>
+              }
+            />
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {exercise
@@ -208,12 +231,37 @@ function BalanceContent() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-muted-foreground bg-muted/10 border-b border-border">
-                        <th className="text-left font-medium px-4 py-2">N° compte</th>
+                        <th className="text-left font-medium px-4 py-2">
+                          <span className="inline-flex items-center gap-1">
+                            N° compte
+                            <HelpHint tooltip="Numéro PCG (plan comptable général). Le 1er chiffre indique la classe : 6=charges, 7=produits, 4=tiers, 5=trésorerie." />
+                          </span>
+                        </th>
                         <th className="text-left font-medium px-4 py-2">Libellé</th>
-                        <th className="text-right font-medium px-4 py-2">Total débit</th>
-                        <th className="text-right font-medium px-4 py-2">Total crédit</th>
-                        <th className="text-right font-medium px-4 py-2">Solde débit</th>
-                        <th className="text-right font-medium px-4 py-2">Solde crédit</th>
+                        <th className="text-right font-medium px-4 py-2">
+                          <span className="inline-flex items-center gap-1 justify-end">
+                            Total débit
+                            <HelpHint tooltip="Cumul de tous les débits enregistrés sur ce compte au cours de l'exercice." />
+                          </span>
+                        </th>
+                        <th className="text-right font-medium px-4 py-2">
+                          <span className="inline-flex items-center gap-1 justify-end">
+                            Total crédit
+                            <HelpHint tooltip="Cumul de tous les crédits enregistrés sur ce compte au cours de l'exercice." />
+                          </span>
+                        </th>
+                        <th className="text-right font-medium px-4 py-2">
+                          <span className="inline-flex items-center gap-1 justify-end">
+                            Solde débit
+                            <HelpHint tooltip="Différence Débit - Crédit quand elle est positive. Solde des comptes de charges, immobilisations, créances clients." />
+                          </span>
+                        </th>
+                        <th className="text-right font-medium px-4 py-2">
+                          <span className="inline-flex items-center gap-1 justify-end">
+                            Solde crédit
+                            <HelpHint tooltip="Différence Crédit - Débit quand elle est positive. Solde des comptes de produits, capitaux, dettes fournisseurs." />
+                          </span>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>

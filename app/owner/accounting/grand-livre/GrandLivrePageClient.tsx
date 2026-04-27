@@ -8,6 +8,7 @@ import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useEntityStore } from "@/stores/useEntityStore";
 import { formatCents } from "@/lib/utils/format-cents";
+import { HelpHint } from "@/components/accounting/HelpHint";
 import {
   Loader2,
   BookOpenCheck,
@@ -231,8 +232,28 @@ function GrandLivreContent() {
     <div className="p-4 sm:p-6 lg:p-8 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-manrope)]">
+          <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-manrope)] inline-flex items-center gap-2">
             Grand livre
+            <HelpHint
+              ariaLabel="Qu'est-ce que le grand livre ?"
+              title="Grand livre"
+              description={
+                <>
+                  <p>
+                    Détail ligne par ligne de TOUTES les écritures comptables
+                    de l'exercice, regroupées par compte. Chaque mouvement
+                    affiche sa date, son n° de pièce, son libellé et son
+                    sens (débit ou crédit).
+                  </p>
+                  <p>
+                    Cochez plusieurs lignes (par ex. une facture et son
+                    paiement) pour les <strong>lettrer</strong> ensemble :
+                    elles sont marquées comme soldées et n'apparaîtront plus
+                    comme dues.
+                  </p>
+                </>
+              }
+            />
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             {exercise
@@ -334,11 +355,21 @@ function GrandLivreContent() {
                           <tr className="text-muted-foreground bg-muted/10 border-b border-border">
                             <th className="w-8 px-2 py-2"></th>
                             <th className="text-left font-medium px-4 py-2">Date</th>
-                            <th className="text-left font-medium px-4 py-2">N° écriture</th>
+                            <th className="text-left font-medium px-4 py-2">
+                              <span className="inline-flex items-center gap-1">
+                                N° écriture
+                                <HelpHint tooltip="Numéro séquentiel attribué à l'écriture par son journal (ex. BQ000123 pour la 123e écriture du journal Banque)." />
+                              </span>
+                            </th>
                             <th className="text-left font-medium px-4 py-2">Libellé</th>
                             <th className="text-right font-medium px-4 py-2">Débit</th>
                             <th className="text-right font-medium px-4 py-2">Crédit</th>
-                            <th className="text-center font-medium px-4 py-2">Lettrage</th>
+                            <th className="text-center font-medium px-4 py-2">
+                              <span className="inline-flex items-center gap-1 justify-center">
+                                Lettrage
+                                <HelpHint tooltip="Code (A, B, C…) qui relie une facture à son paiement. La somme des lignes lettrées doit toujours être nulle (D = C)." />
+                              </span>
+                            </th>
                           </tr>
                         </thead>
                         <tbody>

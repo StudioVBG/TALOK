@@ -893,6 +893,8 @@ const AUTO_ENTRIES: Record<
     ],
   }),
 
+  // Pour scoper sur un mandant précis, passer thirdPartyType='mandant' +
+  // thirdPartyId : l'auxiliary-resolver substituera 467000 par 467MXXXXX.
   agency_fee: (ctx) => ({
     entityId: ctx.entityId,
     exerciseId: ctx.exerciseId,
@@ -902,10 +904,10 @@ const AUTO_ENTRIES: Record<
     source: 'auto:agency_fee',
     reference: ctx.reference,
     userId: ctx.userId,
-    lines: [
+    lines: withAxes(ctx, [
       { accountNumber: '467000', debitCents: ctx.amountCents, creditCents: 0 },
       { accountNumber: '706100', debitCents: 0, creditCents: ctx.amountCents },
-    ],
+    ]),
   }),
 
   sepa_rejected: (ctx) => ({

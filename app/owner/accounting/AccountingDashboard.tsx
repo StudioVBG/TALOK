@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { PlanGate } from "@/components/subscription/plan-gate";
 import { useAccountingDashboard } from "@/lib/hooks/use-accounting-dashboard";
 import { AccountingKPICard } from "@/components/accounting/AccountingKPICard";
+import { AccountingKpiWidgets } from "@/components/accounting/AccountingKpiWidgets";
 import { RecentEntries } from "@/components/accounting/RecentEntries";
 import { AccountingEmptyState } from "@/components/accounting/AccountingEmptyState";
 import { formatCents } from "@/lib/utils/format-cents";
@@ -75,8 +76,13 @@ export default function AccountingDashboard() {
 }
 
 function AccountingDashboardContent() {
+  // Le sélecteur d'entité (utilisé par ExpensesAndExports + les widgets KPI)
+  // doit aussi piloter la balance et les écritures du dashboard pour rester
+  // cohérent. On passe activeEntityId au hook plutôt que de laisser celui-ci
+  // tomber sur profile.default_entity_id.
+  const activeEntityId = useEntityStore((s) => s.activeEntityId);
   const { balance, recentEntries, currentExercise, isLoading, error } =
-    useAccountingDashboard();
+    useAccountingDashboard({ entityId: activeEntityId ?? undefined });
 
   if (isLoading) {
     return <AccountingDashboardLoadingSkeleton />;
@@ -150,6 +156,12 @@ function AccountingDashboardContent() {
               hidden={(balance?.resultCents ?? 0) <= 0}
             />
           </div>
+
+          {/* Widgets KPI complémentaires : top biens, YoY, charges récupérées */}
+          <AccountingKpiWidgets
+            entityId={activeEntityId ?? undefined}
+            exerciseId={currentExercise?.id}
+          />
 
           {/* Monthly chart */}
           {balance?.monthlySeries && balance.monthlySeries.length > 0 && (

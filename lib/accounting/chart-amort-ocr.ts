@@ -437,7 +437,7 @@ Analyse le document fourni (facture, quittance, releve, avis d'imposition, etc.)
 et retourne un JSON STRICT avec les champs suivants :
 
 {
-  "document_type": "facture|quittance|releve_bancaire|avis_impot|contrat|autre",
+  "document_type": "facture|quittance|releve_bancaire|avis_impot|taxe_fonciere|contrat|autre",
   "emetteur": {
     "nom": "string",
     "siret": "string|null",
@@ -463,6 +463,12 @@ et retourne un JSON STRICT avec les champs suivants :
       "montant_cents": 0
     }
   ],
+  "taxe_fonciere": {
+    "teom_cents": 0,
+    "taxe_fonciere_part_cents": 0,
+    "frais_gestion_cents": 0,
+    "annee": 0
+  },
   "suggested_account": "6xxxxx",
   "suggested_journal": "ACH|VE|BQ|OD",
   "suggested_label": "string",
@@ -478,6 +484,21 @@ REGLES STRICTES :
 - Suggerer le compte PCG le plus adapte (classe 6 pour charges, classe 7 pour produits)
 - JAMAIS inventer de donnees manquantes : mettre null
 - Pour les montants ambigus : prendre le TTC et calculer HT
+
+REGLES TAXE FONCIERE (document_type='taxe_fonciere' ou 'avis_impot' avec
+mention "taxe fonciere") :
+- "taxe_fonciere.teom_cents" = montant de la TEOM (Taxe d'Enlevement
+  des Ordures Menageres) lue separement sur l'avis. C'est le seul poste
+  recuperable sur le locataire (decret 87-713 art. R.131-3).
+- "taxe_fonciere.taxe_fonciere_part_cents" = total avis - TEOM (la part
+  non recuperable, charge du proprietaire).
+- "taxe_fonciere.frais_gestion_cents" = frais de gestion de la fiscalite
+  directe locale s'ils sont indiques.
+- "taxe_fonciere.annee" = annee fiscale concernee (exo. 2026).
+- Si le document N'EST PAS un avis de taxe fonciere : laisser tout l'objet
+  "taxe_fonciere" a null.
+- Si la TEOM n'est pas isolable sur l'avis : mettre teom_cents=0 et alert.
+- suggested_account doit etre "635110" (taxe fonciere) pour ce document.
 `;
 
 /**
