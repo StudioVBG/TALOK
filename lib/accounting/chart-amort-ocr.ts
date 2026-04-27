@@ -58,14 +58,20 @@ export const PCG_OWNER_ACCOUNTS = [
   { account_number: '512200', label: 'Banque — compte epargne', account_type: 'asset' as const },
   { account_number: '512300', label: 'Banque — depots de garantie', account_type: 'asset' as const },
   { account_number: '530000', label: 'Caisse', account_type: 'asset' as const },
+  // 545000 — Banque mandant (Hoguet). Referenced by agency_loyer_mandant
+  // and agency_reversement auto-entries; without it those auto-entries
+  // produced orphan accounts on the balance.
+  { account_number: '545000', label: 'Banque — compte mandant (Hoguet)', account_type: 'asset' as const },
   { account_number: '581000', label: 'Virements internes', account_type: 'asset' as const },
   // Classe 6 — Charges
   { account_number: '606100', label: 'Fournitures entretien', account_type: 'expense' as const },
+  { account_number: '613200', label: 'Locations immobilieres', account_type: 'expense' as const },
   { account_number: '613000', label: 'Provisions pour charges', account_type: 'expense' as const },
   { account_number: '614100', label: 'Charges reelles recuperables', account_type: 'expense' as const },
   { account_number: '615100', label: 'Travaux et reparations', account_type: 'expense' as const },
   { account_number: '616000', label: 'Assurances', account_type: 'expense' as const },
   { account_number: '622000', label: 'Honoraires comptables', account_type: 'expense' as const },
+  { account_number: '622600', label: 'Honoraires juridiques (avocats, notaires)', account_type: 'expense' as const },
   { account_number: '622800', label: 'Honoraires / commissions divers', account_type: 'expense' as const },
   { account_number: '623000', label: 'Publicite et annonces', account_type: 'expense' as const },
   { account_number: '625100', label: 'Deplacements', account_type: 'expense' as const },
@@ -82,7 +88,10 @@ export const PCG_OWNER_ACCOUNTS = [
   // Classe 7 — Produits
   { account_number: '706000', label: 'Loyers', account_type: 'income' as const },
   { account_number: '706100', label: 'Honoraires de gestion', account_type: 'income' as const },
+  { account_number: '706300', label: 'Indemnites d\'occupation', account_type: 'income' as const },
   { account_number: '708000', label: 'Charges recuperees / TEOM', account_type: 'income' as const },
+  { account_number: '758000', label: 'Produits divers de gestion courante', account_type: 'income' as const },
+  { account_number: '758100', label: 'Indemnites d\'assurance', account_type: 'income' as const },
   { account_number: '764000', label: 'Revenus placements', account_type: 'income' as const },
   { account_number: '775000', label: 'Produits cession immobilisations', account_type: 'income' as const },
   { account_number: '791000', label: 'Retenues sur depot de garantie', account_type: 'income' as const },

@@ -6,9 +6,14 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { requireAccountingAccess } from "@/lib/accounting/feature-gates";
-import { addCustomAccount } from "@/lib/accounting/chart-amort-ocr";
+import {
+  addCustomAccount,
+  initializeChartOfAccounts,
+} from "@/lib/accounting/chart-amort-ocr";
+import { initializeJournals } from "@/lib/accounting/engine";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -53,7 +58,9 @@ export async function GET(request: Request) {
       throw new ApiError(400, "entityId est requis");
     }
 
-    const { data: accounts, error } = await (supabase as any)
+    const serviceClient = getServiceClient();
+
+    const { data: accounts, error } = await (serviceClient as any)
       .from("chart_of_accounts")
       .select("*")
       .eq("entity_id", entityId)
@@ -63,7 +70,34 @@ export async function GET(request: Request) {
       throw new ApiError(500, "Erreur lors de la recuperation du plan comptable");
     }
 
-    return NextResponse.json({ success: true, data: { accounts: accounts || [] } });
+    let rows: Array<Record<string, unknown>> = accounts ?? [];
+
+    // Defensive auto-seed: nothing seeds chart_of_accounts at entity
+    // creation today (the trigger fn_legal_entities_bootstrap_exercise
+    // only creates the exercise, not the chart). Without this fallback
+    // the page lands on an empty state forever — and the empty state
+    // message even claims that creating an exercise will fix it, which
+    // is false. We seed PCG by default the first time the chart is
+    // requested, idempotent on the underlying upsert, and also init
+    // journals while we're at it (closeExercise needs CL).
+    if (rows.length === 0) {
+      try {
+        await initializeChartOfAccounts(serviceClient, entityId, "pcg");
+        await initializeJournals(serviceClient, entityId);
+        const { data: seeded } = await (serviceClient as any)
+          .from("chart_of_accounts")
+          .select("*")
+          .eq("entity_id", entityId)
+          .order("account_number", { ascending: true });
+        rows = seeded ?? [];
+      } catch (seedErr) {
+        console.error("[Chart API] auto-seed failed:", seedErr);
+        // Fall through with the empty list — the user can still seed
+        // manually via /api/accounting/chart/seed.
+      }
+    }
+
+    return NextResponse.json({ success: true, data: { accounts: rows } });
   } catch (error) {
     return handleApiError(error);
   }
