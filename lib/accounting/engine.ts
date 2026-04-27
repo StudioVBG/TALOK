@@ -1334,13 +1334,13 @@ export async function generateClosingEntry(
     // Wait — products were debited to zero. So debit side = class7Net.
     // Charges were credited to zero. So credit side = class6Net.
     // To balance we need credit side += netResult, hence credit 120 of netResult.
-    lines.push({ accountNumber: '120', debitCents: 0, creditCents: netResultCents });
+    lines.push({ accountNumber: '120000', debitCents: 0, creditCents: netResultCents });
   } else if (netResultCents < 0) {
-    // Loss: debit 120
-    lines.push({ accountNumber: '120', debitCents: -netResultCents, creditCents: 0 });
+    // Loss: debit 120000
+    lines.push({ accountNumber: '120000', debitCents: -netResultCents, creditCents: 0 });
   } else if (lines.length > 0) {
-    // Exactly break-even but we still need a reference to 120 for traceability.
-    lines.push({ accountNumber: '120', debitCents: 0, creditCents: 0 });
+    // Exactly break-even but we still need a reference to 120000 for traceability.
+    lines.push({ accountNumber: '120000', debitCents: 0, creditCents: 0 });
   }
 
   if (lines.length === 0) {
