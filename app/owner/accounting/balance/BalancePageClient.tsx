@@ -135,6 +135,22 @@ function BalanceContent() {
     return { totalDebit, totalCredit, soldeDebit, soldeCredit };
   }, [filtered]);
 
+  // Synthèse fiscale calculée sur la balance complète (sans filtres
+  // utilisateur), c'est le résumé "produits classe 7 / charges classe 6 /
+  // résultat" qui sert directement à la 2044 et au pilotage du foncier.
+  const synthese = useMemo(() => {
+    let revenue = 0;
+    let expenses = 0;
+    for (const b of balance) {
+      if (b.accountNumber.startsWith("7")) {
+        revenue += b.totalCreditCents - b.totalDebitCents;
+      } else if (b.accountNumber.startsWith("6")) {
+        expenses += b.totalDebitCents - b.totalCreditCents;
+      }
+    }
+    return { revenue, expenses, result: revenue - expenses };
+  }, [balance]);
+
   if (!entityId) {
     return <NeedsEntityState />;
   }
@@ -204,6 +220,26 @@ function BalanceContent() {
           ))}
         </select>
       </div>
+
+      {balance.length > 0 && !balanceQuery.isLoading && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <SyntheseCard
+            label="Recettes (classe 7)"
+            value={formatCents(synthese.revenue)}
+            tone="revenue"
+          />
+          <SyntheseCard
+            label="Charges (classe 6)"
+            value={formatCents(synthese.expenses)}
+            tone="expenses"
+          />
+          <SyntheseCard
+            label="Résultat"
+            value={formatCents(synthese.result)}
+            tone={synthese.result >= 0 ? "result_pos" : "result_neg"}
+          />
+        </div>
+      )}
 
       {balanceQuery.isLoading ? (
         <div className="space-y-3 animate-pulse">
@@ -338,6 +374,31 @@ function Stat({
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className={`text-base font-semibold ${colorClass}`}>{value}</p>
+    </div>
+  );
+}
+
+function SyntheseCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: "revenue" | "expenses" | "result_pos" | "result_neg";
+}) {
+  const colorClass =
+    tone === "revenue"
+      ? "text-emerald-600"
+      : tone === "expenses"
+        ? "text-rose-600"
+        : tone === "result_pos"
+          ? "text-blue-600"
+          : "text-amber-600";
+  return (
+    <div className="bg-card rounded-xl border border-border p-4">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p className={`text-2xl font-semibold mt-1 ${colorClass}`}>{value}</p>
     </div>
   );
 }

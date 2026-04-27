@@ -47,7 +47,11 @@ export async function GET(
 
     const { searchParams } = new URL(request.url);
     const entityId = searchParams.get("entityId");
-    const format = (searchParams.get("format") ?? "json") as "json" | "pdf" | "xlsx";
+    const format = (searchParams.get("format") ?? "json") as
+      | "json"
+      | "pdf"
+      | "xlsx"
+      | "summary";
 
     if (!entityId) {
       throw new ApiError(400, "entityId est requis");
@@ -95,6 +99,77 @@ export async function GET(
     }
 
     const balance = await getBalance(serviceClient, entityId, exerciseId);
+
+    if (format === "summary") {
+      // Aggregate the per-account balance into the dashboard-shape
+      // (revenue=class 7, expenses=class 6, result, totals) plus a
+      // monthly debit/credit series so the dashboard hook can render
+      // KPIs and the chart without doing financial math frontend-side.
+      let revenueCents = 0;
+      let expensesCents = 0;
+      let totalDebitCents = 0;
+      let totalCreditCents = 0;
+      for (const b of balance) {
+        totalDebitCents += b.totalDebitCents;
+        totalCreditCents += b.totalCreditCents;
+        if (b.accountNumber.startsWith("7")) {
+          revenueCents += b.totalCreditCents - b.totalDebitCents;
+        } else if (b.accountNumber.startsWith("6")) {
+          expensesCents += b.totalDebitCents - b.totalCreditCents;
+        }
+      }
+      const resultCents = revenueCents - expensesCents;
+
+      const { data: monthlyRows } = await serviceClient
+        .from("accounting_entry_lines")
+        .select(
+          `debit_cents, credit_cents,
+           accounting_entries!inner(entity_id, exercise_id, is_validated, entry_date)`,
+        )
+        .eq("accounting_entries.entity_id", entityId)
+        .eq("accounting_entries.exercise_id", exerciseId)
+        .eq("accounting_entries.is_validated", true);
+
+      const monthMap = new Map<string, { debit: number; credit: number }>();
+      for (const row of (monthlyRows ?? []) as Array<{
+        debit_cents: number;
+        credit_cents: number;
+        accounting_entries:
+          | { entry_date: string }
+          | { entry_date: string }[];
+      }>) {
+        const entryMeta = Array.isArray(row.accounting_entries)
+          ? row.accounting_entries[0]
+          : row.accounting_entries;
+        const month = (entryMeta?.entry_date ?? "").slice(0, 7);
+        if (!month) continue;
+        const cur = monthMap.get(month) ?? { debit: 0, credit: 0 };
+        cur.debit += row.debit_cents ?? 0;
+        cur.credit += row.credit_cents ?? 0;
+        monthMap.set(month, cur);
+      }
+      const monthlySeries = Array.from(monthMap.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([month, agg]) => ({
+          month,
+          debitCents: agg.debit,
+          creditCents: agg.credit,
+        }));
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          summary: {
+            totalDebitCents,
+            totalCreditCents,
+            revenueCents,
+            expensesCents,
+            resultCents,
+            monthlySeries,
+          },
+        },
+      });
+    }
 
     if (format === "pdf" || format === "xlsx") {
       const [{ data: exercise }, { data: entity }] = await Promise.all([
