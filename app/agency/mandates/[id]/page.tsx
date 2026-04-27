@@ -19,12 +19,24 @@ import {
   XCircle,
   Clock,
   Plus,
+  ArrowRightLeft,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { CRGGenerator } from "@/components/agency/CRGGenerator";
 import { FeeCalculator } from "@/components/agency/FeeCalculator";
@@ -70,6 +82,13 @@ export default function MandateDetailPage() {
   const mandateId = params.id as string;
 
   const [showCRGForm, setShowCRGForm] = useState(false);
+  const [reverseDialogOpen, setReverseDialogOpen] = useState(false);
+  const [reverseAmountInput, setReverseAmountInput] = useState("");
+  const [reverseDate, setReverseDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [reverseBankRef, setReverseBankRef] = useState("");
+  const [reverseError, setReverseError] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["agency-mandate", mandateId],
@@ -113,6 +132,46 @@ export default function MandateDetailPage() {
     },
     onError: (err: Error) => {
       toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const reverseMutation = useMutation({
+    mutationFn: async (input: {
+      amountCents: number;
+      date: string;
+      bankRef?: string;
+    }) => {
+      const res = await fetch(
+        `/api/agency/mandates/${mandateId}/reversement`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+        },
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json?.error || `Erreur ${res.status}`);
+      }
+      return json;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["agency-mandate", mandateId] });
+      setReverseDialogOpen(false);
+      setReverseAmountInput("");
+      setReverseBankRef("");
+      setReverseError(null);
+      toast({
+        title: data?.data?.idempotent
+          ? "Reversement déjà enregistré"
+          : "Reversement posé",
+        description: data?.data?.idempotent
+          ? "Une écriture existait déjà avec cette référence."
+          : "L'écriture comptable a été créée et le solde mandant mis à jour.",
+      });
+    },
+    onError: (err: Error) => {
+      setReverseError(err.message);
     },
   });
 
@@ -274,7 +333,7 @@ export default function MandateDetailPage() {
               ? "bg-red-50/60 dark:bg-red-900/20"
               : "bg-white/60 dark:bg-slate-900/60"
           )}>
-            <CardContent className="p-5 flex items-center justify-between">
+            <CardContent className="p-5 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-4">
                 <div className={cn(
                   "p-3 rounded-xl",
@@ -292,16 +351,140 @@ export default function MandateDetailPage() {
                   <p className="text-sm text-muted-foreground">Solde compte mandant</p>
                 </div>
               </div>
-              {account.reversement_overdue && (
-                <Badge variant="outline" className="border-red-500 text-red-600 bg-red-50">
-                  <AlertTriangle className="w-3 h-3 mr-1" />
-                  Reversement en retard
-                </Badge>
-              )}
+              <div className="flex items-center gap-2">
+                {account.reversement_overdue && (
+                  <Badge variant="outline" className="border-red-500 text-red-600 bg-red-50">
+                    <AlertTriangle className="w-3 h-3 mr-1" />
+                    Reversement en retard
+                  </Badge>
+                )}
+                {/* Le bouton Reverser n'apparaît qu'avec une balance > 0
+                    et un mandat actif. Inutile sur un mandat résilié ou
+                    soldé — l'API rejetterait. */}
+                {mandate.status === "active" && account.balance_cents > 0 && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      // Pré-remplit avec la balance complète : cas le
+                      // plus fréquent (l'agence reverse tout le net dû).
+                      setReverseAmountInput(
+                        (account.balance_cents / 100).toFixed(2),
+                      );
+                      setReverseDate(new Date().toISOString().split("T")[0]);
+                      setReverseBankRef("");
+                      setReverseError(null);
+                      setReverseDialogOpen(true);
+                    }}
+                  >
+                    <ArrowRightLeft className="w-4 h-4 mr-2" />
+                    Reverser au mandant
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         </motion.div>
       )}
+
+      {/* Dialog Reversement */}
+      <Dialog
+        open={reverseDialogOpen}
+        onOpenChange={(o) => {
+          setReverseDialogOpen(o);
+          if (!o) setReverseError(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reversement au mandant</DialogTitle>
+            <DialogDescription>
+              Pose l'écriture comptable D 467 / C 545 et décrémente le
+              solde du compte mandant. Idempotent : si une référence
+              bancaire est fournie, deux soumissions identiques ne
+              créeront qu'une seule écriture.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="reverse-amount">Montant (EUR)</Label>
+              <Input
+                id="reverse-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={reverseAmountInput}
+                onChange={(e) => setReverseAmountInput(e.target.value)}
+                placeholder="0,00"
+              />
+              <p className="text-xs text-muted-foreground">
+                Solde disponible :{" "}
+                {account ? formatCents(account.balance_cents) : "—"}
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="reverse-date">Date du virement</Label>
+              <Input
+                id="reverse-date"
+                type="date"
+                value={reverseDate}
+                onChange={(e) => setReverseDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="reverse-ref">
+                Référence bancaire{" "}
+                <span className="text-muted-foreground text-xs">
+                  (optionnel — recommandé)
+                </span>
+              </Label>
+              <Input
+                id="reverse-ref"
+                value={reverseBankRef}
+                onChange={(e) => setReverseBankRef(e.target.value)}
+                placeholder="ex. VIRT-2026-04-27-001"
+              />
+            </div>
+            {reverseError && (
+              <div className="flex items-start gap-2 text-xs text-destructive bg-destructive/10 rounded-lg p-2.5">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>{reverseError}</span>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setReverseDialogOpen(false)}
+              disabled={reverseMutation.isPending}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={() => {
+                const amountEuros = Number(reverseAmountInput);
+                if (!Number.isFinite(amountEuros) || amountEuros <= 0) {
+                  setReverseError("Le montant doit être positif.");
+                  return;
+                }
+                const amountCents = Math.round(amountEuros * 100);
+                reverseMutation.mutate({
+                  amountCents,
+                  date: reverseDate,
+                  bankRef: reverseBankRef.trim() || undefined,
+                });
+              }}
+              disabled={reverseMutation.isPending}
+            >
+              {reverseMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <ArrowRightLeft className="w-4 h-4 mr-2" />
+              )}
+              Poser le reversement
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* CRG Section */}
       <motion.div variants={itemVariants}>
