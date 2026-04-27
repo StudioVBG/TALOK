@@ -178,6 +178,36 @@ export function useAccountingEntries(params: UseAccountingEntriesParams) {
     },
   });
 
+  // -- Delete mutation -----------------------------------------------------
+  // The API only exposes per-id DELETE; we fan out the requests in parallel.
+  // Settle-don't-throw so a single 4xx (eg. someone validated the entry
+  // between selection and submission) doesn't drop the others on the floor.
+  const deleteMutation = useMutation({
+    mutationFn: async (entryIds: string[]) => {
+      const results = await Promise.allSettled(
+        entryIds.map((id) => apiClient.delete(`/accounting/entries/${id}`)),
+      );
+      const failures = results
+        .map((r, i) => ({ r, id: entryIds[i] }))
+        .filter((x) => x.r.status === "rejected");
+      if (failures.length > 0) {
+        const reason = (failures[0].r as PromiseRejectedResult).reason;
+        const msg = reason instanceof Error ? reason.message : String(reason);
+        throw new Error(
+          failures.length === entryIds.length
+            ? msg
+            : `${failures.length}/${entryIds.length} suppression(s) ont échoué : ${msg}`,
+        );
+      }
+      return { deleted: entryIds.length };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["accounting", "entries"] });
+      queryClient.invalidateQueries({ queryKey: ["accounting", "balance-generale"] });
+      queryClient.invalidateQueries({ queryKey: ["accounting", "grand-livre"] });
+    },
+  });
+
   return {
     entries,
     total,
@@ -190,6 +220,8 @@ export function useAccountingEntries(params: UseAccountingEntriesParams) {
     mutate: () => queryClient.invalidateQueries({ queryKey: ["accounting", "entries"] }),
     validateEntries: validateMutation.mutateAsync,
     isValidating: validateMutation.isPending,
+    deleteEntries: deleteMutation.mutateAsync,
+    isDeleting: deleteMutation.isPending,
   };
 }
 
