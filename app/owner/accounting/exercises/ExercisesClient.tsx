@@ -1,12 +1,23 @@
 "use client";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PlanGate } from "@/components/subscription/plan-gate";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useEntityStore } from "@/stores/useEntityStore";
 import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link";
-import { ArrowLeft, Lock, Unlock, Calendar, Loader2 } from "lucide-react";
+import { ArrowLeft, Lock, Unlock, Calendar, Loader2, Plus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { validateFiscalYearRange } from "@/lib/entities/fiscal-year-defaults";
 
 export default function ExercisesClient() {
   return (<PlanGate feature="bank_reconciliation" mode="block"><ExercisesContent /></PlanGate>);
@@ -35,6 +46,34 @@ function ExercisesContent() {
     queryKey: ["exercises", activeEntityId],
     queryFn: () => apiClient.get<ExercisesResponse>(`/accounting/exercises?entityId=${activeEntityId}`),
     enabled: !!activeEntityId,
+  });
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newStart, setNewStart] = useState("");
+  const [newEnd, setNewEnd] = useState("");
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const createMutation = useMutation<unknown, Error, { startDate: string; endDate: string }>({
+    mutationFn: (payload) =>
+      apiClient.post(`/accounting/exercises`, {
+        entityId: activeEntityId,
+        startDate: payload.startDate,
+        endDate: payload.endDate,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["exercises"] });
+      setCreateOpen(false);
+      setCreateError(null);
+      toast({
+        title: "Exercice créé",
+        description: `Période ${newStart} → ${newEnd} ouverte.`,
+      });
+    },
+    onError: (err) => {
+      setCreateError(
+        err instanceof Error ? err.message : "Création impossible. Réessayez.",
+      );
+    },
   });
 
   const closeMutation = useMutation<CloseResponse, Error, string>({
@@ -76,9 +115,65 @@ function ExercisesContent() {
   const openExercises = exercises.filter(e => e.status === "open");
   const closedExercises = exercises.filter(e => e.status === "closed");
 
+  // Default period for a new exercise: continues right after the latest
+  // existing exercise, on a 1-year span. Falls back to current calendar year
+  // when no exercise exists.
+  const defaultPeriod = useMemo(() => {
+    const latest = exercises
+      .map((e) => e.end_date)
+      .filter((d): d is string => Boolean(d))
+      .sort()
+      .at(-1);
+
+    if (latest) {
+      const next = new Date(`${latest}T00:00:00Z`);
+      next.setUTCDate(next.getUTCDate() + 1);
+      const start = next.toISOString().slice(0, 10);
+      const endDate = new Date(next);
+      endDate.setUTCFullYear(endDate.getUTCFullYear() + 1);
+      endDate.setUTCDate(endDate.getUTCDate() - 1);
+      return { start, end: endDate.toISOString().slice(0, 10) };
+    }
+
+    const year = new Date().getUTCFullYear();
+    return { start: `${year}-01-01`, end: `${year}-12-31` };
+  }, [exercises]);
+
+  function openCreateDialog() {
+    setNewStart(defaultPeriod.start);
+    setNewEnd(defaultPeriod.end);
+    setCreateError(null);
+    setCreateOpen(true);
+  }
+
+  function submitCreate() {
+    const validation = validateFiscalYearRange(newStart, newEnd);
+    if (!validation.valid) {
+      setCreateError(validation.error ?? "Dates invalides");
+      return;
+    }
+    createMutation.mutate({ startDate: newStart, endDate: newEnd });
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-      <div className="flex items-center gap-3"><Link href="/owner/accounting" className="text-muted-foreground hover:text-foreground"><ArrowLeft className="w-5 h-5" /></Link><h1 className="text-xl font-bold text-foreground">Exercices comptables</h1></div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Link href="/owner/accounting" className="text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <h1 className="text-xl font-bold text-foreground">Exercices comptables</h1>
+        </div>
+        <button
+          type="button"
+          onClick={openCreateDialog}
+          disabled={!activeEntityId}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+        >
+          <Plus className="w-4 h-4" />
+          Nouvel exercice
+        </button>
+      </div>
 
       {isLoading ? <div className="space-y-3">{[1,2].map(i => <div key={i} className="h-24 bg-muted rounded-xl animate-pulse" />)}</div> : (
         <>
@@ -122,8 +217,72 @@ function ExercisesContent() {
               ))}
             </div>
           )}
+          {exercises.length === 0 && (
+            <div className="bg-card rounded-xl border border-dashed border-border p-8 text-center">
+              <Calendar className="mx-auto w-8 h-8 text-muted-foreground" />
+              <p className="mt-3 text-sm font-medium">Aucun exercice comptable</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Créez votre premier exercice pour démarrer la comptabilité.
+              </p>
+            </div>
+          )}
         </>
       )}
+
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nouvel exercice comptable</DialogTitle>
+            <DialogDescription>
+              La période ne doit pas chevaucher un exercice existant. Les dates
+              proposées prolongent automatiquement le dernier exercice.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="newStart">Début</Label>
+              <Input
+                id="newStart"
+                type="date"
+                value={newStart}
+                onChange={(e) => setNewStart(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newEnd">Fin</Label>
+              <Input
+                id="newEnd"
+                type="date"
+                value={newEnd}
+                onChange={(e) => setNewEnd(e.target.value)}
+              />
+            </div>
+          </div>
+          {createError && (
+            <p className="text-sm text-destructive">{createError}</p>
+          )}
+          <DialogFooter>
+            <button
+              type="button"
+              onClick={() => setCreateOpen(false)}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={submitCreate}
+              disabled={createMutation.isPending}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            >
+              {createMutation.isPending && (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              )}
+              Créer l&apos;exercice
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
