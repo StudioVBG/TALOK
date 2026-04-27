@@ -119,7 +119,40 @@ export function InvoicesListClient() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            {/* Mobile: card list (< md) */}
+            <div className="md:hidden divide-y">
+              {invoices.map((invoice) => (
+                <button
+                  key={invoice.id}
+                  type="button"
+                  onClick={() =>
+                    router.push(`/owner/finances/invoices/${invoice.id}`)
+                  }
+                  className="w-full px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="font-medium truncate">{invoice.periode}</p>
+                        <p className="text-sm font-semibold tabular-nums shrink-0">
+                          {formatCurrency(invoice.montant_total)}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs text-muted-foreground">
+                          Échéance {formatDate(invoice.due_date)}
+                        </p>
+                        <InvoiceStatusBadge status={invoice.statut} />
+                      </div>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Desktop: table (md+) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
