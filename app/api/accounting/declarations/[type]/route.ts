@@ -40,10 +40,22 @@ function sumDebit(balance: BalanceItem[], prefix: string): number {
 
 /**
  * Compute 2044 declaration (regime reel - revenus fonciers)
+ *
+ * Ligne 221 ("Frais d'administration et de gestion") accepte au choix :
+ *   1. un forfait legal de 20 EUR / local declare (sans justificatif),
+ *   2. les frais reels (avec justificatifs : honoraires comptables,
+ *      juridiques, divers — comptes 622xxx, plus 627000 frais bancaires).
+ * Le proprietaire doit prendre la solution LA PLUS AVANTAGEUSE. La version
+ * historique forcait le forfait, ce qui sous-evaluait les charges quand
+ * un EC etait paye et gonflait artificiellement le revenu foncier. On
+ * calcule les deux et on retient le max ; les deux sont remontes dans
+ * la reponse pour permettre a l'UI/EC de tracer le choix.
  */
 function compute2044(balance: BalanceItem[], nbLocaux: number) {
   const ligne_215 = sumCredit(balance, "706"); // loyers bruts
-  const ligne_221 = nbLocaux * 2000; // forfait gestion 20 EUR/local
+  const ligne_221_forfait = nbLocaux * 2000; // forfait legal 20 EUR/local
+  const ligne_221_reel = sumDebit(balance, "622") + sumDebit(balance, "627"); // honoraires + frais bancaires
+  const ligne_221 = Math.max(ligne_221_forfait, ligne_221_reel);
   const ligne_222 = sumDebit(balance, "616"); // assurances
   const ligne_223 = sumDebit(balance, "615"); // travaux
   const ligne_224 = sumDebit(balance, "661"); // interets emprunt
@@ -69,6 +81,10 @@ function compute2044(balance: BalanceItem[], nbLocaux: number) {
     type: "2044" as const,
     ligne_215,
     ligne_221,
+    ligne_221_forfait,
+    ligne_221_reel,
+    ligne_221_choice:
+      ligne_221_reel >= ligne_221_forfait ? ("reel" as const) : ("forfait" as const),
     ligne_222,
     ligne_223,
     ligne_224,
@@ -113,13 +129,24 @@ async function compute2072(
     sumDebit(balance, "635");
   const resultat = revenus - charges;
 
-  // Fetch associates and their quote-parts
+  // Fetch associates and their quote-parts. Filtre les quote_part_pct
+  // null/0 : sans cette protection, Math.round(resultat * null / 100)
+  // produit NaN qui se serialise mal en JSON et casse l'UI.
   const { data: associates } = await (supabase as any)
     .from("entity_associates")
     .select("id, name, quote_part_pct")
     .eq("entity_id", entityId);
 
-  const resultat_par_associe = (associates ?? []).map(
+  const validAssociates = (associates ?? []).filter(
+    (a: { quote_part_pct: number | null }) =>
+      typeof a.quote_part_pct === "number" && a.quote_part_pct > 0,
+  );
+  const skippedAssociates = (associates ?? []).filter(
+    (a: { quote_part_pct: number | null }) =>
+      !(typeof a.quote_part_pct === "number" && a.quote_part_pct > 0),
+  );
+
+  const resultat_par_associe = validAssociates.map(
     (a: { id: string; name: string; quote_part_pct: number }) => ({
       associateId: a.id,
       name: a.name,
@@ -134,6 +161,7 @@ async function compute2072(
     charges_deductibles: charges,
     resultat,
     resultat_par_associe,
+    skipped_associates_count: skippedAssociates.length,
   };
 }
 
