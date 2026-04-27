@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { requireAccountingAccess } from "@/lib/accounting/feature-gates";
 import { closeExercise, createEntry, validateEntry, getBalance } from "@/lib/accounting/engine";
+import { computeNextPeriod } from "@/lib/accounting/auto-exercise";
 
 export const dynamic = "force-dynamic";
 
@@ -212,28 +213,45 @@ export async function POST(
       warnings.push("Envoi automatique au expert-comptable non effectue");
     }
 
-    // Step 6: Create next exercise if needed
-    const nextStart = new Date(exercise.end_date);
-    nextStart.setDate(nextStart.getDate() + 1);
-    const nextEnd = new Date(nextStart);
-    nextEnd.setFullYear(nextEnd.getFullYear() + 1);
-    nextEnd.setDate(nextEnd.getDate() - 1);
+    // Step 6: Create next exercise if needed.
+    //
+    // Use computeNextPeriod so we share the exact same period math as the UI
+    // dialog and getOrCreateCurrentExercise — TZ-safe (UTC) and respectful of
+    // the entity's configured fiscal year for entities with no other history.
+    //
+    // Existence check is a real overlap test on the computed [start, end]
+    // window: a manually-pre-created N+2 must NOT mask a missing N+1.
+    const { data: entityForFiscal } = await (supabase as any)
+      .from("legal_entities")
+      .select("premier_exercice_debut, premier_exercice_fin, date_cloture_exercice")
+      .eq("id", entityId)
+      .maybeSingle();
 
-    const { data: existingNext } = await (supabase as any)
+    const nextPeriod = computeNextPeriod(
+      {
+        premier_exercice_debut: entityForFiscal?.premier_exercice_debut ?? null,
+        premier_exercice_fin: entityForFiscal?.premier_exercice_fin ?? null,
+        date_cloture_exercice: entityForFiscal?.date_cloture_exercice ?? null,
+      },
+      exercise.end_date,
+    );
+
+    const { data: overlapping } = await (supabase as any)
       .from("accounting_exercises")
       .select("id")
       .eq("entity_id", entityId)
-      .gte("start_date", nextStart.toISOString().split("T")[0])
+      .lte("start_date", nextPeriod.end)
+      .gte("end_date", nextPeriod.start)
       .limit(1);
 
     let newExercise = null;
-    if (!existingNext || existingNext.length === 0) {
+    if (!overlapping || overlapping.length === 0) {
       const { data: created } = await (supabase as any)
         .from("accounting_exercises")
         .insert({
           entity_id: entityId,
-          start_date: nextStart.toISOString().split("T")[0],
-          end_date: nextEnd.toISOString().split("T")[0],
+          start_date: nextPeriod.start,
+          end_date: nextPeriod.end,
         })
         .select()
         .single();
