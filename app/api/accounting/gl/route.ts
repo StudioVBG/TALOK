@@ -44,8 +44,14 @@ export async function GET(request: Request) {
       );
     }
 
-    // Récupérer les factures
-    let invoicesQuery = supabase
+    // Récupérer les factures.
+    // Type `any` assumé : la chaîne de filtres ci-dessous traverse une jointure
+    // imbriquée (lease → property) et la colonne `periode` n'apparaît pas dans
+    // les types Supabase générés (database.types.ts est en mode stub
+    // GenericRowType). Sans cette élision, TS rejette gte/lte/eq avec une
+    // erreur "no overload matches". Cible : régénérer les types via
+    // `supabase gen types typescript --linked` puis enlever ce cast.
+    let invoicesQuery: any = supabase
       .from("invoices")
       .select(`
         *,
@@ -55,16 +61,14 @@ export async function GET(request: Request) {
       `);
 
     if (scope === "owner") {
-      invoicesQuery = invoicesQuery.eq("lease.property.owner_id", profileData?.id as any);
+      invoicesQuery = invoicesQuery.eq("lease.property.owner_id", profileData?.id);
     }
 
     if (startDate) {
-      // @ts-ignore - Supabase typing issue
       invoicesQuery = invoicesQuery.gte("periode", startDate);
     }
 
     if (endDate) {
-      // @ts-ignore - Supabase typing issue
       invoicesQuery = invoicesQuery.lte("periode", endDate);
     }
 

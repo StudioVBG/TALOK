@@ -1,6 +1,4 @@
-// @ts-nocheck
 "use client";
-// @ts-nocheck — TODO: remove once database.types.ts is regenerated
 import { useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";

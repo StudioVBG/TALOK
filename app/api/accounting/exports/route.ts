@@ -45,8 +45,13 @@ export async function GET(request: Request) {
       );
     }
 
-    // Construire la requête selon le scope
-    let invoicesQuery = supabase
+    // Construire la requête selon le scope.
+    // Type `any` assumé : la jointure imbriquée (lease → property) et la
+    // colonne `periode` ne sont pas typées dans database.types.ts (stub
+    // GenericRowType). Sans cette élision, TS rejette eq/.gte sur les
+    // colonnes filtrées. Cible : régénérer les types Supabase puis
+    // typer proprement la query (cf. P3.2 dans le backlog).
+    let invoicesQuery: any = supabase
       .from("invoices")
       .select(`
         *,
@@ -57,11 +62,10 @@ export async function GET(request: Request) {
       `);
 
     if (scope === "owner") {
-      invoicesQuery = invoicesQuery.eq("lease.property.owner_id", profileData?.id as any);
+      invoicesQuery = invoicesQuery.eq("lease.property.owner_id", profileData?.id);
     }
 
     if (period) {
-      // @ts-ignore - Supabase typing issue
       invoicesQuery = invoicesQuery.eq("periode", period);
     }
 
