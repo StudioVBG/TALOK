@@ -16,29 +16,41 @@ import { z } from "zod";
 // ne sont plus acceptés — la migration des callers est triviale (mapping
 // 1-pour-1) et la page /new ne fait pas encore d'appel réel, donc le
 // breaking change ne casse personne en pratique.
-const createMandateSchema = z.object({
-  owner_profile_id: z.string().uuid("ID propriétaire invalide"),
-  // agency_entity_id optionnel : on auto-résout via legal_entities
-  // owned by l'agence si absent (cas par défaut). Le caller peut le
-  // forcer si l'agence a plusieurs entités juridiques.
-  agency_entity_id: z.string().uuid().optional(),
-  mandate_type: z
-    .enum(["gestion", "location", "syndic", "transaction"])
-    .default("gestion"),
-  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date début invalide"),
-  end_date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date fin invalide")
-    .optional()
-    .nullable(),
-  tacit_renewal: z.boolean().default(true),
-  property_ids: z.array(z.string().uuid()).optional().default([]),
-  management_fee_type: z.enum(["percentage", "fixed"]).default("percentage"),
-  management_fee_rate: z.number().min(0).max(100).optional(),
-  management_fee_fixed_cents: z.number().int().nonnegative().optional(),
-  mandant_bank_iban: z.string().optional(),
-  mandant_bank_bic: z.string().optional(),
-});
+const createMandateSchema = z
+  .object({
+    // Le caller fournit SOIT owner_profile_id (UUID — flow programmatique)
+    // SOIT owner_email (résolu serveur — pratique depuis le formulaire UI
+    // qui ne connaît que l'email saisi). Au moins l'un des deux requis.
+    owner_profile_id: z.string().uuid("ID propriétaire invalide").optional(),
+    owner_email: z.string().email("Email propriétaire invalide").optional(),
+    // agency_entity_id optionnel : on auto-résout via legal_entities
+    // owned by l'agence si absent (cas par défaut).
+    agency_entity_id: z.string().uuid().optional(),
+    mandate_type: z
+      .enum(["gestion", "location", "syndic", "transaction"])
+      .default("gestion"),
+    start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date début invalide"),
+    end_date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Date fin invalide")
+      .optional()
+      .nullable(),
+    tacit_renewal: z.boolean().default(true),
+    property_ids: z.array(z.string().uuid()).optional().default([]),
+    // Si true et property_ids est vide, le serveur charge toutes les
+    // properties dont owner_id = owner_profile_id résolu. Pratique
+    // pour le formulaire UI qui propose un toggle "tous les biens".
+    include_all_properties: z.boolean().optional().default(false),
+    management_fee_type: z.enum(["percentage", "fixed"]).default("percentage"),
+    management_fee_rate: z.number().min(0).max(100).optional(),
+    management_fee_fixed_cents: z.number().int().nonnegative().optional(),
+    mandant_bank_iban: z.string().optional(),
+    mandant_bank_bic: z.string().optional(),
+  })
+  .refine((d) => d.owner_profile_id || d.owner_email, {
+    message: "owner_profile_id OU owner_email requis",
+    path: ["owner_profile_id"],
+  });
 
 export async function GET(request: NextRequest) {
   try {
@@ -234,11 +246,44 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Vérifier que le propriétaire existe et est bien un owner
+    // Résolution de l'owner. Deux chemins :
+    //   - owner_profile_id : on vérifie juste que la ligne existe et a
+    //     bien role='owner'.
+    //   - owner_email : on cherche un profile owner avec ce mail.
+    //     Refuse si non trouvé — l'agence doit avoir invité l'owner
+    //     à créer son compte avant de poser un mandat (Hoguet exige
+    //     une signature du mandant).
+    let ownerProfileId = validatedData.owner_profile_id;
+    if (!ownerProfileId && validatedData.owner_email) {
+      const { data: byEmail } = await supabase
+        .from("profiles")
+        .select("id, role")
+        .eq("email", validatedData.owner_email.toLowerCase())
+        .eq("role", "owner")
+        .maybeSingle();
+      if (!byEmail) {
+        return NextResponse.json(
+          {
+            error:
+              "Aucun propriétaire trouvé avec cet email. Invitez-le à créer son compte Talok avant de signer le mandat.",
+          },
+          { status: 404 },
+        );
+      }
+      ownerProfileId = byEmail.id;
+    }
+
+    if (!ownerProfileId) {
+      return NextResponse.json(
+        { error: "owner_profile_id ou owner_email requis" },
+        { status: 400 },
+      );
+    }
+
     const { data: owner } = await supabase
       .from("profiles")
       .select("id, role")
-      .eq("id", validatedData.owner_profile_id)
+      .eq("id", ownerProfileId)
       .eq("role", "owner")
       .single();
 
@@ -246,6 +291,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Propriétaire non trouvé" },
         { status: 404 }
+      );
+    }
+
+    // Auto-résolution de property_ids si include_all_properties=true
+    // ET property_ids n'a pas été fourni explicitement. On charge
+    // toutes les properties dont owner_id pointe sur le mandant —
+    // l'agence accepte de gérer l'intégralité du portefeuille.
+    let propertyIds = validatedData.property_ids;
+    if (validatedData.include_all_properties && propertyIds.length === 0) {
+      const { data: ownerProperties } = await supabase
+        .from("properties")
+        .select("id")
+        .eq("owner_id", ownerProfileId);
+      propertyIds = (ownerProperties ?? []).map(
+        (p) => (p as { id: string }).id,
       );
     }
 
@@ -291,13 +351,13 @@ export async function POST(request: NextRequest) {
       .insert({
         agency_profile_id: profile.id,
         agency_entity_id: agencyEntityId,
-        owner_profile_id: validatedData.owner_profile_id,
+        owner_profile_id: ownerProfileId,
         mandate_number: mandateNumber,
         mandate_type: validatedData.mandate_type,
         start_date: validatedData.start_date,
         end_date: validatedData.end_date ?? null,
         tacit_renewal: validatedData.tacit_renewal,
-        property_ids: validatedData.property_ids,
+        property_ids: propertyIds,
         management_fee_type: validatedData.management_fee_type,
         management_fee_rate: validatedData.management_fee_rate ?? null,
         management_fee_fixed_cents:
