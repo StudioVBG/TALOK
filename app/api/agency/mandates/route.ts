@@ -11,22 +11,33 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
-// Schéma de validation
+// Schéma de validation aligné sur agency_mandates (canonique Hoguet).
+// Les anciens noms FR (numero_mandat, type_mandat, commission_pourcentage…)
+// ne sont plus acceptés — la migration des callers est triviale (mapping
+// 1-pour-1) et la page /new ne fait pas encore d'appel réel, donc le
+// breaking change ne casse personne en pratique.
 const createMandateSchema = z.object({
   owner_profile_id: z.string().uuid("ID propriétaire invalide"),
-  type_mandat: z.enum(["gestion", "location", "vente", "syndic"]).default("gestion"),
-  date_debut: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date invalide"),
-  date_fin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
-  duree_mois: z.number().positive().optional(),
-  tacite_reconduction: z.boolean().default(true),
-  preavis_resiliation_mois: z.number().default(3),
-  properties_ids: z.array(z.string().uuid()).optional(),
-  inclut_tous_biens: z.boolean().default(true),
-  commission_pourcentage: z.number().min(0).max(100).default(7),
-  commission_fixe_mensuelle: z.number().optional(),
-  honoraires_mise_en_location: z.number().optional(),
-  honoraires_edl: z.number().optional(),
-  notes: z.string().optional(),
+  // agency_entity_id optionnel : on auto-résout via legal_entities
+  // owned by l'agence si absent (cas par défaut). Le caller peut le
+  // forcer si l'agence a plusieurs entités juridiques.
+  agency_entity_id: z.string().uuid().optional(),
+  mandate_type: z
+    .enum(["gestion", "location", "syndic", "transaction"])
+    .default("gestion"),
+  start_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date début invalide"),
+  end_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date fin invalide")
+    .optional()
+    .nullable(),
+  tacit_renewal: z.boolean().default(true),
+  property_ids: z.array(z.string().uuid()).optional().default([]),
+  management_fee_type: z.enum(["percentage", "fixed"]).default("percentage"),
+  management_fee_rate: z.number().min(0).max(100).optional(),
+  management_fee_fixed_cents: z.number().int().nonnegative().optional(),
+  mandant_bank_iban: z.string().optional(),
+  mandant_bank_bic: z.string().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -190,25 +201,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
     }
 
-    // Vérifier que le profil agence existe
-    const { data: agencyProfile } = await supabase
-      .from("agency_profiles")
-      .select("profile_id")
-      .eq("profile_id", profile.id)
-      .single();
-
-    if (!agencyProfile) {
-      return NextResponse.json(
-        { error: "Profil agence requis. Veuillez compléter votre profil." },
-        { status: 400 }
-      );
-    }
-
     // Valider les données
     const body = await request.json();
     const validatedData = createMandateSchema.parse(body);
 
-    // Vérifier que le propriétaire existe
+    // Cohérence tarification : si percentage, rate doit être fourni ;
+    // si fixed, fixed_cents doit l'être. Sinon le mandat est créé sans
+    // tarification — autorisé mais l'agence devra éditer avant le 1er
+    // paiement (sinon la commission auto sera 0).
+    if (
+      validatedData.management_fee_type === "percentage" &&
+      validatedData.management_fee_rate == null
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "management_fee_rate requis quand management_fee_type='percentage'",
+        },
+        { status: 400 },
+      );
+    }
+    if (
+      validatedData.management_fee_type === "fixed" &&
+      validatedData.management_fee_fixed_cents == null
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "management_fee_fixed_cents requis quand management_fee_type='fixed'",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Vérifier que le propriétaire existe et est bien un owner
     const { data: owner } = await supabase
       .from("profiles")
       .select("id, role")
@@ -223,35 +249,62 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Générer un numéro de mandat
-    const { count } = await supabase
-      .from("mandates")
+    // Auto-résoudre l'entité juridique de l'agence si non fournie. La
+    // table agency_mandates exige agency_entity_id NOT NULL — sans
+    // entité, l'agence ne peut pas tenir de comptabilité Hoguet
+    // séparée (compte mandant 545, etc.). On erreur explicitement
+    // plutôt que d'inventer.
+    let agencyEntityId = validatedData.agency_entity_id;
+    if (!agencyEntityId) {
+      const { data: entity } = await supabase
+        .from("legal_entities")
+        .select("id")
+        .eq("owner_profile_id", profile.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      agencyEntityId = entity?.id;
+    }
+    if (!agencyEntityId) {
+      return NextResponse.json(
+        {
+          error:
+            "Aucune entité juridique trouvée pour cette agence. Créez d'abord votre entité via /agency/settings.",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Générer un numéro de mandat séquentiel par agence (UNIQUE par
+    // agency_profile_id + mandate_number — cf. index unique dans
+    // 20260408120000_whitelabel_agency_module.sql).
+    const { count } = await (supabase as any)
+      .from("agency_mandates")
       .select("id", { count: "exact", head: true })
       .eq("agency_profile_id", profile.id);
 
-    const numeroMandat = `MAN-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, "0")}`;
+    const mandateNumber = `MAN-${new Date().getFullYear()}-${String((count || 0) + 1).padStart(4, "0")}`;
 
-    // Créer le mandat
-    const { data: mandate, error: createError } = await supabase
-      .from("mandates")
+    // Créer le mandat sur agency_mandates (canonique).
+    const { data: mandate, error: createError } = await (supabase as any)
+      .from("agency_mandates")
       .insert({
         agency_profile_id: profile.id,
+        agency_entity_id: agencyEntityId,
         owner_profile_id: validatedData.owner_profile_id,
-        numero_mandat: numeroMandat,
-        type_mandat: validatedData.type_mandat,
-        date_debut: validatedData.date_debut,
-        date_fin: validatedData.date_fin,
-        duree_mois: validatedData.duree_mois,
-        tacite_reconduction: validatedData.tacite_reconduction,
-        preavis_resiliation_mois: validatedData.preavis_resiliation_mois,
-        properties_ids: validatedData.properties_ids || [],
-        inclut_tous_biens: validatedData.inclut_tous_biens,
-        commission_pourcentage: validatedData.commission_pourcentage,
-        commission_fixe_mensuelle: validatedData.commission_fixe_mensuelle,
-        honoraires_mise_en_location: validatedData.honoraires_mise_en_location,
-        honoraires_edl: validatedData.honoraires_edl,
-        notes: validatedData.notes,
-        statut: "draft",
+        mandate_number: mandateNumber,
+        mandate_type: validatedData.mandate_type,
+        start_date: validatedData.start_date,
+        end_date: validatedData.end_date ?? null,
+        tacit_renewal: validatedData.tacit_renewal,
+        property_ids: validatedData.property_ids,
+        management_fee_type: validatedData.management_fee_type,
+        management_fee_rate: validatedData.management_fee_rate ?? null,
+        management_fee_fixed_cents:
+          validatedData.management_fee_fixed_cents ?? null,
+        mandant_bank_iban: validatedData.mandant_bank_iban ?? null,
+        mandant_bank_bic: validatedData.mandant_bank_bic ?? null,
+        status: "draft",
       })
       .select()
       .single();
