@@ -53,44 +53,109 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
     }
 
-    // Paramètres de requête
+    // Paramètres de requête. Le filtre `statut` (FR) est gardé pour
+    // compat ascendante avec l'UI legacy ; aligné en interne avec
+    // `status` côté agency_mandates (anglais Hoguet).
     const searchParams = request.nextUrl.searchParams;
-    const statut = searchParams.get("statut");
+    const statut = searchParams.get("statut") ?? searchParams.get("status");
     const type = searchParams.get("type");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const offset = (page - 1) * limit;
 
-    // Construire la requête
-    let query = supabase
-      .from("mandates")
-      .select(`
-        *,
-        owner:profiles!mandates_owner_profile_id_fkey(
-          id, prenom, nom, telephone
+    // Lecture sur agency_mandates (table canonique Hoguet, cf. décision 1
+    // de l'audit). La table legacy `mandates` reste en BDD pour les
+    // données historiques mais n'est plus exposée par cette route — la
+    // détail page (/api/agency/mandates/[id]) lit déjà agency_mandates,
+    // donc list et détail sont maintenant alignés.
+    let query = (supabase as any)
+      .from("agency_mandates")
+      .select(
+        `
+        id, mandate_number, mandate_type, status,
+        start_date, end_date,
+        management_fee_type, management_fee_rate, management_fee_fixed_cents,
+        property_ids, created_at,
+        owner:profiles!agency_mandates_owner_profile_id_fkey(
+          id, prenom, nom, email, telephone
+        ),
+        account:agency_mandant_accounts(
+          balance_cents, last_reversement_at, reversement_overdue
         )
-      `, { count: "exact" })
+      `,
+        { count: "exact" },
+      )
       .eq("agency_profile_id", profile.id);
 
     if (statut && statut !== "all") {
-      query = query.eq("statut", statut);
+      query = query.eq("status", statut);
     }
 
     if (type && type !== "all") {
-      query = query.eq("type_mandat", type);
+      query = query.eq("mandate_type", type);
     }
 
-    const { data: mandates, count, error } = await query
+    const { data: rows, count, error } = await query
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
     if (error) {
       console.error("Erreur récupération mandats:", error);
-      return NextResponse.json({ error: error instanceof Error ? (error as Error).message : "Une erreur est survenue" }, { status: 500 });
+      return NextResponse.json(
+        {
+          error:
+            error instanceof Error
+              ? (error as Error).message
+              : "Une erreur est survenue",
+        },
+        { status: 500 },
+      );
     }
 
+    // Normalise le payload pour que l'UI puisse afficher une vue
+    // lisible sans répliquer la logique fee-type / property_ids partout.
+    const mandates = ((rows ?? []) as any[]).map((m) => {
+      const account = Array.isArray(m.account) ? m.account[0] : m.account;
+      const owner = m.owner;
+      const ownerName = owner
+        ? `${owner.prenom ?? ""} ${owner.nom ?? ""}`.trim()
+        : "";
+      const commissionDisplay =
+        m.management_fee_type === "fixed"
+          ? m.management_fee_fixed_cents != null
+            ? `${(m.management_fee_fixed_cents / 100).toFixed(2)} €`
+            : null
+          : m.management_fee_rate != null
+            ? `${m.management_fee_rate}%`
+            : null;
+      const propertyIds = (m.property_ids ?? []) as string[];
+      return {
+        id: m.id,
+        numeroMandat: m.mandate_number,
+        type: m.mandate_type,
+        status: m.status,
+        dateDebut: m.start_date,
+        dateFin: m.end_date,
+        biensCount: propertyIds.length,
+        commission: m.management_fee_rate ?? null,
+        commissionFixedCents: m.management_fee_fixed_cents ?? null,
+        commissionType: m.management_fee_type,
+        commissionDisplay,
+        owner: {
+          id: owner?.id ?? null,
+          name: ownerName,
+          email: owner?.email ?? null,
+          phone: owner?.telephone ?? null,
+        },
+        balanceCents: account?.balance_cents ?? 0,
+        reversementOverdue: account?.reversement_overdue ?? false,
+        lastReversementAt: account?.last_reversement_at ?? null,
+        createdAt: m.created_at,
+      };
+    });
+
     return NextResponse.json({
-      mandates: mandates || [],
+      mandates,
       total: count || 0,
       page,
       limit,
