@@ -5,6 +5,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { PlanGate } from "@/components/subscription/plan-gate";
 import { ExportCard } from "@/components/accounting/ExportCard";
 import { apiClient } from "@/lib/api-client";
+import { unwrapList } from "@/lib/helpers/api-envelope";
 import { useAuth } from "@/lib/hooks/use-auth";
 import { useEntityStore } from "@/stores/useEntityStore";
 import {
@@ -90,17 +91,15 @@ function ExportsContent() {
 
   // ── Exercise selector ─────────────────────────────────────────────
 
-  // API envelope shape: `{ success, data: { exercises: [...] } }`. Keep the
-  // raw-array fallback so the code is resilient if the shape ever changes.
+  // API envelope shape: `{ success, data: { exercises: [...] } }`.
+  // unwrapList also accepts the raw array / `{ data: [] }` legacy shapes.
   const { data: exercises } = useQuery<AccountingExercise[]>({
     queryKey: ["accounting", "exercises", entityId],
     queryFn: async () => {
-      const response = await apiClient.get<
-        | { success?: boolean; data?: { exercises: AccountingExercise[] } }
-        | AccountingExercise[]
-      >(`/accounting/exercises?entityId=${entityId}`);
-      if (Array.isArray(response)) return response;
-      return response?.data?.exercises ?? [];
+      const response = await apiClient.get<unknown>(
+        `/accounting/exercises?entityId=${entityId}`,
+      );
+      return unwrapList<AccountingExercise>(response, "exercises");
     },
     enabled: !!entityId,
     staleTime: 5 * 60 * 1000,
@@ -149,11 +148,14 @@ function ExportsContent() {
     queryKey: ["ec_access", entityId],
     queryFn: async () => {
       try {
-        const response = await apiClient.get<
-          { success?: boolean; data?: ECAccess[] } | ECAccess[]
-        >(`/accounting/ec/access?entityId=${entityId}`);
-        if (Array.isArray(response)) return response;
-        return response?.data ?? [];
+        // Endpoint returns `{ success, data: { accesses: [...] } }`.
+        // unwrapList prevents the `find is not a function` regression that
+        // happened when this code returned `response.data` (the wrapper)
+        // straight to react-query.
+        const response = await apiClient.get<unknown>(
+          `/accounting/ec/access?entityId=${entityId}`,
+        );
+        return unwrapList<ECAccess>(response, "accesses");
       } catch (err) {
         // Endpoint may not exist in all environments — degrade gracefully.
         console.warn("[ExportsPageClient] ec-access query failed:", err);

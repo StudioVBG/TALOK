@@ -9,6 +9,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
+import { unwrapList } from "@/lib/helpers/api-envelope";
 import { useAuth } from "./use-auth";
 
 // ── Types ───────────────────────────────────────────────────────────
@@ -73,14 +74,10 @@ export function useAccountingDashboard(options: UseAccountingDashboardOptions = 
       if (!entityId) return null;
       try {
         // Server returns `{ success, data: { exercises: [...] } }`.
-        // Fallback accepts a raw array so the hook is resilient if the
-        // shape ever gets simplified.
-        const response = await apiClient.get<
-          AccountingApiEnvelope<{ exercises: AccountingExercise[] }> | AccountingExercise[]
-        >(`/accounting/exercises?entityId=${entityId}`);
-        const exercises: AccountingExercise[] = Array.isArray(response)
-          ? response
-          : response?.data?.exercises ?? [];
+        const response = await apiClient.get<unknown>(
+          `/accounting/exercises?entityId=${entityId}`,
+        );
+        const exercises = unwrapList<AccountingExercise>(response, "exercises");
         return (
           exercises.find((e) => e.status === "open") ?? exercises[0] ?? null
         );
@@ -128,11 +125,10 @@ export function useAccountingDashboard(options: UseAccountingDashboardOptions = 
       if (!entityId) return [];
       try {
         // Server returns `{ success, data: AccountingEntry[], meta }`.
-        const response = await apiClient.get<
-          AccountingApiEnvelope<AccountingEntry[]> | AccountingEntry[]
-        >(`/accounting/entries?entityId=${entityId}&limit=5&sort=created_at:desc`);
-        if (Array.isArray(response)) return response;
-        return response?.data ?? [];
+        const response = await apiClient.get<unknown>(
+          `/accounting/entries?entityId=${entityId}&limit=5&sort=created_at:desc`,
+        );
+        return unwrapList<AccountingEntry>(response);
       } catch (error) {
         console.error("[useAccountingDashboard] entries query failed:", error);
         throw error;
