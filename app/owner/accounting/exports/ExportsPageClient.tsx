@@ -149,11 +149,19 @@ function ExportsContent() {
     queryKey: ["ec_access", entityId],
     queryFn: async () => {
       try {
+        // The endpoint shape is `{ success, data: { accesses: [...] } }`.
+        // Older variants returned the raw array or `{ data: [...] }`, so we
+        // accept all three to stay forward/backward compatible — without the
+        // `.accesses` unwrap, `ecAccess.find(...)` throws "find is not a
+        // function" because we'd hand react-query the wrapper object.
         const response = await apiClient.get<
-          { success?: boolean; data?: ECAccess[] } | ECAccess[]
+          | { success?: boolean; data?: { accesses?: ECAccess[] } | ECAccess[] }
+          | ECAccess[]
         >(`/accounting/ec/access?entityId=${entityId}`);
         if (Array.isArray(response)) return response;
-        return response?.data ?? [];
+        const data = response?.data;
+        if (Array.isArray(data)) return data;
+        return data?.accesses ?? [];
       } catch (err) {
         // Endpoint may not exist in all environments — degrade gracefully.
         console.warn("[ExportsPageClient] ec-access query failed:", err);
@@ -164,7 +172,8 @@ function ExportsContent() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const activeEC = ecAccess?.find((ec) => ec.is_active) ?? null;
+  const activeEC =
+    Array.isArray(ecAccess) ? ecAccess.find((ec) => ec.is_active) ?? null : null;
 
   // ── FEC preview ───────────────────────────────────────────────────
 
