@@ -2,13 +2,34 @@
  * API Route: Verify a FEC file against its manifest
  * POST /api/accounting/fec/verify
  *
- * Body: multipart/form-data with a `file` field containing the FEC .txt
- * (or JSON { sha256: string } if the caller already computed it).
+ * Request body — accepte deux formats :
  *
- * Returns whether the SHA-256 of the submitted content matches a manifest
- * stored at export time. Used by the EC portal and the owner export page
- * to guarantee the file in their hands is bit-identical to what TALOK
- * generated.
+ *   1. multipart/form-data avec un champ `file` contenant le FEC .txt
+ *   2. application/json avec la forme camelCase :
+ *        { sha256: string, entityId?: string, year?: number }
+ *      Le serveur ignore les variantes snake_case (`sha256_hex`,
+ *      `entity_id`) — utiliser exclusivement le camelCase.
+ *
+ * Response — application/json en camelCase :
+ *
+ *   {
+ *     match: boolean,
+ *     sha256: string,
+ *     manifest: {
+ *       id: string,
+ *       entityId: string,
+ *       year: number,
+ *       fileSizeBytes: number,
+ *       generatedAt: string,
+ *       generatedBy: string,
+ *     } | null
+ *   }
+ *
+ * `match=true` signifie que le SHA-256 du contenu fourni est strictement
+ * egal a celui d'un manifest archive a l'export. Garantit que le
+ * fichier en main est bit-identique a celui que TALOK a genere.
+ *
+ * Utilise par le portail EC et la page exports proprietaire.
  */
 
 import { NextResponse } from "next/server";

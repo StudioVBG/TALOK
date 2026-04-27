@@ -42,7 +42,7 @@ export function CahierExportPanel({
         </div>
       </div>
 
-      {balance && (
+      {balance ? (
         <div className="grid grid-cols-3 gap-2 text-center">
           <div className="bg-muted/30 rounded-lg p-2">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -69,6 +69,15 @@ export function CahierExportPanel({
             </p>
           </div>
         </div>
+      ) : (
+        // Empty state quand aucune balance n'est disponible (entite sans
+        // exercice ou sans ecritures validees). Sans cet etat, l'utilisateur
+        // voyait juste le titre + le bouton, sans signal que les chiffres
+        // manquaient — le PDF telecharge serait vide.
+        <p className="text-xs text-muted-foreground italic px-1">
+          Aucune ecriture validee sur l&apos;exercice. Le recapitulatif sera
+          genere une fois la balance alimentee.
+        </p>
       )}
 
       <button
@@ -80,7 +89,7 @@ export function CahierExportPanel({
             `recap_annuel_${exerciseLabel}.pdf`,
           )
         }
-        disabled={downloading}
+        disabled={downloading || !balance}
         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border bg-muted/50 hover:bg-muted text-foreground border-border transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-auto"
       >
         {downloading ? "Telechargement..." : "Telecharger PDF"}

@@ -38,7 +38,10 @@ interface ECAccess {
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
-async function downloadBlob(url: string, filename: string) {
+async function downloadBlob(
+  url: string,
+  filename: string,
+): Promise<{ headers: Headers }> {
   const res = await fetch(url, { credentials: "include" });
   if (!res.ok) throw new Error("Erreur lors du telechargement");
   const blob = await res.blob();
@@ -50,6 +53,11 @@ async function downloadBlob(url: string, filename: string) {
   a.click();
   a.remove();
   URL.revokeObjectURL(href);
+  // On retourne les headers pour que les callers puissent surfacer
+  // les meta cote serveur (ex: X-Talok-Pack-Skipped quand certains
+  // documents n'ont pas pu etre integres au ZIP). Sans ca, l'header
+  // etait pose mais jamais consomme cote client.
+  return { headers: res.headers };
 }
 
 // ── Main component ──────────────────────────────────────────────────
@@ -439,15 +447,35 @@ function ExportsContent() {
           <button
             type="button"
             disabled={!exerciseId || !entityId || !!loadingMap["pack-zip"]}
-            onClick={() =>
-              exerciseId &&
-              entityId &&
-              handleDownload(
-                "pack-zip",
-                `/accounting/exports/pack?entityId=${encodeURIComponent(entityId)}&exerciseId=${exerciseId}`,
-                `talok-pack-${currentExercise?.label ?? "exercice"}.zip`,
-              )
-            }
+            onClick={async () => {
+              if (!exerciseId || !entityId) return;
+              setLoading("pack-zip", true);
+              try {
+                const { headers } = await downloadBlob(
+                  `/api/accounting/exports/pack?entityId=${encodeURIComponent(entityId)}&exerciseId=${exerciseId}`,
+                  `talok-pack-${currentExercise?.label ?? "exercice"}.zip`,
+                );
+                // Le backend pose X-Talok-Pack-Skipped quand certains
+                // documents (FEC invalide, balance vide, etc.) n'ont pas
+                // pu etre integres. Avant, l'header etait silencieux —
+                // on alerte maintenant l'utilisateur que son ZIP est
+                // incomplet pour qu'il sache pourquoi avant de le
+                // transmettre a son EC.
+                const skipped = headers.get("x-talok-pack-skipped");
+                if (skipped) {
+                  // window.alert evite d'introduire un nouveau hook
+                  // (useToast n'est pas deja branche dans cette page).
+                  // Le ZIP a deja telecharge via downloadBlob.
+                  window.alert(
+                    `Pack telecharge, mais ces documents n'ont pas pu etre inclus :\n\n${skipped.replace(/ \| /g, "\n")}\n\nVerifie les avant transmission a ton EC.`,
+                  );
+                }
+              } catch (err) {
+                console.error("[ExportsPage] Pack download error:", err);
+              } finally {
+                setLoading("pack-zip", false);
+              }
+            }}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg bg-primary hover:bg-primary/90 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loadingMap["pack-zip"]

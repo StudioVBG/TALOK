@@ -72,21 +72,54 @@ export async function GET(request: Request, context: Context) {
 
     const entityId = exercise.entity_id as string;
 
+    // SIREN officiel de l'entite. Sert :
+    //   - en preview comme valeur reelle (au lieu du sentinel '000000000'
+    //     historique qui validait le format mais aurait genere un FEC
+    //     non utilisable s'il s'echappait)
+    //   - en download pour verifier que le siren passe par le client
+    //     correspond bien a celui de l'entite (evite la generation d'un
+    //     FEC sous une fausse identite, accidentelle ou non).
+    const { data: entityRow } = await (supabase as any)
+      .from("legal_entities")
+      .select("siren")
+      .eq("id", entityId)
+      .maybeSingle();
+    const entitySiren =
+      typeof entityRow?.siren === "string" ? (entityRow.siren as string) : "";
+
     // ---------- Preview mode ----------
     if (preview) {
-      const result = await generateFEC(supabase, entityId, exerciseId, '000000000');
+      // Si l'entite n'a pas de SIREN renseigne, on previsualise quand
+      // meme avec '000000000' pour permettre a l'utilisateur de voir
+      // les erreurs de fond (ecritures non validees, deficits, etc.)
+      // — la validation du SIREN est rappelee dans errors[].
+      const sirenForPreview =
+        entitySiren && /^\d{9}$/.test(entitySiren) ? entitySiren : "000000000";
+      const result = await generateFEC(supabase, entityId, exerciseId, sirenForPreview);
 
       return NextResponse.json({
         valid: result.errors.length === 0,
         errors: result.errors,
         warnings: [],
         lineCount: result.lineCount,
+        sirenUsed: sirenForPreview,
+        sirenIsPlaceholder: sirenForPreview === "000000000",
       });
     }
 
     // ---------- Download mode ----------
     if (!siren) {
       throw new ApiError(400, "Le parametre siren est requis pour le telechargement");
+    }
+    // Garde-fou : le SIREN passe par l'utilisateur doit matcher celui
+    // enregistre sur l'entite. Si la valeur diverge on refuse plutot que
+    // d'emettre un fichier sous une fausse identite. Si l'entite n'a
+    // pas de SIREN, on accepte la valeur fournie (initialisation).
+    if (entitySiren && entitySiren !== siren) {
+      throw new ApiError(
+        400,
+        "Le SIREN fourni ne correspond pas a celui enregistre sur l'entite.",
+      );
     }
 
     const result = await exportFEC(supabase, entityId, exerciseId, siren);
