@@ -16,6 +16,7 @@ import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { GuarantorSignOutButton } from "./_components/GuarantorSignOutButton";
 import { OnboardingWrapper } from "@/components/onboarding/OnboardingWrapper";
+import { SharedBottomNav } from "@/components/layout/shared-bottom-nav";
 
 /**
  * Layout Guarantor - Server Component
@@ -71,25 +72,24 @@ export default async function GuarantorLayout({ children }: { children: ReactNod
       <div className="min-h-screen bg-background">
         <OfflineIndicator />
 
-        {/* Header simplifié */}
-        <header className="bg-card border-b border-border px-6 py-4">
-          <div className="flex items-center justify-between max-w-7xl mx-auto">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-semibold">
+        {/* Header simplifié — nav horizontale cachée sur mobile, remplacée par bottom nav */}
+        <header className="bg-card border-b border-border px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between max-w-7xl mx-auto gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white font-semibold">
                 {profile.prenom?.[0] || "G"}
               </div>
-              <div>
-                <p className="font-medium text-foreground">
+              <div className="min-w-0">
+                <p className="font-medium text-foreground truncate">
                   {profile.prenom} {profile.nom}
                 </p>
                 <p className="text-sm text-muted-foreground">Garant</p>
               </div>
             </div>
-            <nav className="flex items-center gap-4">
+            <nav className="hidden md:flex items-center gap-4">
               {[...manifest.navigation, ...manifest.footerNavigation]
                 .filter((item) => item.name !== "Aide")
                 .map((item) => {
-                  // Propagate data-tour for guarantor tour targeting
                   const tourId = item.href.endsWith("/dashboard")
                     ? "nav-dashboard"
                     : item.href.endsWith("/documents")
@@ -108,13 +108,36 @@ export default async function GuarantorLayout({ children }: { children: ReactNod
                 })}
               <GuarantorSignOutButton />
             </nav>
+            <div className="md:hidden">
+              <GuarantorSignOutButton />
+            </div>
           </div>
         </header>
 
         {/* Contenu principal */}
-        <main className="flex-1 overflow-auto p-6">
+        <main className="flex-1 overflow-auto p-4 sm:p-6">
           <div className="max-w-7xl mx-auto">{children}</div>
         </main>
+
+        {/* Mobile Bottom Navigation — accessibilité 100% sur mobile */}
+        <SharedBottomNav
+          items={manifest.navigation.map((item) => ({
+            href: item.href,
+            label: item.name,
+            icon: item.icon,
+            tourId: item.href.endsWith("/dashboard")
+              ? "nav-dashboard"
+              : item.href.endsWith("/documents")
+              ? "nav-documents"
+              : undefined,
+          }))}
+          moreItems={manifest.footerNavigation.map((item) => ({
+            href: item.href,
+            label: item.name,
+            icon: item.icon,
+          }))}
+          hideAbove="md"
+        />
       </div>
       </OnboardingWrapper>
     </ErrorBoundary>

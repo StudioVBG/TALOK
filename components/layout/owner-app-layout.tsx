@@ -483,7 +483,9 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
               { href: OWNER_ROUTES.contracts.path, label: "Baux", icon: FileText, tourId: "nav-leases" },
             ]}
             moreItems={[
+              { href: OWNER_ROUTES.accounting.path, label: "Comptabilité", icon: Landmark, tourId: "nav-accounting" },
               { href: OWNER_ROUTES.tickets.path, label: "Tickets", icon: Wrench, tourId: "nav-tickets" },
+              { href: "/owner/provider-quotes", label: "Devis", icon: Receipt },
               { href: "/owner/messages", label: "Messages", icon: MessageSquare },
               { href: OWNER_ROUTES.documents.path, label: "Documents", icon: FileCheck, tourId: "nav-documents" },
               { href: "/owner/settings", label: "Paramètres", icon: Settings },
