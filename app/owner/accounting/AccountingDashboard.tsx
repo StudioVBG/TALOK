@@ -378,6 +378,18 @@ function ExpensesAndExports() {
   const [savingExpense, setSavingExpense] = useState(false);
   const [exporting, setExporting] = useState<"fec" | "fiscal" | null>(null);
 
+  // Year picker for FEC + récap fiscal exports.
+  // En France, la déclaration des revenus fonciers de l'année N se fait au
+  // printemps de l'année N+1 : avant juin, on défaut à l'année passée pour
+  // que le bouton télécharge directement le document attendu (sinon on
+  // tombait sur un PDF "vide" parce que peu/pas de données existent encore
+  // pour l'exercice en cours). Après juin, on suppose la déclaration faite
+  // et on défaut à l'exercice courant.
+  const declarationDefaultYear =
+    new Date().getMonth() < 6 ? currentYear - 1 : currentYear;
+  const [exportYear, setExportYear] = useState<number>(declarationDefaultYear);
+  const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - i);
+
   useEffect(() => {
     setLoadingExpenses(true);
     fetch(`/api/accounting/expenses?year=${currentYear}${entityParam}`)
@@ -390,7 +402,7 @@ function ExpensesAndExports() {
   const handleExportFEC = async () => {
     setExporting("fec");
     try {
-      const res = await fetch(`/api/accounting/fec?year=${currentYear}${entityParam}`);
+      const res = await fetch(`/api/accounting/fec?year=${exportYear}${entityParam}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Erreur export FEC");
@@ -399,7 +411,7 @@ function ExpensesAndExports() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `FEC_${currentYear}.txt`;
+      a.download = `FEC_${exportYear}.txt`;
       a.click();
       URL.revokeObjectURL(url);
       toast({ title: "Export FEC téléchargé" });
@@ -413,7 +425,7 @@ function ExpensesAndExports() {
   const handleExportFiscal = async () => {
     setExporting("fiscal");
     try {
-      const res = await fetch(`/api/accounting/fiscal-summary?year=${currentYear}${entityParam}`);
+      const res = await fetch(`/api/accounting/fiscal-summary?year=${exportYear}${entityParam}`);
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Erreur export");
@@ -422,7 +434,7 @@ function ExpensesAndExports() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `Recap_fiscal_${currentYear}_Talok.pdf`;
+      a.download = `Recap_fiscal_${exportYear}_Talok.pdf`;
       a.click();
       URL.revokeObjectURL(url);
       toast({ title: "Récapitulatif fiscal téléchargé" });
@@ -596,22 +608,44 @@ function ExpensesAndExports() {
 
       {/* Export buttons */}
       <div className="bg-card rounded-xl border border-dashed border-border p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex-1 text-center sm:text-left">
             <h3 className="text-sm font-semibold">Exports comptables</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               Export pour votre comptable ou récapitulatif fiscal annuel.
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportFEC} disabled={!!exporting} className="gap-1.5 text-xs">
-              {exporting === "fec" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-              Export FEC {currentYear}
-            </Button>
-            <Button size="sm" onClick={handleExportFiscal} disabled={!!exporting} className="gap-1.5 text-xs">
-              {exporting === "fiscal" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
-              Récap fiscal {currentYear}
-            </Button>
+          <div className="flex flex-col sm:flex-row items-center gap-2">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="export-year" className="text-xs text-muted-foreground shrink-0">
+                Année
+              </Label>
+              <Select
+                value={String(exportYear)}
+                onValueChange={(v) => setExportYear(parseInt(v, 10))}
+              >
+                <SelectTrigger id="export-year" className="h-8 w-[110px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {yearOptions.map((y) => (
+                    <SelectItem key={y} value={String(y)} className="text-xs">
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleExportFEC} disabled={!!exporting} className="gap-1.5 text-xs">
+                {exporting === "fec" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                Export FEC
+              </Button>
+              <Button size="sm" onClick={handleExportFiscal} disabled={!!exporting} className="gap-1.5 text-xs">
+                {exporting === "fiscal" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+                Récap fiscal
+              </Button>
+            </div>
           </div>
         </div>
       </div>
