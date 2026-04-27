@@ -139,7 +139,7 @@ export type AutoEntryEvent =
   | 'deposit_returned'
   | 'internal_transfer'
   | 'copro_fund_call'
-  | 'agency_fee'
+  | 'agency_commission'
   | 'sepa_rejected'
   | 'irl_revision'
   | 'copro_works_fund'
@@ -893,15 +893,23 @@ const AUTO_ENTRIES: Record<
     ],
   }),
 
+  // Commission agence prélevée sur le compte mandant. La source DOIT rester
+  // 'auto:agency_commission' : c'est le tag lu par crg-generator.ts,
+  // hoguet-report et la function crg-generate pour calculer la Section 3
+  // (Honoraires) du CRG. Tout renommage casse la génération CRG.
   // Pour scoper sur un mandant précis, passer thirdPartyType='mandant' +
   // thirdPartyId : l'auxiliary-resolver substituera 467000 par 467MXXXXX.
-  agency_fee: (ctx) => ({
+  // NOTE: 2 builders complémentaires manquent encore côté flux mandant —
+  // 'auto:agency_loyer_mandant' (loyer encaissé pour le compte du mandant)
+  // et 'auto:agency_reversement' (reversement net au mandant). Tant qu'ils
+  // ne sont pas câblés, les sections 1 et 2 du CRG resteront vides.
+  agency_commission: (ctx) => ({
     entityId: ctx.entityId,
     exerciseId: ctx.exerciseId,
     journalCode: 'VE',
     entryDate: ctx.date,
     label: ctx.label || 'Honoraires agence',
-    source: 'auto:agency_fee',
+    source: 'auto:agency_commission',
     reference: ctx.reference,
     userId: ctx.userId,
     lines: withAxes(ctx, [
