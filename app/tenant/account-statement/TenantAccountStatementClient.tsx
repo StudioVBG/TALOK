@@ -216,7 +216,52 @@ export function TenantAccountStatementClient({
             PDF.
           </p>
         </div>
-        <div className="overflow-x-auto">
+        {/* Mobile: card layout (< md) */}
+        <div className="md:hidden divide-y divide-border/40">
+          {situation.historique.length === 0 ? (
+            <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+              Aucune echeance enregistree pour le moment.
+            </p>
+          ) : (
+            situation.historique.map((row) => {
+              const variant = STATUS_VARIANT[row.statut];
+              return (
+                <div key={row.periode} className="px-4 py-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {row.periode}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Echeance {new Date(row.date_echeance).toLocaleDateString("fr-FR")}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className={variant.className}>
+                      {variant.label}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div>
+                      <p className="text-muted-foreground">Appele</p>
+                      <p className="font-medium tabular-nums">{formatCurrency(row.montant_appele)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Paye</p>
+                      <p className="font-medium tabular-nums">{formatCurrency(row.montant_paye)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Solde</p>
+                      <p className="font-medium tabular-nums">{formatCurrency(row.solde)}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop: table layout (md+) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/30">
               <tr className="text-left">
