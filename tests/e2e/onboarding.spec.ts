@@ -1,55 +1,54 @@
 /**
- * Tests E2E - Onboarding complet
- * 
- * Sources:
- * - Playwright Testing: https://playwright.dev/docs/intro
- * - Supabase Auth: https://supabase.com/docs/guides/auth
- * 
- * Dates de test: Octobre et Novembre 2025
+ * E2E — Onboarding (parcours complet d'inscription).
+ *
+ * Refactor : utilise le catalogue de routes. Les emails de test sont
+ * générés à la volée pour chaque run (pas d'env var nécessaire).
  */
 
 import { test, expect } from "@playwright/test";
+import { routes } from "./helpers/routes";
 
-// Email de test unique pour éviter les conflits
-const TEST_EMAIL = `test-${Date.now()}@example.com`;
 const TEST_PASSWORD = "Test12345!2025";
+const fresh = (prefix: string) => `${prefix}-${Date.now()}@example.com`;
 
-test.describe("Onboarding Propriétaire - Test réel", () => {
+test.describe("Onboarding Propriétaire", () => {
   test("Parcours complet d'inscription propriétaire", async ({ page }) => {
-    // Étape 1: Choix du rôle
-    await page.goto("/signup/role");
+    const email = fresh("test-owner");
+
+    await page.goto(routes.signup.role);
     await page.click('button:has-text("Choisir Propriétaire")');
-    await expect(page).toHaveURL(/.*\/signup\/account.*role=owner/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/signup\/account.*role=owner/, {
+      timeout: 10_000,
+    });
 
-    // Étape 2: Création de compte
-    await page.fill('input[type="email"]', TEST_EMAIL);
+    await page.fill('input[type="email"]', email);
     await page.fill('input[type="password"]', TEST_PASSWORD);
     await page.fill('input[name="confirmPassword"]', TEST_PASSWORD);
     await page.click('button[type="submit"]');
 
-    // Attendre la redirection vers vérification email
-    await expect(page).toHaveURL(/.*\/signup\/verify-email/, { timeout: 10000 });
-
-    // Note: En test réel, il faudrait vérifier l'email
-    // Pour ce test, on simule la confirmation
-    // Dans un vrai test, on utiliserait un service d'email de test
+    await expect(page).toHaveURL(/\/signup\/verify-email/, {
+      timeout: 10_000,
+    });
   });
 });
 
-test.describe("Onboarding Locataire - Test réel", () => {
+test.describe("Onboarding Locataire", () => {
   test("Parcours complet d'inscription locataire", async ({ page }) => {
-    const tenantEmail = `tenant-${Date.now()}@example.com`;
+    const email = fresh("test-tenant");
 
-    await page.goto("/signup/role");
+    await page.goto(routes.signup.role);
     await page.click('button:has-text("Choisir Locataire")');
-    await expect(page).toHaveURL(/.*\/signup\/account.*role=tenant/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/signup\/account.*role=tenant/, {
+      timeout: 10_000,
+    });
 
-    await page.fill('input[type="email"]', tenantEmail);
+    await page.fill('input[type="email"]', email);
     await page.fill('input[type="password"]', TEST_PASSWORD);
     await page.fill('input[name="confirmPassword"]', TEST_PASSWORD);
     await page.click('button[type="submit"]');
 
-    await expect(page).toHaveURL(/.*\/signup\/verify-email/, { timeout: 10000 });
+    await expect(page).toHaveURL(/\/signup\/verify-email/, {
+      timeout: 10_000,
+    });
   });
 });
-
