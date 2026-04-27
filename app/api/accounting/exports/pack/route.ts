@@ -27,9 +27,6 @@ export async function GET(request: Request) {
       .single();
     if (!profile) throw new ApiError(403, "Profil non trouve");
 
-    const featureGate = await requireAccountingAccess(profile.id, "pack");
-    if (featureGate) return featureGate;
-
     const { searchParams } = new URL(request.url);
     const entityId = searchParams.get("entityId");
     const exerciseId = searchParams.get("exerciseId");
@@ -44,8 +41,45 @@ export async function GET(request: Request) {
       .maybeSingle();
     if (!entity) throw new ApiError(404, "Entité introuvable");
 
-    if (profile.role !== "admin" && entity.owner_profile_id !== profile.id) {
-      throw new ApiError(403, "Accès refusé à cette entité");
+    // Trois chemins d'autorisation :
+    //  1. admin : bypass complet
+    //  2. propriétaire de l'entité (owner_profile_id === profile.id) →
+    //     gating sur SON plan
+    //  3. expert-comptable invité avec un ec_access actif sur l'entité →
+    //     gating sur le plan du PROPRIÉTAIRE (l'EC est un externe sans
+    //     abonnement Talok à lui)
+    const isAdmin = profile.role === "admin";
+    const isOwner = entity.owner_profile_id === profile.id;
+    let isInvitedEC = false;
+
+    if (!isAdmin && !isOwner) {
+      const { data: ecAccess } = await serviceClient
+        .from("ec_access")
+        .select("id")
+        .eq("entity_id", entityId)
+        .eq("is_active", true)
+        .is("revoked_at", null)
+        .or(`ec_user_id.eq.${user.id},ec_email.eq.${user.email ?? ""}`)
+        .limit(1)
+        .maybeSingle();
+
+      if (!ecAccess) {
+        throw new ApiError(403, "Accès refusé à cette entité");
+      }
+      isInvitedEC = true;
+    }
+
+    // Feature gate : on check le plan du payeur (owner), pas celui de
+    // l'EC qui consulte. Pour admin, on saute le check.
+    if (!isAdmin) {
+      const gateProfileId = isInvitedEC
+        ? (entity.owner_profile_id as string | null)
+        : profile.id;
+      if (!gateProfileId) {
+        throw new ApiError(404, "Propriétaire de l'entité introuvable");
+      }
+      const featureGate = await requireAccountingAccess(gateProfileId, "pack");
+      if (featureGate) return featureGate;
     }
 
     const { data: exercise } = await serviceClient

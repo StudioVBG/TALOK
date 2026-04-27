@@ -26,9 +26,15 @@ export async function PATCH(
       throw new ApiError(401, "Non authentifie");
     }
 
+    // Le schéma porte trois champs liés (is_resolved BOOL +
+    // resolved_at TIMESTAMPTZ + resolved_by UUID). is_resolved est lu
+    // par l'UI EC (ECClientView), donc on l'aligne en même temps que
+    // resolved_at pour éviter une fenêtre où l'UI affiche "non résolue"
+    // alors que les autres champs disent le contraire.
     const { data: annotation, error } = await (supabase as any)
       .from("ec_annotations")
       .update({
+        is_resolved: true,
         resolved_at: new Date().toISOString(),
         resolved_by: user.id,
       })
