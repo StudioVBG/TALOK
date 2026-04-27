@@ -256,7 +256,7 @@ export function AdminSidebar({ className }: { className?: string }) {
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden fixed top-16 left-4 z-50"
+            className="lg:hidden fixed top-3 left-2 sm:top-16 sm:left-4 z-50 bg-background/95 backdrop-blur-sm border border-border/50 shadow-sm"
           >
             <Menu className="h-5 w-5" />
             <span className="sr-only">Ouvrir le menu</span>

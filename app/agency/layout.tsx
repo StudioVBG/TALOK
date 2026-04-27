@@ -20,6 +20,8 @@ import { AgencyThemeWrapper } from "./_components/AgencyThemeWrapper";
 import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
 import { OnboardingWrapper } from "@/components/onboarding/OnboardingWrapper";
 import type { TourRole } from "@/components/onboarding/OnboardingTour";
+import { SignOutButton } from "@/components/auth/sign-out-button";
+import { Building2 } from "lucide-react";
 
 /**
  * Layout Agency - Server Component
@@ -92,6 +94,24 @@ export default async function AgencyLayout({
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950/30">
         <OfflineIndicator />
 
+        {/* Mobile Header — déconnexion accessible sur mobile (sidebar cachée < lg) */}
+        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-b border-border/50 px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div
+                className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center"
+                aria-hidden="true"
+              >
+                <Building2 className="w-4 h-4 text-white" />
+              </div>
+              <span className="font-semibold text-foreground truncate">
+                {(agencyProfile?.nom_agence as string) || "Mon Agence"}
+              </span>
+            </div>
+            <SignOutButton variant="mobile-icon" />
+          </div>
+        </div>
+
         <div className="flex">
           {/* Sidebar Client Component pour interactivité */}
           <AgencySidebar
@@ -101,7 +121,7 @@ export default async function AgencyLayout({
 
           {/* Main content - SOTA 2026: lg breakpoint unifié */}
           <main
-            className="lg:pl-64 flex-1"
+            className="lg:pl-64 flex-1 pt-14 lg:pt-0"
             role="main"
             aria-label="Contenu principal"
           >

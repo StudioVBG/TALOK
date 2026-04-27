@@ -1,16 +1,12 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import {
-  Building2,
-  MoreHorizontal,
-  X,
-} from "lucide-react";
+import { Building2 } from "lucide-react";
 import { getSecondaryRoleManifest } from "@/lib/navigation/secondary-role-manifest";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { SharedBottomNav } from "@/components/layout/shared-bottom-nav";
 
 interface AgencySidebarProps {
   profile: {
@@ -36,10 +32,6 @@ function agencyTourId(href: string): string | undefined {
 
 export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
   const pathname = usePathname();
-  const [moreOpen, setMoreOpen] = useState(false);
-
-  const mobileMainItems = navigation.slice(0, 4);
-  const mobileMoreItems = navigation.slice(4);
 
   return (
     <>
@@ -126,107 +118,29 @@ export function AgencySidebar({ profile, agencyName }: AgencySidebarProps) {
         </div>
       </aside>
 
-      {/* Mobile Bottom Navigation - 4 items + bouton "Plus" */}
-      <nav
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50"
-        role="navigation"
-        aria-label="Navigation mobile"
-      >
-        {/* Panel "Plus" - menu déroulant vers le haut */}
-        {moreOpen && (
-          <>
-            {/* Backdrop */}
-            <button
-              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
-              onClick={() => setMoreOpen(false)}
-              aria-label="Fermer le menu"
-            />
-            {/* Panel */}
-            <div className="absolute bottom-full left-0 right-0 z-50 bg-background border-t border-border/50 rounded-t-2xl shadow-2xl p-4 pb-2 animate-in slide-in-from-bottom-4">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-sm font-semibold text-foreground">Plus</span>
-                <button
-                  onClick={() => setMoreOpen(false)}
-                  className="p-1 rounded-lg hover:bg-muted"
-                  aria-label="Fermer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {mobileMoreItems.map((item) => {
-                  const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      onClick={() => setMoreOpen(false)}
-                      className={cn(
-                        "flex flex-col items-center justify-center gap-1 p-3 rounded-xl min-h-[68px] transition-colors",
-                        isActive
-                          ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
-                          : "text-muted-foreground hover:bg-muted/80 hover:text-foreground"
-                      )}
-                      aria-label={item.name}
-                      aria-current={isActive ? "page" : undefined}
-                    >
-                      <item.icon className="w-5 h-5" aria-hidden="true" />
-                      <span className="text-[10px] font-medium text-center leading-tight">{item.name}</span>
-                    </Link>
-                  );
-                })}
-                <SignOutButton
-                  variant="mobile-tile"
-                  onAfterClick={() => setMoreOpen(false)}
-                />
-              </div>
-            </div>
-          </>
-        )}
-        <div className="pb-safe">
-          <div className="grid grid-cols-5 h-14">
-            {mobileMainItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  data-tour={agencyTourId(item.href)}
-                  className={cn(
-                    "flex flex-col items-center justify-center gap-0.5 min-h-[44px] transition-colors",
-                    isActive
-                      ? "text-indigo-600 dark:text-indigo-400"
-                      : "text-muted-foreground hover:text-indigo-500"
-                  )}
-                  aria-label={item.name}
-                  aria-current={isActive ? "page" : undefined}
-                >
-                  <item.icon className="w-5 h-5" aria-hidden="true" />
-                  <span className="text-[10px] font-medium truncate max-w-[56px]">{item.name.slice(0, 8)}</span>
-                </Link>
-              );
-            })}
-            {/* Bouton "Plus" */}
-            <button
-              onClick={() => setMoreOpen((v) => !v)}
-              className={cn(
-                "flex flex-col items-center justify-center gap-0.5 min-h-[44px] transition-colors",
-                moreOpen
-                  ? "text-indigo-600 dark:text-indigo-400"
-                  : "text-muted-foreground hover:text-indigo-500"
-              )}
-              aria-label="Plus d'options"
-              aria-expanded={moreOpen}
-            >
-              <MoreHorizontal className="w-5 h-5" aria-hidden="true" />
-              <span className="text-[10px] font-medium">Plus</span>
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      {/* Spacer pour bottom nav mobile */}
-      <div className="h-14 lg:hidden" aria-hidden="true" />
+      {/* Mobile Bottom Navigation — SharedBottomNav (parité 13/13 via menu Plus) */}
+      <SharedBottomNav
+        items={manifest.navigation.slice(0, 4).map((item) => ({
+          href: item.href,
+          label: item.name,
+          icon: item.icon,
+          tourId: agencyTourId(item.href),
+        }))}
+        moreItems={[
+          ...manifest.navigation.slice(4).map((item) => ({
+            href: item.href,
+            label: item.name,
+            icon: item.icon,
+            tourId: agencyTourId(item.href),
+          })),
+          ...manifest.footerNavigation.map((item) => ({
+            href: item.href,
+            label: item.name,
+            icon: item.icon,
+          })),
+        ]}
+        hideAbove="lg"
+      />
     </>
   );
 }

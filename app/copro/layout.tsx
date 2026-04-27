@@ -15,13 +15,14 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import CsrfTokenInjector from "@/components/security/CsrfTokenInjector";
 import { OfflineIndicator } from "@/components/ui/offline-indicator";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { SharedBottomNav } from "@/components/layout/shared-bottom-nav";
 import Link from "next/link";
 import {
   Building2, Euro, FileText, Calendar,
   MessageSquare, Bell, Home, Settings
 } from "lucide-react";
 
-const { navigation } = getSecondaryRoleManifest("copro");
+const { navigation, footerNavigation } = getSecondaryRoleManifest("copro");
 
 // COPRO_ROLES importé depuis lib/helpers/role-redirects.ts
 
@@ -191,30 +192,27 @@ export default async function CoproLayout({
             {children}
           </main>
 
-          {/* Mobile Bottom Navigation */}
-          <nav
-            className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50"
-            role="navigation"
-            aria-label="Navigation mobile"
-          >
-            <div className="pb-safe">
-              <div className="grid grid-cols-5 h-14">
-                {navigation.map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className="flex flex-col items-center justify-center gap-0.5 min-h-[44px] text-muted-foreground hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
-                    aria-label={item.name}
-                  >
-                    <item.icon className="w-5 h-5" aria-hidden="true" />
-                    <span className="text-[10px] font-medium truncate max-w-[56px]">{item.name.slice(0, 8)}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </nav>
-          {/* Spacer pour bottom nav mobile */}
-          <div className="h-14 lg:hidden" aria-hidden="true" />
+          {/* Mobile Bottom Navigation — SharedBottomNav (parité 6/6 + footer via menu Plus) */}
+          <SharedBottomNav
+            items={navigation.slice(0, 4).map((item) => ({
+              href: item.href,
+              label: item.name,
+              icon: item.icon,
+            }))}
+            moreItems={[
+              ...navigation.slice(4).map((item) => ({
+                href: item.href,
+                label: item.name,
+                icon: item.icon,
+              })),
+              ...footerNavigation.map((item) => ({
+                href: item.href,
+                label: item.name,
+                icon: item.icon,
+              })),
+            ]}
+            hideAbove="lg"
+          />
         </div>
       </div>
     </ErrorBoundary>

@@ -10,6 +10,9 @@ import {
   Shield,
   Settings,
   HelpCircle,
+  MessageSquare,
+  Image as ImageIcon,
+  FolderOpen,
 } from "lucide-react";
 import { SharedBottomNav } from "./shared-bottom-nav";
 
@@ -19,14 +22,16 @@ export function ProviderBottomNav() {
       items={[
         { href: "/provider/dashboard", label: "Dashboard", icon: LayoutDashboard, tourId: "nav-dashboard" },
         { href: "/provider/jobs", label: "Missions", icon: Briefcase, tourId: "nav-jobs" },
+        { href: "/provider/messages", label: "Messages", icon: MessageSquare },
         { href: "/provider/calendar", label: "Calendrier", icon: Calendar, tourId: "nav-calendar" },
-        { href: "/provider/quotes", label: "Devis", icon: FileText, tourId: "nav-quotes" },
       ]}
       moreItems={[
+        { href: "/provider/quotes", label: "Devis", icon: FileText, tourId: "nav-quotes" },
         { href: "/provider/invoices", label: "Factures", icon: Receipt },
-        { href: "/provider/documents", label: "Documents", icon: FileText },
+        { href: "/provider/documents", label: "Documents", icon: FolderOpen },
         { href: "/provider/reviews", label: "Avis", icon: Star, tourId: "nav-reviews" },
         { href: "/provider/compliance", label: "Conformité", icon: Shield },
+        { href: "/provider/portfolio", label: "Portfolio", icon: ImageIcon },
         { href: "/provider/settings", label: "Paramètres", icon: Settings },
         { href: "/provider/help", label: "Aide", icon: HelpCircle },
       ]}

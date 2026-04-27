@@ -20,6 +20,7 @@ import { SyndicPlanBanner } from "@/components/syndic/SyndicPlanBanner";
 import { SyndicOnboardingWrapper } from "@/components/syndic/SyndicOnboardingWrapper";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
+import { SharedBottomNav } from "@/components/layout/shared-bottom-nav";
 import Link from "next/link";
 import {
   Building2, Users, Calendar, Euro,
@@ -210,31 +211,26 @@ export default async function SyndicLayout({
           </div>
         </main>
 
-        {/* Mobile Bottom Navigation - Thème light + safe area + touch targets */}
-        <nav
-          className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-border/50"
-          role="navigation"
-          aria-label="Navigation mobile"
-        >
-          <div className="pb-safe">
-            <div className="grid grid-cols-5 h-14">
-              {[navigation[0], navigation[1], navigation[2], navigation[3], navigation[8]].map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className="flex flex-col items-center justify-center gap-0.5 min-h-[44px] text-muted-foreground hover:text-cyan-600 transition-colors"
-                  aria-label={item.name}
-                >
-                  <item.icon className="w-5 h-5" aria-hidden="true" />
-                  <span className="text-[10px] xs:text-[11px] font-medium truncate max-w-[64px]">{item.name.slice(0, 8)}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </nav>
-
-        {/* Spacer pour bottom nav mobile */}
-        <div className="h-14 lg:hidden" aria-hidden="true" />
+        {/* Mobile Bottom Navigation — SharedBottomNav (parité 12/12 items via menu Plus) */}
+        <SharedBottomNav
+          items={[
+            { href: "/syndic/dashboard", label: "Dashboard", icon: LayoutDashboard, tourId: "syndic-dashboard" },
+            { href: "/syndic/sites", label: "Copros", icon: Building2, tourId: "syndic-sites" },
+            { href: "/syndic/accounting", label: "Compta", icon: Calculator, tourId: "syndic-accounting" },
+            { href: "/syndic/calls", label: "Appels", icon: Euro, tourId: "syndic-calls" },
+          ]}
+          moreItems={[
+            { href: "/syndic/assemblies", label: "Assemblées", icon: Calendar, tourId: "syndic-assemblies" },
+            { href: "/syndic/mandates", label: "Mandats", icon: FileText, tourId: "syndic-mandates" },
+            { href: "/syndic/councils", label: "Conseils", icon: Users },
+            { href: "/syndic/fonds-travaux", label: "Fonds travaux", icon: Hammer },
+            { href: "/syndic/expenses", label: "Dépenses", icon: FileText },
+            { href: "/syndic/impayes", label: "Impayés", icon: AlertTriangle },
+            { href: "/syndic/invites", label: "Invitations", icon: UserPlus },
+            { href: "/syndic/settings", label: "Paramètres", icon: Settings },
+          ]}
+          hideAbove="lg"
+        />
       </div>
       </SyndicOnboardingWrapper>
     </ErrorBoundary>

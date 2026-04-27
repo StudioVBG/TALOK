@@ -415,7 +415,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
           Mobile Bottom Navigation (< md)
           Hidden on tablet+ where rail nav takes over
           ============================================ */}
-      {/* AUDIT UX SOTA 2026: Parité mobile/desktop — même pages accessibles, plus de doublons */}
+      {/* AUDIT UX SOTA 2026: Parité mobile/desktop — 14/14 items accessibles via menu Plus */}
       <SharedBottomNav
         items={[
           { href: "/tenant/dashboard", label: "Accueil", icon: LayoutDashboard, tourId: "nav-dashboard" },
@@ -425,8 +425,13 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
         ]}
         moreItems={[
           { href: "/tenant/lease", label: "Mon Logement", icon: Home, tourId: "nav-lease" },
+          { href: "/tenant/inspections", label: "États des lieux", icon: ClipboardCheck, tourId: "nav-inspections" },
+          { href: "/tenant/account-statement", label: "Relevé", icon: Receipt, tourId: "nav-statement" },
+          { href: "/tenant/meters", label: "Compteurs", icon: Gauge, tourId: "nav-meters" },
           { href: "/tenant/messages", label: "Messages", icon: MessageSquare },
           { href: "/tenant/applications", label: "Candidatures", icon: FileSearch },
+          { href: "/tenant/legal-rights", label: "Mes droits", icon: Scale, tourId: "nav-legal-rights" },
+          { href: "/tenant/visits", label: "Visites", icon: Eye, tourId: "nav-visits" },
           { href: "/tenant/settings", label: "Mon Profil", icon: Settings },
           { href: "/tenant/help", label: "Aide", icon: HelpCircle },
         ]}
