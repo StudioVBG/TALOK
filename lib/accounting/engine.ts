@@ -153,7 +153,8 @@ export type AutoEntryEvent =
   | 'tax_paid'
   | 'social_charges_foncier_paid'
   | 'payroll'
-  | 'insurance_indemnity_received';
+  | 'insurance_indemnity_received'
+  | 'recoverable_charge_received';
 
 // ---------------------------------------------------------------------------
 // Validation helpers
@@ -682,6 +683,18 @@ interface AutoEntryContext {
    */
   taxAccount?: string;
   /**
+   * Categorie de charge recuperee pour `recoverable_charge_received`.
+   * Selectionne le sous-compte 708xxx adequat (cf. PCG_OWNER_ACCOUNTS).
+   * Defaut : 'autres' → 708800.
+   */
+  recoverableCategory?:
+    | 'eau'
+    | 'teom'
+    | 'electricite'
+    | 'chauffage'
+    | 'entretien_copro'
+    | 'autres';
+  /**
    * Taux de TVA en basis points (1 % = 100 bps) pour les builders qui
    * supportent la ventilation TVA. Quand renseigne et > 0, amountCents
    * est interprete comme un montant TTC ; HT et TVA sont injectes
@@ -750,20 +763,31 @@ const AUTO_ENTRIES: Record<
   AutoEntryEvent,
   (ctx: AutoEntryContext) => CreateEntryParams
 > = {
-  rent_received: (ctx) => ({
-    entityId: ctx.entityId,
-    exerciseId: ctx.exerciseId,
-    journalCode: 'BQ',
-    entryDate: ctx.date,
-    label: ctx.label || 'Loyer encaisse',
-    source: 'auto:rent_received',
-    reference: ctx.reference,
-    userId: ctx.userId,
-    lines: withAxes(ctx, [
+  rent_received: (ctx) => {
+    // Avec vatRateBps > 0 (loyer commercial / LMP / option TVA),
+    // amountCents est traite comme un TTC : la TVA collectee va sur
+    // 445710 et 706000 ne recoit que le HT. Sans, comportement
+    // historique : tout le montant credite 706000.
+    const { htCents, vatCents } = splitTTC(ctx.amountCents, ctx.vatRateBps ?? 0);
+    const lines: EntryLine[] = [
       { accountNumber: ctx.bankAccount ?? '512100', debitCents: ctx.amountCents, creditCents: 0 },
-      { accountNumber: '706000', debitCents: 0, creditCents: ctx.amountCents },
-    ]),
-  }),
+      { accountNumber: '706000', debitCents: 0, creditCents: htCents, label: vatCents > 0 ? 'Loyer HT' : undefined },
+    ];
+    if (vatCents > 0) {
+      lines.push({ accountNumber: '445710', debitCents: 0, creditCents: vatCents, label: 'TVA collectee' });
+    }
+    return {
+      entityId: ctx.entityId,
+      exerciseId: ctx.exerciseId,
+      journalCode: 'BQ',
+      entryDate: ctx.date,
+      label: ctx.label || 'Loyer encaisse',
+      source: 'auto:rent_received',
+      reference: ctx.reference,
+      userId: ctx.userId,
+      lines: withAxes(ctx, lines),
+    };
+  },
 
   /**
    * Reconnaissance en droit du loyer a l'emission de la facture (mode IS).
@@ -813,20 +837,31 @@ const AUTO_ENTRIES: Record<
     ]),
   }),
 
-  rent_invoiced: (ctx) => ({
-    entityId: ctx.entityId,
-    exerciseId: ctx.exerciseId,
-    journalCode: 'VE',
-    entryDate: ctx.date,
-    label: ctx.label || 'Loyer facture (creance)',
-    source: 'auto:rent_invoiced',
-    reference: ctx.reference,
-    userId: ctx.userId,
-    lines: withAxes(ctx, [
+  rent_invoiced: (ctx) => {
+    // Mode IS / commercial / LMP avec option TVA : amountCents est
+    // traite comme un TTC, la TVA collectee atterrit sur 445710 et
+    // le 706000 n'enregistre que le HT. Sans vatRateBps : comportement
+    // historique IR / habitation (loyer en franchise de TVA).
+    const { htCents, vatCents } = splitTTC(ctx.amountCents, ctx.vatRateBps ?? 0);
+    const lines: EntryLine[] = [
       { accountNumber: '411000', debitCents: ctx.amountCents, creditCents: 0 },
-      { accountNumber: '706000', debitCents: 0, creditCents: ctx.amountCents },
-    ]),
-  }),
+      { accountNumber: '706000', debitCents: 0, creditCents: htCents, label: vatCents > 0 ? 'Loyer HT' : undefined },
+    ];
+    if (vatCents > 0) {
+      lines.push({ accountNumber: '445710', debitCents: 0, creditCents: vatCents, label: 'TVA collectee' });
+    }
+    return {
+      entityId: ctx.entityId,
+      exerciseId: ctx.exerciseId,
+      journalCode: 'VE',
+      entryDate: ctx.date,
+      label: ctx.label || 'Loyer facture (creance)',
+      source: 'auto:rent_invoiced',
+      reference: ctx.reference,
+      userId: ctx.userId,
+      lines: withAxes(ctx, lines),
+    };
+  },
 
   /**
    * Lettrage du paiement loyer en mode IS : la creance posee par
@@ -1135,21 +1170,54 @@ const AUTO_ENTRIES: Record<
     ],
   }),
 
+  /**
+   * Regularisation annuelle des provisions de charges versees par le
+   * locataire. Le builder historique etait casse : il creditait 613000
+   * (charge) en miroir d'un debit 614100 (charge), produisant une
+   * ecriture systematiquement desequilibree (D != C) qui etait
+   * rejetee par trg_entry_balance — toute regul echouait silencieusement
+   * cote prod parce que le service la wrappait dans un try/catch.
+   *
+   * Modele correct : les provisions accumulees en 419100 par les
+   * provision_received sont consommees au regul, tandis que les
+   * charges effectivement payees pendant l'annee restent imputees
+   * sur leur compte de charge d'origine (615xxx / 6064 / etc.) sans
+   * y toucher ici.
+   *
+   *   D 419100  = provisions versees (clear de la dette envers locataire)
+   *   C 708xxx  = montant reel recuperable (recognized as income),
+   *               ventile par recoverableCategory (708800 par defaut)
+   *   D / C 411000 pour la difference si trop-percu / sous-percu
+   *
+   * amountCents          = provisions versees par le locataire (419100)
+   * secondaryAmountCents = montant reel recuperable
+   */
   charge_regularization: (ctx) => {
-    const provisions = ctx.amountCents; // provisions paid
-    const actual = ctx.secondaryAmountCents ?? 0; // actual recoverable
+    const provisions = ctx.amountCents;
+    const actual = ctx.secondaryAmountCents ?? 0;
     const diff = provisions - actual;
+    const recoveryAccount = (() => {
+      switch (ctx.recoverableCategory) {
+        case 'eau':              return '708100';
+        case 'teom':             return '708200';
+        case 'electricite':      return '708300';
+        case 'chauffage':        return '708400';
+        case 'entretien_copro':  return '708500';
+        case 'autres':           return '708800';
+        default:                 return '708800';
+      }
+    })();
+
     const lines: EntryLine[] = [
-      { accountNumber: '614100', debitCents: actual, creditCents: 0, label: 'Charges reelles' },
-      { accountNumber: '613000', debitCents: 0, creditCents: provisions, label: 'Provisions versees' },
+      { accountNumber: '419100', debitCents: provisions, creditCents: 0, label: 'Solde provisions versees' },
+      { accountNumber: recoveryAccount, debitCents: 0, creditCents: actual, label: 'Charges recuperees' },
     ];
-    // Balance the difference
     if (diff > 0) {
-      // Overpaid: credit to tenant
+      // Trop-percu : la SCI doit rembourser le locataire (avoir)
       lines.push({ accountNumber: '411000', debitCents: 0, creditCents: diff, label: 'Trop-percu a rembourser' });
     } else if (diff < 0) {
-      // Underpaid: debit to tenant
-      lines.push({ accountNumber: '411000', debitCents: Math.abs(diff), creditCents: 0, label: 'Complement a percevoir' });
+      // Sous-percu : la SCI rappelle le locataire pour le complement
+      lines.push({ accountNumber: '411000', debitCents: -diff, creditCents: 0, label: 'Complement a percevoir' });
     }
     return {
       entityId: ctx.entityId,
@@ -1160,7 +1228,7 @@ const AUTO_ENTRIES: Record<
       source: 'auto:charge_regularization',
       reference: ctx.reference,
       userId: ctx.userId,
-      lines,
+      lines: withAxes(ctx, lines),
     };
   },
 
@@ -1317,6 +1385,43 @@ const AUTO_ENTRIES: Record<
       { accountNumber: '758100', debitCents: 0, creditCents: ctx.amountCents },
     ]),
   }),
+
+  /**
+   * Charge recuperee sur le locataire (hors TEOM, qui a son propre
+   * builder `teom_recovered`). Le compte 708xxx est selectionne via
+   * ctx.recoverableCategory pour preserver la tracabilite par type
+   * (eau, electricite, chauffage, entretien copro, autres) — exigee
+   * par la 2044 et l'audit fiscal. Sans precision : 708800 fallback.
+   *
+   * D 512100 (banque) / C 708xxx (categorie correspondante).
+   */
+  recoverable_charge_received: (ctx) => {
+    const accountByCategory: Record<NonNullable<AutoEntryContext['recoverableCategory']>, string> = {
+      eau: '708100',
+      teom: '708200',
+      electricite: '708300',
+      chauffage: '708400',
+      entretien_copro: '708500',
+      autres: '708800',
+    };
+    const account = accountByCategory[ctx.recoverableCategory ?? 'autres'];
+    return {
+      entityId: ctx.entityId,
+      exerciseId: ctx.exerciseId,
+      journalCode: 'BQ',
+      entryDate: ctx.date,
+      label:
+        ctx.label ||
+        `Charge recuperee — ${ctx.recoverableCategory ?? 'autres'}`,
+      source: 'auto:recoverable_charge_received',
+      reference: ctx.reference,
+      userId: ctx.userId,
+      lines: withAxes(ctx, [
+        { accountNumber: ctx.bankAccount ?? '512100', debitCents: ctx.amountCents, creditCents: 0 },
+        { accountNumber: account, debitCents: 0, creditCents: ctx.amountCents },
+      ]),
+    };
+  },
 };
 
 /**
