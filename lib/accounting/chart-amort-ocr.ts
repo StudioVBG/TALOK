@@ -48,10 +48,24 @@ export const PCG_OWNER_ACCOUNTS = [
   { account_number: '416000', label: 'Locataires douteux ou litigieux', account_type: 'asset' as const },
   { account_number: '419100', label: 'Provisions de charges recues', account_type: 'liability' as const },
   { account_number: '421000', label: 'Personnel — remuneration', account_type: 'liability' as const },
-  { account_number: '431000', label: 'Securite sociale', account_type: 'liability' as const },
-  { account_number: '444000', label: 'Etat — impots sur les benefices', account_type: 'liability' as const },
-  { account_number: '445660', label: 'TVA deductible', account_type: 'asset' as const },
+  { account_number: '431000', label: 'Securite sociale (URSSAF)', account_type: 'liability' as const },
+  // Cotisations sociales détaillées : indispensables pour SCI ou
+  // agence avec gardien, employé d'immeuble ou propriétaire-exploitant.
+  { account_number: '437000', label: 'Autres organismes sociaux (mutuelle, prevoyance, retraite)', account_type: 'liability' as const },
+  { account_number: '438000', label: 'Charges sociales sur conges payes', account_type: 'liability' as const },
+  { account_number: '444000', label: 'Etat — impots sur les benefices (IS)', account_type: 'liability' as const },
+  // Comptes TVA détaillés : la SCI à l'IS avec option TVA, le LMP, ou
+  // toute location pro doivent ventiler TVA collectee/deductible.
+  { account_number: '445510', label: 'TVA a decaisser', account_type: 'liability' as const },
+  { account_number: '445520', label: 'TVA due intra-communautaire', account_type: 'liability' as const },
+  { account_number: '445580', label: 'TVA a regulariser', account_type: 'liability' as const },
+  { account_number: '445660', label: 'TVA deductible sur biens et services', account_type: 'asset' as const },
+  { account_number: '445662', label: 'TVA deductible sur immobilisations', account_type: 'asset' as const },
+  { account_number: '445670', label: 'Credit de TVA a reporter', account_type: 'asset' as const },
   { account_number: '445710', label: 'TVA collectee', account_type: 'liability' as const },
+  // Comptes courants associes / dividendes — vie sociale SCI/SARL.
+  { account_number: '455000', label: 'Comptes courants associes', account_type: 'liability' as const },
+  { account_number: '457000', label: 'Associes — dividendes a payer', account_type: 'liability' as const },
   { account_number: '467000', label: 'Mandant — compte courant', account_type: 'liability' as const },
   // Classe 5 — Tresorerie
   { account_number: '512100', label: 'Banque — compte courant', account_type: 'asset' as const },
@@ -77,23 +91,56 @@ export const PCG_OWNER_ACCOUNTS = [
   { account_number: '625100', label: 'Deplacements', account_type: 'expense' as const },
   { account_number: '626000', label: 'Frais postaux / telecom', account_type: 'expense' as const },
   { account_number: '627000', label: 'Frais bancaires', account_type: 'expense' as const },
+  // Impots et taxes (635xxx) — autres que sur les benefices.
   { account_number: '635100', label: 'Taxe fonciere', account_type: 'expense' as const },
   { account_number: '635200', label: 'TEOM', account_type: 'expense' as const },
+  { account_number: '635300', label: 'Droits d\'enregistrement (acquisition)', account_type: 'expense' as const },
+  { account_number: '635400', label: 'CFE — cotisation fonciere des entreprises', account_type: 'expense' as const },
+  { account_number: '635600', label: 'IFI — impot sur la fortune immobiliere', account_type: 'expense' as const },
+  { account_number: '637000', label: 'Autres impots, taxes et versements assimiles', account_type: 'expense' as const },
+  // Charges de personnel (64xxx) — pour SCI/agence avec gardien ou employe.
+  { account_number: '641100', label: 'Salaires et appointements', account_type: 'expense' as const },
+  { account_number: '641200', label: 'Conges payes', account_type: 'expense' as const },
+  { account_number: '645100', label: 'Cotisations URSSAF (charges patronales)', account_type: 'expense' as const },
+  { account_number: '645300', label: 'Cotisations retraite (AGIRC-ARRCO)', account_type: 'expense' as const },
+  { account_number: '645400', label: 'Cotisations Pole emploi', account_type: 'expense' as const },
+  { account_number: '647800', label: 'Prevoyance, mutuelle, autres charges sociales', account_type: 'expense' as const },
+  { account_number: '648100', label: 'Medecine du travail / formation', account_type: 'expense' as const },
   { account_number: '654000', label: 'Pertes sur creances irrecouvrables', account_type: 'expense' as const },
   { account_number: '661000', label: 'Interets emprunts', account_type: 'expense' as const },
+  { account_number: '668000', label: 'Autres charges financieres', account_type: 'expense' as const },
+  // Charges exceptionnelles (67xxx) — indemnites versees, rappels d'impots.
   { account_number: '671000', label: 'Charges exceptionnelles', account_type: 'expense' as const },
+  { account_number: '671300', label: 'Indemnites d\'eviction / indemnites versees', account_type: 'expense' as const },
+  { account_number: '671500', label: 'Penalites, amendes fiscales et penales', account_type: 'expense' as const },
   { account_number: '675000', label: 'Valeur comptable elements actif cedes', account_type: 'expense' as const },
+  { account_number: '678000', label: 'Autres charges exceptionnelles', account_type: 'expense' as const },
   { account_number: '681100', label: 'Dotations aux amortissements', account_type: 'expense' as const },
+  // Impots sur les benefices et prelevements sociaux (69xxx).
+  { account_number: '695000', label: 'Impot sur les benefices (IS)', account_type: 'expense' as const },
+  { account_number: '695100', label: 'Prelevements sociaux 17,2% (revenus fonciers IR)', account_type: 'expense' as const },
   { account_number: '699000', label: 'Compte memo / OD', account_type: 'expense' as const },
   // Classe 7 — Produits
   { account_number: '706000', label: 'Loyers', account_type: 'income' as const },
   { account_number: '706100', label: 'Honoraires de gestion', account_type: 'income' as const },
   { account_number: '706300', label: 'Indemnites d\'occupation', account_type: 'income' as const },
-  { account_number: '708000', label: 'Charges recuperees / TEOM', account_type: 'income' as const },
+  // Charges recuperees ventilees (708xxx) — convention immobilier
+  // alignee sur la 2044 et l'audit fiscal. Le 708000 reste un fallback
+  // pour les recuperations non ventilees ; tout nouveau code applicatif
+  // doit cibler le sous-compte adequat (eau, TEOM, electricite, etc.)
+  // afin de rendre la ventilation auditable.
+  { account_number: '708000', label: 'Charges recuperees — non ventilees (fallback)', account_type: 'income' as const },
+  { account_number: '708100', label: 'Charges recuperees — eau', account_type: 'income' as const },
+  { account_number: '708200', label: 'Charges recuperees — TEOM', account_type: 'income' as const },
+  { account_number: '708300', label: 'Charges recuperees — electricite parties privatives', account_type: 'income' as const },
+  { account_number: '708400', label: 'Charges recuperees — chauffage collectif', account_type: 'income' as const },
+  { account_number: '708500', label: 'Charges recuperees — entretien parties communes (copro)', account_type: 'income' as const },
+  { account_number: '708800', label: 'Charges recuperees — autres', account_type: 'income' as const },
   { account_number: '758000', label: 'Produits divers de gestion courante', account_type: 'income' as const },
   { account_number: '758100', label: 'Indemnites d\'assurance', account_type: 'income' as const },
   { account_number: '764000', label: 'Revenus placements', account_type: 'income' as const },
   { account_number: '775000', label: 'Produits cession immobilisations', account_type: 'income' as const },
+  { account_number: '778000', label: 'Autres produits exceptionnels', account_type: 'income' as const },
   { account_number: '791000', label: 'Retenues sur depot de garantie', account_type: 'income' as const },
 ] as const;
 

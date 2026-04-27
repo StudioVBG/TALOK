@@ -1048,9 +1048,12 @@ const AUTO_ENTRIES: Record<
     source: 'auto:teom_recovered',
     reference: ctx.reference,
     userId: ctx.userId,
+    // Credit 708200 (TEOM specifiquement) au lieu du 708000 generique :
+    // garde la tracabilite par type de charge recuperee pour la 2044
+    // et l'audit fiscal.
     lines: [
       { accountNumber: '635200', debitCents: ctx.amountCents, creditCents: 0 },
-      { accountNumber: '708000', debitCents: 0, creditCents: ctx.amountCents },
+      { accountNumber: '708200', debitCents: 0, creditCents: ctx.amountCents },
     ],
   }),
 
