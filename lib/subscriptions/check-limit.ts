@@ -120,7 +120,8 @@ async function getCurrentUsage(
         .from('properties')
         .select('*', { count: 'exact', head: true })
         .eq('owner_id', profileId)
-        .neq('status', 'archived')
+        .is('deleted_at', null)
+        .neq('etat', 'archived')
         .neq('type', 'immeuble');
       return count || 0;
     }
