@@ -53,6 +53,7 @@ interface ReversementOutcome {
   amountCents: number;
   status:
     | "posted"
+    | "would_post"
     | "already_done"
     | "skipped_inactive_mandate"
     | "skipped_no_balance"
@@ -65,6 +66,16 @@ export async function GET(request: Request) {
   if (!verifyCronSecret(request)) {
     return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
   }
+
+  // Mode dry-run : utile pour qu'une agence prévisualise ce qui
+  // serait reversé avant que le cron ne tourne pour de vrai. Aucune
+  // écriture n'est créée, aucun solde n'est touché — on retourne
+  // juste la liste des reversements qui seraient déclenchés.
+  // Activable par ?dryRun=true sur l'URL ou header X-Dry-Run: 1.
+  const url = new URL(request.url);
+  const dryRun =
+    url.searchParams.get("dryRun") === "true" ||
+    request.headers.get("x-dry-run") === "1";
 
   const supabase = createServiceRoleClient();
   const now = new Date();
@@ -158,6 +169,30 @@ export async function GET(request: Request) {
       }
 
       const idempotencyKey = `cron:${yearMonth}:${mandate.id}`;
+
+      // Mode dry-run : on prédit le résultat sans toucher aux
+      // écritures. Une simple vérification d'existence d'une écriture
+      // déjà postée pour cette idempotency key suffit à distinguer
+      // already_done vs would_post.
+      if (dryRun) {
+        const reference = `agency:reversement:${idempotencyKey}`;
+        const { data: existing } = await (supabase as any)
+          .from("accounting_entries")
+          .select("id")
+          .eq("reference", reference)
+          .eq("source", "auto:agency_reversement")
+          .limit(1)
+          .maybeSingle();
+        outcomes.push({
+          mandateId: mandate.id,
+          mandateNumber: mandate.mandate_number,
+          amountCents: balance,
+          status: existing?.id ? "already_done" : "would_post",
+          entryId: existing?.id,
+        });
+        continue;
+      }
+
       try {
         const result = await ensureMandantReversementEntry(
           supabase,
@@ -209,6 +244,7 @@ export async function GET(request: Request) {
     const summary = {
       processed: outcomes.length,
       posted: outcomes.filter((o) => o.status === "posted").length,
+      would_post: outcomes.filter((o) => o.status === "would_post").length,
       already_done: outcomes.filter((o) => o.status === "already_done").length,
       skipped: outcomes.filter(
         (o) =>
@@ -216,10 +252,16 @@ export async function GET(request: Request) {
           o.status === "skipped_no_balance",
       ).length,
       errors: outcomes.filter((o) => o.status === "error").length,
+      total_to_be_reversed_cents: outcomes
+        .filter(
+          (o) => o.status === "posted" || o.status === "would_post",
+        )
+        .reduce((s, o) => s + o.amountCents, 0),
     };
 
     return NextResponse.json({
       success: true,
+      dryRun,
       yearMonth,
       summary,
       outcomes,
