@@ -1108,6 +1108,7 @@ export async function POST(request: NextRequest) {
                 .select(`
                   lease:leases (
                     property:properties (
+                      id,
                       legal_entity_id,
                       adresse_complete
                     )
@@ -1121,7 +1122,34 @@ export async function POST(request: NextRequest) {
                 .maybeSingle();
 
               const entityId = invoiceForEntity?.lease?.property?.legal_entity_id;
-              if (entityId) {
+              const propertyId = invoiceForEntity?.lease?.property?.id;
+
+              // Si la property est sous mandat agence actif, l'écriture
+              // rent_received côté propriétaire serait fausse : la
+              // banque (512) du propriétaire n'a rien reçu, l'argent est
+              // sur le compte mandant de l'agence (545). On skip donc
+              // l'écriture côté owner — le revenu sera reconnu au
+              // reversement effectif. Les écritures côté agence
+              // (auto:agency_loyer_mandant + auto:agency_commission)
+              // sont posées indépendamment juste après ce bloc.
+              let ownerSkipReason: string | null = null;
+              if (propertyId) {
+                try {
+                  const { isPropertyUnderActiveMandate } = await import(
+                    '@/lib/accounting/mandant-payment-entry'
+                  );
+                  if (await isPropertyUnderActiveMandate(supabase, propertyId)) {
+                    ownerSkipReason = 'under_active_mandate';
+                  }
+                } catch (mandateCheckErr) {
+                  console.warn(
+                    '[ACCOUNTING] mandate detection failed (continuing as owner-direct):',
+                    mandateCheckErr,
+                  );
+                }
+              }
+
+              if (entityId && !ownerSkipReason) {
                 const { getEntityAccountingConfig, shouldMarkInformational, markEntryInformational } =
                   await import('@/lib/accounting/entity-config');
                 const config = await getEntityAccountingConfig(supabase, entityId);

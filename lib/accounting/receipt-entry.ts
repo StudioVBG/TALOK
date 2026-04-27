@@ -33,6 +33,7 @@ export interface EnsureReceiptAccountingEntryResult {
     | "payment_not_found"
     | "entity_not_resolved"
     | "accounting_disabled"
+    | "under_active_mandate"
     | "exercise_not_available"
     | "error";
   entryId?: string;
@@ -199,6 +200,31 @@ export async function ensureReceiptAccountingEntry(
       paymentRow.invoice?.lease?.tenant_id ??
       undefined;
 
+    // Si la property est sous mandat agence actif, on skip toutes les
+    // écritures côté owner (rent_payment_clearing en accrual,
+    // rent_received + provision_received en cash). La banque du
+    // proprio n'a rien encaissé — la trésorerie est sur le compte
+    // mandant de l'agence. Le revenu sera reconnu côté owner au
+    // reversement effectif. Les écritures côté agence sont posées
+    // immédiatement par le helper mandant.
+    if (propertyId) {
+      const { isPropertyUnderActiveMandate, ensureMandantPaymentEntries } =
+        await import("@/lib/accounting/mandant-payment-entry");
+      if (await isPropertyUnderActiveMandate(supabase, propertyId)) {
+        try {
+          await ensureMandantPaymentEntries(supabase, paymentId, {
+            userId: actorUserId,
+          });
+        } catch (mandantErr) {
+          console.error(
+            "[ensureReceiptAccountingEntry] mandant entries failed:",
+            mandantErr,
+          );
+        }
+        return { created: false, skippedReason: "under_active_mandate" };
+      }
+    }
+
     if (isAccrual) {
       const label = `Règlement loyer${periode ? ` ${periode}` : ""}${
         propertyAddress ? ` - ${propertyAddress}` : ""
@@ -219,22 +245,11 @@ export async function ensureReceiptAccountingEntry(
       if (shouldMarkInformational(config)) {
         await markEntryInformational(supabase, entry.id);
       }
-      // P0.5 — pose les écritures mandat agence en parallèle si la
-      // property est sous mandat actif. Helper short-circuite si pas
-      // de mandat. Non-bloquant.
-      try {
-        const { ensureMandantPaymentEntries } = await import(
-          "@/lib/accounting/mandant-payment-entry"
-        );
-        await ensureMandantPaymentEntries(supabase, paymentId, {
-          userId: actorUserId,
-        });
-      } catch (mandantErr) {
-        console.error(
-          "[ensureReceiptAccountingEntry] mandant entries failed:",
-          mandantErr,
-        );
-      }
+      // Pas d'appel ensureMandantPaymentEntries ici : si la property
+      // était sous mandat, on serait déjà sortis plus haut via l'early
+      // return (skippedReason="under_active_mandate") et le helper
+      // mandant aurait été appelé là-bas. Atteindre cette ligne
+      // implique propriétaire-direct → rien à poser côté agence.
       return { created: true, entryId: entry.id };
     }
 
@@ -306,22 +321,9 @@ export async function ensureReceiptAccountingEntry(
       }
     }
 
-    // P0.5 — flux mandat (cash mode). Pose les écritures côté agence
-    // si la property est sous mandat actif. Helper idempotent +
-    // short-circuit si pas de mandat.
-    try {
-      const { ensureMandantPaymentEntries } = await import(
-        "@/lib/accounting/mandant-payment-entry"
-      );
-      await ensureMandantPaymentEntries(supabase, paymentId, {
-        userId: actorUserId,
-      });
-    } catch (mandantErr) {
-      console.error(
-        "[ensureReceiptAccountingEntry] mandant entries failed:",
-        mandantErr,
-      );
-    }
+    // Pas d'appel ensureMandantPaymentEntries ici : early-return en
+    // amont quand mandat actif. Cette ligne est exclusivement
+    // owner-direct cash mode.
 
     return { created: true, entryId: rentEntry.id };
   } catch (err) {

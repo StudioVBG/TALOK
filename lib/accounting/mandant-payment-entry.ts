@@ -89,6 +89,34 @@ interface MandateRow {
 }
 
 /**
+ * Détecte si une property est couverte par un mandat agence actif.
+ * Utilisé en amont de rent_received côté owner pour skip l'écriture
+ * banque (la banque du proprio n'a rien encaissé — l'argent est sur
+ * le compte mandant de l'agence). Le revenu sera reconnu au
+ * reversement effectif.
+ *
+ * Renvoie false en cas d'erreur SQL — on préfère poser l'écriture
+ * owner que de la perdre silencieusement si la détection échoue.
+ */
+export async function isPropertyUnderActiveMandate(
+  supabase: SupabaseClient,
+  propertyId: string,
+): Promise<boolean> {
+  try {
+    const { data } = await (supabase as any)
+      .from("agency_mandates")
+      .select("id")
+      .eq("status", "active")
+      .contains("property_ids", [propertyId])
+      .limit(1)
+      .maybeSingle();
+    return !!data;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Calcule la commission en cents selon le type de mandat.
  * - percentage : amountCents × rate / 100, arrondi au cent
  * - fixed      : management_fee_fixed_cents (plafonné au montant si supérieur)
