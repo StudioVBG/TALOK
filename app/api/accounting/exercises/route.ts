@@ -68,7 +68,83 @@ export async function GET(request: Request) {
       throw new ApiError(500, "Erreur lors de la recuperation des exercices");
     }
 
-    return NextResponse.json({ success: true, data: { exercises: exercises || [] } });
+    let rows: Array<Record<string, unknown>> = exercises ?? [];
+
+    // Defensive bootstrap: if an entity somehow has no exercise (e.g. it
+    // pre-dates the trigger added in 20260418170000_enforce_fiscal_year_dates,
+    // or the trigger raced on a transient failure), create one on the fly
+    // from the entity's fiscal-year fields. The dashboard, balance and
+    // grand-livre all depend on having at least one exercise to render
+    // anything — without this, the user gets a "Aucun exercice" wall.
+    if (rows.length === 0) {
+      const { data: entity } = await (serviceClient as any)
+        .from("legal_entities")
+        .select("premier_exercice_debut, premier_exercice_fin")
+        .eq("id", entityId)
+        .maybeSingle();
+
+      const today = new Date();
+      const currentYear = today.getUTCFullYear();
+      const startDate =
+        (entity?.premier_exercice_debut as string | undefined) ??
+        `${currentYear}-01-01`;
+      const endDate =
+        (entity?.premier_exercice_fin as string | undefined) ??
+        `${currentYear}-12-31`;
+
+      const { data: created, error: createErr } = await (serviceClient as any)
+        .from("accounting_exercises")
+        .insert({
+          entity_id: entityId,
+          start_date: startDate,
+          end_date: endDate,
+          status: "open",
+        })
+        .select("*")
+        .single();
+
+      if (!createErr && created) {
+        rows = [created];
+      } else if (createErr) {
+        console.error("[Exercises API] bootstrap exercise failed:", createErr);
+        // Fall through with the empty list — the client will render the
+        // "Créez un exercice" empty state. Never block the GET on a
+        // bootstrap failure.
+      }
+    }
+
+    // Expose BOTH camelCase (for BalancePageClient, GrandLivrePageClient,
+    // useAccountingDashboard, RendementPageClient, ExportsPageClient) and
+    // snake_case (for ExercisesClient, DeclarationsClient, ECClientView)
+    // so every existing consumer keeps working without a sweeping refactor.
+    // Synthesize a `label` like "Exercice 2026" since the table has no
+    // such column and the dashboard subtitle needs one.
+    const exercisesOut = rows.map((row) => {
+      const start = (row.start_date as string) ?? "";
+      const end = (row.end_date as string) ?? "";
+      const startYear = start.slice(0, 4);
+      const endYear = end.slice(0, 4);
+      const label =
+        startYear && startYear === endYear
+          ? `Exercice ${startYear}`
+          : `Exercice ${startYear || "?"}–${endYear || "?"}`;
+      return {
+        ...row,
+        id: row.id as string,
+        entityId: row.entity_id as string,
+        startDate: start,
+        endDate: end,
+        status: row.status as string,
+        closedBy: (row.closed_by as string | null) ?? null,
+        closedAt: (row.closed_at as string | null) ?? null,
+        label,
+      };
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: { exercises: exercisesOut },
+    });
   } catch (error) {
     return handleApiError(error);
   }

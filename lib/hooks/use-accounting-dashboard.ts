@@ -97,23 +97,21 @@ export function useAccountingDashboard(options: UseAccountingDashboardOptions = 
   const exerciseId = exerciseQuery.data?.id;
 
   const balanceQuery = useQuery({
-    queryKey: ["accounting", "balance", exerciseId, entityId],
+    queryKey: ["accounting", "balance-summary", exerciseId, entityId],
     queryFn: async (): Promise<AccountingBalance | null> => {
       if (!exerciseId || !entityId) return null;
       try {
-        // Server requires entityId query param and returns
-        // `{ success, data: { balance } }`.
+        // The dashboard needs the aggregated KPI shape (revenue/
+        // expenses/result/monthlySeries), not the per-account breakdown
+        // used by the Balance page. The endpoint switches to that shape
+        // via `?format=summary` and the server-side aggregation lives
+        // in app/api/accounting/exercises/[exerciseId]/balance/route.ts.
         const response = await apiClient.get<
-          AccountingApiEnvelope<{ balance: AccountingBalance }> | AccountingBalance
+          AccountingApiEnvelope<{ summary: AccountingBalance }>
         >(
-          `/accounting/exercises/${exerciseId}/balance?entityId=${encodeURIComponent(entityId)}`,
+          `/accounting/exercises/${exerciseId}/balance?entityId=${encodeURIComponent(entityId)}&format=summary`,
         );
-        if (!response) return null;
-        if ("totalDebitCents" in (response as AccountingBalance)) {
-          return response as AccountingBalance;
-        }
-        return (response as AccountingApiEnvelope<{ balance: AccountingBalance }>)
-          ?.data?.balance ?? null;
+        return response?.data?.summary ?? null;
       } catch (error) {
         console.error("[useAccountingDashboard] balance query failed:", error);
         throw error;
