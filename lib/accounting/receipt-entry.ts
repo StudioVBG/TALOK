@@ -219,6 +219,22 @@ export async function ensureReceiptAccountingEntry(
       if (shouldMarkInformational(config)) {
         await markEntryInformational(supabase, entry.id);
       }
+      // P0.5 — pose les écritures mandat agence en parallèle si la
+      // property est sous mandat actif. Helper short-circuite si pas
+      // de mandat. Non-bloquant.
+      try {
+        const { ensureMandantPaymentEntries } = await import(
+          "@/lib/accounting/mandant-payment-entry"
+        );
+        await ensureMandantPaymentEntries(supabase, paymentId, {
+          userId: actorUserId,
+        });
+      } catch (mandantErr) {
+        console.error(
+          "[ensureReceiptAccountingEntry] mandant entries failed:",
+          mandantErr,
+        );
+      }
       return { created: true, entryId: entry.id };
     }
 
@@ -288,6 +304,23 @@ export async function ensureReceiptAccountingEntry(
       if (shouldMarkInformational(config)) {
         await markEntryInformational(supabase, provisionEntry.id);
       }
+    }
+
+    // P0.5 — flux mandat (cash mode). Pose les écritures côté agence
+    // si la property est sous mandat actif. Helper idempotent +
+    // short-circuit si pas de mandat.
+    try {
+      const { ensureMandantPaymentEntries } = await import(
+        "@/lib/accounting/mandant-payment-entry"
+      );
+      await ensureMandantPaymentEntries(supabase, paymentId, {
+        userId: actorUserId,
+      });
+    } catch (mandantErr) {
+      console.error(
+        "[ensureReceiptAccountingEntry] mandant entries failed:",
+        mandantErr,
+      );
     }
 
     return { created: true, entryId: rentEntry.id };

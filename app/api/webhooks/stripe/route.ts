@@ -1157,6 +1157,27 @@ export async function POST(request: NextRequest) {
               console.error('[ACCOUNTING] Auto-entry failed (non-blocking):', accountingError);
               // Never throw — payment is already confirmed
             }
+
+            // P0.5 — Flux mandat agence (Loi Hoguet).
+            // Si la property est sous mandat actif, pose en parallèle
+            // les écritures côté agence : loyer mandant (D 545 / C 467)
+            // + commission (D 467 / C 706100). Ces écritures alimentent
+            // les Sections 1 et 3 du CRG. Helper short-circuite
+            // proprement si la property n'est pas sous mandat —
+            // appelable inconditionnellement.
+            try {
+              const { ensureMandantPaymentEntries } = await import(
+                "@/lib/accounting/mandant-payment-entry"
+              );
+              await ensureMandantPaymentEntries(supabase, paymentId, {
+                amountCentsOverride: paymentIntent.amount,
+              });
+            } catch (mandantError) {
+              console.error(
+                "[ACCOUNTING] Mandant entries failed (non-blocking):",
+                mandantError,
+              );
+            }
           }
         }
         break;
