@@ -67,27 +67,68 @@ function yearOf(dateString: string | null | undefined): number | null {
   return Number.isFinite(y) ? y : null;
 }
 
+async function fetchBalanceRows(
+  supabase: ReturnType<typeof getServiceClient>,
+  entityId: string,
+  exerciseId: string,
+): Promise<BalanceRow[]> {
+  // Try the pre-aggregated MV via fn_balance_for_exercise first. The MV
+  // is only refreshed at exercise close / nightly via pg_cron, so for
+  // an open exercise with freshly-validated entries it can be empty or
+  // stale — in that case we fall through to a live aggregation on
+  // accounting_entry_lines so KPIs stay truthful.
+  const { data: mvRows, error: mvErr } = await (supabase as any).rpc(
+    "fn_balance_for_exercise",
+    { p_entity_id: entityId, p_exercise_id: exerciseId },
+  );
+  if (!mvErr && Array.isArray(mvRows) && mvRows.length > 0) {
+    return mvRows as BalanceRow[];
+  }
+
+  const { data: liveRows } = await (supabase as any)
+    .from("accounting_entry_lines")
+    .select(
+      `account_number, debit_cents, credit_cents,
+       accounting_entries!inner(entity_id, exercise_id, is_validated, informational)`,
+    )
+    .eq("accounting_entries.entity_id", entityId)
+    .eq("accounting_entries.exercise_id", exerciseId)
+    .eq("accounting_entries.is_validated", true);
+
+  const aggregated = new Map<string, { debit: number; credit: number }>();
+  for (const line of (liveRows ?? []) as Array<{
+    account_number: string;
+    debit_cents: number;
+    credit_cents: number;
+    accounting_entries:
+      | { informational: boolean }
+      | { informational: boolean }[];
+  }>) {
+    const meta = Array.isArray(line.accounting_entries)
+      ? line.accounting_entries[0]
+      : line.accounting_entries;
+    if (meta?.informational) continue;
+    const cur = aggregated.get(line.account_number) ?? { debit: 0, credit: 0 };
+    cur.debit += n(line.debit_cents);
+    cur.credit += n(line.credit_cents);
+    aggregated.set(line.account_number, cur);
+  }
+  return Array.from(aggregated.entries()).map(([account, totals]) => ({
+    account_number: account,
+    total_debit_cents: totals.debit,
+    total_credit_cents: totals.credit,
+  }));
+}
+
 async function aggregateExerciseBalance(
   supabase: ReturnType<typeof getServiceClient>,
   entityId: string,
   exerciseId: string,
 ): Promise<{ revenueCents: number; expensesCents: number }> {
-  // Lit l'agrégation déjà matérialisée par mv_accounting_balance via la
-  // function SECURITY DEFINER (qui filtre sur entity_members). Fallback :
-  // requête directe sur accounting_entry_lines si la MV n'a pas encore
-  // été refresh sur cet exercice.
-  const { data: rows, error } = await (supabase as any).rpc(
-    "fn_balance_for_exercise",
-    { p_entity_id: entityId, p_exercise_id: exerciseId },
-  );
-
-  if (error || !Array.isArray(rows)) {
-    return { revenueCents: 0, expensesCents: 0 };
-  }
-
+  const rows = await fetchBalanceRows(supabase, entityId, exerciseId);
   let revenueCents = 0;
   let expensesCents = 0;
-  for (const row of rows as BalanceRow[]) {
+  for (const row of rows) {
     const cls = row.account_number.charAt(0);
     if (cls === "7") {
       revenueCents += n(row.total_credit_cents) - n(row.total_debit_cents);
@@ -106,14 +147,9 @@ async function recoverableCharges(
   // Comptes 708xxx = "Produits annexes / charges récupérées".
   // Le solde créditeur correspond aux charges effectivement récupérées
   // sur le locataire pendant l'exercice.
-  const { data: rows } = await (supabase as any).rpc(
-    "fn_balance_for_exercise",
-    { p_entity_id: entityId, p_exercise_id: exerciseId },
-  );
-  if (!Array.isArray(rows)) return 0;
-
+  const rows = await fetchBalanceRows(supabase, entityId, exerciseId);
   let total = 0;
-  for (const row of rows as BalanceRow[]) {
+  for (const row of rows) {
     if (row.account_number.startsWith("708")) {
       total += n(row.total_credit_cents) - n(row.total_debit_cents);
     }
