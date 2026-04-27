@@ -9,6 +9,7 @@ import { ConfidenceBanner } from "@/components/accounting/ConfidenceBanner";
 import { ConfidenceField } from "@/components/accounting/ConfidenceField";
 import { ProposedEntry } from "@/components/accounting/ProposedEntry";
 import { AnalysisProgress } from "@/components/accounting/AnalysisProgress";
+import { extractTeomFromAnalysis } from "@/lib/accounting/ocr-teom";
 import { formatCents } from "@/lib/utils/format-cents";
 import { useEntityStore } from "@/stores/useEntityStore";
 import Link from "next/link";
@@ -287,6 +288,43 @@ function UploadFlowContent() {
               },
             ]}
           />
+
+          {/* Reclassement TEOM auto si l'OCR a détecté la part récupérable
+              sur un avis de taxe foncière. Le bouton "Valider et
+              comptabiliser" pose CES DEUX écritures atomiquement. */}
+          {(() => {
+            const teom = extractTeomFromAnalysis(extracted);
+            if (!teom) return null;
+            return (
+              <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
+                <div className="flex items-start gap-2 text-xs text-emerald-700 dark:text-emerald-300">
+                  <Check className="w-4 h-4 mt-0.5 shrink-0" />
+                  <p>
+                    TEOM détectée ({formatCents(teom.teomCents)}
+                    {teom.annee ? ` · ${teom.annee}` : ""}) — récupérable
+                    sur le locataire (décret 87-713). Une seconde écriture
+                    de reclassement sera posée automatiquement.
+                  </p>
+                </div>
+                <ProposedEntry
+                  lines={[
+                    {
+                      account: "635200",
+                      label: "TEOM",
+                      debitCents: teom.teomCents,
+                      creditCents: 0,
+                    },
+                    {
+                      account: "708000",
+                      label: "Charges récupérées TEOM",
+                      debitCents: 0,
+                      creditCents: teom.teomCents,
+                    },
+                  ]}
+                />
+              </div>
+            );
+          })()}
 
           <div className="flex flex-col sm:flex-row gap-3">
             <button

@@ -117,6 +117,11 @@ export {
 } from './teom-recovery-entry';
 
 export {
+  extractTeomFromAnalysis,
+  type TeomExtraction,
+} from './ocr-teom';
+
+export {
   ensurePropertyAcquisitionEntry,
   type PropertyAcquisitionEntryResult,
   type PropertyAcquisitionSkipReason,

@@ -10,11 +10,15 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// IMPORTANT: après modification de ce prompt, redéployer la fonction :
+//   supabase functions deploy ocr-analyze-document
+// Le prompt côté lib (chart-amort-ocr.ts) doit rester identique pour
+// rester aligné avec ce qui tourne en prod.
 const OCR_SYSTEM_PROMPT = `Tu es un assistant comptable specialise dans l'immobilier francais.
 Analyse le document fourni (facture, quittance, releve, avis d'imposition, etc.)
 et retourne un JSON STRICT avec les champs suivants :
 {
-  "document_type": "facture|quittance|releve_bancaire|avis_impot|contrat|autre",
+  "document_type": "facture|quittance|releve_bancaire|avis_impot|taxe_fonciere|contrat|autre",
   "emetteur": { "nom": "string", "siret": "string|null", "adresse": "string|null" },
   "destinataire": { "nom": "string", "adresse": "string|null" },
   "date_document": "YYYY-MM-DD",
@@ -26,13 +30,28 @@ et retourne un JSON STRICT avec les champs suivants :
   "montant_ttc_cents": 0,
   "devise": "EUR",
   "lignes": [{ "description": "string", "quantite": 1, "prix_unitaire_cents": 0, "montant_cents": 0 }],
+  "taxe_fonciere": {
+    "teom_cents": 0,
+    "taxe_fonciere_part_cents": 0,
+    "frais_gestion_cents": 0,
+    "annee": 0
+  },
   "suggested_account": "6xxxxx",
   "suggested_journal": "ACH|VE|BQ|OD",
   "suggested_label": "string",
   "alerts": ["string"],
   "confidence": 0.95
 }
-REGLES: Tous montants en CENTIMES. SIRET 14 chiffres. TVA coherence HT+TVA=TTC. Si illisible confidence < 0.5.`;
+REGLES: Tous montants en CENTIMES. SIRET 14 chiffres. TVA coherence HT+TVA=TTC. Si illisible confidence < 0.5.
+
+REGLES TAXE FONCIERE (document_type='taxe_fonciere' ou 'avis_impot' avec mention "taxe fonciere") :
+- taxe_fonciere.teom_cents = TEOM (taxe d'enlevement des ordures menageres) recuperable sur le locataire (decret 87-713).
+- taxe_fonciere.taxe_fonciere_part_cents = total - TEOM (charge non recuperable).
+- taxe_fonciere.frais_gestion_cents = frais de gestion fiscalite directe locale si indiques.
+- taxe_fonciere.annee = annee fiscale (ex 2026).
+- Si pas un avis de taxe fonciere : laisser taxe_fonciere a null.
+- Si TEOM non isolable : teom_cents=0 + alert.
+- suggested_account = "635110" pour taxe fonciere.`;
 
 const TVA_RATES: Record<string, Record<string, number>> = {
   metropole: { normal: 20, intermediaire: 10, reduit: 5.5, super_reduit: 2.1 },

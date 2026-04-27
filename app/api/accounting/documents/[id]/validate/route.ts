@@ -10,6 +10,8 @@ import { handleApiError, ApiError } from "@/lib/helpers/api-error";
 import { requireAccountingAccess } from "@/lib/accounting/feature-gates";
 import { createEntry, validateEntry } from "@/lib/accounting/engine";
 import { getOrCreateCurrentExercise } from "@/lib/accounting/auto-exercise";
+import { ensureTeomRecoveryEntry } from "@/lib/accounting/teom-recovery-entry";
+import { extractTeomFromAnalysis } from "@/lib/accounting/ocr-teom";
 import { z } from "zod";
 
 export const dynamic = "force-dynamic";
@@ -140,6 +142,35 @@ export async function POST(
       })
       .eq("id", analysis.id);
 
+    // Si l'OCR a détecté une part TEOM sur un avis de taxe foncière, poser
+    // l'écriture de reclassement (D 635200 / C 708000) en plus de la
+    // charge principale. Idempotent via reference="teom:<analysisId>".
+    // L'erreur ici ne doit jamais bloquer la validation principale.
+    let teomEntryId: string | undefined;
+    let teomSkippedReason: string | undefined;
+    const teom = extractTeomFromAnalysis(extracted);
+    if (teom) {
+      try {
+        const teomResult = await ensureTeomRecoveryEntry(supabase, {
+          entityId,
+          reference: `teom:${analysis.id}`,
+          amountCents: teom.teomCents,
+          date: entryDate,
+          label: `TEOM ${teom.annee ?? ""}`.trim(),
+          userId: user.id,
+        });
+        if (teomResult.created) {
+          teomEntryId = teomResult.entryId;
+        } else {
+          teomSkippedReason = teomResult.skippedReason;
+          if (teomResult.entryId) teomEntryId = teomResult.entryId;
+        }
+      } catch (e) {
+        console.error("[validate] ensureTeomRecoveryEntry failed", e);
+        teomSkippedReason = "error";
+      }
+    }
+
     // Learning: if user changed account vs suggestion, save rule
     const suggestedAccount = extracted.suggested_account as string | undefined;
     const supplierName = (extracted.emetteur as Record<string, unknown>)?.nom as string | undefined;
@@ -166,7 +197,12 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      data: { entry, validated },
+      data: {
+        entry,
+        validated,
+        teomEntryId: teomEntryId ?? null,
+        teomSkippedReason: teomSkippedReason ?? null,
+      },
     });
   } catch (error) {
     return handleApiError(error);
