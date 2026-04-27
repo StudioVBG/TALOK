@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const { data: mandate } = await supabase
       .from("agency_mandates")
       .select(
-        "id, agency_entity_id, management_fee_type, management_fee_rate, management_fee_fixed_cents, status",
+        "id, agency_entity_id, property_ids, management_fee_type, management_fee_rate, management_fee_fixed_cents, status",
       )
       .eq("id", mandate_id)
       .eq("agency_profile_id", profile.id)
@@ -143,9 +143,31 @@ export async function POST(request: NextRequest) {
     const netReversementCents =
       totalRentCollectedCents - totalChargesPaidCents - totalFeesCents;
 
-    // Impayés : on compte les invoices ouvertes (non payées) sur la
-    // période, scopées aux properties du mandat.
-    const unpaidRentCents = 0; // À implémenter avec lookup invoices.
+    // Impayés : invoices à statut 'sent' ou 'late' (= ouvertes) dont
+    // la période recoupe la fenêtre du CRG, scopées aux properties
+    // du mandat. La colonne `periode` est en YYYY-MM ; on compare
+    // lexicographiquement avec les substrings YYYY-MM de la période.
+    let unpaidRentCents = 0;
+    const propertyIds = ((mandate as any).property_ids ?? []) as string[];
+    if (propertyIds.length > 0) {
+      const periodStartMonth = period_start.slice(0, 7);
+      const periodEndMonth = period_end.slice(0, 7);
+      const { data: unpaidRows } = await (supabase as any)
+        .from("invoices")
+        .select(
+          "montant_total, statut, periode, lease:leases!inner(property_id)",
+        )
+        .in("statut", ["sent", "late"])
+        .gte("periode", periodStartMonth)
+        .lte("periode", periodEndMonth)
+        .in("lease.property_id", propertyIds);
+
+      for (const row of (unpaidRows ?? []) as Array<{
+        montant_total: number | null;
+      }>) {
+        unpaidRentCents += Math.round(Number(row.montant_total ?? 0) * 100);
+      }
+    }
 
     // Sanity : les fees calculées via le mandant peuvent diverger du
     // taux mandat si management_fee a changé en cours de période.
