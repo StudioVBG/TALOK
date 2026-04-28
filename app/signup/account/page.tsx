@@ -114,7 +114,9 @@ function AccountCreationContent() {
 
   // Si un token d'invitation est présent, on charge l'invitation côté serveur
   // pour : (1) afficher la bannière "rôle verrouillé", (2) pré-remplir l'email
-  // et le rendre non modifiable. La validation finale est faite côté API par
+  // et le rendre non modifiable, (3) forcer le mode mot de passe car la voie
+  // magic-link ne crée pas de compte (shouldCreateUser=false côté API
+  // /api/v1/auth/magic-link). La validation finale est faite côté API par
   // /api/v1/auth/register qui force le rôle d'après la table `invitations`.
   useEffect(() => {
     if (!inviteToken) return;
@@ -127,6 +129,7 @@ function AccountCreationContent() {
           setInviteInfo({ email: data.invitation.email, role: data.invitation.role });
           setDraft((prev) => ({
             ...prev,
+            useMagicLink: false,
             formData: { ...prev.formData, email: String(data.invitation.email).toLowerCase() },
           }));
         }
@@ -280,6 +283,17 @@ function AccountCreationContent() {
         accept_cgu: validatedConsents.terms_accepted,
         accept_privacy: validatedConsents.privacy_accepted,
       });
+
+      if (inviteInfo && draft.useMagicLink) {
+        toast({
+          title: "Mode non disponible",
+          description:
+            "Le lien magique ne crée pas de compte. Définissez un mot de passe pour accepter votre invitation.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
       if (!draft.useMagicLink && draft.formData.password !== draft.formData.confirmPassword) {
         toast({
@@ -586,10 +600,20 @@ function AccountCreationContent() {
                 <Label htmlFor="useMagicLink" className="font-medium cursor-pointer">
                   Utiliser un lien magique
                 </Label>
-                <p className="text-xs text-slate-300">Connexion sans mot de passe via email sécurisé.</p>
+                <p className="text-xs text-slate-300">
+                  {inviteInfo
+                    ? "Indisponible pour les inscriptions par invitation. Définissez un mot de passe pour finaliser."
+                    : "Connexion sans mot de passe via email sécurisé."}
+                </p>
               </div>
               <div className="flex items-center gap-2 sm:flex-shrink-0">
-                <label htmlFor="useMagicLink" className="flex items-center gap-2 cursor-pointer">
+                <label
+                  htmlFor="useMagicLink"
+                  className={cn(
+                    "flex items-center gap-2",
+                    inviteInfo ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+                  )}
+                >
                   <span className="text-xs text-slate-300">
                     {draft.useMagicLink ? "Sans mot de passe" : "Mot de passe requis"}
                   </span>
@@ -598,8 +622,9 @@ function AccountCreationContent() {
                     id="useMagicLink"
                     checked={draft.useMagicLink}
                     onChange={(e) => void autosave({ useMagicLink: e.target.checked })}
-                    disabled={loading}
-                    className="h-5 w-5 rounded border-white/30 bg-transparent cursor-pointer"
+                    disabled={loading || !!inviteInfo}
+                    aria-disabled={!!inviteInfo}
+                    className="h-5 w-5 rounded border-white/30 bg-transparent cursor-pointer disabled:cursor-not-allowed"
                   />
                 </label>
               </div>
