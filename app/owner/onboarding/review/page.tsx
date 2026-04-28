@@ -86,8 +86,8 @@ export default function OwnerReviewPage() {
     const hasMedia = documents.length > 0;
     const hasCover = documents.some((doc) => doc.is_cover);
     const encadrementPlafond =
-      property.loyer_reference_majoré !== null
-        ? property.loyer_reference_majoré + (property.complement_loyer ?? 0)
+      property.loyer_reference_majore !== null
+        ? property.loyer_reference_majore + (property.complement_loyer ?? 0)
         : null;
 
     return [
@@ -126,7 +126,7 @@ export default function OwnerReviewPage() {
           : "Zone non soumise",
         valid:
           !property.zone_encadrement ||
-          (property.loyer_reference_majoré !== null &&
+          (property.loyer_reference_majore !== null &&
             property.loyer_base !== null &&
             encadrementPlafond !== null &&
             property.loyer_base <= encadrementPlafond + 0.5),

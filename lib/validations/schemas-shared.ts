@@ -50,7 +50,7 @@ export const financialSchema = z.object({
   depot_garantie: z.number().min(0, "Le dépôt de garantie ne peut pas être négatif"),
   zone_encadrement: z.boolean().optional(),
   encadrement_loyers: z.boolean().optional().nullable(),
-  loyer_reference_majoré: z.number().min(0, "Le loyer de référence doit être positif").optional().nullable(),
+  loyer_reference_majore: z.number().min(0, "Le loyer de référence doit être positif").optional().nullable(),
   complement_loyer: z.number().min(0, "Le complément ne peut pas être négatif").optional().nullable(),
   complement_justification: z.string().optional().nullable(),
 });
@@ -58,14 +58,14 @@ export const financialSchema = z.object({
 // Version partielle pour les mises à jour
 export const financialUpdateSchema = financialSchema.partial().refine(
   (data) => {
-    if (data.encadrement_loyers && data.loyer_reference_majoré === undefined) {
+    if (data.encadrement_loyers && data.loyer_reference_majore === undefined) {
       return false;
     }
     return true;
   },
   {
     message: "Le loyer de référence majoré est requis en cas d'encadrement.",
-    path: ["loyer_reference_majoré"],
+    path: ["loyer_reference_majore"],
   }
 );
 

@@ -11,19 +11,33 @@ export interface PropertyDetails {
   photos: PropertyPhoto[];
 }
 
-export async function fetchPropertyDetails(propertyId: string, ownerId: string): Promise<PropertyDetails | null> {
-  // Utiliser supabaseAdmin pour contourner RLS, MAIS on filtre par owner_id à la source
-  // C'est plus sécurisé que de vérifier après le fetch
+/**
+ * Récupère les détails d'une propriété pour la vue propriétaire.
+ *
+ * Accès autorisé pour :
+ *  - le propriétaire direct (`properties.owner_id = profileId`)
+ *  - les membres de l'entité légale liée à la property (SCI, EIRL, etc.)
+ *    via `entity_members.user_id = userId`
+ *
+ * @param propertyId UUID de la property
+ * @param profileId  profile.id du viewer (clé propriétaire historique)
+ * @param userId     auth.users.id du viewer — requis pour le check entity_members
+ *                   (rétro-compat : si non fourni, seul le check owner direct s'applique)
+ */
+export async function fetchPropertyDetails(
+  propertyId: string,
+  profileId: string,
+  userId?: string,
+): Promise<PropertyDetails | null> {
   const { supabaseAdmin } = await import("@/app/api/_lib/supabase");
   const supabase = supabaseAdmin();
 
-  // SÉCURITÉ: Filtrer par owner_id directement dans la query
-  // Cela garantit qu'on ne récupère JAMAIS de données non autorisées
+  // Récupération sans filtre owner_id : on contrôle l'accès après pour pouvoir
+  // autoriser les membres SCI/entity_members qui ne sont pas owner direct.
   const { data: property, error: propertyError } = await supabase
     .from("properties")
     .select("*")
     .eq("id", propertyId)
-    .eq("owner_id", ownerId) // ✅ Filtrage à la source - plus sécurisé
     .maybeSingle();
 
   if (propertyError) {
@@ -32,9 +46,26 @@ export async function fetchPropertyDetails(propertyId: string, ownerId: string):
   }
 
   if (!property) {
-    // Soit la propriété n'existe pas, soit l'owner_id ne correspond pas
-    // On ne distingue pas pour éviter l'énumération
-    console.warn(`[fetchPropertyDetails] Property not found or access denied: id=${propertyId}`);
+    console.warn(`[fetchPropertyDetails] Property not found: id=${propertyId}`);
+    return null;
+  }
+
+  // Vérification d'accès : owner direct OU membre de l'entité légale.
+  const isOwner = (property as { owner_id?: string | null }).owner_id === profileId;
+  let isEntityMember = false;
+  const legalEntityId = (property as { legal_entity_id?: string | null }).legal_entity_id;
+  if (!isOwner && userId && legalEntityId) {
+    const { data: membership } = await supabase
+      .from("entity_members")
+      .select("id")
+      .eq("entity_id", legalEntityId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    isEntityMember = !!membership;
+  }
+
+  if (!isOwner && !isEntityMember) {
+    console.warn(`[fetchPropertyDetails] Access denied: id=${propertyId}, profileId=${profileId}`);
     return null;
   }
 

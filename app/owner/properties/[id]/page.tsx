@@ -7,9 +7,10 @@ import { fetchPropertyDetails } from "../../_data/fetchPropertyDetails";
 import { PropertyDetailsClient } from "./PropertyDetailsClient";
 import type { Metadata, ResolvingMetadata } from "next";
 
-// ISR: Revalidate every hour (property data doesn't change frequently)
-// On-demand revalidation can be triggered via API on property update
-export const revalidate = 3600;
+// Pas d'ISR : la page est dynamique côté propriétaire (édition + photos en
+// temps réel). Le cache 1h cassait l'affichage des photos / champs juste après
+// sauvegarde. La révalidation est déclenchée explicitement par router.refresh().
+export const revalidate = 0;
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -69,7 +70,7 @@ export default async function OwnerPropertyDetailPage({ params }: PageProps) {
 
   // 3. Charger les détails de la propriété via la RPC
   try {
-    const details = await fetchPropertyDetails(id, profile.id);
+    const details = await fetchPropertyDetails(id, profile.id, user.id);
 
     if (!details) {
       return (

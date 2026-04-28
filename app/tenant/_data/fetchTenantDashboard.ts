@@ -489,10 +489,26 @@ async function fetchTenantDashboardDirect(
     edlSignedEntryData.map((e) => e.property_id).filter(Boolean)
   );
 
-  // Index des propriétés par ID
+  // Enrichir chaque property avec sa cover_url (calculée depuis la table photos
+  // — pas de colonne `cover_url` sur properties, c'est l'URL de la photo
+  // marquée is_main, fallback ordre 0).
+  let coverUrlMap = new Map<string, string | null>();
+  if (propertyIds.length > 0) {
+    try {
+      const { fetchPropertyCoverUrls } = await import("@/lib/properties/cover-url");
+      coverUrlMap = await fetchPropertyCoverUrls(supabase, propertyIds);
+    } catch (coverErr) {
+      console.warn("[fetchTenantDashboard] cover_url enrichment failed (non-blocking):", coverErr);
+    }
+  }
+
+  // Index des propriétés par ID (avec cover_url injectée)
   const propertyMap = new Map<string, PropertyRecord>();
   for (const p of propertiesData) {
-    propertyMap.set(p.id, p);
+    propertyMap.set(p.id, {
+      ...p,
+      cover_url: coverUrlMap.get(p.id) ?? null,
+    } as PropertyRecord);
   }
 
   // Index des propriétaires par property_id

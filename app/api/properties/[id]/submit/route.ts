@@ -78,7 +78,7 @@ export async function POST(
           charges_mensuelles,
           depot_garantie,
           zone_encadrement,
-          loyer_reference_majoré,
+          loyer_reference_majore,
           complement_loyer,
           complement_justification,
           dpe_classe_energie,
@@ -243,7 +243,7 @@ export async function POST(
     }
 
     if (!isImmeuble && propertyData.zone_encadrement) {
-      if (propertyData.loyer_reference_majoré === null) {
+      if (propertyData.loyer_reference_majore === null) {
         return NextResponse.json(
           {
             error:
@@ -253,7 +253,7 @@ export async function POST(
         );
       }
       const plafond =
-        (propertyData.loyer_reference_majoré ?? 0) + (propertyData.complement_loyer ?? 0);
+        (propertyData.loyer_reference_majore ?? 0) + (propertyData.complement_loyer ?? 0);
       if (loyerHC > plafond + 0.01) {
         return NextResponse.json(
           {

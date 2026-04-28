@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import Image from "next/image";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
@@ -14,7 +16,7 @@ import {
   Eye,
   CheckCircle,
   XCircle,
-  Filter,
+  Loader2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,87 +37,40 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-// Données de démonstration
-const mockProperties = [
-  {
-    id: "1",
-    adresse: "15 Rue Victor Hugo",
-    ville: "Paris 75011",
-    type: "appartement",
-    surface: 65,
-    pieces: 3,
-    loyer: 1450,
-    status: "occupied",
-    owner: "Jean Dupont",
-    tenant: "Sophie Bernard",
-  },
-  {
-    id: "2",
-    adresse: "8 Avenue de la République",
-    ville: "Lyon 69003",
-    type: "studio",
-    surface: 28,
-    pieces: 1,
-    loyer: 650,
-    status: "occupied",
-    owner: "Marie Martin",
-    tenant: "Lucas Petit",
-  },
-  {
-    id: "3",
-    adresse: "42 Boulevard Gambetta",
-    ville: "Marseille 13001",
-    type: "appartement",
-    surface: 85,
-    pieces: 4,
-    loyer: 1100,
-    status: "occupied",
-    owner: "SCI Les Oliviers",
-    tenant: "Emma Durand",
-  },
-  {
-    id: "4",
-    adresse: "3 Rue des Lilas",
-    ville: "Bordeaux 33000",
-    type: "maison",
-    surface: 120,
-    pieces: 5,
-    loyer: 1800,
-    status: "vacant",
-    owner: "Pierre Lefebvre",
-    tenant: null,
-  },
-  {
-    id: "5",
-    adresse: "27 Place du Marché",
-    ville: "Toulouse 31000",
-    type: "appartement",
-    surface: 45,
-    pieces: 2,
-    loyer: 750,
-    status: "occupied",
-    owner: "Marie Martin",
-    tenant: "Marc Dubois",
-  },
-  {
-    id: "6",
-    adresse: "12 Impasse des Roses",
-    ville: "Nice 06000",
-    type: "studio",
-    surface: 22,
-    pieces: 1,
-    loyer: 580,
-    status: "vacant",
-    owner: "SCI Les Oliviers",
-    tenant: null,
-  },
-];
+interface AgencyProperty {
+  id: string;
+  type: string | null;
+  adresse_complete: string | null;
+  ville: string | null;
+  code_postal: string | null;
+  surface: number | null;
+  nb_pieces: number | null;
+  loyer_hc: number | null;
+  charges_mensuelles: number | null;
+  cover_url: string | null;
+  owner: { id: string; prenom: string | null; nom: string | null } | null;
+  active_lease: { id: string; loyer: number; statut: string } | null;
+}
 
-const typeLabels = {
+interface AgencyPropertiesResponse {
+  properties: AgencyProperty[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+const typeLabels: Record<string, string> = {
   appartement: "Appartement",
   maison: "Maison",
   studio: "Studio",
   colocation: "Colocation",
+  parking: "Parking",
+  box: "Box",
+  local_commercial: "Local commercial",
+  bureaux: "Bureaux",
+  entrepot: "Entrepôt",
+  fonds_de_commerce: "Fonds de commerce",
+  immeuble: "Immeuble",
 };
 
 export default function AgencyPropertiesPage() {
@@ -123,22 +78,56 @@ export default function AgencyPropertiesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
 
-  const filteredProperties = mockProperties.filter((property) => {
-    const matchesSearch =
-      property.adresse.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      property.ville.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      property.owner.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || property.status === statusFilter;
-    const matchesType = typeFilter === "all" || property.type === typeFilter;
-    return matchesSearch && matchesStatus && matchesType;
+  const { data, isLoading, error } = useQuery<AgencyPropertiesResponse>({
+    queryKey: ["agency", "properties"],
+    queryFn: async () => {
+      const res = await fetch("/api/agency/properties?limit=100", {
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        throw new Error(payload.error || "Erreur lors du chargement des biens");
+      }
+      return res.json();
+    },
   });
 
-  const stats = {
-    total: mockProperties.length,
-    occupied: mockProperties.filter((p) => p.status === "occupied").length,
-    vacant: mockProperties.filter((p) => p.status === "vacant").length,
-    totalLoyers: mockProperties.reduce((sum, p) => sum + p.loyer, 0),
-  };
+  const properties = data?.properties ?? [];
+
+  const filteredProperties = useMemo(() => {
+    return properties.filter((property) => {
+      const ownerName = `${property.owner?.prenom ?? ""} ${property.owner?.nom ?? ""}`.trim();
+      const matchesSearch =
+        !searchQuery ||
+        (property.adresse_complete ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (property.ville ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+        ownerName.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const isOccupied = !!property.active_lease;
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "occupied" && isOccupied) ||
+        (statusFilter === "vacant" && !isOccupied);
+
+      const matchesType = typeFilter === "all" || property.type === typeFilter;
+
+      return matchesSearch && matchesStatus && matchesType;
+    });
+  }, [properties, searchQuery, statusFilter, typeFilter]);
+
+  const stats = useMemo(() => {
+    const occupied = properties.filter((p) => !!p.active_lease).length;
+    const totalLoyers = properties.reduce(
+      (sum, p) => sum + (p.active_lease?.loyer ?? p.loyer_hc ?? 0),
+      0,
+    );
+    return {
+      total: properties.length,
+      occupied,
+      vacant: properties.length - occupied,
+      totalLoyers,
+    };
+  }, [properties]);
 
   return (
     <motion.div
@@ -238,101 +227,171 @@ export default function AgencyPropertiesPage() {
                 <SelectItem value="appartement">Appartement</SelectItem>
                 <SelectItem value="maison">Maison</SelectItem>
                 <SelectItem value="studio">Studio</SelectItem>
+                <SelectItem value="colocation">Colocation</SelectItem>
+                <SelectItem value="parking">Parking</SelectItem>
+                <SelectItem value="local_commercial">Local commercial</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </CardContent>
       </Card>
 
-      {/* Properties Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredProperties.map((property) => (
-          <motion.div
-            key={property.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm hover:shadow-lg transition-all duration-300 group overflow-hidden">
-              {/* Image placeholder */}
-              <div className="h-32 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center">
-                <Home className="w-12 h-12 text-slate-400" />
-              </div>
-              
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <Badge variant="outline" className="text-xs mb-2">
-                      {typeLabels[property.type as keyof typeof typeLabels]}
-                    </Badge>
-                    <h3 className="font-semibold">{property.adresse}</h3>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <MapPin className="w-3 h-3" />
-                      {property.ville}
-                    </div>
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Eye className="w-4 h-4 mr-2" />
-                        Voir le détail
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+      {/* Loading / Error / Empty states */}
+      {isLoading && (
+        <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
+          <CardContent className="py-16 flex flex-col items-center gap-3">
+            <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Chargement des biens gérés…</p>
+          </CardContent>
+        </Card>
+      )}
 
-                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
-                  {property.surface != null && <><span>{property.surface} m²</span><span>•</span></>}
-                  <span>{property.pieces} pièce{property.pieces > 1 ? "s" : ""}</span>
-                </div>
+      {error && !isLoading && (
+        <Card className="border-0 bg-red-50 dark:bg-red-950/20">
+          <CardContent className="py-8 text-center">
+            <p className="text-sm text-red-600 dark:text-red-400">
+              {error instanceof Error ? error.message : "Erreur inconnue"}
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
-                <div className="flex items-center justify-between pt-3 border-t">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Propriétaire</p>
-                    <p className="text-sm font-medium">{property.owner}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-indigo-600">{property.loyer}€</p>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-xs",
-                        property.status === "occupied" 
-                          ? "border-emerald-500 text-emerald-600 bg-emerald-50"
-                          : "border-amber-500 text-amber-600 bg-amber-50"
-                      )}
-                    >
-                      {property.status === "occupied" ? "Occupé" : "Vacant"}
-                    </Badge>
-                  </div>
-                </div>
-
-                {property.tenant && (
-                  <div className="mt-3 pt-3 border-t flex items-center gap-2 text-sm">
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Locataire:</span>
-                    <span className="font-medium">{property.tenant}</span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-
-      {filteredProperties.length === 0 && (
+      {!isLoading && !error && properties.length === 0 && (
         <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
           <CardContent className="py-12 text-center">
             <Building2 className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
-            <p className="text-muted-foreground">Aucun bien trouvé</p>
+            <p className="text-muted-foreground mb-2">Aucun bien sous mandat</p>
+            <p className="text-xs text-muted-foreground">
+              Ajoutez un mandat de gestion depuis la page Mandants pour voir les biens ici.
+            </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* Properties Grid */}
+      {!isLoading && !error && properties.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredProperties.map((property) => {
+            const isOccupied = !!property.active_lease;
+            const ownerName = `${property.owner?.prenom ?? ""} ${property.owner?.nom ?? ""}`.trim() || "—";
+            const loyer = property.active_lease?.loyer ?? property.loyer_hc ?? 0;
+            const typeLabel = typeLabels[property.type ?? ""] ?? property.type ?? "Bien";
+            const cityLine = [property.code_postal, property.ville].filter(Boolean).join(" ");
+
+            return (
+              <motion.div
+                key={property.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm hover:shadow-lg transition-all duration-300 group overflow-hidden">
+                  {/* Cover */}
+                  <div className="h-32 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center relative">
+                    {property.cover_url ? (
+                      <Image
+                        src={property.cover_url}
+                        alt={property.adresse_complete ?? "Bien"}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <Home className="w-12 h-12 text-slate-400" />
+                    )}
+                  </div>
+
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="min-w-0">
+                        <Badge variant="outline" className="text-xs mb-2">
+                          {typeLabel}
+                        </Badge>
+                        <h3 className="font-semibold truncate">
+                          {property.adresse_complete ?? "Adresse non renseignée"}
+                        </h3>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                          <MapPin className="w-3 h-3" />
+                          <span className="truncate">{cityLine || "—"}</span>
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <Link href={`/agency/properties/${property.id}`}>
+                              <Eye className="w-4 h-4 mr-2" />
+                              Voir le détail
+                            </Link>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                      {property.surface != null && (
+                        <>
+                          <span>{property.surface} m²</span>
+                          <span>•</span>
+                        </>
+                      )}
+                      {property.nb_pieces != null && (
+                        <span>
+                          {property.nb_pieces} pièce{property.nb_pieces > 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t">
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground">Propriétaire</p>
+                        <p className="text-sm font-medium truncate">{ownerName}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-indigo-600">
+                          {loyer.toLocaleString("fr-FR")}€
+                        </p>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-xs",
+                            isOccupied
+                              ? "border-emerald-500 text-emerald-600 bg-emerald-50"
+                              : "border-amber-500 text-amber-600 bg-amber-50",
+                          )}
+                        >
+                          {isOccupied ? "Occupé" : "Vacant"}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {isOccupied && (
+                      <div className="mt-3 pt-3 border-t flex items-center gap-2 text-sm">
+                        <Users className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Bail actif</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
+
+          {filteredProperties.length === 0 && (
+            <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm md:col-span-2 lg:col-span-3">
+              <CardContent className="py-12 text-center">
+                <Building2 className="w-12 h-12 mx-auto text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground">
+                  Aucun bien ne correspond à vos filtres.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       )}
     </motion.div>
   );
 }
-

@@ -144,7 +144,7 @@ export const ownerFinanceSchema = z.object({
 import { addressSchema, financialSchema, dpeSchema, permisLouerSchema } from "./schemas-shared";
 
 export const firstPropertySchema = addressSchema
-  .merge(financialSchema.pick({ charges_mensuelles: true, depot_garantie: true, zone_encadrement: true, loyer_reference_majoré: true, complement_loyer: true, complement_justification: true }))
+  .merge(financialSchema.pick({ charges_mensuelles: true, depot_garantie: true, zone_encadrement: true, loyer_reference_majore: true, complement_loyer: true, complement_justification: true }))
   .merge(dpeSchema)
   .merge(permisLouerSchema)
   .extend({

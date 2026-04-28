@@ -327,91 +327,134 @@ async function fetchPropertyMedia(
 
   // Limiter le nombre de propriétés pour éviter les timeouts (réduit à 20)
   const limitedPropertyIds = propertyIds.slice(0, 20);
-  
+
   try {
-    // Essayer d'abord avec la requête complète (timeout réduit à 2 secondes)
-    const primaryQuery = serviceClient
-      .from("documents")
-      .select("id, property_id, preview_url, storage_path, is_cover, position")
-      .in("property_id", limitedPropertyIds)
-      .eq("collection", "property_media")
-      .limit(100); // Limiter le nombre de résultats (réduit de 500 à 100)
+    // Sources de cover_url : table `photos` (canonique, alimentée par le wizard
+    // PhotosStep + le bouton "Modifier le bien") ET table `documents` collection
+    // `property_media` (legacy / galerie documents). On requête les deux en
+    // parallèle ; `photos` a la priorité quand elle a un résultat.
+    type AggRow = { property_id: string; cover_id: string | null; cover_url: string | null; count: number };
 
-    let mediaDocs: MediaDocument[] | null = null;
-    let mediaError: SupabaseError | null = null;
-
-    const attempt = await Promise.race([
-      primaryQuery,
-      new Promise<any>((resolve) => {
-        setTimeout(() => {
-          resolve({ data: null, error: { message: "Timeout" } });
-        }, 2000); // Timeout réduit à 2 secondes
-      })
+    const photosPromise = Promise.race([
+      serviceClient
+        .from("photos")
+        .select("id, property_id, url, is_main, ordre")
+        .in("property_id", limitedPropertyIds)
+        .order("is_main", { ascending: false })
+        .order("ordre", { ascending: true })
+        .limit(200),
+      new Promise<any>((resolve) => setTimeout(() => resolve({ data: null, error: { message: "Timeout" } }), 2000)),
     ]);
-    
-    mediaDocs = attempt.data;
-    mediaError = attempt.error;
 
+    const documentsPromise = Promise.race([
+      serviceClient
+        .from("documents")
+        .select("id, property_id, preview_url, storage_path, is_cover, position")
+        .in("property_id", limitedPropertyIds)
+        .eq("collection", "property_media")
+        .limit(100),
+      new Promise<any>((resolve) => setTimeout(() => resolve({ data: null, error: { message: "Timeout" } }), 2000)),
+    ]);
+
+    const [photosResult, documentsResult] = await Promise.all([photosPromise, documentsPromise]);
+
+    // 1) Aggregate photos table (canonique)
+    const photoAgg = new Map<string, AggRow>();
+    const photosData = photosResult?.data as Array<{ id: string; property_id: string; url: string | null; is_main: boolean | null; ordre: number | null }> | null;
+    if (photosData && Array.isArray(photosData)) {
+      for (const p of photosData) {
+        if (!p.property_id) continue;
+        const current = photoAgg.get(p.property_id) ?? {
+          property_id: p.property_id,
+          cover_id: null,
+          cover_url: null,
+          count: 0,
+        };
+        current.count += 1;
+        // L'ordre by is_main desc + ordre asc garantit que la première ligne
+        // est la cover désirée — on la prend une seule fois.
+        if (!current.cover_id) {
+          current.cover_id = p.id ?? null;
+          current.cover_url = p.url ?? null;
+        }
+        photoAgg.set(p.property_id, current);
+      }
+    } else if (photosResult?.error && photosResult.error.message !== "Timeout") {
+      createLogger("fetchPropertyMedia").warn("Photos query error (non-blocking)", { error: photosResult.error });
+    }
+
+    // 2) Aggregate documents fallback (legacy collection property_media)
+    const docAgg = new Map<string, AggRow>();
+    let mediaDocs = documentsResult?.data as MediaDocument[] | null;
+    let mediaError = documentsResult?.error as SupabaseError | null;
+
+    // Fallback colonnes manquantes (collection / position / is_cover) → relire sans
     if (mediaError) {
       const message = mediaError.message?.toLowerCase() ?? "";
       const missingColumn =
         message.includes("collection") ||
         message.includes("position") ||
-        message.includes("is_cover") ||
-        message.includes("timeout");
+        message.includes("is_cover");
 
-      if (!missingColumn && message !== "timeout") {
-        createLogger("fetchPropertyMedia").error("Error fetching property media", { mediaError });
-        return result;
-      }
-
-      // Fallback : requête simplifiée sans les colonnes optionnelles
-      try {
-        const fallback = await Promise.race([
-          serviceClient
-            .from("documents")
-            .select("id, property_id, preview_url, storage_path, created_at")
-            .in("property_id", limitedPropertyIds)
-            .limit(100), // Limiter à 100 résultats
-          new Promise<{ data: MediaDocument[] | null; error: SupabaseError | null }>((resolve) => {
-            setTimeout(() => {
-              resolve({ data: null, error: { message: "Timeout" } });
-            }, 2000); // Timeout réduit à 2 secondes
-          })
-        ]);
-
-        mediaDocs = fallback.data as MediaDocument[] | null;
-        mediaError = fallback.error;
-      } catch (fallbackError: unknown) {
-        createLogger("fetchPropertyMedia").error("Fallback query failed", { fallbackError });
-        return result;
+      if (missingColumn) {
+        try {
+          const fallback = await Promise.race([
+            serviceClient
+              .from("documents")
+              .select("id, property_id, preview_url, storage_path, created_at")
+              .in("property_id", limitedPropertyIds)
+              .limit(100),
+            new Promise<{ data: MediaDocument[] | null; error: SupabaseError | null }>((resolve) =>
+              setTimeout(() => resolve({ data: null, error: { message: "Timeout" } }), 2000)
+            ),
+          ]);
+          mediaDocs = fallback.data as MediaDocument[] | null;
+          mediaError = fallback.error;
+        } catch (fallbackError: unknown) {
+          createLogger("fetchPropertyMedia").warn("Documents fallback failed (non-blocking)", { fallbackError });
+        }
+      } else if (message !== "timeout") {
+        createLogger("fetchPropertyMedia").warn("Documents query error (non-blocking)", { mediaError });
       }
     }
 
-    if (mediaError || !mediaDocs) {
-      if (mediaError && mediaError.message !== "Timeout") {
-        createLogger("fetchPropertyMedia").error("Error fetching property media", { mediaError });
-      }
-      return result;
+    if (mediaDocs) {
+      mediaDocs.forEach((doc: MediaDocument) => {
+        if (!doc.property_id) return;
+        const current = docAgg.get(doc.property_id) ?? {
+          property_id: doc.property_id,
+          cover_id: null,
+          cover_url: null,
+          count: 0,
+        };
+        current.count += 1;
+        const isCover = doc.is_cover || (!current.cover_id && current.count === 1);
+        if (isCover) {
+          current.cover_id = doc.id ?? null;
+          current.cover_url = doc.preview_url ?? null;
+        }
+        docAgg.set(doc.property_id, current);
+      });
     }
 
-    mediaDocs.forEach((doc: MediaDocument) => {
-      if (!doc.property_id) return;
-      const current = result.get(doc.property_id) ?? {
-        cover_document_id: null,
-        cover_url: null,
-        documents_count: 0,
-      };
-
-      current.documents_count += 1;
-      const isCover = doc.is_cover || (!current.cover_document_id && current.documents_count === 1);
-      if (isCover) {
-        current.cover_document_id = doc.id ?? null;
-        current.cover_url = doc.preview_url ?? null;
+    // 3) Merge : `photos` prioritaire, fallback `documents` si vide pour un property_id
+    for (const propertyId of limitedPropertyIds) {
+      const fromPhotos = photoAgg.get(propertyId);
+      const fromDocs = docAgg.get(propertyId);
+      if (fromPhotos) {
+        result.set(propertyId, {
+          cover_document_id: fromPhotos.cover_id,
+          cover_url: fromPhotos.cover_url,
+          documents_count: fromPhotos.count + (fromDocs?.count ?? 0),
+        });
+      } else if (fromDocs) {
+        result.set(propertyId, {
+          cover_document_id: fromDocs.cover_id,
+          cover_url: fromDocs.cover_url,
+          documents_count: fromDocs.count,
+        });
       }
-
-      result.set(doc.property_id, current);
-    });
+    }
 
     return result;
   } catch (error: unknown) {

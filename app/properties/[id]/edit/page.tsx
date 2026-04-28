@@ -1,33 +1,41 @@
-"use client";
-// @ts-nocheck
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
-import { useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
 
 /**
- * Redirection vers la page de détails du bien
- * 
- * Route legacy : /properties/[id]/edit
- * Route canonique : /owner/properties/[id]
- * 
- * L'édition se fait maintenant directement sur la page de détails
+ * Route legacy /properties/[id]/edit — redirige vers la fiche role-aware.
+ * Pour owner : édition inline sur /owner/properties/[id].
+ * Pour admin : page d'édition dédiée /admin/properties/[id]/edit.
  */
-export default function LegacyEditPropertyPage() {
-  const router = useRouter();
-  const params = useParams();
+export default async function LegacyEditPropertyPage({ params }: PageProps) {
+  const { id } = await params;
 
-  useEffect(() => {
-    if (params.id && typeof params.id === "string") {
-      router.replace(`/owner/properties/${params.id}`);
-    }
-  }, [router, params.id]);
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto"></div>
-        <p className="text-muted-foreground">Redirection...</p>
-      </div>
-    </div>
-  );
+  if (!user) {
+    redirect(`/auth/signin?redirectTo=${encodeURIComponent(`/properties/${id}/edit`)}`);
+  }
+
+  const serviceClient = getServiceClient();
+  const { data: profile } = await serviceClient
+    .from("profiles")
+    .select("role")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  switch (profile?.role) {
+    case "admin":
+      redirect(`/admin/properties/${id}/edit`);
+    case "agency":
+      redirect(`/agency/properties/${id}`);
+    case "owner":
+      redirect(`/owner/properties/${id}`);
+    default:
+      redirect(`/dashboard`);
+  }
 }

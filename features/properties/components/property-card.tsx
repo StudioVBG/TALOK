@@ -323,7 +323,7 @@ export function PropertyCard({ property, onRefresh, onRemove }: PropertyCardProp
           </div>
           {isZoneEncadree && (
             <div className="mt-2 rounded-md border border-muted bg-muted/40 px-2 py-1 text-xs text-muted-foreground">
-              Encadrement : réf. {formatCurrency(property.loyer_reference_majoré ?? 0)}
+              Encadrement : réf. {formatCurrency(property.loyer_reference_majore ?? 0)}
               {property.complement_loyer !== null && (
                 <>
                   {" "}+ compl. {formatCurrency(property.complement_loyer ?? 0)}

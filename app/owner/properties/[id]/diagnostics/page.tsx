@@ -29,7 +29,7 @@ export default async function PropertyDiagnosticsPage({ params }: PageProps) {
 
   if (!profile || profile.role !== "owner") redirect("/dashboard");
 
-  const details = await fetchPropertyDetails(id, profile.id);
+  const details = await fetchPropertyDetails(id, profile.id, user.id);
   if (!details) return <div>Non trouvé</div>;
 
   const property = details.property;

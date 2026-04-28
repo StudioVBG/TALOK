@@ -1,31 +1,44 @@
-"use client";
-// @ts-nocheck
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
-import { useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
 
 /**
- * Redirection vers la route canonique de détail d'un logement
- * 
- * Route legacy : /properties/[id]
- * Route canonique : /owner/properties/[id]
+ * Route legacy /properties/[id] — redirige vers la route canonique correspondante
+ * au rôle de l'utilisateur. Avant : redirection aveugle vers /owner/properties/[id]
+ * qui produisait des 403 pour admin/agency/tenant.
  */
-export default function LegacyPropertyDetailPage() {
-  const router = useRouter();
-  const params = useParams();
+export default async function LegacyPropertyDetailPage({ params }: PageProps) {
+  const { id } = await params;
 
-  useEffect(() => {
-    if (params.id && typeof params.id === "string") {
-      router.replace(`/owner/properties/${params.id}`);
-    }
-  }, [router, params.id]);
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto"></div>
-        <p className="text-muted-foreground">Redirection...</p>
-      </div>
-    </div>
-  );
+  if (!user) {
+    redirect(`/auth/signin?redirectTo=${encodeURIComponent(`/properties/${id}`)}`);
+  }
+
+  const serviceClient = getServiceClient();
+  const { data: profile } = await serviceClient
+    .from("profiles")
+    .select("role")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  switch (profile?.role) {
+    case "admin":
+      redirect(`/admin/properties/${id}`);
+    case "agency":
+      redirect(`/agency/properties/${id}`);
+    case "owner":
+      redirect(`/owner/properties/${id}`);
+    case "tenant":
+      // Le locataire n'a pas de page de détail bien dédiée — il consulte son bail.
+      redirect(`/tenant/lease`);
+    default:
+      redirect(`/dashboard`);
+  }
 }

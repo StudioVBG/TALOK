@@ -368,22 +368,13 @@ export async function PATCH(
       delete updates[field];
     }
 
-    // Empêcher la suppression d'un digicode existant (seulement modification autorisée)
-    if ('digicode' in updates && (updates.digicode === null || updates.digicode === '')) {
-      const { data: currentProp } = await serviceClient
-        .from("properties")
-        .select("digicode")
-        .eq("id", propertyId)
-        .single();
-
-      if (currentProp?.digicode) {
-        throw new ApiError(400, "Le digicode ne peut pas être supprimé, seulement modifié");
-      }
+    // Normaliser digicode/interphone : "" → null (suppression explicite autorisée)
+    if ('digicode' in updates && updates.digicode === '') {
+      updates.digicode = null;
     }
-
-    // TODO: Réactiver après application de la migration 20251207231451_add_visite_virtuelle_url.sql
-    // Supprimer temporairement le champ visite_virtuelle_url car la colonne n'existe pas encore
-    delete updates.visite_virtuelle_url;
+    if ('interphone' in updates && updates.interphone === '') {
+      updates.interphone = null;
+    }
 
     // Mapping type_bien → type pour compatibilité (si type_bien est fourni mais pas type)
     if (Object.prototype.hasOwnProperty.call(validated, "type_bien") && !Object.prototype.hasOwnProperty.call(validated, "type")) {
@@ -470,6 +461,26 @@ export async function PATCH(
 }
 
 async function fetchSinglePropertyMedia(serviceClient: any, propertyId: string) {
+  // Source canonique : table `photos` (alimentée par PhotosStep + handleSaveAll).
+  // Fallback : table `documents` collection `property_media` (legacy).
+  const photosResult = await serviceClient
+    .from("photos")
+    .select("id, url, is_main, ordre")
+    .eq("property_id", propertyId)
+    .order("is_main", { ascending: false })
+    .order("ordre", { ascending: true });
+
+  const photosData = photosResult.data as Array<{ id: string; url: string | null }> | null;
+  if (photosData && photosData.length > 0) {
+    const cover = photosData[0];
+    return {
+      cover_document_id: cover?.id ?? null,
+      cover_url: cover?.url ?? null,
+      documents_count: photosData.length,
+    };
+  }
+
+  // Fallback : documents collection property_media
   const baseQuery = serviceClient
     .from("documents")
     .select("id, preview_url, storage_path, is_cover, position")

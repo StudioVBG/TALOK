@@ -146,8 +146,23 @@ export async function GET(request: NextRequest) {
       active_lease: leaseMap.get(property.id) || null,
     }));
 
+    // Enrichir avec cover_url (depuis table photos en priorité, fallback documents)
+    let propertiesWithCovers = propertiesWithLeases;
+    if (propertyIds.length > 0) {
+      try {
+        const { fetchPropertyCoverUrls } = await import("@/lib/properties/cover-url");
+        const coverMap = await fetchPropertyCoverUrls(supabase, propertyIds);
+        propertiesWithCovers = propertiesWithLeases.map((p: any) => ({
+          ...p,
+          cover_url: coverMap.get(p.id) ?? null,
+        }));
+      } catch (coverErr) {
+        console.warn("[agency properties] cover_url enrichment failed (non-blocking):", coverErr);
+      }
+    }
+
     return NextResponse.json({
-      properties: propertiesWithLeases,
+      properties: propertiesWithCovers,
       total: count || 0,
       page,
       limit,

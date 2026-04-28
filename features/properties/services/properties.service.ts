@@ -37,7 +37,7 @@ export interface CreatePropertyData {
   charges_mensuelles: number;
   depot_garantie: number;
   zone_encadrement?: boolean;
-  loyer_reference_majoré?: number | null;
+  loyer_reference_majore?: number | null;
   complement_loyer?: number | null;
   complement_justification?: string | null;
   dpe_classe_energie?: "A" | "B" | "C" | "D" | "E" | "F" | "G" | null;

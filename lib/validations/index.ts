@@ -291,7 +291,22 @@ const roomTypeEnum = z.enum([
   "box",
 ]);
 const roomEmitterEnum = z.enum(["radiateur", "plancher", "convecteur", "poele"]);
-const photoTagEnum = z.enum(["vue_generale", "plan", "detail", "exterieur"]);
+// Aligné avec la contrainte CHECK photos_tag_check (migration 202502150000_property_model_v3.sql)
+// Habitation : vue_generale, plan, detail, exterieur
+// Parking    : emplacement, acces, vue_generale
+// Local pro  : façade, interieur, vitrine, acces, autre
+const photoTagEnum = z.enum([
+  "vue_generale",
+  "plan",
+  "detail",
+  "exterieur",
+  "interieur",
+  "emplacement",
+  "acces",
+  "façade",
+  "vitrine",
+  "autre",
+]);
 
 // ============================================
 // EXPORTS DES SCHÉMAS PARTIELS RÉUTILISABLES
@@ -400,7 +415,7 @@ export const propertySchema = z
   charges_mensuelles: z.number().min(0, "Les charges doivent être positives"),
   depot_garantie: z.number().min(0, "Le dépôt de garantie doit être positif"),
   zone_encadrement: z.boolean().optional(),
-  loyer_reference_majoré: z.number().min(0, "Le loyer de référence doit être positif").optional().nullable(),
+  loyer_reference_majore: z.number().min(0, "Le loyer de référence doit être positif").optional().nullable(),
   complement_loyer: z.number().min(0, "Le complément ne peut pas être négatif").optional().nullable(),
   complement_justification: z.string().optional().nullable(),
   dpe_classe_energie: z.enum(["A","B","C","D","E","F","G","NC"]).optional().nullable(),
@@ -568,7 +583,7 @@ export const propertyGeneralUpdateSchema = z
     depot_garantie: z.number().min(0).optional().nullable(),
     encadrement_loyers: z.boolean().optional().nullable(),
     zone_encadrement: z.boolean().optional(),
-    loyer_reference_majoré: z.number().min(0).optional().nullable(),
+    loyer_reference_majore: z.number().min(0).optional().nullable(),
     complement_loyer: z.number().min(0).optional().nullable(),
     complement_justification: z.string().optional().nullable(),
     // Accès & Sécurité
@@ -580,14 +595,14 @@ export const propertyGeneralUpdateSchema = z
   })
   .refine(
     (data) => {
-      if (data.encadrement_loyers && data.loyer_reference_majoré === undefined) {
+      if (data.encadrement_loyers && data.loyer_reference_majore === undefined) {
         return false;
       }
       return true;
     },
     {
       message: "Le loyer de référence majoré est requis en cas d'encadrement.",
-      path: ["loyer_reference_majoré"],
+      path: ["loyer_reference_majore"],
     }
   );
 
