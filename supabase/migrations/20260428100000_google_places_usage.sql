@@ -27,9 +27,6 @@ CREATE TABLE IF NOT EXISTS public.google_places_usage (
 CREATE INDEX IF NOT EXISTS idx_google_places_usage_called_at
   ON public.google_places_usage (called_at DESC);
 
-CREATE INDEX IF NOT EXISTS idx_google_places_usage_month
-  ON public.google_places_usage (date_trunc('month', called_at));
-
 CREATE INDEX IF NOT EXISTS idx_google_places_usage_endpoint
   ON public.google_places_usage (endpoint, called_at DESC);
 
