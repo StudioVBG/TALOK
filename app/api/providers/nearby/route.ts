@@ -63,6 +63,8 @@ interface NearbyProvider {
   id: string;
   name: string;
   address: string;
+  latitude: number;
+  longitude: number;
   distance_km?: number;
   rating?: number;
   reviews_count?: number;
@@ -133,14 +135,6 @@ export async function GET(request: NextRequest) {
 
     // Vérifier la clé API Google
     const googleApiKey = process.env.GOOGLE_PLACES_API_KEY;
-    if (!googleApiKey) {
-      // Fallback : retourner des données de démonstration
-      return NextResponse.json({
-        providers: getDemoProviders(category),
-        source: "demo",
-        message: "Mode démonstration - Configurez GOOGLE_PLACES_API_KEY pour les vrais résultats",
-      });
-    }
 
     // Créer une clé de cache
     const cacheKey = `${category}-${lat.toFixed(2)}-${lng.toFixed(2)}-${radius}`;
@@ -155,18 +149,35 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Si on a une adresse mais pas de coordonnées, géocoder l'adresse
+    // Si on a une adresse mais pas de coordonnées, géocoder via Google (si dispo)
+    // ou via Nominatim (fallback gratuit OpenStreetMap)
     let latitude = lat;
     let longitude = lng;
 
     if ((!lat || !lng) && address) {
-      const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${googleApiKey}`;
-      const geocodeRes = await fetch(geocodeUrl);
-      const geocodeData = await geocodeRes.json();
+      if (googleApiKey) {
+        const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${googleApiKey}`;
+        const geocodeRes = await fetch(geocodeUrl);
+        const geocodeData = await geocodeRes.json();
 
-      if (geocodeData.results?.[0]?.geometry?.location) {
-        latitude = geocodeData.results[0].geometry.location.lat;
-        longitude = geocodeData.results[0].geometry.location.lng;
+        if (geocodeData.results?.[0]?.geometry?.location) {
+          latitude = geocodeData.results[0].geometry.location.lat;
+          longitude = geocodeData.results[0].geometry.location.lng;
+        }
+      } else {
+        // Fallback Nominatim
+        const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=fr&limit=1`;
+        const nominatimRes = await fetch(nominatimUrl, {
+          headers: {
+            "User-Agent": "Talok/1.0 (contact@talok.fr)",
+            "Accept-Language": "fr",
+          },
+        });
+        const nominatimData = await nominatimRes.json();
+        if (nominatimData?.[0]?.lat && nominatimData?.[0]?.lon) {
+          latitude = parseFloat(nominatimData[0].lat);
+          longitude = parseFloat(nominatimData[0].lon);
+        }
       }
     }
 
@@ -175,6 +186,16 @@ export async function GET(request: NextRequest) {
         { error: "Coordonnées ou adresse requises" },
         { status: 400 }
       );
+    }
+
+    // Sans clé API Google : retourner des données de démonstration centrées sur le bien
+    if (!googleApiKey) {
+      return NextResponse.json({
+        providers: getDemoProviders(category, latitude, longitude),
+        source: "demo",
+        search_location: { lat: latitude, lng: longitude },
+        message: "Mode démonstration - Configurez GOOGLE_PLACES_API_KEY pour les vrais résultats",
+      });
     }
 
     // Rechercher via Google Places API (Text Search)
@@ -187,8 +208,9 @@ export async function GET(request: NextRequest) {
     if (placesData.status !== "OK" && placesData.status !== "ZERO_RESULTS") {
       console.error("Google Places API error:", placesData.status, placesData.error_message);
       return NextResponse.json({
-        providers: getDemoProviders(category),
+        providers: getDemoProviders(category, latitude, longitude),
         source: "demo",
+        search_location: { lat: latitude, lng: longitude },
         error: "Erreur API Google, données de démonstration affichées",
       });
     }
@@ -209,6 +231,8 @@ export async function GET(request: NextRequest) {
           id: place.place_id,
           name: place.name,
           address: place.formatted_address || "",
+          latitude: place.geometry.location.lat,
+          longitude: place.geometry.location.lng,
           distance_km: Math.round(distance * 10) / 10,
           rating: place.rating,
           reviews_count: place.user_ratings_total,
@@ -262,13 +286,18 @@ function calculateDistance(
 }
 
 // Données de démonstration quand l'API n'est pas configurée
-function getDemoProviders(category: string): NearbyProvider[] {
+// Centrées autour de Fort-de-France (Martinique) à titre indicatif
+function getDemoProviders(category: string, centerLat = 14.6161, centerLng = -61.0588): NearbyProvider[] {
+  const offset = (km: number) => km / 111; // ~1° lat ≈ 111 km
+
   const demoData: Record<string, NearbyProvider[]> = {
     plomberie: [
       {
         id: "demo-1",
         name: "Plomberie Express",
         address: "12 rue du Commerce",
+        latitude: centerLat + offset(1.5),
+        longitude: centerLng + offset(0.8),
         distance_km: 2.3,
         rating: 4.7,
         reviews_count: 89,
@@ -281,6 +310,8 @@ function getDemoProviders(category: string): NearbyProvider[] {
         id: "demo-2",
         name: "SOS Plombier 972",
         address: "45 avenue des Caraïbes",
+        latitude: centerLat - offset(2.1),
+        longitude: centerLng + offset(1.7),
         distance_km: 4.1,
         rating: 4.5,
         reviews_count: 156,
@@ -295,6 +326,8 @@ function getDemoProviders(category: string): NearbyProvider[] {
         id: "demo-3",
         name: "Électricité Martinique",
         address: "8 boulevard du Général de Gaulle",
+        latitude: centerLat + offset(0.9),
+        longitude: centerLng - offset(1.2),
         distance_km: 1.8,
         rating: 4.9,
         reviews_count: 203,
@@ -309,6 +342,8 @@ function getDemoProviders(category: string): NearbyProvider[] {
         id: "demo-4",
         name: "Serrurier Antilles",
         address: "23 rue Victor Hugo",
+        latitude: centerLat - offset(1.8),
+        longitude: centerLng - offset(2.2),
         distance_km: 3.2,
         rating: 4.6,
         reviews_count: 78,
@@ -323,6 +358,8 @@ function getDemoProviders(category: string): NearbyProvider[] {
         id: "demo-5",
         name: "Multi-Services Pro",
         address: "15 rue de la Liberté",
+        latitude: centerLat + offset(1.2),
+        longitude: centerLng + offset(2.0),
         distance_km: 2.5,
         rating: 4.4,
         reviews_count: 112,

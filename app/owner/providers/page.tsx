@@ -48,6 +48,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { ProviderCard, ProviderCardCompact, type ProviderCardData } from '@/components/provider/provider-card';
+import { NearbyProvidersSearch } from '@/components/provider/nearby-providers-search';
 import { SERVICE_TYPE_LABELS, type ServiceType } from '@/lib/data/service-pricing-reference';
 import { PLANS, getRequiredPlanForFeature } from '@/lib/subscriptions/plans';
 
@@ -470,18 +471,23 @@ export default function ProvidersMarketplacePage() {
           ))}
         </div>
       ) : providers.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium">Aucun prestataire trouvé</h3>
-            <p className="text-muted-foreground mt-1">
-              Essayez de modifier vos critères de recherche
-            </p>
-            <Button variant="outline" className="mt-4" onClick={clearFilters}>
-              Réinitialiser les filtres
-            </Button>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <Card>
+            <CardContent className="py-8 text-center">
+              <Search className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+              <h3 className="text-lg font-medium">Aucun prestataire trouvé</h3>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Essayez de modifier vos critères de recherche, ou explorez les artisans à proximité ci-dessous.
+              </p>
+              <Button variant="outline" className="mt-4" onClick={clearFilters}>
+                Réinitialiser les filtres
+              </Button>
+            </CardContent>
+          </Card>
+          <NearbyProvidersSearch
+            initialCategory={filters.services[0] ?? 'autre'}
+          />
+        </div>
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {providers.map(provider => (
