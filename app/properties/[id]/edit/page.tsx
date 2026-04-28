@@ -1,33 +1,14 @@
-"use client";
-// @ts-nocheck
+import { redirect } from "next/navigation";
 
-import { useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
 
 /**
- * Redirection vers la page de détails du bien
- * 
- * Route legacy : /properties/[id]/edit
- * Route canonique : /owner/properties/[id]
- * 
- * L'édition se fait maintenant directement sur la page de détails
+ * Route legacy /properties/[id]/edit → 307 vers /owner/properties/[id].
+ * L'édition se fait inline sur la fiche du bien.
  */
-export default function LegacyEditPropertyPage() {
-  const router = useRouter();
-  const params = useParams();
-
-  useEffect(() => {
-    if (params.id && typeof params.id === "string") {
-      router.replace(`/owner/properties/${params.id}`);
-    }
-  }, [router, params.id]);
-
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto"></div>
-        <p className="text-muted-foreground">Redirection...</p>
-      </div>
-    </div>
-  );
+export default async function LegacyEditPropertyPage({ params }: PageProps) {
+  const { id } = await params;
+  redirect(`/owner/properties/${id}`);
 }

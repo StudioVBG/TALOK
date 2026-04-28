@@ -1,32 +1,14 @@
-"use client";
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import { redirect } from "next/navigation";
 
-import { useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+interface PageProps {
+  params: Promise<{ id: string }>;
+}
 
 /**
- * Redirection vers la page de détails du bien
- * 
- * L'édition se fait maintenant directement sur la page de détails
- * via le bouton "Modifier le bien"
+ * Redirection serveur 307 vers la fiche du bien (l'édition se fait inline via
+ * le bouton "Modifier le bien"). Pas de page d'édition séparée.
  */
-export default function EditPropertyPage() {
-  const router = useRouter();
-  const params = useParams();
-
-  useEffect(() => {
-    if (params.id && typeof params.id === "string") {
-      // Redirection vers la page de détails où l'édition est intégrée
-      router.replace(`/owner/properties/${params.id}`);
-    }
-  }, [router, params.id]);
-
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="text-center space-y-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto"></div>
-        <p className="text-muted-foreground">Redirection vers le bien...</p>
-      </div>
-    </div>
-  );
+export default async function EditPropertyPage({ params }: PageProps) {
+  const { id } = await params;
+  redirect(`/owner/properties/${id}`);
 }

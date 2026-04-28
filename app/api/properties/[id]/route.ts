@@ -461,6 +461,26 @@ export async function PATCH(
 }
 
 async function fetchSinglePropertyMedia(serviceClient: any, propertyId: string) {
+  // Source canonique : table `photos` (alimentée par PhotosStep + handleSaveAll).
+  // Fallback : table `documents` collection `property_media` (legacy).
+  const photosResult = await serviceClient
+    .from("photos")
+    .select("id, url, is_main, ordre")
+    .eq("property_id", propertyId)
+    .order("is_main", { ascending: false })
+    .order("ordre", { ascending: true });
+
+  const photosData = photosResult.data as Array<{ id: string; url: string | null }> | null;
+  if (photosData && photosData.length > 0) {
+    const cover = photosData[0];
+    return {
+      cover_document_id: cover?.id ?? null,
+      cover_url: cover?.url ?? null,
+      documents_count: photosData.length,
+    };
+  }
+
+  // Fallback : documents collection property_media
   const baseQuery = serviceClient
     .from("documents")
     .select("id, preview_url, storage_path, is_cover, position")

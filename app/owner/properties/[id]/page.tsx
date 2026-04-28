@@ -70,7 +70,7 @@ export default async function OwnerPropertyDetailPage({ params }: PageProps) {
 
   // 3. Charger les détails de la propriété via la RPC
   try {
-    const details = await fetchPropertyDetails(id, profile.id);
+    const details = await fetchPropertyDetails(id, profile.id, user.id);
 
     if (!details) {
       return (
