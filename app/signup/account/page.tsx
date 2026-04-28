@@ -12,6 +12,7 @@ import { authService } from "@/features/auth/services/auth.service";
 import { onboardingService } from "@/features/onboarding/services/onboarding.service";
 import { accountCreationSchema, consentsSchema, minimalProfileSchema } from "@/lib/validations/onboarding";
 import type { UserRole } from "@/lib/types";
+import { getInvitationRoleLabel, type InvitationRole } from "@/lib/invitations/role-mapper";
 import {
   Mail,
   Lock,
@@ -103,12 +104,38 @@ function AccountCreationContent() {
   const propertyCode = searchParams?.get("code") ?? null;
 
   const [draft, setDraft] = useState<AccountDraft>(INITIAL_DRAFT);
+  const [inviteInfo, setInviteInfo] = useState<{ email: string; role: InvitationRole } | null>(null);
 
   useEffect(() => {
     if (!role || !["owner", "tenant", "provider", "guarantor", "syndic", "agency"].includes(role)) {
       router.push("/signup/role");
     }
   }, [role, router]);
+
+  // Si un token d'invitation est présent, on charge l'invitation côté serveur
+  // pour : (1) afficher la bannière "rôle verrouillé", (2) pré-remplir l'email
+  // et le rendre non modifiable. La validation finale est faite côté API par
+  // /api/v1/auth/register qui force le rôle d'après la table `invitations`.
+  useEffect(() => {
+    if (!inviteToken) return;
+    let cancelled = false;
+    fetch(`/api/invitations/validate?token=${encodeURIComponent(inviteToken)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.valid && data.invitation?.email && data.invitation?.role) {
+          setInviteInfo({ email: data.invitation.email, role: data.invitation.role });
+          setDraft((prev) => ({
+            ...prev,
+            formData: { ...prev.formData, email: String(data.invitation.email).toLowerCase() },
+          }));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [inviteToken]);
 
   useEffect(() => {
     onboardingService.getDraft().then((saved) => {
@@ -292,6 +319,7 @@ function AccountCreationContent() {
           nom: minimalValidated.nom,
           telephone: minimalValidated.telephone || undefined,
           turnstileToken: turnstileToken || undefined,
+          inviteToken: inviteToken || undefined,
         });
 
         await autosave({
@@ -371,6 +399,36 @@ function AccountCreationContent() {
       }
     >
       <form onSubmit={handleSubmit} className="space-y-8 text-white">
+        {inviteInfo && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 160 }}
+            className="rounded-2xl border border-blue-400/30 bg-blue-500/10 p-4 text-sm text-slate-100"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex items-start gap-3">
+              <Lock className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-300" aria-hidden="true" />
+              <div className="space-y-1">
+                <p className="font-semibold text-white">
+                  Inscription par invitation
+                </p>
+                <p className="text-slate-200">
+                  Vous rejoignez Talok en tant que{" "}
+                  <span className="font-semibold text-white">
+                    {getInvitationRoleLabel(inviteInfo.role)}
+                  </span>
+                  . Le rôle et l'adresse email sont verrouillés par votre invitation.
+                </p>
+                <p className="text-xs text-slate-300">
+                  Email invité : <span className="font-mono text-slate-100">{inviteInfo.email}</span>
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -483,7 +541,15 @@ function AccountCreationContent() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">
+                Email
+                {inviteInfo && (
+                  <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-100">
+                    <Lock className="h-2.5 w-2.5" aria-hidden="true" />
+                    Verrouillé
+                  </span>
+                )}
+              </Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                 <Input
@@ -495,6 +561,8 @@ function AccountCreationContent() {
                   onChange={(e) => updateForm("email", e.target.value)}
                   required
                   disabled={loading}
+                  readOnly={!!inviteInfo}
+                  aria-readonly={!!inviteInfo}
                   className="bg-white pl-10 text-slate-900"
                 />
               </div>

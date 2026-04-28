@@ -9,6 +9,7 @@ import { RegisterSchema } from "@/lib/api/schemas";
 import { applyRateLimit } from "@/lib/security/rate-limit";
 import { verifyTurnstileToken } from "@/lib/security/turnstile";
 import { getAuthCallbackUrl } from "@/lib/utils/redirect-url";
+import { mapInvitationRoleToUserRole, type InvitationRole } from "@/lib/invitations/role-mapper";
 
 /**
  * POST /api/v1/auth/register
@@ -38,7 +39,50 @@ export async function POST(request: NextRequest) {
       email: data.email,
       role: data.role,
       has_telephone: !!data.telephone,
+      has_invite: !!data.inviteToken,
     });
+
+    // Verrouillage rôle via invitation : si un token est fourni, on lookup
+    // l'invitation côté serveur et on force le rôle final. Cela bloque les
+    // tentatives de détournement (ex: lien `garant` → signup `owner`).
+    if (data.inviteToken) {
+      const adminClient = supabaseAdmin();
+      const { data: invitation, error: invErr } = await adminClient
+        .from("invitations")
+        .select("id, email, role, expires_at, used_at")
+        .eq("token", data.inviteToken)
+        .maybeSingle();
+
+      if (invErr || !invitation) {
+        return apiError("Invitation introuvable", 404, "INVITE_NOT_FOUND");
+      }
+      if (invitation.used_at) {
+        return apiError("Cette invitation a déjà été utilisée.", 409, "INVITE_ALREADY_USED");
+      }
+      if (new Date(invitation.expires_at as string) < new Date()) {
+        return apiError("Cette invitation a expiré.", 410, "INVITE_EXPIRED");
+      }
+      if (String(invitation.email).toLowerCase().trim() !== data.email) {
+        return apiError(
+          "L'email saisi ne correspond pas à l'invitation.",
+          403,
+          "INVITE_EMAIL_MISMATCH"
+        );
+      }
+
+      const expectedRole = mapInvitationRoleToUserRole(invitation.role as InvitationRole);
+      if (expectedRole !== data.role) {
+        console.warn("[register] role override forced by invitation", {
+          email: data.email,
+          requested: data.role,
+          forced: expectedRole,
+          invitation_role: invitation.role,
+        });
+        // Verrouillage strict : on force le rôle au lieu d'accepter celui du
+        // client, qui peut avoir été manipulé via l'URL `?role=...`.
+        data.role = expectedRole;
+      }
+    }
 
     const supabase = await createClient();
 

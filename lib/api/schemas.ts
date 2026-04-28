@@ -31,6 +31,12 @@ export const RegisterSchema = z.object({
     ])
     .optional()
     .transform((val) => (val === "" || val === null ? undefined : val)),
+  inviteToken: z
+    .string()
+    .min(10, "Token d'invitation invalide")
+    .optional()
+    .nullable()
+    .transform((val) => (val ?? undefined)),
 });
 
 export const LoginSchema = z.object({

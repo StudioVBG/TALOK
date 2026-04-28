@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { mapInvitationRoleToUserRole, type InvitationRole } from "@/lib/invitations/role-mapper";
 import { z } from "zod";
 
 const acceptSchema = z.object({
@@ -211,6 +212,8 @@ export async function POST(request: Request) {
       }
     }
 
+    const applicativeRole = mapInvitationRoleToUserRole(invitation.role as InvitationRole);
+
     // 11. Audit log (user_id = auth user id, pas profile_id)
     try {
       await serviceClient.from("audit_log").insert({
@@ -221,6 +224,7 @@ export async function POST(request: Request) {
         metadata: {
           lease_id: invitation.lease_id,
           invitation_role: invitation.role,
+          applicative_role: applicativeRole,
           lease_linked: leaseLinked,
           email: invitationEmail,
         } as Record<string, unknown>,
@@ -233,7 +237,8 @@ export async function POST(request: Request) {
       success: true,
       lease_id: invitation.lease_id,
       lease_linked: leaseLinked,
-      role: invitation.role,
+      role: applicativeRole,
+      invitation_role: invitation.role,
       message: leaseLinked
         ? "Invitation acceptée. Vous êtes maintenant lié au bail."
         : "Invitation acceptée.",
