@@ -23,6 +23,10 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { quickQualityCheck, analyzeImageQuality, type ImageQualityIssue } from "@/lib/helpers/image-quality";
 
+const devLog = (...args: unknown[]) => {
+  if (process.env.NODE_ENV !== "production") console.log(...args);
+};
+
 interface CNIScannerProps {
   token: string;
   side: "recto" | "verso";
@@ -280,10 +284,10 @@ export function CNIScanner({ token, side, onSuccess, onSkip }: CNIScannerProps) 
         const tesseractModule = await import("tesseract.js");
         Tesseract = tesseractModule;
         loadMethod = "import";
-        console.log("[OCR] Module Tesseract chargé via import dynamique");
+        devLog("[OCR] Module Tesseract chargé via import dynamique");
       } catch (importError: any) {
         // Fallback : charger via CDN
-        console.log("[OCR] Import dynamique échoué:", importError?.message);
+        devLog("[OCR] Import dynamique échoué:", importError?.message);
         setOcrStatus("Chargement OCR (CDN)...");
         setOcrProgress(20);
         
@@ -295,7 +299,7 @@ export function CNIScanner({ token, side, onSuccess, onSkip }: CNIScannerProps) 
             ),
           ]);
           loadMethod = "cdn";
-          console.log("[OCR] Module Tesseract chargé via CDN");
+          devLog("[OCR] Module Tesseract chargé via CDN");
         } catch (cdnError: any) {
           console.error("[OCR] Échec chargement CDN:", cdnError?.message);
           throw new Error(`OCR non disponible: ${cdnError?.message || "Impossible de charger le moteur OCR"}`);
@@ -366,9 +370,9 @@ export function CNIScanner({ token, side, onSuccess, onSkip }: CNIScannerProps) 
       const confidence = (result?.data?.confidence || 0) / 100;
       
       const duration = Date.now() - startTime;
-      console.log(`[OCR Client] Analyse terminée en ${duration}ms via ${loadMethod}`);
-      console.log("[OCR Client] Confiance:", (confidence * 100).toFixed(1) + "%");
-      console.log("[OCR Client] Texte extrait:", text.substring(0, 300) + (text.length > 300 ? "..." : ""));
+      devLog(`[OCR Client] Analyse terminée en ${duration}ms via ${loadMethod}`);
+      devLog("[OCR Client] Confiance:", (confidence * 100).toFixed(1) + "%");
+      devLog("[OCR Client] Texte extrait:", text.substring(0, 300) + (text.length > 300 ? "..." : ""));
 
       // Vérifier si on a obtenu du texte exploitable
       if (!text || text.trim().length < 10) {
@@ -404,7 +408,7 @@ export function CNIScanner({ token, side, onSuccess, onSkip }: CNIScannerProps) 
     const normalizedText = text.toUpperCase().replace(/\s+/g, " ");
     const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
 
-    console.log("[OCR] Extraction depuis texte normalisé...");
+    devLog("[OCR] Extraction depuis texte normalisé...");
 
     // ============================================
     // EXTRACTION MRZ (Machine Readable Zone) - PRIORITAIRE
@@ -418,7 +422,7 @@ export function CNIScanner({ token, side, onSuccess, onSkip }: CNIScannerProps) 
     });
 
     if (mrzLines.length >= 2) {
-      console.log("[OCR] MRZ détectée, extraction prioritaire...");
+      devLog("[OCR] MRZ détectée, extraction prioritaire...");
       const mrzData = extractFromMRZ(mrzLines.slice(-2).join("\n")); // Prendre les 2 dernières lignes
       
       // Utiliser les données MRZ si extraites avec succès
@@ -564,7 +568,7 @@ export function CNIScanner({ token, side, onSuccess, onSkip }: CNIScannerProps) 
 
     // Log résultat
     const fieldsFound = Object.keys(result).filter(k => k !== "confidence" && result[k as keyof ExtractedIdData]);
-    console.log(`[OCR] ${fieldsFound.length} champs extraits:`, fieldsFound.join(", "));
+    devLog(`[OCR] ${fieldsFound.length} champs extraits:`, fieldsFound.join(", "));
 
     return result;
   };
@@ -583,15 +587,15 @@ export function CNIScanner({ token, side, onSuccess, onSkip }: CNIScannerProps) 
     const lines = cleaned.split("\n").filter(l => l.length >= 28);
     
     if (lines.length < 2) {
-      console.log("[MRZ] Format non reconnu (moins de 2 lignes valides)");
+      devLog("[MRZ] Format non reconnu (moins de 2 lignes valides)");
       return result;
     }
 
     const line1 = lines[0].padEnd(36, "<");
     const line2 = lines[1].padEnd(36, "<");
     
-    console.log("[MRZ] Ligne 1:", line1);
-    console.log("[MRZ] Ligne 2:", line2);
+    devLog("[MRZ] Ligne 1:", line1);
+    devLog("[MRZ] Ligne 2:", line2);
 
     try {
       // Ligne 1 : Nom et prénom
@@ -649,7 +653,7 @@ export function CNIScanner({ token, side, onSuccess, onSkip }: CNIScannerProps) 
         result.dateExpiration = parseMRZDate(expStr);
       }
 
-      console.log("[MRZ] Données extraites:", result);
+      devLog("[MRZ] Données extraites:", result);
     } catch (err) {
       console.warn("[MRZ] Erreur extraction:", err);
     }
@@ -733,7 +737,7 @@ export function CNIScanner({ token, side, onSuccess, onSkip }: CNIScannerProps) 
         ocrAttempted = true;
         
         // Log le résultat pour debug
-        console.log(`[CNI ${side}] OCR résultat:`, {
+        devLog(`[CNI ${side}] OCR résultat:`, {
           confidence: extractedData.confidence,
           nom: extractedData.nom,
           prenom: extractedData.prenom,

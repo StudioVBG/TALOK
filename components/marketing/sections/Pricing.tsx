@@ -136,7 +136,7 @@ export function Pricing() {
               <TiltCard
                 className={`flex h-full flex-col rounded-2xl border p-6 ${
                   plan.featured
-                    ? "border-2 border-primary bg-primary/5 shadow-lg shadow-primary/10"
+                    ? "border-2 border-blue-600 bg-blue-50 shadow-lg shadow-blue-600/10"
                     : "border-slate-200 bg-card shadow-sm"
                 }`}
               >
