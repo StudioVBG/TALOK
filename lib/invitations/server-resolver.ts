@@ -4,15 +4,21 @@ import {
   type InvitationRole,
 } from "@/lib/invitations/role-mapper";
 
-export type ResolvedInvitationSource = "lease" | "guarantor";
+export type ResolvedInvitationSource = "lease" | "guarantor" | "agency";
+
+export type AgencyRole = "directeur" | "gestionnaire" | "assistant" | "comptable";
 
 export type ResolvedInvitation = {
   source: ResolvedInvitationSource;
   id: string;
   email: string;
-  applicativeRole: "tenant" | "guarantor";
-  invitationRole: InvitationRole;
+  applicativeRole: "tenant" | "guarantor" | "agency";
+  invitationRole: InvitationRole | "agency";
   lease_id: string | null;
+  // Méta-données spécifiques au flow agence (présent uniquement quand source='agency')
+  agency_profile_id?: string;
+  agency_role?: AgencyRole;
+  can_sign_documents?: boolean;
 };
 
 export type ResolveInvitationError =
@@ -73,18 +79,53 @@ export async function resolveInvitationByToken(
     .eq("invitation_token", token)
     .maybeSingle();
 
-  if (!garInv) {
+  if (garInv) {
+    if (garInv.status === "accepted" || garInv.accepted_at) {
+      return { ok: false, error: { kind: "already_used" } };
+    }
+    if (garInv.status === "declined" || garInv.declined_at) {
+      return { ok: false, error: { kind: "declined" } };
+    }
+    if (
+      garInv.status === "expired" ||
+      (garInv.expires_at && new Date(garInv.expires_at as string) < new Date())
+    ) {
+      return { ok: false, error: { kind: "expired" } };
+    }
+
+    return {
+      ok: true,
+      invitation: {
+        source: "guarantor",
+        id: String(garInv.id),
+        email: String(garInv.guarantor_email).toLowerCase().trim(),
+        applicativeRole: "guarantor",
+        invitationRole: "garant",
+        lease_id: (garInv.lease_id as string | null) ?? null,
+      },
+    };
+  }
+
+  // Fallback : agency_invitations (collaborateurs d'agence)
+  const { data: agencyInv } = await adminClient
+    .from("agency_invitations")
+    .select("id, email, status, expires_at, accepted_at, declined_at, agency_profile_id, role_agence, can_sign_documents")
+    .eq("invitation_token", token)
+    .maybeSingle();
+
+  if (!agencyInv) {
     return { ok: false, error: { kind: "not_found" } };
   }
-  if (garInv.status === "accepted" || garInv.accepted_at) {
+  if (agencyInv.status === "accepted" || agencyInv.accepted_at) {
     return { ok: false, error: { kind: "already_used" } };
   }
-  if (garInv.status === "declined" || garInv.declined_at) {
+  if (agencyInv.status === "declined" || agencyInv.declined_at) {
     return { ok: false, error: { kind: "declined" } };
   }
   if (
-    garInv.status === "expired" ||
-    (garInv.expires_at && new Date(garInv.expires_at as string) < new Date())
+    agencyInv.status === "expired" ||
+    agencyInv.status === "cancelled" ||
+    (agencyInv.expires_at && new Date(agencyInv.expires_at as string) < new Date())
   ) {
     return { ok: false, error: { kind: "expired" } };
   }
@@ -92,12 +133,15 @@ export async function resolveInvitationByToken(
   return {
     ok: true,
     invitation: {
-      source: "guarantor",
-      id: String(garInv.id),
-      email: String(garInv.guarantor_email).toLowerCase().trim(),
-      applicativeRole: "guarantor",
-      invitationRole: "garant",
-      lease_id: (garInv.lease_id as string | null) ?? null,
+      source: "agency",
+      id: String(agencyInv.id),
+      email: String(agencyInv.email).toLowerCase().trim(),
+      applicativeRole: "agency",
+      invitationRole: "agency",
+      lease_id: null,
+      agency_profile_id: String(agencyInv.agency_profile_id),
+      agency_role: agencyInv.role_agence as AgencyRole,
+      can_sign_documents: !!agencyInv.can_sign_documents,
     },
   };
 }

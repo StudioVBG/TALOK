@@ -222,6 +222,46 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // Pour les invitations agence, créer la liaison agency_managers et
+      // marquer l'invitation acceptée. Le rôle granulaire (directeur,
+      // gestionnaire, etc.) est porté par agency_managers.role_agence,
+      // pas par profile.role qui reste 'agency'.
+      if (resolvedInvitation && resolvedInvitation.source === "agency") {
+        try {
+          const { data: manager } = await adminClient
+            .from("agency_managers")
+            .upsert(
+              {
+                agency_profile_id: resolvedInvitation.agency_profile_id!,
+                user_profile_id: profile.id,
+                role_agence: resolvedInvitation.agency_role ?? "gestionnaire",
+                can_sign_documents: resolvedInvitation.can_sign_documents ?? false,
+                is_active: true,
+              },
+              { onConflict: "agency_profile_id,user_profile_id" }
+            )
+            .select("id")
+            .maybeSingle();
+
+          await adminClient
+            .from("agency_invitations")
+            .update({
+              status: "accepted",
+              accepted_at: new Date().toISOString(),
+              accepted_profile_id: profile.id,
+              agency_manager_id: manager?.id ?? null,
+            })
+            .eq("id", resolvedInvitation.id)
+            .eq("status", "pending");
+        } catch (agencyLinkError) {
+          console.error("[register] agency_invitation accept failed:", {
+            invitation_id: resolvedInvitation.id,
+            error: agencyLinkError,
+          });
+          // Non bloquant : un endpoint d'acceptation post-login peut rejouer.
+        }
+      }
+
       // NOTE: l'email de confirmation est envoyé par Supabase (SMTP Resend configuré
       // au niveau du projet). Pas d'envoi manuel supplémentaire ici pour éviter le
       // double email à l'inscription. L'email de bienvenue/onboarding guidé peut être

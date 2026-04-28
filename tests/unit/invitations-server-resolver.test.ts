@@ -246,3 +246,111 @@ describe("resolveInvitationByToken — priorité d'interrogation", () => {
     }
   });
 });
+
+describe("resolveInvitationByToken — fallback agency_invitations", () => {
+  it("résout une invitation agence (status pending)", async () => {
+    const client = fakeClient({
+      invitations: null,
+      guarantor_invitations: null,
+      agency_invitations: {
+        id: "ai-1",
+        email: "Manager@Agency.fr",
+        status: "pending",
+        expires_at: inFuture,
+        accepted_at: null,
+        declined_at: null,
+        agency_profile_id: "agency-99",
+        role_agence: "gestionnaire",
+        can_sign_documents: true,
+      },
+    });
+    const result = await resolveInvitationByToken(client, "tok");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.invitation.source).toBe("agency");
+      expect(result.invitation.applicativeRole).toBe("agency");
+      expect(result.invitation.invitationRole).toBe("agency");
+      expect(result.invitation.email).toBe("manager@agency.fr");
+      expect(result.invitation.agency_profile_id).toBe("agency-99");
+      expect(result.invitation.agency_role).toBe("gestionnaire");
+      expect(result.invitation.can_sign_documents).toBe(true);
+    }
+  });
+
+  it("rejette already_used si status accepted", async () => {
+    const result = await resolveInvitationByToken(
+      fakeClient({
+        invitations: null,
+        guarantor_invitations: null,
+        agency_invitations: {
+          id: "ai-2",
+          email: "x@x.fr",
+          status: "accepted",
+          expires_at: inFuture,
+          accepted_at: new Date().toISOString(),
+          declined_at: null,
+          agency_profile_id: "agency-1",
+          role_agence: "directeur",
+          can_sign_documents: false,
+        },
+      }),
+      "tok"
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.kind).toBe("already_used");
+  });
+
+  it("rejette expired si status cancelled", async () => {
+    const result = await resolveInvitationByToken(
+      fakeClient({
+        invitations: null,
+        guarantor_invitations: null,
+        agency_invitations: {
+          id: "ai-3",
+          email: "x@x.fr",
+          status: "cancelled",
+          expires_at: inFuture,
+          accepted_at: null,
+          declined_at: null,
+          agency_profile_id: "agency-1",
+          role_agence: "assistant",
+          can_sign_documents: false,
+        },
+      }),
+      "tok"
+    );
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.kind).toBe("expired");
+  });
+
+  it("priorité guarantor_invitations > agency_invitations en cas de collision", async () => {
+    const client = fakeClient({
+      invitations: null,
+      guarantor_invitations: {
+        id: "gar",
+        guarantor_email: "x@x.fr",
+        status: "pending",
+        expires_at: inFuture,
+        accepted_at: null,
+        declined_at: null,
+        lease_id: null,
+      },
+      agency_invitations: {
+        id: "ag",
+        email: "x@x.fr",
+        status: "pending",
+        expires_at: inFuture,
+        accepted_at: null,
+        declined_at: null,
+        agency_profile_id: "agency-x",
+        role_agence: "comptable",
+        can_sign_documents: false,
+      },
+    });
+    const result = await resolveInvitationByToken(client, "tok");
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.invitation.source).toBe("guarantor");
+    }
+  });
+});
