@@ -14,9 +14,9 @@ import { requiresSurface, TYPES_WITHOUT_SURFACE, requiresRooms, TYPES_WITHOUT_RO
 // ──────────────────────────────────────────────────────────────────────────────
 // Strip-list partagé entre les handlers PATCH et PUT.
 // Ces colonnes apparaissent dans le wizard / payload UI mais n'existent PAS sur
-// la table `properties` — elles vivent ailleurs (table `buildings`, table
-// `property_listings`, ou nulle part). Les laisser passer dans l'UPDATE provoque
-// un échec Postgres "column ... does not exist".
+// la table `properties` — elles vivent ailleurs (table `buildings`).
+// Les laisser passer dans l'UPDATE provoque un échec Postgres "column ... does
+// not exist".
 // ──────────────────────────────────────────────────────────────────────────────
 const PROPERTY_BUILDING_ONLY_FIELDS = [
   'building_floors', 'building_units',
@@ -24,10 +24,11 @@ const PROPERTY_BUILDING_ONLY_FIELDS = [
   'has_local_velo', 'has_local_poubelles',
 ] as const;
 
-const PROPERTY_NON_DB_FIELDS = [
-  'mode_location', 'visibility', 'available_from', 'description',
-  'type_bien',
-] as const;
+// `type_bien` est l'alias V3 du wizard ; il est mappé sur la colonne réelle
+// `type` plus bas dans le handler. Les autres champs Publish (mode_location,
+// visibility, available_from, description) sont désormais persistés sur
+// `properties` depuis la migration 20260428055448_property_publish_columns.sql.
+const PROPERTY_NON_DB_FIELDS = ['type_bien'] as const;
 
 /**
  * GET /api/properties/[id] - Récupérer une propriété par ID
@@ -84,17 +85,20 @@ export async function GET(
     }
 
     // ✅ RÉCUPÉRATION: Récupérer la propriété avec ID validé
+    // Filtre `deleted_at IS NULL` : les biens soft-deleted ne doivent pas
+    // remonter ici (sinon ils restent visibles via lien direct ou cache).
     const { data: property, error: propertyError } = await serviceClient
       .from("properties")
       .select("*")
       .eq("id", propertyId)
+      .is("deleted_at", null)
       .maybeSingle();
 
     if (propertyError) {
       console.error(`[GET /api/properties/${propertyId}] Erreur lors de la récupération:`, propertyError);
       throw new ApiError(500, "Erreur lors de la récupération de la propriété", propertyError);
     }
-    
+
     if (!property) {
       throw new ApiError(404, "Propriété non trouvée", { propertyId });
     }
@@ -399,6 +403,15 @@ export async function PATCH(
       updates.surface = validated.surface_habitable_m2;
     }
 
+    // Mapping dpe_date → dpe_date_realisation : la colonne canonique en DB
+    // est `dpe_date_realisation` (migration 20260128000000). L'ancien alias
+    // `dpe_date` reste accepté en entrée mais est translaté avant l'UPDATE.
+    if (Object.prototype.hasOwnProperty.call(validated, "dpe_date")) {
+      const dpeDateValue = (validated as Record<string, unknown>).dpe_date;
+      updates.dpe_date_realisation = dpeDateValue === "" ? null : dpeDateValue;
+      delete updates.dpe_date;
+    }
+
     // DEBUG: Log les updates qui vont être appliqués
 
     // ✅ MISE À JOUR: Utiliser serviceClient pour la mise à jour pour éviter les problèmes RLS
@@ -625,10 +638,17 @@ export async function PUT(
       throw new ApiError(400, "Impossible de modifier un logement en cours de validation ou publié");
     }
 
-    // ✅ STRIP des colonnes fantômes (wizard / building / listings)
+    // ✅ STRIP des colonnes fantômes (wizard / building)
     const safeUpdate: Record<string, unknown> = { ...validated };
     for (const field of [...PROPERTY_BUILDING_ONLY_FIELDS, ...PROPERTY_NON_DB_FIELDS]) {
       delete safeUpdate[field];
+    }
+
+    // Mapping dpe_date → dpe_date_realisation (cf. PATCH ci-dessus)
+    if (Object.prototype.hasOwnProperty.call(validated, "dpe_date")) {
+      const dpeDateValue = (validated as Record<string, unknown>).dpe_date;
+      safeUpdate.dpe_date_realisation = dpeDateValue === "" ? null : dpeDateValue;
+      delete safeUpdate.dpe_date;
     }
 
     // ✅ MISE À JOUR: Mettre à jour la propriété

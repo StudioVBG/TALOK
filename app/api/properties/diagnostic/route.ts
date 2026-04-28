@@ -110,6 +110,7 @@ export async function GET(request: Request) {
       query = supabase
         .from("properties")
         .select("id, owner_id, type, adresse_complete, code_postal, ville, surface, nb_pieces, loyer_hc, created_at, etat")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
     } else if (profile.role === "owner") {
       queryDescription = `Owner query: properties where owner_id = ${profile.id}`;
@@ -117,6 +118,7 @@ export async function GET(request: Request) {
         .from("properties")
         .select("id, owner_id, type, adresse_complete, surface, nb_pieces, created_at")
         .eq("owner_id", profile.id)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
     } else {
       // Locataires : logique complexe
@@ -198,6 +200,7 @@ export async function GET(request: Request) {
         .from("properties")
         .select("id, owner_id, type, adresse_complete, code_postal, ville, surface, nb_pieces, loyer_hc, created_at, etat")
         .in("id", propertyIds)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
     }
 

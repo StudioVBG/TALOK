@@ -42,6 +42,8 @@ const propertyTypeV3Enum = z.enum([
   "entrepot",
   "fonds_de_commerce",
   "immeuble",          // SOTA 2026: Immeuble entier multi-lots
+  "terrain_agricole",  // SOTA 2026: Bail rural — terrain
+  "exploitation_agricole", // SOTA 2026: Bail rural — exploitation
 ]);
 
 const parkingTypeEnum = z.enum([

@@ -314,7 +314,7 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
       };
 
       // Champs texte communs
-      const textFields = ["adresse_complete", "code_postal", "ville", "visite_virtuelle_url"];
+      const textFields = ["adresse_complete", "complement_adresse", "code_postal", "ville", "visite_virtuelle_url"];
       for (const f of textFields) {
         if (editedValues[f] === undefined) continue;
         setIfChanged(f, editedValues[f] === "" ? null : editedValues[f]);
@@ -324,6 +324,27 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
       if (editedValues.loyer_hc !== undefined) setIfChanged("loyer_hc", toNumberOrNull(editedValues.loyer_hc));
       if (editedValues.charges_mensuelles !== undefined) setIfChanged("charges_mensuelles", toNumberOrNull(editedValues.charges_mensuelles));
       if (editedValues.depot_garantie !== undefined) setIfChanged("depot_garantie", toNumberOrNull(editedValues.depot_garantie));
+
+      // Encadrement des loyers (loi ALUR/ELAN) — applicable surtout en habitation
+      // mais on accepte les champs pour tous les types puisque la DB les supporte.
+      if (editedValues.zone_encadrement !== undefined) {
+        setIfChanged(
+          "zone_encadrement",
+          editedValues.zone_encadrement === "" ? null : editedValues.zone_encadrement
+        );
+      }
+      if (editedValues.loyer_reference_majore !== undefined) {
+        setIfChanged("loyer_reference_majore", toNumberOrNull(editedValues.loyer_reference_majore));
+      }
+      if (editedValues.complement_loyer !== undefined) {
+        setIfChanged("complement_loyer", toNumberOrNull(editedValues.complement_loyer));
+      }
+      if (editedValues.complement_justification !== undefined) {
+        setIfChanged(
+          "complement_justification",
+          editedValues.complement_justification === "" ? null : editedValues.complement_justification
+        );
+      }
 
       // Accès & Sécurité — "" → null pour autoriser la suppression
       if (editedValues.digicode !== undefined) {
@@ -336,6 +357,9 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
       // Champs spécifiques HABITATION
       if (isHabitation) {
         if (editedValues.surface !== undefined) setIfChanged("surface", toNumberOrNull(editedValues.surface));
+        if (editedValues.surface_carrez !== undefined) {
+          setIfChanged("surface_carrez", toNumberOrNull(editedValues.surface_carrez));
+        }
         if (editedValues.nb_pieces !== undefined) setIfChanged("nb_pieces", toIntOrNull(editedValues.nb_pieces));
         if (editedValues.nb_chambres !== undefined) setIfChanged("nb_chambres", toIntOrNull(editedValues.nb_chambres));
         if (editedValues.etage !== undefined) setIfChanged("etage", toIntOrNull(editedValues.etage));
@@ -349,6 +373,19 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
           if (editedValues[f] !== undefined) {
             setIfChanged(f, editedValues[f] === "" ? null : editedValues[f]);
           }
+        }
+        // Indicateurs DPE chiffrés — exigés à la soumission (cf. submit/route.ts:235-243)
+        if (editedValues.dpe_consommation !== undefined) {
+          setIfChanged("dpe_consommation", toNumberOrNull(editedValues.dpe_consommation));
+        }
+        if (editedValues.dpe_emissions !== undefined) {
+          setIfChanged("dpe_emissions", toNumberOrNull(editedValues.dpe_emissions));
+        }
+        if (editedValues.dpe_date_realisation !== undefined) {
+          setIfChanged(
+            "dpe_date_realisation",
+            editedValues.dpe_date_realisation === "" ? null : editedValues.dpe_date_realisation
+          );
         }
       }
 
@@ -1146,6 +1183,18 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
                         id="adresse_complete"
                         value={getValue("adresse_complete")}
                         onChange={(e) => handleFieldChange("adresse_complete", e.target.value)}
+                        className="mt-1 h-9"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="complement_adresse" className="text-xs">
+                        Complément d'adresse <span className="text-muted-foreground">(optionnel)</span>
+                      </Label>
+                      <Input
+                        id="complement_adresse"
+                        value={getValue("complement_adresse")}
+                        onChange={(e) => handleFieldChange("complement_adresse", e.target.value)}
+                        placeholder="Bâtiment B, 3e étage, escalier C…"
                         className="mt-1 h-9"
                       />
                     </div>
