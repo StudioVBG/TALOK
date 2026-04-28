@@ -11,9 +11,13 @@ import { createServiceRoleClient, createRouteHandlerClient } from "@/lib/supabas
 import { createGuarantorInvitationSchema } from "@/lib/validations/guarantor";
 import { sendEmail } from "@/lib/services/email-service";
 import { emailTemplates } from "@/lib/emails/templates";
+import { applyRateLimit } from "@/lib/security/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimitResponse = await applyRateLimit(request, "leaseInvite");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const supabase = await createRouteHandlerClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
