@@ -291,7 +291,22 @@ const roomTypeEnum = z.enum([
   "box",
 ]);
 const roomEmitterEnum = z.enum(["radiateur", "plancher", "convecteur", "poele"]);
-const photoTagEnum = z.enum(["vue_generale", "plan", "detail", "exterieur"]);
+// Aligné avec la contrainte CHECK photos_tag_check (migration 202502150000_property_model_v3.sql)
+// Habitation : vue_generale, plan, detail, exterieur
+// Parking    : emplacement, acces, vue_generale
+// Local pro  : façade, interieur, vitrine, acces, autre
+const photoTagEnum = z.enum([
+  "vue_generale",
+  "plan",
+  "detail",
+  "exterieur",
+  "interieur",
+  "emplacement",
+  "acces",
+  "façade",
+  "vitrine",
+  "autre",
+]);
 
 // ============================================
 // EXPORTS DES SCHÉMAS PARTIELS RÉUTILISABLES

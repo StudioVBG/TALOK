@@ -97,7 +97,18 @@ export type RoomType =
  * @deprecated Utiliser PhotoTagV3 depuis @/lib/types/property-v3
  * PhotoTagV3 ajoute "emplacement", "acces", "façade", "interieur", "vitrine", "autre"
  */
-export type PhotoTag = "vue_generale" | "plan" | "detail" | "exterieur" | null;
+export type PhotoTag =
+  | "vue_generale"
+  | "plan"
+  | "detail"
+  | "exterieur"
+  | "interieur"
+  | "emplacement"
+  | "acces"
+  | "façade"
+  | "vitrine"
+  | "autre"
+  | null;
 
 // Alias vers PhotoTagV3
 // (exporté plus bas dans EXPORTS V3)

@@ -368,22 +368,13 @@ export async function PATCH(
       delete updates[field];
     }
 
-    // Empêcher la suppression d'un digicode existant (seulement modification autorisée)
-    if ('digicode' in updates && (updates.digicode === null || updates.digicode === '')) {
-      const { data: currentProp } = await serviceClient
-        .from("properties")
-        .select("digicode")
-        .eq("id", propertyId)
-        .single();
-
-      if (currentProp?.digicode) {
-        throw new ApiError(400, "Le digicode ne peut pas être supprimé, seulement modifié");
-      }
+    // Normaliser digicode/interphone : "" → null (suppression explicite autorisée)
+    if ('digicode' in updates && updates.digicode === '') {
+      updates.digicode = null;
     }
-
-    // TODO: Réactiver après application de la migration 20251207231451_add_visite_virtuelle_url.sql
-    // Supprimer temporairement le champ visite_virtuelle_url car la colonne n'existe pas encore
-    delete updates.visite_virtuelle_url;
+    if ('interphone' in updates && updates.interphone === '') {
+      updates.interphone = null;
+    }
 
     // Mapping type_bien → type pour compatibilité (si type_bien est fourni mais pas type)
     if (Object.prototype.hasOwnProperty.call(validated, "type_bien") && !Object.prototype.hasOwnProperty.call(validated, "type")) {

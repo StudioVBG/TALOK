@@ -250,63 +250,12 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
   };
 
   // ========== GESTION DU MODE ÉDITION ==========
+  // Note : on N'INITIALISE PAS editedValues avec les valeurs de la property.
+  // getValue() tombe sur la valeur de property si la clé n'est pas dans editedValues.
+  // Conséquence : seuls les champs réellement modifiés par l'utilisateur sont
+  // envoyés au PATCH (évite d'écraser des champs non touchés).
   const handleStartEditing = () => {
-    const p = property as any;
-    setEditedValues({
-      // Adresse
-      adresse_complete: p.adresse_complete || "",
-      code_postal: p.code_postal || "",
-      ville: p.ville || "",
-      // Surface & Pièces
-      surface: p.surface || 0,
-      nb_pieces: p.nb_pieces || 0,
-      nb_chambres: p.nb_chambres || 0,
-      etage: p.etage ?? "",
-      ascenseur: p.ascenseur || false,
-      // Habitation
-      meuble: p.meuble || false,
-      dpe_classe_energie: p.dpe_classe_energie || "",
-      dpe_classe_climat: p.dpe_classe_climat || "",
-      chauffage_type: p.chauffage_type || "",
-      chauffage_energie: p.chauffage_energie || "",
-      eau_chaude_type: p.eau_chaude_type || "",
-      clim_presence: p.clim_presence || "aucune",
-      clim_type: p.clim_type || "",
-      // Extérieurs
-      has_balcon: p.has_balcon || false,
-      has_terrasse: p.has_terrasse || false,
-      has_jardin: p.has_jardin || false,
-      has_cave: p.has_cave || false,
-      // Parking
-      parking_type: p.parking_type || "",
-      parking_numero: p.parking_numero || "",
-      parking_niveau: p.parking_niveau || "",
-      parking_gabarit: p.parking_gabarit || "",
-      parking_acces: p.parking_acces || [],
-      parking_portail_securise: p.parking_portail_securise || false,
-      parking_video_surveillance: p.parking_video_surveillance || false,
-      parking_gardien: p.parking_gardien || false,
-      // Local Pro
-      local_type: p.local_type || "",
-      local_surface_totale: p.local_surface_totale || p.surface || 0,
-      local_has_vitrine: p.local_has_vitrine || false,
-      local_access_pmr: p.local_access_pmr || false,
-      local_clim: p.local_clim || false,
-      local_fibre: p.local_fibre || false,
-      local_alarme: p.local_alarme || false,
-      local_rideau_metal: p.local_rideau_metal || false,
-      local_acces_camion: p.local_acces_camion || false,
-      local_parking_clients: p.local_parking_clients || false,
-      // Financier
-      loyer_hc: p.loyer_hc || 0,
-      charges_mensuelles: p.charges_mensuelles ?? 0,
-      depot_garantie: p.depot_garantie || 0,
-      // Accès & Sécurité
-      digicode: p.digicode || "",
-      interphone: p.interphone || "",
-      // Visite virtuelle (Matterport, Nodalview, etc.)
-      visite_virtuelle_url: p.visite_virtuelle_url || "",
-    });
+    setEditedValues({});
     setPendingPhotos([]);
     setPendingPhotoUrls([]);
     setPhotosToDelete([]);
@@ -327,116 +276,117 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
   const handleSaveAll = async () => {
     setIsSaving(true);
     try {
-      // Construire le payload avec tous les champs modifiés
+      // Construire le payload — diff vs property initial pour n'envoyer QUE les
+      // champs réellement modifiés (évite d'écraser le loyer à 0, le DPE à null,
+      // un switch à false, etc., quand l'utilisateur n'y a pas touché).
       const propertyType = property.type || "";
       const isParking = ["parking", "box"].includes(propertyType);
       const isPro = ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"].includes(propertyType);
       const isHabitation = ["appartement", "maison", "studio", "colocation", "saisonnier"].includes(propertyType);
 
-      // Payload de base (commun à tous les types)
-      // Ne inclure que les champs qui ont été modifiés (présents dans editedValues)
-      const payload: Record<string, any> = {};
-      
-      if (editedValues.adresse_complete !== undefined) {
-        payload.adresse_complete = editedValues.adresse_complete;
-      }
-      if (editedValues.code_postal !== undefined) {
-        payload.code_postal = editedValues.code_postal;
-      }
-      if (editedValues.ville !== undefined) {
-        payload.ville = editedValues.ville;
-      }
-      if (editedValues.loyer_hc !== undefined) {
-        payload.loyer_hc = parseFloat(editedValues.loyer_hc) || 0;
-      }
-      if (editedValues.charges_mensuelles !== undefined) {
-        payload.charges_mensuelles = parseFloat(editedValues.charges_mensuelles) || 0;
-      }
-      if (editedValues.depot_garantie !== undefined) {
-        payload.depot_garantie = parseFloat(editedValues.depot_garantie) || 0;
-      }
-      if (editedValues.visite_virtuelle_url !== undefined) {
-        payload.visite_virtuelle_url = editedValues.visite_virtuelle_url || null;
+      const initial = property as Record<string, unknown>;
+      const payload: Record<string, unknown> = {};
+
+      const toNumberOrNull = (v: unknown): number | null => {
+        if (v === "" || v === null || v === undefined) return null;
+        const n = typeof v === "number" ? v : parseFloat(String(v));
+        return Number.isFinite(n) ? n : null;
+      };
+      const toIntOrNull = (v: unknown): number | null => {
+        if (v === "" || v === null || v === undefined) return null;
+        const n = typeof v === "number" ? v : parseInt(String(v).trim(), 10);
+        return Number.isFinite(n) ? n : null;
+      };
+      const sameValue = (a: unknown, b: unknown) => {
+        // null/undefined/'' considérés comme équivalents (évite faux diff)
+        const norm = (x: unknown) => (x === undefined || x === "" ? null : x);
+        return norm(a) === norm(b);
+      };
+      const setIfChanged = (key: string, value: unknown) => {
+        if (sameValue(initial[key], value)) return;
+        payload[key] = value;
+      };
+
+      // Champs texte communs
+      const textFields = ["adresse_complete", "code_postal", "ville", "visite_virtuelle_url"];
+      for (const f of textFields) {
+        if (editedValues[f] === undefined) continue;
+        setIfChanged(f, editedValues[f] === "" ? null : editedValues[f]);
       }
 
-      // Accès & Sécurité (commun à tous les types)
-      // Ne pas envoyer null/vide — le digicode ne peut pas être supprimé une fois renseigné
-      if (editedValues.digicode !== undefined && editedValues.digicode !== "") {
-        payload.digicode = editedValues.digicode;
+      // Financier (si présents dans le formulaire)
+      if (editedValues.loyer_hc !== undefined) setIfChanged("loyer_hc", toNumberOrNull(editedValues.loyer_hc));
+      if (editedValues.charges_mensuelles !== undefined) setIfChanged("charges_mensuelles", toNumberOrNull(editedValues.charges_mensuelles));
+      if (editedValues.depot_garantie !== undefined) setIfChanged("depot_garantie", toNumberOrNull(editedValues.depot_garantie));
+
+      // Accès & Sécurité — "" → null pour autoriser la suppression
+      if (editedValues.digicode !== undefined) {
+        setIfChanged("digicode", editedValues.digicode === "" ? null : editedValues.digicode);
       }
-      if (editedValues.interphone !== undefined && editedValues.interphone !== "") {
-        payload.interphone = editedValues.interphone;
+      if (editedValues.interphone !== undefined) {
+        setIfChanged("interphone", editedValues.interphone === "" ? null : editedValues.interphone);
       }
 
       // Champs spécifiques HABITATION
       if (isHabitation) {
-        Object.assign(payload, {
-          surface: parseFloat(editedValues.surface) || 0,
-          nb_pieces: parseInt(editedValues.nb_pieces, 10) || 0,
-          nb_chambres: parseInt(editedValues.nb_chambres, 10) || 0,
-          etage: editedValues.etage !== "" && String(editedValues.etage).trim() !== "" ? parseInt(String(editedValues.etage).trim(), 10) : null,
-          ascenseur: editedValues.ascenseur || false,
-          meuble: editedValues.meuble || false,
-          dpe_classe_energie: editedValues.dpe_classe_energie || null,
-          dpe_classe_climat: editedValues.dpe_classe_climat || null,
-          chauffage_type: editedValues.chauffage_type || null,
-          chauffage_energie: editedValues.chauffage_energie || null,
-          eau_chaude_type: editedValues.eau_chaude_type || null,
-          clim_presence: editedValues.clim_presence || null,
-          clim_type: editedValues.clim_type || null,
-          has_balcon: editedValues.has_balcon || false,
-          has_terrasse: editedValues.has_terrasse || false,
-          has_jardin: editedValues.has_jardin || false,
-          has_cave: editedValues.has_cave || false,
-        });
+        if (editedValues.surface !== undefined) setIfChanged("surface", toNumberOrNull(editedValues.surface));
+        if (editedValues.nb_pieces !== undefined) setIfChanged("nb_pieces", toIntOrNull(editedValues.nb_pieces));
+        if (editedValues.nb_chambres !== undefined) setIfChanged("nb_chambres", toIntOrNull(editedValues.nb_chambres));
+        if (editedValues.etage !== undefined) setIfChanged("etage", toIntOrNull(editedValues.etage));
+
+        const habBools = ["ascenseur", "meuble", "has_balcon", "has_terrasse", "has_jardin", "has_cave"];
+        for (const f of habBools) {
+          if (editedValues[f] !== undefined) setIfChanged(f, Boolean(editedValues[f]));
+        }
+        const habEnums = ["dpe_classe_energie", "dpe_classe_climat", "chauffage_type", "chauffage_energie", "eau_chaude_type", "clim_presence", "clim_type"];
+        for (const f of habEnums) {
+          if (editedValues[f] !== undefined) {
+            setIfChanged(f, editedValues[f] === "" ? null : editedValues[f]);
+          }
+        }
       }
 
       // Champs spécifiques PARKING
       if (isParking) {
-        Object.assign(payload, {
-          surface: parseFloat(editedValues.surface) || null,
-          parking_type: editedValues.parking_type || null,
-          parking_numero: editedValues.parking_numero || null,
-          parking_niveau: editedValues.parking_niveau || null,
-          parking_gabarit: editedValues.parking_gabarit || null,
-          parking_acces: editedValues.parking_acces || [],
-          parking_portail_securise: editedValues.parking_portail_securise || false,
-          parking_video_surveillance: editedValues.parking_video_surveillance || false,
-          parking_gardien: editedValues.parking_gardien || false,
-        });
+        if (editedValues.surface !== undefined) setIfChanged("surface", toNumberOrNull(editedValues.surface));
+        const parkingTexts = ["parking_type", "parking_numero", "parking_niveau", "parking_gabarit"];
+        for (const f of parkingTexts) {
+          if (editedValues[f] !== undefined) {
+            setIfChanged(f, editedValues[f] === "" ? null : editedValues[f]);
+          }
+        }
+        const parkingBools = ["parking_portail_securise", "parking_video_surveillance", "parking_gardien"];
+        for (const f of parkingBools) {
+          if (editedValues[f] !== undefined) setIfChanged(f, Boolean(editedValues[f]));
+        }
+        // parking_acces : tableau d'enums — n'envoyer que si l'utilisateur l'a explicitement modifié
+        if (editedValues.parking_acces !== undefined && Array.isArray(editedValues.parking_acces)) {
+          setIfChanged("parking_acces", editedValues.parking_acces);
+        }
       }
 
       // Champs spécifiques LOCAL PRO
       if (isPro) {
-        Object.assign(payload, {
-          surface: parseFloat(editedValues.surface) || parseFloat(editedValues.local_surface_totale) || 0,
-          local_surface_totale: parseFloat(editedValues.local_surface_totale) || parseFloat(editedValues.surface) || 0,
-          etage: editedValues.etage !== "" && String(editedValues.etage).trim() !== "" ? parseInt(String(editedValues.etage).trim(), 10) : null,
-          local_type: editedValues.local_type || null,
-          local_has_vitrine: editedValues.local_has_vitrine || false,
-          local_access_pmr: editedValues.local_access_pmr || false,
-          local_clim: editedValues.local_clim || false,
-          local_fibre: editedValues.local_fibre || false,
-          local_alarme: editedValues.local_alarme || false,
-          local_rideau_metal: editedValues.local_rideau_metal || false,
-          local_acces_camion: editedValues.local_acces_camion || false,
-          local_parking_clients: editedValues.local_parking_clients || false,
-        });
+        if (editedValues.surface !== undefined) setIfChanged("surface", toNumberOrNull(editedValues.surface));
+        if (editedValues.local_surface_totale !== undefined) setIfChanged("local_surface_totale", toNumberOrNull(editedValues.local_surface_totale));
+        if (editedValues.etage !== undefined) setIfChanged("etage", toIntOrNull(editedValues.etage));
+        if (editedValues.local_type !== undefined) setIfChanged("local_type", editedValues.local_type === "" ? null : editedValues.local_type);
+
+        const proBools = ["local_has_vitrine", "local_access_pmr", "local_clim", "local_fibre", "local_alarme", "local_rideau_metal", "local_acces_camion", "local_parking_clients"];
+        for (const f of proBools) {
+          if (editedValues[f] !== undefined) setIfChanged(f, Boolean(editedValues[f]));
+        }
       }
 
-      // Filtrer les valeurs undefined et null pour éviter les problèmes de validation
-      const cleanPayload = Object.fromEntries(
-        Object.entries(payload).filter(([_, value]) => {
-          // Garder les valeurs null explicites, mais exclure undefined
-          return value !== undefined;
-        })
-      );
-
-      const response = await apiClient.patch<{ property: typeof property }>(
-        `/properties/${propertyId}`,
-        cleanPayload
-      );
-      setProperty(response.property);
+      // Ne PATCHer que s'il y a au moins un champ modifié (évite UPDATE inutile
+      // et évite que le serveur recalcule l'updated_at à vide).
+      if (Object.keys(payload).length > 0) {
+        const response = await apiClient.patch<{ property: typeof property }>(
+          `/properties/${propertyId}`,
+          payload
+        );
+        setProperty(response.property);
+      }
 
       // 2. Supprimer les photos marquées
       for (const photoId of photosToDelete) {
@@ -447,24 +397,44 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
         }
       }
 
-      // 3. Uploader les nouvelles photos
+      // 3. Uploader les nouvelles photos via le flow signed URL → table `photos`
+      //    (même chemin que PhotosStep, garantit que les images apparaissent
+      //    après reload et qu'elles servent de cover dans la liste "Mes biens")
+      const uploadFailures: string[] = [];
       if (pendingPhotos.length > 0) {
-        const formData = new FormData();
-        formData.append("propertyId", propertyId);
-        formData.append("type", "autre");
-        formData.append("collection", "property_media");
-        pendingPhotos.forEach((file) => {
-          formData.append("files", file);
-        });
+        // Tag par défaut selon le type de bien (aligné avec photos_tag_check)
+        const defaultTag = isParking
+          ? "emplacement"
+          : isPro
+            ? "interieur"
+            : "vue_generale";
 
-        await fetch("/api/documents/upload-batch", {
-          method: "POST",
-          body: formData,
-          credentials: "include",
-        });
+        for (const file of pendingPhotos) {
+          try {
+            const { upload_url } = await apiClient.post<{ upload_url: string; photo: any }>(
+              `/properties/${propertyId}/photos/upload-url`,
+              {
+                file_name: file.name,
+                mime_type: file.type,
+                tag: defaultTag,
+              }
+            );
+            const uploadResponse = await fetch(upload_url, {
+              method: "PUT",
+              headers: { "Content-Type": file.type },
+              body: file,
+            });
+            if (!uploadResponse.ok) {
+              uploadFailures.push(file.name);
+            }
+          } catch (uploadErr) {
+            console.error("[PropertyDetails] Erreur upload photo", file.name, uploadErr);
+            uploadFailures.push(file.name);
+          }
+        }
       }
 
-      // 4. Recharger les photos
+      // 4. Recharger les photos depuis la source de vérité
       try {
         const photosResponse = await apiClient.get<{ photos: any[] }>(`/properties/${propertyId}/photos`);
         setPhotos(photosResponse.photos || []);
@@ -480,10 +450,22 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
       setPendingPhotoUrls([]);
       setPhotosToDelete([]);
 
-      toast({
-        title: "Modifications enregistrées",
-        description: "Toutes les modifications ont été sauvegardées avec succès.",
-      });
+      if (uploadFailures.length > 0) {
+        toast({
+          title: "Upload partiel",
+          description: `Certaines photos n'ont pas pu être uploadées : ${uploadFailures.join(", ")}`,
+          variant: "destructive",
+          duration: 6000,
+        });
+      } else {
+        toast({
+          title: "Modifications enregistrées",
+          description: "Toutes les modifications ont été sauvegardées avec succès.",
+        });
+      }
+
+      // Forcer la révalidation côté serveur (anti-ISR cache)
+      router.refresh();
     } catch (error: unknown) {
       console.error("Erreur sauvegarde globale:", error);
       
@@ -521,12 +503,13 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
   const handleSaveAccess = async () => {
     setIsSavingAccess(true);
     try {
-      const accessPayload: Record<string, string> = {};
-      if (accessDigicode && accessDigicode !== (property.digicode || "")) {
-        accessPayload.digicode = accessDigicode;
+      // "" → null pour permettre l'effacement explicite des codes d'accès
+      const accessPayload: Record<string, string | null> = {};
+      if (accessDigicode !== (property.digicode || "")) {
+        accessPayload.digicode = accessDigicode === "" ? null : accessDigicode;
       }
-      if (accessInterphone && accessInterphone !== (property.interphone || "")) {
-        accessPayload.interphone = accessInterphone;
+      if (accessInterphone !== (property.interphone || "")) {
+        accessPayload.interphone = accessInterphone === "" ? null : accessInterphone;
       }
       if (Object.keys(accessPayload).length === 0) {
         setIsEditingAccess(false);
@@ -582,7 +565,13 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
 
   const getValue = (field: string) => {
     if (isEditing) {
-      return editedValues[field] ?? "";
+      // Si l'utilisateur a modifié ce champ, on retourne la valeur édité (même
+      // si c'est une chaîne vide intentionnelle). Sinon on retombe sur la
+      // valeur actuelle de la property pour pré-remplir l'input.
+      if (Object.prototype.hasOwnProperty.call(editedValues, field)) {
+        return editedValues[field] ?? "";
+      }
+      return (property as any)[field] ?? "";
     }
     return (property as any)[field] ?? "";
   };
@@ -1130,9 +1119,6 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
                           placeholder="Ex: 1234A, A5678"
                           className="mt-1 h-9"
                         />
-                        {property.digicode && accessDigicode === "" && (
-                          <p className="text-xs text-red-500 mt-1">Le code ne peut pas être supprimé</p>
-                        )}
                       </div>
                       <div>
                         <Label className="text-xs text-muted-foreground">Interphone</Label>
@@ -1157,7 +1143,7 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
                       <Button
                         size="sm"
                         onClick={handleSaveAccess}
-                        disabled={isSavingAccess || (property.digicode ? accessDigicode === "" : false)}
+                        disabled={isSavingAccess}
                         className="bg-indigo-600 hover:bg-indigo-700"
                       >
                         {isSavingAccess ? (
