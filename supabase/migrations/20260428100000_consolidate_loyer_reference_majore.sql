@@ -15,11 +15,12 @@
 -- Cette migration :
 --   1. Copie les valeurs de la colonne accentuée vers la colonne non-accentuée
 --      (en priorisant la valeur non-NULL existante).
---   2. Drop la colonne accentuée (`loyer_reference_majoré`).
+--   2. Drop la vue `active_properties` qui dépend de la colonne (elle est en
+--      SELECT *, on la recrée à l'identique).
+--   3. Drop la colonne accentuée (`loyer_reference_majoré`).
+--   4. Recrée la vue avec le schéma à jour.
 --
 -- Idempotente : aucune action si la colonne accentuée n'existe plus.
--- Aucune contrainte CHECK à gérer : la migration 20260128 a déjà drop
--- `properties_loyer_reference_check`.
 
 BEGIN;
 
@@ -49,9 +50,20 @@ BEGIN
     -- écrites par les anciens call sites.
     EXECUTE 'UPDATE properties SET loyer_reference_majore = COALESCE(loyer_reference_majore, "loyer_reference_majoré")';
 
+    -- Drop des objets dépendants avant le DROP COLUMN. La vue est en SELECT *
+    -- donc on peut la recréer à l'identique juste après — la définition
+    -- correspond à celle posée par 20260128000000_surface_carrez_rent_control.
+    DROP VIEW IF EXISTS active_properties CASCADE;
+
     -- Supprimer la colonne accentuée maintenant que les données sont
     -- consolidées dans la version canonique.
     ALTER TABLE properties DROP COLUMN "loyer_reference_majoré";
+
+    -- Recréer la vue avec le nouveau schéma (sans la colonne accentuée).
+    CREATE OR REPLACE VIEW active_properties AS
+      SELECT * FROM properties
+      WHERE deleted_at IS NULL
+        AND (etat IS NULL OR etat != 'deleted');
   END IF;
 END $$;
 
