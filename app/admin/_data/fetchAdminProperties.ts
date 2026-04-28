@@ -30,5 +30,22 @@ export async function fetchAdminProperties(options: { status?: string; search?: 
     return { properties: [], total: 0 };
   }
 
-  return { properties: data || [], total: count || 0 };
+  // Enrichir avec cover_url (table photos prioritaire, fallback documents).
+  // Pas de colonne `cover_url` sur properties — elle est calculée à la volée.
+  let enriched = data ?? [];
+  if (enriched.length > 0) {
+    try {
+      const { fetchPropertyCoverUrls } = await import("@/lib/properties/cover-url");
+      const propertyIds = enriched.map((p: any) => p.id).filter(Boolean);
+      const coverMap = await fetchPropertyCoverUrls(serviceClient, propertyIds);
+      enriched = enriched.map((p: any) => ({
+        ...p,
+        cover_url: coverMap.get(p.id) ?? null,
+      }));
+    } catch (coverErr) {
+      console.warn("[fetchAdminProperties] cover_url enrichment failed (non-blocking):", coverErr);
+    }
+  }
+
+  return { properties: enriched, total: count || 0 };
 }
