@@ -213,19 +213,37 @@ export default function NewTenantRequestPage() {
       if (!response.ok) throw new Error(data?.error || "Impossible de créer la demande");
 
       const ticketId = data.ticket?.id;
+      const attachmentFailures: string[] = [];
       if (ticketId && files.length > 0) {
         for (const file of files) {
           const fd = new FormData();
           fd.append("file", file);
-          await fetch(`/api/tickets/${ticketId}/attachments`, {
-            method: "POST",
-            body: fd,
-          });
+          try {
+            const attRes = await fetch(`/api/tickets/${ticketId}/attachments`, {
+              method: "POST",
+              body: fd,
+            });
+            if (!attRes.ok) {
+              attachmentFailures.push(file.name);
+            }
+          } catch (attErr) {
+            console.error("[tickets/attachments] upload failed", file.name, attErr);
+            attachmentFailures.push(file.name);
+          }
         }
       }
 
       try { localStorage.removeItem(DRAFT_STORAGE_KEY); } catch { /* ignore */ }
-      toast({ title: "Demande envoyée", description: "Votre ticket est en cours de traitement." });
+      if (attachmentFailures.length > 0) {
+        toast({
+          title: "Demande envoyée — pièces jointes partielles",
+          description: `Le ticket a été créé mais ${attachmentFailures.length} pièce${attachmentFailures.length > 1 ? "s" : ""} jointe${attachmentFailures.length > 1 ? "s" : ""} n'a pas pu être uploadée${attachmentFailures.length > 1 ? "s" : ""} : ${attachmentFailures.join(", ")}. Réessayez depuis la fiche du ticket.`,
+          variant: "destructive",
+          duration: 8000,
+        });
+      } else {
+        toast({ title: "Demande envoyée", description: "Votre ticket est en cours de traitement." });
+      }
       router.push("/tenant/requests");
     } catch (error) {
       toast({

@@ -124,39 +124,48 @@ export function PropertyRoomsPhotosTab({
     if (!files || files.length === 0) return;
     setUploading(true);
 
+    const failures: string[] = [];
+    let successCount = 0;
     try {
+      // Upload tolérant : on continue la boucle même en cas d'échec ponctuel
+      // pour ne pas perdre les photos qui suivent.
       for (const file of Array.from(files)) {
-        const { upload_url, photo } = await propertiesService.requestPhotoUploadUrl(propertyId, {
-          file_name: file.name,
-          mime_type: file.type,
-          room_id: roomId || undefined,
-          // Si pas de room_id, ajouter un tag par défaut pour les photos sans pièce
-          tag: roomId ? undefined : "vue_generale",
-        } as any);
+        try {
+          const { upload_url } = await propertiesService.requestPhotoUploadUrl(propertyId, {
+            file_name: file.name,
+            mime_type: file.type,
+            room_id: roomId || undefined,
+            tag: roomId ? undefined : "vue_generale",
+          } as any);
 
-        const uploadResponse = await fetch(upload_url, {
-          method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
+          const uploadResponse = await fetch(upload_url, {
+            method: "PUT",
+            headers: { "Content-Type": file.type },
+            body: file,
+          });
 
-        if (!uploadResponse.ok) {
-          throw new Error(`Erreur upload ${file.name}`);
+          if (!uploadResponse.ok) {
+            failures.push(file.name);
+          } else {
+            successCount += 1;
+          }
+        } catch (uploadErr) {
+          console.error("[property-rooms-photos-tab] upload failed", file.name, uploadErr);
+          failures.push(file.name);
         }
       }
 
-      toast({
-        title: "Succès",
-        description: `${files.length} photo(s) ajoutée(s)`,
-      });
+      if (failures.length > 0) {
+        toast({
+          title: `${failures.length} upload${failures.length > 1 ? "s" : ""} en échec`,
+          description: `${successCount}/${files.length} photos ajoutées. Échecs : ${failures.join(", ")}.`,
+          variant: "destructive",
+        });
+      } else if (successCount > 0) {
+        toast({ title: "Succès", description: `${successCount} photo(s) ajoutée(s)` });
+      }
       // Invalider le cache React Query pour rafraîchir les photos
       queryClient.invalidateQueries({ queryKey: ["photos", propertyId] });
-    } catch (error: unknown) {
-      toast({
-        title: "Erreur",
-        description: error instanceof Error ? error.message : "Impossible d'uploader les photos",
-        variant: "destructive",
-      });
     } finally {
       setUploading(false);
     }

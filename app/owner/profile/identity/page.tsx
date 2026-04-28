@@ -152,24 +152,11 @@ export default function OwnerIdentityPage() {
       formData.append("file", file);
       formData.append("type", side === "recto" ? "cni_recto" : "cni_verso");
 
-      const { createClient: createSupabaseClient } = await import("@/lib/supabase/client");
-      const supabase = createSupabaseClient();
-      const { data: { session } } = await supabase.auth.getSession();
-
-      const res = await fetch("/api/documents/upload", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Erreur upload" }));
-        throw new Error(err.error || `Erreur ${res.status}`);
-      }
-
-      const { document: newDoc } = await res.json();
+      // apiClient.uploadFile : CSRF + cookies auth + check response.ok
+      const { document: newDoc } = await apiClient.uploadFile<{ document: any }>(
+        "/documents/upload",
+        formData
+      );
 
       setDocuments(prev => ({ ...prev, [side]: newDoc }));
 
