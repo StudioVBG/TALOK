@@ -10,6 +10,7 @@ export interface SignUpData {
   nom: string;
   telephone?: string;
   turnstileToken?: string;
+  inviteToken?: string;
 }
 
 export interface SignInData {
@@ -39,6 +40,7 @@ export class AuthService {
         nom: data.nom,
         telephone: data.telephone,
         turnstileToken: data.turnstileToken,
+        inviteToken: data.inviteToken,
       }),
     });
 

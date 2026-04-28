@@ -3,13 +3,14 @@ export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { resolveInvitationByToken } from "@/lib/invitations/server-resolver";
 
 /**
  * GET /api/invitations/validate?token=xxx
  *
- * FIX P1-E9: Valide un token d'invitation côté serveur avec service_role.
- * Remplace l'appel direct via invitationsService (client-side, anon key)
- * qui échouait sur les RLS pour les utilisateurs non connectés.
+ * Valide un token d'invitation côté serveur avec service_role et résout
+ * indistinctement les invitations bail (`invitations`) et garant standalone
+ * (`guarantor_invitations`) via lib/invitations/server-resolver.
  *
  * Cette route est publique (pas d'auth requise) car l'utilisateur
  * peut ne pas encore avoir de compte.
@@ -26,44 +27,31 @@ export async function GET(request: NextRequest) {
     }
 
     const serviceClient = getServiceClient();
+    const result = await resolveInvitationByToken(serviceClient as any, token);
 
-    // Récupérer l'invitation par token
-    const { data: invitation, error: invError } = await serviceClient
-      .from("invitations")
-      .select("id, email, role, property_id, lease_id, expires_at, used_at")
-      .eq("token", token)
-      .single();
-
-    if (invError || !invitation) {
-      return NextResponse.json({
-        valid: false,
-        error: "Invitation non trouvée",
-      });
+    if (!result.ok) {
+      const message = (() => {
+        switch (result.error.kind) {
+          case "not_found":
+            return "Invitation non trouvée";
+          case "expired":
+            return "Cette invitation a expiré. Demandez un nouveau lien à votre propriétaire.";
+          case "already_used":
+            return "Cette invitation a déjà été utilisée.";
+          case "declined":
+            return "Cette invitation a été refusée.";
+        }
+      })();
+      return NextResponse.json({ valid: false, error: message });
     }
 
-    // Vérifier l'expiration
-    if (new Date(invitation.expires_at as string) < new Date()) {
-      return NextResponse.json({
-        valid: false,
-        error: "Cette invitation a expiré. Demandez un nouveau lien à votre propriétaire.",
-      });
-    }
-
-    // Vérifier si déjà utilisée
-    if (invitation.used_at) {
-      return NextResponse.json({
-        valid: false,
-        error: "Cette invitation a déjà été utilisée.",
-      });
-    }
-
-    // Retourner les données publiques de l'invitation (sans le token lui-même)
     return NextResponse.json({
       valid: true,
       invitation: {
-        id: invitation.id,
-        email: invitation.email,
-        role: invitation.role,
+        id: result.invitation.id,
+        email: result.invitation.email,
+        role: result.invitation.invitationRole,
+        source: result.invitation.source,
       },
     });
   } catch (error) {

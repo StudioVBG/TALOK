@@ -9,6 +9,7 @@ import { RegisterSchema } from "@/lib/api/schemas";
 import { applyRateLimit } from "@/lib/security/rate-limit";
 import { verifyTurnstileToken } from "@/lib/security/turnstile";
 import { getAuthCallbackUrl } from "@/lib/utils/redirect-url";
+import { resolveInvitationByToken, type ResolvedInvitation } from "@/lib/invitations/server-resolver";
 
 /**
  * POST /api/v1/auth/register
@@ -38,7 +39,54 @@ export async function POST(request: NextRequest) {
       email: data.email,
       role: data.role,
       has_telephone: !!data.telephone,
+      has_invite: !!data.inviteToken,
     });
+
+    // Verrouillage rôle via invitation : si un token est fourni, on lookup
+    // l'invitation côté serveur (table `invitations` ou `guarantor_invitations`)
+    // et on force le rôle final. Cela bloque les tentatives de détournement
+    // (ex: lien `garant` → signup `owner`).
+    let resolvedInvitation: ResolvedInvitation | null = null;
+    if (data.inviteToken) {
+      const adminClient = supabaseAdmin();
+      const result = await resolveInvitationByToken(adminClient, data.inviteToken);
+
+      if (!result.ok) {
+        switch (result.error.kind) {
+          case "not_found":
+            return apiError("Invitation introuvable", 404, "INVITE_NOT_FOUND");
+          case "already_used":
+            return apiError("Cette invitation a déjà été utilisée.", 409, "INVITE_ALREADY_USED");
+          case "expired":
+            return apiError("Cette invitation a expiré.", 410, "INVITE_EXPIRED");
+          case "declined":
+            return apiError("Cette invitation a été refusée.", 409, "INVITE_DECLINED");
+        }
+      }
+
+      resolvedInvitation = result.invitation;
+
+      if (resolvedInvitation.email !== data.email) {
+        return apiError(
+          "L'email saisi ne correspond pas à l'invitation.",
+          403,
+          "INVITE_EMAIL_MISMATCH"
+        );
+      }
+
+      if (resolvedInvitation.applicativeRole !== data.role) {
+        console.warn("[register] role override forced by invitation", {
+          email: data.email,
+          requested: data.role,
+          forced: resolvedInvitation.applicativeRole,
+          invitation_role: resolvedInvitation.invitationRole,
+          source: resolvedInvitation.source,
+        });
+        // Verrouillage strict : on force le rôle au lieu d'accepter celui du
+        // client, qui peut avoir été manipulé via l'URL `?role=...`.
+        data.role = resolvedInvitation.applicativeRole;
+      }
+    }
 
     const supabase = await createClient();
 
@@ -143,18 +191,76 @@ export async function POST(request: NextRequest) {
       }
 
       // B18: Résolution automatique des invitations pending.
-      // Le vrai travail est fait par le trigger DB
+      // Pour la table `invitations` (bail), le trigger DB
       // `auto_link_lease_signers_on_profile_created()` (migration
-      // 20260225100000) qui se déclenche à l'INSERT sur profiles et :
+      // 20260225100000) gère :
       //   1. Lie les lease_signers orphelins (invited_email = user email)
       //   2. Backfill invoices.tenant_id
       //   3. Marque les invitations comme used_at = NOW()
       //
-      // Ce trigger se déclenche AVANT ce code (le handle_new_user trigger
-      // insère le profil, puis auto_link_lease_signers_on_profile_created
-      // s'exécute). Aucune action supplémentaire côté API n'est nécessaire.
-      //
-      // On log simplement pour le monitoring.
+      // Pour `guarantor_invitations` (garant standalone), aucun trigger
+      // équivalent n'existe : on marque manuellement l'invitation acceptée
+      // ici, en utilisant la résolution déjà faite avant le signUp.
+      if (resolvedInvitation && resolvedInvitation.source === "guarantor") {
+        try {
+          await adminClient
+            .from("guarantor_invitations")
+            .update({
+              status: "accepted",
+              accepted_at: new Date().toISOString(),
+              guarantor_profile_id: profile.id,
+            })
+            .eq("id", resolvedInvitation.id)
+            .eq("status", "pending");
+        } catch (guarantorLinkError) {
+          console.error("[register] guarantor_invitation accept failed:", {
+            invitation_id: resolvedInvitation.id,
+            error: guarantorLinkError,
+          });
+          // Non bloquant : un endpoint d'acceptation post-login peut rejouer
+          // l'opération.
+        }
+      }
+
+      // Pour les invitations agence, créer la liaison agency_managers et
+      // marquer l'invitation acceptée. Le rôle granulaire (directeur,
+      // gestionnaire, etc.) est porté par agency_managers.role_agence,
+      // pas par profile.role qui reste 'agency'.
+      if (resolvedInvitation && resolvedInvitation.source === "agency") {
+        try {
+          const { data: manager } = await adminClient
+            .from("agency_managers")
+            .upsert(
+              {
+                agency_profile_id: resolvedInvitation.agency_profile_id!,
+                user_profile_id: profile.id,
+                role_agence: resolvedInvitation.agency_role ?? "gestionnaire",
+                can_sign_documents: resolvedInvitation.can_sign_documents ?? false,
+                is_active: true,
+              },
+              { onConflict: "agency_profile_id,user_profile_id" }
+            )
+            .select("id")
+            .maybeSingle();
+
+          await adminClient
+            .from("agency_invitations")
+            .update({
+              status: "accepted",
+              accepted_at: new Date().toISOString(),
+              accepted_profile_id: profile.id,
+              agency_manager_id: manager?.id ?? null,
+            })
+            .eq("id", resolvedInvitation.id)
+            .eq("status", "pending");
+        } catch (agencyLinkError) {
+          console.error("[register] agency_invitation accept failed:", {
+            invitation_id: resolvedInvitation.id,
+            error: agencyLinkError,
+          });
+          // Non bloquant : un endpoint d'acceptation post-login peut rejouer.
+        }
+      }
 
       // NOTE: l'email de confirmation est envoyé par Supabase (SMTP Resend configuré
       // au niveau du projet). Pas d'envoi manuel supplémentaire ici pour éviter le

@@ -7,32 +7,16 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Mail, AlertCircle, ArrowRight, RefreshCw } from "lucide-react";
 import Link from "next/link";
+import {
+  getInvitationRoleLabel,
+  mapInvitationRoleToUserRole,
+  type InvitationRole,
+} from "@/lib/invitations/role-mapper";
 
-// FIX P1-E12: Suppression de @ts-nocheck — types explicites
 interface InvitationData {
   id: string;
   email: string;
-  role: "locataire_principal" | "colocataire" | "garant";
-}
-
-/**
- * Mappe les rôles d'invitation (table `invitations`) vers les UserRole
- * attendus par le signup flow (/signup/role → /signup/account).
- *
- * Bug audit comptes : le signup validait `role IN ['owner','tenant',
- * 'provider','guarantor','syndic','agency']` mais recevait
- * `locataire_principal|colocataire|garant` → boucle de redirection.
- */
-function mapInvitationRoleToUserRole(
-  invitationRole: InvitationData["role"]
-): "tenant" | "guarantor" {
-  switch (invitationRole) {
-    case "locataire_principal":
-    case "colocataire":
-      return "tenant";
-    case "garant":
-      return "guarantor";
-  }
+  role: InvitationRole;
 }
 
 export default function InvitePage() {
@@ -170,11 +154,7 @@ export default function InvitePage() {
           <CardTitle className="text-2xl">Invitation reçue</CardTitle>
           <CardDescription>
             Vous avez été invité à rejoindre un logement en tant que{" "}
-            <span className="font-semibold">
-              {invitation.role === "locataire_principal" && "Locataire principal"}
-              {invitation.role === "colocataire" && "Colocataire"}
-              {invitation.role === "garant" && "Garant"}
-            </span>
+            <span className="font-semibold">{getInvitationRoleLabel(invitation.role)}</span>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

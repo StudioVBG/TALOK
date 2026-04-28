@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { randomBytes } from "crypto";
 import { sendLeaseInviteEmail } from "@/lib/services/email-service";
+import { applyRateLimit } from "@/lib/security/rate-limit";
 
 const addSignerSchema = z.object({
   email: z.string().email("Email invalide"),
@@ -86,6 +87,9 @@ export async function POST(
 ) {
   const { id } = await params;
   try {
+    const rateLimitResponse = await applyRateLimit(request, "leaseInvite");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const supabase = await createClient();
     const serviceClient = getServiceClient();
     const {

@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { sendEmail } from '@/lib/services/email-service';
 import { emailTemplates } from '@/lib/emails/templates';
+import { applyRateLimit } from '@/lib/security/rate-limit';
 
 interface RouteParams {
   params: { token: string };
@@ -46,9 +47,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // POST: Accepter une invitation
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
+    const rateLimitResponse = await applyRateLimit(request, 'inviteAccept');
+    if (rateLimitResponse) return rateLimitResponse;
+
     const supabase = await createClient();
     const { token } = params;
-    
+
     // Vérifier l'authentification
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
