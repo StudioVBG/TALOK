@@ -38,6 +38,7 @@ export async function GET(
       .from("properties")
       .select(PROPERTY_SHARE_SELECT)
       .eq("id", share.property_id)
+      .is("deleted_at", null)
       .single();
 
     if (propertyError || !property) {

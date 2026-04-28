@@ -126,6 +126,7 @@ export async function POST(
     const isParking = ["parking", "box"].includes(propertyType);
     const isLocal = ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"].includes(propertyType);
     const isImmeuble = propertyType === "immeuble";
+    const isAgricultural = ["terrain_agricole", "exploitation_agricole"].includes(propertyType);
 
     const { data: rooms, error: roomsError } = await serviceClient
       .from("rooms")
@@ -188,6 +189,13 @@ export async function POST(
       // Parking : pas de DPE/chauffage requis
     } else if (isLocal) {
       // Locaux : pas de DPE/chauffage requis
+    } else if (isAgricultural) {
+      // Agricole (terrain_agricole, exploitation_agricole) : surface requise au minimum.
+      // Le bail rural a ses propres règles (durée 9 ans renouvelable, fermage MSA),
+      // gérées au niveau du module bail. Pas de DPE/chauffage/clim ni de pièces.
+      if (!propertyData.surface || propertyData.surface <= 0) {
+        missingFields.push("surface");
+      }
     } else if (isImmeuble) {
       // Immeuble : vérifier que des lots existent
       const { data: building } = await serviceClient
@@ -368,14 +376,16 @@ export async function POST(
           { status: 400 }
         );
       }
-    } else if (isParking || isLocal || isImmeuble) {
-      // Parking/Locaux/Immeuble : au moins une photo
+    } else if (isParking || isLocal || isImmeuble || isAgricultural) {
+      // Parking/Locaux/Immeuble/Agricole : au moins une photo
       if (photosList.length === 0) {
         return NextResponse.json(
           {
             error: isImmeuble
               ? "Ajoutez au moins une photo de la façade ou des parties communes."
-              : "Ajoutez au moins une photo avant de soumettre.",
+              : isAgricultural
+                ? "Ajoutez au moins une photo du terrain ou de l'exploitation."
+                : "Ajoutez au moins une photo avant de soumettre.",
           },
           { status: 400 }
         );
@@ -411,7 +421,7 @@ export async function POST(
       entity_id: propertyId,
       metadata: {
         previous_status: propertyData.etat,
-        new_status: "pending",
+        new_status: "pending_review",
       },
     });
 

@@ -579,7 +579,10 @@ async function createDraftProperty({
     loyer_hc: 0,
     charges_mensuelles: 0,
     depot_garantie: 0,
-    zone_encadrement: false,
+    // `zone_encadrement` est désormais TEXT en DB (migration 20260128000000) avec
+    // CHECK strict ; on laisse NULL au draft, le propriétaire choisira sa zone
+    // via l'UI ALUR avant publication.
+    zone_encadrement: null,
     unique_code: uniqueCode,
     etat: "draft",
   };
@@ -605,6 +608,8 @@ const typeBienEnum = z.enum([
   "box",
   "fonds_de_commerce",
   "immeuble",
+  "terrain_agricole",
+  "exploitation_agricole",
 ]);
 
 const usagePrincipalEnum = z.enum([

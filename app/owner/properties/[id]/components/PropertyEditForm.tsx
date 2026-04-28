@@ -4,6 +4,7 @@ import { Video, Key, Phone } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -365,6 +366,17 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
             />
           </div>
         )}
+        <div>
+          <Label className="text-xs">Surface Carrez (m²)</Label>
+          <Input
+            type="number"
+            step="0.01"
+            value={String(getValue("surface_carrez") ?? "")}
+            onChange={(e) => handleFieldChange("surface_carrez", e.target.value)}
+            placeholder="Copropriété (loi Carrez)"
+            className="mt-1 h-9"
+          />
+        </div>
       </div>
 
       {/* Switches */}
@@ -430,6 +442,116 @@ export function PropertyEditForm({ property, editedValues, handleFieldChange, ge
             </div>
           </div>
         </div>
+        {/* Indicateurs DPE chiffrés — exigés à la soumission pour habitation */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+          <div>
+            <Label className="text-xs text-muted-foreground">Consommation (kWh/m²/an)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={String(getValue("dpe_consommation") ?? "")}
+              onChange={(e) => handleFieldChange("dpe_consommation", e.target.value)}
+              placeholder="Ex : 180"
+              className="mt-1 h-9"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Émissions (kg CO₂/m²/an)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              value={String(getValue("dpe_emissions") ?? "")}
+              onChange={(e) => handleFieldChange("dpe_emissions", e.target.value)}
+              placeholder="Ex : 35"
+              className="mt-1 h-9"
+            />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Date du diagnostic</Label>
+            <Input
+              type="date"
+              value={String(getValue("dpe_date_realisation") ?? "")}
+              onChange={(e) => handleFieldChange("dpe_date_realisation", e.target.value)}
+              className="mt-1 h-9"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Encadrement des loyers (zones tendues — loi ALUR/ELAN) */}
+      <div className="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
+        <Label className="text-xs font-medium mb-3 block">
+          Encadrement des loyers (zones tendues)
+        </Label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <Label className="text-xs text-muted-foreground">Zone d'encadrement</Label>
+            <Select
+              value={String(getValue("zone_encadrement") || "")}
+              onValueChange={(v) => handleFieldChange("zone_encadrement", v === "__none" ? null : v)}
+            >
+              <SelectTrigger className="h-9 mt-1">
+                <SelectValue placeholder="Aucune" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">Non concerné</SelectItem>
+                <SelectItem value="aucune">Hors zone tendue</SelectItem>
+                <SelectItem value="paris">Paris</SelectItem>
+                <SelectItem value="paris_agglo">Paris (agglo)</SelectItem>
+                <SelectItem value="lille">Lille</SelectItem>
+                <SelectItem value="lyon">Lyon</SelectItem>
+                <SelectItem value="villeurbanne">Villeurbanne</SelectItem>
+                <SelectItem value="montpellier">Montpellier</SelectItem>
+                <SelectItem value="bordeaux">Bordeaux</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {Boolean(getValue("zone_encadrement")) && getValue("zone_encadrement") !== "aucune" && (
+            <>
+              <div>
+                <Label className="text-xs text-muted-foreground">Loyer de référence majoré (€/mois)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={String(getValue("loyer_reference_majore") ?? "")}
+                  onChange={(e) => handleFieldChange("loyer_reference_majore", e.target.value)}
+                  className="mt-1 h-9"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-muted-foreground">Complément de loyer (€/mois)</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={String(getValue("complement_loyer") ?? "")}
+                  onChange={(e) => handleFieldChange("complement_loyer", e.target.value)}
+                  placeholder="0 si non applicable"
+                  className="mt-1 h-9"
+                />
+              </div>
+              {Number(getValue("complement_loyer") ?? 0) > 0 && (
+                <div className="sm:col-span-2">
+                  <Label className="text-xs text-muted-foreground">
+                    Justification du complément (caractéristique exceptionnelle requise)
+                  </Label>
+                  <Textarea
+                    value={String(getValue("complement_justification") ?? "")}
+                    onChange={(e) => handleFieldChange("complement_justification", e.target.value)}
+                    maxLength={500}
+                    rows={2}
+                    placeholder="Vue exceptionnelle, prestations haut de gamme, équipements rares…"
+                    className="mt-1 text-sm"
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        <p className="text-[10px] text-muted-foreground mt-2">
+          À renseigner uniquement si le bien est situé en zone soumise à l'encadrement
+          (Paris, Lille, Lyon, Bordeaux, Montpellier, Villeurbanne, Plaine Commune,
+          Est Ensemble, etc.).
+        </p>
       </div>
 
       {/* Chauffage & Eau chaude */}

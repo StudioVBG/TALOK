@@ -474,6 +474,7 @@ export const propertyGeneralUpdateSchema = z
       "maison",
       "studio",
       "colocation",
+      "saisonnier",
       "parking",
       "box",
       "local_commercial",
@@ -481,12 +482,15 @@ export const propertyGeneralUpdateSchema = z
       "entrepot",
       "fonds_de_commerce",
       "immeuble",
+      "terrain_agricole",
+      "exploitation_agricole",
     ]).optional(),
     type: z.enum([
       "appartement",
       "maison",
       "studio",
       "colocation",
+      "saisonnier",
       "parking",
       "box",
       "local_commercial",
@@ -494,6 +498,8 @@ export const propertyGeneralUpdateSchema = z
       "entrepot",
       "fonds_de_commerce",
       "immeuble",
+      "terrain_agricole",
+      "exploitation_agricole",
     ]).optional(),
     adresse_complete: z.string().min(1).optional(),
     complement_adresse: z.string().optional().nullable(),
@@ -518,6 +524,10 @@ export const propertyGeneralUpdateSchema = z
     // DPE (Diagnostic de Performance Énergétique)
     dpe_classe_energie: z.enum(["A", "B", "C", "D", "E", "F", "G", "NC"]).optional().nullable(),
     dpe_classe_climat: z.enum(["A", "B", "C", "D", "E", "F", "G", "NC"]).optional().nullable(), // GES
+    // Nom de colonne canonique : `dpe_date_realisation` (migration 20260128000000).
+    // `dpe_date` reste accepté en lecture pour rétrocompatibilité mais sera mappé
+    // sur `dpe_date_realisation` côté route (le strip ne le couvre plus).
+    dpe_date_realisation: z.string().optional().nullable(),
     dpe_date: z.string().optional().nullable(),
     dpe_consommation: z.number().min(0).optional().nullable(),
     dpe_emissions: z.number().min(0).optional().nullable(),
@@ -582,7 +592,19 @@ export const propertyGeneralUpdateSchema = z
     charges_mensuelles: z.number().min(0).optional().nullable(),
     depot_garantie: z.number().min(0).optional().nullable(),
     encadrement_loyers: z.boolean().optional().nullable(),
-    zone_encadrement: z.boolean().optional(),
+    // `zone_encadrement` est TEXT en DB depuis la migration 20260128000000
+    // (CHECK : paris, paris_agglo, lille, lyon, villeurbanne, montpellier, bordeaux, aucune).
+    // L'ancienne définition `z.boolean()` envoyait des données rejetées par la DB.
+    zone_encadrement: z.enum([
+      "paris",
+      "paris_agglo",
+      "lille",
+      "lyon",
+      "villeurbanne",
+      "montpellier",
+      "bordeaux",
+      "aucune",
+    ]).optional().nullable(),
     loyer_reference_majore: z.number().min(0).optional().nullable(),
     complement_loyer: z.number().min(0).optional().nullable(),
     complement_justification: z.string().optional().nullable(),
