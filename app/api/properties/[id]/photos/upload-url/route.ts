@@ -108,9 +108,11 @@ export async function POST(
     const isParking = ["parking", "box"].includes(propertyType);
     const isLocal = ["local_commercial", "bureaux", "entrepot", "fonds_de_commerce"].includes(propertyType);
 
-    // Pour parking et locaux, les photos sans pièce sont autorisées avec des tags spécifiques
-    const allowedTagsForParkingLocal = new Set(["vue_generale", "exterieur", "interieur", "detail"]);
-    
+    // Tags autorisés par type de bien (alignés avec la contrainte CHECK photos_tag_check
+    // — migration 202502150000_property_model_v3.sql)
+    const allowedTagsForParking = new Set(["emplacement", "acces", "vue_generale"]);
+    const allowedTagsForLocal = new Set(["façade", "interieur", "vitrine", "acces", "autre"]);
+
     // Validation selon le type de bien
     if (!validated.room_id) {
       // Photo sans pièce
@@ -125,13 +127,22 @@ export async function POST(
             { status: 400 }
           );
         }
-      } else if (isParking || isLocal) {
-        // Pour parking/locaux, les photos sans pièce sont autorisées avec des tags spécifiques
-        if (!validated.tag || !allowedTagsForParkingLocal.has(validated.tag)) {
+      } else if (isParking) {
+        if (!validated.tag || !allowedTagsForParking.has(validated.tag)) {
           return NextResponse.json(
             {
               error:
-                "Les photos sans pièce doivent être marquées avec un tag valide (vue générale, extérieur, intérieur, détail).",
+                "Les photos d'un parking/box doivent être marquées avec un tag valide (emplacement, accès, vue générale).",
+            },
+            { status: 400 }
+          );
+        }
+      } else if (isLocal) {
+        if (!validated.tag || !allowedTagsForLocal.has(validated.tag)) {
+          return NextResponse.json(
+            {
+              error:
+                "Les photos d'un local doivent être marquées avec un tag valide (façade, intérieur, vitrine, accès, autre).",
             },
             { status: 400 }
           );
