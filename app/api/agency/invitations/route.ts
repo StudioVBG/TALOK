@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { sendEmail } from "@/lib/services/email-service";
+import { applyRateLimit } from "@/lib/security/rate-limit";
 
 /**
  * Endpoints d'invitations agence (collaborateurs).
@@ -53,6 +54,9 @@ async function getCallerProfile() {
 
 export async function POST(request: NextRequest) {
   try {
+    const rateLimitResponse = await applyRateLimit(request, "agencyInvite");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const ctx = await getCallerProfile();
     if (!ctx) return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     const { user, profile, service } = ctx;

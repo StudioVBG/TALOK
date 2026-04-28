@@ -55,6 +55,21 @@ export const rateLimitPresets = {
     windowMs: 60 * 60 * 1000,
     maxRequests: 10,
   },
+  // Limite pour les invitations copropriété (syndic peut setup 50 lots en série)
+  coproInvite: {
+    windowMs: 60 * 60 * 1000,
+    maxRequests: 50,
+  },
+  // Limite pour les invitations collaborateur agence
+  agencyInvite: {
+    windowMs: 60 * 60 * 1000,
+    maxRequests: 20,
+  },
+  // Limite pour l'acceptation d'une invitation (anti-bruteforce de token)
+  inviteAccept: {
+    windowMs: 5 * 60 * 1000,
+    maxRequests: 10,
+  },
   // Limite pour les signatures
   signature: {
     windowMs: 60 * 1000,

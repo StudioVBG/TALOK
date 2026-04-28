@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { applyRateLimit } from "@/lib/security/rate-limit";
 
 /**
  * POST /api/guarantors/invitations/accept
@@ -20,6 +21,9 @@ const acceptSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const rateLimitResponse = await applyRateLimit(request, "inviteAccept");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const supabase = await createClient();
     const {
       data: { user },

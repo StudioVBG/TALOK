@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireCoproFeature } from '@/lib/helpers/copro-feature-gate';
+import { applyRateLimit } from '@/lib/security/rate-limit';
 import { z } from 'zod';
 
 // Schéma pour une invitation
@@ -101,6 +102,9 @@ export async function GET(request: NextRequest) {
 // POST: Créer des invitations
 export async function POST(request: NextRequest) {
   try {
+    const rateLimitResponse = await applyRateLimit(request, 'coproInvite');
+    if (rateLimitResponse) return rateLimitResponse;
+
     // S1-2 : auth + feature gate copro_module
     const access = await requireCoproFeature();
     if (access instanceof NextResponse) return access;

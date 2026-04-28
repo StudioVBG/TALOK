@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { applyRateLimit } from "@/lib/security/rate-limit";
 
 /**
  * POST /api/agency/invitations/[token]/accept
@@ -16,10 +17,13 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 const paramsSchema = z.object({ token: z.string().min(10) });
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: { token: string } }
 ) {
   try {
+    const rateLimitResponse = await applyRateLimit(request, "inviteAccept");
+    if (rateLimitResponse) return rateLimitResponse;
+
     const parsed = paramsSchema.safeParse(params);
     if (!parsed.success) {
       return NextResponse.json({ error: "Token invalide" }, { status: 400 });
