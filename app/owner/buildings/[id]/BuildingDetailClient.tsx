@@ -440,10 +440,8 @@ export function BuildingDetailClient({
       formData.append("type", "photo");
       formData.append("property_id", propertyId);
 
-      const res = await fetch("/api/documents/upload", { method: "POST", body: formData });
-      if (!res.ok) throw new Error("Erreur d'upload");
-
-      const result = await res.json();
+      // apiClient.uploadFile : CSRF + cookies + check response.ok intégrés
+      const result = await apiClient.uploadFile<any>("/documents/upload", formData);
       const doc = result.document || result;
 
       // Get signed URL for the uploaded photo to use as cover
@@ -626,15 +624,8 @@ export function BuildingDetailClient({
       formData.append("type", selectedDocType);
       formData.append("property_id", propertyId);
 
-      const res = await fetch("/api/documents/upload", {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => null);
-        throw new Error(err?.error || "Erreur lors de l'upload");
-      }
-      const result = await res.json();
+      // apiClient.uploadFile : CSRF + cookies + check response.ok intégrés
+      const result = await apiClient.uploadFile<any>("/documents/upload", formData);
       if (result.document) {
         setDocuments(prev => [result.document, ...prev]);
       }

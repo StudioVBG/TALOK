@@ -355,27 +355,50 @@ export function RoomsPhotosStep({
 
     try {
       const newPhotos: Photo[] = [];
-      // On upload séquentiellement ou en parallèle
+      const failures: string[] = [];
       for (const file of Array.from(files)) {
-        const { upload_url, photo } = await propertiesService.requestPhotoUploadUrl(propertyId, {
-          file_name: file.name,
-          mime_type: file.type,
-          room_id: selectedRoomId || undefined,
-          tag: (selectedTag as any) || undefined,
-        });
+        try {
+          const { upload_url, photo } = await propertiesService.requestPhotoUploadUrl(propertyId, {
+            file_name: file.name,
+            mime_type: file.type,
+            room_id: selectedRoomId || undefined,
+            tag: (selectedTag as any) || undefined,
+          });
 
-        await fetch(upload_url, {
-          method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
-        newPhotos.push(photo);
+          // Vérification de la réponse Storage : sans ce check, un échec
+          // (403, 500, quota...) passait inaperçu et la photo était listée
+          // alors que le fichier n'avait jamais été uploadé.
+          const uploadResponse = await fetch(upload_url, {
+            method: "PUT",
+            headers: { "Content-Type": file.type },
+            body: file,
+          });
+          if (!uploadResponse.ok) {
+            failures.push(file.name);
+            continue;
+          }
+          newPhotos.push(photo);
+        } catch (uploadErr) {
+          console.error("[rooms-photos-step] upload failed", file.name, uploadErr);
+          failures.push(file.name);
+        }
       }
 
-      const updated = [...photos, ...newPhotos];
-      setPhotos(updated);
-      onPhotosChange?.(updated);
-      toast({ title: "Photos ajoutées", description: `${newPhotos.length} photo(s)` });
+      if (newPhotos.length > 0) {
+        const updated = [...photos, ...newPhotos];
+        setPhotos(updated);
+        onPhotosChange?.(updated);
+      }
+
+      if (failures.length > 0) {
+        toast({
+          title: `${failures.length} upload${failures.length > 1 ? "s" : ""} en échec`,
+          description: `${newPhotos.length}/${files.length} photos ajoutées. Échecs : ${failures.join(", ")}.`,
+          variant: "destructive",
+        });
+      } else {
+        toast({ title: "Photos ajoutées", description: `${newPhotos.length} photo(s)` });
+      }
     } catch (error) {
       toast({ title: "Erreur upload", variant: "destructive" });
     } finally {

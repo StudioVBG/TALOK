@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { apiClient } from "@/lib/api-client";
 import {
   Dialog,
   DialogContent,
@@ -108,15 +109,8 @@ export function DocumentUploadDialog({
       formData.append("lease_id", leaseId);
       formData.append("property_id", propertyId);
 
-      const res = await fetch("/api/documents/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Erreur lors de l'upload");
-      }
+      // apiClient.uploadFile : CSRF + cookies + check response.ok intégrés
+      await apiClient.uploadFile<any>("/documents/upload", formData);
 
       toast({
         title: "Document ajouté",
