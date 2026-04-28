@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
+import { logGooglePlacesUsage } from "@/lib/services/google-places-usage";
 
 // Mapping des catégories vers les types Google Places
 const CATEGORY_TO_GOOGLE_TYPE: Record<string, string[]> = {
@@ -142,6 +143,15 @@ export async function GET(request: NextRequest) {
     // Vérifier le cache
     const cached = cache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+      void logGooglePlacesUsage({
+        endpoint: "text_search",
+        source: "cache",
+        status: "ok",
+        category,
+        userId: user.id,
+        resultsCount: cached.data.length,
+        cacheHit: true,
+      });
       return NextResponse.json({
         providers: cached.data,
         source: "cache",
@@ -160,10 +170,18 @@ export async function GET(request: NextRequest) {
         const geocodeRes = await fetch(geocodeUrl);
         const geocodeData = await geocodeRes.json();
 
-        if (geocodeData.results?.[0]?.geometry?.location) {
+        const geocodeOk = !!geocodeData.results?.[0]?.geometry?.location;
+        if (geocodeOk) {
           latitude = geocodeData.results[0].geometry.location.lat;
           longitude = geocodeData.results[0].geometry.location.lng;
         }
+        void logGooglePlacesUsage({
+          endpoint: "geocoding",
+          source: "google",
+          status: geocodeOk ? "ok" : "zero_results",
+          userId: user.id,
+          resultsCount: geocodeOk ? 1 : 0,
+        });
       } else {
         // Fallback Nominatim
         const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=fr&limit=1`;
@@ -190,8 +208,17 @@ export async function GET(request: NextRequest) {
 
     // Sans clé API Google : retourner des données de démonstration centrées sur le bien
     if (!googleApiKey) {
+      const demo = getDemoProviders(category, latitude, longitude);
+      void logGooglePlacesUsage({
+        endpoint: "text_search",
+        source: "demo",
+        status: "ok",
+        category,
+        userId: user.id,
+        resultsCount: demo.length,
+      });
       return NextResponse.json({
-        providers: getDemoProviders(category, latitude, longitude),
+        providers: demo,
         source: "demo",
         search_location: { lat: latitude, lng: longitude },
         message: "Mode démonstration - Configurez GOOGLE_PLACES_API_KEY pour les vrais résultats",
@@ -207,8 +234,20 @@ export async function GET(request: NextRequest) {
 
     if (placesData.status !== "OK" && placesData.status !== "ZERO_RESULTS") {
       console.error("Google Places API error:", placesData.status, placesData.error_message);
+      void logGooglePlacesUsage({
+        endpoint: "text_search",
+        source: "google",
+        status: "error",
+        category,
+        userId: user.id,
+        metadata: {
+          google_status: placesData.status,
+          google_error: placesData.error_message,
+        },
+      });
+      const demo = getDemoProviders(category, latitude, longitude);
       return NextResponse.json({
-        providers: getDemoProviders(category, latitude, longitude),
+        providers: demo,
         source: "demo",
         search_location: { lat: latitude, lng: longitude },
         error: "Erreur API Google, données de démonstration affichées",
@@ -249,6 +288,15 @@ export async function GET(request: NextRequest) {
 
     // Mettre en cache
     cache.set(cacheKey, { data: providers, timestamp: Date.now() });
+
+    void logGooglePlacesUsage({
+      endpoint: "text_search",
+      source: "google",
+      status: providers.length === 0 ? "zero_results" : "ok",
+      category,
+      userId: user.id,
+      resultsCount: providers.length,
+    });
 
     return NextResponse.json({
       providers,

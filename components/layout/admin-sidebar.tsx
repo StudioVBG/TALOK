@@ -34,6 +34,7 @@ import {
   Megaphone,
   Tag,
   Activity,
+  Gauge,
 } from "lucide-react";
 import { useSignOut } from "@/lib/hooks/use-sign-out";
 import { cn } from "@/lib/utils";
@@ -115,6 +116,7 @@ const adminNavItems: NavCategory[] = [
       { href: "/admin/platform-health", label: "Santé plateforme", icon: Activity },
       { href: "/admin/branding", label: "Branding", icon: Palette },
       { href: "/admin/integrations", label: "Intégrations", icon: Key },
+      { href: "/admin/google-places-usage", label: "Quota Google Places", icon: Gauge },
       { href: "/admin/flags", label: "Feature Flags", icon: Flag },
       { href: "/admin/crons", label: "Tâches planifiées", icon: Clock },
     ],
