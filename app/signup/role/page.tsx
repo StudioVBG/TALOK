@@ -47,7 +47,8 @@ function RoleChoiceContent() {
 
   // Vérifier si on a un token d'invitation (rôle verrouillé)
   // Guard: useSearchParams() peut retourner null pendant le SSR sans Suspense boundary
-  const inviteToken = searchParams?.get("invite") ?? null;
+  // Compat : les anciennes invitations garant utilisaient ?token= au lieu de ?invite=
+  const inviteToken = searchParams?.get("invite") ?? searchParams?.get("token") ?? null;
   const lockedRole = searchParams?.get("role") ?? null;
 
   // Pré-remplir le code logement si transmis depuis /rejoindre-logement

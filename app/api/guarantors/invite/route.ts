@@ -115,7 +115,10 @@ export async function POST(request: NextRequest) {
 
     const propertyAddress = (lease?.property as any)?.adresse_complete || "";
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
-    const inviteUrl = `${appUrl}/auth/signup?role=guarantor&token=${invitation.invitation_token}&email=${encodeURIComponent(validatedData.guarantor_email)}`;
+    // Format unifié : on passe par /signup/role qui propage `invite=` jusqu'à
+    // /signup/account où la bannière "Inscription par invitation" est affichée
+    // et le rôle est verrouillé côté API par /api/v1/auth/register.
+    const inviteUrl = `${appUrl}/signup/role?role=guarantor&invite=${invitation.invitation_token}&email=${encodeURIComponent(validatedData.guarantor_email)}`;
 
     // Envoyer l'email d'invitation
     try {

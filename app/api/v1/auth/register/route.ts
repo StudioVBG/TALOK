@@ -9,7 +9,7 @@ import { RegisterSchema } from "@/lib/api/schemas";
 import { applyRateLimit } from "@/lib/security/rate-limit";
 import { verifyTurnstileToken } from "@/lib/security/turnstile";
 import { getAuthCallbackUrl } from "@/lib/utils/redirect-url";
-import { mapInvitationRoleToUserRole, type InvitationRole } from "@/lib/invitations/role-mapper";
+import { resolveInvitationByToken, type ResolvedInvitation } from "@/lib/invitations/server-resolver";
 
 /**
  * POST /api/v1/auth/register
@@ -43,26 +43,30 @@ export async function POST(request: NextRequest) {
     });
 
     // Verrouillage rôle via invitation : si un token est fourni, on lookup
-    // l'invitation côté serveur et on force le rôle final. Cela bloque les
-    // tentatives de détournement (ex: lien `garant` → signup `owner`).
+    // l'invitation côté serveur (table `invitations` ou `guarantor_invitations`)
+    // et on force le rôle final. Cela bloque les tentatives de détournement
+    // (ex: lien `garant` → signup `owner`).
+    let resolvedInvitation: ResolvedInvitation | null = null;
     if (data.inviteToken) {
       const adminClient = supabaseAdmin();
-      const { data: invitation, error: invErr } = await adminClient
-        .from("invitations")
-        .select("id, email, role, expires_at, used_at")
-        .eq("token", data.inviteToken)
-        .maybeSingle();
+      const result = await resolveInvitationByToken(adminClient, data.inviteToken);
 
-      if (invErr || !invitation) {
-        return apiError("Invitation introuvable", 404, "INVITE_NOT_FOUND");
+      if (!result.ok) {
+        switch (result.error.kind) {
+          case "not_found":
+            return apiError("Invitation introuvable", 404, "INVITE_NOT_FOUND");
+          case "already_used":
+            return apiError("Cette invitation a déjà été utilisée.", 409, "INVITE_ALREADY_USED");
+          case "expired":
+            return apiError("Cette invitation a expiré.", 410, "INVITE_EXPIRED");
+          case "declined":
+            return apiError("Cette invitation a été refusée.", 409, "INVITE_DECLINED");
+        }
       }
-      if (invitation.used_at) {
-        return apiError("Cette invitation a déjà été utilisée.", 409, "INVITE_ALREADY_USED");
-      }
-      if (new Date(invitation.expires_at as string) < new Date()) {
-        return apiError("Cette invitation a expiré.", 410, "INVITE_EXPIRED");
-      }
-      if (String(invitation.email).toLowerCase().trim() !== data.email) {
+
+      resolvedInvitation = result.invitation;
+
+      if (resolvedInvitation.email !== data.email) {
         return apiError(
           "L'email saisi ne correspond pas à l'invitation.",
           403,
@@ -70,17 +74,17 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const expectedRole = mapInvitationRoleToUserRole(invitation.role as InvitationRole);
-      if (expectedRole !== data.role) {
+      if (resolvedInvitation.applicativeRole !== data.role) {
         console.warn("[register] role override forced by invitation", {
           email: data.email,
           requested: data.role,
-          forced: expectedRole,
-          invitation_role: invitation.role,
+          forced: resolvedInvitation.applicativeRole,
+          invitation_role: resolvedInvitation.invitationRole,
+          source: resolvedInvitation.source,
         });
         // Verrouillage strict : on force le rôle au lieu d'accepter celui du
         // client, qui peut avoir été manipulé via l'URL `?role=...`.
-        data.role = expectedRole;
+        data.role = resolvedInvitation.applicativeRole;
       }
     }
 
@@ -187,18 +191,36 @@ export async function POST(request: NextRequest) {
       }
 
       // B18: Résolution automatique des invitations pending.
-      // Le vrai travail est fait par le trigger DB
+      // Pour la table `invitations` (bail), le trigger DB
       // `auto_link_lease_signers_on_profile_created()` (migration
-      // 20260225100000) qui se déclenche à l'INSERT sur profiles et :
+      // 20260225100000) gère :
       //   1. Lie les lease_signers orphelins (invited_email = user email)
       //   2. Backfill invoices.tenant_id
       //   3. Marque les invitations comme used_at = NOW()
       //
-      // Ce trigger se déclenche AVANT ce code (le handle_new_user trigger
-      // insère le profil, puis auto_link_lease_signers_on_profile_created
-      // s'exécute). Aucune action supplémentaire côté API n'est nécessaire.
-      //
-      // On log simplement pour le monitoring.
+      // Pour `guarantor_invitations` (garant standalone), aucun trigger
+      // équivalent n'existe : on marque manuellement l'invitation acceptée
+      // ici, en utilisant la résolution déjà faite avant le signUp.
+      if (resolvedInvitation && resolvedInvitation.source === "guarantor") {
+        try {
+          await adminClient
+            .from("guarantor_invitations")
+            .update({
+              status: "accepted",
+              accepted_at: new Date().toISOString(),
+              guarantor_profile_id: profile.id,
+            })
+            .eq("id", resolvedInvitation.id)
+            .eq("status", "pending");
+        } catch (guarantorLinkError) {
+          console.error("[register] guarantor_invitation accept failed:", {
+            invitation_id: resolvedInvitation.id,
+            error: guarantorLinkError,
+          });
+          // Non bloquant : un endpoint d'acceptation post-login peut rejouer
+          // l'opération.
+        }
+      }
 
       // NOTE: l'email de confirmation est envoyé par Supabase (SMTP Resend configuré
       // au niveau du projet). Pas d'envoi manuel supplémentaire ici pour éviter le
