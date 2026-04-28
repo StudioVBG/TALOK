@@ -171,6 +171,10 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
   const [pendingPhotoUrls, setPendingPhotoUrls] = useState<string[]>([]);
   const [photosToDelete, setPhotosToDelete] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  // Statut visuel par index dans pendingPhotos : 'pending' (à enregistrer),
+  // 'uploading' (upload en cours), 'failed' (échec). Permet d'afficher un
+  // badge clair par photo et de retenir les fichiers en échec après save.
+  const [uploadStatuses, setUploadStatuses] = useState<Record<number, "pending" | "uploading" | "failed">>({});
   const [tickets, setTickets] = useState<Ticket[]>([]);
 
   // ========== INLINE EDIT: Accès & Sécurité ==========
@@ -259,6 +263,7 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
     setPendingPhotos([]);
     setPendingPhotoUrls([]);
     setPhotosToDelete([]);
+    setUploadStatuses({});
     setIsEditing(true);
   };
 
@@ -270,6 +275,7 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
     setPendingPhotos([]);
     setPendingPhotoUrls([]);
     setPhotosToDelete([]);
+    setUploadStatuses({});
   };
 
   // ========== SAUVEGARDE GLOBALE ==========
@@ -409,7 +415,15 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
             ? "interieur"
             : "vue_generale";
 
-        for (const file of pendingPhotos) {
+        // Tracker quels indices ont échoué pour pouvoir les conserver
+        // dans pendingPhotos après le save (l'utilisateur peut retry).
+        const failedIndices: number[] = [];
+
+        for (let i = 0; i < pendingPhotos.length; i++) {
+          const file = pendingPhotos[i];
+          // Marquer cette photo comme "uploading" → badge bleu animé
+          setUploadStatuses((prev) => ({ ...prev, [i]: "uploading" }));
+
           try {
             const { upload_url } = await apiClient.post<{ upload_url: string; photo: any }>(
               `/properties/${propertyId}/photos/upload-url`,
@@ -426,38 +440,70 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
             });
             if (!uploadResponse.ok) {
               uploadFailures.push(file.name);
+              failedIndices.push(i);
+              setUploadStatuses((prev) => ({ ...prev, [i]: "failed" }));
             }
           } catch (uploadErr) {
             console.error("[PropertyDetails] Erreur upload photo", file.name, uploadErr);
             uploadFailures.push(file.name);
+            failedIndices.push(i);
+            setUploadStatuses((prev) => ({ ...prev, [i]: "failed" }));
           }
         }
-      }
 
-      // 4. Recharger les photos depuis la source de vérité
-      try {
-        const photosResponse = await apiClient.get<{ photos: any[] }>(`/properties/${propertyId}/photos`);
-        setPhotos(photosResponse.photos || []);
-      } catch {
-        // Photos non rechargées - non critique
-      }
+        // 4. Recharger les photos depuis la source de vérité
+        try {
+          const photosResponse = await apiClient.get<{ photos: any[] }>(`/properties/${propertyId}/photos`);
+          setPhotos(photosResponse.photos || []);
+        } catch {
+          // Photos non rechargées - non critique
+        }
 
-      // 5. Cleanup et quitter le mode édition
-      pendingPhotoUrls.forEach((url) => URL.revokeObjectURL(url));
-      setIsEditing(false);
-      setEditedValues({});
-      setPendingPhotos([]);
-      setPendingPhotoUrls([]);
-      setPhotosToDelete([]);
-
-      if (uploadFailures.length > 0) {
-        toast({
-          title: "Upload partiel",
-          description: `Certaines photos n'ont pas pu être uploadées : ${uploadFailures.join(", ")}`,
-          variant: "destructive",
-          duration: 6000,
+        // 5. Nettoyer SEULEMENT les fichiers uploadés avec succès. Les fichiers
+        //    en échec restent dans pendingPhotos avec leur badge "failed" et
+        //    l'utilisateur peut retry ou les supprimer.
+        const failedSet = new Set(failedIndices);
+        const keptFiles: File[] = [];
+        const keptUrls: string[] = [];
+        const newStatuses: Record<number, "pending" | "uploading" | "failed"> = {};
+        pendingPhotos.forEach((f, i) => {
+          if (failedSet.has(i)) {
+            keptFiles.push(f);
+            keptUrls.push(pendingPhotoUrls[i]);
+            newStatuses[keptFiles.length - 1] = "failed";
+          } else {
+            URL.revokeObjectURL(pendingPhotoUrls[i]);
+          }
         });
+        setPendingPhotos(keptFiles);
+        setPendingPhotoUrls(keptUrls);
+        setUploadStatuses(newStatuses);
+
+        if (uploadFailures.length > 0) {
+          // ⚠️ Garder le mode édition pour permettre le retry sur les échecs
+          toast({
+            title: `${uploadFailures.length} photo${uploadFailures.length > 1 ? "s en échec" : " en échec"}`,
+            description: `Photos uploadées : ${pendingPhotos.length - uploadFailures.length}/${pendingPhotos.length}. Réessayez ou supprimez les photos en rouge.`,
+            variant: "destructive",
+            duration: 8000,
+          });
+        } else {
+          // ✅ Tous les uploads ont réussi → on quitte le mode édition
+          setIsEditing(false);
+          setEditedValues({});
+          setPhotosToDelete([]);
+          toast({
+            title: "Modifications enregistrées",
+            description: pendingPhotos.length > 0
+              ? `${pendingPhotos.length} photo${pendingPhotos.length > 1 ? "s ajoutée" + (pendingPhotos.length > 1 ? "s" : "") : " ajoutée"} avec succès.`
+              : "Toutes les modifications ont été sauvegardées.",
+          });
+        }
       } else {
+        // Aucune photo à uploader → quitter le mode édition normalement
+        setIsEditing(false);
+        setEditedValues({});
+        setPhotosToDelete([]);
         toast({
           title: "Modifications enregistrées",
           description: "Toutes les modifications ont été sauvegardées avec succès.",
@@ -541,7 +587,18 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
     if (!files) return;
     const newFiles = Array.from(files);
     const newUrls = newFiles.map((file) => URL.createObjectURL(file));
-    setPendingPhotos((prev) => [...prev, ...newFiles]);
+    setPendingPhotos((prev) => {
+      const startIndex = prev.length;
+      // Initialiser le statut "pending" pour chaque nouvelle photo
+      setUploadStatuses((statuses) => {
+        const next = { ...statuses };
+        newFiles.forEach((_, i) => {
+          next[startIndex + i] = "pending";
+        });
+        return next;
+      });
+      return [...prev, ...newFiles];
+    });
     setPendingPhotoUrls((prev) => [...prev, ...newUrls]);
   };
 
@@ -549,6 +606,16 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
     URL.revokeObjectURL(pendingPhotoUrls[index]);
     setPendingPhotos((prev) => prev.filter((_, i) => i !== index));
     setPendingPhotoUrls((prev) => prev.filter((_, i) => i !== index));
+    // Recalculer les indices des statuts (les indices > index décalent de -1)
+    setUploadStatuses((statuses) => {
+      const next: Record<number, "pending" | "uploading" | "failed"> = {};
+      Object.entries(statuses).forEach(([k, v]) => {
+        const i = parseInt(k, 10);
+        if (i < index) next[i] = v;
+        else if (i > index) next[i - 1] = v;
+      });
+      return next;
+    });
   };
 
   const handleMarkPhotoForDeletion = (photoId: string) => {
@@ -580,7 +647,13 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
   const visibleExistingPhotos = photos.filter((p: any) => !photosToDelete.includes(p.id));
   const allDisplayPhotos = [
     ...visibleExistingPhotos,
-    ...pendingPhotoUrls.map((url, idx) => ({ id: `pending-${idx}`, url, isPending: true, pendingIndex: idx })),
+    ...pendingPhotoUrls.map((url, idx) => ({
+      id: `pending-${idx}`,
+      url,
+      isPending: true,
+      pendingIndex: idx,
+      uploadStatus: uploadStatuses[idx] ?? "pending",
+    })),
   ];
   const mainPhoto = allDisplayPhotos[0];
 
@@ -820,10 +893,29 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
                   
-                  {/* Badge pending */}
-                  {(mainPhoto as any).isPending && (
-                    <Badge className="absolute top-4 left-4 bg-amber-500">En attente d'upload</Badge>
-                  )}
+                  {/* Badge statut upload (pending/uploading/failed) */}
+                  {(mainPhoto as any).isPending && (() => {
+                    const status = (mainPhoto as any).uploadStatus as "pending" | "uploading" | "failed";
+                    if (status === "uploading") {
+                      return (
+                        <Badge className="absolute top-4 left-4 bg-blue-500 gap-1.5">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Upload en cours…
+                        </Badge>
+                      );
+                    }
+                    if (status === "failed") {
+                      return (
+                        <Badge className="absolute top-4 left-4 bg-red-500 gap-1.5">
+                          <AlertTriangle className="h-3 w-3" />
+                          Échec — réessayez
+                        </Badge>
+                      );
+                    }
+                    return (
+                      <Badge className="absolute top-4 left-4 bg-amber-500">À enregistrer</Badge>
+                    );
+                  })()}
 
                   {/* Bouton supprimer en mode édition */}
                   {isEditing && (
@@ -861,10 +953,10 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
                   <div className="absolute bottom-0 left-0 p-6 text-white">
                     <Badge className="mb-2 bg-card/20 backdrop-blur">{property.type}</Badge>
                     <h1 className="text-2xl md:text-3xl font-bold drop-shadow-lg">
-                      {isEditing ? editedValues.adresse_complete : property.adresse_complete}
+                      {String(getValue("adresse_complete") || property.adresse_complete || "")}
                     </h1>
                     <p className="text-white/80">
-                      {isEditing ? `${editedValues.code_postal} ${editedValues.ville}` : `${property.code_postal} ${property.ville}`}
+                      {`${getValue("code_postal") || property.code_postal || ""} ${getValue("ville") || property.ville || ""}`.trim()}
                     </p>
                   </div>
 
@@ -911,9 +1003,28 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
                     className="object-cover transition-transform duration-300 group-hover:scale-105"
                   />
                   
-                  {photo.isPending && (
-                    <Badge className="absolute top-2 left-2 bg-amber-500 text-xs">En attente</Badge>
-                  )}
+                  {photo.isPending && (() => {
+                    const status = photo.uploadStatus as "pending" | "uploading" | "failed";
+                    if (status === "uploading") {
+                      return (
+                        <Badge className="absolute top-2 left-2 bg-blue-500 text-xs gap-1">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Upload…
+                        </Badge>
+                      );
+                    }
+                    if (status === "failed") {
+                      return (
+                        <Badge className="absolute top-2 left-2 bg-red-500 text-xs gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          Échec
+                        </Badge>
+                      );
+                    }
+                    return (
+                      <Badge className="absolute top-2 left-2 bg-amber-500 text-xs">À enregistrer</Badge>
+                    );
+                  })()}
 
                   {isEditing && (
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
