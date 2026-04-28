@@ -884,9 +884,9 @@ export function PropertyDetailPremium({ propertyId }: PropertyDetailPremiumProps
                             <TrendingUp className="h-4 w-4 text-primary" />
                             <p className="text-sm font-semibold">Zone d'encadrement des loyers</p>
                           </div>
-                          {property.loyer_reference_majoré && (
+                          {property.loyer_reference_majore && (
                             <p className="text-sm text-muted-foreground">
-                              Référence majorée : {formatCurrency(property.loyer_reference_majoré)}
+                              Référence majorée : {formatCurrency(property.loyer_reference_majore)}
                             </p>
                           )}
                           {property.complement_loyer !== null && property.complement_loyer > 0 && (

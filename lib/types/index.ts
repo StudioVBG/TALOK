@@ -595,7 +595,7 @@ export interface Property {
   depot_garantie: number;
   zone_encadrement: boolean;
   encadrement_loyers?: boolean;
-  loyer_reference_majoré: number | null;
+  loyer_reference_majore: number | null;
   complement_loyer: number | null;
   complement_justification: string | null;
   chauffage_type?: HeatingType | null;

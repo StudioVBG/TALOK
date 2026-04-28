@@ -254,13 +254,13 @@ export const POST = withSecurity(async function POST(request: Request) {
       }
       uploadedPaths.push(filePath);
 
-      // Générer une URL signée au lieu d'une URL publique pour les documents privés
+      // Stocker une URL proxy stable (route /api/documents/file qui fait le
+      // download authentifié à chaque requête) plutôt qu'une URL signée à 1h
+      // qui périme et casse les galeries après expiration. La route applique
+      // le même contrôle d'accès que createSignedUrl côté Storage.
       let previewUrl: string | null = null;
       if (isImage(file.type)) {
-        const { data: signedUrlData } = await serviceClient.storage
-          .from(STORAGE_BUCKETS.DOCUMENTS)
-          .createSignedUrl(filePath, 3600); // 1h
-        previewUrl = signedUrlData?.signedUrl ?? null;
+        previewUrl = `/api/documents/file?path=${encodeURIComponent(filePath)}`;
       }
 
       const record: Record<string, unknown> = {
@@ -309,14 +309,13 @@ export const POST = withSecurity(async function POST(request: Request) {
           }
         }
 
-        // Pour l'analyse IA, utiliser une URL signée courte durée
-        let publicUrlForAnalysis = record.preview_url as string | null;
-        if (!publicUrlForAnalysis) {
-          const { data: aiSignedUrl } = await serviceClient.storage
-            .from(STORAGE_BUCKETS.DOCUMENTS)
-            .createSignedUrl(filePath, 600); // 10 min pour l'analyse
-          publicUrlForAnalysis = aiSignedUrl?.signedUrl ?? null;
-        }
+        // Pour l'analyse IA on a besoin d'une URL HTTP absolue accessible
+        // côté provider (OpenAI). On génère donc une URL signée courte durée
+        // distincte de la preview_url proxy stockée en DB.
+        const { data: aiSignedUrl } = await serviceClient.storage
+          .from(STORAGE_BUCKETS.DOCUMENTS)
+          .createSignedUrl(filePath, 600); // 10 min pour l'analyse
+        const publicUrlForAnalysis = aiSignedUrl?.signedUrl ?? null;
 
         // We await here to ensure execution in serverless environment, 
         // though ideally this would be offloaded to a background job
