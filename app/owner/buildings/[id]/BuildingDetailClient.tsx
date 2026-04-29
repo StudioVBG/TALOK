@@ -81,6 +81,7 @@ import { TYPE_TO_LABEL, type DocumentType } from "@/lib/documents/constants";
 import { SmartImageCard } from "@/components/ui/smart-image-card";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
+import { SyndicLinkBanner } from "@/components/buildings/SyndicLinkBanner";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -127,6 +128,8 @@ interface BuildingDetailClientProps {
   leases?: UnitLease[];
   tenants?: UnitTenant[];
   documents?: BuildingDocument[];
+  linkedSite?: { id: string; name: string } | null;
+  rejectedReason?: string | null;
 }
 
 interface BuildingDocument {
@@ -294,6 +297,8 @@ export function BuildingDetailClient({
   leases = [],
   tenants = [],
   documents: initialDocuments,
+  linkedSite = null,
+  rejectedReason = null,
 }: BuildingDetailClientProps) {
   const { toast } = useToast();
 
@@ -728,6 +733,25 @@ export function BuildingDetailClient({
           Retour aux immeubles
         </Link>
       </Button>
+
+      {/* Bridge owner ↔ syndic — bandeau de statut adapté au mode de possession */}
+      {buildingId && (
+        <div className="mb-6">
+          <SyndicLinkBanner
+            buildingId={buildingId}
+            ownershipType={ownershipType}
+            initialStatus={
+              ((buildingMeta as any)?.site_link_status as
+                | "unlinked"
+                | "pending"
+                | "linked"
+                | "rejected") ?? "unlinked"
+            }
+            linkedSite={linkedSite}
+            rejectedReason={rejectedReason}
+          />
+        </div>
+      )}
 
       {/* Header */}
       <div className="relative h-56 md:h-64 rounded-xl overflow-hidden mb-8 bg-card group">

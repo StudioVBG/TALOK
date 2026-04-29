@@ -26,13 +26,14 @@ import {
   Building2, Users, Calendar, Euro,
   FileText, Settings, Bell, HelpCircle,
   LayoutDashboard, ClipboardList, UserPlus,
-  Calculator, AlertTriangle, Hammer, Scale, Briefcase,
+  Calculator, AlertTriangle, Hammer, Scale, Briefcase, Inbox,
 } from "lucide-react";
 
 // Navigation syndic — `tour` cible les étapes de SyndicOnboardingWrapper.
 const navigation = [
   { name: "Dashboard", href: "/syndic/dashboard", icon: LayoutDashboard, tour: "syndic-dashboard" },
   { name: "Copropriétés", href: "/syndic/sites", icon: Building2, tour: "syndic-sites" },
+  { name: "Demandes", href: "/syndic/claims", icon: Inbox },
   { name: "Assemblées", href: "/syndic/assemblies", icon: Calendar, tour: "syndic-assemblies" },
   { name: "Mandats", href: "/syndic/mandates", icon: FileText, tour: "syndic-mandates" },
   { name: "Conseils syndicaux", href: "/syndic/councils", icon: Users },
