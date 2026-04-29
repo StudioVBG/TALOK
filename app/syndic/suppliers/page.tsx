@@ -33,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import Link from "next/link";
 import {
   Briefcase,
   Plus,
@@ -41,6 +42,7 @@ import {
   Star,
   Loader2,
   Archive,
+  ChevronRight,
 } from "lucide-react";
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -357,8 +359,15 @@ export default function SyndicSuppliersPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell className="font-medium text-foreground">{s.name}</TableCell>
+                  <TableRow key={s.id} className="hover:bg-muted/50">
+                    <TableCell className="font-medium text-foreground">
+                      <Link
+                        href={`/syndic/suppliers/${s.id}`}
+                        className="hover:underline inline-flex items-center gap-1"
+                      >
+                        {s.name}
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="border-violet-200 text-violet-700">
                         {CATEGORY_LABELS[s.category] ?? s.category}
@@ -394,14 +403,21 @@ export default function SyndicSuppliersPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleArchive(s.id)}
-                        title="Archiver"
-                      >
-                        <Archive className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Link href={`/syndic/suppliers/${s.id}`}>
+                          <Button size="sm" variant="ghost" title="Voir les contrats">
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleArchive(s.id)}
+                          title="Archiver"
+                        >
+                          <Archive className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
