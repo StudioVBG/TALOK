@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ProtectedRoute } from "@/components/protected-route";
@@ -23,6 +23,7 @@ import {
   MessageSquare,
   Settings,
   Receipt,
+  Users,
 } from "lucide-react";
 import { OWNER_ROUTES } from "@/lib/config/owner-routes";
 import { SharedBottomNav } from "./shared-bottom-nav";
@@ -68,7 +69,14 @@ interface NavGroup {
  * Prestataires, Entités) restent accessibles depuis les pages contextuelles
  * et via la Command Palette (⌘K).
  */
-const navigationGroups: NavGroup[] = [
+const COPRO_NAV_ITEM: NavItem = {
+  name: "Ma copropriété",
+  href: "/owner/copro",
+  icon: Users,
+  tourId: "nav-copro",
+};
+
+const buildNavigationGroups = ({ showCopro }: { showCopro: boolean }): NavGroup[] => [
   {
     items: [
       { name: "Tableau de bord", href: OWNER_ROUTES.dashboard.path, icon: LayoutDashboard, tourId: "nav-dashboard" },
@@ -81,6 +89,7 @@ const navigationGroups: NavGroup[] = [
       { name: "Mes baux", href: OWNER_ROUTES.contracts.path, icon: FileText, tourId: "nav-leases" },
       { name: "Finances", href: OWNER_ROUTES.money.path, icon: Euro, tourId: "nav-money" },
       { name: "Comptabilité", href: OWNER_ROUTES.accounting.path, icon: Landmark, tourId: "nav-accounting" },
+      ...(showCopro ? [COPRO_NAV_ITEM] : []),
     ],
   },
   {
@@ -93,9 +102,6 @@ const navigationGroups: NavGroup[] = [
     ],
   },
 ];
-
-// Flat list for page title lookup and bottom nav
-const allNavItems = navigationGroups.flatMap((g) => g.items);
 
 interface OwnerAppLayoutProps {
   children: React.ReactNode;
@@ -119,6 +125,42 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
 
   // Utiliser le profil du serveur si disponible, sinon celui du client
   const profile = serverProfile || clientProfile;
+
+  // Le lien "Ma copropriété" n'apparaît que si l'utilisateur a au moins
+  // une copropriété rattachée via user_site_roles. Probe léger qui retourne
+  // { copros: [] } sinon. Si l'utilisateur navigue déjà sur /owner/copro
+  // (ex. lien direct), on affiche sans attendre.
+  const [hasCopro, setHasCopro] = useState<boolean>(
+    pathname?.startsWith("/owner/copro") ?? false,
+  );
+  useEffect(() => {
+    if (!profile || profile.role !== "owner") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch("/api/owner/copro", { credentials: "include" });
+        if (!response.ok) return;
+        const data = (await response.json()) as { copros?: unknown[] };
+        if (!cancelled && Array.isArray(data.copros) && data.copros.length > 0) {
+          setHasCopro(true);
+        }
+      } catch {
+        // Silent — feature non bloquante.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile]);
+
+  const navigationGroups = useMemo(
+    () => buildNavigationGroups({ showCopro: hasCopro }),
+    [hasCopro],
+  );
+  const allNavItems = useMemo(
+    () => navigationGroups.flatMap((g) => g.items),
+    [navigationGroups],
+  );
 
   // Rediriger si pas propriétaire (seulement côté client si pas de profil serveur)
   useEffect(() => {
