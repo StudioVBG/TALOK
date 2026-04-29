@@ -284,6 +284,86 @@ Le badge "Immeuble · [adresse]" est ajouté dans `PropertyCard` :
 
 Un utilisateur peut avoir les deux rôles (syndic bénévole d'une copro dont il est aussi copropriétaire), mais les modules restent strictement séparés pour ne pas mélanger responsabilités légales.
 
+## 12b. Bridge owner ↔ syndic (livré le 29/04/2026)
+
+Quand le syndic d'une copropriété utilise aussi Talok, le `building` (côté
+owner) peut être **connecté** au `site` (côté syndic). Ce pont est implémenté
+via les colonnes `buildings.site_id`, `buildings.site_link_status`,
+`buildings.owner_syndic_mode` et la table `building_site_links` (historique
+des claims).
+
+### Personas et CTAs
+
+| Persona | ownership_type | site_link_status | UI affichée |
+|---|---|---|---|
+| Maison standalone | n/a (pas de building) | n/a | rien |
+| Owner immeuble entier | `full` | `unlinked` | option discrète « Activer le mode syndic-bénévole » |
+| Owner immeuble entier déjà bénévole | `full` | `linked` (`owner_syndic_mode='volunteer'`) | bandeau vert + lien vers `/syndic/sites/[id]` |
+| Copro avec syndic externe | `partial` | `unlinked` | bandeau cyan « Votre syndic est-il sur Talok ? » + 2 CTAs : `Rechercher` / `Inviter par email` |
+| Copro syndic Talok demandeur | `partial` | `pending` | bandeau ambre « Demande envoyée » + bouton `Annuler` |
+| Copro syndic Talok refusé | `partial` | `rejected` | bandeau rouge avec motif + bouton `Renvoyer` |
+| Copro syndic Talok approuvé | `partial` | `linked` (`owner_syndic_mode='managed_external'`) | bandeau vert + **panneau live « Côté copropriété »** (3 cards : prochaine AG, dernier appel de fonds, PV récents) |
+
+### Flow d'approbation
+
+```
+Owner → POST /api/buildings/[id]/claim-site { site_id, message }
+   → INSERT building_site_links { status='pending' }
+   → trigger met buildings.site_link_status='pending'
+   → notif côté syndic dans /syndic/claims
+
+Syndic → POST /api/syndic/site-claims/[claimId] { decision: 'approve'|'reject' }
+   → UPDATE building_site_links → trigger apply_building_site_link :
+     - approve : set buildings.site_id, site_link_status='linked',
+                 owner_syndic_mode='managed_external',
+                 + INSERT user_site_roles { role_code: 'coproprietaire_bailleur' }
+     - reject : site_link_status='rejected'
+```
+
+### Mode syndic-bénévole (full uniquement)
+
+`POST /api/buildings/[id]/activate-as-syndic` :
+1. Crée un `sites` row avec `syndic_profile_id = profile.id`
+2. INSERT `building_site_links { status: 'approved' }` (auto-approuvé car owner = syndic)
+3. Trigger applique le link → `owner_syndic_mode='volunteer'`
+4. Promote `profiles.role` de `owner` vers `syndic` si applicable
+5. Redirect vers `/syndic/sites/[id]` pour suite (compta, contrats, AGs)
+
+**Légalement** : un mono-propriétaire n'a aucune obligation de syndic. Cette action est purement organisationnelle (compta dédiée, centralisation contrats).
+
+### Permissions cross-module (coproprietaire_bailleur)
+
+Une fois `linked`, l'owner reçoit le rôle `coproprietaire_bailleur` sur le site syndic. Les routes `/api/copro/*` filtrent par `user_site_roles` — l'owner peut donc lire (mais pas modifier) :
+- `copro_assemblies` du site
+- `copro_fund_calls` et leurs `copro_fund_call_lines` qui le concernent
+- `copro_minutes` (PV publiés)
+- documents officiels du site
+
+Les pages `/syndic/sites/[id]/*` ne lui sont pas accessibles directement (le layout `/syndic` redirige les non-syndics). À la place, le panneau **`SyndicSidePanel`** affiche un résumé inline dans `/owner/buildings/[id]`.
+
+### Composants et routes clés
+
+| Fichier | Rôle |
+|---|---|
+| `components/buildings/SyndicLinkBanner.tsx` | Bandeau d'état + dialogs claim & activate |
+| `components/buildings/SyndicSidePanel.tsx` | 3 cards lecture-seule visible si linked |
+| `app/api/buildings/[id]/match-sites/route.ts` | Auto-suggestion par CP+ville |
+| `app/api/buildings/[id]/claim-site/route.ts` | Soumet le claim |
+| `app/api/buildings/[id]/unlink-site/route.ts` | Annule pending ou rompt linked |
+| `app/api/buildings/[id]/activate-as-syndic/route.ts` | Bascule `full` en mode bénévole |
+| `app/api/buildings/[id]/syndic-summary/route.ts` | Aggrège AG + fund call + PV pour le panel |
+| `app/api/syndic/site-claims/route.ts` | GET liste pour le syndic |
+| `app/api/syndic/site-claims/[claimId]/route.ts` | POST approve/reject |
+| `app/syndic/claims/page.tsx` | Inbox côté syndic avec actions |
+| `supabase/migrations/20260429120300_owner_syndic_bridge.sql` | Schéma + RLS + triggers |
+
+### Limites actuelles (à itérer plus tard)
+
+- Mapping fin **`building_units.copro_lot_id`** non encore implémenté → `user_owed_cents` calculé sur l'ensemble des lignes du fund call et non sur les lots précis de l'owner.
+- L'auto-suggestion n'utilise que `code_postal + ville`. Recherche par SIRET du syndic ou par nom du cabinet à ajouter en V2.
+- Pas de notification email aux deux parties lors d'un claim (toast + presence dans `/syndic/claims` uniquement).
+- L'unlink ne révoque pas automatiquement le `user_site_roles` créé (volontaire — l'owner reste copropriétaire si invité indépendamment via `copro_invites`).
+
 ## 13. Règles dev obligatoires
 
 1. **Check d'accès** : jamais de filtre `owner_id` seul sur les pages/routes building — toujours copier le pattern entity_members.

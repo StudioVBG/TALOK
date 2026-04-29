@@ -82,6 +82,7 @@ import { SmartImageCard } from "@/components/ui/smart-image-card";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { SyndicLinkBanner } from "@/components/buildings/SyndicLinkBanner";
+import { SyndicSidePanel } from "@/components/buildings/SyndicSidePanel";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -736,7 +737,7 @@ export function BuildingDetailClient({
 
       {/* Bridge owner ↔ syndic — bandeau de statut adapté au mode de possession */}
       {buildingId && (
-        <div className="mb-6">
+        <div className="mb-6 space-y-4">
           <SyndicLinkBanner
             buildingId={buildingId}
             ownershipType={ownershipType}
@@ -750,6 +751,9 @@ export function BuildingDetailClient({
             linkedSite={linkedSite}
             rejectedReason={rejectedReason}
           />
+          {(buildingMeta as any)?.site_link_status === "linked" && (
+            <SyndicSidePanel buildingId={buildingId} />
+          )}
         </div>
       )}
 
