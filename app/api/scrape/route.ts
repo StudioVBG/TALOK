@@ -193,18 +193,91 @@ const CP_TO_CITY: Record<string, string> = {
   "97100": "Basse-Terre", "97110": "Pointe-à-Pitre", "97122": "Baie-Mahault",
   "97139": "Les Abymes", "97160": "Le Moule", "97170": "Petit-Bourg",
   "97180": "Sainte-Anne", "97190": "Le Gosier",
+  "97111": "Morne-à-l'Eau", "97113": "Gourbeyre", "97114": "Trois-Rivières",
+  "97115": "Sainte-Rose", "97116": "Pointe-Noire", "97117": "Port-Louis",
+  "97118": "Saint-François", "97120": "Saint-Claude", "97123": "Baillif",
+  "97125": "Bouillante", "97126": "Deshaies", "97128": "Goyave",
+  "97129": "Lamentin", "97130": "Capesterre-Belle-Eau", "97131": "Petit-Canal",
+  "97140": "Capesterre-de-Marie-Galante", "97150": "Saint-Martin",
   // Réunion
   "97400": "Saint-Denis", "97410": "Saint-Pierre", "97420": "Le Port",
   "97430": "Le Tampon", "97440": "Saint-André", "97460": "Saint-Paul",
+  "97411": "Bois-de-Nèfles Saint-Paul", "97412": "Bras-Panon", "97413": "Cilaos",
+  "97414": "Entre-Deux", "97415": "Saint-Paul", "97416": "La Chaloupe Saint-Leu",
+  "97417": "La Montagne Saint-Denis", "97418": "Plaine des Cafres",
+  "97419": "La Possession", "97421": "La Rivière Saint-Louis",
+  "97422": "La Saline", "97423": "Le Guillaume Saint-Paul",
+  "97424": "Le Piton Saint-Leu", "97425": "Les Avirons",
+  "97426": "Trois-Bassins", "97427": "L'Étang-Salé", "97429": "Petite-Île",
+  "97431": "Plaine des Palmistes", "97432": "Ravine des Cabris",
+  "97433": "Salazie", "97434": "Saint-Gilles-les-Bains",
+  "97435": "Saint-Gilles-les-Hauts", "97436": "Saint-Leu",
+  "97437": "Sainte-Anne", "97438": "Sainte-Marie",
+  "97439": "Sainte-Rose", "97441": "Sainte-Suzanne",
+  "97442": "Saint-Philippe", "97450": "Saint-Louis",
+  "97470": "Saint-Benoît", "97480": "Saint-Joseph", "97490": "Sainte-Clotilde",
   // Guyane
   "97300": "Cayenne", "97310": "Kourou", "97320": "Saint-Laurent-du-Maroni",
-  // Métropole principales
+  "97311": "Roura", "97312": "Saint-Élie", "97313": "Saül",
+  "97314": "Régina", "97315": "Sinnamary", "97316": "Iracoubo",
+  "97317": "Mana", "97318": "Saint-Georges-de-l'Oyapock",
+  "97319": "Awala-Yalimapo", "97330": "Camopi", "97340": "Grand-Santi",
+  "97350": "Maripasoula", "97351": "Matoury", "97352": "Macouria",
+  "97353": "Montsinéry-Tonnegrande", "97354": "Rémire-Montjoly",
+  "97355": "Apatou", "97356": "Papaichton", "97360": "Mana",
+  "97370": "Maripasoula", "97380": "Tonate",
+  // Mayotte
+  "97600": "Mamoudzou", "97605": "Pamandzi", "97610": "Dzaoudzi",
+  "97615": "Petite-Terre", "97620": "Mtsamboro", "97625": "Bandraboua",
+  "97630": "Acoua", "97640": "Sada", "97650": "Bandrele",
+  "97660": "Bouéni", "97670": "Chirongui", "97680": "Tsingoni",
+  "97690": "Koungou",
+  // Saint-Pierre-et-Miquelon
+  "97500": "Saint-Pierre",
+  // Métropole — Paris arrondissements complets
   "75001": "Paris", "75002": "Paris", "75003": "Paris", "75004": "Paris",
-  "69001": "Lyon", "69002": "Lyon", "69003": "Lyon",
-  "13001": "Marseille", "13002": "Marseille",
+  "75005": "Paris", "75006": "Paris", "75007": "Paris", "75008": "Paris",
+  "75009": "Paris", "75010": "Paris", "75011": "Paris", "75012": "Paris",
+  "75013": "Paris", "75014": "Paris", "75015": "Paris", "75016": "Paris",
+  "75017": "Paris", "75018": "Paris", "75019": "Paris", "75020": "Paris",
+  "75116": "Paris",
+  // Lyon arrondissements complets
+  "69001": "Lyon", "69002": "Lyon", "69003": "Lyon", "69004": "Lyon",
+  "69005": "Lyon", "69006": "Lyon", "69007": "Lyon", "69008": "Lyon",
+  "69009": "Lyon",
+  // Marseille arrondissements complets
+  "13001": "Marseille", "13002": "Marseille", "13003": "Marseille",
+  "13004": "Marseille", "13005": "Marseille", "13006": "Marseille",
+  "13007": "Marseille", "13008": "Marseille", "13009": "Marseille",
+  "13010": "Marseille", "13011": "Marseille", "13012": "Marseille",
+  "13013": "Marseille", "13014": "Marseille", "13015": "Marseille",
+  "13016": "Marseille",
+  // Top 30 villes France
   "31000": "Toulouse", "33000": "Bordeaux", "44000": "Nantes",
   "59000": "Lille", "67000": "Strasbourg", "34000": "Montpellier",
-  "35000": "Rennes", "06000": "Nice",
+  "35000": "Rennes", "06000": "Nice", "76000": "Rouen",
+  "21000": "Dijon", "38000": "Grenoble", "37000": "Tours",
+  "63000": "Clermont-Ferrand", "49000": "Angers", "29200": "Brest",
+  "42000": "Saint-Étienne", "30000": "Nîmes", "57000": "Metz",
+  "83000": "Toulon", "76600": "Le Havre", "87000": "Limoges",
+  "68100": "Mulhouse", "51100": "Reims", "66000": "Perpignan",
+  "64000": "Pau", "14000": "Caen", "72000": "Le Mans",
+  "45000": "Orléans", "25000": "Besançon", "84000": "Avignon",
+  "41000": "Blois", "80000": "Amiens", "86000": "Poitiers",
+  "74000": "Annecy", "73000": "Chambéry", "85000": "La Roche-sur-Yon",
+  "46000": "Cahors", "47000": "Agen", "11000": "Carcassonne",
+  "12000": "Rodez", "65000": "Tarbes", "40000": "Mont-de-Marsan",
+  // Banlieue parisienne (top communes)
+  "92100": "Boulogne-Billancourt", "92200": "Neuilly-sur-Seine",
+  "92300": "Levallois-Perret", "92400": "Courbevoie", "92500": "Rueil-Malmaison",
+  "92600": "Asnières-sur-Seine", "92700": "Colombes", "92800": "Puteaux",
+  "93100": "Montreuil", "93200": "Saint-Denis", "93300": "Aubervilliers",
+  "94100": "Saint-Maur-des-Fossés", "94200": "Ivry-sur-Seine",
+  "94300": "Vincennes", "94400": "Vitry-sur-Seine",
+  "95100": "Argenteuil", "95200": "Sarcelles",
+  "78000": "Versailles", "78100": "Saint-Germain-en-Laye",
+  "77100": "Meaux", "77200": "Torcy", "77300": "Fontainebleau",
+  "91100": "Corbeil-Essonnes", "91200": "Athis-Mons",
 };
 
 const CITY_TO_CP: Record<string, string> = {
@@ -219,14 +292,57 @@ const CITY_TO_CP: Record<string, string> = {
   // Guadeloupe
   "basse-terre": "97100", "pointe-a-pitre": "97110", "baie-mahault": "97122",
   "les abymes": "97139", "le moule": "97160", "le gosier": "97190",
+  "morne-a-l'eau": "97111", "gourbeyre": "97113", "trois-rivieres": "97114",
+  "sainte-rose": "97115", "pointe-noire": "97116", "port-louis": "97117",
+  "saint-francois": "97118", "saint-claude": "97120", "baillif": "97123",
+  "bouillante": "97125", "deshaies": "97126", "goyave": "97128",
+  "capesterre-belle-eau": "97130", "petit-canal": "97131",
+  "saint-martin": "97150",
   // Réunion
   "saint-denis": "97400", "saint-pierre": "97410", "le port": "97420",
   "le tampon": "97430", "saint-andre": "97440", "saint-paul": "97460",
-  // Métropole
+  "saint-louis": "97450", "saint-benoit": "97470", "saint-joseph": "97480",
+  "saint-leu": "97436", "sainte-suzanne": "97441", "salazie": "97433",
+  "cilaos": "97413", "entre-deux": "97414", "petite-ile": "97429",
+  "l'etang-sale": "97427", "les avirons": "97425", "trois-bassins": "97426",
+  "saint-philippe": "97442", "la possession": "97419",
+  "bras-panon": "97412", "plaine des palmistes": "97431",
+  // Guyane
+  "cayenne": "97300", "kourou": "97310", "saint-laurent-du-maroni": "97320",
+  "matoury": "97351", "macouria": "97352", "remire-montjoly": "97354",
+  "apatou": "97355", "maripasoula": "97350", "mana": "97317",
+  "sinnamary": "97315", "iracoubo": "97316",
+  // Mayotte
+  "mamoudzou": "97600", "pamandzi": "97605", "dzaoudzi": "97610",
+  "koungou": "97690", "tsingoni": "97680", "sada": "97640",
+  "bandrele": "97650", "boueni": "97660", "chirongui": "97670",
+  // Saint-Pierre-et-Miquelon
+  "miquelon": "97500",
+  // Métropole top 40
   "paris": "75000", "lyon": "69000", "marseille": "13000",
   "toulouse": "31000", "bordeaux": "33000", "nantes": "44000",
   "lille": "59000", "strasbourg": "67000", "montpellier": "34000",
-  "rennes": "35000", "nice": "06000",
+  "rennes": "35000", "nice": "06000", "rouen": "76000",
+  "dijon": "21000", "grenoble": "38000", "tours": "37000",
+  "clermont-ferrand": "63000", "angers": "49000", "brest": "29200",
+  "saint-etienne": "42000", "nimes": "30000", "metz": "57000",
+  "toulon": "83000", "le havre": "76600", "limoges": "87000",
+  "mulhouse": "68100", "reims": "51100", "perpignan": "66000",
+  "pau": "64000", "caen": "14000", "le mans": "72000",
+  "orleans": "45000", "besancon": "25000", "avignon": "84000",
+  "blois": "41000", "amiens": "80000", "poitiers": "86000",
+  "annecy": "74000", "chambery": "73000",
+  // Banlieue parisienne top
+  "boulogne-billancourt": "92100", "neuilly-sur-seine": "92200",
+  "levallois-perret": "92300", "courbevoie": "92400",
+  "rueil-malmaison": "92500", "asnieres-sur-seine": "92600",
+  "colombes": "92700", "puteaux": "92800",
+  "montreuil": "93100", "aubervilliers": "93300",
+  "saint-maur-des-fosses": "94100", "ivry-sur-seine": "94200",
+  "vincennes": "94300", "vitry-sur-seine": "94400",
+  "argenteuil": "95100", "sarcelles": "95200",
+  "versailles": "78000", "saint-germain-en-laye": "78100",
+  "meaux": "77100", "fontainebleau": "77300",
 };
 
 // ============================================
@@ -1226,7 +1342,7 @@ export async function POST(request: Request) {
     // 3. Vérifier le rôle (owner ou admin uniquement)
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("id, role")
       .eq("user_id", user.id)
       .single();
 
@@ -1368,12 +1484,38 @@ export async function POST(request: Request) {
     };
 
     const duration = Date.now() - startTime;
-    
-    // Log final
 
-    return NextResponse.json({ 
-      success: true, 
+    // 9. Détection de doublon : un même owner ne devrait pas réimporter la
+    // même annonce sans en être averti. Recherche un bien actif lié à cette
+    // source_url. La colonne est indexée (idx_properties_owner_source_url).
+    let duplicate: { property_id: string; etat: string | null; label: string | null } | null = null;
+    try {
+      const { data: existing } = await supabase
+        .from("properties")
+        .select("id, etat, adresse_complete")
+        .eq("owner_id", profile.id)
+        .eq("source_url", url)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) {
+        duplicate = {
+          property_id: existing.id,
+          etat: existing.etat ?? null,
+          label: existing.adresse_complete ?? null,
+        };
+      }
+    } catch (dupError) {
+      // Ne pas bloquer l'import si la détection échoue (ex: colonne non encore migrée).
+      console.warn("[Scrape] Détection de doublon ignorée:", dupError);
+    }
+
+    return NextResponse.json({
+      success: true,
       data: merged,
+      duplicate,
     });
 
   } catch (error: unknown) {

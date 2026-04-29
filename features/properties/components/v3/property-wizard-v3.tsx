@@ -217,7 +217,7 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
             body: JSON.stringify({ url }),
         });
         const payload = await response.json();
-        const { data, error, code } = payload || {};
+        const { data, error, code, duplicate } = payload || {};
 
         if (!response.ok || error) {
             const err = new Error(error || "Erreur d'import");
@@ -225,12 +225,29 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
             (err as any).status = response.status;
             throw err;
         }
-        
+
+        // 🔁 Doublon détecté : un bien actif référence déjà cette URL pour cet owner.
+        // On stoppe le flux d'import et on propose à l'utilisateur d'ouvrir le bien existant.
+        if (duplicate?.property_id) {
+            toast({
+                title: "Annonce déjà importée",
+                description: `Vous avez déjà un bien lié à cette URL${duplicate.label ? ` (${duplicate.label})` : ""}. Ouvrez-le pour le compléter au lieu d'en créer un nouveau.`,
+                variant: "destructive",
+            });
+            router.push(`/owner/properties/${duplicate.property_id}`);
+            setShowImportStep(false);
+            return;
+        }
+
         // Pré-remplir le store avec les données scrapées
         // ⚠️ Ne JAMAIS utiliser le titre comme adresse !
         const formUpdate: Record<string, any> = {
             type: data.type || "appartement",
         };
+
+        // 🔗 Traçabilité de l'origine (persiste après la création du draft)
+        if (data.source_url) formUpdate.source_url = data.source_url;
+        if (data.source_site) formUpdate.source_site = data.source_site;
         
         // Adresse : utiliser l'adresse complète ou l'adresse simple
         if (data.adresse_complete) {

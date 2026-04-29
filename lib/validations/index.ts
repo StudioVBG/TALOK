@@ -614,6 +614,10 @@ export const propertyGeneralUpdateSchema = z
     interphone: z.string().max(100).optional().nullable(),
     // Visite virtuelle (Matterport, Nodalview, etc.)
     visite_virtuelle_url: z.string().url("L'URL de visite virtuelle doit être valide").optional().nullable(),
+    // Traçabilité de l'import (POST /api/scrape) — colonnes ajoutées par
+    // la migration 20260429100000_property_import_source.sql.
+    source_url: z.string().url("L'URL source doit être valide").optional().nullable(),
+    source_site: z.string().max(50).optional().nullable(),
   })
   .refine(
     (data) => {

@@ -106,6 +106,10 @@ export interface WizardFormData {
   visite_virtuelle_url?: string;
   description?: string;
 
+  // Traçabilité de l'import (POST /api/scrape)
+  source_url?: string;
+  source_site?: string;
+
   // Usage
   usage_principal?: 'habitation' | 'habitation_secondaire' | 'mixte';
 
