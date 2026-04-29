@@ -26,7 +26,7 @@ import {
   Building2, Users, Calendar, Euro,
   FileText, Settings, Bell, HelpCircle,
   LayoutDashboard, ClipboardList, UserPlus,
-  Calculator, AlertTriangle, Hammer, Scale,
+  Calculator, AlertTriangle, Hammer, Scale, Briefcase,
 } from "lucide-react";
 
 // Navigation syndic — `tour` cible les étapes de SyndicOnboardingWrapper.
@@ -40,6 +40,7 @@ const navigation = [
   { name: "Appels de fonds", href: "/syndic/calls", icon: Euro, tour: "syndic-calls" },
   { name: "Fonds travaux", href: "/syndic/fonds-travaux", icon: Hammer },
   { name: "Dépenses", href: "/syndic/expenses", icon: FileText },
+  { name: "Fournisseurs", href: "/syndic/suppliers", icon: Briefcase },
   { name: "Impayés", href: "/syndic/impayes", icon: AlertTriangle },
   { name: "Invitations", href: "/syndic/invites", icon: UserPlus },
   { name: "Paramètres", href: "/syndic/settings", icon: Settings },
