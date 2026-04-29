@@ -1,4 +1,5 @@
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/monitoring";
 
 export interface AdminOwnerDetails {
   id: string;
@@ -96,14 +97,14 @@ export async function fetchAdminOwnerDetails(ownerId: string): Promise<AdminOwne
     .maybeSingle();
 
   // 3. Récupérer les propriétés séparément
-  console.log(`[fetchAdminOwnerDetails] Recherche propriétés pour profile.id=${ownerId}, user_id=${profile.user_id}`);
-  
+  logger.debug("[fetchAdminOwnerDetails] Recherche propriétés", { ownerId, userId: profile.user_id });
+
   let { data: propertiesData, error: propError } = await serviceClient
     .from("properties")
     .select("*")
     .eq("owner_id", ownerId);
 
-  console.log(`[fetchAdminOwnerDetails] Résultat avec profile.id: ${propertiesData?.length || 0} propriétés`, propError?.message || '');
+  logger.debug("[fetchAdminOwnerDetails] Résultat avec profile.id", { count: propertiesData?.length || 0, error: propError?.message });
 
   // Si aucune propriété trouvée, essayer avec user_id comme owner_id (compatibilité anciennes données)
   if ((!propertiesData || propertiesData.length === 0) && profile.user_id) {
@@ -111,9 +112,9 @@ export async function fetchAdminOwnerDetails(ownerId: string): Promise<AdminOwne
       .from("properties")
       .select("*")
       .eq("owner_id", profile.user_id);
-    
-    console.log(`[fetchAdminOwnerDetails] Résultat avec user_id: ${propertiesByUserId?.length || 0} propriétés`, propError2?.message || '');
-    
+
+    logger.debug("[fetchAdminOwnerDetails] Résultat avec user_id", { count: propertiesByUserId?.length || 0, error: propError2?.message });
+
     if (propertiesByUserId && propertiesByUserId.length > 0) {
       propertiesData = propertiesByUserId;
     }
@@ -125,7 +126,7 @@ export async function fetchAdminOwnerDetails(ownerId: string): Promise<AdminOwne
       .from("properties")
       .select("id, owner_id, adresse_complete")
       .limit(10);
-    console.log(`[fetchAdminOwnerDetails] DIAGNOSTIC - Échantillon de propriétés existantes:`, allProps?.map(p => ({ id: p.id, owner_id: p.owner_id, addr: p.adresse_complete?.substring(0, 30) })));
+    logger.debug("[fetchAdminOwnerDetails] Échantillon propriétés existantes", { sample: allProps?.map(p => ({ id: p.id, owner_id: p.owner_id, addr: p.adresse_complete?.substring(0, 30) })) });
   }
 
   const properties = propertiesData || [];
