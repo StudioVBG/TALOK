@@ -23,7 +23,9 @@ export async function GET(request: NextRequest) {
   try {
     let query = auth.serviceClient
       .from("copro_councils")
-      .select("*")
+      .select(
+        "*, president:profiles!copro_councils_president_profile_id_fkey(id, prenom, nom), vice_president:profiles!copro_councils_vice_president_profile_id_fkey(id, prenom, nom)"
+      )
       .order("mandate_start", { ascending: false });
 
     if (siteId) {

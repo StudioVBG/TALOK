@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Euro, Plus, Calendar, Building2, Users,
-  ChevronRight, AlertCircle, CheckCircle2, Clock,
+  Euro, Plus, Calendar, Building2,
+  ChevronRight, AlertCircle, CheckCircle2, Clock, Download, FileDown,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -158,6 +158,22 @@ export default function CallsListPage() {
                         <StatusIcon className="h-3 w-3" />
                         {statusConfig.label}
                       </Badge>
+                      <a
+                        href={`/api/copro/fund-calls/${call.id}/pdf`}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Télécharger l'appel en PDF"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-cyan-600 hover:bg-cyan-50"
+                      >
+                        <Download className="h-4 w-4" />
+                      </a>
+                      <a
+                        href={`/api/copro/fund-calls/${call.id}/sepa-xml`}
+                        title="Exporter le fichier SEPA"
+                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-violet-600 hover:bg-violet-50"
+                      >
+                        <FileDown className="h-4 w-4" />
+                      </a>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
                   </div>

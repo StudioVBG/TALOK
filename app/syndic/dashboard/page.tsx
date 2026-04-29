@@ -8,16 +8,14 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SiteCard } from "@/components/copro/site-card";
 import { AssemblyCard } from "@/components/copro/assembly-card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/lib/hooks/use-auth";
-import { usePermissions } from "@/lib/hooks/use-permissions";
 import {
   Building2, Users, Euro, Calendar,
-  Plus, TrendingUp, AlertTriangle,
+  Plus, AlertTriangle,
   ChevronRight, FileText, Bell
 } from "lucide-react";
 import Link from "next/link";
@@ -41,9 +39,8 @@ interface DashboardStats {
 }
 
 export default function SyndicDashboardPage() {
-  const { user, profile } = useAuth();
+  const { profile } = useAuth();
   const typedProfile = profile as SyndicProfile | null;
-  const { isSyndic, isPlatformAdmin } = usePermissions();
   const [sites, setSites] = useState<Site[]>([]);
   const [assemblies, setAssemblies] = useState<AssemblySummary[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -53,16 +50,28 @@ export default function SyndicDashboardPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        // Récupérer les sites
-        const sitesRes = await fetch('/api/copro/sites');
+        const [sitesRes, assembliesRes] = await Promise.all([
+          fetch("/api/copro/sites"),
+          fetch("/api/copro/assemblies?upcoming=true"),
+        ]);
+
         if (sitesRes.ok) {
           const sitesData = await sitesRes.json();
           setSites(sitesData);
 
-          // Calculer les stats à partir des sites récupérés
-          const totalUnits = sitesData.reduce((sum: number, s: Site) => sum + ((s as any).units?.[0]?.count || (s as any).total_units || 0), 0);
-          const totalBalanceDue = sitesData.reduce((sum: number, s: Site) => sum + ((s as any).total_balance_due || 0), 0);
-          const unpaidCount = sitesData.reduce((sum: number, s: Site) => sum + ((s as any).unpaid_count || 0), 0);
+          const totalUnits = sitesData.reduce(
+            (sum: number, s: Site) =>
+              sum + ((s as Site & { units?: Array<{ count: number }>; total_units?: number }).units?.[0]?.count || (s as Site & { total_units?: number }).total_units || 0),
+            0
+          );
+          const totalBalanceDue = sitesData.reduce(
+            (sum: number, s: Site) => sum + ((s as Site & { total_balance_due?: number }).total_balance_due || 0),
+            0
+          );
+          const unpaidCount = sitesData.reduce(
+            (sum: number, s: Site) => sum + ((s as Site & { unpaid_count?: number }).unpaid_count || 0),
+            0
+          );
 
           setStats({
             total_sites: sitesData.length,
@@ -72,19 +81,19 @@ export default function SyndicDashboardPage() {
             unpaid_count: unpaidCount,
             upcoming_assemblies: 0,
           });
+        } else {
+          throw new Error("Impossible de charger les copropriétés");
         }
 
-        // Récupérer les AG à venir
-        const assembliesRes = await fetch('/api/copro/assemblies?upcoming=true');
         if (assembliesRes.ok) {
           const assembliesData = await assembliesRes.json();
           setAssemblies(assembliesData);
-          // Mettre à jour le compteur AG dans les stats
-          setStats(prev => prev ? { ...prev, upcoming_assemblies: assembliesData.length } : prev);
+          setStats((prev) =>
+            prev ? { ...prev, upcoming_assemblies: assembliesData.length } : prev
+          );
         }
       } catch (err) {
-        console.error('Erreur chargement dashboard:', err);
-        setError('Erreur lors du chargement du tableau de bord');
+        setError(err instanceof Error ? err.message : "Erreur lors du chargement du tableau de bord");
       } finally {
         setLoading(false);
       }
@@ -99,257 +108,243 @@ export default function SyndicDashboardPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-        <div className="max-w-7xl mx-auto">
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        </div>
+      <div className="space-y-6">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       </div>
     );
   }
 
-  // Premier accès : afficher l'onboarding
   if (sites.length === 0) {
     return <FirstTimeOnboarding />;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between"
-        >
-          <div>
-            <h1 className="text-2xl font-bold text-white">
-              Bonjour {typedProfile?.first_name || typedProfile?.prenom || 'Syndic'} 👋
-            </h1>
-            <p className="text-slate-400">
-              Bienvenue sur votre espace de gestion
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <Button variant="outline" className="border-white/10 text-white" asChild>
-              <Link href="/notifications">
-                <Bell className="w-4 h-4 mr-2" />
-                Notifications
-              </Link>
-            </Button>
-            <Link href="/syndic/onboarding/profile">
-              <Button className="bg-gradient-to-r from-cyan-500 to-blue-600">
-                <Plus className="w-4 h-4 mr-2" />
-                Nouvelle copropriété
-              </Button>
+    <div className="space-y-8">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between flex-wrap gap-4"
+      >
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">
+            Bonjour {typedProfile?.first_name || typedProfile?.prenom || 'Syndic'} 👋
+          </h1>
+          <p className="text-muted-foreground">
+            Bienvenue sur votre espace de gestion
+          </p>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" asChild>
+            <Link href="/notifications">
+              <Bell className="w-4 h-4 mr-2" />
+              Notifications
             </Link>
-          </div>
-        </motion.div>
+          </Button>
+          <Link href="/syndic/onboarding/profile">
+            <Button className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700">
+              <Plus className="w-4 h-4 mr-2" />
+              Nouvelle copropriété
+            </Button>
+          </Link>
+        </div>
+      </motion.div>
 
-        {/* Stats globales */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4"
-        >
-          <StatCard
-            icon={Building2}
-            label="Copropriétés"
-            value={sites.length}
-            color="cyan"
-          />
-          <StatCard
-            icon={Users}
-            label="Lots gérés"
-            value={sites.reduce((sum, s) => sum + ((s as Site & { units?: Array<{ count: number }> }).units?.[0]?.count || 0), 0)}
-            color="violet"
-          />
-          <StatCard
-            icon={Calendar}
-            label="AG à venir"
-            value={assemblies.length}
-            color="amber"
-          />
-          <StatCard
-            icon={Euro}
-            label="Impayés"
-            value={stats?.unpaid_count || 0}
-            color="red"
-            alert={stats ? stats.unpaid_count > 0 : undefined}
-          />
-        </motion.div>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="grid grid-cols-2 md:grid-cols-4 gap-4"
+      >
+        <StatCard
+          icon={Building2}
+          label="Copropriétés"
+          value={sites.length}
+          color="cyan"
+        />
+        <StatCard
+          icon={Users}
+          label="Lots gérés"
+          value={sites.reduce((sum, s) => sum + ((s as Site & { units?: Array<{ count: number }> }).units?.[0]?.count || 0), 0)}
+          color="violet"
+        />
+        <StatCard
+          icon={Calendar}
+          label="AG à venir"
+          value={assemblies.length}
+          color="amber"
+        />
+        <StatCard
+          icon={Euro}
+          label="Impayés"
+          value={stats?.unpaid_count || 0}
+          color="red"
+          alert={stats ? stats.unpaid_count > 0 : undefined}
+        />
+      </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Colonne principale */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Mes copropriétés */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-cyan-400" />
-                  Mes copropriétés
-                </h2>
-                <Link href="/syndic/sites">
-                  <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white">
-                    Voir tout
-                    <ChevronRight className="w-4 h-4 ml-1" />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-cyan-600" />
+                Mes copropriétés
+              </h2>
+              <Link href="/syndic/sites">
+                <Button variant="ghost" size="sm">
+                  Voir tout
+                  <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {sites.slice(0, 4).map((site, index) => (
+                <motion.div
+                  key={site.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 * index }}
+                >
+                  <SiteCard site={site} showActions={false} />
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <Card>
+              <CardHeader>
+                <CardTitle>Actions rapides</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <QuickAction
+                    icon={FileText}
+                    label="Saisir une facture"
+                    href="/syndic/expenses/new"
+                    color="emerald"
+                  />
+                  <QuickAction
+                    icon={Euro}
+                    label="Appel de fonds"
+                    href="/syndic/calls/new"
+                    color="amber"
+                  />
+                  <QuickAction
+                    icon={Calendar}
+                    label="Planifier une AG"
+                    href="/syndic/assemblies/new"
+                    color="violet"
+                  />
+                  <QuickAction
+                    icon={Users}
+                    label="Inviter un copro"
+                    href="/syndic/invites"
+                    color="cyan"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+
+        <div className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-violet-600" />
+                  Prochaines AG
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {assemblies.length > 0 ? (
+                  assemblies.slice(0, 3).map((assembly) => (
+                    <AssemblyCard
+                      key={assembly.id}
+                      assembly={assembly}
+                      compact
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Aucune AG programmée</p>
+                  </div>
+                )}
+                <Link href="/syndic/assemblies">
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                  >
+                    Voir toutes les AG
                   </Button>
                 </Link>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {sites.slice(0, 4).map((site, index) => (
-                  <motion.div
-                    key={site.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 * index }}
-                  >
-                    <SiteCard site={site} showActions={false} />
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
+              </CardContent>
+            </Card>
+          </motion.div>
 
-            {/* Actions rapides */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <Card className="border-white/10 bg-white/5">
-                <CardHeader>
-                  <CardTitle className="text-white">Actions rapides</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    <QuickAction
-                      icon={FileText}
-                      label="Saisir une facture"
-                      href="/syndic/expenses/new"
-                      color="emerald"
-                    />
-                    <QuickAction
-                      icon={Euro}
-                      label="Appel de fonds"
-                      href="/syndic/calls/new"
-                      color="amber"
-                    />
-                    <QuickAction
-                      icon={Calendar}
-                      label="Planifier une AG"
-                      href="/syndic/assemblies/new"
-                      color="violet"
-                    />
-                    <QuickAction
-                      icon={Users}
-                      label="Inviter un copro"
-                      href="/syndic/invites"
-                      color="cyan"
-                    />
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5 }}
+          >
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="w-5 h-5 text-amber-600" />
+                  Alertes
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {stats && stats.unpaid_count > 0 && (
+                  <AlertItem
+                    type="danger"
+                    message={`${stats.unpaid_count} lot(s) en impayé`}
+                  />
+                )}
+                {assemblies.length > 0 && (
+                  <AlertItem
+                    type="info"
+                    message={`${assemblies.length} assemblée(s) générale(s) à venir`}
+                  />
+                )}
+                {stats && stats.unpaid_count === 0 && assemblies.length === 0 && (
+                  <div className="text-center py-4 text-muted-foreground text-sm">
+                    Aucune alerte
                   </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* AG à venir */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Card className="border-white/10 bg-white/5">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-violet-400" />
-                    Prochaines AG
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {assemblies.length > 0 ? (
-                    assemblies.slice(0, 3).map((assembly) => (
-                      <AssemblyCard 
-                        key={assembly.id} 
-                        assembly={assembly} 
-                        compact 
-                      />
-                    ))
-                  ) : (
-                    <div className="text-center py-6 text-slate-400">
-                      <Calendar className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Aucune AG programmée</p>
-                    </div>
-                  )}
-                  <Link href="/syndic/assemblies">
-                    <Button 
-                      variant="ghost" 
-                      className="w-full text-slate-400 hover:text-white"
-                    >
-                      Voir toutes les AG
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            {/* Alertes */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5 }}
-            >
-              <Card className="border-white/10 bg-white/5">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-white flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5 text-amber-400" />
-                    Alertes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {stats && stats.unpaid_count > 0 && (
-                    <AlertItem
-                      type="danger"
-                      message={`${stats.unpaid_count} lot(s) en impayé`}
-                    />
-                  )}
-                  {assemblies.length > 0 && (
-                    <AlertItem
-                      type="info"
-                      message={`${assemblies.length} assemblée(s) générale(s) à venir`}
-                    />
-                  )}
-                  {stats && stats.unpaid_count === 0 && assemblies.length === 0 && (
-                    <div className="text-center py-4 text-slate-400 text-sm">
-                      Aucune alerte
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </motion.div>
-          </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
       </div>
     </div>
   );
 }
 
-// Composants auxiliaires
-function StatCard({ 
-  icon: Icon, 
-  label, 
-  value, 
+function StatCard({
+  icon: Icon,
+  label,
+  value,
   color,
-  alert 
-}: { 
+  alert,
+}: {
   icon: React.ElementType;
   label: string;
   value: number;
@@ -357,23 +352,23 @@ function StatCard({
   alert?: boolean;
 }) {
   const colorClasses: Record<string, { bg: string; text: string }> = {
-    cyan: { bg: 'bg-cyan-500/20', text: 'text-cyan-400' },
-    violet: { bg: 'bg-violet-500/20', text: 'text-violet-400' },
-    amber: { bg: 'bg-amber-500/20', text: 'text-amber-400' },
-    red: { bg: 'bg-red-500/20', text: 'text-red-400' },
-    emerald: { bg: 'bg-emerald-500/20', text: 'text-emerald-400' },
+    cyan: { bg: 'bg-cyan-100', text: 'text-cyan-700' },
+    violet: { bg: 'bg-violet-100', text: 'text-violet-700' },
+    amber: { bg: 'bg-amber-100', text: 'text-amber-700' },
+    red: { bg: 'bg-red-100', text: 'text-red-700' },
+    emerald: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
   };
 
   return (
-    <Card className={`border-white/10 bg-white/5 ${alert ? 'animate-pulse' : ''}`}>
+    <Card className={alert ? 'animate-pulse' : ''}>
       <CardContent className="p-4">
         <div className="flex items-center gap-3">
           <div className={`p-2 rounded-lg ${colorClasses[color].bg}`}>
             <Icon className={`w-5 h-5 ${colorClasses[color].text}`} />
           </div>
           <div>
-            <p className="text-2xl font-bold text-white">{value}</p>
-            <p className="text-xs text-slate-400">{label}</p>
+            <p className="text-2xl font-bold text-foreground">{value}</p>
+            <p className="text-xs text-muted-foreground">{label}</p>
           </div>
         </div>
       </CardContent>
@@ -381,22 +376,22 @@ function StatCard({
   );
 }
 
-function QuickAction({ 
-  icon: Icon, 
-  label, 
-  href, 
-  color 
-}: { 
+function QuickAction({
+  icon: Icon,
+  label,
+  href,
+  color,
+}: {
   icon: React.ElementType;
   label: string;
   href: string;
   color: string;
 }) {
   const colorClasses: Record<string, string> = {
-    cyan: 'hover:bg-cyan-500/10 hover:border-cyan-500/50',
-    violet: 'hover:bg-violet-500/10 hover:border-violet-500/50',
-    amber: 'hover:bg-amber-500/10 hover:border-amber-500/50',
-    emerald: 'hover:bg-emerald-500/10 hover:border-emerald-500/50',
+    cyan: 'hover:bg-cyan-50 hover:border-cyan-300',
+    violet: 'hover:bg-violet-50 hover:border-violet-300',
+    amber: 'hover:bg-amber-50 hover:border-amber-300',
+    emerald: 'hover:bg-emerald-50 hover:border-emerald-300',
   };
 
   return (
@@ -404,10 +399,10 @@ function QuickAction({
       <motion.div
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className={`p-4 rounded-lg border border-white/10 text-center cursor-pointer transition-colors ${colorClasses[color]}`}
+        className={`p-4 rounded-lg border border-border text-center cursor-pointer transition-colors ${colorClasses[color]}`}
       >
-        <Icon className="w-6 h-6 mx-auto mb-2 text-slate-400" />
-        <p className="text-xs text-slate-300">{label}</p>
+        <Icon className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
+        <p className="text-xs text-foreground">{label}</p>
       </motion.div>
     </Link>
   );
@@ -415,9 +410,9 @@ function QuickAction({
 
 function AlertItem({ type, message }: { type: 'info' | 'warning' | 'danger'; message: string }) {
   const colors = {
-    info: 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400',
-    warning: 'bg-amber-500/10 border-amber-500/30 text-amber-400',
-    danger: 'bg-red-500/10 border-red-500/30 text-red-400',
+    info: 'bg-cyan-50 border-cyan-200 text-cyan-700',
+    warning: 'bg-amber-50 border-amber-200 text-amber-700',
+    danger: 'bg-red-50 border-red-200 text-red-700',
   };
 
   return (
@@ -429,18 +424,16 @@ function AlertItem({ type, message }: { type: 'info' | 'warning' | 'danger'; mes
 
 function DashboardSkeleton() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <Skeleton className="h-12 w-64 bg-white/10" />
-        <div className="grid grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-24 bg-white/10" />
-          ))}
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <Skeleton className="h-64 bg-white/10" />
-          <Skeleton className="h-64 bg-white/10" />
-        </div>
+    <div className="space-y-8">
+      <Skeleton className="h-12 w-64" />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className="h-24" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Skeleton className="h-64" />
+        <Skeleton className="h-64" />
       </div>
     </div>
   );
@@ -448,7 +441,7 @@ function DashboardSkeleton() {
 
 function FirstTimeOnboarding() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6">
+    <div className="min-h-[60vh] flex items-center justify-center p-6">
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -457,15 +450,15 @@ function FirstTimeOnboarding() {
         <div className="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center mb-6">
           <Building2 className="w-10 h-10 text-white" />
         </div>
-        <h1 className="text-3xl font-bold text-white mb-4">
+        <h1 className="text-3xl font-bold text-foreground mb-4">
           Bienvenue sur votre espace Syndic !
         </h1>
-        <p className="text-slate-400 mb-8">
-          Commencez par créer votre première copropriété pour gérer vos bâtiments, 
+        <p className="text-muted-foreground mb-8">
+          Commencez par créer votre première copropriété pour gérer vos bâtiments,
           lots, charges et assemblées générales.
         </p>
         <Link href="/syndic/onboarding/profile">
-          <Button size="lg" className="bg-gradient-to-r from-cyan-500 to-blue-600">
+          <Button size="lg" className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700">
             <Plus className="w-5 h-5 mr-2" />
             Créer ma première copropriété
           </Button>
@@ -474,4 +467,3 @@ function FirstTimeOnboarding() {
     </div>
   );
 }
-

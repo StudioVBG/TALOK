@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Building2, FileText, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Building2, FileText, Loader2, Save, ShieldCheck, Upload } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 
 interface Site {
@@ -47,6 +47,7 @@ export default function NewMandatePage() {
     honoraires_annuels: "",
     voted_in_assembly_id: "",
     notes: "",
+    signed_document_url: "",
   });
 
   useEffect(() => {
@@ -66,7 +67,7 @@ export default function NewMandatePage() {
           const profile = await profileRes.json();
           setMyProfileId(profile.id || null);
         }
-      } catch (error) {
+      } catch {
         toast({
           title: "Erreur",
           description: "Impossible de charger les données",
@@ -79,13 +80,12 @@ export default function NewMandatePage() {
     loadData();
   }, [toast]);
 
-  // Auto-calculate end_date when start_date or duration changes
   useEffect(() => {
     if (form.start_date && form.duration_months > 0) {
       const start = new Date(form.start_date);
       const end = new Date(start);
       end.setMonth(end.getMonth() + form.duration_months);
-      end.setDate(end.getDate() - 1); // Dernière journée incluse
+      end.setDate(end.getDate() - 1);
       setForm((prev) => ({ ...prev, end_date: end.toISOString().split("T")[0] }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -146,6 +146,7 @@ export default function NewMandatePage() {
         currency: "EUR",
         voted_in_assembly_id: form.voted_in_assembly_id || undefined,
         notes: form.notes.trim() || undefined,
+        signed_document_url: form.signed_document_url || undefined,
       };
 
       const res = await fetch("/api/copro/mandates", {
@@ -174,230 +175,248 @@ export default function NewMandatePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-      <div className="max-w-3xl mx-auto space-y-6">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-4"
-        >
-          <Link href="/syndic/mandates">
-            <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-white/10">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Retour
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <FileText className="h-6 w-6 text-violet-400" />
-              Nouveau mandat de syndic
-            </h1>
-            <p className="text-slate-400">Loi du 10 juillet 1965 — durée 1 à 36 mois</p>
-          </div>
-        </motion.div>
+    <div className="space-y-6 max-w-3xl mx-auto">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-4"
+      >
+        <Link href="/syndic/mandates">
+          <Button variant="ghost" size="sm">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Retour
+          </Button>
+        </Link>
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <FileText className="h-6 w-6 text-violet-600" />
+            Nouveau mandat de syndic
+          </h1>
+          <p className="text-muted-foreground">Loi du 10 juillet 1965 — durée 1 à 36 mois</p>
+        </div>
+      </motion.div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-violet-400" />
-                Copropriété
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {loadingSites ? (
-                <p className="text-slate-400 text-sm">Chargement...</p>
-              ) : sites.length === 0 ? (
-                <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 text-sm text-amber-100">
-                  Aucune copropriété disponible.
-                </div>
-              ) : (
-                <Select
-                  value={form.site_id}
-                  onValueChange={(value) => setForm({ ...form, site_id: value })}
-                  disabled={submitting}
-                >
-                  <SelectTrigger className="bg-white/5 border-white/10 text-white">
-                    <SelectValue placeholder="Sélectionner une copropriété" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sites.map((site) => (
-                      <SelectItem key={site.id} value={site.id}>
-                        {site.name}
-                        {site.city && ` — ${site.city}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </CardContent>
-          </Card>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-violet-600" />
+              Copropriété
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingSites ? (
+              <p className="text-muted-foreground text-sm">Chargement...</p>
+            ) : sites.length === 0 ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                Aucune copropriété disponible.
+              </div>
+            ) : (
+              <Select
+                value={form.site_id}
+                onValueChange={(value) => setForm({ ...form, site_id: value })}
+                disabled={submitting}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une copropriété" />
+                </SelectTrigger>
+                <SelectContent>
+                  {sites.map((site) => (
+                    <SelectItem key={site.id} value={site.id}>
+                      {site.name}
+                      {site.city && ` — ${site.city}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </CardContent>
+        </Card>
 
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
-            <CardHeader>
-              <CardTitle className="text-white">Durée du mandat</CardTitle>
-              <CardDescription className="text-slate-400">
-                La loi impose une durée entre 1 et 36 mois
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Durée du mandat</CardTitle>
+            <CardDescription>
+              La loi impose une durée entre 1 et 36 mois
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Titre du mandat</Label>
+              <Input
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                disabled={submitting}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Numéro de référence (optionnel)</Label>
+              <Input
+                placeholder="MDS-2026-001"
+                value={form.mandate_number}
+                onChange={(e) => setForm({ ...form, mandate_number: e.target.value })}
+                disabled={submitting}
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">Titre du mandat</Label>
+                <Label>Date début *</Label>
                 <Input
-                  value={form.title}
-                  onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-slate-300">Numéro de référence (optionnel)</Label>
-                <Input
-                  placeholder="MDS-2026-001"
-                  value={form.mandate_number}
-                  onChange={(e) => setForm({ ...form, mandate_number: e.target.value })}
-                  disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Date début *</Label>
-                  <Input
-                    type="date"
-                    value={form.start_date}
-                    onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                    required
-                    disabled={submitting}
-                    className="bg-white/5 border-white/10 text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Durée (mois) *</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="36"
-                    value={form.duration_months}
-                    onChange={(e) =>
-                      setForm({ ...form, duration_months: parseInt(e.target.value, 10) || 12 })
-                    }
-                    required
-                    disabled={submitting}
-                    className="bg-white/5 border-white/10 text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Date fin</Label>
-                  <Input
-                    type="date"
-                    value={form.end_date}
-                    onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                    required
-                    disabled={submitting}
-                    className="bg-white/5 border-white/10 text-white"
-                  />
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  id="tacit_renewal"
-                  type="checkbox"
-                  checked={form.tacit_renewal}
-                  onChange={(e) => setForm({ ...form, tacit_renewal: e.target.checked })}
-                  disabled={submitting}
-                  className="h-4 w-4 rounded border-white/30 bg-transparent"
-                />
-                <Label htmlFor="tacit_renewal" className="text-slate-300 cursor-pointer">
-                  Tacite reconduction
-                </Label>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-slate-300">Préavis de résiliation (mois)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  max="12"
-                  value={form.notice_period_months}
-                  onChange={(e) =>
-                    setForm({ ...form, notice_period_months: parseInt(e.target.value, 10) || 3 })
-                  }
-                  disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
-            <CardHeader>
-              <CardTitle className="text-white">Honoraires</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-slate-300">Honoraires annuels HT (€) *</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="6000.00"
-                  value={form.honoraires_annuels}
-                  onChange={(e) => setForm({ ...form, honoraires_annuels: e.target.value })}
+                  type="date"
+                  value={form.start_date}
+                  onChange={(e) => setForm({ ...form, start_date: e.target.value })}
                   required
                   disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
                 />
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
-            <CardContent className="p-6 space-y-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">Notes internes</Label>
-                <Textarea
-                  placeholder="Notes privées sur le mandat (facultatif)"
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  rows={3}
+                <Label>Durée (mois) *</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="36"
+                  value={form.duration_months}
+                  onChange={(e) =>
+                    setForm({ ...form, duration_months: parseInt(e.target.value, 10) || 12 })
+                  }
+                  required
                   disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
                 />
               </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex gap-3 justify-end">
-            <Link href="/syndic/mandates">
-              <Button
-                type="button"
-                variant="outline"
+              <div className="space-y-2">
+                <Label>Date fin</Label>
+                <Input
+                  type="date"
+                  value={form.end_date}
+                  onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                  required
+                  disabled={submitting}
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="tacit_renewal"
+                type="checkbox"
+                checked={form.tacit_renewal}
+                onChange={(e) => setForm({ ...form, tacit_renewal: e.target.checked })}
                 disabled={submitting}
-                className="border-white/20 text-white hover:bg-white/10"
-              >
-                Annuler
-              </Button>
-            </Link>
-            <Button
-              type="submit"
-              disabled={submitting || loadingSites || sites.length === 0}
-              className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Création...
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Créer le mandat
-                </>
-              )}
+                className="h-4 w-4 rounded border-input"
+              />
+              <Label htmlFor="tacit_renewal" className="cursor-pointer">
+                Tacite reconduction
+              </Label>
+            </div>
+            <div className="space-y-2">
+              <Label>Préavis de résiliation (mois)</Label>
+              <Input
+                type="number"
+                min="0"
+                max="12"
+                value={form.notice_period_months}
+                onChange={(e) =>
+                  setForm({ ...form, notice_period_months: parseInt(e.target.value, 10) || 3 })
+                }
+                disabled={submitting}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Honoraires</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Honoraires annuels HT (€) *</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="6000.00"
+                value={form.honoraires_annuels}
+                onChange={(e) => setForm({ ...form, honoraires_annuels: e.target.value })}
+                required
+                disabled={submitting}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-emerald-600" />
+              Document du mandat signé
+            </CardTitle>
+            <CardDescription>
+              Lien vers le PDF signé (signature électronique eIDAS ou paraphe manuel scanné)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>URL du document signé (optionnel)</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="url"
+                  placeholder="https://…"
+                  value={form.signed_document_url}
+                  onChange={(e) => setForm({ ...form, signed_document_url: e.target.value })}
+                  disabled={submitting}
+                />
+                <Button type="button" variant="outline" disabled className="shrink-0" title="Bibliothèque documents (à venir)">
+                  <Upload className="h-4 w-4 mr-1" />
+                  Téléverser
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                La signature électronique pourra être lancée depuis la fiche du mandat après création.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <div className="space-y-2">
+              <Label>Notes internes</Label>
+              <Textarea
+                placeholder="Notes privées sur le mandat (facultatif)"
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                rows={3}
+                disabled={submitting}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="flex gap-3 justify-end">
+          <Link href="/syndic/mandates">
+            <Button type="button" variant="outline" disabled={submitting}>
+              Annuler
             </Button>
-          </div>
-        </form>
-      </div>
+          </Link>
+          <Button
+            type="submit"
+            disabled={submitting || loadingSites || sites.length === 0}
+            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Création...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Créer le mandat
+              </>
+            )}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

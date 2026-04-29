@@ -54,12 +54,12 @@ interface Assembly {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  draft: { label: "Brouillon", color: "bg-slate-500/20 text-slate-200 border-slate-400/40" },
-  convened: { label: "Convoquée", color: "bg-blue-500/20 text-blue-200 border-blue-400/40" },
-  in_progress: { label: "En cours", color: "bg-amber-500/20 text-amber-200 border-amber-400/40" },
-  held: { label: "Tenue", color: "bg-emerald-500/20 text-emerald-200 border-emerald-400/40" },
-  adjourned: { label: "Ajournée", color: "bg-orange-500/20 text-orange-200 border-orange-400/40" },
-  cancelled: { label: "Annulée", color: "bg-red-500/20 text-red-200 border-red-400/40" },
+  draft: { label: "Brouillon", color: "bg-slate-100 text-slate-700 border-slate-200" },
+  convened: { label: "Convoquée", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  in_progress: { label: "En cours", color: "bg-amber-100 text-amber-700 border-amber-200" },
+  held: { label: "Tenue", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  adjourned: { label: "Ajournée", color: "bg-orange-100 text-orange-700 border-orange-200" },
+  cancelled: { label: "Annulée", color: "bg-red-100 text-red-700 border-red-200" },
 };
 
 const TYPE_CONFIG: Record<string, { label: string; short: string }> = {
@@ -124,182 +124,172 @@ export default function SyndicAssembliesPage() {
   }, [assemblies]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
-        >
-          <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Calendar className="h-6 w-6 text-violet-400" />
-              Assemblées Générales
-            </h1>
-            <p className="text-slate-400">Gérez les AG de vos copropriétés selon la loi du 10 juillet 1965</p>
-          </div>
-          <Link href="/syndic/assemblies/new">
-            <Button className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Nouvelle AG
-            </Button>
-          </Link>
-        </motion.div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Total" value={stats.total} icon={Calendar} color="text-violet-400" />
-          <StatCard label="À venir" value={stats.upcoming} icon={AlertCircle} color="text-amber-400" />
-          <StatCard label="Tenues" value={stats.held} icon={CheckCircle2} color="text-emerald-400" />
-          <StatCard label="Brouillons" value={stats.draft} icon={Building2} color="text-blue-400" />
+    <div className="space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+      >
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Calendar className="h-6 w-6 text-violet-600" />
+            Assemblées Générales
+          </h1>
+          <p className="text-muted-foreground">Gérez les AG de vos copropriétés selon la loi du 10 juillet 1965</p>
         </div>
+        <Link href="/syndic/assemblies/new">
+          <Button className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700">
+            <Plus className="h-4 w-4 mr-2" />
+            Nouvelle AG
+          </Button>
+        </Link>
+      </motion.div>
 
-        {/* Filters */}
-        <Card className="bg-white/5 border-white/10 backdrop-blur">
-          <CardContent className="p-4">
-            <div className="flex flex-col md:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Rechercher par titre ou numéro..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 bg-white/5 border-white/10 text-white placeholder:text-slate-500"
-                />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-48 bg-white/5 border-white/10 text-white">
-                  <SelectValue placeholder="Statut" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les statuts</SelectItem>
-                  <SelectItem value="draft">Brouillon</SelectItem>
-                  <SelectItem value="convened">Convoquée</SelectItem>
-                  <SelectItem value="in_progress">En cours</SelectItem>
-                  <SelectItem value="held">Tenue</SelectItem>
-                  <SelectItem value="cancelled">Annulée</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-full md:w-48 bg-white/5 border-white/10 text-white">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tous les types</SelectItem>
-                  <SelectItem value="ordinaire">Ordinaire</SelectItem>
-                  <SelectItem value="extraordinaire">Extraordinaire</SelectItem>
-                  <SelectItem value="concertation">Concertation</SelectItem>
-                  <SelectItem value="consultation_ecrite">Consultation écrite</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Assemblies table */}
-        <Card className="bg-white/5 border-white/10 backdrop-blur">
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="p-6 space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-12 bg-white/10" />
-                ))}
-              </div>
-            ) : filteredAssemblies.length === 0 ? (
-              <div className="p-12 text-center text-slate-400">
-                <Calendar className="h-12 w-12 mx-auto mb-3 text-slate-500" />
-                <p className="mb-4">
-                  {assemblies.length === 0
-                    ? "Aucune assemblée générale pour le moment."
-                    : "Aucun résultat pour ces filtres."}
-                </p>
-                {assemblies.length === 0 && (
-                  <Link href="/syndic/assemblies/new">
-                    <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Créer votre première AG
-                    </Button>
-                  </Link>
-                )}
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-white/10 hover:bg-transparent">
-                    <TableHead className="text-slate-300">Référence</TableHead>
-                    <TableHead className="text-slate-300">Titre</TableHead>
-                    <TableHead className="text-slate-300">Type</TableHead>
-                    <TableHead className="text-slate-300">Date prévue</TableHead>
-                    <TableHead className="text-slate-300">Lieu</TableHead>
-                    <TableHead className="text-slate-300">Statut</TableHead>
-                    <TableHead className="text-slate-300 text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAssemblies.map((assembly) => {
-                    const statusConfig = STATUS_CONFIG[assembly.status] || STATUS_CONFIG.draft;
-                    const typeConfig = TYPE_CONFIG[assembly.assembly_type] || TYPE_CONFIG.ordinaire;
-                    return (
-                      <TableRow key={assembly.id} className="border-white/10 hover:bg-white/5">
-                        <TableCell className="font-mono text-xs text-slate-400">
-                          {assembly.reference_number || "—"}
-                        </TableCell>
-                        <TableCell className="text-white font-medium">{assembly.title}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="border-violet-400/40 text-violet-200">
-                            {typeConfig.short}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-slate-300">
-                          {formatDateShort(assembly.scheduled_at)}
-                        </TableCell>
-                        <TableCell className="text-slate-400">
-                          <div className="flex items-center gap-1 text-sm">
-                            {assembly.is_hybrid ? (
-                              <>
-                                <Video className="h-3 w-3" />
-                                Hybride
-                              </>
-                            ) : assembly.online_meeting_url ? (
-                              <>
-                                <Video className="h-3 w-3" />
-                                Visio
-                              </>
-                            ) : assembly.location ? (
-                              <>
-                                <MapPin className="h-3 w-3" />
-                                {assembly.location.slice(0, 30)}
-                                {assembly.location.length > 30 && "..."}
-                              </>
-                            ) : (
-                              "—"
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={`${statusConfig.color} border`}>{statusConfig.label}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Link href={`/syndic/assemblies/${assembly.id}`}>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-slate-300 hover:text-white hover:bg-white/10"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard label="Total" value={stats.total} icon={Calendar} color="text-violet-600" />
+        <StatCard label="À venir" value={stats.upcoming} icon={AlertCircle} color="text-amber-600" />
+        <StatCard label="Tenues" value={stats.held} icon={CheckCircle2} color="text-emerald-600" />
+        <StatCard label="Brouillons" value={stats.draft} icon={Building2} color="text-blue-600" />
       </div>
+
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Rechercher par titre ou numéro..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-48">
+                <SelectValue placeholder="Statut" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les statuts</SelectItem>
+                <SelectItem value="draft">Brouillon</SelectItem>
+                <SelectItem value="convened">Convoquée</SelectItem>
+                <SelectItem value="in_progress">En cours</SelectItem>
+                <SelectItem value="held">Tenue</SelectItem>
+                <SelectItem value="cancelled">Annulée</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-full md:w-48">
+                <SelectValue placeholder="Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tous les types</SelectItem>
+                <SelectItem value="ordinaire">Ordinaire</SelectItem>
+                <SelectItem value="extraordinaire">Extraordinaire</SelectItem>
+                <SelectItem value="concertation">Concertation</SelectItem>
+                <SelectItem value="consultation_ecrite">Consultation écrite</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="p-6 space-y-3">
+              {[1, 2, 3].map((i) => (
+                <Skeleton key={i} className="h-12" />
+              ))}
+            </div>
+          ) : filteredAssemblies.length === 0 ? (
+            <div className="p-12 text-center text-muted-foreground">
+              <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p className="mb-4">
+                {assemblies.length === 0
+                  ? "Aucune assemblée générale pour le moment."
+                  : "Aucun résultat pour ces filtres."}
+              </p>
+              {assemblies.length === 0 && (
+                <Link href="/syndic/assemblies/new">
+                  <Button variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Créer votre première AG
+                  </Button>
+                </Link>
+              )}
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Référence</TableHead>
+                  <TableHead>Titre</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Date prévue</TableHead>
+                  <TableHead>Lieu</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAssemblies.map((assembly) => {
+                  const statusConfig = STATUS_CONFIG[assembly.status] || STATUS_CONFIG.draft;
+                  const typeConfig = TYPE_CONFIG[assembly.assembly_type] || TYPE_CONFIG.ordinaire;
+                  return (
+                    <TableRow key={assembly.id}>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {assembly.reference_number || "—"}
+                      </TableCell>
+                      <TableCell className="font-medium text-foreground">{assembly.title}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="border-violet-200 text-violet-700">
+                          {typeConfig.short}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-foreground">
+                        {formatDateShort(assembly.scheduled_at)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <div className="flex items-center gap-1 text-sm">
+                          {assembly.is_hybrid ? (
+                            <>
+                              <Video className="h-3 w-3" />
+                              Hybride
+                            </>
+                          ) : assembly.online_meeting_url ? (
+                            <>
+                              <Video className="h-3 w-3" />
+                              Visio
+                            </>
+                          ) : assembly.location ? (
+                            <>
+                              <MapPin className="h-3 w-3" />
+                              {assembly.location.slice(0, 30)}
+                              {assembly.location.length > 30 && "..."}
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={`${statusConfig.color} border`}>{statusConfig.label}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link href={`/syndic/assemblies/${assembly.id}`}>
+                          <Button size="sm" variant="ghost">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -316,12 +306,12 @@ function StatCard({
   color: string;
 }) {
   return (
-    <Card className="bg-white/5 border-white/10 backdrop-blur">
+    <Card>
       <CardContent className="p-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm text-slate-400">{label}</p>
-            <p className="text-2xl font-bold text-white mt-1">{value}</p>
+            <p className="text-sm text-muted-foreground">{label}</p>
+            <p className="text-2xl font-bold text-foreground mt-1">{value}</p>
           </div>
           <Icon className={`h-8 w-8 ${color}`} />
         </div>

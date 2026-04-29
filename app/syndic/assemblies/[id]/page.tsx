@@ -461,15 +461,50 @@ export default function AssemblyDetailPage() {
         )}
 
         {/* Minutes */}
-        {minutes.length > 0 && (
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <FileText className="h-5 w-5 text-emerald-400" />
-                Procès-verbaux ({minutes.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
+        <Card className="bg-white/5 border-white/10 backdrop-blur">
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
+            <CardTitle className="text-white flex items-center gap-2">
+              <FileText className="h-5 w-5 text-emerald-400" />
+              Procès-verbaux ({minutes.length})
+            </CardTitle>
+            {(assembly.status === "held" || assembly.status === "in_progress") && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-white/20 text-white hover:bg-white/10"
+                onClick={async () => {
+                  try {
+                    const res = await fetch(`/api/copro/assemblies/${assemblyId}/minutes`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({}),
+                    });
+                    if (!res.ok) {
+                      const err = await res.json().catch(() => ({}));
+                      throw new Error(err.error ?? "Erreur");
+                    }
+                    toast({ title: "PV généré" });
+                    fetchAssembly();
+                  } catch (err) {
+                    toast({
+                      title: "Erreur",
+                      description: err instanceof Error ? err.message : "Échec",
+                      variant: "destructive",
+                    });
+                  }
+                }}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Générer un nouveau PV
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent>
+            {minutes.length === 0 ? (
+              <div className="text-center py-6 text-slate-400 text-sm">
+                Aucun procès-verbal généré pour le moment.
+              </div>
+            ) : (
               <div className="space-y-2">
                 {minutes.map((minute) => (
                   <div
@@ -499,9 +534,9 @@ export default function AssemblyDetailPage() {
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
-        )}
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {showAddResolution && (
