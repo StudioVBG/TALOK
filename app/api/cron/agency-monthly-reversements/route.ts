@@ -16,22 +16,38 @@ export const dynamic = "force-dynamic";
  * Stripe de fin de mois s'agréger avant le batch).
  *
  * Auth : Bearer CRON_SECRET (cf. /api/cron/irl-indexation pour le
- * pattern). En dev sans CRON_SECRET configuré, accès libre.
+ * pattern). En dev sans CRON_SECRET configuré, seul le mode `dryRun=true`
+ * (lecture seule) est autorisé — aucune écriture sans secret valide.
  */
 
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { ensureMandantReversementEntry } from "@/lib/accounting/mandant-reversement-entry";
 
-function verifyCronSecret(request: Request): boolean {
+type CronAuth =
+  | { ok: true }
+  | { ok: false; reason: "unauthorized" }
+  | { ok: false; reason: "dry_run_only" };
+
+function verifyCronSecret(request: Request, dryRun: boolean): CronAuth {
   const authHeader = request.headers.get("authorization");
-  if (!process.env.CRON_SECRET) {
-    console.warn(
-      "[cron/agency-monthly-reversements] CRON_SECRET absent — accès libre en dev",
-    );
-    return process.env.NODE_ENV === "development";
+  const secret = process.env.CRON_SECRET;
+
+  if (secret) {
+    return authHeader === `Bearer ${secret}`
+      ? { ok: true }
+      : { ok: false, reason: "unauthorized" };
   }
-  return authHeader === `Bearer ${process.env.CRON_SECRET}`;
+
+  // CRON_SECRET absent : accepté UNIQUEMENT en dev et UNIQUEMENT en dry-run.
+  if (process.env.NODE_ENV !== "development") {
+    return { ok: false, reason: "unauthorized" };
+  }
+
+  console.warn(
+    "[cron/agency-monthly-reversements] CRON_SECRET absent — mode dry-run uniquement en dev",
+  );
+  return dryRun ? { ok: true } : { ok: false, reason: "dry_run_only" };
 }
 
 interface AccountRow {
@@ -63,10 +79,6 @@ interface ReversementOutcome {
 }
 
 export async function GET(request: Request) {
-  if (!verifyCronSecret(request)) {
-    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
-  }
-
   // Mode dry-run : utile pour qu'une agence prévisualise ce qui
   // serait reversé avant que le cron ne tourne pour de vrai. Aucune
   // écriture n'est créée, aucun solde n'est touché — on retourne
@@ -76,6 +88,20 @@ export async function GET(request: Request) {
   const dryRun =
     url.searchParams.get("dryRun") === "true" ||
     request.headers.get("x-dry-run") === "1";
+
+  const auth = verifyCronSecret(request, dryRun);
+  if (!auth.ok) {
+    if (auth.reason === "dry_run_only") {
+      return NextResponse.json(
+        {
+          error:
+            "CRON_SECRET requis pour exécuter le reversement. Utilisez ?dryRun=true pour prévisualiser.",
+        },
+        { status: 401 },
+      );
+    }
+    return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
+  }
 
   const supabase = createServiceRoleClient();
   const now = new Date();
