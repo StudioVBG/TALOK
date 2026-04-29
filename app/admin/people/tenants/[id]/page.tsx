@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/monitoring";
 import { TenantProfileClient } from "@/app/owner/tenants/[id]/TenantProfileClient";
 
 interface PageProps {
@@ -47,7 +48,7 @@ async function getTenantProfileAdmin(tenantId: string) {
     .single();
 
   if (error || !tenant) {
-    console.log("[Admin Tenant] Erreur ou tenant non trouvé:", error);
+    logger.error("[Admin Tenant] Erreur ou tenant non trouvé", { error: error ?? new Error("tenant not found"), tenantId });
     return null;
   }
 
@@ -59,7 +60,7 @@ async function getTenantProfileAdmin(tenantId: string) {
     .order("created_at", { ascending: false });
 
   if (docsError) {
-    console.log("[Admin Tenant] Erreur documents:", docsError);
+    logger.warn("[Admin Tenant] Erreur récupération documents", { docsError, tenantId });
   }
 
   // Fallback: essayer tenant_documents si la table existe
@@ -82,7 +83,7 @@ async function getTenantProfileAdmin(tenantId: string) {
     }
   } catch (e) {
     // Table tenant_documents n'existe peut-être pas
-    console.log("[Admin Tenant] tenant_documents non disponible");
+    logger.debug("[Admin Tenant] tenant_documents non disponible");
   }
 
   return {

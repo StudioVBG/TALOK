@@ -2,6 +2,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { logger } from "@/lib/monitoring";
 import { SignatureFlow } from "./SignatureFlow";
 
 interface PageProps {
@@ -45,13 +46,13 @@ async function getLeaseByToken(token: string) {
   const tokenData = decodeToken(token);
   
   if (!tokenData) {
-    console.log("[Signature] Token invalide - décodage échoué");
+    logger.debug("[Signature] Token invalide - décodage échoué");
     return null;
   }
-  
+
   // Vérifier l'expiration (30 jours)
   if (isTokenExpired(tokenData.timestamp)) {
-    console.log("[Signature] Token expiré");
+    logger.debug("[Signature] Token expiré");
     return { expired: true, tenantEmail: tokenData.tenantEmail };
   }
   
@@ -90,7 +91,7 @@ async function getLeaseByToken(token: string) {
 
   // Vérifier que le bail est en attente de signature
   if (lease.statut !== "pending_signature" && lease.statut !== "draft") {
-    console.log("[Signature] Bail non disponible pour signature, statut:", lease.statut);
+    logger.debug("[Signature] Bail non disponible pour signature", { statut: lease.statut });
     return { alreadySigned: true };
   }
 

@@ -29,7 +29,7 @@ describe('normalizePhoneE164', () => {
     ['06-96-12-34-56', '+596696123456'],
     ['06.96.12.34.56', '+596696123456'],
     ['(0696) 12-34-56', '+596696123456'],
-  ])('%s → %s', (input, expected) => {
+  ])('%s → %s', (input: string, expected: string) => {
     expect(normalizePhoneE164(input)).toBe(expected);
   });
 
@@ -40,7 +40,7 @@ describe('normalizePhoneE164', () => {
     ['+00'],
     ['+000'],
     ['0000'],
-  ])('%s throws', (bad) => {
+  ])('%s throws', (bad: string) => {
     expect(() => normalizePhoneE164(bad)).toThrow();
   });
 

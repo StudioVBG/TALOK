@@ -140,14 +140,14 @@ destinée au marché français (métropole + France d'outre-mer).
 ### Bugs en cours / à finaliser
 | Bug | État |
 |-----|------|
-| /owner/invoices/[id] crash (RangeError date) | À corriger — safeDate() |
-| Dashboard : Biens=0 Baux=0 | À corriger — filtre entityId |
-| Tickets : chargement infini | À corriger |
-| Compte bancaire : champs en double | À corriger |
-| /pricing → redirect app si connecté | À corriger middleware |
-| CNI recto/verso : groupement pas raccordé | À raccorder dans documents-list.tsx |
-| Titres anciens documents bruts | Migration SQL UPDATE à appliquer |
-| Quittances non générées | receipt-generator.ts à brancher webhook Stripe |
+| /owner/invoices/[id] crash (RangeError date) | ✅ Corrigé — `safeDate()` dans `app/owner/invoices/[id]/page.tsx` |
+| Dashboard : Biens=0 Baux=0 | ✅ Corrigé — `activeEntityId` scopé dans `DashboardClient.tsx:123` |
+| Tickets : chargement infini | ✅ Corrigé — composant legacy `tickets-list.tsx` supprimé, `TicketListUnified` actif |
+| Compte bancaire : champs en double | ✅ Corrigé — `EntitySelector` + hooks multi-entité (`CompteBancaireTab.tsx:31`) |
+| /pricing → redirect app si connecté | ✅ Corrigé — `middleware.ts:156` |
+| CNI recto/verso : groupement pas raccordé | ✅ Corrigé — `grouped-document-card.tsx` raccordé dans `documents-list.tsx:148` |
+| Titres anciens documents bruts | ✅ Corrigé — migration `20260331100000_fix_document_titles_bruts.sql` |
+| Quittances non générées | ✅ Corrigé — `lib/services/receipt-generator.ts` branché dans webhook Stripe |
 
 ---
 
@@ -215,8 +215,9 @@ TALOK/
 │   ├── documents/
 │   │   ├── constants.ts         # SOURCE UNIQUE types, MIME, labels
 │   │   ├── format-name.ts       # getDisplayName()
-│   │   ├── group-documents.ts   # groupDocuments()
-│   │   └── receipt-generator.ts # A CREER
+│   │   └── group-documents.ts   # groupDocuments()
+│   ├── services/
+│   │   └── receipt-generator.ts # 605 lignes ALUR, branché webhook Stripe
 │   ├── subscriptions/plans.ts
 │   ├── billing-utils.ts         # formatBillingCountdown() corrigé
 │   ├── emails/resend.service.ts # Email service complet

@@ -25,7 +25,7 @@ describe('translateTwilioError', () => {
 
   test.each([20003, 20404, 20422, 21608])(
     'code %i is known but NOT user-facing (infra)',
-    (code) => {
+    (code: number) => {
       const t = translateTwilioError(code);
       expect(t.userFacing).toBe(false);
       expect(t.message).toBe(TWILIO_ERROR_MESSAGES_FR[code]);
