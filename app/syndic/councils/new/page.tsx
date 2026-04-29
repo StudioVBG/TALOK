@@ -125,7 +125,7 @@ export default function NewCouncilPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <div className="p-0">
       <div className="max-w-2xl mx-auto space-y-6">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -133,36 +133,36 @@ export default function NewCouncilPage() {
           className="flex items-center gap-4"
         >
           <Link href="/syndic/councils">
-            <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-white/10">
+            <Button variant="ghost" size="sm" className="text-foreground hover:text-foreground hover:bg-muted">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Retour
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Users className="h-6 w-6 text-violet-400" />
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Users className="h-6 w-6 text-violet-600" />
               Nouveau conseil syndical
             </h1>
-            <p className="text-slate-400">Élu en assemblée générale (loi du 10 juillet 1965, art. 21)</p>
+            <p className="text-muted-foreground">Élu en assemblée générale (loi du 10 juillet 1965, art. 21)</p>
           </div>
         </motion.div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
+          <Card className="">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-violet-400" />
+              <CardTitle className="text-foreground flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-violet-600" />
                 Copropriété
               </CardTitle>
-              <CardDescription className="text-slate-400">
+              <CardDescription className="text-muted-foreground">
                 Un seul conseil actif par copropriété à la fois
               </CardDescription>
             </CardHeader>
             <CardContent>
               {loadingSites ? (
-                <p className="text-slate-400 text-sm">Chargement...</p>
+                <p className="text-muted-foreground text-sm">Chargement...</p>
               ) : sites.length === 0 ? (
-                <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 text-sm text-amber-100">
+                <div className="rounded-xl border border-amber-200 bg-amber-500/10 p-3 text-sm text-amber-100">
                   Aucune copropriété disponible.
                 </div>
               ) : (
@@ -171,7 +171,7 @@ export default function NewCouncilPage() {
                   onValueChange={(value) => setForm({ ...form, site_id: value })}
                   disabled={submitting}
                 >
-                  <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                  <SelectTrigger className=" text-foreground">
                     <SelectValue placeholder="Sélectionner une copropriété" />
                   </SelectTrigger>
                   <SelectContent>
@@ -187,28 +187,28 @@ export default function NewCouncilPage() {
             </CardContent>
           </Card>
 
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
+          <Card className="">
             <CardHeader>
-              <CardTitle className="text-white">Durée du mandat</CardTitle>
-              <CardDescription className="text-slate-400">
+              <CardTitle className="text-foreground">Durée du mandat</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 Typiquement 1 à 3 ans (renouvelable par AG)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Début *</Label>
+                  <Label className="text-foreground">Début *</Label>
                   <Input
                     type="date"
                     value={form.mandate_start}
                     onChange={(e) => setForm({ ...form, mandate_start: e.target.value })}
                     required
                     disabled={submitting}
-                    className="bg-white/5 border-white/10 text-white"
+                    className=" text-foreground"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Durée (années)</Label>
+                  <Label className="text-foreground">Durée (années)</Label>
                   <Input
                     type="number"
                     min="1"
@@ -218,35 +218,35 @@ export default function NewCouncilPage() {
                       setForm({ ...form, duration_years: parseInt(e.target.value, 10) || 1 })
                     }
                     disabled={submitting}
-                    className="bg-white/5 border-white/10 text-white"
+                    className=" text-foreground"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Fin *</Label>
+                  <Label className="text-foreground">Fin *</Label>
                   <Input
                     type="date"
                     value={form.mandate_end}
                     onChange={(e) => setForm({ ...form, mandate_end: e.target.value })}
                     required
                     disabled={submitting}
-                    className="bg-white/5 border-white/10 text-white"
+                    className=" text-foreground"
                   />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
+          <Card className="">
             <CardContent className="p-6 space-y-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">Notes (optionnel)</Label>
+                <Label className="text-foreground">Notes (optionnel)</Label>
                 <Textarea
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   rows={3}
                   disabled={submitting}
                   placeholder="Contexte, circonstances d'élection..."
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                  className=" text-foreground placeholder:text-muted-foreground"
                 />
               </div>
               <div className="rounded-lg border border-blue-400/30 bg-blue-500/10 p-3 text-sm text-blue-100">
@@ -264,7 +264,7 @@ export default function NewCouncilPage() {
                 type="button"
                 variant="outline"
                 disabled={submitting}
-                className="border-white/20 text-white hover:bg-white/10"
+                className="border-input text-foreground hover:bg-muted"
               >
                 Annuler
               </Button>
