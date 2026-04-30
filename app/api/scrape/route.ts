@@ -16,6 +16,11 @@ import {
   type ExtractedData,
   type ExtractionQuality,
 } from "./extractors";
+import {
+  extractWithLlm,
+  mergeLlmIntoBase,
+  shouldUseLlmFallback,
+} from "./llm-fallback";
 
 // Force cette route à s'exécuter uniquement côté serveur
 export const runtime = 'nodejs';
@@ -1076,6 +1081,62 @@ export async function POST(request: Request) {
       score: Math.min(100, finalScore),
       details: finalDetails,
     };
+
+    // 8 bis. Fallback LLM (OpenAI) — si l'extracteur rule-based n'a pas trouvé
+    // les essentiels, on demande à GPT-5.2 Instant de relire le texte de la
+    // page. Le LLM ne remplit que les champs encore null/vides ; le rule-based
+    // reste prioritaire. Sans clé OPENAI_API_KEY, ce bloc est un no-op.
+    if (shouldUseLlmFallback(merged)) {
+      const llmData = await extractWithLlm(bodyText, { url, site });
+      if (llmData) {
+        const { merged: enriched, filledFields } = mergeLlmIntoBase(merged, llmData);
+        if (filledFields.length > 0) {
+          // Re-compléter CP↔Ville si le LLM a apporté l'un des deux.
+          if (enriched.ville && !enriched.code_postal) {
+            enriched.code_postal = findCPFromCity(enriched.ville);
+          }
+          if (enriched.code_postal && !enriched.ville) {
+            enriched.ville = findCityFromCP(enriched.code_postal);
+          }
+          // Reconstruire l'adresse complète.
+          const addrParts: string[] = [];
+          if (enriched.adresse) addrParts.push(enriched.adresse);
+          if (enriched.code_postal) addrParts.push(enriched.code_postal);
+          if (enriched.ville) addrParts.push(enriched.ville);
+          enriched.adresse_complete =
+            addrParts.length > 0 ? addrParts.join(", ") : null;
+
+          // Recalculer le score (même grille que ci-dessus) sur la version enrichie.
+          let llmScore = 0;
+          const llmDetails: string[] = [];
+          if (enriched.loyer_hc) { llmScore += 15; llmDetails.push("✅ Prix"); }
+          if (enriched.surface) { llmScore += 15; llmDetails.push("✅ Surface"); }
+          if (enriched.nb_pieces) { llmScore += 10; llmDetails.push("✅ Pièces"); }
+          if (enriched.ville) { llmScore += 10; llmDetails.push("✅ Ville"); }
+          if (enriched.code_postal) { llmScore += 5; llmDetails.push("✅ CP"); }
+          if (enriched.dpe_classe_energie) { llmScore += 5; llmDetails.push("✅ DPE"); }
+          if (enriched.chauffage_type) { llmScore += 5; llmDetails.push("✅ Chauffage"); }
+          if (enriched.meuble !== null) { llmScore += 5; llmDetails.push("✅ Meublé"); }
+          if (enriched.photos.length > 0) {
+            llmScore += 15;
+            llmDetails.push(`✅ ${enriched.photos.length} photos`);
+          }
+          if (enriched.description && enriched.description.length > 50) {
+            llmScore += 10;
+            llmDetails.push("✅ Description");
+          }
+          if (enriched.visite_virtuelle_url) { llmScore += 5; llmDetails.push("✅ Visite 3D"); }
+          llmDetails.push(`🤖 LLM fallback: ${filledFields.length} champ(s)`);
+
+          enriched.extraction_quality = {
+            source: site,
+            score: Math.min(100, llmScore),
+            details: llmDetails,
+          };
+          Object.assign(merged, enriched);
+        }
+      }
+    }
 
     const duration = Date.now() - startTime;
 
