@@ -88,19 +88,37 @@ export async function GET(request: Request, { params }: RouteParams) {
       .limit(1)
       .maybeSingle();
 
-    // Statistiques sur les lignes de l'appel de fonds qui concernent les
-    // copropriétaires (l'utilisateur peut avoir des lignes via ses lots,
-    // mais le mapping fin building_units → copro_lots n'est pas encore en
-    // place — on retourne les totaux globaux du site pour info).
+    // Calcul du solde exact :
+    //   - on récupère les copro_lot_id mappés sur les building_units du building
+    //   - on filtre les lignes du fund call sur ces lot_id
+    //   - si aucun mapping, on retourne null (solde non calculable précisément)
     let userOwedCents: number | null = null;
+    let mappingUsed = false;
     if (latestFundCall) {
-      const { data: lines } = await serviceClient
-        .from("copro_fund_call_lines")
-        .select("amount_cents, paid_cents, lot_id")
-        .eq("call_id", (latestFundCall as { id: string }).id);
-      if (lines && lines.length > 0) {
-        userOwedCents = (lines as Array<{ amount_cents: number; paid_cents: number }>).reduce(
-          (sum, l) => sum + Math.max(0, (l.amount_cents ?? 0) - (l.paid_cents ?? 0)),
+      const { data: mappedUnits } = await serviceClient
+        .from("building_units")
+        .select("copro_lot_id")
+        .eq("building_id", buildingId)
+        .not("copro_lot_id", "is", null);
+      const mappedLotIds = (mappedUnits ?? [])
+        .map((u) => (u as { copro_lot_id: string | null }).copro_lot_id)
+        .filter((v): v is string => v !== null);
+
+      if (mappedLotIds.length > 0) {
+        mappingUsed = true;
+        const { data: lines } = await serviceClient
+          .from("copro_fund_call_lines")
+          .select("amount_cents, paid_cents, lot_id")
+          .eq("call_id", (latestFundCall as { id: string }).id)
+          .in("lot_id", mappedLotIds);
+        userOwedCents = (lines ?? []).reduce(
+          (sum, l) =>
+            sum +
+            Math.max(
+              0,
+              ((l as { amount_cents: number }).amount_cents ?? 0) -
+                ((l as { paid_cents: number }).paid_cents ?? 0)
+            ),
           0
         );
       }
@@ -123,6 +141,7 @@ export async function GET(request: Request, { params }: RouteParams) {
         ? {
             ...(latestFundCall as Record<string, unknown>),
             user_owed_cents: userOwedCents,
+            mapping_used: mappingUsed,
           }
         : null,
       recent_documents: minutes ?? [],

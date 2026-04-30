@@ -85,6 +85,18 @@ export function SyndicLinkBanner({
   const [volunteerOpen, setVolunteerOpen] = useState(false);
   const [activating, setActivating] = useState(false);
 
+  // Inviter un syndic externe
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviting, setInviting] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{ url: string } | null>(null);
+  const [inviteForm, setInviteForm] = useState({
+    email: "",
+    name: "",
+    copro_name: "",
+    phone: "",
+    message: "",
+  });
+
   // Unlink
   const [unlinking, setUnlinking] = useState(false);
 
@@ -172,6 +184,37 @@ export function SyndicLinkBanner({
       toast({ title: "Erreur", variant: "destructive" });
     } finally {
       setUnlinking(false);
+    }
+  }
+
+  async function handleInviteSyndic(e: React.FormEvent) {
+    e.preventDefault();
+    if (!inviteForm.email) {
+      toast({ title: "Email requis", variant: "destructive" });
+      return;
+    }
+    setInviting(true);
+    try {
+      const res = await fetch(`/api/buildings/${buildingId}/invite-syndic`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(inviteForm),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error ?? "Erreur");
+      setInviteResult({ url: body.invite_url });
+      toast({
+        title: "Invitation envoyée",
+        description: `Email envoyé à ${inviteForm.email}`,
+      });
+    } catch (err) {
+      toast({
+        title: "Erreur",
+        description: err instanceof Error ? err.message : "Échec",
+        variant: "destructive",
+      });
+    } finally {
+      setInviting(false);
     }
   }
 
@@ -322,17 +365,125 @@ export function SyndicLinkBanner({
                 <Link2 className="w-4 h-4 mr-2" />
                 Rechercher mon syndic
               </Button>
-              <Button size="sm" variant="outline" asChild>
-                <a
-                  href={`mailto:?subject=Inviter%20mon%20syndic%20sur%20Talok&body=Bonjour,%0A%0AJe%20souhaiterais%20que%20vous%20rejoigniez%20Talok%20pour%20faciliter%20la%20gestion%20de%20notre%20copropri%C3%A9t%C3%A9.%0A%0AInscription%20:%20https://talok.fr/auth/signup?role=syndic`}
-                >
-                  <Mail className="w-4 h-4 mr-2" />
-                  Inviter
-                </a>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setInviteResult(null);
+                  setInviteOpen(true);
+                }}
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                Inviter
               </Button>
             </div>
           </CardContent>
         </Card>
+
+        <Dialog
+          open={inviteOpen}
+          onOpenChange={(o) => {
+            setInviteOpen(o);
+            if (!o) setInviteResult(null);
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Inviter mon syndic à rejoindre Talok</DialogTitle>
+              <DialogDescription>
+                Un email lui sera envoyé avec un lien d'inscription pré-rempli.
+                Quand il créera son compte, votre immeuble sera automatiquement
+                rattaché à la copropriété qu'il configurera.
+              </DialogDescription>
+            </DialogHeader>
+
+            {inviteResult ? (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="font-semibold text-emerald-700 inline-flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Invitation envoyée
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Vous pouvez aussi partager ce lien directement avec votre syndic :
+                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Input value={inviteResult.url} readOnly className="text-xs font-mono" />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(inviteResult.url);
+                        toast({ title: "Copié" });
+                      }}
+                    >
+                      Copier
+                    </Button>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={() => setInviteOpen(false)}>Fermer</Button>
+                </DialogFooter>
+              </div>
+            ) : (
+              <form onSubmit={handleInviteSyndic} className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Email du syndic *</Label>
+                  <Input
+                    type="email"
+                    required
+                    value={inviteForm.email}
+                    onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                    placeholder="contact@cabinet-syndic.fr"
+                  />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Nom du cabinet</Label>
+                    <Input
+                      value={inviteForm.name}
+                      onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
+                      placeholder="Cabinet Foch"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Téléphone</Label>
+                    <Input
+                      value={inviteForm.phone}
+                      onChange={(e) => setInviteForm({ ...inviteForm, phone: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Nom de la copropriété (optionnel)</Label>
+                  <Input
+                    value={inviteForm.copro_name}
+                    onChange={(e) => setInviteForm({ ...inviteForm, copro_name: e.target.value })}
+                    placeholder="Résidence Les Magnolias"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Message personnel</Label>
+                  <Textarea
+                    rows={3}
+                    value={inviteForm.message}
+                    onChange={(e) => setInviteForm({ ...inviteForm, message: e.target.value })}
+                    placeholder="Bonjour, je suis copropriétaire et …"
+                  />
+                </div>
+                <DialogFooter>
+                  <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>
+                    Annuler
+                  </Button>
+                  <Button type="submit" disabled={inviting}>
+                    {inviting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Envoyer l'invitation
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
 
         <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
           <DialogContent className="max-w-2xl">
