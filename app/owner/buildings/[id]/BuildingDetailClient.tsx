@@ -797,9 +797,17 @@ export function BuildingDetailClient({
                 Propriété complète
               </Badge>
             ) : (
-              <Badge className="bg-amber-600 text-white shrink-0">
-                Copropriété &bull; {totalUnits} lot(s) sur {totalLotsInBuilding || "?"}
-              </Badge>
+              <>
+                <Badge className="bg-amber-600 text-white shrink-0">
+                  Copropriété &bull; {totalUnits} lot(s) sur {totalLotsInBuilding || "?"}
+                </Badge>
+                <Link
+                  href="/owner/copro"
+                  className="inline-flex items-center gap-1 text-xs text-white/90 hover:text-white underline underline-offset-2 shrink-0"
+                >
+                  Voir ma copropriété &rarr;
+                </Link>
+              </>
             )}
           </div>
           <div className="flex items-center gap-4 text-white/80 flex-wrap">
