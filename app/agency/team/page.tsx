@@ -18,8 +18,10 @@ import {
   Edit,
   Trash2,
   UserPlus,
+  Loader2,
 } from "lucide-react";
 import { PlanGate } from "@/components/subscription";
+import { useToast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -113,14 +115,64 @@ const roleConfig = {
 };
 
 export default function TeamPage() {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<"gestionnaire" | "assistant" | "comptable">("gestionnaire");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredMembers = mockTeamMembers.filter(
     (member) =>
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       member.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const resetInviteForm = () => {
+    setInviteEmail("");
+    setInviteRole("gestionnaire");
+  };
+
+  const handleSendInvite = async () => {
+    const email = inviteEmail.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({
+        title: "Email invalide",
+        description: "Renseignez une adresse email valide.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/api/agency/invitations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, role_agence: inviteRole }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload?.error || "Erreur lors de l'envoi de l'invitation");
+      }
+
+      toast({
+        title: "Invitation envoyée",
+        description: `Un email a été envoyé à ${email}.`,
+      });
+      resetInviteForm();
+      setIsInviteDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Échec de l'invitation",
+        description: error instanceof Error ? error.message : "Erreur inconnue",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <PlanGate feature="multi_users" mode="blur">
@@ -156,11 +208,22 @@ export default function TeamPage() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="invite-email">Email</Label>
-                <Input id="invite-email" type="email" placeholder="collaborateur@email.com" />
+                <Input
+                  id="invite-email"
+                  type="email"
+                  placeholder="collaborateur@email.com"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  disabled={isSubmitting}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="invite-role">Rôle</Label>
-                <Select>
+                <Select
+                  value={inviteRole}
+                  onValueChange={(v) => setInviteRole(v as typeof inviteRole)}
+                  disabled={isSubmitting}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Sélectionner un rôle" />
                   </SelectTrigger>
@@ -173,10 +236,18 @@ export default function TeamPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  resetInviteForm();
+                  setIsInviteDialogOpen(false);
+                }}
+                disabled={isSubmitting}
+              >
                 Annuler
               </Button>
-              <Button onClick={() => setIsInviteDialogOpen(false)}>
+              <Button onClick={handleSendInvite} disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Envoyer l'invitation
               </Button>
             </DialogFooter>

@@ -81,39 +81,48 @@ export default function AgencyHelpPage() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="border-0 bg-gradient-to-br from-indigo-500 to-purple-600 text-white hover:shadow-lg transition-all duration-300 cursor-pointer">
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="p-3 bg-white/20 rounded-xl">
-              <MessageCircle className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="font-semibold">Chat en direct</h3>
-              <p className="text-sm text-white/80">Réponse en moins de 5 min</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 bg-gradient-to-br from-emerald-500 to-teal-600 text-white hover:shadow-lg transition-all duration-300 cursor-pointer">
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="p-3 bg-white/20 rounded-xl">
-              <Phone className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="font-semibold">Appelez-nous</h3>
-              <p className="text-sm text-white/80">01 23 45 67 89</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-0 bg-gradient-to-br from-amber-500 to-orange-600 text-white hover:shadow-lg transition-all duration-300 cursor-pointer">
-          <CardContent className="p-6 flex items-center gap-4">
-            <div className="p-3 bg-white/20 rounded-xl">
-              <Mail className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="font-semibold">Email support</h3>
-              <p className="text-sm text-white/80">support@talok.fr</p>
-            </div>
-          </CardContent>
-        </Card>
+        <a
+          href="mailto:support@talok.fr?subject=Demande%20d%27assistance%20%E2%80%94%20Espace%20agence"
+          className="block"
+        >
+          <Card className="border-0 bg-gradient-to-br from-indigo-500 to-purple-600 text-white hover:shadow-lg transition-all duration-300 cursor-pointer">
+            <CardContent className="p-6 flex items-center gap-4">
+              <div className="p-3 bg-white/20 rounded-xl">
+                <MessageCircle className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Contacter le support</h3>
+                <p className="text-sm text-white/80">Réponse sous 24 h ouvrées</p>
+              </div>
+            </CardContent>
+          </Card>
+        </a>
+        <a href="tel:+33123456789" className="block">
+          <Card className="border-0 bg-gradient-to-br from-emerald-500 to-teal-600 text-white hover:shadow-lg transition-all duration-300 cursor-pointer">
+            <CardContent className="p-6 flex items-center gap-4">
+              <div className="p-3 bg-white/20 rounded-xl">
+                <Phone className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Appelez-nous</h3>
+                <p className="text-sm text-white/80">01 23 45 67 89</p>
+              </div>
+            </CardContent>
+          </Card>
+        </a>
+        <a href="mailto:support@talok.fr" className="block">
+          <Card className="border-0 bg-gradient-to-br from-amber-500 to-orange-600 text-white hover:shadow-lg transition-all duration-300 cursor-pointer">
+            <CardContent className="p-6 flex items-center gap-4">
+              <div className="p-3 bg-white/20 rounded-xl">
+                <Mail className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Email support</h3>
+                <p className="text-sm text-white/80">support@talok.fr</p>
+              </div>
+            </CardContent>
+          </Card>
+        </a>
       </div>
 
       {/* Help Categories */}
@@ -194,8 +203,10 @@ export default function AgencyHelpPage() {
               </p>
             </div>
           </div>
-          <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100">
-            Nous contacter
+          <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100" asChild>
+            <a href="mailto:support@talok.fr?subject=Demande%20de%20formation%20agence">
+              Nous contacter
+            </a>
           </Button>
         </CardContent>
       </Card>
