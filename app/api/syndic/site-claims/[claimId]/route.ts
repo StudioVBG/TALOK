@@ -13,6 +13,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireSyndic } from "@/lib/helpers/syndic-auth";
+import { sendEmail } from "@/lib/emails/resend.service";
 
 const DecisionSchema = z.object({
   decision: z.enum(["approve", "reject"]),
@@ -85,6 +86,72 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+    // Notifie le copropriétaire par email
+    try {
+      const { data: claimFull } = await auth.serviceClient
+        .from("building_site_links")
+        .select(
+          "claimed_by_profile_id, building:buildings(name, adresse_complete), site:sites(name)"
+        )
+        .eq("id", claimId)
+        .maybeSingle();
+
+      const ownerProfileId = (claimFull as { claimed_by_profile_id: string } | null)
+        ?.claimed_by_profile_id;
+      const buildingName =
+        (claimFull as { building: { name: string | null; adresse_complete: string | null } } | null)
+          ?.building?.name ??
+        (claimFull as { building: { adresse_complete: string | null } } | null)?.building
+          ?.adresse_complete ??
+        "votre immeuble";
+      const siteName =
+        (claimFull as { site: { name: string } } | null)?.site?.name ?? "la copropriété";
+
+      let ownerEmail: string | undefined;
+      if (ownerProfileId) {
+        const { data: ownerProfile } = await auth.serviceClient
+          .from("profiles")
+          .select("user_id")
+          .eq("id", ownerProfileId)
+          .maybeSingle();
+        const ownerUserId = (ownerProfile as { user_id: string } | null)?.user_id;
+        if (ownerUserId) {
+          const { data: ownerAuth } = await auth.serviceClient.auth.admin.getUserById(ownerUserId);
+          ownerEmail = ownerAuth?.user?.email ?? undefined;
+        }
+      }
+
+      if (ownerEmail) {
+        if (parse.data.decision === "approve") {
+          await sendEmail({
+            to: ownerEmail,
+            subject: `Rattachement validé — ${siteName}`,
+            html: `<p>Bonne nouvelle !</p>
+<p>Votre demande de rattachement de <strong>${buildingName}</strong> à la copropriété <strong>${siteName}</strong> a été validée par le syndic.</p>
+<p>Vous accédez désormais en lecture seule aux assemblées générales, appels de fonds et procès-verbaux depuis votre espace : <a href="https://talok.fr/owner/properties?tab=immeubles">votre fiche immeuble</a>.</p>
+<p>Cordialement,<br/>L'équipe Talok</p>`,
+            text: `Votre demande de rattachement de ${buildingName} à ${siteName} a été validée. Voir https://talok.fr/owner/properties?tab=immeubles`,
+            tags: [{ name: "type", value: "building_site_claim_approved" }],
+          });
+        } else {
+          await sendEmail({
+            to: ownerEmail,
+            subject: `Demande de rattachement refusée — ${siteName}`,
+            html: `<p>Bonjour,</p>
+<p>Votre demande de rattachement de <strong>${buildingName}</strong> à la copropriété <strong>${siteName}</strong> a été refusée par le syndic.</p>
+${parse.data.reason ? `<p><strong>Motif :</strong> ${parse.data.reason}</p>` : ""}
+<p>Vous pouvez renvoyer une nouvelle demande depuis la fiche de votre immeuble.</p>
+<p>Cordialement,<br/>L'équipe Talok</p>`,
+            text: `Votre demande de rattachement à ${siteName} a été refusée${parse.data.reason ? `. Motif : ${parse.data.reason}` : "."}.`,
+            tags: [{ name: "type", value: "building_site_claim_rejected" }],
+          });
+        }
+      }
+    } catch (emailError) {
+      console.error("[site-claims] notification email failed", emailError);
+    }
+
     return NextResponse.json(updated);
   } catch (error) {
     return NextResponse.json(

@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getAuthenticatedUser } from "@/lib/helpers/auth-helper";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { sendEmail } from "@/lib/emails/resend.service";
 
 const ClaimSchema = z.object({
   site_id: z.string().uuid(),
@@ -101,6 +102,53 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Notifie le syndic par email
+    try {
+      const { data: syndicAuthUser } = await serviceClient.auth.admin.getUserById(
+        await (async () => {
+          const { data: syndicProfile } = await serviceClient
+            .from("profiles")
+            .select("user_id")
+            .eq("id", (site as { syndic_profile_id: string }).syndic_profile_id)
+            .maybeSingle();
+          return (syndicProfile as { user_id: string } | null)?.user_id ?? "";
+        })()
+      );
+      const syndicEmail = syndicAuthUser?.user?.email;
+
+      const { data: ownerProfile } = await serviceClient
+        .from("profiles")
+        .select("prenom, nom")
+        .eq("id", profileId)
+        .maybeSingle();
+      const ownerName = ownerProfile
+        ? [
+            (ownerProfile as { prenom: string | null }).prenom,
+            (ownerProfile as { nom: string | null }).nom,
+          ]
+            .filter(Boolean)
+            .join(" ") || "Un copropriétaire"
+        : "Un copropriétaire";
+
+      const siteName = (site as { name: string }).name;
+
+      if (syndicEmail) {
+        await sendEmail({
+          to: syndicEmail,
+          subject: `Nouvelle demande de rattachement — ${siteName}`,
+          html: `<p>Bonjour,</p>
+<p><strong>${ownerName}</strong> souhaite rattacher son immeuble à votre copropriété <strong>${siteName}</strong> sur Talok.</p>
+${parse.data.message ? `<p><em>« ${parse.data.message} »</em></p>` : ""}
+<p>Validez ou refusez la demande depuis votre espace : <a href="https://talok.fr/syndic/claims">talok.fr/syndic/claims</a></p>
+<p>Cordialement,<br/>L'équipe Talok</p>`,
+          text: `${ownerName} souhaite rattacher son immeuble à votre copropriété ${siteName}. Validez sur https://talok.fr/syndic/claims`,
+          tags: [{ name: "type", value: "building_site_claim_pending" }],
+        });
+      }
+    } catch (emailError) {
+      console.error("[claim-site] notification email failed", emailError);
     }
 
     return NextResponse.json(claim, { status: 201 });

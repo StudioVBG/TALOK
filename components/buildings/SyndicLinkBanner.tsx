@@ -30,6 +30,8 @@ import {
   Link2Off,
   Mail,
 } from "lucide-react";
+
+// (Search est déjà importé ci-dessus pour le filtre de recherche)
 import Link from "next/link";
 
 type LinkStatus = "unlinked" | "pending" | "linked" | "rejected";
@@ -73,6 +75,8 @@ export function SyndicLinkBanner({
   const [searchOpen, setSearchOpen] = useState(false);
   const [matches, setMatches] = useState<MatchedSite[]>([]);
   const [matchesLoading, setMatchesLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchDebounce, setSearchDebounce] = useState(0);
   const [selectedSiteId, setSelectedSiteId] = useState<string>("");
   const [claimMessage, setClaimMessage] = useState("");
   const [claiming, setClaiming] = useState(false);
@@ -84,10 +88,13 @@ export function SyndicLinkBanner({
   // Unlink
   const [unlinking, setUnlinking] = useState(false);
 
-  async function loadMatches() {
+  async function loadMatches(q: string = "") {
     setMatchesLoading(true);
     try {
-      const res = await fetch(`/api/buildings/${buildingId}/match-sites`);
+      const url = q
+        ? `/api/buildings/${buildingId}/match-sites?q=${encodeURIComponent(q)}`
+        : `/api/buildings/${buildingId}/match-sites`;
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setMatches(Array.isArray(data) ? data : []);
@@ -98,11 +105,21 @@ export function SyndicLinkBanner({
   }
 
   useEffect(() => {
-    if (searchOpen && matches.length === 0) {
+    if (searchOpen) {
       loadMatches();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchOpen]);
+
+  // Debounced free-text search
+  useEffect(() => {
+    if (!searchOpen) return;
+    const t = setTimeout(() => {
+      loadMatches(searchQuery);
+    }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchDebounce]);
 
   async function handleClaim() {
     if (!selectedSiteId) {
@@ -328,14 +345,33 @@ export function SyndicLinkBanner({
             </DialogHeader>
 
             <div className="space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="Rechercher par nom de copro, cabinet, SIRET, carte G…"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setSearchDebounce((v) => v + 1);
+                  }}
+                  className="pl-9"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {searchQuery
+                  ? "Recherche libre dans toute la base Talok."
+                  : `Suggestions automatiques basées sur l'adresse de votre immeuble.`}
+              </p>
+
               {matchesLoading ? (
                 <div className="py-8 text-center text-muted-foreground">
                   <Loader2 className="w-5 h-5 animate-spin mx-auto" />
                 </div>
               ) : matches.length === 0 ? (
                 <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                  Aucune copropriété trouvée à votre adresse. Invitez votre syndic à
-                  rejoindre Talok ou contactez le support.
+                  {searchQuery
+                    ? "Aucun résultat. Essayez un autre terme ou invitez votre syndic à rejoindre Talok."
+                    : "Aucune copropriété trouvée à votre adresse. Tapez le nom de votre cabinet syndic ci-dessus pour élargir la recherche."}
                 </div>
               ) : (
                 <div className="space-y-2 max-h-72 overflow-y-auto">
