@@ -3,314 +3,34 @@ import * as cheerio from "cheerio";
 import { createClient } from "@/lib/supabase/server";
 import { ApiError, handleApiError } from "@/lib/helpers/api-error";
 import { applyRateLimit } from "@/lib/middleware/rate-limit";
+import {
+  isUrlAllowed,
+  detectSourceSite,
+  findCityFromCP,
+  findCPFromCity,
+  isValidPhotoUrl,
+  cleanPrice,
+  cleanSurface,
+  cleanRooms,
+  cleanDPE,
+  type ExtractedData,
+  type ExtractionQuality,
+} from "./extractors";
+import {
+  extractWithLlm,
+  mergeLlmIntoBase,
+  shouldUseLlmFallback,
+} from "./llm-fallback";
+import {
+  normalizeAddressForDuplicate,
+  validateExtractedData,
+  type ValidationWarning,
+} from "./validation";
 
 // Force cette route à s'exécuter uniquement côté serveur
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 15; // 15 secondes max
-
-// ============================================
-// PROTECTION SSRF - SEC-002
-// ============================================
-
-/**
- * Hosts bloqués pour prévenir les attaques SSRF
- */
-const BLOCKED_HOSTS = [
-  "localhost",
-  "127.0.0.1",
-  "0.0.0.0",
-  "::1",
-  "[::1]",
-  // Metadata endpoints cloud
-  "169.254.169.254", // AWS/GCP/Azure metadata
-  "metadata.google.internal",
-  "metadata.google",
-  "metadata",
-];
-
-/**
- * Ranges IP privées bloquées
- */
-const BLOCKED_IP_RANGES = [
-  /^10\./,                          // Private 10.x.x.x
-  /^172\.(1[6-9]|2[0-9]|3[01])\./,  // Private 172.16-31.x.x
-  /^192\.168\./,                    // Private 192.168.x.x
-  /^127\./,                         // Loopback
-  /^169\.254\./,                    // Link-local
-  /^0\./,                           // Reserved
-  /^fc00:/i,                        // IPv6 private
-  /^fe80:/i,                        // IPv6 link-local
-];
-
-/**
- * Protocoles autorisés
- */
-const ALLOWED_PROTOCOLS = ["http:", "https:"];
-
-/**
- * Domaines autorisés (whitelist)
- */
-const ALLOWED_DOMAINS = [
-  // Sites d'annonces immobilières
-  "leboncoin.fr",
-  "www.leboncoin.fr",
-  "seloger.com",
-  "www.seloger.com",
-  "bellesdemeures.com",
-  "www.bellesdemeures.com",
-  "pap.fr",
-  "www.pap.fr",
-  "logic-immo.com",
-  "www.logic-immo.com",
-  "bienici.com",
-  "www.bienici.com",
-  // Agences immobilières
-  "orpi.com",
-  "www.orpi.com",
-  "century21.fr",
-  "www.century21.fr",
-  "laforet.com",
-  "www.laforet.com",
-  "guy-hoquet.com",
-  "www.guy-hoquet.com",
-  "stephane-plaza.com",
-  "www.stephane-plaza.com",
-  // Agrégateurs
-  "figaro.fr",
-  "immobilier.lefigaro.fr",
-  "explorimmo.com",
-  "www.explorimmo.com",
-];
-
-/**
- * Valide qu'une URL est autorisée (anti-SSRF)
- */
-function isUrlAllowed(url: string): { allowed: boolean; reason?: string } {
-  try {
-    const urlObj = new URL(url);
-
-    // Vérifier le protocole
-    if (!ALLOWED_PROTOCOLS.includes(urlObj.protocol)) {
-      return { allowed: false, reason: `Protocole non autorisé: ${urlObj.protocol}` };
-    }
-
-    const hostname = urlObj.hostname.toLowerCase();
-
-    // Vérifier les hosts bloqués
-    if (BLOCKED_HOSTS.includes(hostname)) {
-      return { allowed: false, reason: "Host bloqué" };
-    }
-
-    // Vérifier les ranges IP privées
-    for (const range of BLOCKED_IP_RANGES) {
-      if (range.test(hostname)) {
-        return { allowed: false, reason: "IP privée bloquée" };
-      }
-    }
-
-    // Vérifier la whitelist des domaines
-    const isAllowedDomain = ALLOWED_DOMAINS.some(
-      (allowed) => hostname === allowed || hostname.endsWith(`.${allowed}`)
-    );
-
-    if (!isAllowedDomain) {
-      return {
-        allowed: false,
-        reason: `Domaine non autorisé: ${hostname}. Seuls les sites d'annonces immobilières sont autorisés.`
-      };
-    }
-
-    return { allowed: true };
-  } catch {
-    return { allowed: false, reason: "Format d'URL invalide" };
-  }
-}
-
-// ============================================
-// TYPES
-// ============================================
-
-interface ExtractedData {
-  titre: string;
-  description: string;
-  loyer_hc: number | null;
-  loyer_cc: number | null;
-  charges: number | null;
-  surface: number | null;
-  nb_pieces: number | null;
-  nb_chambres: number | null;
-  type: string;
-  code_postal: string | null;
-  ville: string | null;
-  adresse: string | null;
-  adresse_complete: string | null;
-  meuble: boolean | null;
-  dpe_classe_energie: string | null;
-  dpe_ges: string | null;
-  dpe_valeur: number | null;
-  chauffage_type: string | null;
-  chauffage_mode: string | null;
-  etage: number | null;
-  nb_etages: number | null;
-  ascenseur: boolean | null;
-  balcon: boolean;
-  terrasse: boolean;
-  parking_inclus: boolean;
-  cave: boolean;
-  climatisation: boolean;
-  jardin: boolean;
-  piscine: boolean;
-  annee_construction: number | null;
-  photos: string[];
-  cover_url: string | null;
-  visite_virtuelle_url: string | null;
-  source_url: string;
-  source_site: string;
-  extraction_quality: ExtractionQuality;
-}
-
-interface ExtractionQuality {
-  source: string;
-  score: number;
-  details: string[];
-}
-
-// ============================================
-// MAPPINGS CODES POSTAUX <-> VILLES
-// ============================================
-
-const CP_TO_CITY: Record<string, string> = {
-  // Martinique
-  "97200": "Fort-de-France", "97220": "La Trinité", "97221": "Le Carbet",
-  "97222": "Case-Pilote", "97223": "Le Diamant", "97224": "Ducos",
-  "97225": "Le Marigot", "97226": "Le Morne-Rouge", "97227": "Sainte-Anne",
-  "97228": "Sainte-Luce", "97229": "Les Trois-Îlets", "97230": "Sainte-Marie",
-  "97231": "Le Robert", "97232": "Le Lamentin", "97233": "Schoelcher",
-  "97240": "Le François", "97250": "Fonds-Saint-Denis", "97260": "Le Morne-Rouge",
-  "97270": "Saint-Esprit", "97280": "Le Vauclin", "97290": "Le Marin",
-  // Guadeloupe
-  "97100": "Basse-Terre", "97110": "Pointe-à-Pitre", "97122": "Baie-Mahault",
-  "97139": "Les Abymes", "97160": "Le Moule", "97170": "Petit-Bourg",
-  "97180": "Sainte-Anne", "97190": "Le Gosier",
-  // Réunion
-  "97400": "Saint-Denis", "97410": "Saint-Pierre", "97420": "Le Port",
-  "97430": "Le Tampon", "97440": "Saint-André", "97460": "Saint-Paul",
-  // Guyane
-  "97300": "Cayenne", "97310": "Kourou", "97320": "Saint-Laurent-du-Maroni",
-  // Métropole principales
-  "75001": "Paris", "75002": "Paris", "75003": "Paris", "75004": "Paris",
-  "69001": "Lyon", "69002": "Lyon", "69003": "Lyon",
-  "13001": "Marseille", "13002": "Marseille",
-  "31000": "Toulouse", "33000": "Bordeaux", "44000": "Nantes",
-  "59000": "Lille", "67000": "Strasbourg", "34000": "Montpellier",
-  "35000": "Rennes", "06000": "Nice",
-};
-
-const CITY_TO_CP: Record<string, string> = {
-  // Martinique
-  "fort-de-france": "97200", "la trinite": "97220", "la trinité": "97220",
-  "le carbet": "97221", "case-pilote": "97222", "le diamant": "97223",
-  "ducos": "97224", "le marigot": "97225", "sainte-anne": "97227",
-  "sainte-luce": "97228", "les trois-ilets": "97229", "sainte-marie": "97230",
-  "le robert": "97231", "le lamentin": "97232", "lamentin": "97232",
-  "schoelcher": "97233", "le francois": "97240", "le françois": "97240",
-  "saint-esprit": "97270", "le vauclin": "97280", "le marin": "97290",
-  // Guadeloupe
-  "basse-terre": "97100", "pointe-a-pitre": "97110", "baie-mahault": "97122",
-  "les abymes": "97139", "le moule": "97160", "le gosier": "97190",
-  // Réunion
-  "saint-denis": "97400", "saint-pierre": "97410", "le port": "97420",
-  "le tampon": "97430", "saint-andre": "97440", "saint-paul": "97460",
-  // Métropole
-  "paris": "75000", "lyon": "69000", "marseille": "13000",
-  "toulouse": "31000", "bordeaux": "33000", "nantes": "44000",
-  "lille": "59000", "strasbourg": "67000", "montpellier": "34000",
-  "rennes": "35000", "nice": "06000",
-};
-
-// ============================================
-// UTILITAIRES
-// ============================================
-
-function normalizeText(text: string): string {
-  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-}
-
-function findCityFromCP(cp: string): string | null {
-  return CP_TO_CITY[cp] || null;
-}
-
-function findCPFromCity(city: string): string | null {
-  return CITY_TO_CP[normalizeText(city)] || null;
-}
-
-function detectSourceSite(url: string): string {
-  const domain = new URL(url).hostname.toLowerCase();
-  if (domain.includes('leboncoin')) return 'leboncoin';
-  if (domain.includes('seloger')) return 'seloger';
-  if (domain.includes('pap.fr')) return 'pap';
-  if (domain.includes('logic-immo')) return 'logic-immo';
-  if (domain.includes('bien-ici')) return 'bienici';
-  if (domain.includes('orpi')) return 'orpi';
-  if (domain.includes('century21')) return 'century21';
-  if (domain.includes('laforet')) return 'laforet';
-  if (domain.includes('figaro')) return 'figaro';
-  return 'generic';
-}
-
-function isValidPhotoUrl(url: string, site: string = 'generic'): boolean {
-  if (!url || url.length < 15) return false;
-  if (!url.startsWith('http')) return false;
-  
-  // Exclusions globales
-  const excludePatterns = [
-    /logo/i, /icon/i, /avatar/i, /favicon/i, /sprite/i, /button/i,
-    /badge/i, /banner/i, /tracking/i, /pixel/i, /analytics/i,
-    /placeholder/i, /blank/i, /1x1/i, /spacer/i, /transparent/i,
-    /\.svg$/i, /\.gif$/i, /loading/i, /spinner/i, /emoji/i,
-    /profile/i, /user-avatar/i, /seal/i, /picto/i, /marker/i,
-  ];
-  
-  // Exclusions par site
-  if (site === 'leboncoin') {
-    excludePatterns.push(/static\.lbc/i, /assets\.lbc/i, /ldlc/i);
-  }
-  
-  for (const pattern of excludePatterns) {
-    if (pattern.test(url)) return false;
-  }
-  
-  // Doit être une vraie image
-  return /\.(jpg|jpeg|png|webp)(\?|$)/i.test(url) || 
-         /images?\./i.test(url) || 
-         /cdn\./i.test(url) ||
-         /photos?\./i.test(url);
-}
-
-function cleanPrice(value: any): number | null {
-  if (!value) return null;
-  const num = parseInt(String(value).replace(/[^\d]/g, ''), 10);
-  return (num >= 50 && num <= 50000) ? num : null;
-}
-
-function cleanSurface(value: any): number | null {
-  if (!value) return null;
-  const num = parseInt(String(value).replace(/[^\d]/g, ''), 10);
-  return (num >= 5 && num <= 2000) ? num : null;
-}
-
-function cleanRooms(value: any): number | null {
-  if (!value) return null;
-  const num = parseInt(String(value), 10);
-  return (num >= 1 && num <= 20) ? num : null;
-}
-
-function cleanDPE(value: any): string | null {
-  if (!value) return null;
-  const letter = String(value).toUpperCase().match(/[A-G]/);
-  return letter ? letter[0] : null;
-}
 
 // ============================================
 // EXTRACTEUR LEBONCOIN (spécialisé)
@@ -1226,7 +946,7 @@ export async function POST(request: Request) {
     // 3. Vérifier le rôle (owner ou admin uniquement)
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role")
+      .select("id, role")
       .eq("user_id", user.id)
       .single();
 
@@ -1287,23 +1007,46 @@ export async function POST(request: Request) {
 
     // 2. Extraction selon le site
     const sources: Partial<ExtractedData>[] = [];
-    
+
+    // Observabilité (SEC-002 + maintenance) : on log quand un extracteur
+    // spécialisé ne sort STRICTEMENT rien d'exploitable. Ça signale en général
+    // que les sélecteurs CSS du site ont changé et qu'il faut les mettre à
+    // jour. Le LLM fallback prend alors le relais (étape 8 bis), mais la
+    // dégradation silencieuse doit être visible côté logs.
+    const logExtractorOutcome = (extractor: string, data: Partial<ExtractedData> | null) => {
+      const fieldCount = data
+        ? Object.values(data).filter((v) => v != null && v !== "" && v !== "generic").length
+        : 0;
+      if (!data || fieldCount === 0) {
+        console.warn(
+          `[Scrape] Extracteur ${extractor} sans résultat — possible dérive de sélecteurs`,
+          { site, url, fieldCount }
+        );
+      }
+    };
+
     // Extracteur spécialisé
     switch (site) {
-      case 'leboncoin':
+      case 'leboncoin': {
         const lbcData = extractLeBonCoin($);
+        logExtractorOutcome('leboncoin', lbcData);
         if (lbcData) sources.push(lbcData);
         break;
-      case 'seloger':
+      }
+      case 'seloger': {
         const selogerData = extractSeLoger($);
+        logExtractorOutcome('seloger', selogerData);
         if (selogerData) sources.push(selogerData);
         break;
-      case 'pap':
+      }
+      case 'pap': {
         const papData = extractPAP($);
+        logExtractorOutcome('pap', papData);
         if (papData) sources.push(papData);
         break;
+      }
       default:
-        // Pas d'extracteur spécialisé
+        // Pas d'extracteur spécialisé — on s'appuie sur les sources génériques
         break;
     }
     
@@ -1367,13 +1110,149 @@ export async function POST(request: Request) {
       details: finalDetails,
     };
 
-    const duration = Date.now() - startTime;
-    
-    // Log final
+    // 8 bis. Fallback LLM (OpenAI) — si l'extracteur rule-based n'a pas trouvé
+    // les essentiels, on demande à GPT-5.2 Instant de relire le texte de la
+    // page. Le LLM ne remplit que les champs encore null/vides ; le rule-based
+    // reste prioritaire. Sans clé OPENAI_API_KEY, ce bloc est un no-op.
+    if (shouldUseLlmFallback(merged)) {
+      const llmData = await extractWithLlm(bodyText, { url, site });
+      if (llmData) {
+        const { merged: enriched, filledFields } = mergeLlmIntoBase(merged, llmData);
+        if (filledFields.length > 0) {
+          // Re-compléter CP↔Ville si le LLM a apporté l'un des deux.
+          if (enriched.ville && !enriched.code_postal) {
+            enriched.code_postal = findCPFromCity(enriched.ville);
+          }
+          if (enriched.code_postal && !enriched.ville) {
+            enriched.ville = findCityFromCP(enriched.code_postal);
+          }
+          // Reconstruire l'adresse complète.
+          const addrParts: string[] = [];
+          if (enriched.adresse) addrParts.push(enriched.adresse);
+          if (enriched.code_postal) addrParts.push(enriched.code_postal);
+          if (enriched.ville) addrParts.push(enriched.ville);
+          enriched.adresse_complete =
+            addrParts.length > 0 ? addrParts.join(", ") : null;
 
-    return NextResponse.json({ 
-      success: true, 
+          // Recalculer le score (même grille que ci-dessus) sur la version enrichie.
+          let llmScore = 0;
+          const llmDetails: string[] = [];
+          if (enriched.loyer_hc) { llmScore += 15; llmDetails.push("✅ Prix"); }
+          if (enriched.surface) { llmScore += 15; llmDetails.push("✅ Surface"); }
+          if (enriched.nb_pieces) { llmScore += 10; llmDetails.push("✅ Pièces"); }
+          if (enriched.ville) { llmScore += 10; llmDetails.push("✅ Ville"); }
+          if (enriched.code_postal) { llmScore += 5; llmDetails.push("✅ CP"); }
+          if (enriched.dpe_classe_energie) { llmScore += 5; llmDetails.push("✅ DPE"); }
+          if (enriched.chauffage_type) { llmScore += 5; llmDetails.push("✅ Chauffage"); }
+          if (enriched.meuble !== null) { llmScore += 5; llmDetails.push("✅ Meublé"); }
+          if (enriched.photos.length > 0) {
+            llmScore += 15;
+            llmDetails.push(`✅ ${enriched.photos.length} photos`);
+          }
+          if (enriched.description && enriched.description.length > 50) {
+            llmScore += 10;
+            llmDetails.push("✅ Description");
+          }
+          if (enriched.visite_virtuelle_url) { llmScore += 5; llmDetails.push("✅ Visite 3D"); }
+          llmDetails.push(`🤖 LLM fallback: ${filledFields.length} champ(s)`);
+
+          enriched.extraction_quality = {
+            source: site,
+            score: Math.min(100, llmScore),
+            details: llmDetails,
+          };
+          Object.assign(merged, enriched);
+        }
+      }
+    }
+
+    // 8 ter. Validation cross-fields (cohérence loyer/m², CP↔ville,
+    // surface vs nb_pieces, charges vs loyer, DPE G…). Non-bloquant — on
+    // attache simplement la liste des warnings au payload pour que le
+    // wizard puisse les afficher au propriétaire.
+    const validationWarnings: ValidationWarning[] = validateExtractedData(merged);
+    if (validationWarnings.length > 0) {
+      merged.extraction_quality = {
+        ...merged.extraction_quality,
+        warnings: validationWarnings.map((w) => ({
+          code: w.code,
+          message: w.message,
+          severity: w.severity,
+        })),
+      };
+    }
+
+    const duration = Date.now() - startTime;
+
+    // 9. Détection de doublon : un même owner ne devrait pas réimporter la
+    // même annonce sans en être averti. On vérifie deux pistes :
+    //   a) source_url identique → même annonce relancée (indexée via
+    //      idx_properties_owner_source_url).
+    //   b) même adresse normalisée + même code postal → même bien depuis
+    //      un autre site (LBC + SeLoger pour le même appart, par exemple).
+    //      Match en mémoire après une requête bornée pour rester O(N) sur
+    //      la centaine de biens d'un owner moyen.
+    let duplicate:
+      | { property_id: string; etat: string | null; label: string | null; reason: "url" | "address" }
+      | null = null;
+    try {
+      const { data: byUrl } = await supabase
+        .from("properties")
+        .select("id, etat, adresse_complete")
+        .eq("owner_id", profile.id)
+        .eq("source_url", url)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (byUrl) {
+        duplicate = {
+          property_id: byUrl.id,
+          etat: byUrl.etat ?? null,
+          label: byUrl.adresse_complete ?? null,
+          reason: "url",
+        };
+      } else if (merged.adresse && merged.code_postal) {
+        // Pas de doublon par URL : on tente l'adresse normalisée.
+        const targetNormalized = normalizeAddressForDuplicate(
+          [merged.adresse, merged.code_postal].join(" ")
+        );
+        if (targetNormalized.length > 0) {
+          const { data: candidates } = await supabase
+            .from("properties")
+            .select("id, etat, adresse_complete, code_postal")
+            .eq("owner_id", profile.id)
+            .eq("code_postal", merged.code_postal)
+            .is("deleted_at", null)
+            .order("created_at", { ascending: false })
+            .limit(50);
+
+          for (const candidate of candidates ?? []) {
+            const candNorm = normalizeAddressForDuplicate(
+              [candidate.adresse_complete, candidate.code_postal].join(" ")
+            );
+            if (candNorm && candNorm === targetNormalized) {
+              duplicate = {
+                property_id: candidate.id,
+                etat: candidate.etat ?? null,
+                label: candidate.adresse_complete ?? null,
+                reason: "address",
+              };
+              break;
+            }
+          }
+        }
+      }
+    } catch (dupError) {
+      // Ne pas bloquer l'import si la détection échoue (ex: colonne non encore migrée).
+      console.warn("[Scrape] Détection de doublon ignorée:", dupError);
+    }
+
+    return NextResponse.json({
+      success: true,
       data: merged,
+      duplicate,
     });
 
   } catch (error: unknown) {
