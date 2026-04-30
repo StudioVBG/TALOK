@@ -21,6 +21,11 @@ import {
   mergeLlmIntoBase,
   shouldUseLlmFallback,
 } from "./llm-fallback";
+import {
+  normalizeAddressForDuplicate,
+  validateExtractedData,
+  type ValidationWarning,
+} from "./validation";
 
 // Force cette route à s'exécuter uniquement côté serveur
 export const runtime = 'nodejs';
@@ -1002,23 +1007,46 @@ export async function POST(request: Request) {
 
     // 2. Extraction selon le site
     const sources: Partial<ExtractedData>[] = [];
-    
+
+    // Observabilité (SEC-002 + maintenance) : on log quand un extracteur
+    // spécialisé ne sort STRICTEMENT rien d'exploitable. Ça signale en général
+    // que les sélecteurs CSS du site ont changé et qu'il faut les mettre à
+    // jour. Le LLM fallback prend alors le relais (étape 8 bis), mais la
+    // dégradation silencieuse doit être visible côté logs.
+    const logExtractorOutcome = (extractor: string, data: Partial<ExtractedData> | null) => {
+      const fieldCount = data
+        ? Object.values(data).filter((v) => v != null && v !== "" && v !== "generic").length
+        : 0;
+      if (!data || fieldCount === 0) {
+        console.warn(
+          `[Scrape] Extracteur ${extractor} sans résultat — possible dérive de sélecteurs`,
+          { site, url, fieldCount }
+        );
+      }
+    };
+
     // Extracteur spécialisé
     switch (site) {
-      case 'leboncoin':
+      case 'leboncoin': {
         const lbcData = extractLeBonCoin($);
+        logExtractorOutcome('leboncoin', lbcData);
         if (lbcData) sources.push(lbcData);
         break;
-      case 'seloger':
+      }
+      case 'seloger': {
         const selogerData = extractSeLoger($);
+        logExtractorOutcome('seloger', selogerData);
         if (selogerData) sources.push(selogerData);
         break;
-      case 'pap':
+      }
+      case 'pap': {
         const papData = extractPAP($);
+        logExtractorOutcome('pap', papData);
         if (papData) sources.push(papData);
         break;
+      }
       default:
-        // Pas d'extracteur spécialisé
+        // Pas d'extracteur spécialisé — on s'appuie sur les sources génériques
         break;
     }
     
@@ -1138,14 +1166,37 @@ export async function POST(request: Request) {
       }
     }
 
+    // 8 ter. Validation cross-fields (cohérence loyer/m², CP↔ville,
+    // surface vs nb_pieces, charges vs loyer, DPE G…). Non-bloquant — on
+    // attache simplement la liste des warnings au payload pour que le
+    // wizard puisse les afficher au propriétaire.
+    const validationWarnings: ValidationWarning[] = validateExtractedData(merged);
+    if (validationWarnings.length > 0) {
+      merged.extraction_quality = {
+        ...merged.extraction_quality,
+        warnings: validationWarnings.map((w) => ({
+          code: w.code,
+          message: w.message,
+          severity: w.severity,
+        })),
+      };
+    }
+
     const duration = Date.now() - startTime;
 
     // 9. Détection de doublon : un même owner ne devrait pas réimporter la
-    // même annonce sans en être averti. Recherche un bien actif lié à cette
-    // source_url. La colonne est indexée (idx_properties_owner_source_url).
-    let duplicate: { property_id: string; etat: string | null; label: string | null } | null = null;
+    // même annonce sans en être averti. On vérifie deux pistes :
+    //   a) source_url identique → même annonce relancée (indexée via
+    //      idx_properties_owner_source_url).
+    //   b) même adresse normalisée + même code postal → même bien depuis
+    //      un autre site (LBC + SeLoger pour le même appart, par exemple).
+    //      Match en mémoire après une requête bornée pour rester O(N) sur
+    //      la centaine de biens d'un owner moyen.
+    let duplicate:
+      | { property_id: string; etat: string | null; label: string | null; reason: "url" | "address" }
+      | null = null;
     try {
-      const { data: existing } = await supabase
+      const { data: byUrl } = await supabase
         .from("properties")
         .select("id, etat, adresse_complete")
         .eq("owner_id", profile.id)
@@ -1155,12 +1206,43 @@ export async function POST(request: Request) {
         .limit(1)
         .maybeSingle();
 
-      if (existing) {
+      if (byUrl) {
         duplicate = {
-          property_id: existing.id,
-          etat: existing.etat ?? null,
-          label: existing.adresse_complete ?? null,
+          property_id: byUrl.id,
+          etat: byUrl.etat ?? null,
+          label: byUrl.adresse_complete ?? null,
+          reason: "url",
         };
+      } else if (merged.adresse && merged.code_postal) {
+        // Pas de doublon par URL : on tente l'adresse normalisée.
+        const targetNormalized = normalizeAddressForDuplicate(
+          [merged.adresse, merged.code_postal].join(" ")
+        );
+        if (targetNormalized.length > 0) {
+          const { data: candidates } = await supabase
+            .from("properties")
+            .select("id, etat, adresse_complete, code_postal")
+            .eq("owner_id", profile.id)
+            .eq("code_postal", merged.code_postal)
+            .is("deleted_at", null)
+            .order("created_at", { ascending: false })
+            .limit(50);
+
+          for (const candidate of candidates ?? []) {
+            const candNorm = normalizeAddressForDuplicate(
+              [candidate.adresse_complete, candidate.code_postal].join(" ")
+            );
+            if (candNorm && candNorm === targetNormalized) {
+              duplicate = {
+                property_id: candidate.id,
+                etat: candidate.etat ?? null,
+                label: candidate.adresse_complete ?? null,
+                reason: "address",
+              };
+              break;
+            }
+          }
+        }
       }
     } catch (dupError) {
       // Ne pas bloquer l'import si la détection échoue (ex: colonne non encore migrée).

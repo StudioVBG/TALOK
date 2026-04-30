@@ -117,6 +117,17 @@ export interface ExtractionQuality {
   source: string;
   score: number;
   details: string[];
+  /**
+   * Warnings de cohérence cross-fields (loyer/m², CP↔ville, charges>loyer,
+   * DPE G, etc.). Renseignés par validation.ts après extraction. Vide ou
+   * absent quand aucune anomalie détectée. Le scraper ne bloque jamais sur
+   * ces warnings — l'utilisateur décide.
+   */
+  warnings?: Array<{
+    code: string;
+    message: string;
+    severity: "info" | "warning";
+  }>;
 }
 
 export interface ExtractedData {

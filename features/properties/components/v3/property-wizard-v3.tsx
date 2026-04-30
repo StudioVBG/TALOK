@@ -229,9 +229,13 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
         // 🔁 Doublon détecté : un bien actif référence déjà cette URL pour cet owner.
         // On stoppe le flux d'import et on propose à l'utilisateur d'ouvrir le bien existant.
         if (duplicate?.property_id) {
+            const reasonText =
+                duplicate.reason === "address"
+                    ? "Vous avez déjà un bien à cette adresse"
+                    : "Vous avez déjà un bien lié à cette URL";
             toast({
-                title: "Annonce déjà importée",
-                description: `Vous avez déjà un bien lié à cette URL${duplicate.label ? ` (${duplicate.label})` : ""}. Ouvrez-le pour le compléter au lieu d'en créer un nouveau.`,
+                title: "Bien déjà existant",
+                description: `${reasonText}${duplicate.label ? ` (${duplicate.label})` : ""}. Ouvrez-le pour le compléter au lieu d'en créer un nouveau.`,
                 variant: "destructive",
             });
             router.push(`/owner/properties/${duplicate.property_id}`);
@@ -391,12 +395,28 @@ export function PropertyWizardV3({ propertyId, initialData, onSuccess, onCancel 
                 variant: "default",
             });
         } else {
-            const detailsInfo = foundFields.length > 3 
-                ? `${foundFields.length} informations récupérées !` 
+            const detailsInfo = foundFields.length > 3
+                ? `${foundFields.length} informations récupérées !`
                 : `Infos : ${foundFields.join(", ")}.`;
             toast({
                 title: "✨ Import réussi !",
                 description: `${detailsInfo}${photosInfo}`,
+            });
+        }
+
+        // Warnings de cohérence cross-fields (loyer/m², CP↔ville, charges>loyer, DPE G…).
+        // On affiche les "warning" séparément pour attirer l'attention avant publication.
+        const validationWarnings = (quality.warnings || []) as Array<{
+            code: string;
+            message: string;
+            severity: "info" | "warning";
+        }>;
+        const hardWarnings = validationWarnings.filter((w) => w.severity === "warning");
+        if (hardWarnings.length > 0) {
+            toast({
+                title: "À vérifier avant publication",
+                description: hardWarnings.map((w) => `• ${w.message}`).join("\n"),
+                variant: "destructive",
             });
         }
     } catch (err) {
