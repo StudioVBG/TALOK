@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireSyndic } from "@/lib/helpers/syndic-auth";
 import { sendEmail } from "@/lib/emails/resend.service";
+import { autoMapCoproLots } from "@/lib/buildings/auto-map-copro-lots";
 
 const DecisionSchema = z.object({
   decision: z.enum(["approve", "reject"]),
@@ -39,7 +40,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Récupérer le claim et vérifier qu'il vise bien un site du syndic
     const { data: claim } = await auth.serviceClient
       .from("building_site_links")
-      .select("id, site_id, status")
+      .select("id, building_id, site_id, status")
       .eq("id", claimId)
       .maybeSingle();
     if (!claim) {
@@ -85,6 +86,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Auto-mapping building_units → copro_lots après approve.
+    // Best effort : si l'auto-map échoue, on log mais le claim reste approved.
+    let autoMapResult: Awaited<ReturnType<typeof autoMapCoproLots>> | null = null;
+    if (parse.data.decision === "approve") {
+      try {
+        const buildingId = (claim as { building_id: string }).building_id;
+        autoMapResult = await autoMapCoproLots(auth.serviceClient, buildingId);
+      } catch (mapError) {
+        console.error("[site-claims] auto-map failed", mapError);
+      }
     }
 
     // Notifie le copropriétaire par email
@@ -152,7 +165,10 @@ ${parse.data.reason ? `<p><strong>Motif :</strong> ${parse.data.reason}</p>` : "
       console.error("[site-claims] notification email failed", emailError);
     }
 
-    return NextResponse.json(updated);
+    return NextResponse.json({
+      ...(updated as Record<string, unknown>),
+      auto_mapping: autoMapResult,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
