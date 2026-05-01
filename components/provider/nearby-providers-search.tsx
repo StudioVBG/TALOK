@@ -186,8 +186,29 @@ export function NearbyProvidersSearch({
   const [providerIcon, setProviderIcon] = useState<any>(null);
   const [isClient, setIsClient] = useState(false);
 
+  // Hydratation immédiate depuis localStorage (UI réactive sans flash),
+  // puis réconciliation avec le serveur (source de vérité multi-appareils).
   useEffect(() => {
     setSavedIds(readSavedIds());
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/providers/external-favorites");
+        if (!res.ok) return;
+        const data = await res.json();
+        const ids = new Set<string>(
+          (data?.favorites ?? []).map((f: any) => f.place_id as string),
+        );
+        if (cancelled) return;
+        setSavedIds(ids);
+        writeSavedIds(ids);
+      } catch (err) {
+        console.warn("[NearbyProvidersSearch] Sync favoris échouée:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const openDetail = (provider: NearbyProvider) => {
@@ -195,25 +216,69 @@ export function NearbyProvidersSearch({
     setDetailProvider(provider);
   };
 
-  const toggleSaved = (provider: NearbyProvider) => {
+  const toggleSaved = async (provider: NearbyProvider) => {
+    const wasSaved = savedIds.has(provider.id);
+
+    // Optimistic update
     setSavedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(provider.id)) {
-        next.delete(provider.id);
-        toast({
-          title: "Prestataire retiré",
-          description: `${provider.name} ne fait plus partie de vos favoris locaux.`,
-        });
-      } else {
-        next.add(provider.id);
-        toast({
-          title: "Prestataire enregistré",
-          description: `${provider.name} a été ajouté à vos favoris (stockés sur cet appareil).`,
-        });
-      }
+      if (wasSaved) next.delete(provider.id);
+      else next.add(provider.id);
       writeSavedIds(next);
       return next;
     });
+
+    try {
+      if (wasSaved) {
+        const res = await fetch(
+          `/api/providers/external-favorites/${encodeURIComponent(provider.id)}`,
+          { method: "DELETE" },
+        );
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        toast({
+          title: "Prestataire retiré",
+          description: `${provider.name} ne fait plus partie de vos favoris.`,
+        });
+      } else {
+        const res = await fetch("/api/providers/external-favorites", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            place_id: provider.id,
+            name: provider.name,
+            category,
+            address: provider.address ?? null,
+            phone: provider.phone ?? null,
+            latitude: provider.latitude,
+            longitude: provider.longitude,
+            rating: provider.rating ?? null,
+            reviews_count: provider.reviews_count ?? null,
+            google_maps_url: provider.google_maps_url,
+            source: provider.source,
+          }),
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        toast({
+          title: "Prestataire enregistré",
+          description: `${provider.name} a été ajouté à vos favoris.`,
+        });
+      }
+    } catch (err) {
+      console.error("[NearbyProvidersSearch] Toggle favori échoué:", err);
+      // Rollback
+      setSavedIds((prev) => {
+        const next = new Set(prev);
+        if (wasSaved) next.add(provider.id);
+        else next.delete(provider.id);
+        writeSavedIds(next);
+        return next;
+      });
+      toast({
+        title: "Action impossible",
+        description: "La synchronisation avec le serveur a échoué.",
+        variant: "destructive",
+      });
+    }
   };
 
   const copyContact = async (provider: NearbyProvider) => {
@@ -547,7 +612,7 @@ export function NearbyProvidersSearch({
         {savedIds.size > 0 && !premiumRequired && (
           <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 text-xs text-emerald-900 dark:bg-emerald-950/20 dark:border-emerald-900 dark:text-emerald-200">
             <BookmarkCheck className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
-            {savedIds.size} prestataire{savedIds.size > 1 ? "s" : ""} enregistré{savedIds.size > 1 ? "s" : ""} sur cet appareil. Pour partager vos favoris entre vos appareils, demandez à l'artisan de créer son compte sur talok.fr.
+            {savedIds.size} prestataire{savedIds.size > 1 ? "s" : ""} enregistré{savedIds.size > 1 ? "s" : ""} dans vos favoris (synchronisés sur tous vos appareils).
           </div>
         )}
 
@@ -878,7 +943,7 @@ export function NearbyProvidersSearch({
                 <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-xs text-blue-900 dark:bg-blue-950/20 dark:border-blue-900 dark:text-blue-200 flex gap-2">
                   <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
                   <div>
-                    Ce prestataire provient d'une recherche externe (Google Maps). Pour profiter du suivi complet (devis, signature, paiement, avis), invitez-le à créer son compte sur <strong>talok.fr</strong>. Vos favoris sont enregistrés sur cet appareil.
+                    Ce prestataire provient d'une recherche externe (Google Maps). Pour profiter du suivi complet (devis, signature, paiement, avis), invitez-le à créer son compte sur <strong>talok.fr</strong>. Vos favoris sont synchronisés sur tous vos appareils.
                   </div>
                 </div>
               </div>

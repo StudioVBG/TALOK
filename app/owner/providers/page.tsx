@@ -49,6 +49,7 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { ProviderCard, ProviderCardCompact, type ProviderCardData } from '@/components/provider/provider-card';
 import { NearbyProvidersSearch } from '@/components/provider/nearby-providers-search';
+import { ExternalFavoritesSection } from '@/components/provider/external-favorites-section';
 import { SERVICE_TYPE_LABELS, type ServiceType } from '@/lib/data/service-pricing-reference';
 import { PLANS, getRequiredPlanForFeature } from '@/lib/subscriptions/plans';
 
@@ -249,6 +250,9 @@ export default function ProvidersMarketplacePage() {
         </div>
       </div>
       
+      {/* Prestataires externes enregistrés (favoris persistés) */}
+      <ExternalFavoritesSection />
+
       {/* Barre de recherche et filtres */}
       <div className="flex flex-col gap-4 md:flex-row">
         <div className="relative flex-1">
