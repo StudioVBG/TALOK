@@ -5,7 +5,7 @@ import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { sendSignatureRequest } from "@/lib/emails/resend.service";
+import { sendEmail } from "@/lib/emails/resend.service";
 
 /**
  * POST /api/agency/mandates/[id]/initiate-signature
@@ -113,14 +113,30 @@ export async function POST(
     // 4. Email mandant (Resend, idempotent par token)
     const ownerName = `${owner.prenom ?? ""} ${owner.nom ?? ""}`.trim() || "Mandant";
     const agencyName = `${profile.prenom ?? ""} ${profile.nom ?? ""}`.trim() || "Votre agence";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.talok.fr";
+    const signatureUrl = `${appUrl}/signature/mandate/${signatureToken}`;
 
-    await sendSignatureRequest({
-      signerEmail: owner.email,
-      signerName: ownerName,
-      ownerName: agencyName,
-      propertyAddress: `Mandat ${mandate.mandate_number}`,
-      leaseType: `Mandat de ${mandate.mandate_type}`,
-      signatureToken,
+    await sendEmail({
+      to: owner.email,
+      subject: `Mandat ${mandate.mandate_number} à signer — ${agencyName}`,
+      html: `
+        <p>Bonjour ${ownerName},</p>
+        <p><strong>${agencyName}</strong> vous propose un mandat de
+        <strong>${mandate.mandate_type}</strong> (n° ${mandate.mandate_number}).</p>
+        <p>Vous pouvez consulter les conditions et signer électroniquement
+        depuis le lien ci-dessous (valable 30 jours) :</p>
+        <p style="margin: 24px 0">
+          <a href="${signatureUrl}" style="background:#2563EB;color:white;padding:12px 24px;text-decoration:none;border-radius:6px;font-weight:600">
+            Examiner et signer le mandat
+          </a>
+        </p>
+        <p style="font-size:13px;color:#64748B">Si le bouton ne fonctionne pas, copiez cette URL dans votre navigateur :<br/>
+        <code>${signatureUrl}</code></p>
+        <p>La signature électronique a la même valeur juridique qu'une signature manuscrite (eIDAS SES).</p>
+        <p>—<br/>L'équipe Talok</p>
+      `,
+      idempotencyKey: `mandate-signature-request/${signatureToken}`,
+      tags: [{ name: "type", value: "mandate_signature_request" }],
     }).catch((err) => {
       console.error("[mandate.initiate-signature] Email failed:", err);
     });
