@@ -92,10 +92,11 @@ export default function NewOwnerTicketPage() {
 
   const preselectedPropertyId = searchParams.get("propertyId");
   const preselectedLeaseId = searchParams.get("leaseId");
+  const preselectedNote = searchParams.get("note");
 
   const [form, setForm] = useState({
     titre: "",
-    description: "",
+    description: preselectedNote ? `${preselectedNote}\n\n` : "",
     categorie: "",
     priorite: "normale",
     property_id: preselectedPropertyId || "",
