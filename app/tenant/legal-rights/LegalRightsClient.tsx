@@ -1,19 +1,20 @@
 "use client";
 
 import { useMemo } from "react";
-import { Shield, MapPin, Phone, ExternalLink, AlertTriangle, Building2, Home } from "lucide-react";
+import { Shield, MapPin, Phone, ExternalLink, AlertTriangle, Building2, Home, FileText, Printer } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
-import { 
-  getContactsForDepartment, 
+import {
+  getContactsForDepartment,
   getDepartmentFromPostalCode,
-  type DepartmentContacts 
+  type DepartmentContacts
 } from "@/lib/services/legal-contacts.service";
 import { ProtocolChecklist } from "@/features/legal/components/protocol-checklist";
 import { PROTOCOL_PROTECTION_TENANT } from "@/lib/data/legal-protocols";
+import { listLetterTemplates } from "@/lib/legal/letter-templates";
 
 interface PropertyAddress {
   adresse_complete: string;
@@ -225,8 +226,52 @@ export function LegalRightsClient({ propertyAddress }: LegalRightsClientProps) {
 
       <Separator />
 
+      {/* Modèles de courriers */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Modèles de courriers
+          </CardTitle>
+          <CardDescription>
+            Lettres légales préremplies avec vos informations de bail. Ouvrez le
+            modèle, relisez, imprimez ou enregistrez en PDF depuis votre navigateur.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2">
+          {listLetterTemplates().map((tpl) => (
+            <a
+              key={tpl.key}
+              href={`/api/tenant/legal-letters/${tpl.key}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block group"
+            >
+              <Card className="h-full transition hover:border-primary hover:shadow-md">
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold leading-tight group-hover:text-primary">
+                      {tpl.title}
+                    </h3>
+                    <Printer className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary" />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {tpl.description}
+                  </p>
+                  <Badge variant="outline" className="text-[10px]">
+                    {tpl.legalReference}
+                  </Badge>
+                </CardContent>
+              </Card>
+            </a>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Separator />
+
       {/* Protocole complet */}
-      <ProtocolChecklist 
+      <ProtocolChecklist
         protocol={PROTOCOL_PROTECTION_TENANT}
       />
 
