@@ -314,6 +314,35 @@ export default async function BuildingDetailPage({ params }: PageProps) {
     last_name: string | null;
   }>;
 
+  // Bridge owner ↔ syndic : récupère le site lié + raison du dernier rejet si besoin
+  const buildingMetaAny = buildingMeta as
+    | { id: string; site_id: string | null; site_link_status: string | null }
+    | null;
+  let linkedSite: { id: string; name: string } | null = null;
+  if (buildingMetaAny?.site_id) {
+    const { data: siteRow } = await serviceClient
+      .from("sites")
+      .select("id, name")
+      .eq("id", buildingMetaAny.site_id)
+      .maybeSingle();
+    if (siteRow) {
+      linkedSite = { id: (siteRow as { id: string }).id, name: (siteRow as { name: string }).name };
+    }
+  }
+
+  let rejectedReason: string | null = null;
+  if (buildingMetaAny?.id && buildingMetaAny.site_link_status === "rejected") {
+    const { data: lastClaim } = await serviceClient
+      .from("building_site_links")
+      .select("decision_reason")
+      .eq("building_id", buildingMetaAny.id)
+      .eq("status", "rejected")
+      .order("decided_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    rejectedReason = (lastClaim as { decision_reason: string | null } | null)?.decision_reason ?? null;
+  }
+
   return (
     <BuildingDetailClient
       propertyId={propertyId}
@@ -329,6 +358,8 @@ export default async function BuildingDetailPage({ params }: PageProps) {
       leases={leases}
       tenants={tenants}
       documents={(documentsResult.data as any[]) || []}
+      linkedSite={linkedSite}
+      rejectedReason={rejectedReason}
     />
   );
 }

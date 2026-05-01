@@ -180,17 +180,17 @@ export default function EditAssemblyPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      <div className="p-0">
         <div className="max-w-3xl mx-auto space-y-4">
-          <Skeleton className="h-12 w-96 bg-white/10" />
-          <Skeleton className="h-64 bg-white/10" />
+          <Skeleton className="h-12 w-96 bg-muted" />
+          <Skeleton className="h-64 bg-muted" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <div className="p-0">
       <div className="max-w-3xl mx-auto space-y-6">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -198,34 +198,34 @@ export default function EditAssemblyPage() {
           className="flex items-center gap-4"
         >
           <Link href={`/syndic/assemblies/${assemblyId}`}>
-            <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-white/10">
+            <Button variant="ghost" size="sm" className="text-foreground hover:text-foreground hover:bg-muted">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Retour
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <CalendarIcon className="h-6 w-6 text-violet-400" />
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <CalendarIcon className="h-6 w-6 text-violet-600" />
               Modifier l'assemblée
             </h1>
-            <p className="text-slate-400">Statut actuel : {status === "draft" ? "Brouillon" : "Convoquée"}</p>
+            <p className="text-muted-foreground">Statut actuel : {status === "draft" ? "Brouillon" : "Convoquée"}</p>
           </div>
         </motion.div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
+          <Card className="">
             <CardHeader>
-              <CardTitle className="text-white">Informations</CardTitle>
+              <CardTitle className="text-foreground">Informations</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">Type *</Label>
+                <Label className="text-foreground">Type *</Label>
                 <Select
                   value={form.assembly_type}
                   onValueChange={(value: AssemblyType) => setForm({ ...form, assembly_type: value })}
                   disabled={submitting}
                 >
-                  <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                  <SelectTrigger className=" text-foreground">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -239,7 +239,7 @@ export default function EditAssemblyPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="title" className="text-slate-300">
+                <Label htmlFor="title" className="text-foreground">
                   Titre *
                 </Label>
                 <Input
@@ -248,38 +248,38 @@ export default function EditAssemblyPage() {
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   required
                   disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white"
+                  className=" text-foreground"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Date *</Label>
+                  <Label className="text-foreground">Date *</Label>
                   <Input
                     type="date"
                     value={form.scheduled_date}
                     onChange={(e) => setForm({ ...form, scheduled_date: e.target.value })}
                     required
                     disabled={submitting}
-                    className="bg-white/5 border-white/10 text-white"
+                    className=" text-foreground"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Heure *</Label>
+                  <Label className="text-foreground">Heure *</Label>
                   <Input
                     type="time"
                     value={form.scheduled_time}
                     onChange={(e) => setForm({ ...form, scheduled_time: e.target.value })}
                     required
                     disabled={submitting}
-                    className="bg-white/5 border-white/10 text-white"
+                    className=" text-foreground"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Exercice</Label>
+                  <Label className="text-foreground">Exercice</Label>
                   <Input
                     type="number"
                     min="2020"
@@ -287,52 +287,52 @@ export default function EditAssemblyPage() {
                     value={form.fiscal_year}
                     onChange={(e) => setForm({ ...form, fiscal_year: e.target.value })}
                     disabled={submitting}
-                    className="bg-white/5 border-white/10 text-white"
+                    className=" text-foreground"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Quorum (tantièmes)</Label>
+                  <Label className="text-foreground">Quorum (tantièmes)</Label>
                   <Input
                     type="number"
                     min="0"
                     value={form.quorum_required}
                     onChange={(e) => setForm({ ...form, quorum_required: e.target.value })}
                     disabled={submitting}
-                    className="bg-white/5 border-white/10 text-white"
+                    className=" text-foreground"
                   />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
+          <Card className="">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-violet-400" />
+              <CardTitle className="text-foreground flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-violet-600" />
                 Lieu
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">Lieu</Label>
+                <Label className="text-foreground">Lieu</Label>
                 <Input
                   value={form.location}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
                   disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white"
+                  className=" text-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300">Adresse</Label>
+                <Label className="text-foreground">Adresse</Label>
                 <Input
                   value={form.location_address}
                   onChange={(e) => setForm({ ...form, location_address: e.target.value })}
                   disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white"
+                  className=" text-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300 flex items-center gap-2">
+                <Label className="text-foreground flex items-center gap-2">
                   <Video className="h-4 w-4" />
                   Lien visio
                 </Label>
@@ -341,7 +341,7 @@ export default function EditAssemblyPage() {
                   value={form.online_meeting_url}
                   onChange={(e) => setForm({ ...form, online_meeting_url: e.target.value })}
                   disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white"
+                  className=" text-foreground"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -353,33 +353,33 @@ export default function EditAssemblyPage() {
                   disabled={submitting}
                   className="h-4 w-4 rounded border-white/30 bg-transparent"
                 />
-                <Label htmlFor="is_hybrid" className="text-slate-300 cursor-pointer">
+                <Label htmlFor="is_hybrid" className="text-foreground cursor-pointer">
                   Assemblée hybride
                 </Label>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
+          <Card className="">
             <CardContent className="p-6 space-y-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">Description</Label>
+                <Label className="text-foreground">Description</Label>
                 <Textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={3}
                   disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white"
+                  className=" text-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-300">Notes internes</Label>
+                <Label className="text-foreground">Notes internes</Label>
                 <Textarea
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   rows={2}
                   disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white"
+                  className=" text-foreground"
                 />
               </div>
             </CardContent>
@@ -391,7 +391,7 @@ export default function EditAssemblyPage() {
                 type="button"
                 variant="outline"
                 disabled={submitting}
-                className="border-white/20 text-white hover:bg-white/10"
+                className="border-input text-foreground hover:bg-muted"
               >
                 Annuler
               </Button>

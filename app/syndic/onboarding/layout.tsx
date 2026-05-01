@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { StepIndicator, ONBOARDING_STEPS } from "@/components/onboarding/step-indicator";
-import { Building2 } from "lucide-react";
+import { Building2, ChevronLeft, ChevronRight } from "lucide-react";
+
+const STEP_ORDER = ["profile", "site", "buildings", "units", "tantiemes", "owners", "complete"] as const;
 
 const STEP_PATH_MAP: Record<string, number> = {
   profile: 0,
@@ -29,10 +32,12 @@ export default function SyndicOnboardingLayout({
   const currentStep = resolveCurrentStep(pathname);
   const steps = ONBOARDING_STEPS.syndic;
 
+  const prevSlug = currentStep > 0 ? STEP_ORDER[currentStep - 1] : null;
+  const nextSlug = currentStep < STEP_ORDER.length - 1 ? STEP_ORDER[currentStep + 1] : null;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
       <div className="mx-auto max-w-4xl px-4 pt-8 pb-4">
-        {/* Header compact */}
         <div className="flex items-center justify-center gap-2 mb-6">
           <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center">
             <Building2 className="h-5 w-5 text-white" />
@@ -41,7 +46,6 @@ export default function SyndicOnboardingLayout({
           <span className="text-sm text-muted-foreground ml-2">Configuration Syndic</span>
         </div>
 
-        {/* Step indicator global */}
         <StepIndicator
           steps={steps}
           currentStep={currentStep}
@@ -53,8 +57,34 @@ export default function SyndicOnboardingLayout({
         />
       </div>
 
-      {/* Page content */}
       {children}
+
+      <div className="mx-auto max-w-4xl px-4 pb-12 pt-4">
+        <div className="flex items-center justify-between gap-3">
+          {prevSlug ? (
+            <Link
+              href={`/syndic/onboarding/${prevSlug}`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Précédent
+            </Link>
+          ) : (
+            <span />
+          )}
+          {nextSlug ? (
+            <Link
+              href={`/syndic/onboarding/${nextSlug}`}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            >
+              Passer cette étape
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <span />
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -202,11 +202,11 @@ export default function LiveAssemblyPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      <div className="p-0">
         <div className="max-w-6xl mx-auto space-y-6">
-          <Skeleton className="h-12 w-96 bg-white/10" />
-          <Skeleton className="h-48 bg-white/10" />
-          <Skeleton className="h-96 bg-white/10" />
+          <Skeleton className="h-12 w-96 bg-muted" />
+          <Skeleton className="h-48 bg-muted" />
+          <Skeleton className="h-96 bg-muted" />
         </div>
       </div>
     );
@@ -214,8 +214,8 @@ export default function LiveAssemblyPage() {
 
   if (!assembly) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-        <p className="text-white text-center py-12">Assemblée introuvable</p>
+      <div className="p-0">
+        <p className="text-foreground text-center py-12">Assemblée introuvable</p>
       </div>
     );
   }
@@ -229,13 +229,13 @@ export default function LiveAssemblyPage() {
   // Si l'AG n'est pas encore convoquée, rediriger vers la page détail
   if (assembly.status === "draft") {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+      <div className="p-0">
         <div className="max-w-3xl mx-auto">
-          <Card className="bg-white/5 border-amber-400/40 backdrop-blur">
+          <Card className="bg-muted/30 border-amber-200 backdrop-blur">
             <CardContent className="p-8 text-center">
-              <AlertCircle className="h-12 w-12 text-amber-400 mx-auto mb-4" />
-              <h2 className="text-xl font-bold text-white mb-2">Assemblée en brouillon</h2>
-              <p className="text-slate-300 mb-6">
+              <AlertCircle className="h-12 w-12 text-amber-600 mx-auto mb-4" />
+              <h2 className="text-xl font-bold text-foreground mb-2">Assemblée en brouillon</h2>
+              <p className="text-foreground mb-6">
                 Vous devez d'abord envoyer les convocations avant de démarrer la session.
               </p>
               <Link href={`/syndic/assemblies/${assemblyId}`}>
@@ -252,12 +252,12 @@ export default function LiveAssemblyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <div className="p-0">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
           <Link href={`/syndic/assemblies/${assemblyId}`}>
-            <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-white/10 mb-4">
+            <Button variant="ghost" size="sm" className="text-foreground hover:text-foreground hover:bg-muted mb-4">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Retour à l'assemblée
             </Button>
@@ -266,21 +266,21 @@ export default function LiveAssemblyPage() {
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <Radio className={`h-6 w-6 ${isInProgress ? "text-red-400 animate-pulse" : "text-slate-400"}`} />
-                <h1 className="text-2xl font-bold text-white">Session en direct</h1>
+                <Radio className={`h-6 w-6 ${isInProgress ? "text-red-600 animate-pulse" : "text-muted-foreground"}`} />
+                <h1 className="text-2xl font-bold text-foreground">Session en direct</h1>
                 {isInProgress && (
-                  <Badge className="bg-red-500/20 text-red-200 border-red-400/40 border">
+                  <Badge className="bg-red-100 text-red-700 border-red-200 border">
                     ● EN COURS
                   </Badge>
                 )}
                 {isHeld && (
-                  <Badge className="bg-emerald-500/20 text-emerald-200 border-emerald-400/40 border">
+                  <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 border">
                     Clôturée
                   </Badge>
                 )}
               </div>
-              <p className="text-slate-400">{assembly.title}</p>
-              <p className="text-slate-500 font-mono text-xs">{assembly.reference_number}</p>
+              <p className="text-muted-foreground">{assembly.title}</p>
+              <p className="text-muted-foreground font-mono text-xs">{assembly.reference_number}</p>
             </div>
 
             {isInProgress && (
@@ -327,8 +327,8 @@ export default function LiveAssemblyPage() {
         {/* Vote recording (if in progress) */}
         {isInProgress && resolutions.length > 0 && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-white">
-              <Vote className="h-5 w-5 text-violet-400" />
+            <div className="flex items-center gap-2 text-foreground">
+              <Vote className="h-5 w-5 text-violet-600" />
               <h2 className="text-lg font-semibold">Résolutions à voter</h2>
             </div>
             {resolutions.map((resolution) => (
@@ -344,18 +344,18 @@ export default function LiveAssemblyPage() {
 
         {/* Held state summary */}
         {isHeld && (
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
+          <Card className="">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+              <CardTitle className="text-foreground flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                 Session clôturée
               </CardTitle>
-              <CardDescription className="text-slate-400">
+              <CardDescription className="text-muted-foreground">
                 Tenue le {new Date(assembly.held_at || "").toLocaleString("fr-FR")}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-slate-300 mb-4">
+              <p className="text-foreground mb-4">
                 La session est terminée. Vous pouvez maintenant générer le procès-verbal.
               </p>
               <Link href={`/syndic/assemblies/${assemblyId}`}>

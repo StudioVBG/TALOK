@@ -99,10 +99,10 @@ function SyndicDashboardContent() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground font-[family-name:var(--font-manrope)]">
-            Comptabilite Syndic
+            Comptabilité Syndic
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Tableau de bord copropriete
+            Tableau de bord copropriété
           </p>
         </div>
 
@@ -111,7 +111,7 @@ function SyndicDashboardContent() {
           <Select value={activeSiteId} onValueChange={setSelectedSiteId}>
             <SelectTrigger className="w-full sm:w-64">
               <Building2 className="w-4 h-4 mr-2 text-cyan-600" />
-              <SelectValue placeholder="Selectionner une copropriete" />
+              <SelectValue placeholder="Sélectionner une copropriété" />
             </SelectTrigger>
             <SelectContent>
               {sites.map((site) => (
@@ -122,6 +122,37 @@ function SyndicDashboardContent() {
             </SelectContent>
           </Select>
         )}
+      </div>
+
+      {/* Navigation interne comptabilité */}
+      <div className="flex gap-1 sm:gap-2 overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 pb-1">
+        <span className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300 whitespace-nowrap">
+          Vue générale
+        </span>
+        <Link
+          href="/syndic/accounting/budget"
+          className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted whitespace-nowrap"
+        >
+          Budget
+        </Link>
+        <Link
+          href="/syndic/accounting/entries"
+          className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted whitespace-nowrap"
+        >
+          Journal / Grand-livre
+        </Link>
+        <Link
+          href="/syndic/accounting/appels"
+          className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted whitespace-nowrap"
+        >
+          Appels de fonds
+        </Link>
+        <Link
+          href="/syndic/accounting/close"
+          className="inline-flex items-center px-3 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted whitespace-nowrap"
+        >
+          Clôture / Annexes
+        </Link>
       </div>
 
       {/* KPI Cards */}

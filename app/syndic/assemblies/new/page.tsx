@@ -167,7 +167,7 @@ export default function NewAssemblyPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
+    <div className="p-0">
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Header */}
         <motion.div
@@ -176,40 +176,40 @@ export default function NewAssemblyPage() {
           className="flex items-center gap-4"
         >
           <Link href="/syndic/assemblies">
-            <Button variant="ghost" size="sm" className="text-slate-300 hover:text-white hover:bg-white/10">
+            <Button variant="ghost" size="sm" className="text-foreground hover:text-foreground hover:bg-muted">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Retour
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <CalendarIcon className="h-6 w-6 text-violet-400" />
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <CalendarIcon className="h-6 w-6 text-violet-600" />
               Nouvelle assemblée générale
             </h1>
-            <p className="text-slate-400">Créez une AG en brouillon — vous pourrez ensuite ajouter les résolutions</p>
+            <p className="text-muted-foreground">Créez une AG en brouillon — vous pourrez ensuite ajouter les résolutions</p>
           </div>
         </motion.div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Site selection */}
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
+          <Card className="">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-violet-400" />
+              <CardTitle className="text-foreground flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-violet-600" />
                 Copropriété
               </CardTitle>
-              <CardDescription className="text-slate-400">
+              <CardDescription className="text-muted-foreground">
                 Choisissez la copropriété concernée
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Label htmlFor="site_id" className="text-slate-300">
+              <Label htmlFor="site_id" className="text-foreground">
                 Site *
               </Label>
               {loadingSites ? (
-                <div className="text-slate-400 text-sm">Chargement des sites...</div>
+                <div className="text-muted-foreground text-sm">Chargement des sites...</div>
               ) : sites.length === 0 ? (
-                <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 p-3 text-sm text-amber-100">
+                <div className="rounded-xl border border-amber-200 bg-amber-500/10 p-3 text-sm text-amber-100">
                   Aucune copropriété disponible.{" "}
                   <Link href="/syndic/sites" className="underline">
                     Créez votre premier site
@@ -221,7 +221,7 @@ export default function NewAssemblyPage() {
                   onValueChange={(value) => setForm({ ...form, site_id: value })}
                   disabled={submitting}
                 >
-                  <SelectTrigger id="site_id" className="bg-white/5 border-white/10 text-white">
+                  <SelectTrigger id="site_id" className=" text-foreground">
                     <SelectValue placeholder="Sélectionner une copropriété" />
                   </SelectTrigger>
                   <SelectContent>
@@ -238,19 +238,19 @@ export default function NewAssemblyPage() {
           </Card>
 
           {/* Type & title */}
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
+          <Card className="">
             <CardHeader>
-              <CardTitle className="text-white">Nature de l'assemblée</CardTitle>
+              <CardTitle className="text-foreground">Nature de l'assemblée</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-slate-300">Type *</Label>
+                <Label className="text-foreground">Type *</Label>
                 <Select
                   value={form.assembly_type}
                   onValueChange={(value: typeof form.assembly_type) => setForm({ ...form, assembly_type: value })}
                   disabled={submitting}
                 >
-                  <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                  <SelectTrigger className=" text-foreground">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -258,7 +258,7 @@ export default function NewAssemblyPage() {
                       <SelectItem key={type.value} value={type.value}>
                         <div>
                           <div className="font-medium">{type.label}</div>
-                          <div className="text-xs text-slate-500">{type.description}</div>
+                          <div className="text-xs text-muted-foreground">{type.description}</div>
                         </div>
                       </SelectItem>
                     ))}
@@ -267,7 +267,7 @@ export default function NewAssemblyPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="title" className="text-slate-300">
+                <Label htmlFor="title" className="text-foreground">
                   Titre *
                 </Label>
                 <Input
@@ -277,13 +277,13 @@ export default function NewAssemblyPage() {
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   required
                   disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                  className=" text-foreground placeholder:text-muted-foreground"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="scheduled_date" className="text-slate-300">
+                  <Label htmlFor="scheduled_date" className="text-foreground">
                     Date *
                   </Label>
                   <Input
@@ -293,12 +293,12 @@ export default function NewAssemblyPage() {
                     onChange={(e) => setForm({ ...form, scheduled_date: e.target.value })}
                     required
                     disabled={submitting}
-                    className="bg-white/5 border-white/10 text-white"
+                    className=" text-foreground"
                     min={new Date().toISOString().split("T")[0]}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="scheduled_time" className="text-slate-300">
+                  <Label htmlFor="scheduled_time" className="text-foreground">
                     Heure *
                   </Label>
                   <Input
@@ -308,14 +308,14 @@ export default function NewAssemblyPage() {
                     onChange={(e) => setForm({ ...form, scheduled_time: e.target.value })}
                     required
                     disabled={submitting}
-                    className="bg-white/5 border-white/10 text-white"
+                    className=" text-foreground"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="fiscal_year" className="text-slate-300">
+                  <Label htmlFor="fiscal_year" className="text-foreground">
                     Exercice concerné
                   </Label>
                   <Input
@@ -326,11 +326,11 @@ export default function NewAssemblyPage() {
                     value={form.fiscal_year}
                     onChange={(e) => setForm({ ...form, fiscal_year: e.target.value })}
                     disabled={submitting}
-                    className="bg-white/5 border-white/10 text-white"
+                    className=" text-foreground"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="quorum_required" className="text-slate-300">
+                  <Label htmlFor="quorum_required" className="text-foreground">
                     Quorum requis (tantièmes)
                   </Label>
                   <Input
@@ -341,7 +341,7 @@ export default function NewAssemblyPage() {
                     value={form.quorum_required}
                     onChange={(e) => setForm({ ...form, quorum_required: e.target.value })}
                     disabled={submitting}
-                    className="bg-white/5 border-white/10 text-white"
+                    className=" text-foreground"
                   />
                 </div>
               </div>
@@ -349,16 +349,16 @@ export default function NewAssemblyPage() {
           </Card>
 
           {/* Location */}
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
+          <Card className="">
             <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                <MapPin className="h-5 w-5 text-violet-400" />
+              <CardTitle className="text-foreground flex items-center gap-2">
+                <MapPin className="h-5 w-5 text-violet-600" />
                 Lieu et modalités
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="location" className="text-slate-300">
+                <Label htmlFor="location" className="text-foreground">
                   Lieu (description courte)
                 </Label>
                 <Input
@@ -367,11 +367,11 @@ export default function NewAssemblyPage() {
                   value={form.location}
                   onChange={(e) => setForm({ ...form, location: e.target.value })}
                   disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                  className=" text-foreground placeholder:text-muted-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="location_address" className="text-slate-300">
+                <Label htmlFor="location_address" className="text-foreground">
                   Adresse complète
                 </Label>
                 <Input
@@ -380,11 +380,11 @@ export default function NewAssemblyPage() {
                   value={form.location_address}
                   onChange={(e) => setForm({ ...form, location_address: e.target.value })}
                   disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                  className=" text-foreground placeholder:text-muted-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="online_meeting_url" className="text-slate-300 flex items-center gap-2">
+                <Label htmlFor="online_meeting_url" className="text-foreground flex items-center gap-2">
                   <Video className="h-4 w-4" />
                   Lien visio (optionnel)
                 </Label>
@@ -395,7 +395,7 @@ export default function NewAssemblyPage() {
                   value={form.online_meeting_url}
                   onChange={(e) => setForm({ ...form, online_meeting_url: e.target.value })}
                   disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                  className=" text-foreground placeholder:text-muted-foreground"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -407,7 +407,7 @@ export default function NewAssemblyPage() {
                   disabled={submitting}
                   className="h-4 w-4 rounded border-white/30 bg-transparent"
                 />
-                <Label htmlFor="is_hybrid" className="text-slate-300 cursor-pointer">
+                <Label htmlFor="is_hybrid" className="text-foreground cursor-pointer">
                   Assemblée hybride (présentiel + visio)
                 </Label>
               </div>
@@ -415,13 +415,13 @@ export default function NewAssemblyPage() {
           </Card>
 
           {/* Description */}
-          <Card className="bg-white/5 border-white/10 backdrop-blur">
+          <Card className="">
             <CardHeader>
-              <CardTitle className="text-white">Description et notes</CardTitle>
+              <CardTitle className="text-foreground">Description et notes</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-slate-300">
+                <Label htmlFor="description" className="text-foreground">
                   Description (publique)
                 </Label>
                 <Textarea
@@ -431,11 +431,11 @@ export default function NewAssemblyPage() {
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   rows={3}
                   disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                  className=" text-foreground placeholder:text-muted-foreground"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="notes" className="text-slate-300">
+                <Label htmlFor="notes" className="text-foreground">
                   Notes internes (privées)
                 </Label>
                 <Textarea
@@ -445,7 +445,7 @@ export default function NewAssemblyPage() {
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                   rows={2}
                   disabled={submitting}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-slate-500"
+                  className=" text-foreground placeholder:text-muted-foreground"
                 />
               </div>
             </CardContent>
@@ -458,7 +458,7 @@ export default function NewAssemblyPage() {
                 type="button"
                 variant="outline"
                 disabled={submitting}
-                className="border-white/20 text-white hover:bg-white/10"
+                className="border-input text-foreground hover:bg-muted"
               >
                 Annuler
               </Button>
