@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import {
   MapPin,
   Phone,
@@ -17,6 +18,11 @@ import {
   Search,
   AlertCircle,
   Clock,
+  Copy,
+  Ticket,
+  Bookmark,
+  BookmarkCheck,
+  Info,
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
@@ -31,6 +37,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { useToast } from "@/components/ui/use-toast";
 import { geocodeAddress } from "@/lib/services/geocoding.service";
 import { SERVICE_TYPE_LABELS } from "@/lib/data/service-pricing-reference";
 
@@ -122,10 +136,38 @@ interface NearbyProvidersSearchProps {
   className?: string;
 }
 
+const SAVED_PROVIDERS_STORAGE_KEY = "talok:nearby-providers:saved";
+
+function readSavedIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(SAVED_PROVIDERS_STORAGE_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw);
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeSavedIds(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      SAVED_PROVIDERS_STORAGE_KEY,
+      JSON.stringify(Array.from(ids)),
+    );
+  } catch {
+    /* quota exceeded — silencieux */
+  }
+}
+
 export function NearbyProvidersSearch({
   initialCategory = "autre",
   className,
 }: NearbyProvidersSearchProps) {
+  const router = useRouter();
+  const { toast } = useToast();
   const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [propertiesLoading, setPropertiesLoading] = useState(true);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
@@ -138,9 +180,87 @@ export function NearbyProvidersSearch({
   const [error, setError] = useState<string | null>(null);
   const [premiumRequired, setPremiumRequired] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [detailProvider, setDetailProvider] = useState<NearbyProvider | null>(null);
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [propertyIcon, setPropertyIcon] = useState<any>(null);
   const [providerIcon, setProviderIcon] = useState<any>(null);
   const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setSavedIds(readSavedIds());
+  }, []);
+
+  const openDetail = (provider: NearbyProvider) => {
+    setHighlightedId(provider.id);
+    setDetailProvider(provider);
+  };
+
+  const toggleSaved = (provider: NearbyProvider) => {
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(provider.id)) {
+        next.delete(provider.id);
+        toast({
+          title: "Prestataire retiré",
+          description: `${provider.name} ne fait plus partie de vos favoris locaux.`,
+        });
+      } else {
+        next.add(provider.id);
+        toast({
+          title: "Prestataire enregistré",
+          description: `${provider.name} a été ajouté à vos favoris (stockés sur cet appareil).`,
+        });
+      }
+      writeSavedIds(next);
+      return next;
+    });
+  };
+
+  const copyContact = async (provider: NearbyProvider) => {
+    const text = [
+      provider.name,
+      provider.address,
+      provider.phone,
+      provider.google_maps_url,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Coordonnées copiées",
+        description: "Les informations du prestataire sont dans votre presse-papier.",
+      });
+    } catch {
+      toast({
+        title: "Copie impossible",
+        description: "Votre navigateur a refusé l'accès au presse-papier.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const createTicket = (provider: NearbyProvider) => {
+    if (!selectedPropertyId) {
+      toast({
+        title: "Bien manquant",
+        description: "Sélectionnez un bien avant de créer un ticket.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const params = new URLSearchParams({ propertyId: selectedPropertyId });
+    const contactLines = [
+      `Prestataire pressenti : ${provider.name}`,
+      provider.address ? `Adresse : ${provider.address}` : null,
+      provider.phone ? `Téléphone : ${provider.phone}` : null,
+      provider.google_maps_url ? `Maps : ${provider.google_maps_url}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    if (contactLines) params.set("note", contactLines);
+    router.push(`/owner/tickets/new?${params.toString()}`);
+  };
 
   const selectedProperty = useMemo(
     () => properties.find((p) => p.id === selectedPropertyId) ?? null,
@@ -424,6 +544,13 @@ export function NearbyProvidersSearch({
           </div>
         )}
 
+        {savedIds.size > 0 && !premiumRequired && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 text-xs text-emerald-900 dark:bg-emerald-950/20 dark:border-emerald-900 dark:text-emerald-200">
+            <BookmarkCheck className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
+            {savedIds.size} prestataire{savedIds.size > 1 ? "s" : ""} enregistré{savedIds.size > 1 ? "s" : ""} sur cet appareil. Pour partager vos favoris entre vos appareils, demandez à l'artisan de créer son compte sur talok.fr.
+          </div>
+        )}
+
         {!premiumRequired && (
           <div className="grid gap-4 lg:grid-cols-5">
             {/* Carte */}
@@ -479,7 +606,7 @@ export function NearbyProvidersSearch({
                         position={[p.latitude, p.longitude]}
                         icon={providerIcon}
                         eventHandlers={{
-                          click: () => setHighlightedId(p.id),
+                          click: () => openDetail(p),
                         }}
                       >
                         <Popup>
@@ -499,14 +626,13 @@ export function NearbyProvidersSearch({
                               </div>
                             )}
                             {p.phone && <div>{p.phone}</div>}
-                            <a
-                              href={p.google_maps_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              type="button"
+                              onClick={() => openDetail(p)}
                               className="text-primary underline"
                             >
-                              Voir sur Maps
-                            </a>
+                              Voir le détail
+                            </button>
                           </div>
                         </Popup>
                       </Marker>
@@ -529,84 +655,237 @@ export function NearbyProvidersSearch({
                   Aucun résultat dans ce rayon. Essayez "Tout métier" ou un rayon plus large.
                 </div>
               ) : (
-                providers.map((p) => (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setHighlightedId(p.id)}
-                    className={`w-full text-left rounded-lg border p-3 transition-colors hover:border-primary hover:bg-primary/5 ${
-                      highlightedId === p.id ? "border-primary bg-primary/5" : ""
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="font-medium text-sm truncate">
-                          {p.name}
-                        </div>
-                        {p.address && (
-                          <div className="text-xs text-muted-foreground truncate">
-                            {p.address}
+                providers.map((p) => {
+                  const isSaved = savedIds.has(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => openDetail(p)}
+                      className={`w-full text-left rounded-lg border p-3 transition-colors hover:border-primary hover:bg-primary/5 ${
+                        highlightedId === p.id ? "border-primary bg-primary/5" : ""
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-medium text-sm truncate flex items-center gap-1.5">
+                            {p.name}
+                            {isSaved && (
+                              <BookmarkCheck className="h-3.5 w-3.5 flex-shrink-0 text-emerald-600" />
+                            )}
                           </div>
+                          {p.address && (
+                            <div className="text-xs text-muted-foreground truncate">
+                              {p.address}
+                            </div>
+                          )}
+                        </div>
+                        {p.distance_km != null && (
+                          <Badge variant="secondary" className="flex-shrink-0">
+                            {p.distance_km} km
+                          </Badge>
                         )}
                       </div>
-                      {p.distance_km != null && (
-                        <Badge variant="secondary" className="flex-shrink-0">
-                          {p.distance_km} km
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-                      {p.rating != null && (
-                        <span className="flex items-center gap-1">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                          {p.rating.toFixed(1)}
-                          {p.reviews_count != null && (
-                            <span className="text-muted-foreground">
-                              ({p.reviews_count})
-                            </span>
-                          )}
-                        </span>
-                      )}
-                      {p.is_open != null && (
-                        <span
-                          className={`flex items-center gap-1 ${
-                            p.is_open ? "text-emerald-600" : "text-muted-foreground"
-                          }`}
-                        >
-                          <Clock className="h-3 w-3" />
-                          {p.is_open ? "Ouvert" : "Fermé"}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {p.phone && (
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                        {p.rating != null && (
+                          <span className="flex items-center gap-1">
+                            <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                            {p.rating.toFixed(1)}
+                            {p.reviews_count != null && (
+                              <span className="text-muted-foreground">
+                                ({p.reviews_count} avis)
+                              </span>
+                            )}
+                          </span>
+                        )}
+                        {p.is_open != null && (
+                          <span
+                            className={`flex items-center gap-1 ${
+                              p.is_open ? "text-emerald-600" : "text-muted-foreground"
+                            }`}
+                          >
+                            <Clock className="h-3 w-3" />
+                            {p.is_open ? "Ouvert" : "Fermé"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {p.phone && (
+                          <a
+                            href={`tel:${p.phone.replace(/\s/g, "")}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                          >
+                            <Phone className="h-3 w-3" />
+                            {p.phone}
+                          </a>
+                        )}
                         <a
-                          href={`tel:${p.phone.replace(/\s/g, "")}`}
+                          href={p.google_maps_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
                           className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                         >
-                          <Phone className="h-3 w-3" />
-                          {p.phone}
+                          <ExternalLink className="h-3 w-3" />
+                          Maps
                         </a>
-                      )}
-                      <a
-                        href={p.google_maps_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        Maps
-                      </a>
-                    </div>
-                  </button>
-                ))
+                        <span className="ml-auto inline-flex items-center gap-1 text-xs text-muted-foreground">
+                          Voir le détail →
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })
               )}
             </div>
           </div>
         )}
       </CardContent>
+
+      <Sheet
+        open={!!detailProvider}
+        onOpenChange={(open) => {
+          if (!open) setDetailProvider(null);
+        }}
+      >
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          {detailProvider && (
+            <>
+              <SheetHeader className="text-left">
+                <SheetTitle className="flex items-start gap-2 pr-6">
+                  <span className="flex-1">{detailProvider.name}</span>
+                  {savedIds.has(detailProvider.id) && (
+                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 flex-shrink-0">
+                      <BookmarkCheck className="h-3 w-3 mr-1" />
+                      Enregistré
+                    </Badge>
+                  )}
+                </SheetTitle>
+                <SheetDescription>
+                  {detailProvider.address || "Adresse non communiquée"}
+                </SheetDescription>
+              </SheetHeader>
+
+              <div className="mt-6 space-y-5">
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  {detailProvider.distance_km != null && (
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <div className="text-xs text-muted-foreground">Distance</div>
+                      <div className="font-medium flex items-center gap-1 mt-0.5">
+                        <MapPin className="h-3.5 w-3.5 text-primary" />
+                        {detailProvider.distance_km} km
+                      </div>
+                    </div>
+                  )}
+                  {detailProvider.rating != null && (
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <div className="text-xs text-muted-foreground">
+                        Note Google
+                      </div>
+                      <div className="font-medium flex items-center gap-1 mt-0.5">
+                        <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                        {detailProvider.rating.toFixed(1)}
+                        {detailProvider.reviews_count != null && (
+                          <span className="text-xs text-muted-foreground font-normal ml-1">
+                            ({detailProvider.reviews_count} avis)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {detailProvider.is_open != null && (
+                    <div className="rounded-lg border bg-muted/30 p-3">
+                      <div className="text-xs text-muted-foreground">
+                        Statut
+                      </div>
+                      <div
+                        className={`font-medium flex items-center gap-1 mt-0.5 ${
+                          detailProvider.is_open
+                            ? "text-emerald-600"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        <Clock className="h-3.5 w-3.5" />
+                        {detailProvider.is_open ? "Ouvert" : "Fermé"}
+                      </div>
+                    </div>
+                  )}
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <div className="text-xs text-muted-foreground">Source</div>
+                    <div className="font-medium mt-0.5 capitalize">
+                      {detailProvider.source === "google"
+                        ? "Google Places"
+                        : "Démonstration"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {detailProvider.phone && (
+                    <Button asChild className="w-full justify-start" variant="default">
+                      <a href={`tel:${detailProvider.phone.replace(/\s/g, "")}`}>
+                        <Phone className="h-4 w-4 mr-2" />
+                        Appeler {detailProvider.phone}
+                      </a>
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => createTicket(detailProvider)}
+                  >
+                    <Ticket className="h-4 w-4 mr-2" />
+                    Créer un ticket pour ce prestataire
+                  </Button>
+                  <Button asChild variant="outline" className="w-full justify-start">
+                    <a
+                      href={detailProvider.google_maps_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Voir sur Google Maps
+                    </a>
+                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => copyContact(detailProvider)}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copier
+                    </Button>
+                    <Button
+                      variant={savedIds.has(detailProvider.id) ? "secondary" : "outline"}
+                      onClick={() => toggleSaved(detailProvider)}
+                    >
+                      {savedIds.has(detailProvider.id) ? (
+                        <>
+                          <BookmarkCheck className="h-4 w-4 mr-2" />
+                          Enregistré
+                        </>
+                      ) : (
+                        <>
+                          <Bookmark className="h-4 w-4 mr-2" />
+                          Enregistrer
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-xs text-blue-900 dark:bg-blue-950/20 dark:border-blue-900 dark:text-blue-200 flex gap-2">
+                  <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                  <div>
+                    Ce prestataire provient d'une recherche externe (Google Maps). Pour profiter du suivi complet (devis, signature, paiement, avis), invitez-le à créer son compte sur <strong>talok.fr</strong>. Vos favoris sont enregistrés sur cet appareil.
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </Card>
   );
 }

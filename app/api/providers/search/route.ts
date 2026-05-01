@@ -177,13 +177,22 @@ export async function GET(request: NextRequest) {
     // Filtre par recherche textuelle
     if (query) {
       const lowerQuery = query.toLowerCase();
-      filteredProviders = filteredProviders.filter(p => 
+      filteredProviders = filteredProviders.filter(p =>
         p.name.toLowerCase().includes(lowerQuery) ||
         p.services.some((s: string) => s.toLowerCase().includes(lowerQuery)) ||
         p.location.toLowerCase().includes(lowerQuery)
       );
     }
-    
+
+    // Filtre par localisation (matching textuel sur zones_intervention).
+    // `location` peut être un code postal, une ville ou un département.
+    if (location) {
+      const lowerLocation = location.toLowerCase();
+      filteredProviders = filteredProviders.filter(p =>
+        p.location.toLowerCase().includes(lowerLocation),
+      );
+    }
+
     // Tri
     switch (sortBy) {
       case 'rating':
@@ -197,6 +206,15 @@ export async function GET(request: NextRequest) {
         break;
       case 'price_desc':
         filteredProviders.sort((a, b) => (b.hourly_rate_max || 0) - (a.hourly_rate_max || 0));
+        break;
+      case 'distance':
+        // Sans coordonnées du bien côté API, on retombe sur la pertinence —
+        // le tri géographique réel est assuré par /api/providers/nearby.
+        filteredProviders.sort((a, b) => {
+          const aScore = (a.kyc_status === 'verified' ? 100 : 0) + (a.rating * 10) + a.review_count;
+          const bScore = (b.kyc_status === 'verified' ? 100 : 0) + (b.rating * 10) + b.review_count;
+          return bScore - aScore;
+        });
         break;
       case 'relevance':
       default:
