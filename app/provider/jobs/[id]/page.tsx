@@ -16,28 +16,28 @@ async function fetchJobDetails(jobId: string, profileId: string) {
     .from("work_orders")
     .select(`
       *,
-      tickets!inner(
+      tickets!ticket_id(
         id,
         titre,
         description,
         priorite,
         statut,
         created_at,
-        properties!inner(
+        properties(
           id,
-          adresse_complete, 
-          ville, 
-          code_postal, 
+          adresse_complete,
+          ville,
+          code_postal,
           owner:profiles!properties_owner_id_fkey(
-            prenom, 
-            nom, 
-            telephone, 
+            prenom,
+            nom,
+            telephone,
             email
           )
         ),
         tenant:profiles!created_by_profile_id(
-          prenom, 
-          nom, 
+          prenom,
+          nom,
           telephone
         )
       )
@@ -50,27 +50,60 @@ async function fetchJobDetails(jobId: string, profileId: string) {
     return null;
   }
 
-  // Vérifier la permission
   if (wo.provider_id !== profileId) {
     return null;
   }
 
+  // Récupère les paiements escrow associés pour piloter la UI prestataire :
+  // savoir si l'acompte est sécurisé avant le démarrage des travaux et si
+  // le solde est en attente.
+  const { data: payments } = await serviceClient
+    .from("work_order_payments")
+    .select("payment_type, status, escrow_status, gross_amount, escrow_held_at, escrow_released_at")
+    .eq("work_order_id", jobId);
+
+  const paymentList = (payments ?? []) as Array<{
+    payment_type: string;
+    status: string;
+    escrow_status: string;
+    gross_amount: number | string;
+    escrow_held_at: string | null;
+    escrow_released_at: string | null;
+  }>;
+
+  const depositPayment = paymentList.find(
+    (p) => p.payment_type === "deposit" && p.status === "succeeded"
+  );
+  const balancePayment = paymentList.find(
+    (p) => (p.payment_type === "balance" || p.payment_type === "full") &&
+           p.status === "succeeded"
+  );
+
   return {
     id: wo.id,
     ticket_id: wo.ticket_id,
-    title: wo.tickets?.titre || "",
-    description: wo.tickets?.description || "",
+    title: wo.title || wo.tickets?.titre || "Intervention",
+    description: wo.description || wo.tickets?.description || "",
     priority: wo.tickets?.priorite || "normale",
-    status: wo.statut,
-    
-    // Property Info
+    // Modern EN status (source of truth pour le flow escrow)
+    status: wo.status || null,
+    // Legacy FR statut (fallback pour anciens WO)
+    statut: wo.statut || null,
+    quote_amount_cents: wo.quote_amount_cents ?? null,
+    intervention_report: wo.intervention_report ?? null,
+    dispute_deadline: wo.dispute_deadline ?? null,
+    scheduled_date: wo.scheduled_date || wo.date_intervention_prevue,
+    completed_at: wo.completed_at || wo.date_intervention_reelle,
+    estimated_cost: wo.cout_estime,
+    final_cost: wo.cout_final,
+    provider_notes: wo.provider_notes,
+    created_at: wo.created_at,
+
     property: {
       address: wo.tickets?.properties?.adresse_complete || "",
       city: wo.tickets?.properties?.ville || "",
       postalCode: wo.tickets?.properties?.code_postal || "",
     },
-
-    // Contacts
     owner: {
       name: `${wo.tickets?.properties?.owner?.prenom || ""} ${wo.tickets?.properties?.owner?.nom || ""}`.trim(),
       phone: wo.tickets?.properties?.owner?.telephone || null,
@@ -81,15 +114,24 @@ async function fetchJobDetails(jobId: string, profileId: string) {
       phone: wo.tickets?.tenant?.telephone || null,
     },
 
-    // Job details
-    scheduled_date: wo.date_intervention_prevue,
-    completed_date: wo.date_intervention_reelle,
-    estimated_cost: wo.cout_estime,
-    final_cost: wo.cout_final,
-    provider_notes: wo.provider_notes,
-    created_at: wo.created_at,
-    photos_before: wo.photos_before || [],
-    photos_after: wo.photos_after || [],
+    payments: {
+      deposit: depositPayment
+        ? {
+            amount: Number(depositPayment.gross_amount),
+            escrow_status: depositPayment.escrow_status,
+            held_at: depositPayment.escrow_held_at,
+            released_at: depositPayment.escrow_released_at,
+          }
+        : null,
+      balance: balancePayment
+        ? {
+            amount: Number(balancePayment.gross_amount),
+            escrow_status: balancePayment.escrow_status,
+            held_at: balancePayment.escrow_held_at,
+            released_at: balancePayment.escrow_released_at,
+          }
+        : null,
+    },
   };
 }
 
@@ -107,9 +149,9 @@ function JobSkeleton() {
 
 async function JobContent({ jobId, profileId }: { jobId: string; profileId: string }) {
   const job = await fetchJobDetails(jobId, profileId);
-  
+
   if (!job) notFound();
-  
+
   return <JobDetailClient job={job} />;
 }
 

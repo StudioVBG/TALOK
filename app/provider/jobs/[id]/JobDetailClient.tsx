@@ -5,18 +5,22 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { 
-  ArrowLeft, 
-  MapPin, 
-  Calendar, 
-  Phone, 
-  User, 
-  CheckCircle, 
-  XCircle, 
+import {
+  ArrowLeft,
+  MapPin,
+  Calendar,
+  Phone,
+  User,
+  CheckCircle,
+  XCircle,
   Clock,
   Camera,
   Euro,
-  FileText
+  FileText,
+  Send,
+  Play,
+  Loader2,
+  ShieldCheck,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -25,122 +29,147 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { createClient } from "@/lib/supabase/client";
 
 interface JobDetailProps {
   job: any;
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  // EN modern
+  draft: "Brouillon",
+  quote_requested: "Devis demandé",
+  quote_received: "Devis envoyé — en attente",
+  quote_approved: "Devis accepté",
+  quote_rejected: "Devis refusé",
+  scheduled: "Planifié",
+  in_progress: "En cours",
+  completed: "Travaux terminés",
+  invoiced: "Facturé",
+  paid: "Payé",
+  disputed: "Litige",
+  cancelled: "Annulé",
+  // FR legacy
+  assigned: "En attente",
+  done: "Terminé",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  draft: "bg-muted text-foreground",
+  quote_requested: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300",
+  quote_received: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300",
+  quote_approved: "bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300",
+  quote_rejected: "bg-red-100 text-red-800 border-red-200",
+  scheduled: "bg-blue-100 text-blue-800 border-blue-200",
+  in_progress: "bg-purple-100 text-purple-800 border-purple-200",
+  completed: "bg-emerald-100 text-emerald-800 border-emerald-200",
+  invoiced: "bg-cyan-100 text-cyan-800 border-cyan-200",
+  paid: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300",
+  disputed: "bg-orange-100 text-orange-800 border-orange-200",
+  cancelled: "bg-red-100 text-red-800 border-red-200",
+  assigned: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  done: "bg-green-100 text-green-800 border-green-200",
+};
+
 export function JobDetailClient({ job }: JobDetailProps) {
   const router = useRouter();
   const { toast } = useToast();
-  const supabase = createClient();
-  const [loading, setLoading] = useState(false);
-  const [completionData, setCompletionData] = useState({
-    finalCost: job.estimated_cost || "",
-    notes: "",
-  });
+  const [loading, setLoading] = useState<string | null>(null);
 
-  const handleStatusChange = async (newStatus: string) => {
-    setLoading(true);
+  const [quoteAmount, setQuoteAmount] = useState("");
+  const [report, setReport] = useState("");
+  const [photoUrl, setPhotoUrl] = useState("");
+
+  const status = job.status || job.statut || "draft";
+  const isLegacy = !job.status && !!job.statut;
+
+  const callApi = async (
+    action: string,
+    body?: Record<string, unknown>,
+    successMessage?: string
+  ) => {
+    setLoading(action);
     try {
-      const { error } = await supabase
-        .from("work_orders")
-        .update({ 
-          statut: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", job.id);
-
-      if (error) throw error;
+      const res = await fetch(`/api/work-orders/${job.id}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Erreur serveur");
 
       toast({
-        title: "Statut mis à jour",
-        description: `La mission est maintenant ${getStatusLabel(newStatus).toLowerCase()}.`,
-        variant: "default",
+        title: successMessage || "Action effectuée",
+        description: data.message || undefined,
       });
-      
       router.refresh();
+      return data;
     } catch (error) {
-      console.error("Error updating status:", error);
       toast({
         title: "Erreur",
-        description: "Impossible de mettre à jour le statut.",
+        description: error instanceof Error ? error.message : "Action impossible",
         variant: "destructive",
       });
+      throw error;
     } finally {
-      setLoading(false);
+      setLoading(null);
     }
   };
 
-  const handleCompleteJob = async () => {
-    setLoading(true);
-    try {
-      // 1. Mettre à jour le work_order
-      const { error } = await supabase
-        .from("work_orders")
-        .update({ 
-          statut: "done",
-          cout_final: parseFloat(completionData.finalCost) || 0,
-          provider_notes: completionData.notes,
-          date_intervention_reelle: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .eq("id", job.id);
+  const handleAccept = () => callApi("accept", {}, "Mission acceptée");
+  const handleReject = () => callApi("reject", {}, "Mission refusée");
 
-      if (error) throw error;
-
-      // 2. Mettre à jour le ticket parent en 'resolved'
-      if (job.ticket_id) {
-         await supabase
-          .from("tickets")
-          .update({ statut: "resolved" })
-          .eq("id", job.ticket_id);
-      }
-
+  const handleSubmitQuote = async () => {
+    const amount = parseFloat(quoteAmount);
+    if (!amount || amount <= 0) {
       toast({
-        title: "Mission terminée !",
-        description: "Le rapport a été envoyé au propriétaire.",
-        variant: "default",
-      });
-      
-      router.refresh();
-    } catch (error) {
-      console.error("Error completing job:", error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de terminer la mission.",
+        title: "Montant invalide",
+        description: "Renseignez un montant en euros supérieur à 0.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
+      return;
     }
+    await callApi(
+      "submit-quote",
+      { quote_amount_cents: Math.round(amount * 100) },
+      "Devis envoyé au propriétaire"
+    );
+    setQuoteAmount("");
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case "assigned": return "En attente";
-      case "scheduled": return "Planifié";
-      case "in_progress": return "En cours";
-      case "done": return "Terminé";
-      case "cancelled": return "Annulé";
-      default: return status;
+  const handleStart = () => callApi("start", {}, "Travaux démarrés");
+
+  const handleComplete = async () => {
+    if (!report.trim() || report.length < 10) {
+      toast({
+        title: "Rapport requis",
+        description: "Le rapport d'intervention doit faire au moins 10 caractères.",
+        variant: "destructive",
+      });
+      return;
     }
+    await callApi(
+      "complete",
+      {
+        intervention_report: report.trim(),
+        intervention_photos: photoUrl
+          ? [{ url: photoUrl.trim(), caption: "Après intervention" }]
+          : [],
+      },
+      "Intervention clôturée"
+    );
+    setReport("");
+    setPhotoUrl("");
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "assigned": return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "scheduled": return "bg-blue-100 text-blue-800 border-blue-200";
-      case "in_progress": return "bg-purple-100 text-purple-800 border-purple-200";
-      case "done": return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-900/50";
-      case "cancelled": return "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-900/50";
-      default: return "bg-muted text-foreground";
-    }
-  };
+  const depositSecured =
+    job.payments?.deposit?.escrow_status === "held" ||
+    job.payments?.deposit?.escrow_status === "released";
+  const balancePaid = !!job.payments?.balance;
+  const showLegacyAccept = isLegacy && job.statut === "assigned";
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -156,8 +185,8 @@ export function JobDetailClient({ job }: JobDetailProps) {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold text-foreground">{job.title}</h1>
-              <Badge className={getStatusColor(job.status)} variant="outline">
-                {getStatusLabel(job.status)}
+              <Badge className={STATUS_COLORS[status] || "bg-muted text-foreground"} variant="outline">
+                {STATUS_LABELS[status] || status}
               </Badge>
             </div>
             <p className="text-muted-foreground flex items-center gap-2">
@@ -166,83 +195,177 @@ export function JobDetailClient({ job }: JobDetailProps) {
             </p>
           </div>
 
-          <div className="flex gap-2">
-            {job.status === "assigned" && (
+          <div className="flex flex-wrap gap-2">
+            {/* État: quote_requested → soumettre un devis */}
+            {status === "quote_requested" && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="bg-indigo-600 hover:bg-indigo-700 text-white" disabled={loading !== null}>
+                    <Send className="mr-2 h-4 w-4" />
+                    Soumettre un devis
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Soumettre votre devis</DialogTitle>
+                    <CardDescription>
+                      Le propriétaire recevra le montant et pourra l&apos;accepter ou le refuser.
+                    </CardDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="quote-amount">Montant TTC (€)</Label>
+                      <Input
+                        id="quote-amount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={quoteAmount}
+                        onChange={(e) => setQuoteAmount(e.target.value)}
+                        placeholder="350.00"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={handleSubmitQuote} disabled={loading === "submit-quote"}>
+                      {loading === "submit-quote" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Envoyer le devis"
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+
+            {/* État: scheduled → démarrer (libère l'acompte si présent) */}
+            {status === "scheduled" && (
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={handleStart}
+                disabled={loading !== null}
+              >
+                {loading === "start" ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Play className="mr-2 h-4 w-4" />
+                )}
+                Démarrer les travaux
+              </Button>
+            )}
+
+            {/* État: in_progress → terminer */}
+            {status === "in_progress" && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled={loading !== null}>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Terminer l&apos;intervention
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Rapport d&apos;intervention</DialogTitle>
+                    <CardDescription>
+                      Décrivez les travaux réalisés et joignez une photo. Le propriétaire dispose
+                      ensuite de 7 jours pour valider avant libération automatique du solde.
+                    </CardDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="report">Rapport d&apos;intervention</Label>
+                      <Textarea
+                        id="report"
+                        rows={5}
+                        value={report}
+                        onChange={(e) => setReport(e.target.value)}
+                        placeholder="Travaux réalisés, pièces remplacées, état final…"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="photo">URL d&apos;une photo (optionnel)</Label>
+                      <Input
+                        id="photo"
+                        type="url"
+                        value={photoUrl}
+                        onChange={(e) => setPhotoUrl(e.target.value)}
+                        placeholder="https://…"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button onClick={handleComplete} disabled={loading === "complete"}>
+                      {loading === "complete" ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Confirmer la clôture"
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+
+            {/* Legacy : ancien WO en statut 'assigned' sans status EN */}
+            {showLegacyAccept && (
               <>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="border-red-200 text-red-600 hover:bg-red-50"
-                  onClick={() => handleStatusChange("cancelled")}
-                  disabled={loading}
+                  onClick={handleReject}
+                  disabled={loading !== null}
                 >
                   <XCircle className="mr-2 h-4 w-4" />
                   Refuser
                 </Button>
-                <Button 
+                <Button
                   className="bg-blue-600 hover:bg-blue-700"
-                  onClick={() => handleStatusChange("scheduled")}
-                  disabled={loading}
+                  onClick={handleAccept}
+                  disabled={loading !== null}
                 >
                   <CheckCircle className="mr-2 h-4 w-4" />
                   Accepter
                 </Button>
               </>
             )}
-
-            {job.status === "scheduled" && (
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button className="bg-green-600 hover:bg-green-700">
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Terminer l'intervention
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Rapport d'intervention</DialogTitle>
-                    <CardDescription>
-                      Confirmez les détails finaux pour clôturer ce dossier.
-                    </CardDescription>
-                  </DialogHeader>
-                  
-                  <div className="space-y-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="final-cost">Coût Final (€)</Label>
-                      <Input 
-                        id="final-cost" 
-                        type="number" 
-                        value={completionData.finalCost}
-                        onChange={(e) => setCompletionData({...completionData, finalCost: e.target.value})}
-                      />
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <Label htmlFor="notes">Notes d'intervention</Label>
-                      <Textarea 
-                        id="notes" 
-                        placeholder="Détails sur la réparation effectuée..."
-                        value={completionData.notes}
-                        onChange={(e) => setCompletionData({...completionData, notes: e.target.value})}
-                      />
-                    </div>
-
-                    <div className="p-4 bg-muted/50 rounded-lg border border-dashed border-border text-center">
-                      <Camera className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                      <p className="text-sm text-muted-foreground">Ajouter des photos (Bientôt disponible)</p>
-                    </div>
-                  </div>
-
-                  <DialogFooter>
-                    <Button onClick={handleCompleteJob} disabled={loading}>
-                      {loading ? "Enregistrement..." : "Confirmer et Clôturer"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
           </div>
         </div>
       </div>
+
+      {/* Banner escrow */}
+      {status === "scheduled" && (
+        <Alert
+          className={
+            depositSecured
+              ? "mb-6 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20"
+              : "mb-6 border-amber-200 bg-amber-50 dark:bg-amber-950/20"
+          }
+        >
+          <ShieldCheck className="h-4 w-4" />
+          <AlertDescription>
+            {depositSecured
+              ? "Acompte sécurisé sur Talok. Il sera libéré sur votre compte dès que vous démarrez les travaux."
+              : "Le propriétaire n'a pas encore réglé l'acompte. Vous pouvez démarrer les travaux mais l'acompte ne sera libéré qu'après son paiement."}
+          </AlertDescription>
+        </Alert>
+      )}
+      {status === "completed" && (
+        <Alert className="mb-6 border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+          <Clock className="h-4 w-4" />
+          <AlertDescription>
+            {balancePaid
+              ? "Solde réglé. Libération automatique des fonds 7 jours après la clôture sauf validation explicite du propriétaire avant cette date."
+              : "Le propriétaire doit régler le solde. Une relance lui a été envoyée."}
+            {job.dispute_deadline && (
+              <span className="ml-1 font-medium">
+                Délai de contestation jusqu&apos;au{" "}
+                {format(new Date(job.dispute_deadline), "d MMMM yyyy", { locale: fr })}.
+              </span>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid md:grid-cols-3 gap-6">
         {/* Main Info */}
@@ -262,17 +385,69 @@ export function JobDetailClient({ job }: JobDetailProps) {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 gap-4">
-                 <div className="p-4 bg-slate-50 rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-1">Coût estimé</p>
-                    <p className="text-xl font-semibold">{job.estimated_cost ? `${job.estimated_cost} €` : "Non défini"}</p>
-                 </div>
-                 <div className={`p-4 rounded-lg ${job.final_cost ? "bg-green-50 text-green-900" : "bg-slate-50"}`}>
-                    <p className="text-sm opacity-70 mb-1">Coût final</p>
-                    <p className="text-xl font-semibold">{job.final_cost ? `${job.final_cost} €` : "-"}</p>
-                 </div>
+                <div className="p-4 bg-muted/40 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                    <Euro className="h-3.5 w-3.5" /> Devis envoyé
+                  </p>
+                  <p className="text-xl font-semibold">
+                    {job.quote_amount_cents
+                      ? `${(job.quote_amount_cents / 100).toFixed(2)} €`
+                      : job.estimated_cost
+                        ? `${job.estimated_cost} €`
+                        : "Non envoyé"}
+                  </p>
+                </div>
+                <div
+                  className={`p-4 rounded-lg ${
+                    job.payments?.deposit?.escrow_status === "released"
+                      ? "bg-emerald-50 dark:bg-emerald-950/20"
+                      : "bg-muted/40"
+                  }`}
+                >
+                  <p className="text-sm text-muted-foreground mb-1">Acompte (30%)</p>
+                  <p className="text-xl font-semibold">
+                    {job.payments?.deposit
+                      ? `${job.payments.deposit.amount.toFixed(2)} €`
+                      : "—"}
+                  </p>
+                  {job.payments?.deposit && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {job.payments.deposit.escrow_status === "released"
+                        ? "Versé sur votre compte"
+                        : "En escrow Talok"}
+                    </p>
+                  )}
+                </div>
               </div>
+              {job.payments?.balance && (
+                <div className="mt-4 p-4 bg-muted/40 rounded-lg">
+                  <p className="text-sm text-muted-foreground mb-1">Solde (70%)</p>
+                  <p className="text-xl font-semibold">
+                    {job.payments.balance.amount.toFixed(2)} €
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {job.payments.balance.escrow_status === "released"
+                      ? "Versé sur votre compte"
+                      : "En escrow Talok — libération sous 7 jours"}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {job.intervention_report && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Rapport d&apos;intervention
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm whitespace-pre-wrap">{job.intervention_report}</p>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Sidebar Info */}
@@ -283,22 +458,28 @@ export function JobDetailClient({ job }: JobDetailProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Propriétaire</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase mb-2">
+                  Propriétaire
+                </p>
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
                     <User className="h-4 w-4" />
                   </div>
                   <div>
                     <p className="text-sm font-medium">{job.owner.name}</p>
-                    {job.owner.phone && <p className="text-xs text-muted-foreground">{job.owner.phone}</p>}
+                    {job.owner.phone && (
+                      <p className="text-xs text-muted-foreground">{job.owner.phone}</p>
+                    )}
                   </div>
                 </div>
               </div>
-              
+
               <Separator />
 
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Locataire (Sur place)</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase mb-2">
+                  Locataire (sur place)
+                </p>
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center text-green-600">
                     <User className="h-4 w-4" />
@@ -308,7 +489,10 @@ export function JobDetailClient({ job }: JobDetailProps) {
                     {job.tenant.phone && (
                       <div className="flex items-center gap-1 mt-1">
                         <Phone className="h-3 w-3 text-muted-foreground/70" />
-                        <a href={`tel:${job.tenant.phone}`} className="text-xs text-blue-600 hover:underline">
+                        <a
+                          href={`tel:${job.tenant.phone}`}
+                          className="text-xs text-blue-600 hover:underline"
+                        >
                           {job.tenant.phone}
                         </a>
                       </div>
@@ -324,27 +508,29 @@ export function JobDetailClient({ job }: JobDetailProps) {
               <CardTitle className="text-base">Planning</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-               <div>
-                 <p className="text-xs text-muted-foreground mb-1">Date souhaitée</p>
-                 <div className="flex items-center gap-2">
-                   <Calendar className="h-4 w-4 text-muted-foreground/70" />
-                   <span className="text-sm">
-                     {job.scheduled_date ? format(new Date(job.scheduled_date), "d MMMM yyyy", { locale: fr }) : "À définir"}
-                   </span>
-                 </div>
-               </div>
-               
-               {job.completed_date && (
-                 <div>
-                   <p className="text-xs text-muted-foreground mb-1">Réalisé le</p>
-                   <div className="flex items-center gap-2 text-green-700">
-                     <CheckCircle className="h-4 w-4" />
-                     <span className="text-sm font-medium">
-                       {format(new Date(job.completed_date), "d MMMM yyyy", { locale: fr })}
-                     </span>
-                   </div>
-                 </div>
-               )}
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Date prévue</p>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground/70" />
+                  <span className="text-sm">
+                    {job.scheduled_date
+                      ? format(new Date(job.scheduled_date), "d MMMM yyyy", { locale: fr })
+                      : "À définir"}
+                  </span>
+                </div>
+              </div>
+
+              {job.completed_at && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Réalisé le</p>
+                  <div className="flex items-center gap-2 text-emerald-700">
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      {format(new Date(job.completed_at), "d MMMM yyyy", { locale: fr })}
+                    </span>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
