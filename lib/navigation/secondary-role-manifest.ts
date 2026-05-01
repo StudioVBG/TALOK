@@ -15,6 +15,7 @@ import {
   PiggyBank,
   Settings,
   Shield,
+  Sparkles,
   User,
   UserCog,
   Users,
@@ -46,6 +47,7 @@ export const SECONDARY_ROLE_MANIFESTS: Record<SecondaryRoleKey, SecondaryRoleMan
     subtitle: "Talok Pro",
     navigation: [
       { name: "Dashboard", href: "/agency/dashboard", icon: Home },
+      { name: "Prospects", href: "/agency/prospects", icon: Sparkles },
       { name: "Mandats", href: "/agency/mandates", icon: FileText },
       { name: "Propriétaires", href: "/agency/owners", icon: Users },
       { name: "Biens gérés", href: "/agency/properties", icon: Building2 },
