@@ -105,13 +105,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    // Vérifier l'abonnement
+    // Vérifier l'abonnement.
+    // NB : la table `subscriptions` est scopée par `owner_id` (FK profiles.id),
+    // pas `user_id`. L'ancienne requête `.eq("user_id", profile.id)` ne
+    // matchait JAMAIS, donc planSlug retombait toujours sur "gratuit" et
+    // tous les comptes — y compris entreprise — recevaient 403.
+    // On accepte aussi `trialing` car un compte en période d'essai a accès
+    // aux features de son plan.
     const { data: subscription } = await supabase
       .from("subscriptions")
       .select("plan_slug, status")
-      .eq("user_id", profile.id)
-      .eq("status", "active")
-      .single();
+      .eq("owner_id", profile.id)
+      .in("status", ["active", "trialing"])
+      .maybeSingle();
 
     const planSlug: PlanSlug = (subscription?.plan_slug as PlanSlug) || "gratuit";
     // Confort+ = niveau confort ou supérieur (pro, enterprise_s/m/l/xl, legacy
