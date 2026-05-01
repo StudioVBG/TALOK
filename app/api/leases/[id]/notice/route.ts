@@ -3,6 +3,7 @@ export const runtime = 'nodejs';
 
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
+import { sendEmail } from "@/lib/emails/resend.service";
 import { NextResponse } from "next/server";
 
 /**
@@ -320,7 +321,7 @@ export async function POST(
     // Récupérer le propriétaire pour la notification
     const owner = leaseData.signers?.find((s: any) => s.role === "proprietaire" || s.role === "bailleur");
 
-    // Notifier le propriétaire
+    // Notifier le propriétaire (in-app + email)
     if (owner?.profile?.user_id) {
       await serviceClient.from("notifications").insert({
         user_id: owner.profile.user_id,
@@ -333,6 +334,58 @@ export async function POST(
           notice_id: notice?.id,
           end_date: effectiveEndDate.toISOString().split("T")[0],
         },
+      });
+
+      if (owner.profile.email) {
+        const tenantFullName = `${tenantSigner.profile?.prenom ?? ""} ${tenantSigner.profile?.nom ?? ""}`.trim() || "Le locataire";
+        await sendEmail({
+          to: owner.profile.email,
+          subject: `Congé reçu — ${leaseData.property?.adresse_complete ?? "votre bien"}`,
+          html: `
+            <p>Bonjour ${owner.profile.prenom ?? ""},</p>
+            <p><strong>${tenantFullName}</strong> vient de donner congé pour le logement situé au <strong>${leaseData.property?.adresse_complete ?? ""}</strong>.</p>
+            <ul>
+              <li>Date de notification : ${noticeStartDate.toLocaleDateString("fr-FR")}</li>
+              <li>Fin de bail prévue : <strong>${effectiveEndDate.toLocaleDateString("fr-FR")}</strong></li>
+              <li>Préavis : ${noticeDays} jours${reduced_notice ? " (réduit, motif : " + (reason ?? "") + ")" : ""}</li>
+            </ul>
+            <p>Vous pouvez consulter le préavis et préparer la sortie depuis votre espace Talok :</p>
+            <p><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.talok.fr"}/owner/leases/${leaseId}">Voir le bail</a></p>
+            <p>—<br/>L'équipe Talok</p>
+          `,
+          idempotencyKey: `lease-notice/${notice?.id ?? leaseId}/owner`,
+          tags: [{ name: "type", value: "lease_notice" }],
+        }).catch((err) => {
+          console.error("[notice] email owner failed:", err);
+        });
+      }
+    }
+
+    // Confirmation par email au locataire
+    if (tenantSigner.profile?.email) {
+      const ownerName = owner?.profile
+        ? `${owner.profile.prenom ?? ""} ${owner.profile.nom ?? ""}`.trim()
+        : "votre propriétaire";
+      await sendEmail({
+        to: tenantSigner.profile.email,
+        subject: "Préavis enregistré — confirmation",
+        html: `
+          <p>Bonjour ${tenantSigner.profile.prenom ?? ""},</p>
+          <p>Votre préavis pour le logement <strong>${leaseData.property?.adresse_complete ?? ""}</strong> a bien été enregistré.</p>
+          <ul>
+            <li>Date de notification : ${noticeStartDate.toLocaleDateString("fr-FR")}</li>
+            <li>Fin de bail effective : <strong>${effectiveEndDate.toLocaleDateString("fr-FR")}</strong></li>
+            <li>Préavis : ${noticeDays} jours${reduced_notice ? " (réduit, motif : " + (reason ?? "") + ")" : ""}</li>
+          </ul>
+          <p>Votre propriétaire (${ownerName}) a été automatiquement notifié.</p>
+          <p>Pensez à organiser l'état des lieux de sortie avec lui avant cette date.</p>
+          <p><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.talok.fr"}/tenant/lease">Voir mon bail</a></p>
+          <p>—<br/>L'équipe Talok</p>
+        `,
+        idempotencyKey: `lease-notice/${notice?.id ?? leaseId}/tenant`,
+        tags: [{ name: "type", value: "lease_notice_confirmation" }],
+      }).catch((err) => {
+        console.error("[notice] email tenant failed:", err);
       });
     }
 

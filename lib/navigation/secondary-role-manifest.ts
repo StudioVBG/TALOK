@@ -1,4 +1,5 @@
 import {
+  Bell,
   Building2,
   Calculator,
   Calendar,
@@ -86,8 +87,9 @@ export const SECONDARY_ROLE_MANIFESTS: Record<SecondaryRoleKey, SecondaryRoleMan
     subtitle: "Engagements & documents",
     navigation: [
       { name: "Tableau de bord", href: "/guarantor/dashboard", icon: Home },
-      { name: "Documents", href: "/guarantor/documents", icon: FileText },
       { name: "Engagements", href: "/guarantor/dashboard", icon: Shield },
+      { name: "Documents", href: "/guarantor/documents", icon: FileText },
+      { name: "Notifications", href: "/guarantor/notifications", icon: Bell },
     ],
     footerNavigation: [
       { name: "Mon profil", href: "/guarantor/profile", icon: User },

@@ -91,67 +91,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .map(b => b.toString(16).padStart(2, "0"))
       .join("");
 
-    // Determine signature provider: Yousign (env configured) or internal
-    const yousignApiKey = process.env.YOUSIGN_API_KEY;
-    const yousignSandbox = process.env.YOUSIGN_SANDBOX === "true";
-    let signingUrls: Record<string, string> = {};
-
-    if (yousignApiKey) {
-      // Yousign eIDAS integration (AES level)
-      const yousignBaseUrl = yousignSandbox
-        ? "https://api-sandbox.yousign.app/v3"
-        : "https://api.yousign.app/v3";
-
-      // Create Yousign signature request
-      const yousignResponse = await fetch(`${yousignBaseUrl}/signature_requests`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${yousignApiKey}`,
-        },
-        body: JSON.stringify({
-          name: `Bail - ${lease.properties?.adresse_complete || lid}`,
-          delivery_mode: "email",
-          timezone: "Europe/Paris",
-          signers: signers.map((s: any) => ({
-            info: {
-              first_name: s.profiles?.prenom || "",
-              last_name: s.profiles?.nom || "",
-              locale: "fr",
-            },
-            signature_level: "electronic_signature",
-            signature_authentication_mode: "otp_email",
-          })),
-        }),
-      });
-
-      if (yousignResponse.ok) {
-        const yousignData = await yousignResponse.json();
-        // Map signing URLs per signer
-        if (yousignData.signers) {
-          for (let i = 0; i < signers.length && i < yousignData.signers.length; i++) {
-            const profileId = signers[i]?.profile_id;
-            if (!profileId) continue;
-            signingUrls[profileId] = yousignData.signers[i].signature_link || "";
-          }
-        }
-      } else {
-        console.error("[signature-sessions] Yousign error:", await yousignResponse.text());
-        // Fall back to internal signature if Yousign fails
-      }
-    }
-
-    // Create signature records for each signer
+    // Signature interne authentifiée (SES + OTP email/SMS)
+    // Yousign supprimé — voir lib/signatures/ pour le SDK interne
     for (const signer of signers) {
       await supabase.from("signatures").insert({
         lease_id: lid,
         signer_user: signer.profiles?.user_id,
         signer_profile_id: signer.profile_id,
-        level: yousignApiKey ? "AES" : "SES",
+        level: "SES",
         otp_verified: false,
         doc_hash: docHash,
-        provider: yousignApiKey ? "yousign" : "internal",
-        signing_url: (signer.profile_id && signingUrls[signer.profile_id]) || null,
+        provider: "internal",
+        signing_url: null,
       } as any);
     }
 
@@ -172,7 +123,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         payload: {
           lease_id: lid,
           session_id: sessionId,
-          provider: yousignApiKey ? "yousign" : "internal",
+          provider: "internal",
           signers: signers.map((s: any) => ({
             profile_id: s.profile_id,
             role: s.role,
@@ -196,13 +147,13 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       session_id: sessionId,
       lease_id: lid,
       status: "pending_signature",
-      provider: yousignApiKey ? "yousign" : "internal",
+      provider: "internal",
       signers: signers.map((s: any) => ({
         id: s.id,
         role: s.role,
         name: `${s.profiles?.prenom || ""} ${s.profiles?.nom || ""}`.trim(),
         status: "pending",
-        signing_url: (s.profile_id && signingUrls[s.profile_id]) || null,
+        signing_url: null,
       })),
     }, 201);
   } catch (error: unknown) {

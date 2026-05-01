@@ -73,6 +73,7 @@ interface TenantAppLayoutProps {
 const allNavItems = [
   { name: "Tableau de bord", href: "/tenant/dashboard", icon: LayoutDashboard, tourId: "nav-dashboard", group: "Mon Espace" },
   { name: "Mon Logement", href: "/tenant/lease", icon: Home, tourId: "nav-lease", group: "Mon Espace" },
+  { name: "Mon Garant", href: "/tenant/guarantor", icon: Users, tourId: "nav-guarantor", group: "Mon Espace" },
   { name: "Candidatures", href: "/tenant/applications", icon: FileSearch, tourId: "nav-applications", group: "Mon Espace" },
   { name: "Documents", href: "/tenant/documents", icon: FileText, tourId: "nav-documents", group: "Mes Documents" },
   { name: "États des lieux", href: "/tenant/inspections", icon: ClipboardCheck, tourId: "nav-inspections", group: "Mes Documents" },
