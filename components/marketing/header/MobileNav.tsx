@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, Home } from "lucide-react";
+import { Menu, Home, LogIn } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Accordion,
@@ -11,9 +11,11 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { PRODUCT_ITEMS, SOLUTIONS_ITEMS } from "./nav-items";
+import { useAuth } from "@/lib/hooks/use-auth";
 
 export function MobileNav({ className = "" }: { className?: string }) {
   const [open, setOpen] = useState(false);
+  const { isAuthenticated, initialized } = useAuth();
 
   const close = () => setOpen(false);
 
@@ -89,23 +91,38 @@ export function MobileNav({ className = "" }: { className?: string }) {
             Tarifs
           </Link>
 
-          <div className="mt-6 flex flex-col gap-3">
-            <Link
-              href="/auth/signin"
-              onClick={close}
-              className="flex items-center justify-center gap-2 rounded-lg border border-[#2563EB]/30 py-2.5 text-sm font-medium text-[#2563EB]"
-            >
-              <Home className="h-4 w-4" />
-              Mon espace
-            </Link>
-            <Link
-              href="/essai-gratuit"
-              onClick={close}
-              className="rounded-lg bg-[#2563EB] py-2.5 text-center text-sm font-medium text-white"
-            >
-              Essai gratuit
-            </Link>
-          </div>
+          {initialized && (
+            <div className="mt-6 flex flex-col gap-3">
+              {isAuthenticated ? (
+                <Link
+                  href="/dashboard"
+                  onClick={close}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-[#2563EB]/30 py-2.5 text-sm font-medium text-[#2563EB]"
+                >
+                  <Home className="h-4 w-4" />
+                  Mon espace
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/auth/signin"
+                    onClick={close}
+                    className="flex items-center justify-center gap-2 rounded-lg border border-[#2563EB]/30 py-2.5 text-sm font-medium text-[#2563EB]"
+                  >
+                    <LogIn className="h-4 w-4" />
+                    Connexion
+                  </Link>
+                  <Link
+                    href="/essai-gratuit"
+                    onClick={close}
+                    className="rounded-lg bg-[#2563EB] py-2.5 text-center text-sm font-medium text-white"
+                  >
+                    Essai gratuit
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
         </nav>
       </SheetContent>
     </Sheet>
