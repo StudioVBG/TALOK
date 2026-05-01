@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, CheckCircle2, X, TicketPercent } from "lucide-react";
+import { Loader2, CheckCircle2, X, Tag } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { PlanSlug } from "@/lib/subscriptions/plans";
@@ -138,7 +138,7 @@ export function PromoCodeField({
     <div className={className}>
       <div className="flex gap-2">
         <div className="relative flex-1">
-          <TicketPercent className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Tag className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             value={code}
             onChange={(e) => {
