@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 import { logGooglePlacesUsage } from "@/lib/services/google-places-usage";
+import { getPlanLevel, type PlanSlug } from "@/lib/subscriptions/plans";
 
 // Mapping des catégories vers les types Google Places
 const CATEGORY_TO_GOOGLE_TYPE: Record<string, string[]> = {
@@ -112,10 +113,14 @@ export async function GET(request: NextRequest) {
       .eq("status", "active")
       .single();
 
-    const planSlug = subscription?.plan_slug || "gratuit";
-    const premiumPlans = ["confort", "pro", "enterprise"];
+    const planSlug: PlanSlug = (subscription?.plan_slug as PlanSlug) || "gratuit";
+    // Confort+ = niveau confort ou supérieur (pro, enterprise_s/m/l/xl, legacy
+    // enterprise). On compare via getPlanLevel pour ne pas oublier les variantes
+    // entreprise — un slug `enterprise_s` n'aurait jamais matché la liste
+    // hardcodée précédente.
+    const isConfortOrHigher = getPlanLevel(planSlug) >= getPlanLevel("confort");
 
-    if (!premiumPlans.includes(planSlug)) {
+    if (!isConfortOrHigher) {
       return NextResponse.json(
         {
           error: "premium_required",
