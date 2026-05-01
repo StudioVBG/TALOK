@@ -23,6 +23,10 @@ import {
   Bookmark,
   BookmarkCheck,
   Info,
+  Mail,
+  MessageSquare,
+  StickyNote,
+  Save,
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
@@ -44,6 +48,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { geocodeAddress } from "@/lib/services/geocoding.service";
 import { SERVICE_TYPE_LABELS } from "@/lib/data/service-pricing-reference";
@@ -181,6 +186,9 @@ export function NearbyProvidersSearch({
   const [premiumRequired, setPremiumRequired] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [detailProvider, setDetailProvider] = useState<NearbyProvider | null>(null);
+  const [detailNotes, setDetailNotes] = useState<string>("");
+  const [detailNotesLoaded, setDetailNotesLoaded] = useState<string>("");
+  const [savingNotes, setSavingNotes] = useState(false);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [propertyIcon, setPropertyIcon] = useState<any>(null);
   const [providerIcon, setProviderIcon] = useState<any>(null);
@@ -211,9 +219,81 @@ export function NearbyProvidersSearch({
     };
   }, []);
 
-  const openDetail = (provider: NearbyProvider) => {
+  const openDetail = async (provider: NearbyProvider) => {
     setHighlightedId(provider.id);
     setDetailProvider(provider);
+    setDetailNotes("");
+    setDetailNotesLoaded("");
+
+    // Si déjà en favori, charger les notes existantes
+    if (savedIds.has(provider.id)) {
+      try {
+        const res = await fetch("/api/providers/external-favorites");
+        if (!res.ok) return;
+        const data = await res.json();
+        const found = (data?.favorites ?? []).find(
+          (f: any) => f.place_id === provider.id,
+        );
+        const notes = (found?.notes as string) ?? "";
+        setDetailNotes(notes);
+        setDetailNotesLoaded(notes);
+      } catch (err) {
+        console.warn("[NearbyProvidersSearch] Lecture notes échouée:", err);
+      }
+    }
+  };
+
+  const saveNotes = async (provider: NearbyProvider) => {
+    setSavingNotes(true);
+    try {
+      const res = await fetch(
+        `/api/providers/external-favorites/${encodeURIComponent(provider.id)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notes: detailNotes.trim() || null }),
+        },
+      );
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      setDetailNotesLoaded(detailNotes);
+      toast({
+        title: "Notes enregistrées",
+        description: `Vos notes sur ${provider.name} ont été sauvegardées.`,
+      });
+    } catch (err) {
+      console.error("[NearbyProvidersSearch] Sauvegarde notes échouée:", err);
+      toast({
+        title: "Sauvegarde impossible",
+        description: "Réessayez dans un instant.",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+  const inviteByEmail = (provider: NearbyProvider) => {
+    const subject = "Rejoignez-moi sur Talok pour gérer nos interventions";
+    const body = [
+      `Bonjour ${provider.name},`,
+      "",
+      "Je gère mes biens immobiliers avec Talok (talok.fr) et j'aimerais vous y inscrire pour pouvoir échanger nos devis, factures et photos d'intervention au même endroit.",
+      "",
+      "Créez votre compte prestataire gratuit ici :",
+      "https://talok.fr/auth/register?role=provider",
+      "",
+      "Talok est un logiciel français (né en Martinique) de gestion locative — votre profil est gratuit côté artisan.",
+      "",
+      "Merci !",
+    ].join("\n");
+    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const inviteBySms = (provider: NearbyProvider) => {
+    if (!provider.phone) return;
+    const body = `Bonjour ${provider.name}, je vous invite à créer un compte prestataire gratuit sur Talok pour gérer ensemble devis et interventions : https://talok.fr/auth/register?role=provider`;
+    const phoneClean = provider.phone.replace(/\s/g, "");
+    window.location.href = `sms:${phoneClean}?body=${encodeURIComponent(body)}`;
   };
 
   const toggleSaved = async (provider: NearbyProvider) => {
@@ -940,10 +1020,69 @@ export function NearbyProvidersSearch({
                   </div>
                 </div>
 
+                {/* Notes — visibles uniquement quand le prestataire est enregistré */}
+                {savedIds.has(detailProvider.id) && (
+                  <div className="space-y-2 pt-2 border-t">
+                    <label className="text-xs font-medium flex items-center gap-1.5">
+                      <StickyNote className="h-3.5 w-3.5 text-muted-foreground" />
+                      Notes privées
+                    </label>
+                    <Textarea
+                      value={detailNotes}
+                      onChange={(e) => setDetailNotes(e.target.value)}
+                      placeholder="Ex. Recommandé par le voisin du 1er, intervient sous 24h, prix corrects."
+                      rows={3}
+                      maxLength={2000}
+                    />
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-muted-foreground">
+                        {detailNotes.length}/2000
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={savingNotes || detailNotes === detailNotesLoaded}
+                        onClick={() => saveNotes(detailProvider)}
+                      >
+                        {savingNotes ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                        ) : (
+                          <Save className="h-3.5 w-3.5 mr-1.5" />
+                        )}
+                        Enregistrer
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Invitation à rejoindre Talok */}
+                <div className="space-y-2 pt-2 border-t">
+                  <div className="text-xs font-medium text-muted-foreground">
+                    Inviter ce prestataire sur Talok
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => inviteByEmail(detailProvider)}
+                    >
+                      <Mail className="h-4 w-4 mr-2" />
+                      Email
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={!detailProvider.phone}
+                      onClick={() => inviteBySms(detailProvider)}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      SMS
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="rounded-lg border border-blue-200 bg-blue-50/50 p-3 text-xs text-blue-900 dark:bg-blue-950/20 dark:border-blue-900 dark:text-blue-200 flex gap-2">
                   <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
                   <div>
-                    Ce prestataire provient d'une recherche externe (Google Maps). Pour profiter du suivi complet (devis, signature, paiement, avis), invitez-le à créer son compte sur <strong>talok.fr</strong>. Vos favoris sont synchronisés sur tous vos appareils.
+                    Ce prestataire provient d'une recherche externe (Google Maps). Une fois inscrit sur Talok, vous pourrez échanger devis, factures et photos d'intervention en suivi complet. Vos favoris et notes sont synchronisés sur tous vos appareils.
                   </div>
                 </div>
               </div>
