@@ -15,6 +15,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAssemblyAccess } from "@/lib/helpers/syndic-auth";
 import { StartAssemblySchema } from "@/lib/validations/syndic";
+import { logCoproAction } from "@/lib/audit/copro-audit";
 
 interface RouteParams {
   params: { assemblyId: string };
@@ -84,6 +85,24 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (updateError) throw updateError;
+
+    // Audit trail (action high : démarrage AG en mode live)
+    await logCoproAction({
+      userId: auth.user.id,
+      profileId: auth.profile.id,
+      action: "start",
+      entityType: "copro_assembly",
+      entityId: assembly.id,
+      siteId: (assemblyFull as any).site_id,
+      metadata: {
+        present_tantiemes: input.present_tantiemes,
+        quorum_required: quorumRequired,
+        quorum_reached: quorumReached,
+        presided_by: input.presided_by ?? null,
+        scrutineers_count: (input.scrutineers ?? []).length,
+      },
+      request,
+    });
 
     return NextResponse.json({
       success: true,
