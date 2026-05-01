@@ -157,7 +157,7 @@ export async function POST(
       .from("tickets")
       .select(`
         id,
-        work_orders(provider_id)
+        work_orders!ticket_id(provider_id)
       `)
       .eq("id", id as any)
       .maybeSingle();
