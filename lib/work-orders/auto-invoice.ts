@@ -183,6 +183,21 @@ export async function createInvoiceFromWorkOrder(
     quote,
   });
 
+  // 8. Génération + stockage immutable du PDF facture, puis email proprio
+  //    avec PDF en pièce jointe. Fire-and-forget : un échec n'a aucune
+  //    incidence sur la création comptable de la facture.
+  void (async () => {
+    try {
+      await generateStoreAndEmailInvoice(supabase, {
+        workOrderId,
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoice_number,
+      });
+    } catch (err) {
+      console.error('[auto-invoice] PDF + email pipeline failed:', err);
+    }
+  })();
+
   return {
     invoice_id: invoice.id,
     invoice_number: invoice.invoice_number,
@@ -316,5 +331,210 @@ async function postAccountingEntries(
   } catch (err) {
     // Fire-and-forget : on log mais on ne bloque pas le webhook.
     console.error('[auto-invoice] postAccountingEntries failed:', err);
+  }
+}
+
+interface GenerateStoreEmailParams {
+  workOrderId: string;
+  invoiceId: string;
+  invoiceNumber: string;
+}
+
+/**
+ * Génère le PDF de la facture, le pousse dans Supabase Storage à un chemin
+ * immutable (`provider-invoices/<provider_id>/<invoice_number>.pdf`),
+ * persiste `pdf_storage_path` + `pdf_generated_at`, puis envoie au
+ * propriétaire un email avec le PDF en pièce jointe.
+ *
+ * Idempotent : si `pdf_storage_path` est déjà set, on n'écrase rien.
+ * L'email Resend est dédoublonné par sa clé `invoice-issued/<invoiceNumber>`.
+ */
+async function generateStoreAndEmailInvoice(
+  supabase: SupabaseClient,
+  params: GenerateStoreEmailParams,
+): Promise<void> {
+  const { data: invoiceRaw } = await supabase
+    .from('provider_invoices')
+    .select(
+      'id, invoice_number, title, description, invoice_date, due_date, total_amount, provider_profile_id, owner_profile_id, property_id, pdf_storage_path',
+    )
+    .eq('id', params.invoiceId)
+    .maybeSingle();
+  const invoice = invoiceRaw as
+    | {
+        id: string;
+        invoice_number: string;
+        title: string;
+        description: string | null;
+        invoice_date: string;
+        due_date: string | null;
+        total_amount: number | string;
+        provider_profile_id: string;
+        owner_profile_id: string | null;
+        property_id: string | null;
+        pdf_storage_path: string | null;
+      }
+    | null;
+  if (!invoice) return;
+
+  // Items pour le PDF
+  const { data: itemsRaw } = await supabase
+    .from('provider_invoice_items')
+    .select('description, quantity, unit, unit_price, tax_rate, sort_order')
+    .eq('invoice_id', invoice.id)
+    .order('sort_order', { ascending: true });
+  const items = (itemsRaw ?? []) as Array<{
+    description: string;
+    quantity: number | string;
+    unit: string | null;
+    unit_price: number | string;
+    tax_rate: number | string;
+    sort_order: number | null;
+  }>;
+  if (items.length === 0) return;
+
+  // Prestataire (émetteur)
+  const { data: providerProfileRaw } = await supabase
+    .from('profiles')
+    .select('id, prenom, nom, telephone')
+    .eq('id', invoice.provider_profile_id)
+    .maybeSingle();
+  const providerProfile = providerProfileRaw as {
+    prenom: string | null;
+    nom: string | null;
+    telephone: string | null;
+  } | null;
+
+  const { data: providerEntityRaw } = await supabase
+    .from('providers')
+    .select('company_name, siret, email, phone, adresse_complete')
+    .eq('profile_id', invoice.provider_profile_id)
+    .maybeSingle();
+  const providerEntity = providerEntityRaw as {
+    company_name: string | null;
+    siret: string | null;
+    email: string | null;
+    phone: string | null;
+    adresse_complete: string | null;
+  } | null;
+
+  const providerName =
+    providerEntity?.company_name ||
+    `${providerProfile?.prenom ?? ''} ${providerProfile?.nom ?? ''}`.trim() ||
+    'Prestataire';
+
+  // Propriétaire (destinataire)
+  let ownerName: string | null = null;
+  let ownerEmail: string | null = null;
+  if (invoice.owner_profile_id) {
+    const { data: ownerRaw } = await supabase
+      .from('profiles')
+      .select('prenom, nom, user_id')
+      .eq('id', invoice.owner_profile_id)
+      .maybeSingle();
+    const owner = ownerRaw as {
+      prenom: string | null;
+      nom: string | null;
+      user_id: string;
+    } | null;
+    if (owner) {
+      ownerName = `${owner.prenom ?? ''} ${owner.nom ?? ''}`.trim() || null;
+      const { data: ownerAuth } = await (supabase as SupabaseClient).auth.admin.getUserById(
+        owner.user_id,
+      );
+      ownerEmail = ownerAuth?.user?.email ?? null;
+    }
+  }
+
+  // Property
+  let propertyAddress: string | null = null;
+  if (invoice.property_id) {
+    const { data: prop } = await supabase
+      .from('properties')
+      .select('adresse_complete, code_postal, ville')
+      .eq('id', invoice.property_id)
+      .maybeSingle();
+    const propRow = prop as {
+      adresse_complete: string | null;
+      code_postal: string | null;
+      ville: string | null;
+    } | null;
+    if (propRow?.adresse_complete) {
+      propertyAddress = [
+        propRow.adresse_complete,
+        [propRow.code_postal, propRow.ville].filter(Boolean).join(' '),
+      ]
+        .filter(Boolean)
+        .join(', ');
+    }
+  }
+
+  // Générer le PDF (utilise generateQuotePDF en mode 'invoice')
+  const { generateQuotePDF } = await import('@/lib/pdf/quote-pdf-generator');
+  const pdfBytes = await generateQuotePDF({
+    reference: invoice.invoice_number,
+    title: invoice.title,
+    description: invoice.description,
+    documentType: 'invoice',
+    issueDate: invoice.invoice_date,
+    validUntil: invoice.due_date,
+    providerName,
+    providerSiret: providerEntity?.siret ?? null,
+    providerEmail: providerEntity?.email ?? null,
+    providerPhone: providerEntity?.phone ?? providerProfile?.telephone ?? null,
+    providerAddress: providerEntity?.adresse_complete ?? null,
+    clientName: ownerName,
+    clientEmail: ownerEmail,
+    propertyAddress,
+    items: items.map((it) => ({
+      description: it.description,
+      quantity: Number(it.quantity),
+      unit: it.unit ?? 'unité',
+      unit_price: Number(it.unit_price),
+      tax_rate: Number(it.tax_rate ?? 20),
+    })),
+  });
+
+  // Upload Storage immutable, sauf si déjà présent (idempotence)
+  if (!invoice.pdf_storage_path) {
+    const storagePath = `provider-invoices/${invoice.provider_profile_id}/${invoice.invoice_number}.pdf`;
+    const { STORAGE_BUCKETS } = await import('@/lib/config/storage-buckets');
+    const { error: uploadError } = await (supabase as SupabaseClient).storage
+      .from(STORAGE_BUCKETS.DOCUMENTS)
+      .upload(storagePath, Buffer.from(pdfBytes), {
+        contentType: 'application/pdf',
+        upsert: false, // immutable : on ne réécrit jamais
+      });
+    if (!uploadError) {
+      await supabase
+        .from('provider_invoices')
+        .update({
+          pdf_storage_path: storagePath,
+          pdf_generated_at: new Date().toISOString(),
+        } as never)
+        .eq('id', invoice.id);
+    } else if (!String(uploadError.message ?? '').includes('already exists')) {
+      // upsert:false renvoie une erreur si le fichier existe déjà — c'est
+      // attendu en cas de retry. Toute autre erreur est loguée.
+      console.error('[auto-invoice] PDF upload failed:', uploadError);
+    }
+  }
+
+  // Email proprio avec PDF en pièce jointe (idempotent côté Resend)
+  if (ownerEmail) {
+    const { sendOwnerInvoiceIssuedEmail } = await import(
+      '@/lib/emails/resend.service'
+    );
+    await sendOwnerInvoiceIssuedEmail({
+      ownerEmail,
+      recipientName: ownerName || 'Propriétaire',
+      invoiceNumber: invoice.invoice_number,
+      invoiceTitle: invoice.title,
+      providerName,
+      propertyAddress,
+      totalAmountEuros: Number(invoice.total_amount ?? 0),
+      workOrderId: params.workOrderId,
+      pdfAttachment: Buffer.from(pdfBytes),
+    });
   }
 }

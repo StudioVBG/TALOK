@@ -359,6 +359,22 @@ export async function submitQuote(
     .single();
 
   if (error) throw error;
+
+  // Email proprio avec le PDF du devis en pièce jointe (fire-and-forget).
+  // Idempotent côté Resend via la clé `quote-received/<quoteId>`.
+  if (providerQuoteId) {
+    void (async () => {
+      try {
+        const { sendQuotePdfEmailToOwner } = await import(
+          '@/lib/work-orders/quote-email'
+        );
+        await sendQuotePdfEmailToOwner(supabase, providerQuoteId);
+      } catch (err) {
+        console.error('[submitQuote] sendQuotePdfEmailToOwner failed:', err);
+      }
+    })();
+  }
+
   return data as WorkOrderExtended;
 }
 

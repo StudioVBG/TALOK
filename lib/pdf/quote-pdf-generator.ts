@@ -30,6 +30,9 @@ export interface QuotePdfData {
   reference: string;
   title: string;
   description?: string | null;
+  /** 'quote' (DEVIS) ou 'invoice' (FACTURE) — détermine le titre rendu en
+   *  haut du PDF. Par défaut : 'quote' pour rétro-compat. */
+  documentType?: 'quote' | 'invoice';
   issueDate: string;
   validUntil?: string | null;
 
@@ -134,7 +137,8 @@ export async function generateQuotePDF(data: QuotePdfData): Promise<Uint8Array> 
     height: 80,
     color: PRIMARY,
   });
-  drawText(page, "DEVIS", MARGIN, A4_HEIGHT - 50, helvB, 24, rgb(1, 1, 1));
+  const headerLabel = data.documentType === 'invoice' ? 'FACTURE' : 'DEVIS';
+  drawText(page, headerLabel, MARGIN, A4_HEIGHT - 50, helvB, 24, rgb(1, 1, 1));
   drawText(
     page,
     data.reference,
@@ -205,7 +209,8 @@ export async function generateQuotePDF(data: QuotePdfData): Promise<Uint8Array> 
   drawText(page, "Émission", MARGIN + 16, y - 18, helv, 8, MUTED);
   drawText(page, formatDateFr(data.issueDate), MARGIN + 16, y - 36, helvB, 11);
 
-  drawText(page, "Validité", MARGIN + colDateW + 16, y - 18, helv, 8, MUTED);
+  const dateLabel = data.documentType === 'invoice' ? 'Échéance' : 'Validité';
+  drawText(page, dateLabel, MARGIN + colDateW + 16, y - 18, helv, 8, MUTED);
   drawText(
     page,
     data.validUntil ? formatDateFr(data.validUntil) : "—",

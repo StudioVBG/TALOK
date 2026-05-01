@@ -25,6 +25,10 @@ import {
   type OwnerQuoteReceivedParams,
 } from './templates/owner-quote-received';
 import {
+  ownerInvoiceIssuedEmail,
+  type OwnerInvoiceIssuedParams,
+} from './templates/owner-invoice-issued';
+import {
   ownerQuoteSignatureOtpEmail,
   type OwnerQuoteSignatureOtpParams,
 } from './templates/owner-quote-signature-otp';
@@ -1064,7 +1068,10 @@ export async function sendEDLFullySignedNotification(data: {
  * meme en cas de retry du POST /send.
  */
 export async function sendOwnerQuoteReceivedEmail(
-  data: OwnerQuoteReceivedParams & { ownerEmail: string }
+  data: OwnerQuoteReceivedParams & {
+    ownerEmail: string;
+    pdfAttachment?: Buffer;
+  }
 ): Promise<EmailResult> {
   const template = ownerQuoteReceivedEmail(data);
   return sendEmail({
@@ -1072,9 +1079,51 @@ export async function sendOwnerQuoteReceivedEmail(
     subject: template.subject,
     html: template.html,
     idempotencyKey: `quote-received/${data.quoteId}`,
+    attachments: data.pdfAttachment
+      ? [
+          {
+            filename: `${data.quoteReference}.pdf`,
+            content: data.pdfAttachment,
+          },
+        ]
+      : undefined,
     tags: [
       { name: 'type', value: 'owner-quote-received' },
       { name: 'quote_id', value: data.quoteId },
+    ],
+  });
+}
+
+/**
+ * Envoie au propriétaire la facture émise automatiquement après paiement
+ * intégral d'une intervention. Le PDF est joint si fourni en pièce jointe.
+ *
+ * idempotencyKey: invoice-issued/<invoiceNumber> — un seul envoi par
+ * facture, même si le webhook Stripe rejoue.
+ */
+export async function sendOwnerInvoiceIssuedEmail(
+  data: OwnerInvoiceIssuedParams & {
+    ownerEmail: string;
+    pdfAttachment?: Buffer;
+  }
+): Promise<EmailResult> {
+  const template = ownerInvoiceIssuedEmail(data);
+  return sendEmail({
+    to: data.ownerEmail,
+    subject: template.subject,
+    html: template.html,
+    idempotencyKey: `invoice-issued/${data.invoiceNumber}`,
+    attachments: data.pdfAttachment
+      ? [
+          {
+            filename: `${data.invoiceNumber}.pdf`,
+            content: data.pdfAttachment,
+          },
+        ]
+      : undefined,
+    tags: [
+      { name: 'type', value: 'owner-invoice-issued' },
+      { name: 'invoice_number', value: data.invoiceNumber },
     ],
   });
 }
@@ -1187,5 +1236,6 @@ export const emailService = {
   // Proprietaire <- Prestataire
   sendOwnerQuoteReceivedEmail,
   sendOwnerQuoteSignatureOtpEmail,
+  sendOwnerInvoiceIssuedEmail,
 };
 
