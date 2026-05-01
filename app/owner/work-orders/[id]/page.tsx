@@ -24,6 +24,7 @@ import { WorkOrderTimeline } from '@/features/providers/components/WorkOrderTime
 import { QuoteApprovalCard } from '@/features/providers/components/QuoteApprovalCard';
 import { UrgencyBadge } from '@/features/providers/components/UrgencyBadge';
 import { ReviewForm } from '@/features/providers/components/ReviewForm';
+import { WorkOrderPayButton } from '@/features/tickets/components/work-order-pay-button';
 
 export default function WorkOrderDetailPage() {
   const params = useParams();
@@ -248,14 +249,28 @@ export default function WorkOrderDetailPage() {
                     Demander un devis
                   </Button>
                 )}
+                {status === 'quote_approved' && wo.statut !== 'deposit_paid' && (
+                  <WorkOrderPayButton
+                    workOrderId={wo.id}
+                    paymentType="deposit"
+                    hintLabel="Payer l'acompte (30%)"
+                  />
+                )}
                 {status === 'quote_approved' && (
                   <Button onClick={() => {
                     const date = prompt('Date (YYYY-MM-DD) :');
                     if (date) performAction('schedule', { scheduled_date: date });
-                  }} disabled={actionLoading}>
+                  }} disabled={actionLoading} variant={wo.statut === 'deposit_paid' ? 'default' : 'outline'}>
                     <Calendar className="h-4 w-4 mr-2" />
                     Planifier
                   </Button>
+                )}
+                {status === 'completed' && wo.statut !== 'fully_paid' && (
+                  <WorkOrderPayButton
+                    workOrderId={wo.id}
+                    paymentType="balance"
+                    hintLabel="Payer le solde (70%)"
+                  />
                 )}
                 {status === 'invoiced' && (
                   <Button onClick={() => {
