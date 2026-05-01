@@ -46,16 +46,15 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    // Construire la requête
+    // Construire la requête.
+    // NB : on ne tente PAS d'embed `work_orders` ici — `work_orders.provider_id`
+    // référence `profiles(id)`, pas `providers(id)`, donc PostgREST ne trouve
+    // pas de relation et renvoie une 500. Le compteur d'interventions vit
+    // déjà dans `providers.total_interventions` (maintenu par le trigger
+    // `update_provider_intervention_count`, cf. migration providers SOTA).
     let query = supabase
       .from("providers")
-      .select(
-        `
-        *,
-        work_orders:work_orders(count)
-      `,
-        { count: "exact" }
-      );
+      .select("*", { count: "exact" });
 
     // Filtrer par catégorie
     if (category) {

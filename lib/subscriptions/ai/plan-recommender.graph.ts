@@ -9,7 +9,7 @@
 import { StateGraph, END, START, Annotation } from "@langchain/langgraph";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { createFastModel } from "@/lib/ai/config";
-import { PLANS, type PlanSlug, formatPrice } from "../plans";
+import { PLANS, type PlanSlug, formatPrice, getPlanLevel } from "../plans";
 
 // ============================================
 // STATE DEFINITION
@@ -151,7 +151,8 @@ async function determineRecommendation(state: PlanRecommenderStateType): Promise
       reasoning = "Vous approchez des limites du plan Confort. Le plan Pro vous offre plus de capacité et des fonctionnalités avancées.";
       confidence = 85;
     } else if (currentPlan === "pro" && projectedProperties > 100) {
-      recommendedPlan = "enterprise";
+      // `enterprise` est legacy ; le ticket d'entrée actuel est enterprise_s.
+      recommendedPlan = "enterprise_s";
       reasoning = "Votre parc immobilier dépasse bientôt les 100 biens. L'offre Enterprise vous garantit une scalabilité sans limite.";
       confidence = 75;
     }
@@ -177,14 +178,18 @@ async function determineRecommendation(state: PlanRecommenderStateType): Promise
     confidence = 70;
   }
   
-  // Cas 4: Croissance anticipée forte
-  else if (growthPotential === "high" && currentPlan !== "enterprise") {
+  // Cas 4: Croissance anticipée forte. On exclut le sommet de la grille
+  // (enterprise_xl) plutôt que le slug legacy `enterprise` — un compte
+  // `enterprise_s` était précédemment toujours considéré comme non-top
+  // par `currentPlan !== "enterprise"`, ce qui est correct, mais on
+  // bascule sur la comparaison de niveau pour être explicite.
+  else if (growthPotential === "high" && getPlanLevel(currentPlan) < getPlanLevel("enterprise_xl")) {
     const nextPlan: Partial<Record<PlanSlug, PlanSlug>> = {
       gratuit: "starter",
       starter: "confort",
       confort: "pro",
-      pro: "enterprise",
-      enterprise: "enterprise",
+      pro: "enterprise_s",
+      enterprise: "enterprise_m", // legacy alias = niveau enterprise_s
       enterprise_s: "enterprise_m",
       enterprise_m: "enterprise_l",
       enterprise_l: "enterprise_xl",
@@ -379,8 +384,11 @@ export async function getRecommendedPlan(input: {
     confidence: 0,
   });
 
-  const currentLevel = ["starter", "confort", "pro", "enterprise"].indexOf(input.currentPlan);
-  const recommendedLevel = ["starter", "confort", "pro", "enterprise"].indexOf(result.recommendedPlan);
+  // On utilise getPlanLevel comme source de vérité pour couvrir TOUS les
+  // slugs (enterprise_s/m/l/xl + legacy `enterprise`). L'ancienne liste
+  // hardcodée renvoyait -1 pour ces variantes et faussait isUpgrade.
+  const currentLevel = getPlanLevel(input.currentPlan);
+  const recommendedLevel = getPlanLevel(result.recommendedPlan);
 
   return {
     recommendedPlan: result.recommendedPlan,

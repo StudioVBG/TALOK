@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 import { logGooglePlacesUsage } from "@/lib/services/google-places-usage";
+import { getPlanLevel, type PlanSlug } from "@/lib/subscriptions/plans";
 
 // Mapping des catégories vers les types Google Places
 const CATEGORY_TO_GOOGLE_TYPE: Record<string, string[]> = {
@@ -104,18 +105,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    // Vérifier l'abonnement
+    // Vérifier l'abonnement.
+    // NB : la table `subscriptions` est scopée par `owner_id` (FK profiles.id),
+    // pas `user_id`. L'ancienne requête `.eq("user_id", profile.id)` ne
+    // matchait JAMAIS, donc planSlug retombait toujours sur "gratuit" et
+    // tous les comptes — y compris entreprise — recevaient 403.
+    // On accepte aussi `trialing` car un compte en période d'essai a accès
+    // aux features de son plan.
     const { data: subscription } = await supabase
       .from("subscriptions")
       .select("plan_slug, status")
-      .eq("user_id", profile.id)
-      .eq("status", "active")
-      .single();
+      .eq("owner_id", profile.id)
+      .in("status", ["active", "trialing"])
+      .maybeSingle();
 
-    const planSlug = subscription?.plan_slug || "gratuit";
-    const premiumPlans = ["confort", "pro", "enterprise"];
+    const planSlug: PlanSlug = (subscription?.plan_slug as PlanSlug) || "gratuit";
+    // Confort+ = niveau confort ou supérieur (pro, enterprise_s/m/l/xl, legacy
+    // enterprise). On compare via getPlanLevel pour ne pas oublier les variantes
+    // entreprise — un slug `enterprise_s` n'aurait jamais matché la liste
+    // hardcodée précédente.
+    const isConfortOrHigher = getPlanLevel(planSlug) >= getPlanLevel("confort");
 
-    if (!premiumPlans.includes(planSlug)) {
+    if (!isConfortOrHigher) {
       return NextResponse.json(
         {
           error: "premium_required",
