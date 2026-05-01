@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { ActiveSessionsCard } from "@/components/auth/active-sessions-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -473,6 +474,8 @@ export default function GuarantorProfilePage() {
           </Button>
         </div>
       </form>
+
+      <ActiveSessionsCard />
     </div>
   );
 }

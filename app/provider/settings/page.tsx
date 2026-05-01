@@ -32,6 +32,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { ProviderLogoCard } from "@/components/provider/provider-logo-card";
+import { ActiveSessionsCard } from "@/components/auth/active-sessions-card";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -470,6 +471,8 @@ export default function ProviderSettingsPage() {
               )}
             </Button>
           </motion.div>
+
+          <ActiveSessionsCard />
         </div>
       </div>
     </motion.div>

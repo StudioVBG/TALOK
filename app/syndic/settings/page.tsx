@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/lib/hooks/use-auth";
 import Link from "next/link";
+import { ActiveSessionsCard } from "@/components/auth/active-sessions-card";
 import {
   Building2,
   User,
@@ -311,6 +312,8 @@ export default function SyndicSettingsPage() {
           </form>
         </CardContent>
       </Card>
+
+      <ActiveSessionsCard />
     </div>
   );
 }

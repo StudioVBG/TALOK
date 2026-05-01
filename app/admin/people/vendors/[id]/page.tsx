@@ -10,6 +10,7 @@ import { useAuth } from "@/lib/hooks/use-auth";
 import { peopleService } from "@/features/admin/services/people.service";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Mail, Phone, MapPin, ShieldCheck, XCircle, CheckCircle2 } from "lucide-react";
+import { AdminResetPasswordButton } from "@/components/admin/AdminResetPasswordButton";
 import Link from "next/link";
 
 interface VendorDetail {
@@ -129,10 +130,17 @@ function VendorDetailContent({ vendorId }: { vendorId: string }) {
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-3xl font-bold">{vendor.full_name}</h1>
           <p className="text-muted-foreground">Détails du prestataire</p>
         </div>
+        {vendor.email && (
+          <AdminResetPasswordButton
+            profileId={vendor.profile.id}
+            email={vendor.email}
+            userName={vendor.full_name}
+          />
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

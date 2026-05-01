@@ -36,6 +36,7 @@ import {
 import { formatDateShort } from "@/lib/helpers/format";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { AdminResetPasswordButton } from "@/components/admin/AdminResetPasswordButton";
 
 // Nouveaux composants SOTA 2025
 import {
@@ -303,6 +304,13 @@ export function OwnerDetailsClient({ owner }: OwnerDetailsClientProps) {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          {owner.email && (
+            <AdminResetPasswordButton
+              profileId={owner.id}
+              email={owner.email}
+              userName={ownerName}
+            />
+          )}
         </div>
       </motion.div>
 

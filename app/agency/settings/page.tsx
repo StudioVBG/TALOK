@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
+import { ActiveSessionsCard } from "@/components/auth/active-sessions-card";
 
 type FormeJuridique = "SARL" | "SAS" | "SASU" | "SCI" | "EURL" | "EI" | "SA" | "autre";
 
@@ -489,6 +490,8 @@ export default function AgencySettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ActiveSessionsCard />
     </motion.div>
   );
 }

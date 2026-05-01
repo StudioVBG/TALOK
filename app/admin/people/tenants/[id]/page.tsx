@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/monitoring";
 import { TenantProfileClient } from "@/app/owner/tenants/[id]/TenantProfileClient";
+import { AdminResetPasswordButton } from "@/components/admin/AdminResetPasswordButton";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -125,7 +126,25 @@ export default async function AdminTenantDetailPage({ params }: PageProps) {
     );
   }
 
-  return <TenantProfileClient tenant={tenant as any} isAdmin={true} />;
+  const tenantName =
+    `${(tenant as any).prenom ?? ""} ${(tenant as any).nom ?? ""}`.trim() ||
+    "Locataire";
+  const tenantEmail = (tenant as any).email as string | undefined;
+
+  return (
+    <div className="space-y-4">
+      {tenantEmail && (
+        <div className="flex justify-end">
+          <AdminResetPasswordButton
+            profileId={(tenant as any).id}
+            email={tenantEmail}
+            userName={tenantName}
+          />
+        </div>
+      )}
+      <TenantProfileClient tenant={tenant as any} isAdmin={true} />
+    </div>
+  );
 }
 
 export const metadata = {
