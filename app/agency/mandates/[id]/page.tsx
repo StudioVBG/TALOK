@@ -117,6 +117,30 @@ export default function MandateDetailPage() {
     },
   });
 
+  const initiateSignatureMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(
+        `/api/agency/mandates/${mandateId}/initiate-signature`,
+        { method: "POST" },
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(json?.error || `Erreur ${res.status}`);
+      }
+      return json;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["agency-mandate", mandateId] });
+      toast({
+        title: "Mandat envoyé pour signature",
+        description: "Le propriétaire mandant va recevoir un email avec le lien de signature.",
+      });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Erreur", description: err.message, variant: "destructive" });
+    },
+  });
+
   const sendCrgMutation = useMutation({
     mutationFn: async (crgId: string) => {
       const res = await fetch(`/api/agency/crg/${crgId}/send`, { method: "POST" });
@@ -241,17 +265,39 @@ export default function MandateDetailPage() {
             {mandate.mandate_type === "gestion" ? "Gestion locative" : mandate.mandate_type}
           </p>
         </div>
-        {mandate.status === "active" && (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={() => terminateMutation.mutate()}
-            disabled={terminateMutation.isPending}
-          >
-            <XCircle className="w-4 h-4 mr-2" />
-            Resilier
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {mandate.status === "draft" && mandate.signature_status !== "pending" && (
+            <Button
+              size="sm"
+              onClick={() => initiateSignatureMutation.mutate()}
+              disabled={initiateSignatureMutation.isPending}
+            >
+              {initiateSignatureMutation.isPending ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4 mr-2" />
+              )}
+              Envoyer pour signature
+            </Button>
+          )}
+          {mandate.signature_status === "pending" && (
+            <Badge variant="outline" className="text-amber-700 border-amber-200 bg-amber-50">
+              <Clock className="w-3 h-3 mr-1" />
+              Signature en attente
+            </Badge>
+          )}
+          {mandate.status === "active" && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => terminateMutation.mutate()}
+              disabled={terminateMutation.isPending}
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Resilier
+            </Button>
+          )}
+        </div>
       </motion.div>
 
       {/* Info cards */}

@@ -36,10 +36,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    // Seuls les propriétaires et admins peuvent inviter des garants
-    if (profile.role !== "owner" && profile.role !== "admin") {
+    // Owners, admins ET locataires (signataires du bail) peuvent inviter un garant
+    if (
+      profile.role !== "owner" &&
+      profile.role !== "admin" &&
+      profile.role !== "tenant"
+    ) {
       return NextResponse.json(
-        { error: "Seuls les propriétaires peuvent inviter des garants" },
+        { error: "Action réservée aux propriétaires, locataires et admins" },
         { status: 403 }
       );
     }
@@ -48,7 +52,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createGuarantorInvitationSchema.parse(body);
 
-    // Vérifier que le bail appartient au propriétaire
+    // Vérifier que le bail appartient au propriétaire (ou que le locataire est signataire)
     if (profile.role === "owner") {
       const { data: lease } = await supabase
         .from("leases")
@@ -59,6 +63,21 @@ export async function POST(request: NextRequest) {
       if (!lease || (lease.property as any)?.owner_id !== profile.id) {
         return NextResponse.json(
           { error: "Bail non trouvé ou non autorisé" },
+          { status: 403 }
+        );
+      }
+    } else if (profile.role === "tenant") {
+      const { data: signer } = await supabase
+        .from("lease_signers")
+        .select("id, role")
+        .eq("lease_id", validatedData.lease_id)
+        .eq("profile_id", profile.id)
+        .in("role", ["locataire_principal", "colocataire"])
+        .maybeSingle();
+
+      if (!signer) {
+        return NextResponse.json(
+          { error: "Vous n'êtes pas signataire de ce bail" },
           { status: 403 }
         );
       }

@@ -53,6 +53,7 @@ import { Progress } from "@/components/ui/progress";
 import { buildAvatarUrl, formatDate } from "@/lib/helpers/format";
 import { RestartTourCard } from "@/components/onboarding/RestartTourCard";
 import { createClient } from "@/lib/supabase/client";
+import { ActiveSessionsCard } from "@/components/auth/active-sessions-card";
 
 interface Profile {
   id: string;
@@ -581,6 +582,9 @@ export function TenantSettingsClient({
 
           {/* Sécurité — Changement de mot de passe */}
           <PasswordChangeSection />
+
+          {/* Sécurité — Sessions actives */}
+          <ActiveSessionsCard />
 
           {/* Vie privée & RGPD */}
           <Card>

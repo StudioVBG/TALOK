@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getServiceClient } from '@/lib/supabase/service-client';
 import { sitesService } from '@/features/copro/services';
 import { withFeatureAccess, createSubscriptionErrorResponse } from '@/lib/middleware/subscription-check';
+import { logCoproAction } from '@/lib/audit/copro-audit';
 import { z } from 'zod';
 
 // Schéma de validation pour la création
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) throw error;
-    
+
     // Attribuer le rôle syndic à l'utilisateur pour ce site
     await supabase
       .from('user_site_roles')
@@ -142,7 +143,23 @@ export async function POST(request: NextRequest) {
         role_code: 'syndic',
         site_id: site.id,
       } as any);
-    
+
+    // Audit trail
+    await logCoproAction({
+      userId: user.id,
+      profileId: (profile as any).id,
+      action: 'create',
+      entityType: 'copro_site',
+      entityId: site.id,
+      siteId: site.id,
+      metadata: {
+        nom: input.nom,
+        ville: input.ville,
+        nb_lots: input.nb_lots,
+      },
+      request,
+    });
+
     return NextResponse.json(site, { status: 201 });
   } catch (error: unknown) {
     console.error('Erreur POST /api/copro/sites:', error);

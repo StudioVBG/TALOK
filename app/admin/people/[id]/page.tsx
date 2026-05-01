@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Mail, Phone, Calendar } from "lucide-react";
 import { getUserRoleLabel } from "@/lib/constants/roles";
+import { AdminResetPasswordButton } from "@/components/admin/AdminResetPasswordButton";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -275,6 +276,13 @@ export default async function AdminPersonDetailPage({ params }: PageProps) {
           </div>
           <p className="text-muted-foreground">Détail du compte depuis l'annuaire</p>
         </div>
+        {email && profile.role !== "admin" && profile.role !== "platform_admin" && (
+          <AdminResetPasswordButton
+            profileId={profile.id}
+            email={email}
+            userName={title}
+          />
+        )}
       </div>
 
       <Card>

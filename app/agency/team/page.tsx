@@ -5,7 +5,7 @@
  * SOTA 2026: Feature multi_users requiert Confort+
  */
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -53,59 +53,27 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-// Données de démonstration
-const mockTeamMembers = [
-  {
-    id: "1",
-    name: "Marie Dupont",
-    email: "marie.dupont@agence.fr",
-    phone: "06 01 02 03 04",
-    role: "directeur",
-    propertiesCount: 47,
-    status: "active",
-    since: "Janvier 2020",
-  },
-  {
-    id: "2",
-    name: "Thomas Martin",
-    email: "thomas.martin@agence.fr",
-    phone: "06 11 22 33 44",
-    role: "gestionnaire",
-    propertiesCount: 18,
-    status: "active",
-    since: "Mars 2022",
-  },
-  {
-    id: "3",
-    name: "Julie Bernard",
-    email: "julie.bernard@agence.fr",
-    phone: "06 22 33 44 55",
-    role: "gestionnaire",
-    propertiesCount: 15,
-    status: "active",
-    since: "Septembre 2023",
-  },
-  {
-    id: "4",
-    name: "Lucas Petit",
-    email: "lucas.petit@agence.fr",
-    phone: "06 33 44 55 66",
-    role: "assistant",
-    propertiesCount: 0,
-    status: "active",
-    since: "Juin 2024",
-  },
-  {
-    id: "5",
-    name: "Emma Leroy",
-    email: "emma.leroy@agence.fr",
-    phone: "06 44 55 66 77",
-    role: "comptable",
-    propertiesCount: 0,
-    status: "active",
-    since: "Novembre 2024",
-  },
-];
+type TeamMember = {
+  id: string;
+  kind: "member" | "invitation";
+  name: string;
+  email: string;
+  phone: string;
+  avatar_url?: string | null;
+  role: string;
+  propertiesCount?: number;
+  status: string;
+  can_sign_documents?: boolean;
+  since: string;
+  expires_at?: string;
+};
+
+function formatSince(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+}
 
 const roleConfig = {
   directeur: { label: "Directeur", color: "bg-purple-100 text-purple-700 border-purple-300" },
@@ -122,10 +90,62 @@ export default function TeamPage() {
   const [inviteRole, setInviteRole] = useState<"gestionnaire" | "assistant" | "comptable">("gestionnaire");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const filteredMembers = mockTeamMembers.filter(
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [invitations, setInvitations] = useState<TeamMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const loadTeam = useCallback(async () => {
+    try {
+      const res = await fetch("/api/agency/team");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setMembers(data.members ?? []);
+      setInvitations(data.invitations ?? []);
+    } catch (err) {
+      toast({
+        title: "Impossible de charger l'équipe",
+        description: err instanceof Error ? err.message : "Erreur inconnue",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    loadTeam();
+  }, [loadTeam]);
+
+  const handleRevoke = async (entry: TeamMember) => {
+    const confirmMsg =
+      entry.kind === "invitation"
+        ? `Annuler l'invitation envoyée à ${entry.email} ?`
+        : `Retirer ${entry.name} de l'équipe ?`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      const res = await fetch(`/api/agency/team/${entry.id}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error || `Erreur ${res.status}`);
+      toast({
+        title: entry.kind === "invitation" ? "Invitation annulée" : "Membre retiré",
+        description: entry.email,
+      });
+      await loadTeam();
+    } catch (err) {
+      toast({
+        title: "Action échouée",
+        description: err instanceof Error ? err.message : "Erreur inconnue",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const allEntries: TeamMember[] = [...members, ...invitations];
+  const filteredMembers = allEntries.filter(
     (member) =>
       member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.email.toLowerCase().includes(searchQuery.toLowerCase())
+      member.email.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const resetInviteForm = () => {
@@ -163,6 +183,8 @@ export default function TeamPage() {
       });
       resetInviteForm();
       setIsInviteDialogOpen(false);
+      // Recharger pour afficher l'invitation pending
+      loadTeam();
     } catch (error) {
       toast({
         title: "Échec de l'invitation",
@@ -263,7 +285,7 @@ export default function TeamPage() {
               <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{mockTeamMembers.length}</p>
+              <p className="text-2xl font-bold">{members.length}</p>
               <p className="text-sm text-muted-foreground">Membres</p>
             </div>
           </CardContent>
@@ -274,7 +296,7 @@ export default function TeamPage() {
               <Shield className="w-5 h-5 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{mockTeamMembers.filter((m) => m.role === "gestionnaire").length}</p>
+              <p className="text-2xl font-bold">{members.filter((m) => m.role === "gestionnaire").length}</p>
               <p className="text-sm text-muted-foreground">Gestionnaires</p>
             </div>
           </CardContent>
@@ -285,12 +307,19 @@ export default function TeamPage() {
               <Users className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{mockTeamMembers.filter((m) => m.status === "active").length}</p>
-              <p className="text-sm text-muted-foreground">Actifs</p>
+              <p className="text-2xl font-bold">{invitations.length}</p>
+              <p className="text-sm text-muted-foreground">Invitations en attente</p>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {isLoading && (
+        <div className="flex items-center justify-center py-8 text-muted-foreground">
+          <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+          Chargement de l'équipe…
+        </div>
+      )}
 
       {/* Search */}
       <Card className="border-0 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
@@ -311,6 +340,7 @@ export default function TeamPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredMembers.map((member) => {
           const role = roleConfig[member.role as keyof typeof roleConfig];
+          const isPending = member.kind === "invitation";
           return (
             <motion.div
               key={member.id}
@@ -323,14 +353,23 @@ export default function TeamPage() {
                     <div className="flex items-center gap-3">
                       <Avatar className="w-12 h-12 border-2 border-indigo-200">
                         <AvatarFallback className="bg-gradient-to-br from-indigo-400 to-purple-500 text-white font-semibold">
-                          {member.name.split(" ").map((n) => n[0]).join("")}
+                          {member.name.split(" ").filter(Boolean).map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <h3 className="font-semibold">{member.name}</h3>
-                        <Badge variant="outline" className={cn("text-xs", role.color)}>
-                          {role.label}
-                        </Badge>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {role && (
+                            <Badge variant="outline" className={cn("text-xs", role.color)}>
+                              {role.label}
+                            </Badge>
+                          )}
+                          {isPending && (
+                            <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                              Invitation
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <DropdownMenu>
@@ -340,14 +379,21 @@ export default function TeamPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Modifier
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">
+                        {!isPending && (
+                          <>
+                            <DropdownMenuItem disabled>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Modifier
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                          </>
+                        )}
+                        <DropdownMenuItem
+                          className="text-red-600"
+                          onSelect={() => handleRevoke(member)}
+                        >
                           <Trash2 className="w-4 h-4 mr-2" />
-                          Retirer
+                          {isPending ? "Annuler l'invitation" : "Retirer"}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -358,13 +404,15 @@ export default function TeamPage() {
                       <Mail className="w-4 h-4" />
                       <span className="truncate">{member.email}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4" />
-                      <span>{member.phone}</span>
-                    </div>
+                    {member.phone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4" />
+                        <span>{member.phone}</span>
+                      </div>
+                    )}
                   </div>
 
-                  {member.propertiesCount > 0 && (
+                  {!isPending && (member.propertiesCount ?? 0) > 0 && (
                     <div className="pt-4 border-t">
                       <p className="text-sm">
                         <span className="text-muted-foreground">Biens assignés :</span>{" "}
@@ -374,7 +422,9 @@ export default function TeamPage() {
                   )}
 
                   <div className="mt-4 pt-4 border-t">
-                    <span className="text-xs text-muted-foreground">Membre depuis {member.since}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {isPending ? "Invité" : "Membre"} depuis {formatSince(member.since)}
+                    </span>
                   </div>
                 </CardContent>
               </Card>

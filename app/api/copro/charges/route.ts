@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireCoproFeature } from '@/lib/helpers/copro-feature-gate';
+import { logCoproAction } from '@/lib/audit/copro-audit';
 import { z } from 'zod';
 
 // GET: Liste des charges
@@ -125,29 +126,44 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
     const body = await request.json();
     const validationResult = AllocateSchema.safeParse(body);
-    
+
     if (!validationResult.success) {
       return NextResponse.json(
         { error: 'Données invalides', details: validationResult.error.errors },
         { status: 400 }
       );
     }
-    
+
     const { expense_id, site_id, period_start, period_end } = validationResult.data;
-    
+
     // Répartir une dépense spécifique
     if (expense_id) {
       const { data, error } = await supabase
         .rpc('allocate_expense', { p_expense_id: expense_id });
-      
+
       if (error) throw error;
-      
+
+      // Audit : répartition tantièmes (impact financier sur copropriétaires)
+      await logCoproAction({
+        userId: access.user.id,
+        profileId: access.profile.id,
+        action: 'allocate',
+        entityType: 'copro_charge_allocation',
+        entityId: expense_id,
+        siteId: site_id ?? undefined,
+        metadata: {
+          mode: 'single_expense',
+          allocated_count: data,
+        },
+        request,
+      });
+
       return NextResponse.json({
         success: true,
         allocated_count: data,
       });
     }
-    
+
     // Répartir toutes les dépenses d'une période
     if (site_id && period_start && period_end) {
       // Récupérer les dépenses non réparties
@@ -159,27 +175,44 @@ export async function POST(request: NextRequest) {
         .eq('is_allocated', false)
         .gte('period_start', period_start)
         .lte('period_end', period_end);
-      
+
       if (fetchError) throw fetchError;
-      
+
       let totalAllocated = 0;
-      
+
       for (const expense of expenses || []) {
         const { data, error } = await supabase
           .rpc('allocate_expense', { p_expense_id: expense.id });
-        
+
         if (!error && data) {
           totalAllocated += Number(data);
         }
       }
-      
+
+      // Audit : répartition en lot
+      await logCoproAction({
+        userId: access.user.id,
+        profileId: access.profile.id,
+        action: 'allocate',
+        entityType: 'copro_charge_allocation',
+        siteId: site_id,
+        metadata: {
+          mode: 'period_batch',
+          period_start,
+          period_end,
+          expenses_processed: expenses?.length ?? 0,
+          allocated_count: totalAllocated,
+        },
+        request,
+      });
+
       return NextResponse.json({
         success: true,
         expenses_processed: expenses?.length || 0,
         allocated_count: totalAllocated,
       });
     }
-    
+
     return NextResponse.json({ error: 'expense_id ou site_id + période requis' }, { status: 400 });
   } catch (error: unknown) {
     console.error('Erreur POST /api/copro/charges:', error);

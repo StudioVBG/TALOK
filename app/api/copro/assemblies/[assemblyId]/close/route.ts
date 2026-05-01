@@ -16,6 +16,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAssemblyAccess } from "@/lib/helpers/syndic-auth";
 import { CloseAssemblySchema } from "@/lib/validations/syndic";
+import { logCoproAction } from "@/lib/audit/copro-audit";
 
 interface RouteParams {
   params: { assemblyId: string };
@@ -74,6 +75,21 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       acc[r.status] = (acc[r.status] || 0) + 1;
       return acc;
     }, {});
+
+    // Audit trail (action high : clôture AG, irréversible)
+    await logCoproAction({
+      userId: auth.user.id,
+      profileId: auth.profile.id,
+      action: "close",
+      entityType: "copro_assembly",
+      entityId: assembly.id,
+      siteId: (assembly as any).site_id,
+      metadata: {
+        held_at: heldAt,
+        resolutions_summary: summary,
+      },
+      request,
+    });
 
     return NextResponse.json({
       success: true,

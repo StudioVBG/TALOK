@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useSubscription } from "@/components/subscription/subscription-provider";
 import { getRequiredPlanForFeature, PLANS } from "@/lib/subscriptions/plans";
+import { ActiveSessionsCard } from "@/components/auth/active-sessions-card";
 
 type SettingsCard = {
   title: string;
@@ -134,6 +135,8 @@ export default function OwnerSettingsPage() {
             </Link>
           ))}
         </div>
+
+        <ActiveSessionsCard />
       </div>
     </PageTransition>
   );

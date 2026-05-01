@@ -23,6 +23,7 @@ import {
 } from "@/lib/accounting/engine";
 import { getCoproAccount } from "@/lib/accounting/syndic/fund-calls";
 import { generateCoproAnnexes } from "@/lib/accounting/syndic/annexes";
+import { logCoproAction } from "@/lib/audit/copro-audit";
 
 export const dynamic = "force-dynamic";
 
@@ -322,6 +323,26 @@ export async function POST(request: Request) {
     } catch {
       // Non-blocking: annexes generation failure doesn't prevent closing
     }
+
+    // Audit trail (action critical : clôture exercice = irréversible, impact comptable + fiscal)
+    await logCoproAction({
+      userId: user.id,
+      profileId: profile.id,
+      action: "close",
+      entityType: "copro_accounting_close",
+      entityId: exerciseId,
+      siteId: entityId,
+      riskLevel: "critical",
+      metadata: {
+        total_charges_cents: totalCharges,
+        total_produits_cents: totalProduits,
+        closing_entries_count: closingEntries.length,
+        lots_count: lots.length,
+        total_tantiemes: totalTantiemes,
+        annexes_generated: annexes !== null,
+      },
+      request,
+    });
 
     return NextResponse.json({
       success: true,

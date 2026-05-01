@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 import { requireCoproFeature } from "@/lib/helpers/copro-feature-gate";
+import { logCoproAction } from "@/lib/audit/copro-audit";
 
 export async function POST(request: Request) {
   try {
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
 
     const supabase = await createClient();
     const body = await request.json();
-    const { regularisation_id, tenant_ids } = body;
+    const { regularisation_id, tenant_ids, site_id } = body;
 
     if (!regularisation_id) {
       return NextResponse.json(
@@ -33,6 +34,20 @@ export async function POST(request: Request) {
     );
 
     await Promise.allSettled(notificationPromises);
+
+    // Audit trail (action high : envoi régularisation = impact financier copro)
+    await logCoproAction({
+      userId: access.user.id,
+      profileId: access.profile.id,
+      action: "send",
+      entityType: "copro_regularisation",
+      entityId: regularisation_id,
+      siteId: site_id ?? undefined,
+      metadata: {
+        tenants_notified: tenant_ids?.length ?? 0,
+      },
+      request,
+    });
 
     return NextResponse.json({ success: true, sent_to: tenant_ids?.length || 0 });
   } catch (error) {

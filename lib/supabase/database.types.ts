@@ -225,9 +225,7 @@ export type LeaseRow = {
   tenant_identity_verified?: boolean
   tenant_identity_method?: string | null
   tenant_identity_data?: Json | null
-  // P0.3: Colonnes Yousign ajoutées
-  yousign_signature_request_id?: string | null
-  yousign_document_id?: string | null
+  // Colonnes signature (provider interne — Yousign supprimé en mai 2026)
   signature_started_at?: string | null
   signature_completed_at?: string | null
   signature_status?: string | null

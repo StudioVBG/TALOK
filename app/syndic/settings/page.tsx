@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
 import Link from "next/link";
+import { ActiveSessionsCard } from "@/components/auth/active-sessions-card";
 import {
   Building2,
   CreditCard,
@@ -503,6 +504,8 @@ export default function SyndicSettingsPage() {
           )}
         </CardContent>
       </Card>
+
+      <ActiveSessionsCard />
     </div>
   );
 }
