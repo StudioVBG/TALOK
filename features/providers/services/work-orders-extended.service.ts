@@ -246,7 +246,15 @@ export async function requestQuote(
   return data as WorkOrderExtended;
 }
 
-/** Provider submits a quote */
+/** Provider submits a quote.
+ *
+ *  Si `input.items` est fourni, un `provider_quote` détaillé est créé
+ *  (lignes, mentions légales, PDF généré à la volée) et son id est
+ *  posé sur `work_orders.accepted_quote_id` à titre provisoire — il
+ *  sera promu en `status='accepted'` lors de approveQuote(). Sans
+ *  items[], on retombe sur le flux historique avec juste un montant
+ *  total dans `quote_amount_cents`.
+ */
 export async function submitQuote(
   supabase: SupabaseClient,
   workOrderId: string,
@@ -255,14 +263,97 @@ export async function submitQuote(
   const wo = await getWorkOrder(supabase, workOrderId);
   assertTransition(wo.status, 'quote_received');
 
+  let providerQuoteId: string | null = null;
+
+  if (input.items && input.items.length > 0 && wo.provider_id) {
+    // Résoudre l'owner_profile_id via la propriété
+    let ownerProfileId: string | null = null;
+    if (wo.property_id) {
+      const { data: prop } = await supabase
+        .from('properties')
+        .select('owner_id')
+        .eq('id', wo.property_id)
+        .maybeSingle();
+      ownerProfileId = (prop as { owner_id: string } | null)?.owner_id ?? null;
+    }
+
+    const subtotal = input.items.reduce(
+      (sum, it) => sum + it.quantity * it.unit_price,
+      0
+    );
+    const taxAmount = input.items.reduce(
+      (sum, it) => sum + it.quantity * it.unit_price * (it.tax_rate ?? 20) / 100,
+      0
+    );
+    const total = subtotal + taxAmount;
+    // Tax rate moyen pondéré pour la colonne tax_rate du quote
+    const avgTaxRate = subtotal > 0 ? (taxAmount / subtotal) * 100 : 20;
+
+    const { data: providerProfile } = await supabase
+      .from('providers')
+      .select('id')
+      .eq('profile_id', wo.provider_id)
+      .maybeSingle();
+    void providerProfile;
+
+    const { data: insertedQuote, error: quoteError } = await supabase
+      .from('provider_quotes')
+      .insert({
+        provider_profile_id: wo.provider_id,
+        owner_profile_id: ownerProfileId,
+        property_id: wo.property_id ?? null,
+        ticket_id: wo.ticket_id ?? null,
+        title: input.title || wo.title || 'Devis intervention',
+        description: input.description || wo.description || null,
+        subtotal,
+        tax_rate: Math.round(avgTaxRate * 100) / 100,
+        tax_amount: Math.round(taxAmount * 100) / 100,
+        total_amount: Math.round(total * 100) / 100,
+        valid_until: input.valid_until || null,
+        terms_and_conditions: input.terms_and_conditions || null,
+        status: 'sent',
+        sent_at: new Date().toISOString(),
+      } as never)
+      .select('id')
+      .single();
+
+    if (quoteError) throw quoteError;
+    providerQuoteId = (insertedQuote as { id: string }).id;
+
+    const itemsRows = input.items.map((item, idx) => ({
+      quote_id: providerQuoteId,
+      description: item.description,
+      quantity: item.quantity,
+      unit: item.unit ?? 'unité',
+      unit_price: item.unit_price,
+      tax_rate: item.tax_rate ?? 20,
+      sort_order: idx,
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('provider_quote_items')
+      .insert(itemsRows as never);
+
+    if (itemsError) {
+      // Rollback : supprimer le quote orphelin
+      await supabase.from('provider_quotes').delete().eq('id', providerQuoteId);
+      throw itemsError;
+    }
+  }
+
+  const updates: Record<string, unknown> = {
+    status: 'quote_received',
+    quote_amount_cents: input.quote_amount_cents,
+    quote_document_id: input.quote_document_id ?? null,
+    quote_received_at: new Date().toISOString(),
+  };
+  if (providerQuoteId) {
+    updates.accepted_quote_id = providerQuoteId;
+  }
+
   const { data, error } = await supabase
     .from('work_orders')
-    .update({
-      status: 'quote_received',
-      quote_amount_cents: input.quote_amount_cents,
-      quote_document_id: input.quote_document_id ?? null,
-      quote_received_at: new Date().toISOString(),
-    })
+    .update(updates)
     .eq('id', workOrderId)
     .select(WORK_ORDER_SELECT)
     .single();
@@ -271,7 +362,12 @@ export async function submitQuote(
   return data as WorkOrderExtended;
 }
 
-/** Owner approves the quote */
+/** Owner approves the quote.
+ *  Si un provider_quote détaillé est lié (accepted_quote_id), il est
+ *  promu de 'sent' à 'accepted' pour figer le contrat — c'est ce
+ *  document qui servira de base à la facture auto-générée après
+ *  paiement intégral.
+ */
 export async function approveQuote(
   supabase: SupabaseClient,
   workOrderId: string
@@ -290,6 +386,19 @@ export async function approveQuote(
     .single();
 
   if (error) throw error;
+
+  const acceptedQuoteId = (data as WorkOrderExtended & { accepted_quote_id?: string | null })
+    .accepted_quote_id;
+  if (acceptedQuoteId) {
+    await supabase
+      .from('provider_quotes')
+      .update({
+        status: 'accepted',
+        accepted_at: new Date().toISOString(),
+      } as never)
+      .eq('id', acceptedQuoteId);
+  }
+
   return data as WorkOrderExtended;
 }
 

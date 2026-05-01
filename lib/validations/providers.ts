@@ -110,10 +110,28 @@ export const updateWorkOrderSchema = z.object({
   notes: z.string().max(5000).nullable().optional(),
 });
 
+export const quoteLineItemSchema = z.object({
+  description: z.string().min(1).max(500),
+  quantity: z.number().positive(),
+  unit: z.string().max(50).optional().default('unité'),
+  unit_price: z.number().min(0),
+  tax_rate: z.number().min(0).max(100).optional().default(20),
+});
+
 export const submitQuoteSchema = z.object({
   quote_amount_cents: z.number().int().positive('Le montant du devis doit etre positif'),
   quote_document_id: z.string().uuid().nullable().optional(),
+  /** Lignes détaillées du devis. Si fournies, un provider_quote complet est
+   *  créé (avec PDF) et lié au work_order via accepted_quote_id. Sinon
+   *  fallback historique sur le seul montant total. */
+  items: z.array(quoteLineItemSchema).optional(),
+  title: z.string().max(200).optional(),
+  description: z.string().max(2000).optional(),
+  valid_until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  terms_and_conditions: z.string().max(5000).optional(),
 });
+
+export type QuoteLineItem = z.infer<typeof quoteLineItemSchema>;
 
 export const scheduleWorkOrderSchema = z.object({
   scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date invalide'),

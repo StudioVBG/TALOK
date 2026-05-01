@@ -79,9 +79,47 @@ export function JobDetailClient({ job }: JobDetailProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState<string | null>(null);
 
-  const [quoteAmount, setQuoteAmount] = useState("");
+  type QuoteLine = {
+    id: string;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    tax_rate: number;
+  };
+  const [quoteLines, setQuoteLines] = useState<QuoteLine[]>([
+    { id: "1", description: "", quantity: 1, unit_price: 0, tax_rate: 20 },
+  ]);
+  const [quoteTitle, setQuoteTitle] = useState("");
   const [report, setReport] = useState("");
   const [photoUrl, setPhotoUrl] = useState("");
+
+  const addQuoteLine = () =>
+    setQuoteLines((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        description: "",
+        quantity: 1,
+        unit_price: 0,
+        tax_rate: 20,
+      },
+    ]);
+  const removeQuoteLine = (id: string) =>
+    setQuoteLines((prev) => (prev.length > 1 ? prev.filter((l) => l.id !== id) : prev));
+  const updateQuoteLine = (id: string, patch: Partial<QuoteLine>) =>
+    setQuoteLines((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, ...patch } : l))
+    );
+
+  const quoteSubtotal = quoteLines.reduce(
+    (sum, l) => sum + l.quantity * l.unit_price,
+    0
+  );
+  const quoteTax = quoteLines.reduce(
+    (sum, l) => sum + l.quantity * l.unit_price * (l.tax_rate / 100),
+    0
+  );
+  const quoteTotal = quoteSubtotal + quoteTax;
 
   const status = job.status || job.statut || "draft";
   const isLegacy = !job.status && !!job.statut;
@@ -123,21 +161,44 @@ export function JobDetailClient({ job }: JobDetailProps) {
   const handleReject = () => callApi("reject", {}, "Mission refusée");
 
   const handleSubmitQuote = async () => {
-    const amount = parseFloat(quoteAmount);
-    if (!amount || amount <= 0) {
+    const validLines = quoteLines.filter(
+      (l) => l.description.trim() && l.unit_price > 0 && l.quantity > 0
+    );
+    if (validLines.length === 0) {
       toast({
-        title: "Montant invalide",
-        description: "Renseignez un montant en euros supérieur à 0.",
+        title: "Lignes manquantes",
+        description: "Ajoutez au moins une ligne avec description, quantité et prix.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (quoteTotal <= 0) {
+      toast({
+        title: "Total invalide",
+        description: "Le total du devis doit être supérieur à 0.",
         variant: "destructive",
       });
       return;
     }
     await callApi(
       "submit-quote",
-      { quote_amount_cents: Math.round(amount * 100) },
+      {
+        quote_amount_cents: Math.round(quoteTotal * 100),
+        title: quoteTitle.trim() || job.title,
+        items: validLines.map((l) => ({
+          description: l.description.trim(),
+          quantity: l.quantity,
+          unit: "unité",
+          unit_price: l.unit_price,
+          tax_rate: l.tax_rate,
+        })),
+      },
       "Devis envoyé au propriétaire"
     );
-    setQuoteAmount("");
+    setQuoteLines([
+      { id: "1", description: "", quantity: 1, unit_price: 0, tax_rate: 20 },
+    ]);
+    setQuoteTitle("");
   };
 
   const handleStart = () => callApi("start", {}, "Travaux démarrés");
@@ -205,25 +266,115 @@ export function JobDetailClient({ job }: JobDetailProps) {
                     Soumettre un devis
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Soumettre votre devis</DialogTitle>
                     <CardDescription>
-                      Le propriétaire recevra le montant et pourra l&apos;accepter ou le refuser.
+                      Détaillez les prestations. Talok génèrera le PDF de devis et la
+                      facture automatiquement après paiement.
                     </CardDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="quote-amount">Montant TTC (€)</Label>
+                      <Label htmlFor="quote-title">Intitulé du devis</Label>
                       <Input
-                        id="quote-amount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={quoteAmount}
-                        onChange={(e) => setQuoteAmount(e.target.value)}
-                        placeholder="350.00"
+                        id="quote-title"
+                        value={quoteTitle}
+                        onChange={(e) => setQuoteTitle(e.target.value)}
+                        placeholder={job.title}
                       />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Lignes</Label>
+                      {quoteLines.map((line, idx) => (
+                        <div
+                          key={line.id}
+                          className="grid grid-cols-12 gap-2 items-start"
+                        >
+                          <Input
+                            className="col-span-5"
+                            placeholder="Description"
+                            value={line.description}
+                            onChange={(e) =>
+                              updateQuoteLine(line.id, { description: e.target.value })
+                            }
+                          />
+                          <Input
+                            className="col-span-2"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="Qté"
+                            value={line.quantity}
+                            onChange={(e) =>
+                              updateQuoteLine(line.id, {
+                                quantity: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                          />
+                          <Input
+                            className="col-span-2"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="PU HT"
+                            value={line.unit_price}
+                            onChange={(e) =>
+                              updateQuoteLine(line.id, {
+                                unit_price: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                          />
+                          <Input
+                            className="col-span-2"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="TVA %"
+                            value={line.tax_rate}
+                            onChange={(e) =>
+                              updateQuoteLine(line.id, {
+                                tax_rate: parseFloat(e.target.value) || 0,
+                              })
+                            }
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="col-span-1"
+                            onClick={() => removeQuoteLine(line.id)}
+                            disabled={quoteLines.length === 1}
+                            type="button"
+                          >
+                            <XCircle className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                          {idx === quoteLines.length - 1 && null}
+                        </div>
+                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        onClick={addQuoteLine}
+                      >
+                        + Ajouter une ligne
+                      </Button>
+                    </div>
+
+                    <div className="border-t pt-3 space-y-1 text-sm">
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Sous-total HT</span>
+                        <span>{quoteSubtotal.toFixed(2)} €</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>TVA</span>
+                        <span>{quoteTax.toFixed(2)} €</span>
+                      </div>
+                      <div className="flex justify-between font-semibold text-base pt-1">
+                        <span>Total TTC</span>
+                        <span>{quoteTotal.toFixed(2)} €</span>
+                      </div>
                     </div>
                   </div>
                   <DialogFooter>
