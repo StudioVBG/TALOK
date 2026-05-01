@@ -1,6 +1,7 @@
 /**
- * Service de géocodage via Nominatim (OpenStreetMap) - Gratuit
- * Convertit une adresse en coordonnées GPS (latitude/longitude)
+ * Service de géocodage côté client.
+ * Passe par /api/geocode (Google Geocoding si clé configurée, sinon Nominatim).
+ * Garde un fallback direct Nominatim côté serveur (SSR/scripts).
  */
 
 export interface GeocodingResult {
@@ -15,11 +16,53 @@ export interface GeocodingOptions {
   limit?: number;
 }
 
+async function geocodeViaApiRoute(
+  address: string,
+  countryCode: string,
+): Promise<GeocodingResult | null> {
+  const params = new URLSearchParams({ address, country: countryCode });
+  const response = await fetch(`/api/geocode?${params.toString()}`);
+  if (!response.ok) return null;
+  const data = await response.json();
+  if (typeof data?.latitude !== "number" || typeof data?.longitude !== "number") {
+    return null;
+  }
+  return {
+    latitude: data.latitude,
+    longitude: data.longitude,
+    displayName: data.displayName ?? address,
+  };
+}
+
+async function geocodeViaNominatimDirect(
+  address: string,
+  countryCode: string,
+  limit: number,
+): Promise<GeocodingResult | null> {
+  const encodedAddress = encodeURIComponent(address);
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&countrycodes=${countryCode}&limit=${limit}`;
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "Talok/1.0 (contact@talok.fr)",
+      "Accept-Language": "fr",
+    },
+  });
+  if (!response.ok) return null;
+  const data = await response.json();
+  if (!data?.length) return null;
+  const result = data[0];
+  return {
+    latitude: parseFloat(result.lat),
+    longitude: parseFloat(result.lon),
+    displayName: result.display_name,
+    boundingBox: result.boundingbox,
+  };
+}
+
 /**
- * Géocode une adresse en utilisant l'API Nominatim (OpenStreetMap)
- * @param address - L'adresse à géocoder
- * @param options - Options de géocodage
- * @returns Les coordonnées GPS ou null si non trouvé
+ * Géocode une adresse.
+ * Côté navigateur : passe par /api/geocode (Google -> Nominatim).
+ * Côté serveur : appel direct Nominatim.
  */
 export async function geocodeAddress(
   address: string,
@@ -28,34 +71,10 @@ export async function geocodeAddress(
   const { countryCode = "fr", limit = 1 } = options;
 
   try {
-    const encodedAddress = encodeURIComponent(address);
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&countrycodes=${countryCode}&limit=${limit}`;
-
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "Talok/1.0 (contact@talok.fr)",
-        "Accept-Language": "fr",
-      },
-    });
-
-    if (!response.ok) {
-      console.error("[geocodeAddress] HTTP Error:", response.status);
-      return null;
+    if (typeof window !== "undefined") {
+      return await geocodeViaApiRoute(address, countryCode);
     }
-
-    const data = await response.json();
-
-    if (data && data.length > 0) {
-      const result = data[0];
-      return {
-        latitude: parseFloat(result.lat),
-        longitude: parseFloat(result.lon),
-        displayName: result.display_name,
-        boundingBox: result.boundingbox,
-      };
-    }
-
-    return null;
+    return await geocodeViaNominatimDirect(address, countryCode, limit);
   } catch (error) {
     console.error("[geocodeAddress] Error:", error);
     return null;
