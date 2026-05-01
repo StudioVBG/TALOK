@@ -52,28 +52,48 @@ const navigation = [
  * Vérifie l'authentification et le rôle syndic côté serveur
  * SOTA 2026: Protection serveur obligatoire
  */
+// Detecte les exceptions de contrôle de flux Next.js (redirect / notFound) pour
+// les laisser remonter au routeur — sinon on les avale et le layout boucle.
+function isNextControlFlow(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const digest = (err as { digest?: string }).digest;
+  return typeof digest === "string" && digest.startsWith("NEXT_");
+}
+
 export default async function SyndicLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
+  // Lire le pathname d'abord (avant tout `await`) pour éviter les warnings
+  // dynamic-API et garantir un fallback propre si le header est absent.
+  const pathname = headers().get("x-pathname") || "/syndic";
 
-  // 1. Vérifier l'authentification
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
+  let profile: { id: string; role: string; prenom: string | null; nom: string | null; identity_status: string | null } | null = null;
 
-  if (authError || !user) {
-    redirect("/auth/signin?redirect=/syndic/dashboard");
+  try {
+    const supabase = await createClient();
+
+    // 1. Vérifier l'authentification
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      redirect("/auth/signin?redirect=/syndic/dashboard");
+    }
+
+    // 2. Récupérer le profil (avec fallback service role en cas de récursion RLS)
+    const { profile: fetched } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null; identity_status: string | null }>(
+      user.id,
+      "id, role, prenom, nom, identity_status"
+    );
+    profile = fetched;
+  } catch (err) {
+    // Laisser passer redirect()/notFound()
+    if (isNextControlFlow(err)) throw err;
+    // Toute autre erreur (DB indisponible, env vars manquantes, etc.) :
+    // on évite la page 500 en redirigeant proprement vers signin avec un retour.
+    console.error("[SyndicLayout] auth/profile resolution failed:", err);
+    redirect("/auth/signin?redirect=/syndic/dashboard&error=auth_unavailable");
   }
-
-  // 2. Récupérer le profil (avec fallback service role en cas de récursion RLS)
-  const { profile } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null; identity_status: string | null }>(
-    user.id,
-    "id, role, prenom, nom, identity_status"
-  );
 
   if (!profile) {
     redirect("/auth/signin");
@@ -86,7 +106,6 @@ export default async function SyndicLayout({
   }
 
   // 3.bis Identity Gate — redirige vers l'onboarding si le niveau requis n'est pas atteint
-  const pathname = headers().get("x-pathname") || "/syndic";
   checkIdentityGate(pathname, profile.role, profile.identity_status);
 
   // 4. Rendre le layout - SOTA 2026: Thème light unifié + breakpoint lg

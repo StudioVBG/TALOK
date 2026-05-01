@@ -192,14 +192,26 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 7. Propager le pathname et les rôles autorisés pour les layouts serveur (identity gate)
-  const response = NextResponse.next();
-  response.headers.set("x-pathname", pathname);
+  // 7. Propager le pathname et les rôles autorisés pour les layouts serveur (identity gate).
+  // En Next.js 14, les Server Components lisent les headers via `headers()` qui
+  // retourne les REQUEST headers — pas ceux de la response. Pour qu'un layout
+  // puisse lire `x-pathname`, il faut donc cloner et muter les request headers
+  // via `NextResponse.next({ request: { headers } })`. On garde aussi la pose
+  // sur la response pour debug/observabilité côté client.
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-pathname", pathname);
 
-  // Trouver les rôles autorisés pour cette route et les propager au layout serveur
   const matchedRoute = Object.keys(ROUTE_ROLES).find(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   );
+  if (matchedRoute) {
+    requestHeaders.set("x-allowed-roles", ROUTE_ROLES[matchedRoute].join(","));
+  }
+
+  const response = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+  response.headers.set("x-pathname", pathname);
   if (matchedRoute) {
     response.headers.set("x-allowed-roles", ROUTE_ROLES[matchedRoute].join(","));
   }
