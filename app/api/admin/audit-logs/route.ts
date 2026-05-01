@@ -46,7 +46,13 @@ export async function GET(request: Request) {
 
     if (entity || entity_type) {
       const col = "entity_type";
-      query = query.eq(col, entity || entity_type);
+      const value = entity || entity_type!;
+      // Filtre composite : "copro_all" → toutes les actions copro_*
+      if (value === "copro_all") {
+        query = query.like(col, "copro_%");
+      } else {
+        query = query.eq(col, value);
+      }
     }
 
     if (userId || user_id) {

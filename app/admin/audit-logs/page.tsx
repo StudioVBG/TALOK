@@ -27,6 +27,11 @@ import {
   Key,
   Eye,
   Download,
+  Building2,
+  Gavel,
+  Coins,
+  Users,
+  ScrollText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDateShort } from "@/lib/helpers/format";
@@ -63,6 +68,36 @@ const ENTITY_ICONS: Record<string, typeof User> = {
   api_key: Key,
   subscription: CreditCard,
   payment: CreditCard,
+  // Copropriété (audit trail syndic)
+  copro_site: Building2,
+  copro_assembly: Gavel,
+  copro_resolution: ScrollText,
+  copro_council: Users,
+  copro_charge_call: Coins,
+  copro_charge_allocation: Coins,
+  copro_expense: Coins,
+  copro_fonds_travaux: Coins,
+  copro_mandate: FileText,
+  copro_regularisation: Coins,
+  copro_invitation: Users,
+  copro_accounting_close: Shield,
+  copro_member: User,
+};
+
+const ENTITY_LABELS: Record<string, string> = {
+  copro_site: "Copropriété",
+  copro_assembly: "Assemblée générale",
+  copro_resolution: "Résolution AG",
+  copro_council: "Conseil syndical",
+  copro_charge_call: "Appel de fonds",
+  copro_charge_allocation: "Répartition tantièmes",
+  copro_expense: "Dépense copro",
+  copro_fonds_travaux: "Fonds travaux ALUR",
+  copro_mandate: "Mandat syndic",
+  copro_regularisation: "Régularisation charges",
+  copro_invitation: "Invitation copro",
+  copro_accounting_close: "Clôture exercice",
+  copro_member: "Membre copro",
 };
 
 export default function AuditLogsPage() {
@@ -154,7 +189,7 @@ export default function AuditLogsPage() {
               </SelectContent>
             </Select>
             <Select value={entityFilter} onValueChange={(v) => { setEntityFilter(v); setPage(1); }}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-[220px]">
                 <SelectValue placeholder="Type d'entite" />
               </SelectTrigger>
               <SelectContent>
@@ -166,6 +201,15 @@ export default function AuditLogsPage() {
                 <SelectItem value="subscription">Abonnements</SelectItem>
                 <SelectItem value="payment">Paiements</SelectItem>
                 <SelectItem value="api_key">Cles API</SelectItem>
+                {/* Copropriété — audit trail syndic */}
+                <SelectItem value="copro_all">— Toutes actions copro —</SelectItem>
+                <SelectItem value="copro_site">Copropriétés (sites)</SelectItem>
+                <SelectItem value="copro_assembly">Assemblées générales</SelectItem>
+                <SelectItem value="copro_charge_allocation">Répartition tantièmes</SelectItem>
+                <SelectItem value="copro_charge_call">Appels de fonds</SelectItem>
+                <SelectItem value="copro_regularisation">Régularisations charges</SelectItem>
+                <SelectItem value="copro_accounting_close">Clôtures d'exercice</SelectItem>
+                <SelectItem value="copro_mandate">Mandats syndic</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -239,7 +283,7 @@ export default function AuditLogsPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-sm">{log.action}</span>
                         <Badge variant="outline" className="text-xs capitalize">
-                          {log.entity_type.replace(/_/g, " ")}
+                          {ENTITY_LABELS[log.entity_type] || log.entity_type.replace(/_/g, " ")}
                         </Badge>
                         <Badge className={cn("text-xs", riskConfig.bg, riskConfig.text)}>
                           <RiskIcon className="h-3 w-3 mr-1" />
