@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { buildAvatarUrl } from "@/lib/helpers/format";
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2, Send, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -166,7 +167,7 @@ export function TicketChat({ ticketId, currentUserId }: TicketChatProps) {
                   className={`flex gap-3 ${isMe ? "flex-row-reverse" : ""}`}
                 >
                   <Avatar className="w-8 h-8">
-                    <AvatarImage src={msg.sender?.avatar_url || ""} />
+                    <AvatarImage src={buildAvatarUrl(msg.sender?.avatar_url) ?? undefined} />
                     <AvatarFallback>
                       {msg.sender?.prenom?.[0]}
                       {msg.sender?.nom?.[0]}

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { buildAvatarUrl } from "@/lib/helpers/format";
 import {
   ArrowLeft,
   Calendar,
@@ -85,7 +86,7 @@ export default function MemberDetailPage() {
           <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12">
               {member.profile?.avatar_url && (
-                <AvatarImage src={member.profile.avatar_url} />
+                <AvatarImage src={buildAvatarUrl(member.profile.avatar_url) ?? undefined} />
               )}
               <AvatarFallback>
                 {(member.profile?.prenom?.[0] || "")}{(member.profile?.nom?.[0] || "")}

@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { User, Mail, Phone, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PropertyOwner, PropertyOwnerInfoProps } from "./types";
+import { buildAvatarUrl } from "@/lib/helpers/format";
 
 // ============================================
 // COMPOSANT PRINCIPAL
@@ -38,7 +39,7 @@ export function PropertyOwnerInfo({
         {/* Avatar et nom */}
         <div className="flex items-center gap-3">
           <Avatar className="h-12 w-12">
-            <AvatarImage src={owner.avatar_url || undefined} alt={`${owner.prenom} ${owner.nom}`} />
+            <AvatarImage src={buildAvatarUrl(owner.avatar_url) ?? undefined} alt={`${owner.prenom} ${owner.nom}`} />
             <AvatarFallback className="bg-primary/10 text-primary font-semibold">
               {initials}
             </AvatarFallback>

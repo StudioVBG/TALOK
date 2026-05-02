@@ -54,6 +54,7 @@ import { useTenantNavBadges } from "@/lib/hooks/use-tenant-nav-badges";
 import { CoreShellHeader } from "@/components/layout/core-shell-header";
 import { getCoreShellMetadata } from "@/lib/navigation/core-shell-metadata";
 import { PlatformBroadcastBanner } from "@/components/platform-broadcast-banner";
+import { buildAvatarUrl } from "@/lib/helpers/format";
 
 interface TenantAppLayoutProps {
   children: React.ReactNode;
@@ -347,7 +348,7 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="h-9 w-9 rounded-full p-0">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src={profile?.avatar_url || undefined} />
+                      <AvatarImage src={buildAvatarUrl(profile?.avatar_url) ?? undefined} />
                       <AvatarFallback className="bg-blue-100 text-blue-700 text-sm">
                         {profile?.prenom?.[0]}
                         {profile?.nom?.[0]}

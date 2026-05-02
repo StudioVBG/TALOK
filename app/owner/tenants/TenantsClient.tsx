@@ -45,7 +45,7 @@ import {
 import { PageTransition } from "@/components/ui/page-transition";
 import { GlassCard } from "@/components/ui/glass-card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
+import { buildAvatarUrl, formatCurrency, formatDateShort } from "@/lib/helpers/format";
 import { cn } from "@/lib/utils";
 
 export interface TenantWithDetails {
@@ -166,7 +166,7 @@ function TenantCard({ tenant }: { tenant: TenantWithDetails }) {
             <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
             <div className="absolute -bottom-8 left-6">
               <Avatar className="h-16 w-16 border-4 border-border shadow-lg">
-                <AvatarImage src={tenant.avatar_url || undefined} />
+                <AvatarImage src={buildAvatarUrl(tenant.avatar_url) ?? undefined} />
                 <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-lg font-bold">
                   {initials}
                 </AvatarFallback>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { buildAvatarUrl } from "@/lib/helpers/format";
 import { Euro, Plus } from "lucide-react";
 import { colocationExpensesService } from "../services/expenses.service";
 import { EXPENSE_CATEGORY_LABELS } from "../types";
@@ -77,7 +78,7 @@ export function ExpensesList({ propertyId, members, currentMemberId }: ExpensesL
                   >
                     {payer && (
                       <Avatar className="h-8 w-8">
-                        {payer.avatar_url && <AvatarImage src={payer.avatar_url} />}
+                        {payer.avatar_url && <AvatarImage src={buildAvatarUrl(payer.avatar_url) ?? undefined} />}
                         <AvatarFallback className="text-xs">
                           {(payer.prenom?.[0] || "")}{(payer.nom?.[0] || "")}
                         </AvatarFallback>

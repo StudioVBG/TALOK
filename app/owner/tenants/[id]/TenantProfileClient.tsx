@@ -46,7 +46,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { formatCurrency, formatDateShort } from "@/lib/helpers/format";
+import { buildAvatarUrl, formatCurrency, formatDateShort } from "@/lib/helpers/format";
 
 interface TenantDocument {
   id: string;
@@ -161,7 +161,7 @@ export function TenantProfileClient({ tenant, isAdmin = false }: TenantProfileCl
             {/* Avatar et nom */}
             <div className="flex items-center gap-4">
               <Avatar className="h-20 w-20 border-4 border-white shadow-lg">
-                <AvatarImage src={tenant.avatar_url} />
+                <AvatarImage src={buildAvatarUrl(tenant.avatar_url) ?? undefined} />
                 <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-500 to-purple-600 text-white">
                   {tenant.prenom?.[0]}{tenant.nom?.[0]}
                 </AvatarFallback>

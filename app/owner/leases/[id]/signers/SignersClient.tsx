@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TenantInviteModal } from "./TenantInviteModal";
 import { SignatureUsageBadge } from "@/components/subscription/signature-usage-badge";
+import { buildAvatarUrl } from "@/lib/helpers/format";
 
 interface Signer {
   id: string;
@@ -272,7 +273,7 @@ export function SignersClient({
         <CardContent className="p-4">
           <div className="flex items-start gap-4">
             <Avatar className="h-12 w-12">
-              <AvatarImage src={signer.profile?.avatar_url || undefined} />
+              <AvatarImage src={buildAvatarUrl(signer.profile?.avatar_url) ?? undefined} />
               <AvatarFallback className="bg-muted text-foreground">
                 {getInitials(signer.profile?.prenom, signer.profile?.nom)}
               </AvatarFallback>

@@ -3,6 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { buildAvatarUrl } from "@/lib/helpers/format";
 import { DoorOpen, Ruler, Euro, Sofa } from "lucide-react";
 import type { ColocationRoomWithOccupant } from "../types";
 import Link from "next/link";
@@ -58,7 +59,7 @@ export function RoomCard({ room, propertyId }: RoomCardProps) {
             <div className="flex items-center gap-2 pt-2 border-t">
               <Avatar className="h-7 w-7">
                 {occupant.profile.avatar_url && (
-                  <AvatarImage src={occupant.profile.avatar_url} />
+                  <AvatarImage src={buildAvatarUrl(occupant.profile.avatar_url) ?? undefined} />
                 )}
                 <AvatarFallback className="text-xs">
                   {(occupant.profile.prenom?.[0] || "")}{(occupant.profile.nom?.[0] || "")}

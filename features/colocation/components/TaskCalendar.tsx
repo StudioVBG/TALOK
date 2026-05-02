@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { buildAvatarUrl } from "@/lib/helpers/format";
 import { Plus, RotateCw, ClipboardList, CheckCircle2 } from "lucide-react";
 import { colocationTasksService } from "../services/tasks.service";
 import type { ColocationTaskRow } from "@/lib/supabase/database.types";
@@ -168,7 +169,7 @@ function TaskItem({
         </Badge>
         {assignee && (
           <Avatar className="h-6 w-6">
-            {assignee.avatar_url && <AvatarImage src={assignee.avatar_url} />}
+            {assignee.avatar_url && <AvatarImage src={buildAvatarUrl(assignee.avatar_url) ?? undefined} />}
             <AvatarFallback className="text-xs">
               {(assignee.prenom?.[0] || "")}{(assignee.nom?.[0] || "")}
             </AvatarFallback>

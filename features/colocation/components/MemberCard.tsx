@@ -3,6 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { buildAvatarUrl } from "@/lib/helpers/format";
 import { Euro, DoorOpen, Calendar, Shield } from "lucide-react";
 import type { ColocationMemberWithDetails } from "../types";
 import { MEMBER_STATUS_LABELS } from "../types";
@@ -29,7 +30,7 @@ export function MemberCard({ member, propertyId }: MemberCardProps) {
           <div className="flex items-start gap-3">
             <Avatar className="h-10 w-10">
               {member.profile?.avatar_url && (
-                <AvatarImage src={member.profile.avatar_url} />
+                <AvatarImage src={buildAvatarUrl(member.profile.avatar_url) ?? undefined} />
               )}
               <AvatarFallback>
                 {(member.profile?.prenom?.[0] || "")}{(member.profile?.nom?.[0] || "")}

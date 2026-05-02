@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { buildAvatarUrl } from "@/lib/helpers/format";
 import {
   ArrowLeft,
   Pencil,
@@ -172,7 +173,7 @@ export default function RoomDetailPage() {
               <div className="flex items-center gap-3">
                 <Avatar className="h-12 w-12">
                   {room.occupant.profile.avatar_url && (
-                    <AvatarImage src={room.occupant.profile.avatar_url} />
+                    <AvatarImage src={buildAvatarUrl(room.occupant.profile.avatar_url) ?? undefined} />
                   )}
                   <AvatarFallback>
                     {(room.occupant.profile.prenom?.[0] || "")}{(room.occupant.profile.nom?.[0] || "")}

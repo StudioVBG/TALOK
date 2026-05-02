@@ -64,6 +64,7 @@ import {
 import { OwnerSubscriptionCard } from "@/components/admin/owner-subscription-card";
 
 import type { AdminOwnerDetails } from "../../../_data/fetchAdminOwnerDetails";
+import { buildAvatarUrl } from "@/lib/helpers/format";
 
 interface OwnerDetailsClientProps {
   owner: AdminOwnerDetails;
@@ -242,7 +243,7 @@ export function OwnerDetailsClient({ owner }: OwnerDetailsClientProps) {
           </Link>
           <div className="flex items-center gap-4">
             <Avatar className="h-14 w-14 border-2 border-primary/20">
-              <AvatarImage src={owner.avatar_url || undefined} />
+              <AvatarImage src={buildAvatarUrl(owner.avatar_url) ?? undefined} />
               <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                 {owner.prenom?.[0]}{owner.nom?.[0]}
               </AvatarFallback>

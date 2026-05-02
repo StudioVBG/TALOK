@@ -23,6 +23,7 @@ import {
 } from "@/lib/services/chat.service";
 import { ConversationRoleBadge, type ConversationRole } from "@/components/chat/conversation-role-badge";
 import { extractErrorMessage } from "@/lib/helpers/extract-error-message";
+import { buildAvatarUrl } from "@/lib/helpers/format";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -245,7 +246,7 @@ export function ConversationsList({ currentProfileId, currentRole, selectedId, o
                       <Avatar className="h-12 w-12 flex-shrink-0">
                         {conversation.other_party_avatar_url && (
                           <AvatarImage
-                            src={conversation.other_party_avatar_url}
+                            src={buildAvatarUrl(conversation.other_party_avatar_url) ?? undefined}
                             alt={conversation.other_party_name || "Interlocuteur"}
                           />
                         )}

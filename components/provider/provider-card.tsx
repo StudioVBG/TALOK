@@ -32,6 +32,7 @@ import {
   type ProviderBadgeType,
 } from './provider-badges';
 import { SERVICE_TYPE_LABELS } from '@/lib/data/service-pricing-reference';
+import { buildAvatarUrl } from '@/lib/helpers/format';
 
 /**
  * Données d'un prestataire
@@ -110,7 +111,7 @@ export function ProviderCard({
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12">
-              <AvatarImage src={provider.avatar_url} alt={provider.name} />
+              <AvatarImage src={buildAvatarUrl(provider.avatar_url) ?? undefined} alt={provider.name} />
               <AvatarFallback className="bg-primary/10 text-primary font-medium">
                 {initials}
               </AvatarFallback>
@@ -293,7 +294,7 @@ export function ProviderCardCompact({
   return (
     <div className={`flex items-center gap-4 p-3 border rounded-lg hover:bg-gray-50 transition-colors ${className}`}>
       <Avatar className="h-10 w-10">
-        <AvatarImage src={provider.avatar_url} alt={provider.name} />
+        <AvatarImage src={buildAvatarUrl(provider.avatar_url) ?? undefined} alt={provider.name} />
         <AvatarFallback className="bg-primary/10 text-primary text-sm">
           {initials}
         </AvatarFallback>

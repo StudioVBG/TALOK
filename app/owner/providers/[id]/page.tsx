@@ -48,6 +48,7 @@ import {
 import { SERVICE_TYPE_LABELS } from '@/lib/data/service-pricing-reference';
 import { VigilanceAlert } from '@/components/vigilance/vigilance-alert';
 import type { VigilanceCheckResult } from '@/lib/data/legal-thresholds';
+import { buildAvatarUrl } from '@/lib/helpers/format';
 
 interface ProviderDetail {
   id: string;
@@ -229,7 +230,7 @@ export default function ProviderDetailPage() {
             {/* Avatar et infos principales */}
             <div className="flex flex-col items-center md:items-start gap-4">
               <Avatar className="h-24 w-24">
-                <AvatarImage src={provider.avatar_url} alt={provider.name} />
+                <AvatarImage src={buildAvatarUrl(provider.avatar_url) ?? undefined} alt={provider.name} />
                 <AvatarFallback className="bg-primary/10 text-primary text-2xl font-medium">
                   {initials}
                 </AvatarFallback>
