@@ -1,0 +1,37 @@
+name: Release Please
+
+# Génère automatiquement un CHANGELOG.md, des tags semver et des
+# release GitHub à partir des commits conventionnels (feat/fix/...).
+#
+# Comportement :
+# - À chaque push sur main, release-please ouvre/met à jour une PR
+#   "chore(main): release vX.Y.Z" qui contient le CHANGELOG.md mis à
+#   jour et le bump de version dans package.json.
+# - Quand on merge cette PR, release-please crée le tag git, la GitHub
+#   Release et publie le changelog.
+#
+# Conventions attendues dans les commits :
+#   feat: ...   → bump minor (X.[Y+1].0)
+#   fix:  ...   → bump patch (X.Y.[Z+1])
+#   feat!: ...  ou BREAKING CHANGE: dans le footer → bump major
+#   chore/docs/test/refactor/style/perf → pas de release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          release-type: node
+          # Configuration via fichier release-please-config.json
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
