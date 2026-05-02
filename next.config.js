@@ -6,8 +6,8 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 });
 
 // Serwist — successeur de next-pwa (maintenu, compatible Turbopack)
-// Desactive sur Netlify et en dev pour eviter les interferences.
-const isPWADisabled = process.env.NODE_ENV === 'development' || process.env.NETLIFY === 'true';
+// Desactive sur Netlify, Vercel et en dev pour eviter les interferences.
+const isPWADisabled = process.env.NODE_ENV === 'development' || process.env.NETLIFY === 'true' || process.env.VERCEL === '1';
 const withSerwist = isPWADisabled
   ? (config) => config
   : require('@serwist/next').withSerwist({
