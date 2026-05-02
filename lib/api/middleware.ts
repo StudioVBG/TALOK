@@ -160,7 +160,7 @@ const ALLOWED_ORIGINS = [
   process.env.NEXT_PUBLIC_SITE_URL,
   "https://talok.fr",
   "https://www.talok.fr",
-  "https://app.talok.fr",
+  "https://talok.fr",
   // Domaines de développement
   ...(process.env.NODE_ENV === "development"
     ? ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"]

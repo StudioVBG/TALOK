@@ -18,7 +18,7 @@ import { sepaPrenotification as sepaTemplate } from "../_shared/email-templates.
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || Deno.env.get("EMAIL_API_KEY");
-const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr";
+const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://talok.fr";
 const EMAIL_FROM = Deno.env.get("EMAIL_FROM") || Deno.env.get("RESEND_FROM_EMAIL") || "Talok <noreply@talok.fr>";
 const EMAIL_REPLY_TO = Deno.env.get("EMAIL_REPLY_TO") || Deno.env.get("RESEND_REPLY_TO") || undefined;
 

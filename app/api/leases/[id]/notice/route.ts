@@ -350,7 +350,7 @@ export async function POST(
               <li>Préavis : ${noticeDays} jours${reduced_notice ? " (réduit, motif : " + (reason ?? "") + ")" : ""}</li>
             </ul>
             <p>Vous pouvez consulter le préavis et préparer la sortie depuis votre espace Talok :</p>
-            <p><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.talok.fr"}/owner/leases/${leaseId}">Voir le bail</a></p>
+            <p><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://talok.fr"}/owner/leases/${leaseId}">Voir le bail</a></p>
             <p>—<br/>L'équipe Talok</p>
           `,
           idempotencyKey: `lease-notice/${notice?.id ?? leaseId}/owner`,
@@ -379,7 +379,7 @@ export async function POST(
           </ul>
           <p>Votre propriétaire (${ownerName}) a été automatiquement notifié.</p>
           <p>Pensez à organiser l'état des lieux de sortie avec lui avant cette date.</p>
-          <p><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://app.talok.fr"}/tenant/lease">Voir mon bail</a></p>
+          <p><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://talok.fr"}/tenant/lease">Voir mon bail</a></p>
           <p>—<br/>L'équipe Talok</p>
         `,
         idempotencyKey: `lease-notice/${notice?.id ?? leaseId}/tenant`,

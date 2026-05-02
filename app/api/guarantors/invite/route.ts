@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
       : "le locataire";
 
     const propertyAddress = (lease?.property as any)?.adresse_complete || "";
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
     // Format unifié : on passe par /signup/role qui propage `invite=` jusqu'à
     // /signup/account où la bannière "Inscription par invitation" est affichée
     // et le rôle est verrouillé côté API par /api/v1/auth/register.

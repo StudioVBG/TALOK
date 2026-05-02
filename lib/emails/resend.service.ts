@@ -961,7 +961,7 @@ export async function sendEDLSignatureRequest(data: {
   edlType: "entree" | "sortie";
   signatureToken: string;
 }): Promise<EmailResult> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
   const template = emailTemplates.edlSignatureRequest({
     signerName: data.signerName,
     ownerName: data.ownerName,
@@ -997,7 +997,7 @@ export async function sendEDLCounterpartySignedNotification(data: {
   edlType: "entree" | "sortie";
   tokenUrl?: string;
 }): Promise<EmailResult> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
   const signatureUrl =
     data.recipientRole === "owner"
       ? `${appUrl}/owner/inspections/${data.edlId}?sign=1`
@@ -1035,7 +1035,7 @@ export async function sendEDLFullySignedNotification(data: {
   edlId: string;
   edlType: "entree" | "sortie";
 }): Promise<EmailResult> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
   const edlUrl =
     data.recipientRole === "owner"
       ? `${appUrl}/owner/inspections/${data.edlId}`

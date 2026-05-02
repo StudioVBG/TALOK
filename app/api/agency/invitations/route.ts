@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Email d'invitation
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
     const inviteUrl = `${appUrl}/signup/role?role=agency&invite=${invitation.invitation_token}&email=${encodeURIComponent(data.email)}`;
     const inviterName = `${profile.prenom || ""} ${profile.nom || ""}`.trim() || "Votre agence";
 

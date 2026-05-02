@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
           const eng = engagement as any;
           const tenantName = `${eng.tenant?.prenom || ""} ${eng.tenant?.nom || ""}`.trim() || "le locataire";
           const guarantorName = `${guarantorProf.prenom || ""} ${guarantorProf.nom || ""}`.trim() || "Garant";
-          const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
 
           // Fetch property address via lease
           const { data: leaseWithProp } = await serviceClient

@@ -275,7 +275,7 @@ export async function generateSignedLeasePDF(
           <p>Votre contrat de bail a été signé par toutes les parties.</p>
           <p>Le document PDF signé est désormais disponible dans votre espace documents.</p>
           <p>
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr"}/tenant/documents"
+            <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr"}/tenant/documents"
                style="display:inline-block;padding:12px 24px;background:#2563eb;color:#fff;text-decoration:none;border-radius:6px;">
               Consulter mes documents
             </a>

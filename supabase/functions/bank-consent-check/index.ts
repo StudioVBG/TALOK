@@ -14,7 +14,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RESEND_FROM = Deno.env.get("RESEND_FROM_EMAIL") ?? "Talok <notifications@talok.fr>";
-const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://app.talok.fr";
+const APP_URL = Deno.env.get("NEXT_PUBLIC_APP_URL") ?? "https://talok.fr";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

@@ -258,7 +258,7 @@ export function renderSyndicSignature(syndic: SyndicInfo): string {
 // CTAs partagés
 // ============================================
 
-const DEFAULT_APP_URL = "https://app.talok.fr";
+const DEFAULT_APP_URL = "https://talok.fr";
 
 export function getAppUrl(override?: string | null): string {
   return override || DEFAULT_APP_URL;

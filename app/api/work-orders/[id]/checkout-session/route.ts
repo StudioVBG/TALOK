@@ -234,7 +234,7 @@ export const POST = withSecurity(
       const netToProviderCents = grossCents - totalFeesCents;
 
       // 7. URLs de retour
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
       const successUrl = `${appUrl}/owner/tickets?wo_paid=${workOrder.id}`;
       const cancelUrl = `${appUrl}/owner/tickets?wo_cancel=${workOrder.id}`;
 

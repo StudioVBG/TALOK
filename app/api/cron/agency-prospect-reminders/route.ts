@@ -120,7 +120,7 @@ export async function GET(request: Request) {
     // 2. Envoi d'un email digest par agence
     const sentTo: string[] = [];
     if (!dryRun) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.talok.fr";
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://talok.fr";
       for (const [, batch] of remindersByAgency) {
         await sendEmail({
           to: batch.agency.email,

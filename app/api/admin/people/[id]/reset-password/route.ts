@@ -82,7 +82,7 @@ export async function POST(
     }
 
     // 3. Générer le magic link recovery via l'admin API Supabase
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
     const { data: linkData, error: linkError } =
       await serviceClient.auth.admin.generateLink({
         type: "recovery",

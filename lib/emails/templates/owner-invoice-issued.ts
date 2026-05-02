@@ -39,7 +39,7 @@ function formatEur(amount: number): string {
 }
 
 function getAppUrl(override?: string | null): string {
-  return override || "https://app.talok.fr";
+  return override || "https://talok.fr";
 }
 
 export function ownerInvoiceIssuedEmail(params: OwnerInvoiceIssuedParams): {

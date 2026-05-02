@@ -24,7 +24,7 @@ serve(async (req) => {
     );
 
     const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
-    const APP_URL = Deno.env.get("APP_URL") ?? "https://app.talok.fr";
+    const APP_URL = Deno.env.get("APP_URL") ?? "https://talok.fr";
 
     // Find entries older than 7 days without linked document
     const sevenDaysAgo = new Date(

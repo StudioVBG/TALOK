@@ -348,7 +348,7 @@ async function dispatchEmail(
     const fullUrl = actionUrl
       ? actionUrl.startsWith("http")
         ? actionUrl
-        : `https://app.talok.fr${actionUrl}`
+        : `https://talok.fr${actionUrl}`
       : undefined;
     const salutation = profile.prenom ? `Bonjour ${profile.prenom},` : "Bonjour,";
     const html = `

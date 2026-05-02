@@ -42,7 +42,7 @@ export function insuranceExpiry30jEmail(params: InsuranceEmailParams) {
       <div style="background:#FEF3C7;border-left:4px solid #F59E0B;padding:20px 24px;margin:24px 0;border-radius:0 8px 8px 0">
         <p style="margin:0;color:#92400E;font-weight:600">Pensez a renouveler votre contrat avant le ${dateFormatted} pour eviter toute interruption de couverture.</p>
       </div>
-      <a href="https://app.talok.fr/owner/insurance" style="display:inline-block;background:linear-gradient(135deg,#2563EB,#1D4ED8);color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:16px;margin:24px 0">Gerer mes assurances</a>
+      <a href="https://talok.fr/owner/insurance" style="display:inline-block;background:linear-gradient(135deg,#2563EB,#1D4ED8);color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:16px;margin:24px 0">Gerer mes assurances</a>
       <p style="margin-top:24px;font-size:12px;color:#999">Talok — Gestion locative simplifiee</p>
     </div>
   </div>`;
@@ -70,7 +70,7 @@ export function insuranceExpiry7jEmail(params: InsuranceEmailParams) {
       <div style="background:#FEE2E2;border-left:4px solid #EF4444;padding:20px 24px;margin:24px 0;border-radius:0 8px 8px 0">
         <p style="margin:0;color:#991B1B;font-weight:600">Action requise : renouvelez votre assurance immediatement pour eviter d'etre en defaut de couverture.</p>
       </div>
-      <a href="https://app.talok.fr/owner/insurance" style="display:inline-block;background:linear-gradient(135deg,#DC2626,#B91C1C);color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:16px;margin:24px 0">Renouveler maintenant</a>
+      <a href="https://talok.fr/owner/insurance" style="display:inline-block;background:linear-gradient(135deg,#DC2626,#B91C1C);color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:16px;margin:24px 0">Renouveler maintenant</a>
       <p style="margin-top:24px;font-size:12px;color:#999">Talok — Gestion locative simplifiee</p>
     </div>
   </div>`;
@@ -99,7 +99,7 @@ export function tenantInsuranceMissingEmail(params: {
       <div style="background:#FEF3C7;border-left:4px solid #F59E0B;padding:20px 24px;margin:24px 0;border-radius:0 8px 8px 0">
         <p style="margin:0;color:#92400E;font-weight:600">L'assurance multirisques habitation est obligatoire pour tout locataire. Vous pouvez lui envoyer un rappel depuis Talok.</p>
       </div>
-      <a href="https://app.talok.fr/owner/insurance" style="display:inline-block;background:linear-gradient(135deg,#2563EB,#1D4ED8);color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:16px;margin:24px 0">Voir les assurances</a>
+      <a href="https://talok.fr/owner/insurance" style="display:inline-block;background:linear-gradient(135deg,#2563EB,#1D4ED8);color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:600;font-size:16px;margin:24px 0">Voir les assurances</a>
       <p style="margin-top:24px;font-size:12px;color:#999">Talok — Gestion locative simplifiee</p>
     </div>
   </div>`;

@@ -109,7 +109,7 @@ export async function POST(request: Request) {
 
       // Send invitation email with temporary credentials
       try {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
         const providerName = `${prenom || ""} ${nom || ""}`.trim() || "Prestataire";
         const template = emailTemplates.providerInvite({
           providerName,

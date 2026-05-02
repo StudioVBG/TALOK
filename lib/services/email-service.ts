@@ -438,7 +438,7 @@ export async function sendInitialInvoiceEmail(params: {
   includesDeposit: boolean;
   dueDate: string;
 }): Promise<EmailResult> {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
   const template = emailTemplates.initialInvoiceNotification({
     tenantName: params.tenantName,
     propertyAddress: params.propertyAddress,

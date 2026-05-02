@@ -113,7 +113,7 @@ export async function POST(
     // 4. Email mandant (Resend, idempotent par token)
     const ownerName = `${owner.prenom ?? ""} ${owner.nom ?? ""}`.trim() || "Mandant";
     const agencyName = `${profile.prenom ?? ""} ${profile.nom ?? ""}`.trim() || "Votre agence";
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.talok.fr";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://talok.fr";
     const signatureUrl = `${appUrl}/signature/mandate/${signatureToken}`;
 
     await sendEmail({

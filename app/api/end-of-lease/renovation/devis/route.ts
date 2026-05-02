@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       .eq("id", validatedData.renovation_item_id);
 
     // Send quote request emails to each provider
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://app.talok.fr";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
     const propertyAddress = (renovationItem.lease_end_process as any)?.property?.adresse_complete || "";
     const description = validatedData.message || renovationItem.description || "Travaux de rénovation";
     for (const provider of validatedData.providers) {

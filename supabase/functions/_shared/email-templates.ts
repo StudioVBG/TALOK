@@ -5,7 +5,7 @@
  * pour éviter les templates inline et garantir la cohérence visuelle.
  */
 
-const APP_URL = () => Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://app.talok.fr";
+const APP_URL = () => Deno.env.get("NEXT_PUBLIC_APP_URL") || "https://talok.fr";
 
 function baseWrapper(content: string): string {
   return `

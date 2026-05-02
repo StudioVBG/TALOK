@@ -175,7 +175,7 @@ export async function POST(
 
       // Email confirmation à l'agence
       if (agency?.email) {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.talok.fr";
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://talok.fr";
         await sendEmail({
           to: agency.email,
           subject: `✅ Mandat ${mandate.mandate_number} signé`,
@@ -197,7 +197,7 @@ export async function POST(
 
       // Email confirmation au mandant
       if (owner?.email) {
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.talok.fr";
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://talok.fr";
         await sendEmail({
           to: owner.email,
           subject: `Confirmation de signature — Mandat ${mandate.mandate_number}`,
@@ -267,7 +267,7 @@ export async function POST(
 
     // Email à l'agence
     if (agency?.email) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://app.talok.fr";
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://talok.fr";
       await sendEmail({
         to: agency.email,
         subject: `❌ Mandat ${mandate.mandate_number} refusé`,
