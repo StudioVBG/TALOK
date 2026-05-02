@@ -318,16 +318,20 @@ const nextConfig = {
 
 const baseConfig = withBundleAnalyzer(withSerwist(nextConfig));
 
-// Toujours wrapper avec Sentry pour activer l'instrumentation client.
-// Sans SENTRY_AUTH_TOKEN, withSentryConfig skip l'upload des sourcemaps
-// mais initialise quand même Sentry côté navigateur.
-module.exports = withSentryConfig(baseConfig, {
-  org: process.env.SENTRY_ORG || "talok",
-  project: process.env.SENTRY_PROJECT || "talok",
-  silent: !process.env.CI,
-  widenClientFileUpload: true,
-  tunnelRoute: "/monitoring",
-  disableLogger: true,
-  automaticVercelMonitors: false,
-  hideSourceMaps: true,
-});
+// Wrapper Sentry UNIQUEMENT si SENTRY_AUTH_TOKEN est défini.
+// Sans le token, le wrapper Sentry hang silencieusement pendant le build
+// (tentative de telemetry sans credentials qui timeout). Sentry runtime
+// continue de fonctionner via instrumentation.ts (server) — seul le
+// client navigateur perd l'instrumentation tant qu'on n'a pas le token.
+module.exports = process.env.SENTRY_AUTH_TOKEN
+  ? withSentryConfig(baseConfig, {
+      org: process.env.SENTRY_ORG || "talok",
+      project: process.env.SENTRY_PROJECT || "talok",
+      silent: !process.env.CI,
+      widenClientFileUpload: true,
+      tunnelRoute: "/monitoring",
+      disableLogger: true,
+      automaticVercelMonitors: false,
+      hideSourceMaps: true,
+    })
+  : baseConfig;
