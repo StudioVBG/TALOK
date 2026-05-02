@@ -114,6 +114,14 @@ const nextConfig = {
       // natif et ne jamais passer par le bundler webpack.
       'puppeteer-core',
       '@sparticuz/chromium',
+      // Packages lourds à externaliser pour rester sous la limite AWS Lambda
+      // (bundle SSR < 250 MB unzippé / 50 MB zippé) sur Netlify Functions.
+      'tesseract.js',
+      'sharp',
+      'pdf-lib',
+      'exceljs',
+      'jszip',
+      'firebase-admin',
     ],
     
     // Optimiser le tree-shaking et réduire la taille des bundles
