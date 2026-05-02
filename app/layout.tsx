@@ -16,6 +16,8 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { LocalStorageMigration } from "@/components/utils/LocalStorageMigration";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Analytics } from "@vercel/analytics/next";
 
 /**
  * Configuration des polices avec next/font/local pour éviter :
@@ -341,6 +343,8 @@ export default function RootLayout({
           </CapacitorProvider>
           </MotionProvider>
         </ThemeProvider>
+        <SpeedInsights />
+        <Analytics />
       </body>
     </html>
   );
