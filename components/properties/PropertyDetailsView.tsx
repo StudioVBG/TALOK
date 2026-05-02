@@ -26,6 +26,7 @@ import {
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { formatPropertyAddress } from "@/lib/properties/address";
 
 // Composants partagés
 import { PropertyPhotosGallery } from "./PropertyPhotosGallery";
@@ -108,8 +109,9 @@ export function PropertyDetailsView({
   const typeLabel = TYPE_LABELS[property.type] || property.type;
   const isParking = isParkingType(property.type);
   
-  // Construire l'adresse complète pour l'affichage
-  const fullAddress = `${property.adresse_complete}, ${property.code_postal} ${property.ville}`;
+  // Construire l'adresse complète pour l'affichage et le géocodage
+  // (évite la duplication si adresse_complete contient déjà CP + ville)
+  const fullAddress = formatPropertyAddress(property.adresse_complete, property.code_postal, property.ville);
 
   return (
     <motion.div

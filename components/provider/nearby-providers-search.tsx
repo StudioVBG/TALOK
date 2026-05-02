@@ -51,6 +51,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { geocodeAddress } from "@/lib/services/geocoding.service";
+import { formatPropertyAddress } from "@/lib/properties/address";
 import { SERVICE_TYPE_LABELS } from "@/lib/data/service-pricing-reference";
 
 const MapContainer = dynamic(
@@ -434,9 +435,7 @@ export function NearbyProvidersSearch({
               p.title ||
               [p.adresse_complete, p.ville].filter(Boolean).join(" — ") ||
               "Bien sans titre",
-            address: [p.adresse_complete, p.code_postal, p.ville]
-              .filter(Boolean)
-              .join(", "),
+            address: formatPropertyAddress(p.adresse_complete, p.code_postal, p.ville),
             latitude: p.latitude ?? null,
             longitude: p.longitude ?? null,
           }))

@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMutationWithToast } from "@/lib/hooks/use-mutation-with-toast";
 import { apiClient } from "@/lib/api-client";
+import { formatPropertyAddress } from "@/lib/properties/address";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -1389,7 +1390,7 @@ export function PropertyDetailsClient({ details, propertyId, parentBuilding }: P
               <PropertyMap
                 latitude={(property as any).latitude}
                 longitude={(property as any).longitude}
-                address={`${property.adresse_complete}, ${property.code_postal} ${property.ville}`}
+                address={formatPropertyAddress(property.adresse_complete, property.code_postal, property.ville)}
                 height="220px"
                 zoom={15}
                 markerColor="primary"

@@ -172,6 +172,31 @@ export function formatFullAddress(
   return parts.join(', ');
 }
 
+/**
+ * Formate l'adresse d'une propriété en évitant la duplication du code postal/ville.
+ *
+ * Selon comment la propriété a été créée, `adresse_complete` peut contenir :
+ * - Juste la rue : "Route du Phare"
+ * - L'adresse complète : "Route du Phare 97220 La Trinité"
+ *
+ * Ce helper détecte le cas et évite de dupliquer code postal + ville.
+ * À utiliser pour le géocoding et tout affichage de l'adresse complète.
+ */
+export function formatPropertyAddress(
+  adresseComplete: string | null | undefined,
+  codePostal: string | null | undefined,
+  ville: string | null | undefined,
+): string {
+  if (!adresseComplete) {
+    return [codePostal, ville].filter(Boolean).join(' ').trim();
+  }
+  if (codePostal && adresseComplete.includes(codePostal)) {
+    return adresseComplete.trim();
+  }
+  const cityPart = [codePostal, ville].filter(Boolean).join(' ');
+  return cityPart ? `${adresseComplete}, ${cityPart}` : adresseComplete;
+}
+
 // ============================================
 // TYPES INTERNES (API Adresse GeoJSON)
 // ============================================
