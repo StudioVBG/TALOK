@@ -16,6 +16,7 @@ interface ExternalFavoritePayload {
   category?: string | null;
   address?: string | null;
   phone?: string | null;
+  website?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   rating?: number | null;
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
         category: body.category ?? null,
         address: body.address ?? null,
         phone: body.phone ?? null,
+        website: body.website ?? null,
         latitude: body.latitude ?? null,
         longitude: body.longitude ?? null,
         rating: body.rating ?? null,

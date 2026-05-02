@@ -27,6 +27,7 @@ import {
   MessageSquare,
   StickyNote,
   Save,
+  Globe,
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
@@ -93,6 +94,7 @@ interface NearbyProvider {
   rating?: number;
   reviews_count?: number;
   phone?: string;
+  website?: string;
   is_open?: boolean;
   photo_url?: string;
   google_maps_url: string;
@@ -226,20 +228,60 @@ export function NearbyProvidersSearch({
     setDetailNotes("");
     setDetailNotesLoaded("");
 
-    // Si déjà en favori, charger les notes existantes
+    // Si déjà en favori, charger les notes existantes + champs persistés
+    // (website, phone) qui ne sont pas dans le résultat Text Search.
     if (savedIds.has(provider.id)) {
       try {
         const res = await fetch("/api/providers/external-favorites");
-        if (!res.ok) return;
-        const data = await res.json();
-        const found = (data?.favorites ?? []).find(
-          (f: any) => f.place_id === provider.id,
-        );
-        const notes = (found?.notes as string) ?? "";
-        setDetailNotes(notes);
-        setDetailNotesLoaded(notes);
+        if (res.ok) {
+          const data = await res.json();
+          const found = (data?.favorites ?? []).find(
+            (f: any) => f.place_id === provider.id,
+          );
+          const notes = (found?.notes as string) ?? "";
+          setDetailNotes(notes);
+          setDetailNotesLoaded(notes);
+          if (found?.website || found?.phone) {
+            setDetailProvider((prev) =>
+              prev && prev.id === provider.id
+                ? {
+                    ...prev,
+                    website: prev.website ?? found.website ?? undefined,
+                    phone: prev.phone ?? found.phone ?? undefined,
+                  }
+                : prev,
+            );
+          }
+        }
       } catch (err) {
         console.warn("[NearbyProvidersSearch] Lecture notes échouée:", err);
+      }
+    }
+
+    // Le Text Search Google ne renvoie ni site web ni téléphone : on
+    // enrichit la fiche via Place Details (cache 24h côté serveur).
+    if (provider.source === "google" && (!provider.website || !provider.phone)) {
+      try {
+        const res = await fetch(
+          `/api/providers/place-details/${encodeURIComponent(provider.id)}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const details = data?.details ?? {};
+          if (details.website || details.phone) {
+            setDetailProvider((prev) =>
+              prev && prev.id === provider.id
+                ? {
+                    ...prev,
+                    website: prev.website ?? details.website ?? undefined,
+                    phone: prev.phone ?? details.phone ?? undefined,
+                  }
+                : prev,
+            );
+          }
+        }
+      } catch (err) {
+        console.warn("[NearbyProvidersSearch] Lecture détails échouée:", err);
       }
     }
   };
@@ -330,6 +372,7 @@ export function NearbyProvidersSearch({
             category,
             address: provider.address ?? null,
             phone: provider.phone ?? null,
+            website: provider.website ?? null,
             latitude: provider.latitude,
             longitude: provider.longitude,
             rating: provider.rating ?? null,
@@ -971,6 +1014,18 @@ export function NearbyProvidersSearch({
                       <a href={`tel:${detailProvider.phone.replace(/\s/g, "")}`}>
                         <Phone className="h-4 w-4 mr-2" />
                         Appeler {detailProvider.phone}
+                      </a>
+                    </Button>
+                  )}
+                  {detailProvider.website && (
+                    <Button asChild variant="outline" className="w-full justify-start">
+                      <a
+                        href={detailProvider.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Globe className="h-4 w-4 mr-2" />
+                        Visiter le site web
                       </a>
                     </Button>
                   )}

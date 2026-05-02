@@ -52,6 +52,7 @@ interface GooglePlaceResult {
   user_ratings_total?: number;
   formatted_phone_number?: string;
   international_phone_number?: string;
+  website?: string;
   opening_hours?: {
     open_now?: boolean;
   };
@@ -71,6 +72,7 @@ interface NearbyProvider {
   rating?: number;
   reviews_count?: number;
   phone?: string;
+  website?: string;
   is_open?: boolean;
   photo_url?: string;
   google_maps_url: string;
@@ -287,6 +289,7 @@ export async function GET(request: NextRequest) {
           rating: place.rating,
           reviews_count: place.user_ratings_total,
           phone: place.formatted_phone_number || place.international_phone_number,
+          website: place.website,
           is_open: place.opening_hours?.open_now,
           photo_url: place.photos?.[0]?.photo_reference
             ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=100&photo_reference=${place.photos[0].photo_reference}&key=${googleApiKey}`
@@ -378,6 +381,7 @@ function getDemoProviders(
     phone: string;
     is_open: boolean;
     mapsTerm: string;
+    website?: string;
   };
 
   const build = (seeds: Seed[]): NearbyProvider[] =>
@@ -393,6 +397,7 @@ function getDemoProviders(
         rating: s.rating,
         reviews_count: s.reviews_count,
         phone: s.phone,
+        website: s.website,
         is_open: s.is_open,
         google_maps_url: mapsLink(s.mapsTerm),
         source: "google" as const,

@@ -20,6 +20,7 @@ import {
   StickyNote,
   Save,
   X,
+  Globe,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,7 @@ interface ExternalFavorite {
   category: string | null;
   address: string | null;
   phone: string | null;
+  website: string | null;
   rating: number | null;
   reviews_count: number | null;
   google_maps_url: string | null;
@@ -216,6 +218,17 @@ export function ExternalFavoritesSection() {
                   >
                     <Phone className="h-3 w-3" />
                     {f.phone}
+                  </a>
+                )}
+                {f.website && (
+                  <a
+                    href={f.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <Globe className="h-3 w-3" />
+                    Site web
                   </a>
                 )}
                 {f.google_maps_url && (
