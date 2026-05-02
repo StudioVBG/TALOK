@@ -47,7 +47,7 @@ export async function PATCH(
         assigned_to,
         property:properties(owner_id),
         lease:leases(roommates(user_id)),
-        work_orders(provider_id)
+        work_orders!ticket_id(provider_id)
       `)
       .eq("id", id as any)
       .maybeSingle();

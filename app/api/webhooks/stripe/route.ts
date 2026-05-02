@@ -2228,6 +2228,26 @@ async function handleWorkOrderPaymentSucceeded(
         err
       );
     }
+
+    // Auto-génération de la facture prestataire à partir du devis accepté.
+    // Idempotent (provider_quotes.converted_invoice_id) — peut être rappelé
+    // sans dommage si Stripe rejoue le webhook.
+    try {
+      const { createInvoiceFromWorkOrder } = await import(
+        "@/lib/work-orders/auto-invoice"
+      );
+      const result = await createInvoiceFromWorkOrder(supabase, workOrderId);
+      if (result && !result.reused) {
+        console.log(
+          `[Stripe Webhook] Provider invoice ${result.invoice_number} auto-generated for work order ${workOrderId}`
+        );
+      }
+    } catch (err) {
+      console.error(
+        "[Stripe Webhook] work_order auto-invoice creation failed:",
+        err
+      );
+    }
   }
 
   // Résoudre la référence humaine du ticket lié pour l'email

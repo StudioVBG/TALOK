@@ -39,7 +39,7 @@ export async function GET(
         lease:leases(id, date_debut, date_fin, statut),
         creator:profiles!created_by_profile_id(id, nom, prenom, role, telephone),
         assignee:profiles!assigned_to(id, nom, prenom, role, telephone),
-        work_orders(
+        work_orders!ticket_id(
           id, statut, date_intervention_prevue, date_intervention_reelle,
           cout_estime, cout_final,
           provider:profiles!provider_id(id, nom, prenom, telephone)

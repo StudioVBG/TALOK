@@ -650,8 +650,23 @@ export default function ProviderInvoicesPage() {
                           <span className="font-semibold">{formatCurrency(invoice.total_amount)}</span>
                           <div className="flex items-center gap-1">
                             {invoice.status === "draft" && <Button variant="ghost" size="sm" onClick={() => handleSendInvoice(invoice.id)}><Send className="h-4 w-4" /></Button>}
-                            <Button variant="ghost" size="sm"><Eye className="h-4 w-4" /></Button>
-                            {invoice.pdf_url && <Button variant="ghost" size="sm" asChild><a href={invoice.pdf_url} download><Download className="h-4 w-4" /></a></Button>}
+                            <Button variant="ghost" size="sm" asChild>
+                              <a
+                                href={`/api/provider/invoices/${invoice.id}/pdf`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </a>
+                            </Button>
+                            <Button variant="ghost" size="sm" asChild>
+                              <a
+                                href={`/api/provider/invoices/${invoice.id}/pdf`}
+                                download={`${invoice.invoice_number}.pdf`}
+                              >
+                                <Download className="h-4 w-4" />
+                              </a>
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -713,16 +728,23 @@ export default function ProviderInvoicesPage() {
                                   <Send className="h-4 w-4" />
                                 </Button>
                               )}
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
+                              <Button variant="ghost" size="sm" asChild>
+                                <a
+                                  href={`/api/provider/invoices/${invoice.id}/pdf`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </a>
                               </Button>
-                              {invoice.pdf_url && (
-                                <Button variant="ghost" size="sm" asChild>
-                                  <a href={invoice.pdf_url} download>
-                                    <Download className="h-4 w-4" />
-                                  </a>
-                                </Button>
-                              )}
+                              <Button variant="ghost" size="sm" asChild>
+                                <a
+                                  href={`/api/provider/invoices/${invoice.id}/pdf`}
+                                  download={`${invoice.invoice_number}.pdf`}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </a>
+                              </Button>
                             </div>
                           </TableCell>
                         </TableRow>
