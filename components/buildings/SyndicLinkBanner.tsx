@@ -36,6 +36,7 @@ import Link from "next/link";
 
 type LinkStatus = "unlinked" | "pending" | "linked" | "rejected";
 type OwnershipType = "full" | "partial";
+type SyndicMode = "none" | "volunteer" | "managed_external";
 
 interface MatchedSite {
   id: string;
@@ -56,6 +57,12 @@ export interface SyndicLinkBannerProps {
   initialStatus: LinkStatus;
   linkedSite?: LinkedSiteSummary | null;
   rejectedReason?: string | null;
+  /**
+   * Mode de gestion : `volunteer` = owner-bénévole de son propre immeuble
+   * (le site lui appartient). `managed_external` = syndic externe Talok.
+   * Permet d'afficher un wording adapté dans l'état "linked".
+   */
+  syndicMode?: SyndicMode;
 }
 
 export function SyndicLinkBanner({
@@ -64,6 +71,7 @@ export function SyndicLinkBanner({
   initialStatus,
   linkedSite,
   rejectedReason,
+  syndicMode = "none",
 }: SyndicLinkBannerProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -247,29 +255,62 @@ export function SyndicLinkBanner({
   // Rendu
   // ────────────────────────────────────────────────────────────────────────
 
-  // Status: linked
+  // Status: linked — wording différent selon syndicMode
   if (status === "linked" && site) {
+    const isVolunteer = syndicMode === "volunteer";
     return (
-      <Card className="border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-900/20">
+      <Card
+        className={
+          isVolunteer
+            ? "border-violet-200 bg-violet-50/50 dark:border-violet-800 dark:bg-violet-900/20"
+            : "border-emerald-200 bg-emerald-50/50 dark:border-emerald-800 dark:bg-emerald-900/20"
+        }
+      >
         <CardContent className="p-4 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/40">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+            <div
+              className={
+                isVolunteer
+                  ? "p-2 rounded-lg bg-violet-100 dark:bg-violet-900/40"
+                  : "p-2 rounded-lg bg-emerald-100 dark:bg-emerald-900/40"
+              }
+            >
+              {isVolunteer ? (
+                <Sparkles className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+              ) : (
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              )}
             </div>
             <div>
-              <p className="text-sm font-semibold text-foreground">
-                Connecté à la copropriété <span className="text-emerald-700 dark:text-emerald-400">{site.name}</span>
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Vous accédez en lecture seule aux AG, appels de fonds, PV et documents officiels.
-              </p>
+              {isVolunteer ? (
+                <>
+                  <p className="text-sm font-semibold text-foreground">
+                    Mode syndic-bénévole actif —{" "}
+                    <span className="text-violet-700 dark:text-violet-400">{site.name}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Vous gérez la comptabilité copro, contrats et appels de provisions.
+                    Votre rôle propriétaire reste actif.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold text-foreground">
+                    Connecté à la copropriété{" "}
+                    <span className="text-emerald-700 dark:text-emerald-400">{site.name}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Vous accédez en lecture seule aux AG, appels de fonds, PV et documents officiels.
+                  </p>
+                </>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Link href={`/syndic/sites/${site.id}`}>
               <Button size="sm" variant="outline">
                 <ExternalLink className="w-4 h-4 mr-2" />
-                Voir l'espace copro
+                {isVolunteer ? "Ouvrir l'espace syndic" : "Voir l'espace copro"}
               </Button>
             </Link>
             <Button
@@ -277,7 +318,7 @@ export function SyndicLinkBanner({
               variant="ghost"
               onClick={handleUnlink}
               disabled={unlinking}
-              title="Rompre le lien"
+              title={isVolunteer ? "Désactiver le mode bénévole" : "Rompre le lien"}
             >
               {unlinking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2Off className="w-4 h-4" />}
             </Button>
