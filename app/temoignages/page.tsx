@@ -267,7 +267,7 @@ export default function TemoignagesPage() {
               Rejoignez +10 000 propriétaires satisfaits
             </h2>
             <p className="text-slate-300 mb-6">
-              Essayez gratuitement pendant 14 jours. Sans carte bancaire.
+              1er mois offert sur les plans payants. Sans carte bancaire.
             </p>
             <Link href="/auth/signup">
               <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100">

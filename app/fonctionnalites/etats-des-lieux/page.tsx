@@ -311,7 +311,7 @@ export default function EtatDesLieuxPage() {
               Réalisez votre premier EDL numérique
             </h2>
             <p className="text-slate-300 mb-8">
-              Essayez gratuitement pendant 14 jours. Aucune carte bancaire requise.
+              1er mois offert. Aucune carte bancaire requise.
             </p>
             <Link href="/auth/signup">
               <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100">

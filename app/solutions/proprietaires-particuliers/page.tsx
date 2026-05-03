@@ -127,7 +127,7 @@ export default function ProprietairesParticuliersPage() {
             <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-400">
               <div className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-emerald-400" />
-                14 jours d'essai gratuit
+                1er mois offert
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-4 h-4 text-emerald-400" />
@@ -320,7 +320,7 @@ export default function ProprietairesParticuliersPage() {
               </Button>
             </Link>
             <p className="mt-4 text-sm text-slate-400">
-              14 jours gratuits · Sans engagement · Support inclus
+              1er mois offert · Sans engagement · Support inclus
             </p>
           </motion.div>
         </div>
