@@ -153,6 +153,36 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
     };
   }, [profile]);
 
+  // Owner qui gère aussi un site syndic (mode bénévole ou via invitation
+  // publique acceptée) : on lui propose un commutateur vers /syndic.
+  // Source : /api/me/workspaces (lit sites.syndic_profile_id +
+  // user_site_roles.role_code='syndic'). Voir P0/P1 fixes (commits 9588622,
+  // a844e94) — l'owner garde profile.role='owner' et accède au syndic via
+  // le layout étendu.
+  const [syndicSitesCount, setSyndicSitesCount] = useState<number>(0);
+  useEffect(() => {
+    if (!profile || profile.role !== "owner") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch("/api/me/workspaces", { credentials: "include" });
+        if (!response.ok) return;
+        const data = (await response.json()) as {
+          workspaces?: Array<{ key: string; count?: number }>;
+        };
+        const syndic = data.workspaces?.find((w) => w.key === "syndic");
+        if (!cancelled && syndic) {
+          setSyndicSitesCount(syndic.count ?? 1);
+        }
+      } catch {
+        // Silent — feature non bloquante.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile]);
+
   const navigationGroups = useMemo(
     () => buildNavigationGroups({ showCopro: hasCopro }),
     [hasCopro],
@@ -473,6 +503,23 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                         Aide & services
                       </Link>
                     </DropdownMenuItem>
+                    {syndicSitesCount > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel className="text-xs text-muted-foreground">
+                          Autres espaces
+                        </DropdownMenuLabel>
+                        <DropdownMenuItem asChild>
+                          <Link href="/syndic/dashboard" className="cursor-pointer">
+                            <Building2 className="mr-2 h-4 w-4 text-cyan-600" />
+                            <span>Espace syndic</span>
+                            <span className="ml-auto rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-medium text-cyan-700">
+                              {syndicSitesCount}
+                            </span>
+                          </Link>
+                        </DropdownMenuItem>
+                      </>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={handleSignOut}

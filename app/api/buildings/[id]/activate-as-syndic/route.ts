@@ -132,12 +132,14 @@ export async function POST(request: Request, { params }: RouteParams) {
       .update({ owner_syndic_mode: "volunteer", updated_at: new Date().toISOString() })
       .eq("id", buildingId);
 
-    // Promote profile to syndic role if not already
+    // P0 fix : on NE mute PLUS profiles.role en 'syndic'.
+    // L'owner conserve son rôle 'owner' et garde l'accès à /owner/**.
+    // L'accès à /syndic/** est ouvert via sites.syndic_profile_id +
+    // user_site_roles ci-dessous (voir app/syndic/layout.tsx).
     await serviceClient
-      .from("profiles")
-      .update({ role: "syndic" })
-      .eq("id", profileId)
-      .eq("role", "owner");
+      .from("user_site_roles")
+      .insert({ user_id: user.id, site_id: siteId, role_code: "syndic" })
+      .select();
 
     return NextResponse.json({ success: true, site_id: siteId });
   } catch (error) {

@@ -123,13 +123,25 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
     const syndicProfileId = (syndicProfile as { id: string }).id;
+    const syndicProfileRole = (syndicProfile as { role: string }).role;
 
-    // Promote vers syndic si encore owner
-    await serviceClient
-      .from("profiles")
-      .update({ role: "syndic" })
-      .eq("id", syndicProfileId)
-      .eq("role", "owner");
+    // P0 fix : on NE mute PLUS profiles.role.
+    // Un owner qui accepte une invitation conserve son rôle ; l'accès au
+    // namespace /syndic/** est accordé via sites.syndic_profile_id (cf.
+    // app/syndic/layout.tsx). Mutation silencieuse interdite — elle bloquait
+    // l'accès à /owner/** sans rollback possible.
+    // Si le rôle actuel est étranger au syndic (ex: tenant, provider), on
+    // refuse plutôt que d'écraser l'identité.
+    const acceptableRoles = ["owner", "syndic", "admin", "platform_admin"];
+    if (!acceptableRoles.includes(syndicProfileRole)) {
+      return NextResponse.json(
+        {
+          error:
+            "Votre compte ne peut pas devenir syndic d'une copropriété. Inscrivez-vous avec un compte propriétaire ou syndic dédié.",
+        },
+        { status: 403 }
+      );
+    }
 
     // Crée le site avec le syndic comme gestionnaire
     const { data: site, error: siteError } = await serviceClient
@@ -170,6 +182,22 @@ export async function POST(request: Request, { params }: RouteParams) {
       claim_message: "Rattachement automatique via invitation publique d'un copropriétaire.",
       decision_reason: "auto-approuvé (invitation publique)",
     });
+
+    // Trace explicite du rôle syndic sur ce site (source de vérité granulaire).
+    // Permet au layout /syndic de reconnaître l'utilisateur même si son
+    // profiles.role reste 'owner'.
+    const { data: syndicUserId } = await serviceClient
+      .from("profiles")
+      .select("user_id")
+      .eq("id", syndicProfileId)
+      .maybeSingle();
+    const userId = (syndicUserId as { user_id: string } | null)?.user_id;
+    if (userId) {
+      await serviceClient
+        .from("user_site_roles")
+        .insert({ user_id: userId, site_id: siteId, role_code: "syndic" })
+        .select();
+    }
 
     // Marque l'invitation comme redeemed
     await serviceClient

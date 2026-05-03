@@ -8,6 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Building2,
   CheckCircle2,
   Mail,
@@ -17,6 +25,7 @@ import {
   Sparkles,
   ArrowRight,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
 
 interface InvitationData {
@@ -52,6 +61,8 @@ export default function SyndicInvitePage() {
   const [error, setError] = useState<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [currentRole, setCurrentRole] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,13 +86,24 @@ export default function SyndicInvitePage() {
     };
   }, [token]);
 
-  // Vérifie si l'utilisateur est connecté pour adapter le CTA
+  // Vérifie si l'utilisateur est connecté + récupère son rôle pour décider
+  // s'il faut afficher l'avertissement "vous gardez votre rôle propriétaire".
   useEffect(() => {
     let cancelled = false;
     fetch("/api/me/profile")
-      .then((res) => {
+      .then(async (res) => {
         if (cancelled) return;
-        setAuthed(res.ok);
+        if (!res.ok) {
+          setAuthed(false);
+          return;
+        }
+        setAuthed(true);
+        try {
+          const body = await res.json();
+          setCurrentRole(body?.role ?? body?.profile?.role ?? null);
+        } catch {
+          setCurrentRole(null);
+        }
       })
       .catch(() => !cancelled && setAuthed(false));
     return () => {
@@ -268,7 +290,7 @@ export default function SyndicInvitePage() {
           {authed ? (
             <Button
               size="lg"
-              onClick={handleAcceptAfterAuth}
+              onClick={() => setConfirmOpen(true)}
               disabled={claiming}
               className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600"
             >
@@ -304,6 +326,54 @@ export default function SyndicInvitePage() {
             .
           </p>
         </div>
+
+        <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirmer l'initialisation de la copropriété</DialogTitle>
+              <DialogDescription>
+                Une copropriété va être créée sur votre compte et liée à
+                l'immeuble du copropriétaire qui vous a invité(e).
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 text-sm">
+              <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
+                <li>Vous deviendrez gestionnaire (syndic) de cette copropriété.</li>
+                <li>Vous pourrez convoquer des AG, émettre les appels de fonds, tenir la compta copro.</li>
+                <li>Le copropriétaire qui vous a invité(e) sera ajouté automatiquement.</li>
+              </ul>
+              {currentRole === "owner" && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold">Votre rôle propriétaire est conservé.</p>
+                    <p>
+                      Vous gardez l'accès à votre espace propriétaire et à tous
+                      vos biens. Vous pourrez basculer entre les deux espaces
+                      depuis le menu de votre compte.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={claiming}>
+                Annuler
+              </Button>
+              <Button
+                onClick={() => {
+                  setConfirmOpen(false);
+                  handleAcceptAfterAuth();
+                }}
+                disabled={claiming}
+                className="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600"
+              >
+                {claiming && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Confirmer
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

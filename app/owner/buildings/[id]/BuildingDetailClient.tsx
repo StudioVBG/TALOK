@@ -750,6 +750,12 @@ export function BuildingDetailClient({
             }
             linkedSite={linkedSite}
             rejectedReason={rejectedReason}
+            syndicMode={
+              ((buildingMeta as any)?.owner_syndic_mode as
+                | "none"
+                | "volunteer"
+                | "managed_external") ?? "none"
+            }
           />
           {(buildingMeta as any)?.site_link_status === "linked" && (
             <SyndicSidePanel buildingId={buildingId} />

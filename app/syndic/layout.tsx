@@ -70,6 +70,7 @@ export default async function SyndicLayout({
   const pathname = headers().get("x-pathname") || "/syndic";
 
   let profile: { id: string; role: string; prenom: string | null; nom: string | null; identity_status: string | null } | null = null;
+  let userId: string | null = null;
 
   try {
     const supabase = await createClient();
@@ -79,6 +80,7 @@ export default async function SyndicLayout({
     if (authError || !user) {
       redirect("/auth/signin?redirect=/syndic/dashboard");
     }
+    userId = user.id;
 
     // 2. Récupérer le profil (avec fallback service role en cas de récursion RLS)
     const { profile: fetched } = await getServerProfile<{ id: string; role: string; prenom: string | null; nom: string | null; identity_status: string | null }>(
@@ -99,9 +101,39 @@ export default async function SyndicLayout({
     redirect("/auth/signin");
   }
 
-  // 3. Vérifier le rôle syndic ou admin
+  // 3. Vérifier l'éligibilité au namespace /syndic.
+  //
+  // Trois sources légitimes (P0 fix : on ne mute plus profiles.role) :
+  //   a) profiles.role IN ('syndic', 'admin', 'platform_admin')
+  //   b) profil propriétaire d'au moins un site (sites.syndic_profile_id)
+  //   c) user_site_roles.role_code = 'syndic' sur au moins un site
+  //
+  // Cas (b)/(c) couvrent les owners passés en mode "syndic-bénévole" et
+  // les owners ayant accepté une invitation publique sans changement de rôle.
   const allowedRoles = ["syndic", "admin", "platform_admin"];
-  if (!allowedRoles.includes(profile.role)) {
+  let allowed = allowedRoles.includes(profile.role);
+
+  if (!allowed && userId) {
+    try {
+      const supabase = await createClient();
+      const [{ count: ownedSites }, { count: roleSites }] = await Promise.all([
+        supabase
+          .from("sites")
+          .select("id", { count: "exact", head: true })
+          .eq("syndic_profile_id", profile.id),
+        supabase
+          .from("user_site_roles")
+          .select("site_id", { count: "exact", head: true })
+          .eq("user_id", userId)
+          .eq("role_code", "syndic"),
+      ]);
+      allowed = (ownedSites ?? 0) > 0 || (roleSites ?? 0) > 0;
+    } catch (err) {
+      console.error("[SyndicLayout] eligibility check failed:", err);
+    }
+  }
+
+  if (!allowed) {
     redirect(getRoleDashboardUrl(profile.role));
   }
 
@@ -110,6 +142,11 @@ export default async function SyndicLayout({
 
   // 4. Rendre le layout - SOTA 2026: Thème light unifié + breakpoint lg
   const userName = profile.prenom || "";
+
+  // Si l'utilisateur est arrivé sur /syndic en gardant son rôle 'owner'
+  // (P0 fix : owner-bénévole ou invité), on lui propose un retour explicite
+  // vers /owner. Cas distinct du syndic pur dont profile.role='syndic'.
+  const isOwnerInSyndicSpace = profile.role === "owner";
 
   return (
     <ErrorBoundary>
@@ -186,6 +223,16 @@ export default async function SyndicLayout({
                   </p>
                 </div>
               </div>
+              {isOwnerInSyndicSpace && (
+                <Link
+                  href="/owner/dashboard"
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                  aria-label="Retour à l'espace propriétaire"
+                >
+                  <LayoutDashboard className="w-4 h-4" aria-hidden="true" />
+                  Retour à l'espace propriétaire
+                </Link>
+              )}
               <SignOutButton />
             </div>
           </div>

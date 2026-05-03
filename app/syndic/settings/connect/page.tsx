@@ -197,7 +197,11 @@ export default function SyndicConnectSettingsPage() {
   };
 
   return (
-    <ProtectedRoute allowedRoles={["syndic", "admin"]}>
+    // Le layout /syndic est la source de vérité (couvre les owner-bénévoles
+    // via sites.syndic_profile_id + user_site_roles). On autorise donc 'owner'
+    // ici en defense-in-depth, sinon ProtectedRoute boucle un owner légitime
+    // hors de la page de configuration bancaire copro.
+    <ProtectedRoute allowedRoles={["syndic", "admin", "owner"]}>
       <div className="container mx-auto px-4 py-6 max-w-3xl">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground">Comptes bancaires</h1>

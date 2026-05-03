@@ -8,8 +8,10 @@ export const dynamic = "force-dynamic";
  * - par l'owner si statut pending (annulation de sa demande)
  * - par l'owner ou le syndic si statut linked (rupture du lien)
  *
- * Note : ne supprime pas user_site_roles existants — à faire manuellement
- * côté syndic si besoin (l'owner reste copropriétaire si invité indépendamment).
+ * P0 fix : cancelle aussi les links 'approved' (avant : seulement 'pending'
+ * → état dangling où building.site_id était null mais building_site_links
+ * gardait status='approved'). Nettoie également user_site_roles si on
+ * sort du mode volunteer (l'owner reste sinon coproprietaire_bailleur).
  */
 
 import { NextResponse } from "next/server";
@@ -43,15 +45,21 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     const { data: building } = await serviceClient
       .from("buildings")
-      .select("id, owner_id, site_id, site_link_status")
+      .select("id, owner_id, site_id, site_link_status, owner_syndic_mode")
       .eq("id", buildingId)
       .maybeSingle();
     if (!building) {
       return NextResponse.json({ error: "Immeuble introuvable" }, { status: 404 });
     }
 
-    const isOwner = (building as { owner_id: string }).owner_id === profileId;
-    const siteId = (building as { site_id: string | null }).site_id;
+    const b = building as {
+      owner_id: string;
+      site_id: string | null;
+      site_link_status: string;
+      owner_syndic_mode: string | null;
+    };
+    const isOwner = b.owner_id === profileId;
+    const siteId = b.site_id;
     let isSyndicOfSite = false;
     if (siteId) {
       const { data: site } = await serviceClient
@@ -66,7 +74,9 @@ export async function POST(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
     }
 
-    // Annule le pending ou rompt le linked
+    // Cancelle TOUTES les liens actifs (pending OU approved). Avant : seul
+    // 'pending' était traité, ce qui laissait des building_site_links en
+    // 'approved' alors que buildings.site_id avait été remis à null.
     await serviceClient
       .from("building_site_links")
       .update({
@@ -76,7 +86,21 @@ export async function POST(request: Request, { params }: RouteParams) {
         updated_at: new Date().toISOString(),
       })
       .eq("building_id", buildingId)
-      .in("status", ["pending"]);
+      .in("status", ["pending", "approved"]);
+
+    // Si on était en mode "syndic-bénévole" (owner = syndic du site qu'il
+    // vient d'activer), on retire le rôle user_site_roles 'syndic' pour
+    // garantir un retour à l'état initial. On ne touche PAS au site lui-même
+    // (il peut contenir de la donnée comptable). La désactivation totale
+    // (suppression du site) est une opération admin.
+    if (siteId && b.owner_syndic_mode === "volunteer" && isOwner) {
+      await serviceClient
+        .from("user_site_roles")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("site_id", siteId)
+        .eq("role_code", "syndic");
+    }
 
     await serviceClient
       .from("buildings")
@@ -84,6 +108,7 @@ export async function POST(request: Request, { params }: RouteParams) {
         site_id: null,
         site_link_status: "unlinked",
         site_linked_at: null,
+        owner_syndic_mode: "none",
         updated_at: new Date().toISOString(),
       })
       .eq("id", buildingId);
