@@ -93,20 +93,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const solutionPages: MetadataRoute.Sitemap = [
-    "administrateurs-biens",
-    "outre-mer",
-    "investisseurs",
-    "proprietaires-particuliers",
-    "sci-familiales",
-    "syndics",
-    "locataires",
-    "prestataires",
-    "garants",
-  ].map((slug) => ({
-    url: `${BASE_URL}/solutions/${slug}`,
+    { slug: "", priority: 0.85 },
+    { slug: "administrateurs-biens", priority: 0.8 },
+    { slug: "outre-mer", priority: 0.8 },
+    { slug: "investisseurs", priority: 0.8 },
+    { slug: "proprietaires-particuliers", priority: 0.8 },
+    { slug: "sci-familiales", priority: 0.8 },
+    { slug: "syndics", priority: 0.8 },
+    { slug: "locataires", priority: 0.8 },
+    { slug: "prestataires", priority: 0.8 },
+    { slug: "garants", priority: 0.8 },
+  ].map(({ slug, priority }) => ({
+    url: slug ? `${BASE_URL}/solutions/${slug}` : `${BASE_URL}/solutions`,
     lastModified: now,
     changeFrequency: "monthly" as const,
-    priority: 0.8,
+    priority,
   }));
 
   const toolPages: MetadataRoute.Sitemap = [

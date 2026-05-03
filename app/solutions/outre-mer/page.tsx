@@ -369,7 +369,7 @@ export default function OutreMerPage() {
             </h2>
             <p className="text-slate-300 mb-8">
               Né en Martinique. Pensé pour vos réalités.
-              Essayez gratuitement pendant 14 jours.
+              1er mois offert sur tous les plans payants.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/essai-gratuit">
