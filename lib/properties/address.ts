@@ -158,6 +158,43 @@ export function extractDepartment(postalCode: string): string {
 }
 
 /**
+ * Mappe un code postal vers les codes pays ISO 3166-1 alpha-2 utilisés
+ * par Nominatim/OSM. Critique pour les DROM-COM : `countrycodes=fr` seul
+ * exclut les territoires d'outre-mer chez Nominatim — une adresse
+ * martiniquaise géocode alors en métropole (~4500 km de décalage).
+ *
+ * On renvoie une liste séparée par virgules ("mq,fr") pour rester
+ * tolérant : si OSM rattache l'adresse à FR plutôt qu'à MQ, ça matche
+ * quand même.
+ */
+export function postalCodeToCountryCodes(
+  postalCode: string | null | undefined,
+): string {
+  if (!postalCode) return 'fr';
+  const prefix = postalCode.substring(0, 3);
+  switch (prefix) {
+    case '971': return 'gp,fr'; // Guadeloupe
+    case '972': return 'mq,fr'; // Martinique
+    case '973': return 'gf,fr'; // Guyane
+    case '974': return 're,fr'; // La Réunion
+    case '975': return 'pm,fr'; // Saint-Pierre-et-Miquelon
+    case '976': return 'yt,fr'; // Mayotte
+    case '977': return 'bl,fr'; // Saint-Barthélemy
+    case '978': return 'mf,fr'; // Saint-Martin
+    default: return 'fr';
+  }
+}
+
+/**
+ * Extrait le code postal (5 chiffres) d'une chaîne d'adresse libre.
+ * Ex: "12 rue Victor Hugo, 97200 Fort-de-France" → "97200".
+ */
+export function extractPostalCode(address: string): string | null {
+  const match = address.match(/\b(\d{5})\b/);
+  return match ? match[1] : null;
+}
+
+/**
  * Formate une adresse complete a partir de ses composants.
  */
 export function formatFullAddress(

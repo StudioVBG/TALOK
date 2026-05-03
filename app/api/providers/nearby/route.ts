@@ -11,6 +11,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 import { logGooglePlacesUsage } from "@/lib/services/google-places-usage";
 import { getPlanLevel, type PlanSlug } from "@/lib/subscriptions/plans";
+import {
+  extractPostalCode,
+  postalCodeToCountryCodes,
+} from "@/lib/properties/address";
 
 // Mapping des catégories vers les types Google Places
 const CATEGORY_TO_GOOGLE_TYPE: Record<string, string[]> = {
@@ -200,8 +204,15 @@ export async function GET(request: NextRequest) {
           resultsCount: geocodeOk ? 1 : 0,
         });
       } else {
-        // Fallback Nominatim
-        const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=fr&limit=1`;
+        // Fallback Nominatim — élargir aux codes pays DROM-COM si l'adresse
+        // contient un code postal 97xxx, sinon Nominatim filtre l'adresse à
+        // la métropole et géocode à 4500 km du vrai bien.
+        const fallbackPostal = extractPostalCode(address);
+        const countries =
+          fallbackPostal && fallbackPostal.startsWith("97")
+            ? postalCodeToCountryCodes(fallbackPostal)
+            : "fr";
+        const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=${countries}&limit=1`;
         const nominatimRes = await fetch(nominatimUrl, {
           headers: {
             "User-Agent": "Talok/1.0 (contact@talok.fr)",

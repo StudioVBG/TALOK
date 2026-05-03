@@ -8,6 +8,10 @@ export const dynamic = "force-dynamic";
 // =====================================================
 
 import { NextRequest, NextResponse } from "next/server";
+import {
+  extractPostalCode,
+  postalCodeToCountryCodes,
+} from "@/lib/properties/address";
 
 interface GeocodeResult {
   latitude: number;
@@ -47,10 +51,19 @@ async function geocodeWithNominatim(
   address: string,
   countryCode: string,
 ): Promise<GeocodeResult | null> {
+  // Si l'adresse contient un code postal DROM-COM (97xxx), on élargit
+  // les pays autorisés — sinon Nominatim filtre sur la France métropole
+  // et géocode l'adresse à 4500 km du vrai bien.
+  const postal = extractPostalCode(address);
+  const countries =
+    postal && postal.startsWith("97")
+      ? postalCodeToCountryCodes(postal)
+      : countryCode;
+
   const params = new URLSearchParams({
     format: "json",
     q: address,
-    countrycodes: countryCode,
+    countrycodes: countries,
     limit: "1",
   });
   const res = await fetch(
