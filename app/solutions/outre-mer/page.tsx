@@ -258,7 +258,7 @@ export default function OutreMerPage() {
             <div className="text-center mb-12">
               <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/30 mb-4">
                 <Calculator className="w-3 h-3 mr-1" />
-                Fiscalité Outre-Mer
+                Fiscalité outre-mer
               </Badge>
               <h2 className="text-3xl font-bold text-white mb-4">
                 Pinel Outre-Mer, Girardin... On gère
@@ -291,7 +291,7 @@ export default function OutreMerPage() {
                 <h3 className="font-semibold text-white mb-4">📊 Export fiscal adapté</h3>
                 <ul className="space-y-2">
                   {[
-                    "Déclaration 2044 spécial Outre-Mer",
+                    "Déclaration 2044 spéciale outre-mer",
                     "Formulaire 2042 C - réductions d'impôt",
                     "Justificatifs éligibilité",
                     "Suivi des engagements de location",
