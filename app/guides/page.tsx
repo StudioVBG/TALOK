@@ -77,9 +77,9 @@ const GUIDES = [
     downloadable: true,
   },
   {
-    slug: "investissement-dom-tom",
+    slug: "investissement-outre-mer",
     title: "Guide Investissement outre-mer",
-    description: "Pinel Outre-Mer, Girardin, spécificités locales. Investir aux Antilles et en Outre-Mer.",
+    description: "Pinel Outre-Mer, Girardin, spécificités locales. Investir aux Antilles et en outre-mer.",
     icon: Palmtree,
     pages: 18,
     downloadable: true,

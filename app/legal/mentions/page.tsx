@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -22,7 +22,9 @@ export default function MentionsLegalesPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-3xl">Mentions Légales</CardTitle>
+            <h1 className="text-3xl font-semibold leading-none tracking-tight">
+              Mentions Légales
+            </h1>
             <p className="text-muted-foreground">
               Dernière mise à jour : 10 avril 2026
             </p>

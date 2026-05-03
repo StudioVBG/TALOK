@@ -201,10 +201,11 @@ export default function CGVPage() {
 
             <h2>6. Essai gratuit</h2>
             <p>
-              Les offres payantes bénéficient d&apos;un essai gratuit de 7 jours
-              sans engagement et sans carte bancaire. À l&apos;issue de
-              l&apos;essai, le Client peut choisir de souscrire à
-              l&apos;abonnement ou de revenir à l&apos;offre Gratuite.
+              Les plans Starter, Confort et Pro bénéficient du 1er mois offert
+              (30 jours), sans engagement. À l&apos;issue de cette période, le
+              Client peut choisir de poursuivre son abonnement ou de revenir à
+              l&apos;offre Gratuite. L&apos;offre Gratuite, permanente, donne
+              accès à 1 bien sans carte bancaire.
             </p>
 
             <h2>7. Droit de rétractation</h2>

@@ -11,6 +11,7 @@ import type { TimelineItem } from "@/components/ui/radial-orbital-timeline"
 import { ArgumentsSection } from "@/components/landing/ArgumentsSection"
 import { Features } from "@/components/marketing/sections/Features"
 import { PropertyTypes } from "@/components/marketing/sections/PropertyTypes"
+import { PourQui } from "@/components/marketing/sections/PourQui"
 import { Pricing } from "@/components/marketing/sections/Pricing"
 import { CompetitorComparison } from "@/components/marketing/sections/CompetitorComparison"
 import { Testimonials } from "@/components/marketing/sections/Testimonials"
@@ -185,6 +186,7 @@ export function LandingPageClient({ images }: Props) {
 
         <ArgumentsSection images={images} />
         <PropertyTypes />
+        <PourQui images={images} />
         <Pricing />
         <CompetitorComparison />
         <Testimonials />

@@ -8,24 +8,26 @@ const columns = [
     links: [
       { label: "Fonctionnalités", href: "/fonctionnalites" },
       { label: "Tarifs", href: "/pricing" },
-      { label: "Nouveautés", href: "/blog" },
-      { label: "App mobile", href: "/fonctionnalites" },
+      { label: "Modèles", href: "/modeles" },
+      { label: "Sécurité", href: "/securite" },
     ],
   },
   {
     title: "Solutions",
     links: [
       { label: "Propriétaires", href: "/solutions/proprietaires-particuliers" },
-      { label: "Investisseurs", href: "/solutions/investisseurs" },
+      { label: "Investisseurs & SCI", href: "/solutions/investisseurs" },
       { label: "Agences", href: "/solutions/administrateurs-biens" },
-      { label: "France d\u2019outre-mer", href: "/solutions/outre-mer" },
       { label: "Syndics", href: "/solutions/syndics" },
+      { label: "Locataires", href: "/solutions/locataires" },
+      { label: "Prestataires", href: "/solutions/prestataires" },
+      { label: "Garants", href: "/solutions/garants" },
+      { label: "France d\u2019outre-mer", href: "/solutions/outre-mer" },
     ],
   },
   {
     title: "Ressources",
     links: [
-      { label: "Blog", href: "/blog" },
       { label: "Guides", href: "/guides" },
       { label: "FAQ", href: "/faq" },
       { label: "Témoignages", href: "/temoignages" },

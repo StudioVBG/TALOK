@@ -99,6 +99,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "proprietaires-particuliers",
     "sci-familiales",
     "syndics",
+    "locataires",
+    "prestataires",
+    "garants",
   ].map((slug) => ({
     url: `${BASE_URL}/solutions/${slug}`,
     lastModified: now,
@@ -147,7 +150,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "yearly",
       priority: 0.4,
     },
+    {
+      url: `${BASE_URL}/securite`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
   ];
+
+  const templatePages: MetadataRoute.Sitemap = [
+    { slug: "", priority: 0.7 },
+    { slug: "etat-des-lieux", priority: 0.6 },
+    { slug: "quittance-loyer", priority: 0.6 },
+  ].map(({ slug, priority }) => ({
+    url: slug ? `${BASE_URL}/modeles/${slug}` : `${BASE_URL}/modeles`,
+    lastModified: now,
+    changeFrequency: "monthly" as const,
+    priority,
+  }));
 
   // /auth/signup redirige (307) vers /signup/role. Seule la cible finale
   // est listee pour eviter un redirect dans le sitemap.
@@ -243,6 +263,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...toolPages,
     ...roiCalculatorPage,
     ...corporatePages,
+    ...templatePages,
     ...authPages,
     ...contentHubPages,
     ...blogPages,

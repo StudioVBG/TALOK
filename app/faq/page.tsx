@@ -37,7 +37,7 @@ const FAQ_CATEGORIES = [
       },
       {
         question: "Puis-je essayer Talok gratuitement ?",
-        answer: "Oui ! Les offres payantes bénéficient d'un essai gratuit de 7 jours sans engagement et sans carte bancaire. De plus, le plan Gratuit est permanent et vous permet de gérer jusqu'à 2 biens avec les fonctionnalités essentielles.",
+        answer: "Oui ! Les plans Starter, Confort et Pro bénéficient du 1er mois offert (30 jours) sans engagement. De plus, le plan Gratuit est permanent et vous permet de gérer 1 bien avec les fonctionnalités essentielles, sans carte bancaire.",
       },
     ],
   },
