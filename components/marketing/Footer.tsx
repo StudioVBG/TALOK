@@ -8,8 +8,8 @@ const columns = [
     links: [
       { label: "Fonctionnalités", href: "/fonctionnalites" },
       { label: "Tarifs", href: "/pricing" },
-      { label: "Nouveautés", href: "/blog" },
-      { label: "App mobile", href: "/fonctionnalites" },
+      { label: "Modèles", href: "/modeles" },
+      { label: "Sécurité", href: "/securite" },
     ],
   },
   {
@@ -25,7 +25,6 @@ const columns = [
   {
     title: "Ressources",
     links: [
-      { label: "Blog", href: "/blog" },
       { label: "Guides", href: "/guides" },
       { label: "FAQ", href: "/faq" },
       { label: "Témoignages", href: "/temoignages" },

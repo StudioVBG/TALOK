@@ -30,14 +30,6 @@ export const metadata: Metadata = {
     title: "Talok — Logiciel de Gestion Locative (gratuit, sans agence)",
     description:
       "Gérez vos locations, encaissez vos loyers et dormez tranquille. Gratuit pour 1 bien, sans carte bancaire.",
-    images: [
-      {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
-        alt: "Talok — Logiciel de Gestion Locative",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -45,7 +37,6 @@ export const metadata: Metadata = {
     title: "Talok — LE Logiciel de Gestion Locative",
     description:
       "Tout ce qu'une agence fait à 8 % — vous le faites seul, pour moins de 35 €/mois. Gratuit pour 1 bien.",
-    images: ["/og-image.png"],
   },
 }
 

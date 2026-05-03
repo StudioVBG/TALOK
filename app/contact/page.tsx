@@ -190,8 +190,12 @@ function ContactContent() {
                       </div>
                       <div>
                         <h3 className="font-semibold text-white mb-1">Téléphone</h3>
-                        <p className="text-slate-300">Métropole : 01 XX XX XX XX</p>
-                        <p className="text-slate-300">Antilles : 0696 XX XX XX</p>
+                        <p className="text-slate-300">
+                          Le support se fait par email et formulaire pour garantir une trace écrite.
+                        </p>
+                        <p className="text-sm text-slate-500 mt-1">
+                          Réponse moyenne en 2 h ouvrables.
+                        </p>
                       </div>
                     </div>
                   </CardContent>

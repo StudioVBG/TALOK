@@ -133,21 +133,21 @@ const GUIDES: Record<string, {
       "Restitution du dépôt de garantie",
     ],
   },
-  "investissement-dom-tom": {
+  "investissement-outre-mer": {
     title: "Guide Investissement outre-mer",
     description: "Pinel Outre-Mer, Girardin, spécificités locales.",
     icon: Palmtree,
     pages: 18,
     downloadable: true,
     content: [
-      "Panorama de l'investissement en Outre-Mer",
+      "Panorama de l'investissement en outre-mer",
       "Le Pinel Outre-Mer : réduction d'impôt jusqu'à 32%",
       "Le dispositif Girardin : avantages et conditions",
       "Spécificités locatives en Martinique et Guadeloupe",
       "Le marché immobilier à La Réunion",
       "Guyane et Mayotte : opportunités et contraintes",
       "Fiscalité spécifique de l'outre-mer (TVA, octroi de mer)",
-      "Talok : gestion locative adaptée aux territoires d'Outre-Mer",
+      "Talok : gestion locative adaptée aux territoires d'outre-mer",
     ],
   },
   "declaration-2044": {
