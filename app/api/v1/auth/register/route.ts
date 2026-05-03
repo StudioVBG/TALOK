@@ -168,10 +168,21 @@ export async function POST(request: NextRequest) {
         } else if (data.role === "agency") {
           // raison_sociale est nullable (cf migration 20260411130100)
           // Sera renseignée dans /agency/onboarding/profile
-          await adminClient.from("agency_profiles").upsert(
-            { profile_id: profile.id },
-            { onConflict: "profile_id", ignoreDuplicates: true }
-          );
+          //
+          // FIX : NE PAS créer d'agency_profiles pour un team member invité.
+          // Les employés (gestionnaires, assistants...) ont profile.role='agency'
+          // mais ne SONT PAS l'agence eux-mêmes — la liaison se fait via
+          // agency_managers (créé plus bas). Sans ce guard, chaque employé
+          // se retrouvait avec son propre agency_profiles vide qui parasitait
+          // l'affichage du header dans /agency/layout.tsx.
+          const isAgencyTeamMemberInvitation =
+            resolvedInvitation?.source === "agency";
+          if (!isAgencyTeamMemberInvitation) {
+            await adminClient.from("agency_profiles").upsert(
+              { profile_id: profile.id },
+              { onConflict: "profile_id", ignoreDuplicates: true }
+            );
+          }
         } else if (data.role === "syndic") {
           // Table créée par migration 20260411130200
           // Champs réglementaires renseignés dans /syndic/onboarding/profile

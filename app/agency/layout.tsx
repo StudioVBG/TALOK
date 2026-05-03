@@ -9,6 +9,7 @@ export const runtime = 'nodejs';
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 import { getServerProfile } from "@/lib/helpers/auth-helper";
 import { checkIdentityGate } from "@/lib/helpers/identity-gate";
 import { PhoneVerificationBanner } from "@/components/identity/PhoneVerificationBanner";
@@ -72,12 +73,36 @@ export default async function AgencyLayout({
   const pathname = headers().get("x-pathname") || "/agency";
   checkIdentityGate(pathname, profile.role, profile.identity_status);
 
-  // 4. Récupérer les données de l'agence
-  const { data: agencyProfile } = await supabase
+  // 4. Récupérer les données de l'agence (parent ou propre selon le rôle).
+  //
+  // Distinction critique : un team member (gestionnaire, assistant,
+  // comptable...) a profile.role='agency' MAIS son propre agency_profiles
+  // est vide — l'agence "réelle" est référencée par agency_managers.
+  // Sans cette résolution, la sidebar/header affichait un nom d'agence
+  // vide à tous les employés invités.
+  //
+  // On utilise le service-role pour bypass les RLS croisées
+  // agency_managers ↔ agency_profiles (évite la récursion).
+  const serviceClient = getServiceClient();
+  const { data: managerRow } = await serviceClient
+    .from("agency_managers")
+    .select("agency_profile_id")
+    .eq("user_profile_id", profile.id)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  const targetAgencyProfileId =
+    (managerRow as { agency_profile_id: string } | null)?.agency_profile_id ??
+    profile.id;
+
+  // Note : la colonne réelle est `raison_sociale` (pas nom_agence). Schéma
+  // dans migration 20251206700000 ; on retombe sur "Mon Agence" si vide
+  // (cas du compte fraîchement inscrit avant onboarding /agency/onboarding/profile).
+  const { data: agencyProfile } = await serviceClient
     .from("agency_profiles")
-    .select("id, nom_agence, logo_url, adresse, telephone, email, siret")
-    .eq("profile_id", profile.id)
-    .single();
+    .select("raison_sociale, logo_url, siret, profile_id")
+    .eq("profile_id", targetAgencyProfileId)
+    .maybeSingle();
 
   // 5. Rendre le layout
   // admin / platform_admin → tour admin (0 étape) pour ne pas polluer l'UI agence
@@ -105,7 +130,7 @@ export default async function AgencyLayout({
                 <Building2 className="w-4 h-4 text-white" />
               </div>
               <span className="font-semibold text-foreground truncate">
-                {(agencyProfile?.nom_agence as string) || "Mon Agence"}
+                {(agencyProfile?.raison_sociale as string) || "Mon Agence"}
               </span>
             </div>
             <SignOutButton variant="mobile-icon" />
@@ -116,7 +141,7 @@ export default async function AgencyLayout({
           {/* Sidebar Client Component pour interactivité */}
           <AgencySidebar
             profile={profile}
-            agencyName={(agencyProfile?.nom_agence as string) || "Mon Agence"}
+            agencyName={(agencyProfile?.raison_sociale as string) || "Mon Agence"}
           />
 
           {/* Main content - SOTA 2026: lg breakpoint unifié */}

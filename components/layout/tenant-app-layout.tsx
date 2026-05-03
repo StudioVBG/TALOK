@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -118,6 +119,37 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
   };
 
   const profile = serverProfile || clientProfile;
+
+  // Probe les espaces secondaires accessibles (copro pour les locataires
+  // invités par leur syndic, guarantor pour les locataires qui sont aussi
+  // garants pour un proche). Endpoint /api/me/workspaces dérive ces
+  // éligibilités de user_site_roles + table guarantors. Voir fixes
+  // app/copro/layout.tsx et app/guarantor/layout.tsx.
+  const [secondaryWorkspaces, setSecondaryWorkspaces] = useState<
+    Array<{ key: string; href: string; label: string; count?: number }>
+  >([]);
+  useEffect(() => {
+    if (!profile || profile.role !== "tenant") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch("/api/me/workspaces", { credentials: "include" });
+        if (!response.ok) return;
+        const data = (await response.json()) as {
+          workspaces?: Array<{ key: string; href: string; label: string; count?: number }>;
+        };
+        const extras = (data.workspaces ?? []).filter(
+          (w) => w.key !== "tenant",
+        );
+        if (!cancelled) setSecondaryWorkspaces(extras);
+      } catch {
+        // Silent — feature non bloquante.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [profile]);
 
   const isCurrent = (href: string) =>
     pathname === href || pathname?.startsWith(href + "/");
@@ -378,6 +410,27 @@ export function TenantAppLayout({ children, profile: serverProfile }: TenantAppL
                       Aide & FAQ
                     </Link>
                   </DropdownMenuItem>
+                  {secondaryWorkspaces.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">
+                        Autres espaces
+                      </DropdownMenuLabel>
+                      {secondaryWorkspaces.map((w) => (
+                        <DropdownMenuItem key={w.key} asChild>
+                          <Link href={w.href} className="flex items-center">
+                            <Users className="mr-2 h-4 w-4 text-violet-600" />
+                            <span>{w.label}</span>
+                            {w.count ? (
+                              <span className="ml-auto rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-700">
+                                {w.count}
+                              </span>
+                            ) : null}
+                          </Link>
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={handleSignOut}

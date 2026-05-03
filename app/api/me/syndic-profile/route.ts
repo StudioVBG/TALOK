@@ -104,10 +104,27 @@ export async function PATCH(request: Request) {
     }
 
     if ((profile as any).role !== "syndic" && (profile as any).role !== "admin") {
-      return NextResponse.json(
-        { error: "Accès réservé aux utilisateurs syndic" },
-        { status: 403 }
-      );
+      // Tolère les owner-bénévoles : ils gèrent au moins un site comme syndic
+      // (sites.syndic_profile_id ou user_site_roles.role_code='syndic'). Cf.
+      // P0 fix qui ne mute plus profiles.role en 'syndic'.
+      const profileId = (profile as any).id;
+      const [{ count: ownedSites }, { count: roleSites }] = await Promise.all([
+        serviceClient
+          .from("sites")
+          .select("id", { count: "exact", head: true })
+          .eq("syndic_profile_id", profileId),
+        serviceClient
+          .from("user_site_roles")
+          .select("site_id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("role_code", "syndic"),
+      ]);
+      if ((ownedSites ?? 0) === 0 && (roleSites ?? 0) === 0) {
+        return NextResponse.json(
+          { error: "Accès réservé aux utilisateurs syndic" },
+          { status: 403 }
+        );
+      }
     }
 
     // Upsert syndic_profiles
@@ -156,8 +173,26 @@ export async function GET(request: Request) {
       .eq("user_id", user.id)
       .single();
 
-    if (!profile || ((profile as any).role !== "syndic" && (profile as any).role !== "admin")) {
+    if (!profile) {
       return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+    }
+    if ((profile as any).role !== "syndic" && (profile as any).role !== "admin") {
+      // Idem PATCH : autorise les owner-bénévoles avec au moins un site géré.
+      const profileId = (profile as any).id;
+      const [{ count: ownedSites }, { count: roleSites }] = await Promise.all([
+        serviceClient
+          .from("sites")
+          .select("id", { count: "exact", head: true })
+          .eq("syndic_profile_id", profileId),
+        serviceClient
+          .from("user_site_roles")
+          .select("site_id", { count: "exact", head: true })
+          .eq("user_id", user.id)
+          .eq("role_code", "syndic"),
+      ]);
+      if ((ownedSites ?? 0) === 0 && (roleSites ?? 0) === 0) {
+        return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+      }
     }
 
     const { data: syndicProfile, error } = await serviceClient

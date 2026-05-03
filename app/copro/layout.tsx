@@ -58,8 +58,37 @@ export default async function CoproLayout({
     redirect("/auth/signin");
   }
 
-  // 3. Vérifier le rôle copropriétaire
-  if (!COPRO_ROLES.includes(profile.role as typeof COPRO_ROLES[number])) {
+  // 3. Vérifier l'éligibilité au namespace /copro.
+  //
+  // Deux sources légitimes :
+  //   a) profiles.role IN COPRO_ROLES (coproprietaire_*, syndic, admin…)
+  //   b) user_site_roles : utilisateur invité comme locataire_copro,
+  //      coproprietaire, conseil_syndical, etc., sans que profiles.role
+  //      ait été muté (cohérent avec le pattern P0 owner-bénévole).
+  //
+  // Cas (b) couvre notamment les locataires invités par leur syndic via
+  // /api/copro/invites (target_role='locataire' → role_code='locataire_copro').
+  // Avant ce fix, ces locataires étaient redirigés silencieusement vers
+  // /tenant/dashboard car 'tenant' n'est pas dans COPRO_ROLES.
+  let allowed = COPRO_ROLES.includes(profile.role as typeof COPRO_ROLES[number]);
+
+  if (!allowed) {
+    const { count: siteRolesCount } = await supabase
+      .from("user_site_roles")
+      .select("site_id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .in("role_code", [
+        "syndic",
+        "tresorier",
+        "conseil_syndical",
+        "coproprietaire",
+        "coproprietaire_bailleur",
+        "locataire_copro",
+      ]);
+    allowed = (siteRolesCount ?? 0) > 0;
+  }
+
+  if (!allowed) {
     redirect(getRoleDashboardUrl(profile.role));
   }
 

@@ -51,8 +51,26 @@ export default async function GuarantorLayout({ children }: { children: ReactNod
     redirect("/auth/signin");
   }
 
-  // Vérifier que c'est bien un garant
-  if (profile.role !== "guarantor") {
+  // Vérifier l'éligibilité au namespace /guarantor.
+  //
+  // Deux sources légitimes (cohérent avec les fixes copro/syndic) :
+  //   a) profile.role === 'guarantor' (rôle primaire, cas standard)
+  //   b) profile lié à au moins une ligne `guarantors` (cas d'un user
+  //      avec un autre rôle primaire — typiquement un tenant qui est
+  //      aussi garant pour un proche, ou un owner qui se porte garant
+  //      d'un parent locataire). Le user a accepté une invitation et a
+  //      désormais une row guarantors avec son user_id.
+  let allowed = profile.role === "guarantor";
+
+  if (!allowed) {
+    const { count: guarantorCount } = await supabase
+      .from("guarantors")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    allowed = (guarantorCount ?? 0) > 0;
+  }
+
+  if (!allowed) {
     redirect(getRoleDashboardUrl(profile.role));
   }
 
