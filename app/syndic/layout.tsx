@@ -143,6 +143,11 @@ export default async function SyndicLayout({
   // 4. Rendre le layout - SOTA 2026: Thème light unifié + breakpoint lg
   const userName = profile.prenom || "";
 
+  // Si l'utilisateur est arrivé sur /syndic en gardant son rôle 'owner'
+  // (P0 fix : owner-bénévole ou invité), on lui propose un retour explicite
+  // vers /owner. Cas distinct du syndic pur dont profile.role='syndic'.
+  const isOwnerInSyndicSpace = profile.role === "owner";
+
   return (
     <ErrorBoundary>
       <CsrfTokenInjector />
@@ -218,6 +223,16 @@ export default async function SyndicLayout({
                   </p>
                 </div>
               </div>
+              {isOwnerInSyndicSpace && (
+                <Link
+                  href="/owner/dashboard"
+                  className="flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                  aria-label="Retour à l'espace propriétaire"
+                >
+                  <LayoutDashboard className="w-4 h-4" aria-hidden="true" />
+                  Retour à l'espace propriétaire
+                </Link>
+              )}
               <SignOutButton />
             </div>
           </div>
