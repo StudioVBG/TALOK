@@ -179,7 +179,7 @@ export default async function SyndicLayout({
                     Espace Syndic
                   </h1>
                   <p className="text-xs text-muted-foreground">
-                    Talok Pro
+                    {isOwnerInSyndicSpace ? "Mode bénévole" : "Talok Pro"}
                   </p>
                 </div>
               </div>
@@ -218,8 +218,8 @@ export default async function SyndicLayout({
                   <p className="text-sm font-medium text-foreground truncate">
                     {profile.prenom} {profile.nom}
                   </p>
-                  <p className="text-xs text-muted-foreground truncate capitalize">
-                    {profile.role}
+                  <p className="text-xs text-muted-foreground truncate">
+                    {isOwnerInSyndicSpace ? "Syndic bénévole" : "Syndic"}
                   </p>
                 </div>
               </div>

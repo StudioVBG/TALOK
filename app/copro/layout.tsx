@@ -92,7 +92,50 @@ export default async function CoproLayout({
     redirect(getRoleDashboardUrl(profile.role));
   }
 
-  // 4. Rendre le layout avec la sidebar
+  // 4. Déterminer le libellé du rôle effectif sur la copro pour adapter
+  //    l'UI (sidebar, footer). Un locataire_copro ne doit pas voir
+  //    "Copropriétaire" écrit partout — sinon le label ment et trahit
+  //    l'incohérence du parcours.
+  const ROLE_LABELS: Record<string, string> = {
+    syndic: "Syndic",
+    tresorier: "Trésorier",
+    conseil_syndical: "Conseil syndical",
+    coproprietaire: "Copropriétaire",
+    coproprietaire_bailleur: "Copropriétaire bailleur",
+    coproprietaire_occupant: "Copropriétaire occupant",
+    coproprietaire_nu: "Copropriétaire (nue-propriété)",
+    usufruitier: "Usufruitier",
+    locataire_copro: "Locataire en copropriété",
+  };
+  // Priorité au rôle primaire si déjà copro, sinon le rôle granulaire le
+  // plus élevé dans user_site_roles (syndic > tresorier > conseil > copro > locataire).
+  let effectiveCoproLabel: string =
+    ROLE_LABELS[profile.role] ?? "Copropriétaire";
+  if (!ROLE_LABELS[profile.role]) {
+    const { data: userRoles } = await supabase
+      .from("user_site_roles")
+      .select("role_code")
+      .eq("user_id", user.id)
+      .in("role_code", Object.keys(ROLE_LABELS));
+    const codes = ((userRoles ?? []) as Array<{ role_code: string }>).map(
+      (r) => r.role_code
+    );
+    const priority = [
+      "syndic",
+      "tresorier",
+      "conseil_syndical",
+      "coproprietaire_bailleur",
+      "coproprietaire",
+      "coproprietaire_occupant",
+      "coproprietaire_nu",
+      "usufruitier",
+      "locataire_copro",
+    ];
+    const top = priority.find((p) => codes.includes(p));
+    if (top) effectiveCoproLabel = ROLE_LABELS[top];
+  }
+
+  // 5. Rendre le layout avec la sidebar
   return (
     <ErrorBoundary>
       <CsrfTokenInjector />
@@ -121,7 +164,7 @@ export default async function CoproLayout({
                       Mon Espace
                     </h1>
                     <p className="text-xs text-muted-foreground">
-                      Copropriétaire
+                      {effectiveCoproLabel}
                     </p>
                   </div>
                 </div>
@@ -145,8 +188,11 @@ export default async function CoproLayout({
                 ))}
               </nav>
 
-              {/* Lien vers espace bailleur si applicable */}
-              {profile.role === "coproprietaire_bailleur" && (
+              {/* Lien vers espace bailleur — affiché si le user est
+                  bailleur soit par profile.role (cas legacy), soit par
+                  user_site_roles (cas standard owner avec rôle granulaire). */}
+              {(profile.role === "coproprietaire_bailleur" ||
+                effectiveCoproLabel === "Copropriétaire bailleur") && (
                 <div className="px-3 pb-4">
                   <div className="p-3 rounded-xl bg-violet-500/10 border border-violet-500/30">
                     <p className="text-xs text-violet-400 mb-2">
@@ -178,7 +224,7 @@ export default async function CoproLayout({
                       {profile.prenom} {profile.nom}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      Copropriétaire
+                      {effectiveCoproLabel}
                     </p>
                   </div>
                 </div>
