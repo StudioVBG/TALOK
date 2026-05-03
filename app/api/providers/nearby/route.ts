@@ -41,7 +41,11 @@ const CATEGORY_TO_SEARCH_TERM: Record<string, string> = {
 interface GooglePlaceResult {
   place_id: string;
   name: string;
+  // formatted_address est renvoyé par Text Search ; Nearby Search renvoie
+  // `vicinity` (rue + commune) à la place. On lit les deux pour rester
+  // compatible avec les deux endpoints.
   formatted_address?: string;
+  vicinity?: string;
   geometry: {
     location: {
       lat: number;
@@ -52,6 +56,7 @@ interface GooglePlaceResult {
   user_ratings_total?: number;
   formatted_phone_number?: string;
   international_phone_number?: string;
+  website?: string;
   opening_hours?: {
     open_now?: boolean;
   };
@@ -71,10 +76,11 @@ interface NearbyProvider {
   rating?: number;
   reviews_count?: number;
   phone?: string;
+  website?: string;
   is_open?: boolean;
   photo_url?: string;
   google_maps_url: string;
-  source: "google";
+  source: "google" | "demo";
 }
 
 // Cache simple en mémoire (en production, utiliser Redis)
@@ -236,17 +242,50 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Rechercher via Google Places API (Text Search)
+    // -------------------------------------------------------------------
+    // Stratégie : Nearby Search d'abord (proximity-optimisé, respecte
+    // strictement location + radius), puis fallback Text Search si zéro
+    // résultat (Nearby Search filtre sur le `type` Google et peut rater
+    // une boutique mal catégorisée).
+    //
+    // Les coordonnées renvoyées par Google (`geometry.location.lat/lng`)
+    // sont les coordonnées rooftop officielles du commerce — c'est la
+    // meilleure précision possible côté API.
+    // -------------------------------------------------------------------
     const searchTerm = CATEGORY_TO_SEARCH_TERM[category] || "artisan dépannage";
-    const textSearchUrl = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchTerm)}&location=${latitude},${longitude}&radius=${radius}&language=fr&key=${googleApiKey}`;
+    const googleTypes = CATEGORY_TO_GOOGLE_TYPE[category] || [];
+    const primaryType = googleTypes[0]; // Nearby Search n'accepte qu'un seul type
 
-    const placesRes = await fetch(textSearchUrl);
-    const placesData = await placesRes.json();
+    const buildNearbyUrl = () => {
+      const params = new URLSearchParams({
+        location: `${latitude},${longitude}`,
+        radius: String(radius),
+        keyword: searchTerm,
+        language: "fr",
+        key: googleApiKey,
+      });
+      if (primaryType) params.set("type", primaryType);
+      return `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${params.toString()}`;
+    };
+
+    const buildTextSearchUrl = () =>
+      `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(searchTerm)}&location=${latitude},${longitude}&radius=${radius}&language=fr&key=${googleApiKey}`;
+
+    type GoogleSearchEndpoint = "nearby_search" | "text_search";
+    let placesData: { status: string; results?: GooglePlaceResult[]; error_message?: string };
+    let usedEndpoint: GoogleSearchEndpoint = "nearby_search";
+
+    const nearbyRes = await fetch(buildNearbyUrl());
+    placesData = await nearbyRes.json();
 
     if (placesData.status !== "OK" && placesData.status !== "ZERO_RESULTS") {
-      console.error("Google Places API error:", placesData.status, placesData.error_message);
+      console.error(
+        "Google Places (nearby) error:",
+        placesData.status,
+        placesData.error_message,
+      );
       void logGooglePlacesUsage({
-        endpoint: "text_search",
+        endpoint: "nearby_search",
         source: "google",
         status: "error",
         category,
@@ -261,32 +300,59 @@ export async function GET(request: NextRequest) {
         providers: demo,
         source: "demo",
         search_location: { lat: latitude, lng: longitude },
-        error: "Erreur API Google, données de démonstration affichées",
+        error: `Erreur API Google (${placesData.status}), données de démonstration affichées`,
       });
     }
 
-    // Transformer les résultats
+    // Fallback Text Search si Nearby Search ne renvoie rien (le `type`
+    // exact peut manquer pour des artisans indépendants).
+    if (!placesData.results?.length) {
+      const textRes = await fetch(buildTextSearchUrl());
+      const textData = await textRes.json();
+
+      if (textData.status === "OK") {
+        placesData = textData;
+        usedEndpoint = "text_search";
+      } else if (
+        textData.status !== "ZERO_RESULTS" &&
+        textData.status !== "OK"
+      ) {
+        void logGooglePlacesUsage({
+          endpoint: "text_search",
+          source: "google",
+          status: "error",
+          category,
+          userId: user.id,
+          metadata: {
+            google_status: textData.status,
+            google_error: textData.error_message,
+          },
+        });
+      }
+    }
+
+    // Transformer les résultats — coordonnées issues du rooftop Google.
     const providers: NearbyProvider[] = (placesData.results || [])
-      .slice(0, 10) // Limiter à 10 résultats
+      .slice(0, 10)
       .map((place: GooglePlaceResult) => {
-        // Calculer la distance approximative
         const distance = calculateDistance(
           latitude,
           longitude,
           place.geometry.location.lat,
-          place.geometry.location.lng
+          place.geometry.location.lng,
         );
 
         return {
           id: place.place_id,
           name: place.name,
-          address: place.formatted_address || "",
+          address: place.formatted_address || place.vicinity || "",
           latitude: place.geometry.location.lat,
           longitude: place.geometry.location.lng,
           distance_km: Math.round(distance * 10) / 10,
           rating: place.rating,
           reviews_count: place.user_ratings_total,
           phone: place.formatted_phone_number || place.international_phone_number,
+          website: place.website,
           is_open: place.opening_hours?.open_now,
           photo_url: place.photos?.[0]?.photo_reference
             ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=100&photo_reference=${place.photos[0].photo_reference}&key=${googleApiKey}`
@@ -295,13 +361,15 @@ export async function GET(request: NextRequest) {
           source: "google" as const,
         };
       })
-      .filter((p: NearbyProvider) => (p.distance_km ?? 0) <= radius / 1000); // Filtrer par distance
+      // Garde-fou : Nearby Search peut occasionnellement renvoyer un
+      // résultat juste hors rayon ; on filtre côté serveur pour éviter
+      // un point qui apparaîtrait hors du cercle bleu sur la carte.
+      .filter((p: NearbyProvider) => (p.distance_km ?? 0) <= radius / 1000);
 
-    // Mettre en cache
     cache.set(cacheKey, { data: providers, timestamp: Date.now() });
 
     void logGooglePlacesUsage({
-      endpoint: "text_search",
+      endpoint: usedEndpoint,
       source: "google",
       status: providers.length === 0 ? "zero_results" : "ok",
       category,
@@ -314,6 +382,7 @@ export async function GET(request: NextRequest) {
       source: "google",
       total: providers.length,
       search_location: { lat: latitude, lng: longitude },
+      endpoint: usedEndpoint,
     });
   } catch (error) {
     console.error("Erreur API providers/nearby:", error);
@@ -378,6 +447,7 @@ function getDemoProviders(
     phone: string;
     is_open: boolean;
     mapsTerm: string;
+    website?: string;
   };
 
   const build = (seeds: Seed[]): NearbyProvider[] =>
@@ -393,9 +463,10 @@ function getDemoProviders(
         rating: s.rating,
         reviews_count: s.reviews_count,
         phone: s.phone,
+        website: s.website,
         is_open: s.is_open,
         google_maps_url: mapsLink(s.mapsTerm),
-        source: "google" as const,
+        source: "demo" as const,
       };
     });
 

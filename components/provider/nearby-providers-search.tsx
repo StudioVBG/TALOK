@@ -27,6 +27,7 @@ import {
   MessageSquare,
   StickyNote,
   Save,
+  Globe,
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
@@ -93,6 +94,7 @@ interface NearbyProvider {
   rating?: number;
   reviews_count?: number;
   phone?: string;
+  website?: string;
   is_open?: boolean;
   photo_url?: string;
   google_maps_url: string;
@@ -184,6 +186,8 @@ export function NearbyProvidersSearch({
   const [providers, setProviders] = useState<NearbyProvider[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dataSource, setDataSource] = useState<"google" | "cache" | "demo" | null>(null);
+  const [demoReason, setDemoReason] = useState<string | null>(null);
   const [premiumRequired, setPremiumRequired] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [detailProvider, setDetailProvider] = useState<NearbyProvider | null>(null);
@@ -226,20 +230,60 @@ export function NearbyProvidersSearch({
     setDetailNotes("");
     setDetailNotesLoaded("");
 
-    // Si déjà en favori, charger les notes existantes
+    // Si déjà en favori, charger les notes existantes + champs persistés
+    // (website, phone) qui ne sont pas dans le résultat Text Search.
     if (savedIds.has(provider.id)) {
       try {
         const res = await fetch("/api/providers/external-favorites");
-        if (!res.ok) return;
-        const data = await res.json();
-        const found = (data?.favorites ?? []).find(
-          (f: any) => f.place_id === provider.id,
-        );
-        const notes = (found?.notes as string) ?? "";
-        setDetailNotes(notes);
-        setDetailNotesLoaded(notes);
+        if (res.ok) {
+          const data = await res.json();
+          const found = (data?.favorites ?? []).find(
+            (f: any) => f.place_id === provider.id,
+          );
+          const notes = (found?.notes as string) ?? "";
+          setDetailNotes(notes);
+          setDetailNotesLoaded(notes);
+          if (found?.website || found?.phone) {
+            setDetailProvider((prev) =>
+              prev && prev.id === provider.id
+                ? {
+                    ...prev,
+                    website: prev.website ?? found.website ?? undefined,
+                    phone: prev.phone ?? found.phone ?? undefined,
+                  }
+                : prev,
+            );
+          }
+        }
       } catch (err) {
         console.warn("[NearbyProvidersSearch] Lecture notes échouée:", err);
+      }
+    }
+
+    // Le Text Search Google ne renvoie ni site web ni téléphone : on
+    // enrichit la fiche via Place Details (cache 24h côté serveur).
+    if (provider.source === "google" && (!provider.website || !provider.phone)) {
+      try {
+        const res = await fetch(
+          `/api/providers/place-details/${encodeURIComponent(provider.id)}`,
+        );
+        if (res.ok) {
+          const data = await res.json();
+          const details = data?.details ?? {};
+          if (details.website || details.phone) {
+            setDetailProvider((prev) =>
+              prev && prev.id === provider.id
+                ? {
+                    ...prev,
+                    website: prev.website ?? details.website ?? undefined,
+                    phone: prev.phone ?? details.phone ?? undefined,
+                  }
+                : prev,
+            );
+          }
+        }
+      } catch (err) {
+        console.warn("[NearbyProvidersSearch] Lecture détails échouée:", err);
       }
     }
   };
@@ -330,6 +374,7 @@ export function NearbyProvidersSearch({
             category,
             address: provider.address ?? null,
             phone: provider.phone ?? null,
+            website: provider.website ?? null,
             latitude: provider.latitude,
             longitude: provider.longitude,
             rating: provider.rating ?? null,
@@ -548,11 +593,24 @@ export function NearbyProvidersSearch({
         if (res.status === 403 && data?.error === "premium_required") {
           setPremiumRequired(true);
           setProviders([]);
+          setDataSource(null);
+          setDemoReason(null);
         } else if (!res.ok) {
           setError(data?.error || "Erreur lors de la recherche");
           setProviders([]);
+          setDataSource(null);
+          setDemoReason(null);
         } else {
           setProviders(data.providers || []);
+          setDataSource((data?.source as "google" | "cache" | "demo") ?? null);
+          // L'API renvoie `error` ou `message` quand elle bascule en démo
+          // (clé manquante, erreur Google) — on le surface pour qu'on puisse
+          // diagnostiquer côté ops sans aller fouiller les logs.
+          setDemoReason(
+            data?.source === "demo"
+              ? (data?.error as string) || (data?.message as string) || null
+              : null,
+          );
         }
       } catch (err) {
         if (!cancelled) {
@@ -692,6 +750,24 @@ export function NearbyProvidersSearch({
           <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 text-xs text-emerald-900 dark:bg-emerald-950/20 dark:border-emerald-900 dark:text-emerald-200">
             <BookmarkCheck className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
             {savedIds.size} prestataire{savedIds.size > 1 ? "s" : ""} enregistré{savedIds.size > 1 ? "s" : ""} dans vos favoris (synchronisés sur tous vos appareils).
+          </div>
+        )}
+
+        {dataSource === "demo" && !premiumRequired && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50/60 p-3 text-xs text-amber-900 dark:bg-amber-950/20 dark:border-amber-900 dark:text-amber-200 flex gap-2">
+            <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <div>
+              <strong>Mode démonstration.</strong> Les prestataires affichés sont fictifs : leurs adresses ne correspondent pas à leur position sur la carte.
+              {demoReason && (
+                <>
+                  {" "}
+                  <span className="opacity-80">Cause : {demoReason}</span>
+                </>
+              )}
+              <span className="block mt-1 opacity-80">
+                Pour des résultats réels, vérifiez que la variable <code className="font-mono">GOOGLE_PLACES_API_KEY</code> est bien définie pour l'environnement de production et que le déploiement a été relancé après son ajout.
+              </span>
+            </div>
           </div>
         )}
 
@@ -971,6 +1047,18 @@ export function NearbyProvidersSearch({
                       <a href={`tel:${detailProvider.phone.replace(/\s/g, "")}`}>
                         <Phone className="h-4 w-4 mr-2" />
                         Appeler {detailProvider.phone}
+                      </a>
+                    </Button>
+                  )}
+                  {detailProvider.website && (
+                    <Button asChild variant="outline" className="w-full justify-start">
+                      <a
+                        href={detailProvider.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <Globe className="h-4 w-4 mr-2" />
+                        Visiter le site web
                       </a>
                     </Button>
                   )}
