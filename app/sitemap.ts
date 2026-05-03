@@ -99,6 +99,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "proprietaires-particuliers",
     "sci-familiales",
     "syndics",
+    "locataires",
+    "prestataires",
+    "garants",
   ].map((slug) => ({
     url: `${BASE_URL}/solutions/${slug}`,
     lastModified: now,

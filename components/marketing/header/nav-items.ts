@@ -8,10 +8,12 @@ import {
   Receipt,
   Building2,
   User,
+  Users,
   Briefcase,
   Building,
   Landmark,
   Palmtree,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,5 +40,8 @@ export const SOLUTIONS_ITEMS: NavItem[] = [
   { label: "Investisseurs & SCI", href: "/solutions/investisseurs", icon: Briefcase },
   { label: "Administrateurs de biens", href: "/solutions/administrateurs-biens", icon: Building },
   { label: "Syndics de copropriété", href: "/solutions/syndics", icon: Landmark },
+  { label: "Locataires & colocataires", href: "/solutions/locataires", icon: Users },
+  { label: "Prestataires & artisans", href: "/solutions/prestataires", icon: Wrench },
+  { label: "Garants", href: "/solutions/garants", icon: ShieldCheck },
   { label: "France d’outre-mer", href: "/solutions/outre-mer", icon: Palmtree, badge: "DROM-COM" },
 ];

@@ -16,10 +16,13 @@ const columns = [
     title: "Solutions",
     links: [
       { label: "Propriétaires", href: "/solutions/proprietaires-particuliers" },
-      { label: "Investisseurs", href: "/solutions/investisseurs" },
+      { label: "Investisseurs & SCI", href: "/solutions/investisseurs" },
       { label: "Agences", href: "/solutions/administrateurs-biens" },
-      { label: "France d\u2019outre-mer", href: "/solutions/outre-mer" },
       { label: "Syndics", href: "/solutions/syndics" },
+      { label: "Locataires", href: "/solutions/locataires" },
+      { label: "Prestataires", href: "/solutions/prestataires" },
+      { label: "Garants", href: "/solutions/garants" },
+      { label: "France d\u2019outre-mer", href: "/solutions/outre-mer" },
     ],
   },
   {

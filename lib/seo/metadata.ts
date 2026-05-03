@@ -613,6 +613,24 @@ export const PAGE_METADATA = {
     keywords: ["gestion locative martinique", "logiciel bailleur guadeloupe", "location réunion", "pinel outre-mer"],
     canonical: `${SITE_URL}/solutions/outre-mer`,
   }),
+  solutionLocataires: generatePageMetadata({
+    title: "Espace locataire — Payer, signer, suivre ses droits",
+    description: "Espace locataire Talok : payez votre loyer en 2 clics, retrouvez toutes vos quittances, signez votre bail à distance, signalez un incident, calculez vos droits. Gratuit pour les locataires.",
+    keywords: ["espace locataire", "payer loyer en ligne", "quittance loyer", "mes droits de locataire", "colocation"],
+    canonical: `${SITE_URL}/solutions/locataires`,
+  }),
+  solutionPrestataires: generatePageMetadata({
+    title: "Solution pour artisans & prestataires du bâtiment",
+    description: "Recevez des missions ciblées, envoyez devis et factures en quelques clics, gérez votre planning, encaissez plus vite. 10 000+ bailleurs sur Talok. Gratuit, sans commission.",
+    keywords: ["logiciel artisan plombier", "marketplace prestataires bâtiment", "devis facture artisan", "logiciel BTP intervention"],
+    canonical: `${SITE_URL}/solutions/prestataires`,
+  }),
+  solutionGarants: generatePageMetadata({
+    title: "Espace garant — Cautionnement clair, suivi en temps réel",
+    description: "Espace garant Talok : signez l'acte de cautionnement à distance, suivez les paiements de loyer en temps réel, soyez alerté en cas de retard significatif. Gratuit pour les garants.",
+    keywords: ["espace garant", "acte de cautionnement", "caution solidaire bail", "engagement de caution"],
+    canonical: `${SITE_URL}/solutions/garants`,
+  }),
 
   // === Pages Outils (calculateurs) ===
   outilRendement: generatePageMetadata({
