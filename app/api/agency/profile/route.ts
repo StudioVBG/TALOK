@@ -57,11 +57,26 @@ export async function GET() {
       return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
     }
 
+    // Résoudre la parent agency : si l'utilisateur est un team member
+    // (agency_managers.user_profile_id = profile.id), on lit le profil
+    // de la parent agency. Sinon (l'utilisateur EST l'agence), on lit
+    // son propre profil. Cohérent avec app/agency/layout.tsx.
+    const { data: managerRow } = await supabase
+      .from("agency_managers")
+      .select("agency_profile_id")
+      .eq("user_profile_id", profile.id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    const targetAgencyProfileId =
+      (managerRow as { agency_profile_id: string } | null)?.agency_profile_id ??
+      profile.id;
+
     // Récupérer le profil agence
     const { data: agencyProfile, error } = await supabase
       .from("agency_profiles")
       .select("*")
-      .eq("profile_id", profile.id)
+      .eq("profile_id", targetAgencyProfileId)
       .maybeSingle();
 
     if (error) {
@@ -98,6 +113,25 @@ export async function POST(request: NextRequest) {
 
     if (profile.role !== "agency" && profile.role !== "admin") {
       return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
+    }
+
+    // Refuser POST si l'utilisateur est un team member d'une autre agence :
+    // il ne doit pas créer un agency_profiles concurrent. Seuls les
+    // utilisateurs qui SONT l'agence (pas employés) peuvent créer leur profil.
+    const { data: managerCheck } = await supabase
+      .from("agency_managers")
+      .select("agency_profile_id")
+      .eq("user_profile_id", profile.id)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (managerCheck) {
+      return NextResponse.json(
+        {
+          error:
+            "Vous êtes membre d'une équipe agence. Seul le directeur de l'agence peut créer ou modifier le profil agence.",
+        },
+        { status: 403 }
+      );
     }
 
     // Vérifier si le profil existe déjà
@@ -170,6 +204,32 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Accès non autorisé" }, { status: 403 });
     }
 
+    // Si l'utilisateur est un team member, vérifier qu'il a le droit
+    // de modifier le profil agence (uniquement directeur). Si oui,
+    // on cible la parent agency. Sinon (l'utilisateur EST l'agence),
+    // on cible son propre profil.
+    const { data: managerRow } = await supabase
+      .from("agency_managers")
+      .select("agency_profile_id, role_agence")
+      .eq("user_profile_id", profile.id)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    let targetProfileId = profile.id;
+    if (managerRow) {
+      const role = (managerRow as { role_agence: string }).role_agence;
+      if (role !== "directeur") {
+        return NextResponse.json(
+          {
+            error:
+              "Seul un directeur peut modifier le profil de l'agence. Contactez votre directeur.",
+          },
+          { status: 403 }
+        );
+      }
+      targetProfileId = (managerRow as { agency_profile_id: string }).agency_profile_id;
+    }
+
     // Valider les données
     const body = await request.json();
     const validatedData = agencyProfileSchema.partial().parse(body);
@@ -178,7 +238,7 @@ export async function PUT(request: NextRequest) {
     const { data: updatedProfile, error: updateError } = await supabase
       .from("agency_profiles")
       .update(validatedData)
-      .eq("profile_id", profile.id)
+      .eq("profile_id", targetProfileId)
       .select()
       .single();
 
