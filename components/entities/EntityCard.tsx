@@ -206,21 +206,36 @@ export function EntityCardSkeleton() {
 
 /**
  * AddEntityCard — Carte "Ajouter une entité"
+ *
+ * Si onClick est fourni, la carte agit comme un bouton (pas de Link interne).
+ * Sinon, elle navigue vers /owner/entities/new.
  */
-export function AddEntityCard() {
-  return (
-    <Link href="/owner/entities/new">
-      <Card className="border-dashed hover:border-primary/50 hover:bg-muted/30 transition-all cursor-pointer h-full">
-        <CardContent className="p-5 flex flex-col items-center justify-center text-center h-full min-h-[240px]">
-          <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-            <Building2 className="h-6 w-6 text-primary" />
-          </div>
-          <p className="font-medium text-sm">Ajouter une entité</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            SCI, SARL, SAS, indivision...
-          </p>
-        </CardContent>
-      </Card>
-    </Link>
+export function AddEntityCard({ onClick }: { onClick?: () => void } = {}) {
+  const inner = (
+    <Card className="border-dashed hover:border-primary/50 hover:bg-muted/30 transition-all cursor-pointer h-full">
+      <CardContent className="p-5 flex flex-col items-center justify-center text-center h-full min-h-[240px]">
+        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+          <Building2 className="h-6 w-6 text-primary" />
+        </div>
+        <p className="font-medium text-sm">Ajouter une entité</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          SCI, SARL, SAS, indivision...
+        </p>
+      </CardContent>
+    </Card>
   );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="text-left w-full h-full"
+      >
+        {inner}
+      </button>
+    );
+  }
+
+  return <Link href="/owner/entities/new">{inner}</Link>;
 }

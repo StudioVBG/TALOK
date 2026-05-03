@@ -14,6 +14,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { useEntityStore } from "@/stores/useEntityStore";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { useToast } from "@/components/ui/use-toast";
 
 interface EntityProviderProps {
   children: ReactNode;
@@ -24,6 +25,7 @@ let ensureDefaultPromise: Promise<void> | null = null;
 
 export function EntityProvider({ children }: EntityProviderProps) {
   const { profile } = useAuth();
+  const { toast } = useToast();
   const fetchEntities = useEntityStore((s) => s.fetchEntities);
   const setActiveEntity = useEntityStore((s) => s.setActiveEntity);
   const autoSelectDoneRef = useRef(false);
@@ -65,6 +67,13 @@ export function EntityProvider({ children }: EntityProviderProps) {
                   if (!currentId && newEntities.length > 0) {
                     useEntityStore.getState().setActiveEntity(newEntities[0].id);
                   }
+                } else {
+                  toast({
+                    title: "Configuration incomplète",
+                    description:
+                      "Impossible de créer votre entité par défaut. Créez-en une manuellement depuis Mes entités.",
+                    variant: "destructive",
+                  });
                 }
               } finally {
                 ensureDefaultPromise = null;
@@ -102,11 +111,17 @@ export function EntityProvider({ children }: EntityProviderProps) {
         }
       } catch (err) {
         console.error("[EntityProvider] Error loading entities:", err);
+        toast({
+          title: "Erreur de chargement",
+          description:
+            "Impossible de charger vos entités juridiques. Rafraîchissez la page.",
+          variant: "destructive",
+        });
       }
     };
 
     loadEntities();
-  }, [profile?.id, fetchEntities, setActiveEntity]);
+  }, [profile?.id, fetchEntities, setActiveEntity, toast]);
 
   // Reactive guard: if entities arrive after initial render and activeEntityId is still null
   const entities = useEntityStore((s) => s.entities);

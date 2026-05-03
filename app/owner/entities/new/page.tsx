@@ -13,14 +13,23 @@ import { useEntityStore } from "@/stores/useEntityStore";
 import { createEntity } from "@/app/owner/entities/actions";
 import { EntityFormWizard } from "@/components/entities/create/EntityFormWizard";
 import type { EntityFormData } from "@/lib/entities/entity-form-utils";
-import { PlanGate } from "@/components/subscription";
+import { useSubscription, UpgradeModal } from "@/components/subscription";
+import { useState } from "react";
 
 export default function NewEntityPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { addEntity } = useEntityStore();
+  const { hasFeature } = useSubscription();
+  const canCreateNonParticulier = hasFeature("multi_mandants");
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const handleSubmit = async (formData: EntityFormData) => {
+    if (formData.entityType !== "particulier" && !canCreateNonParticulier) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     try {
       const result = await createEntity({
         entity_type: formData.entityType as Parameters<
@@ -113,7 +122,7 @@ export default function NewEntityPage() {
   };
 
   return (
-    <PlanGate feature="multi_mandants" mode="block">
+    <>
       <EntityFormWizard
         mode="create"
         onSubmit={handleSubmit}
@@ -126,7 +135,14 @@ export default function NewEntityPage() {
         }}
         submitLabel="Créer l&apos;entité"
         submitLoadingLabel="Création..."
+        gateNonParticulier={!canCreateNonParticulier}
+        onGatedTypeAttempt={() => setShowUpgradeModal(true)}
       />
-    </PlanGate>
+      <UpgradeModal
+        open={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        feature="multi_mandants"
+      />
+    </>
   );
 }
