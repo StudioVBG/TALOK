@@ -4,6 +4,11 @@
  * Garde un fallback direct Nominatim côté serveur (SSR/scripts).
  */
 
+import {
+  extractPostalCode,
+  postalCodeToCountryCodes,
+} from "@/lib/properties/address";
+
 export interface GeocodingResult {
   latitude: number;
   longitude: number;
@@ -39,8 +44,15 @@ async function geocodeViaNominatimDirect(
   countryCode: string,
   limit: number,
 ): Promise<GeocodingResult | null> {
+  // Élargir aux codes pays DROM-COM si le code postal est 97xxx, sinon
+  // Nominatim filtre l'adresse à la métropole.
+  const postal = extractPostalCode(address);
+  const countries =
+    postal && postal.startsWith("97")
+      ? postalCodeToCountryCodes(postal)
+      : countryCode;
   const encodedAddress = encodeURIComponent(address);
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&countrycodes=${countryCode}&limit=${limit}`;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodedAddress}&countrycodes=${countries}&limit=${limit}`;
   const response = await fetch(url, {
     headers: {
       "User-Agent": "Talok/1.0 (contact@talok.fr)",
