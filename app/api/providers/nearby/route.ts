@@ -76,7 +76,7 @@ interface NearbyProvider {
   is_open?: boolean;
   photo_url?: string;
   google_maps_url: string;
-  source: "google";
+  source: "google" | "demo";
 }
 
 // Cache simple en mémoire (en production, utiliser Redis)
@@ -400,7 +400,7 @@ function getDemoProviders(
         website: s.website,
         is_open: s.is_open,
         google_maps_url: mapsLink(s.mapsTerm),
-        source: "google" as const,
+        source: "demo" as const,
       };
     });
 
