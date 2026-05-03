@@ -5,381 +5,282 @@
  *
  * Persona: Patricia, 58 ans, parente d'un étudiant locataire. Veut
  * comprendre son engagement, recevoir les quittances, suivre les paiements,
- * être alertée en cas de retard mais pas paniquée pour rien.
- * SEO: Cible "espace garant", "caution solidaire bail", "engagement de caution"
+ * être alertée tôt en cas de retard mais pas paniquée pour rien.
+ *
+ * SEO: "espace garant", "acte cautionnement", "caution solidaire bail",
+ * "engagement caution", "résiliation caution"
  */
 
-import { motion } from "framer-motion";
-import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ShieldCheck,
-  ArrowRight,
-  Check,
   FileSignature,
   Bell,
   Eye,
   FileCheck,
-  Sparkles,
-  Heart,
-  AlertTriangle,
-  Lightbulb,
   Scale,
-  Users,
+  AlertTriangle,
+  Inbox,
+  Clock,
+  CheckCircle2,
+  PieChart,
   MessageSquare,
 } from "lucide-react";
+import {
+  SolutionHero,
+  SolutionStats,
+  SolutionSEOIntro,
+  SolutionPainPoints,
+  SolutionHowItWorks,
+  SolutionFeatures,
+  SolutionComparison,
+  SolutionFAQ,
+  SolutionTestimonialCard,
+  SolutionFinalCTA,
+  type SolutionTheme,
+} from "@/components/marketing/solutions";
 
-const PAIN_POINTS = [
-  {
-    icon: AlertTriangle,
-    title: "« Je ne sais pas vraiment à quoi je m’engage »",
-    solution:
-      "Talok vous présente l’acte de cautionnement avec ses montants, sa durée et ses limites avant signature. Toutes les mentions légales sont expliquées en français clair.",
-  },
-  {
-    icon: AlertTriangle,
-    title: "« Je n’ai aucune visibilité sur les paiements »",
-    solution:
-      "Tableau de bord temps réel : loyer payé / en retard, période actuelle, solde courant. Pas besoin de demander au locataire.",
-  },
-  {
-    icon: AlertTriangle,
-    title: "« Je découvre les problèmes trop tard »",
-    solution:
-      "Alerte dès qu’un loyer est en retard de 5 jours, avant que la situation se dégrade. Vous pouvez réagir tôt avec le locataire.",
-  },
-];
-
-const FEATURES_GARANTS = [
-  {
-    icon: FileSignature,
-    title: "Signer l’acte de cautionnement à distance",
-    description:
-      "Acte conforme au Code civil, mentions manuscrites guidées, signature électronique avec valeur légale. Reçu en PDF immédiatement.",
-  },
-  {
-    icon: Eye,
-    title: "Suivre les loyers en temps réel",
-    description:
-      "Tableau de bord avec statut de chaque période : payée, en retard, contestée. Aucune surprise, vous voyez tout.",
-  },
-  {
-    icon: Bell,
-    title: "Alertes intelligentes",
-    description:
-      "Notification dès qu’un loyer est en retard significatif. Pas de spam : vous n’êtes prévenu que quand c’est important.",
-  },
-  {
-    icon: FileCheck,
-    title: "Documents centralisés",
-    description:
-      "Acte de caution, bail, avenants et quittances de loyer accessibles à vie. Pratique pour les démarches bancaires ou administratives.",
-  },
-];
-
-const RIGHTS_INFO = [
-  {
-    title: "Durée de votre engagement",
-    desc: "L’acte précise une durée déterminée ou indéterminée. Talok l’affiche en haut de votre tableau de bord.",
-  },
-  {
-    title: "Plafond de votre engagement",
-    desc: "Montant maximum que vous pouvez avoir à payer (loyers + charges + indemnités). Toujours visible.",
-  },
-  {
-    title: "Résiliation",
-    desc: "Vous pouvez résilier un cautionnement indéterminé à tout moment, par lettre recommandée. Modèle inclus.",
-  },
-  {
-    title: "Mentions obligatoires",
-    desc: "L’acte respecte les articles 22-1 et 2297 : montant en chiffres et lettres, durée, étendue.",
-  },
-];
-
-const TESTIMONIAL = {
-  quote:
-    "Mon fils est étudiant à Lille. Avant Talok, je le harcelais le 10 du mois pour savoir s’il avait payé. Maintenant je vois directement dans l’app. Et je sais exactement ce que je risque.",
-  author: "Patricia G.",
-  location: "Pointe-à-Pitre, Guadeloupe",
-  context: "Garante de son fils étudiant",
+const THEME: SolutionTheme = {
+  gradient: "from-sky-400 via-blue-400 to-cyan-300",
+  accent: "sky",
+  sparkleColor: "#38BDF8",
 };
 
 export default function GarantsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      {/* Hero */}
-      <section className="relative pt-24 pb-16 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-sky-900/20 via-transparent to-transparent" />
+      <SolutionHero
+        theme={THEME}
+        badgeIcon={ShieldCheck}
+        badgeLabel="Pour les garants"
+        titleStart="Vous vous portez garant ?"
+        titleEnd="Restez en contrôle"
+        description="Comprenez votre engagement, suivez les paiements de la personne que vous cautionnez, et soyez alerté tôt en cas de difficulté. Sans pour autant être harcelé pour rien."
+        primaryCta={{ label: "Créer mon espace garant", href: "/auth/signup?role=guarantor" }}
+        secondaryCta={{ label: "J’ai reçu une invitation", href: "/invite" }}
+        reassurances={[
+          "100 % gratuit pour le garant",
+          "Acte de caution conforme",
+          "Visibilité temps réel sur les paiements",
+        ]}
+      />
 
-        <div className="container mx-auto px-4 relative">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-4xl mx-auto text-center"
-          >
-            <Badge className="bg-sky-500/20 text-sky-300 border-sky-500/30 mb-4">
-              <ShieldCheck className="w-3 h-3 mr-1" />
-              Pour les garants
-            </Badge>
+      <SolutionStats
+        theme={THEME}
+        stats={[
+          { value: 100, suffix: " %", label: "Mentions obligatoires conformes", icon: ShieldCheck },
+          { value: 5, suffix: " jours", label: "Avant alerte sur retard", icon: Clock },
+          { value: 0, suffix: " €", label: "Coût pour le garant", icon: CheckCircle2 },
+          { value: 22, prefix: "art. ", suffix: "-1", label: "Loi 89-462 respectée", icon: Scale },
+        ]}
+      />
 
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Vous vous portez garant ?{" "}
-              <span className="bg-gradient-to-r from-sky-400 to-blue-400 bg-clip-text text-transparent">
-                Restez en contrôle
-              </span>
-            </h1>
+      <SolutionSEOIntro
+        eyebrow="Espace garant"
+        heading="Un cautionnement transparent, sans piège"
+        paragraphs={[
+          "Se porter garant, c’est s’engager juridiquement à payer le loyer, les charges et éventuellement les indemnités d’occupation à la place du locataire s’il ne le fait pas. Cet engagement est encadré par les articles 22-1 de la loi du 6 juillet 1989 et 2297 du Code civil : il doit comporter des mentions obligatoires précises, en chiffres et en lettres, avec une durée et un plafond clairement indiqués. Talok présente l’acte intégralement avant signature, en français clair, sans jargon.",
+          "Une fois la caution active, votre tableau de bord vous donne une vue temps réel sur la situation : loyer en cours, statut payé/en retard, montant cumulé sur la période, durée restante de votre engagement, plafond exact. Pas besoin d’appeler le locataire ou le bailleur tous les 10 du mois pour savoir si « ça a été payé » — l’information est là, en permanence, sans intrusion dans la vie privée de la personne que vous cautionnez (vous voyez seulement les loyers, pas ses autres données).",
+          "Talok ajoute deux protections importantes. D’une part, des alertes intelligentes : vous n’êtes notifié que lorsqu’un loyer accuse un retard significatif (par défaut 5 jours), pas pour chaque petit décalage. D’autre part, vos documents sont archivés à vie : acte de caution, bail, avenants, quittances, courriers de mise en demeure éventuelle. Précieux le jour où vous voulez résilier votre engagement (cautionnement à durée indéterminée) ou répondre à une banque qui vous demande votre situation.",
+        ]}
+        keywords={[
+          "espace garant",
+          "acte de cautionnement",
+          "caution solidaire bail",
+          "engagement de caution",
+          "article 22-1 loi 1989",
+          "article 2297 Code civil",
+          "résiliation cautionnement",
+          "plafond caution",
+          "durée cautionnement",
+          "garant étudiant",
+        ]}
+      />
 
-            <p className="text-xl text-slate-400 mb-8 max-w-2xl mx-auto">
-              Comprenez votre engagement, suivez les paiements de la
-              personne que vous cautionnez, et soyez alerté tôt en cas de
-              difficulté. Sans pour autant être harcelé pour rien.
-            </p>
+      <SolutionPainPoints
+        theme={THEME}
+        heading="Les vraies inquiétudes du garant"
+        subheading="Et la transparence que Talok apporte."
+        items={[
+          {
+            icon: AlertTriangle,
+            title: "« Je ne sais pas vraiment à quoi je m’engage »",
+            solution:
+              "Talok présente l’acte avec montants en chiffres et en lettres, durée, plafond et limites avant signature. Toutes les mentions légales sont expliquées en français clair.",
+          },
+          {
+            icon: AlertTriangle,
+            title: "« Je n’ai aucune visibilité sur les paiements »",
+            solution:
+              "Tableau de bord temps réel : loyer payé/en retard, période actuelle, plafond restant. Pas besoin de demander au locataire ni au bailleur.",
+          },
+          {
+            icon: AlertTriangle,
+            title: "« Je découvre les problèmes trop tard »",
+            solution:
+              "Alerte dès qu’un loyer est en retard de 5 jours, avant que la situation se dégrade. Vous pouvez réagir tôt avec le locataire.",
+          },
+        ]}
+      />
 
-            <div className="flex flex-wrap justify-center gap-4 mb-8">
-              <Link href="/auth/signup?role=guarantor">
-                <Button
-                  size="lg"
-                  className="bg-gradient-to-r from-sky-600 to-blue-600 hover:opacity-90"
-                >
-                  Créer mon espace garant
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-              <Link href="/invite">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-slate-700 text-slate-300 hover:bg-slate-800"
-                >
-                  J’ai reçu une invitation
-                </Button>
-              </Link>
-            </div>
+      <SolutionHowItWorks
+        theme={THEME}
+        heading="De l’invitation à la sérénité, en 4 étapes"
+        steps={[
+          {
+            icon: Inbox,
+            title: "Recevoir l’invitation",
+            desc: "Le bailleur ou le locataire vous envoie un lien sécurisé.",
+          },
+          {
+            icon: Eye,
+            title: "Lire l’acte",
+            desc: "Lecture intégrale, mentions obligatoires expliquées.",
+          },
+          {
+            icon: FileSignature,
+            title: "Signer électroniquement",
+            desc: "Mentions manuscrites guidées, signature à valeur légale.",
+          },
+          {
+            icon: PieChart,
+            title: "Suivre en temps réel",
+            desc: "Tableau de bord paiements, alertes intelligentes, archives.",
+          },
+        ]}
+      />
 
-            <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-400">
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-400" />
-                100 % gratuit pour le garant
-              </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-400" />
-                Acte de caution conforme
-              </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-400" />
-                Visibilité temps réel
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+      <SolutionFeatures
+        theme={THEME}
+        heading="Votre tableau de bord garant"
+        subheading="Tout ce qu’il faut pour exercer sereinement votre rôle."
+        features={[
+          {
+            icon: FileSignature,
+            title: "Signer l’acte à distance",
+            description:
+              "Acte conforme aux articles 22-1 (loi 1989) et 2297 (Code civil). Mentions manuscrites guidées, signature électronique eIDAS. Reçu en PDF immédiatement.",
+          },
+          {
+            icon: Eye,
+            title: "Suivre les loyers en temps réel",
+            description:
+              "Tableau de bord avec statut de chaque période : payée, en retard, contestée. Aucune surprise, vous voyez tout sans intrusion.",
+          },
+          {
+            icon: Bell,
+            title: "Alertes intelligentes",
+            description:
+              "Notification dès qu’un loyer est en retard significatif (5 j par défaut). Pas de spam : vous n’êtes prévenu que quand c’est important.",
+          },
+          {
+            icon: FileCheck,
+            title: "Documents centralisés",
+            description:
+              "Acte de caution, bail, avenants, quittances et courriers accessibles à vie. Pratique pour les démarches bancaires ou administratives.",
+          },
+          {
+            icon: Scale,
+            title: "Vos droits, expliqués",
+            description:
+              "Plafond exact, durée restante, modalités de résiliation : tout est rappelé en haut de votre tableau de bord en permanence.",
+          },
+          {
+            icon: MessageSquare,
+            title: "Modèle de résiliation inclus",
+            description:
+              "Lettre de résiliation prête à l’emploi (cautionnement à durée indéterminée), envoi en recommandé tracé, accusé de réception archivé.",
+          },
+        ]}
+      />
 
-      {/* Pain Points */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Les vraies inquiétudes du garant
-            </h2>
-            <p className="text-slate-400">
-              Et la transparence que Talok apporte.
-            </p>
-          </motion.div>
+      <SolutionComparison
+        theme={THEME}
+        heading="Avant Talok / avec Talok"
+        rows={[
+          {
+            topic: "Comprendre l’engagement",
+            without: "Acte papier dense, jargon juridique, signé sans tout lire",
+            with: "Acte présenté en français clair, mentions expliquées",
+          },
+          {
+            topic: "Visibilité paiements",
+            without: "Demander au locataire, parfois conflictuel",
+            with: "Tableau de bord temps réel, sans intrusion",
+          },
+          {
+            topic: "Détection des retards",
+            without: "Découverte du problème après plusieurs impayés",
+            with: "Alerte automatique dès 5 jours de retard significatif",
+          },
+          {
+            topic: "Documents",
+            without: "Acte papier perdu, copie introuvable au moment crucial",
+            with: "Coffre-fort numérique, accès à vie, exportable PDF",
+          },
+          {
+            topic: "Résiliation",
+            without: "Modèle introuvable, peur de mal faire",
+            with: "Lettre type, envoi recommandé tracé, AR archivé",
+          },
+        ]}
+      />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {PAIN_POINTS.map((point, index) => (
-              <motion.div
-                key={point.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card className="h-full bg-slate-800/30 border-slate-700/50">
-                  <CardHeader>
-                    <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center mb-4">
-                      <point.icon className="w-6 h-6 text-amber-400" />
-                    </div>
-                    <CardTitle className="text-lg text-white">
-                      {point.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-start gap-2">
-                      <Lightbulb className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                      <p className="text-slate-300 text-sm">{point.solution}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <SolutionTestimonialCard
+        theme={THEME}
+        avatarIcon={ShieldCheck}
+        testimonial={{
+          quote:
+            "Mon fils est étudiant à Lille. Avant Talok, je le harcelais le 10 du mois pour savoir s’il avait payé. Maintenant je vois directement dans l’app. Et je sais exactement ce que je risque.",
+          author: "Patricia G.",
+          location: "Pointe-à-Pitre, Guadeloupe",
+          context: "Garante de son fils étudiant",
+        }}
+      />
 
-      {/* Features */}
-      <section className="py-20 bg-slate-900/50">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Votre tableau de bord garant
-            </h2>
-            <p className="text-slate-400">
-              Tout ce qu’il faut pour exercer sereinement votre rôle.
-            </p>
-          </motion.div>
+      <SolutionFAQ
+        heading="Vos questions de garant"
+        items={[
+          {
+            question: "L’espace garant Talok est-il vraiment gratuit pour moi ?",
+            answer:
+              "Oui, totalement. Comme pour les locataires, votre espace est financé par l’abonnement du bailleur. Vous n’avez aucune carte bancaire à fournir pour activer votre espace, signer l’acte ou consulter les paiements.",
+          },
+          {
+            question: "Quelle est la valeur juridique de l’acte de cautionnement signé sur Talok ?",
+            answer:
+              "L’acte respecte intégralement l’article 22-1 de la loi du 6 juillet 1989 et l’article 2297 du Code civil : montant maximal en chiffres et en lettres, durée, étendue de l’engagement, mention de connaissance des conséquences. La signature électronique est conforme au règlement européen eIDAS, avec la même valeur qu’une signature manuscrite sur papier.",
+          },
+          {
+            question: "Puis-je résilier mon engagement de caution ?",
+            answer:
+              "Cela dépend de la durée prévue dans l’acte. Si la caution est à durée déterminée, l’engagement court jusqu’à la fin de cette durée. Si elle est à durée indéterminée, vous pouvez la résilier à tout moment par lettre recommandée — la résiliation prend effet à la fin du bail en cours. Talok inclut le modèle de lettre prêt à l’emploi.",
+          },
+          {
+            question: "Quel est le plafond exact de mon engagement ?",
+            answer:
+              "Il est inscrit dans l’acte que vous avez signé : montant maximum cumulé que vous pouvez avoir à payer (loyers, charges, indemnités d’occupation, frais éventuels). Talok l’affiche en permanence en haut de votre tableau de bord, avec le solde déjà engagé. Votre responsabilité ne dépasse jamais ce plafond.",
+          },
+          {
+            question: "Quelles informations sur le locataire puis-je voir ?",
+            answer:
+              "Strictement les informations liées au bail : montant du loyer, statut de paiement par période (payé/en retard), quittances, durée restante du bail. Vous ne voyez ni ses revenus, ni ses messages avec le bailleur, ni ses autres données personnelles. Talok respecte le RGPD.",
+          },
+          {
+            question: "Que se passe-t-il si le locataire ne paie vraiment pas ?",
+            answer:
+              "Si après alertes le loyer reste impayé, le bailleur peut activer la caution selon les modalités prévues dans l’acte. Talok vous notifie de chaque étape, vous communique les courriers échangés, et conserve une trace de tout. Vous restez informé en continu — l’objectif est qu’aucune action ne se passe sans que vous le sachiez.",
+          },
+        ]}
+      />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            {FEATURES_GARANTS.map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.05 }}
-                className="flex items-start gap-4 bg-slate-800/30 rounded-xl p-6 border border-slate-700/50"
-              >
-                <div className="w-12 h-12 rounded-xl bg-sky-500/20 flex items-center justify-center flex-shrink-0">
-                  <feature.icon className="w-6 h-6 text-sky-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white mb-1">
-                    {feature.title}
-                  </h3>
-                  <p className="text-sm text-slate-400">{feature.description}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Vos droits */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-4xl mx-auto"
-          >
-            <div className="text-center mb-12">
-              <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 mb-4">
-                <Scale className="w-3 h-3 mr-1" />
-                Vos droits expliqués
-              </Badge>
-              <h2 className="text-3xl font-bold text-white mb-4">
-                Engagement clair, sans piège
-              </h2>
-              <p className="text-slate-400">
-                Toutes les informations légales que vous devez connaître,
-                rappelées dans votre tableau de bord.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {RIGHTS_INFO.map((info) => (
-                <div
-                  key={info.title}
-                  className="rounded-xl bg-slate-800/30 border border-slate-700/50 p-5"
-                >
-                  <div className="font-semibold text-white text-sm mb-1">
-                    {info.title}
-                  </div>
-                  <div className="text-xs text-slate-400 leading-relaxed">
-                    {info.desc}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Testimonial */}
-      <section className="py-20 bg-slate-900/50">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-3xl mx-auto text-center"
-          >
-            <Heart className="w-12 h-12 text-pink-400 mx-auto mb-6" />
-            <blockquote className="text-2xl text-white mb-6 leading-relaxed">
-              « {TESTIMONIAL.quote} »
-            </blockquote>
-            <div className="flex items-center justify-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-sky-500/20 flex items-center justify-center">
-                <ShieldCheck className="w-6 h-6 text-sky-400" />
-              </div>
-              <div className="text-left">
-                <div className="font-semibold text-white">
-                  {TESTIMONIAL.author}
-                </div>
-                <div className="text-sm text-slate-400">
-                  {TESTIMONIAL.location} · {TESTIMONIAL.context}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-3xl mx-auto text-center bg-gradient-to-br from-sky-900/50 to-blue-900/50 rounded-3xl p-12 border border-sky-500/30"
-          >
-            <Sparkles className="w-12 h-12 text-sky-400 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Vous avez reçu une invitation à vous porter garant ?
-            </h2>
-            <p className="text-slate-300 mb-8">
-              Activez votre espace en 2 minutes. Vous pourrez relire l’acte
-              avant de le signer, et garder un œil sur les paiements en
-              continu.
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Link href="/invite">
-                <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100">
-                  Activer mon invitation
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-              <Link href="/contact">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-slate-700 text-slate-300 hover:bg-slate-800"
-                >
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Une question juridique ?
-                </Button>
-              </Link>
-            </div>
-            <p className="mt-4 text-sm text-slate-400">
-              Garant : c’est toujours gratuit · Aucune carte bancaire
-            </p>
-          </motion.div>
-        </div>
-      </section>
+      <SolutionFinalCTA
+        theme={THEME}
+        heading="Vous avez reçu une invitation à vous porter garant ?"
+        description="Activez votre espace en 2 minutes. Vous pourrez relire l’acte avant de le signer, et garder un œil sur les paiements en continu."
+        primaryCta={{ label: "Activer mon invitation", href: "/invite" }}
+        secondaryCta={{ label: "Une question juridique ?", href: "/contact" }}
+        reassurance="Garant : c’est toujours gratuit · Aucune carte bancaire"
+      />
     </div>
   );
 }

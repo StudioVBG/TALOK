@@ -3,444 +3,289 @@
 /**
  * Page Solution: Locataires & colocataires
  *
- * Persona: Léa, 28 ans, locataire (parfois colocataire), veut payer en
- * 2 clics, retrouver ses quittances, signer un bail à distance,
- * connaître ses droits.
- * SEO: Cible "espace locataire", "payer loyer en ligne", "quittance loyer"
+ * Persona: Léa, 28 ans, locataire (parfois colocataire). Veut payer en
+ * 2 clics, retrouver ses quittances, signer un bail à distance, connaître
+ * ses droits, signaler un incident, gérer la coloc sereinement.
+ *
+ * SEO: "espace locataire", "payer loyer en ligne", "quittance loyer",
+ * "mes droits locataire", "colocation solidarité"
  */
 
-import { motion } from "framer-motion";
-import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Users,
-  ArrowRight,
-  Check,
   CreditCard,
   Receipt,
   Wrench,
-  ShieldCheck,
   FileSignature,
-  Sparkles,
-  Heart,
-  AlertTriangle,
-  Lightbulb,
-  MessageSquare,
-  Calendar,
   Scale,
+  AlertTriangle,
+  Smartphone,
+  Calculator,
+  HeartHandshake,
+  Inbox,
 } from "lucide-react";
+import {
+  SolutionHero,
+  SolutionStats,
+  SolutionSEOIntro,
+  SolutionPainPoints,
+  SolutionHowItWorks,
+  SolutionFeatures,
+  SolutionComparison,
+  SolutionFAQ,
+  SolutionTestimonialCard,
+  SolutionFinalCTA,
+  type SolutionTheme,
+} from "@/components/marketing/solutions";
 
-const PAIN_POINTS = [
-  {
-    icon: AlertTriangle,
-    title: "« Je perds mes quittances »",
-    solution:
-      "Toutes vos quittances et votre bail sont archivés à vie dans votre espace. Téléchargeables en PDF en 2 clics, prêts pour vos démarches (CAF, impôts, banque).",
-  },
-  {
-    icon: AlertTriangle,
-    title: "« Je ne sais pas quoi faire en cas de problème »",
-    solution:
-      "Un robinet qui fuit, une chaudière en panne ? Signalez-le en 30 secondes avec photo. Le bailleur reçoit la notif et peut envoyer un artisan directement.",
-  },
-  {
-    icon: AlertTriangle,
-    title: "« Je veux connaître mes droits »",
-    solution:
-      "Espace « Mes droits de locataire » intégré : protocoles, lettres types, calculateurs (préavis, IRL, dépôt de garantie). Mis à jour avec la loi.",
-  },
-];
-
-const FEATURES_LOCATAIRES = [
-  {
-    icon: CreditCard,
-    title: "Payer son loyer en 2 clics",
-    description:
-      "Carte bancaire, prélèvement automatique SEPA, virement. Confirmation instantanée. Plus de chèque, plus d’oubli.",
-  },
-  {
-    icon: Receipt,
-    title: "Quittances reçues automatiquement",
-    description:
-      "Dès le paiement validé, votre quittance ALUR vous est envoyée par email et archivée. Toutes consultables à tout moment.",
-  },
-  {
-    icon: FileSignature,
-    title: "Signer son bail à distance",
-    description:
-      "Bail, avenant, état des lieux : tout se signe par téléphone avec valeur légale d’un original papier. Aucun déplacement.",
-  },
-  {
-    icon: Wrench,
-    title: "Signaler un incident en 30 sec",
-    description:
-      "Photo, description, urgence : votre demande arrive directement au bailleur ou au syndic. Suivi en temps réel jusqu’à résolution.",
-  },
-  {
-    icon: Scale,
-    title: "Mes droits de locataire",
-    description:
-      "Calculateurs (préavis, IRL, charges, dépôt), modèles de lettres et FAQ juridique alimentés par notre IA TALO. À jour de la loi.",
-  },
-  {
-    icon: Users,
-    title: "Colocation simplifiée",
-    description:
-      "Quote-part de loyer par colocataire, paiements individuels, clause de solidarité claire, départ d’un colocataire géré sereinement.",
-  },
-];
-
-const RIGHTS_TOPICS = [
-  { label: "Calcul du préavis", desc: "Zone tendue, mutation, raison de santé" },
-  { label: "Révision IRL", desc: "Vérifiez l’augmentation autorisée" },
-  { label: "Régularisation des charges", desc: "Que peut vraiment refacturer le bailleur ?" },
-  { label: "Dépôt de garantie", desc: "Délais et déductions autorisées" },
-  { label: "Réparations locatives", desc: "Liste précise loi de 1987" },
-  { label: "Modèles de lettres", desc: "Préavis, contestation, mise en demeure" },
-];
-
-const TESTIMONIAL = {
-  quote:
-    "J’avais perdu mes 3 dernières quittances pour un dossier banque. Sur Talok, je les ai retrouvées en 10 secondes. Et je signale les problèmes sans attendre que mon proprio décroche.",
-  author: "Léa M.",
-  location: "Saint-Denis, La Réunion",
-  context: "Locataire d’un T2",
+const THEME: SolutionTheme = {
+  gradient: "from-emerald-400 via-cyan-400 to-emerald-300",
+  accent: "emerald",
+  sparkleColor: "#34D399",
 };
 
 export default function LocatairesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      {/* Hero */}
-      <section className="relative pt-24 pb-16 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-transparent to-transparent" />
+      <SolutionHero
+        theme={THEME}
+        badgeIcon={Users}
+        badgeLabel="Pour les locataires & colocataires"
+        titleStart="Votre logement,"
+        titleEnd="sous contrôle"
+        description="Payez votre loyer en 2 clics, retrouvez toutes vos quittances, signez votre bail à distance, signalez un incident et calculez vos droits. Talok centralise toute votre vie de locataire."
+        primaryCta={{ label: "Créer mon espace gratuit", href: "/auth/signup" }}
+        secondaryCta={{ label: "J’ai reçu une invitation", href: "/rejoindre-logement" }}
+        reassurances={[
+          "100 % gratuit pour le locataire",
+          "Quittances ALUR archivées à vie",
+          "Application iPhone & Android",
+        ]}
+      />
 
-        <div className="container mx-auto px-4 relative">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="max-w-4xl mx-auto text-center"
-          >
-            <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 mb-4">
-              <Users className="w-3 h-3 mr-1" />
-              Pour les locataires &amp; colocataires
-            </Badge>
+      <SolutionStats
+        theme={THEME}
+        stats={[
+          { value: 30, suffix: " s", label: "Pour signaler un incident", icon: Smartphone },
+          { value: 2, suffix: " clics", label: "Pour payer le loyer", icon: CreditCard },
+          { value: 100, suffix: " %", label: "Quittances ALUR archivées", icon: Receipt },
+          { value: 6, suffix: " calc.", label: "Outils de calcul juridique", icon: Calculator },
+        ]}
+      />
 
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-6">
-              Votre logement,{" "}
-              <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">
-                sous contrôle
-              </span>
-            </h1>
+      <SolutionSEOIntro
+        eyebrow="Espace locataire"
+        heading="Tout ce qu’un locataire moderne attend de son logiciel"
+        paragraphs={[
+          "Être locataire en France en 2026, c’est jongler entre virements bancaires manuels, quittances reçues en PDF désordonnés par email, démarches CAF qui réclament un justificatif perdu, et un bailleur ou syndic qu’on n’arrive pas à joindre quand un robinet fuit. Talok résout ces frictions du quotidien : un espace unique, gratuit pour vous, où votre bail vit en temps réel.",
+          "Vous payez votre loyer par carte bancaire ou prélèvement automatique SEPA en quelques secondes. Votre quittance ALUR vous est envoyée par email et conservée à vie dans votre coffre-fort numérique — prête à être téléchargée pour la CAF, votre banque ou votre prochain dossier de location. Si vous emménagez à plusieurs, la colocation est traitée comme un cas de première classe : quote-part individuelle, paiements séparés, clause de solidarité conforme ALUR, départ d’un colocataire géré sans drame.",
+          "Pour vos droits, Talok intègre l’assistant TALO : 6 calculateurs (préavis selon la zone, révision IRL, charges récupérables, dépôt de garantie, prorata et plus), 15 modèles de lettres types et une FAQ juridique alimentée par les textes officiels. Vos questions trouvent une réponse claire, en français, sans avocat. Et si quelque chose dérape, le signalement d’incident en 30 secondes (photo + description) déclenche immédiatement un ticket suivi par votre bailleur ou son artisan.",
+        ]}
+        keywords={[
+          "espace locataire",
+          "payer loyer en ligne",
+          "quittance ALUR",
+          "signature électronique bail",
+          "colocation solidarité",
+          "mes droits de locataire",
+          "calcul préavis logement",
+          "révision IRL",
+          "dépôt de garantie",
+          "signalement incident location",
+        ]}
+      />
 
-            <p className="text-xl text-slate-400 mb-8 max-w-2xl mx-auto">
-              Payez votre loyer en 2 clics, retrouvez toutes vos quittances,
-              signalez un problème, signez votre bail à distance. Talok
-              centralise toute votre vie de locataire.
-            </p>
+      <SolutionPainPoints
+        theme={THEME}
+        heading="Ce que les locataires nous disent"
+        subheading="Et comment Talok règle chacun de ces points concrets."
+        items={[
+          {
+            icon: AlertTriangle,
+            title: "« Je perds mes quittances »",
+            solution:
+              "Toutes vos quittances ALUR et votre bail sont archivés à vie dans votre coffre. Téléchargeables en PDF en 2 clics, prêts pour la CAF, les impôts ou la banque.",
+          },
+          {
+            icon: AlertTriangle,
+            title: "« Je ne sais pas quoi faire en cas de problème »",
+            solution:
+              "Robinet qui fuit, chaudière en panne, serrure cassée ? Signalez avec photo en 30 secondes. Le bailleur est notifié et peut envoyer un artisan dans la foulée.",
+          },
+          {
+            icon: AlertTriangle,
+            title: "« Je veux connaître mes droits »",
+            solution:
+              "Espace « Mes droits » intégré : protocoles, lettres types, calculateurs (préavis, IRL, charges, dépôt). Mis à jour par notre IA TALO sur les textes officiels.",
+          },
+        ]}
+      />
 
-            <div className="flex flex-wrap justify-center gap-4 mb-8">
-              <Link href="/auth/signup">
-                <Button
-                  size="lg"
-                  className="bg-gradient-to-r from-emerald-600 to-cyan-600 hover:opacity-90"
-                >
-                  Créer mon espace
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-              <Link href="/rejoindre-logement">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-slate-700 text-slate-300 hover:bg-slate-800"
-                >
-                  J’ai reçu une invitation
-                </Button>
-              </Link>
-            </div>
+      <SolutionHowItWorks
+        theme={THEME}
+        heading="De l’invitation à la quittance, en 4 étapes"
+        steps={[
+          {
+            icon: Inbox,
+            title: "Reçevez votre invitation",
+            desc: "Votre bailleur ou syndic vous envoie un lien par email. 2 minutes pour activer.",
+          },
+          {
+            icon: FileSignature,
+            title: "Signez votre bail",
+            desc: "Lecture du bail conforme ALUR, signature électronique avec valeur légale.",
+          },
+          {
+            icon: CreditCard,
+            title: "Payez en 2 clics",
+            desc: "CB ou prélèvement SEPA. Confirmation immédiate, prélèvement à la date convenue.",
+          },
+          {
+            icon: Receipt,
+            title: "Recevez votre quittance",
+            desc: "Quittance ALUR générée et archivée. Téléchargeable à tout moment.",
+          },
+        ]}
+      />
 
-            <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-400">
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-400" />
-                100 % gratuit pour le locataire
-              </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-400" />
-                Quittances ALUR archivées à vie
-              </div>
-              <div className="flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-400" />
-                Application iPhone &amp; Android
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
+      <SolutionFeatures
+        theme={THEME}
+        heading="Tout ce dont vous avez besoin"
+        subheading="Du paiement aux droits, sans rien oublier."
+        features={[
+          {
+            icon: CreditCard,
+            title: "Payer en 2 clics",
+            description:
+              "Carte bancaire, prélèvement automatique SEPA ou virement. Confirmation instantanée. Plus de chèque, plus d’oubli, plus de relance.",
+          },
+          {
+            icon: Receipt,
+            title: "Quittances automatiques",
+            description:
+              "Dès le paiement validé, votre quittance ALUR vous est envoyée par email et archivée à vie dans votre coffre-fort numérique.",
+          },
+          {
+            icon: FileSignature,
+            title: "Signer son bail à distance",
+            description:
+              "Bail, avenant, état des lieux : signature électronique avec valeur légale d’un original papier. Aucun déplacement.",
+          },
+          {
+            icon: Wrench,
+            title: "Signaler un incident",
+            description:
+              "Photo, description, urgence : votre demande arrive directement au bailleur ou syndic. Suivi temps réel jusqu’à résolution.",
+          },
+          {
+            icon: Scale,
+            title: "Mes droits de locataire",
+            description:
+              "6 calculateurs (préavis, IRL, charges, dépôt) + 15 modèles de lettres + FAQ juridique alimentée par TALO. À jour de la loi.",
+          },
+          {
+            icon: HeartHandshake,
+            title: "Colocation simplifiée",
+            description:
+              "Quote-part individuelle, paiements séparés, clause de solidarité ALUR de 6 mois, départ d’un colocataire géré sereinement.",
+          },
+        ]}
+      />
 
-      {/* Pain Points */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Ce que les locataires nous disent
-            </h2>
-            <p className="text-slate-400">
-              Et comment Talok règle chacun de ces points.
-            </p>
-          </motion.div>
+      <SolutionComparison
+        theme={THEME}
+        heading="Comment Talok change la vie quotidienne du locataire"
+        subheading="Les frictions classiques côté gauche. Ce que Talok apporte côté droit."
+        rows={[
+          {
+            topic: "Paiement du loyer",
+            without: "Virement manuel chaque mois, parfois oublié, RIB qu’on cherche",
+            with: "Prélèvement automatique SEPA ou paiement CB en 2 clics",
+          },
+          {
+            topic: "Quittance",
+            without: "Réclamée par email, reçue en retard ou jamais",
+            with: "Générée automatiquement, archivée à vie, téléchargeable en PDF",
+          },
+          {
+            topic: "Signature du bail",
+            without: "Impression, signature papier, scan, retour en recommandé",
+            with: "Lecture en ligne, signature électronique conforme eIDAS",
+          },
+          {
+            topic: "Incident logement",
+            without: "Coup de fil au bailleur sans réponse, SMS perdu",
+            with: "Ticket avec photo, suivi temps réel, artisan assigné",
+          },
+          {
+            topic: "Mes droits",
+            without: "Recherche Google, sites datés, lettre type approximative",
+            with: "Calculateurs IRL, préavis, dépôt + 15 modèles validés",
+          },
+          {
+            topic: "Colocation",
+            without: "Un seul bail, conflits sur qui paie quoi, départs houleux",
+            with: "Quote-part individuelle, paiements séparés, solidarité claire",
+          },
+        ]}
+      />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {PAIN_POINTS.map((point, index) => (
-              <motion.div
-                key={point.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Card className="h-full bg-slate-800/30 border-slate-700/50">
-                  <CardHeader>
-                    <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center mb-4">
-                      <point.icon className="w-6 h-6 text-amber-400" />
-                    </div>
-                    <CardTitle className="text-lg text-white">
-                      {point.title}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-start gap-2">
-                      <Lightbulb className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                      <p className="text-slate-300 text-sm">{point.solution}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <SolutionTestimonialCard
+        theme={THEME}
+        avatarIcon={Users}
+        testimonial={{
+          quote:
+            "J’avais perdu mes 3 dernières quittances pour un dossier banque. Sur Talok, je les ai retrouvées en 10 secondes. Et je signale les problèmes sans attendre que mon proprio décroche.",
+          author: "Léa M.",
+          location: "Saint-Denis, La Réunion",
+          context: "Locataire d’un T2",
+        }}
+      />
 
-      {/* Features */}
-      <section className="py-20 bg-slate-900/50">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Tout ce dont vous avez besoin
-            </h2>
-            <p className="text-slate-400">
-              Du paiement aux droits, sans rien oublier.
-            </p>
-          </motion.div>
+      <SolutionFAQ
+        heading="Vos questions de locataire"
+        items={[
+          {
+            question: "L’espace locataire Talok est-il vraiment gratuit pour moi ?",
+            answer:
+              "Oui, totalement. Le coût est pris en charge par votre bailleur ou syndic dans son abonnement. Vous n’avez aucune carte bancaire à fournir pour activer votre espace, signer votre bail ou télécharger vos quittances. Les frais de paiement (CB ou SEPA) sont également supportés par le bailleur.",
+          },
+          {
+            question: "Mes quittances Talok sont-elles légalement valables ?",
+            answer:
+              "Oui. Les quittances générées par Talok respectent l’article 21 de la loi du 6 juillet 1989 (loi ALUR) : période concernée, montant détaillé loyer + charges, signature du bailleur. Elles sont acceptées par la CAF, votre banque, les impôts et tout administrateur de biens.",
+          },
+          {
+            question: "Comment fonctionne la signature électronique du bail ?",
+            answer:
+              "Talok utilise une signature électronique conforme au règlement européen eIDAS, avec la même valeur légale qu’un original papier. Vous recevez le bail par email, vous le lisez sur votre téléphone, vous saisissez un code reçu par SMS et c’est signé. Le PDF signé est archivé à vie dans votre espace.",
+          },
+          {
+            question: "Que se passe-t-il en colocation si l’un de nous part ?",
+            answer:
+              "Talok gère la solidarité ALUR de 6 mois automatiquement : à compter du préavis du colocataire sortant, sa responsabilité solidaire prend fin 6 mois après son départ effectif (sauf s’il est remplacé avant). Sa quote-part bascule sur les colocataires restants, avec génération automatique de l’avenant.",
+          },
+          {
+            question: "Mon bailleur ne souhaite pas utiliser Talok, que faire ?",
+            answer:
+              "Parlez-lui en : l’inscription est gratuite (plan Gratuit pour 1 bien) et il pourra continuer à gérer comme il préfère. Le plus souvent, le gain de temps sur quittances et paiements convainc rapidement. Si malgré tout il refuse, vous pouvez tout de même utiliser nos outils gratuits (calculateurs IRL, préavis) sans bailleur connecté.",
+          },
+          {
+            question: "Comment signaler un incident sérieux (urgence) ?",
+            answer:
+              "Quand vous créez un ticket, vous choisissez le niveau d’urgence (faible, moyen, élevé, urgence). Une urgence (fuite d’eau, coupure totale d’électricité, sinistre) déclenche une notification SMS immédiate au bailleur ou au syndic. Talok recommande aussi les numéros publics utiles (pompiers, gendarmerie, EDF dépannage).",
+          },
+        ]}
+      />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-            {FEATURES_LOCATAIRES.map((feature, index) => (
-              <motion.div
-                key={feature.title}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.05 }}
-                className="flex items-start gap-4 bg-slate-800/30 rounded-xl p-6 border border-slate-700/50"
-              >
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                  <feature.icon className="w-6 h-6 text-emerald-400" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white mb-1">
-                    {feature.title}
-                  </h3>
-                  <p className="text-sm text-slate-400">{feature.description}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Mes droits de locataire */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-4xl mx-auto"
-          >
-            <div className="text-center mb-12">
-              <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30 mb-4">
-                <ShieldCheck className="w-3 h-3 mr-1" />
-                Mes droits de locataire
-              </Badge>
-              <h2 className="text-3xl font-bold text-white mb-4">
-                Vos droits, expliqués clairement
-              </h2>
-              <p className="text-slate-400">
-                Calculateurs, lettres types, FAQ juridique. À jour de la loi
-                ALUR/ELAN.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {RIGHTS_TOPICS.map((topic) => (
-                <div
-                  key={topic.label}
-                  className="rounded-xl bg-slate-800/30 border border-slate-700/50 p-5 hover:border-cyan-500/50 transition-colors"
-                >
-                  <div className="font-semibold text-white text-sm mb-1">
-                    {topic.label}
-                  </div>
-                  <div className="text-xs text-slate-400">{topic.desc}</div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-8 text-center">
-              <Link href="/outils">
-                <Button
-                  variant="outline"
-                  className="border-slate-700 text-slate-300 hover:bg-slate-800"
-                >
-                  Voir tous les outils gratuits
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Colocation focus */}
-      <section className="py-20 bg-slate-900/50">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-3xl mx-auto rounded-3xl border border-slate-700/50 bg-gradient-to-br from-slate-800/40 to-slate-900/40 p-8 md:p-12"
-          >
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-violet-500/20 flex items-center justify-center">
-                <Users className="w-6 h-6 text-violet-400" />
-              </div>
-              <Badge className="bg-violet-500/20 text-violet-300 border-violet-500/30">
-                Colocation
-              </Badge>
-            </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
-              Conçu pour la coloc, pas adapté
-            </h2>
-            <p className="text-slate-300 leading-relaxed mb-6">
-              Quote-part de loyer individuelle, paiements séparés, clause de
-              solidarité de 6 mois conforme ALUR, départ d’un colocataire
-              géré sans drame, état des lieux multiple. Talok est l’une des
-              rares solutions à traiter la colocation comme un cas de
-              première classe.
-            </p>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="flex items-center gap-2 text-slate-300">
-                <Check className="w-4 h-4 text-emerald-400" />
-                Paiement individuel
-              </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <Check className="w-4 h-4 text-emerald-400" />
-                Solidarité 6 mois
-              </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <Check className="w-4 h-4 text-emerald-400" />
-                Quittance par colocataire
-              </div>
-              <div className="flex items-center gap-2 text-slate-300">
-                <Check className="w-4 h-4 text-emerald-400" />
-                Garants invités gratuitement
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Testimonial */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-3xl mx-auto text-center"
-          >
-            <Heart className="w-12 h-12 text-pink-400 mx-auto mb-6" />
-            <blockquote className="text-2xl text-white mb-6 leading-relaxed">
-              « {TESTIMONIAL.quote} »
-            </blockquote>
-            <div className="flex items-center justify-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                <Users className="w-6 h-6 text-emerald-400" />
-              </div>
-              <div className="text-left">
-                <div className="font-semibold text-white">
-                  {TESTIMONIAL.author}
-                </div>
-                <div className="text-sm text-slate-400">
-                  {TESTIMONIAL.location} · {TESTIMONIAL.context}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-20">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-3xl mx-auto text-center bg-gradient-to-br from-emerald-900/50 to-cyan-900/50 rounded-3xl p-12 border border-emerald-500/30"
-          >
-            <Sparkles className="w-12 h-12 text-emerald-400 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Votre bailleur n’est pas encore sur Talok ?
-            </h2>
-            <p className="text-slate-300 mb-8">
-              Parlez-lui en. Il pourra créer son compte gratuit en 2 minutes
-              et vous inviter dans la foulée. Vous gagnerez tous du temps.
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              <Link href="/auth/signup">
-                <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100">
-                  Créer mon espace gratuit
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </Link>
-              <Link href="/contact">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-slate-700 text-slate-300 hover:bg-slate-800"
-                >
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Une question ?
-                </Button>
-              </Link>
-            </div>
-            <p className="mt-4 text-sm text-slate-400">
-              Locataire : c’est toujours gratuit · Aucune carte bancaire requise
-            </p>
-          </motion.div>
-        </div>
-      </section>
+      <SolutionFinalCTA
+        theme={THEME}
+        heading="Votre bailleur n’est pas encore sur Talok ?"
+        description="Parlez-lui en. Il pourra créer son compte gratuit en 2 minutes et vous inviter dans la foulée. Vous gagnerez tous du temps."
+        primaryCta={{ label: "Créer mon espace gratuit", href: "/auth/signup" }}
+        secondaryCta={{ label: "Une question ?", href: "/contact" }}
+        reassurance="Locataire : c’est toujours gratuit · Aucune carte bancaire requise"
+      />
     </div>
   );
 }
