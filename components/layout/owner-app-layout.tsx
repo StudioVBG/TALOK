@@ -153,13 +153,14 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
     };
   }, [profile]);
 
-  // Owner qui gère aussi un site syndic (mode bénévole ou via invitation
-  // publique acceptée) : on lui propose un commutateur vers /syndic.
-  // Source : /api/me/workspaces (lit sites.syndic_profile_id +
-  // user_site_roles.role_code='syndic'). Voir P0/P1 fixes (commits 9588622,
-  // a844e94) — l'owner garde profile.role='owner' et accède au syndic via
-  // le layout étendu.
-  const [syndicSitesCount, setSyndicSitesCount] = useState<number>(0);
+  // Owner qui a accès à d'autres espaces : syndic (mode bénévole ou
+  // invitation publique), copro (invité comme copropriétaire d'une autre
+  // copro), guarantor (s'est porté garant pour un proche).
+  // Source : /api/me/workspaces — couvre toutes les éligibilités via
+  // sites.syndic_profile_id + user_site_roles + table guarantors.
+  const [secondaryWorkspaces, setSecondaryWorkspaces] = useState<
+    Array<{ key: string; href: string; label: string; count?: number }>
+  >([]);
   useEffect(() => {
     if (!profile || profile.role !== "owner") return;
     let cancelled = false;
@@ -168,12 +169,10 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
         const response = await fetch("/api/me/workspaces", { credentials: "include" });
         if (!response.ok) return;
         const data = (await response.json()) as {
-          workspaces?: Array<{ key: string; count?: number }>;
+          workspaces?: Array<{ key: string; href: string; label: string; count?: number }>;
         };
-        const syndic = data.workspaces?.find((w) => w.key === "syndic");
-        if (!cancelled && syndic) {
-          setSyndicSitesCount(syndic.count ?? 1);
-        }
+        const extras = (data.workspaces ?? []).filter((w) => w.key !== "owner");
+        if (!cancelled) setSecondaryWorkspaces(extras);
       } catch {
         // Silent — feature non bloquante.
       }
@@ -503,21 +502,25 @@ export function OwnerAppLayout({ children, profile: serverProfile }: OwnerAppLay
                         Aide & services
                       </Link>
                     </DropdownMenuItem>
-                    {syndicSitesCount > 0 && (
+                    {secondaryWorkspaces.length > 0 && (
                       <>
                         <DropdownMenuSeparator />
                         <DropdownMenuLabel className="text-xs text-muted-foreground">
                           Autres espaces
                         </DropdownMenuLabel>
-                        <DropdownMenuItem asChild>
-                          <Link href="/syndic/dashboard" className="cursor-pointer">
-                            <Building2 className="mr-2 h-4 w-4 text-cyan-600" />
-                            <span>Espace syndic</span>
-                            <span className="ml-auto rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-medium text-cyan-700">
-                              {syndicSitesCount}
-                            </span>
-                          </Link>
-                        </DropdownMenuItem>
+                        {secondaryWorkspaces.map((w) => (
+                          <DropdownMenuItem key={w.key} asChild>
+                            <Link href={w.href} className="cursor-pointer">
+                              <Building2 className="mr-2 h-4 w-4 text-cyan-600" />
+                              <span>{w.label}</span>
+                              {w.count ? (
+                                <span className="ml-auto rounded-full bg-cyan-100 px-2 py-0.5 text-[10px] font-medium text-cyan-700">
+                                  {w.count}
+                                </span>
+                              ) : null}
+                            </Link>
+                          </DropdownMenuItem>
+                        ))}
                       </>
                     )}
                     <DropdownMenuSeparator />

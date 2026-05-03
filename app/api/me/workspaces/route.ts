@@ -30,7 +30,7 @@ import { handleApiError } from "@/lib/helpers/api-error";
 import { supabaseAdmin } from "@/app/api/_lib/supabase";
 
 interface Workspace {
-  key: "owner" | "tenant" | "provider" | "agency" | "syndic" | "guarantor" | "admin";
+  key: "owner" | "tenant" | "provider" | "agency" | "syndic" | "guarantor" | "admin" | "copro";
   href: string;
   label: string;
   count?: number;
@@ -95,6 +95,48 @@ export async function GET(request: Request) {
       if (total > 0) {
         workspaces.push({ ...ROLE_TO_WORKSPACE.syndic, count: total });
         seen.add("syndic");
+      }
+    }
+
+    // Éligibilité /copro via user_site_roles (locataire_copro,
+    // coproprietaire, conseil_syndical, etc.). Cohérent avec le fix
+    // app/copro/layout.tsx qui accepte ces rôles secondaires.
+    if (!seen.has("copro")) {
+      const { count: coproRoles } = await serviceClient
+        .from("user_site_roles")
+        .select("site_id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .in("role_code", [
+          "tresorier",
+          "conseil_syndical",
+          "coproprietaire",
+          "coproprietaire_bailleur",
+          "locataire_copro",
+        ]);
+      if ((coproRoles ?? 0) > 0) {
+        workspaces.push({
+          key: "copro",
+          href: "/copro/dashboard",
+          label: "Espace copropriété",
+          count: coproRoles ?? 0,
+        });
+      }
+    }
+
+    // Éligibilité /guarantor via la table guarantors. Cohérent avec
+    // app/guarantor/layout.tsx qui accepte les multi-rôles.
+    if (!seen.has("guarantor")) {
+      const { count: guarantorRows } = await serviceClient
+        .from("guarantors")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id);
+      if ((guarantorRows ?? 0) > 0) {
+        workspaces.push({
+          key: "guarantor",
+          href: "/guarantor/dashboard",
+          label: "Espace garant",
+          count: guarantorRows ?? 0,
+        });
       }
     }
 
