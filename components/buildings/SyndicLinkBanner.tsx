@@ -619,8 +619,17 @@ export function SyndicLinkBanner({
               <li>Émettre des appels de provisions vers vos SCI ou co-investisseurs</li>
               <li>Convoquer des réunions d'information avec vos locataires</li>
             </ul>
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800">
+              <p className="font-semibold">Votre rôle propriétaire est conservé.</p>
+              <p>
+                Vous gardez l'accès complet à <span className="font-medium">/owner</span>
+                {" "}(biens, baux, locataires, comptabilité). Le mode bénévole ouvre
+                un espace syndic supplémentaire que vous pouvez désactiver à tout
+                moment depuis cet immeuble.
+              </p>
+            </div>
             <Badge variant="outline" className="border-amber-200 text-amber-700">
-              Cette action peut être annulée à tout moment.
+              Cette action est réversible.
             </Badge>
           </div>
           <DialogFooter>
