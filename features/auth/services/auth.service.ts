@@ -286,14 +286,17 @@ export class AuthService {
    */
   async signInWithGoogle() {
     const redirectUrl = getAuthCallbackUrl();
-    
+
+    // Pas de access_type=offline ni prompt=consent : l'app ne consomme aucun
+    // refresh_token Google cote serveur, les forcer reaffichait l'ecran de
+    // consentement a chaque connexion. select_account laisse choisir le compte
+    // Google sans re-confirmer les permissions.
     const { data, error } = await this.supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: redirectUrl,
         queryParams: {
-          access_type: "offline",
-          prompt: "consent",
+          prompt: "select_account",
         },
       },
     });
