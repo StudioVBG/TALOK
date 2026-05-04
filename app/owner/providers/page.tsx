@@ -52,6 +52,16 @@ import { NearbyProvidersSearch } from '@/components/provider/nearby-providers-se
 import { ExternalFavoritesSection } from '@/components/provider/external-favorites-section';
 import { SERVICE_TYPE_LABELS, type ServiceType } from '@/lib/data/service-pricing-reference';
 import { PLANS, getRequiredPlanForFeature } from '@/lib/subscriptions/plans';
+import { formatPropertyAddress } from '@/lib/properties/address';
+import { geocodeAddress } from '@/lib/services/geocoding.service';
+
+interface PropertyOption {
+  id: string;
+  label: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+}
 
 type SortOption = 'relevance' | 'rating' | 'price_asc' | 'price_desc' | 'distance' | 'reviews';
 type ViewMode = 'grid' | 'list';
@@ -92,6 +102,14 @@ export default function ProvidersMarketplacePage() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const requiredPlan = getRequiredPlanForFeature("providers_management");
   const hasProvidersAccess = hasFeature("providers_management");
+
+  // Sélection du bien autour duquel chercher (pour distance réelle).
+  const [properties, setProperties] = useState<PropertyOption[]>([]);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
+  const [propertyCenter, setPropertyCenter] = useState<{ lat: number; lng: number } | null>(null);
+  const [radiusKm, setRadiusKm] = useState<number>(30);
+
+  const selectedProperty = properties.find((p) => p.id === selectedPropertyId) ?? null;
   
   // Charger les filtres depuis l'URL
   useEffect(() => {
@@ -100,7 +118,69 @@ export default function ProvidersMarketplacePage() {
       setFilters(prev => ({ ...prev, services: [service as ServiceType] }));
     }
   }, [searchParams]);
-  
+
+  // Charger les biens du propriétaire pour le sélecteur "autour de"
+  useEffect(() => {
+    if (!hasProvidersAccess) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/properties');
+        if (!res.ok) return;
+        const data = await res.json();
+        const list: any[] = Array.isArray(data) ? data : data.properties || data.data || [];
+        const mapped: PropertyOption[] = list
+          .map((p) => ({
+            id: p.id,
+            label:
+              p.titre ||
+              p.title ||
+              [p.adresse_complete, p.ville].filter(Boolean).join(' — ') ||
+              'Bien sans titre',
+            address: formatPropertyAddress(p.adresse_complete, p.code_postal, p.ville),
+            latitude: p.latitude ?? null,
+            longitude: p.longitude ?? null,
+          }))
+          .filter((p) => !!p.address);
+        if (cancelled) return;
+        setProperties(mapped);
+        if (mapped.length > 0 && !selectedPropertyId) {
+          setSelectedPropertyId(mapped[0].id);
+        }
+      } catch (err) {
+        console.warn('[providers] chargement biens échoué:', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hasProvidersAccess]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Géocoder le bien sélectionné pour disposer des coordonnées (si la DB
+  // ne les a pas encore, on retombe sur Nominatim).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!selectedProperty) {
+        setPropertyCenter(null);
+        return;
+      }
+      if (selectedProperty.latitude != null && selectedProperty.longitude != null) {
+        setPropertyCenter({
+          lat: selectedProperty.latitude,
+          lng: selectedProperty.longitude,
+        });
+        return;
+      }
+      const result = await geocodeAddress(selectedProperty.address);
+      if (cancelled) return;
+      setPropertyCenter(result ? { lat: result.latitude, lng: result.longitude } : null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProperty]);
+
   // Charger les prestataires
   useEffect(() => {
     if (!hasProvidersAccess) {
@@ -108,7 +188,7 @@ export default function ProvidersMarketplacePage() {
       return;
     }
     fetchProviders();
-  }, [filters, sortBy, searchQuery, hasProvidersAccess]);
+  }, [filters, sortBy, searchQuery, hasProvidersAccess, propertyCenter, radiusKm]);
   
   const fetchProviders = async () => {
     setLoading(true);
@@ -124,6 +204,13 @@ export default function ProvidersMarketplacePage() {
       if (filters.withPortfolio) params.set('with_portfolio', 'true');
       if (filters.location) params.set('location', filters.location);
       params.set('sort', sortBy);
+
+      // Coordonnées du bien (pour distance réelle + filtre rayon).
+      if (propertyCenter) {
+        params.set('property_lat', String(propertyCenter.lat));
+        params.set('property_lng', String(propertyCenter.lng));
+        params.set('radius_km', String(radiusKm));
+      }
       
       const response = await fetch(`/api/providers/search?${params.toString()}`);
       
@@ -252,6 +339,57 @@ export default function ProvidersMarketplacePage() {
       
       {/* Prestataires externes enregistrés (favoris persistés) */}
       <ExternalFavoritesSection />
+
+      {/* Sélecteur de bien + rayon : pilote la distance dans le listing */}
+      {properties.length > 0 && (
+        <Card>
+          <CardContent className="p-4">
+            <div className="grid gap-3 md:grid-cols-[2fr_1fr]">
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                  <MapPin className="h-3.5 w-3.5" />
+                  Chercher autour de ce bien
+                </Label>
+                <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir un bien" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {properties.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-medium text-muted-foreground">
+                  Rayon de recherche
+                </Label>
+                <Select value={String(radiusKm)} onValueChange={(v) => setRadiusKm(Number(v))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5 km</SelectItem>
+                    <SelectItem value="10">10 km</SelectItem>
+                    <SelectItem value="20">20 km</SelectItem>
+                    <SelectItem value="30">30 km</SelectItem>
+                    <SelectItem value="50">50 km</SelectItem>
+                    <SelectItem value="100">100 km</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {selectedProperty && !propertyCenter && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Localisation du bien en cours…
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Barre de recherche et filtres */}
       <div className="flex flex-col gap-4 md:flex-row">
@@ -474,53 +612,71 @@ export default function ProvidersMarketplacePage() {
             </Card>
           ))}
         </div>
-      ) : providers.length === 0 ? (
-        <div className="space-y-4">
-          <Card>
-            <CardContent className="py-8 text-center">
-              <Search className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-              <h3 className="text-lg font-medium">Aucun prestataire trouvé</h3>
-              <p className="text-muted-foreground mt-1 text-sm">
-                Essayez de modifier vos critères de recherche, ou explorez les artisans à proximité ci-dessous.
-              </p>
-              <Button variant="outline" className="mt-4" onClick={clearFilters}>
-                Réinitialiser les filtres
-              </Button>
-            </CardContent>
-          </Card>
-          <NearbyProvidersSearch
-            initialCategory={filters.services[0] ?? 'autre'}
-          />
-        </div>
-      ) : viewMode === 'grid' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {providers.map(provider => (
-            <ProviderCard
-              key={provider.id}
-              provider={provider}
-              onRequestQuote={handleRequestQuote}
-              onToggleFavorite={async (id) => {
-                try {
-                  await fetch(`/api/providers/${id}/favorite`, { method: "POST" });
-                  // Refresh providers list
-                  setProviders(prev => prev.map(p => p.id === id ? { ...p, is_favorite: !p.is_favorite } : p));
-                } catch (error) {
-                  console.error("Erreur toggle favorite:", error);
-                }
-              }}
-            />
-          ))}
-        </div>
       ) : (
-        <div className="space-y-3">
-          {providers.map(provider => (
-            <ProviderCardCompact
-              key={provider.id}
-              provider={provider}
-              onRequestQuote={handleRequestQuote}
+        <>
+          {providers.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <Search className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+                <h3 className="text-lg font-medium">
+                  Aucun prestataire Talok ne correspond à vos critères
+                </h3>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  Pas d'inquiétude — la carte ci-dessous liste les artisans réels autour de votre bien.
+                </p>
+                <Button variant="outline" className="mt-4" onClick={clearFilters}>
+                  Réinitialiser les filtres
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                Prestataires Talok ({providers.length})
+              </h2>
+              {viewMode === 'grid' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {providers.map(provider => (
+                    <ProviderCard
+                      key={provider.id}
+                      provider={provider}
+                      onRequestQuote={handleRequestQuote}
+                      onToggleFavorite={async (id) => {
+                        try {
+                          await fetch(`/api/providers/${id}/favorite`, { method: "POST" });
+                          setProviders(prev => prev.map(p => p.id === id ? { ...p, is_favorite: !p.is_favorite } : p));
+                        } catch (error) {
+                          console.error("Erreur toggle favorite:", error);
+                        }
+                      }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {providers.map(provider => (
+                    <ProviderCardCompact
+                      key={provider.id}
+                      provider={provider}
+                      onRequestQuote={handleRequestQuote}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Carte des artisans à proximité — toujours visible pour compléter
+              les artisans Talok inscrits avec les commerces Google/OSM. */}
+          <div className="mt-6">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Autres artisans à proximité (carte)
+            </h2>
+            <NearbyProvidersSearch
+              initialCategory={filters.services[0] ?? 'autre'}
             />
-          ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
     )}

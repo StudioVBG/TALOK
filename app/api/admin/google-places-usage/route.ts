@@ -17,7 +17,7 @@ import {
 interface UsageRow {
   called_at: string;
   endpoint: GooglePlacesEndpoint;
-  source: "google" | "cache" | "demo";
+  source: "google" | "cache" | "demo" | "osm";
   status: "ok" | "error" | "zero_results";
   category: string | null;
   results_count: number;

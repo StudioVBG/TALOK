@@ -23,7 +23,7 @@ interface ExternalFavoritePayload {
   reviews_count?: number | null;
   google_maps_url?: string | null;
   notes?: string | null;
-  source?: "google" | "demo" | "manual" | null;
+  source?: "google" | "demo" | "manual" | "osm" | null;
 }
 
 async function getOwnerProfileId(): Promise<{

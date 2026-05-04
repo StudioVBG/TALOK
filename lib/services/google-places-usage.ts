@@ -19,7 +19,7 @@ export type GooglePlacesEndpoint =
   | "geocoding"
   | "place_photo";
 
-export type UsageSource = "google" | "cache" | "demo";
+export type UsageSource = "google" | "cache" | "demo" | "osm";
 export type UsageStatus = "ok" | "error" | "zero_results";
 
 const PRICE_PER_1000_USD: Record<GooglePlacesEndpoint, number> = {

@@ -17,6 +17,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { ApiError, handleApiError } from "@/lib/helpers/api-error";
 import { createClient } from "@/lib/supabase/server";
+import { geocodeAndSaveProvider } from "@/lib/services/provider-geocoding";
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +126,11 @@ export async function POST(request: Request) {
         console.error("[provider/legal-identity] update error:", error);
         throw new ApiError(500, "Erreur lors de la mise à jour de l'identité légale");
       }
+      // Géocodage en arrière-plan : permet le tri par distance dans la marketplace.
+      // Volontairement non-bloquant — l'échec ne casse pas l'onboarding.
+      void geocodeAndSaveProvider(existing.id).catch((err) =>
+        console.warn("[provider/legal-identity] geocode failed:", err),
+      );
       return NextResponse.json({ data, created: false });
     }
 
@@ -133,6 +139,12 @@ export async function POST(request: Request) {
     if (error) {
       console.error("[provider/legal-identity] insert error:", error);
       throw new ApiError(500, "Erreur lors de la création de l'identité légale");
+    }
+
+    if (data?.id) {
+      void geocodeAndSaveProvider(data.id).catch((err) =>
+        console.warn("[provider/legal-identity] geocode failed:", err),
+      );
     }
 
     return NextResponse.json({ data, created: true });

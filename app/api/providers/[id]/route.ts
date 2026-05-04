@@ -91,6 +91,32 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .select('*', { count: 'exact', head: false })
       .eq('provider_id', id)
       .in('statut', ['closed', 'fully_paid']);
+
+    // Identité légale + géolocalisation depuis la table `providers` (canonique).
+    const { data: providerRow } = await supabase
+      .from('providers')
+      .select(
+        'email, phone, address, city, postal_code, latitude, longitude, service_radius_km, is_verified, est_rge, decennale_expiry',
+      )
+      .eq('profile_id', id)
+      .maybeSingle();
+
+    // Statut favori : la table provider_favorites est scopée par owner.
+    let isFavorite = false;
+    const { data: ownerProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+    if (ownerProfile?.id) {
+      const { data: fav } = await supabase
+        .from('provider_favorites')
+        .select('id')
+        .eq('owner_profile_id', ownerProfile.id)
+        .eq('provider_profile_id', id)
+        .maybeSingle();
+      isFavorite = !!fav;
+    }
     
     // Calculer les stats
     const completedInterventions = interventionCount || 0;
@@ -152,6 +178,13 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       }
     }
     
+    // Adresse complète canonique (issue de l'identité légale).
+    const fullAddress = providerRow
+      ? [providerRow.address, providerRow.postal_code, providerRow.city]
+          .filter(Boolean)
+          .join(', ')
+      : null;
+
     // Construire la réponse
     const provider = {
       id: providerProfile.profile_id,
@@ -162,9 +195,18 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       rating: Math.round(avgRating * 10) / 10,
       review_count: allReviews.length,
       intervention_count: completedInterventions,
-      location: providerProfile.zones_intervention || 'France',
-      address: (providerProfile as any).adresse,
-      phone: profile.telephone,
+      location: fullAddress || providerProfile.zones_intervention || 'France',
+      // Adresse / contact / géoloc : provient de `providers` (identité légale)
+      // et retombe sur `profile.telephone` si l'artisan n'a pas finalisé l'onboarding.
+      address: fullAddress || (providerProfile as any).adresse || null,
+      phone: providerRow?.phone || profile.telephone || null,
+      email: providerRow?.email || null,
+      latitude: providerRow?.latitude ?? null,
+      longitude: providerRow?.longitude ?? null,
+      service_radius_km: providerRow?.service_radius_km ?? null,
+      is_verified: providerRow?.is_verified ?? false,
+      est_rge: providerRow?.est_rge ?? false,
+      decennale_expiry: providerRow?.decennale_expiry ?? null,
       hourly_rate_min: providerProfile.tarif_min,
       hourly_rate_max: providerProfile.tarif_max,
       is_urgent_available: providerProfile.disponibilite_urgence || false,
@@ -175,6 +217,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       created_at: profile.created_at,
       portfolio: formattedPortfolio,
       reviews: formattedReviews,
+      is_favorite: isFavorite,
       stats: {
         completed_interventions: completedInterventions,
         on_time_rate: onTimeRate,
