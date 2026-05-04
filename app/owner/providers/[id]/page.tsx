@@ -49,6 +49,7 @@ import { SERVICE_TYPE_LABELS } from '@/lib/data/service-pricing-reference';
 import { VigilanceAlert } from '@/components/vigilance/vigilance-alert';
 import type { VigilanceCheckResult } from '@/lib/data/legal-thresholds';
 import { buildAvatarUrl } from '@/lib/helpers/format';
+import { ProviderLocationMap } from '@/components/provider/provider-location-map';
 
 interface ProviderDetail {
   id: string;
@@ -445,6 +446,39 @@ export default function ProviderDetailPage() {
         
         {/* Présentation */}
         <TabsContent value="overview" className="space-y-6">
+          {/* Localisation : mini-carte + rayon d'intervention.
+              Visible uniquement si l'artisan a été géocodé (lat/lng issus de
+              l'identité légale, géocodage automatique ou backfill admin). */}
+          {provider.latitude != null && provider.longitude != null && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  Localisation
+                  {provider.service_radius_km != null && (
+                    <span className="ml-auto text-sm font-normal text-muted-foreground">
+                      Intervient dans un rayon de {provider.service_radius_km} km
+                    </span>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProviderLocationMap
+                  latitude={provider.latitude}
+                  longitude={provider.longitude}
+                  name={provider.name}
+                  address={provider.address}
+                  serviceRadiusKm={provider.service_radius_km}
+                />
+                {provider.address && (
+                  <p className="text-sm text-muted-foreground mt-3">
+                    {provider.address}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {provider.bio && (
             <Card>
               <CardHeader>
