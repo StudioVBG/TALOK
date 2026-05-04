@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { breadcrumbListSchema } from "@/lib/seo/schemas";
+import { safeJsonLd } from "@/lib/seo/safe-json-ld";
 
 /**
  * Mapping slug URL -> libelle humain pour le breadcrumb.
@@ -122,7 +123,7 @@ export function AutoBreadcrumbSchema() {
     <script
       type="application/ld+json"
       dangerouslySetInnerHTML={{
-        __html: JSON.stringify(breadcrumbListSchema(items)),
+        __html: safeJsonLd(breadcrumbListSchema(items)),
       }}
     />
   );

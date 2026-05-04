@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PLANS } from "@/lib/subscriptions/plans";
 import { PricingClient } from "./PricingClient";
+import { safeJsonLd } from "@/lib/seo/safe-json-ld";
 
 // ============================================
 // SEO — generateMetadata (SSG)
@@ -267,11 +268,11 @@ export default function PricingPage() {
       {/* JSON-LD Structured Data */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(faqJsonLd) }}
       />
 
       {/* Interactive Client Component */}

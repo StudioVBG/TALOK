@@ -2,11 +2,16 @@
  * Helpers pour generer des JSON-LD schema.org page-specifiques.
  *
  * Utilisation (Server Component) :
+ *   import { safeJsonLd } from "@/lib/seo/safe-json-ld";
  *   const jsonLd = faqPageSchema(questions);
  *   <script
  *     type="application/ld+json"
- *     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+ *     dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
  *   />
+ *
+ * IMPORTANT : toujours passer par safeJsonLd() (jamais JSON.stringify direct).
+ * safeJsonLd() echappe "<" en "<" pour empecher un breakout de la balise
+ * <script> si une valeur contient "</script>" (defense in depth contre XSS).
  *
  * Le root layout injecte deja Organization + WebSite schemas globaux.
  * N'utiliser ces helpers que pour les schemas page-specifiques

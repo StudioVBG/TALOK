@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { safeJsonLd } from "@/lib/seo/safe-json-ld";
 
 interface BreadcrumbItem {
   label: string;
@@ -153,7 +154,7 @@ export function Breadcrumbs({
       {/* Schema.org JSON-LD */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
 
       {/* Navigation */}

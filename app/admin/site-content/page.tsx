@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { fetchWithCsrf } from "@/lib/security/csrf";
+import ReactMarkdown from "react-markdown";
 
 interface SiteContentItem {
   id: string;
@@ -248,17 +249,10 @@ export default function SiteContentAdminPage() {
               {showPreview ? (
                 <Card className="min-h-[500px]">
                   <CardContent className="prose prose-slate max-w-none p-6">
-                    <div
-                      dangerouslySetInnerHTML={{
-                        __html: editContent
-                          .replace(/^### (.*$)/gm, "<h3>$1</h3>")
-                          .replace(/^## (.*$)/gm, "<h2>$1</h2>")
-                          .replace(/^# (.*$)/gm, "<h1>$1</h1>")
-                          .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-                          .replace(/\*(.*?)\*/g, "<em>$1</em>")
-                          .replace(/\n/g, "<br/>"),
-                      }}
-                    />
+                    {/* react-markdown sanitize par defaut (refuse les balises
+                        HTML brutes, n'execute pas le JS). Remplace l'ancien
+                        replace() naïf qui laissait passer <script> via XSS. */}
+                    <ReactMarkdown>{editContent}</ReactMarkdown>
                   </CardContent>
                 </Card>
               ) : (
@@ -304,17 +298,7 @@ export default function SiteContentAdminPage() {
               </CardHeader>
               <CardContent className="prose prose-slate prose-sm max-w-none max-h-[700px] overflow-y-auto">
                 <h1>{editTitle || "Sans titre"}</h1>
-                <div
-                  dangerouslySetInnerHTML={{
-                    __html: editContent
-                      .replace(/^### (.*$)/gm, "<h3>$1</h3>")
-                      .replace(/^## (.*$)/gm, "<h2>$1</h2>")
-                      .replace(/^# (.*$)/gm, "<h1>$1</h1>")
-                      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-                      .replace(/\*(.*?)\*/g, "<em>$1</em>")
-                      .replace(/\n/g, "<br/>"),
-                  }}
-                />
+                <ReactMarkdown>{editContent}</ReactMarkdown>
               </CardContent>
             </Card>
           </div>

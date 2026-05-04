@@ -98,6 +98,7 @@ import { MotionProvider } from "@/components/providers/motion-provider";
 import { AccessibilityProvider } from "@/components/providers/accessibility-provider";
 import { CookieBanner } from "@/components/rgpd/CookieBanner";
 import { AutoBreadcrumbSchema } from "@/components/seo/AutoBreadcrumbSchema";
+import { safeJsonLd } from "@/lib/seo/safe-json-ld";
 
 export const viewport: Viewport = {
   themeColor: [
@@ -301,13 +302,13 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(organizationJsonLd),
+            __html: safeJsonLd(organizationJsonLd),
           }}
         />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(websiteJsonLd),
+            __html: safeJsonLd(websiteJsonLd),
           }}
         />
         {/* BreadcrumbList genere automatiquement a partir de l'URL (client component) */}
