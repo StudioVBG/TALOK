@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
-import { Label } from "@/components/ui/label";
+import { SiretInput } from "@/components/siret/SiretInput";
 import { Input } from "@/components/ui/input";
-import { isRegimeFiscalLocked } from "@/lib/entities/entity-form-utils";
-import { isValidSiret, siretToSiren, formatSiren } from "@/lib/entities/siret-validation";
+import { Label } from "@/components/ui/label";
 import type { EntityFormData } from "@/lib/entities/entity-form-utils";
+import { isRegimeFiscalLocked } from "@/lib/entities/entity-form-utils";
 import { deriveDateCloture } from "@/lib/entities/fiscal-year-defaults";
+import type { ResolvedLegalIdentity } from "@/lib/siret/types";
 
 interface StepLegalInfoProps {
   formData: EntityFormData;
@@ -33,32 +33,58 @@ const REGIME_FISCAL_OPTIONS = [
 export function StepLegalInfo({ formData, onChange, errors }: StepLegalInfoProps) {
   const regimeLocked = isRegimeFiscalLocked(formData.entityType);
 
-  // Auto-derive SIREN from SIRET for display
-  const derivedSiren = useMemo(() => {
-    const digits = formData.siret.replace(/\D/g, "");
-    if (digits.length >= 9) {
-      const siren = siretToSiren(digits);
-      return siren ? formatSiren(siren) : null;
+  /**
+   * Auto-fill du formulaire à partir des données INSEE.
+   * On ne remplit que les champs vides (pas d'écrasement de saisie manuelle).
+   */
+  const handleSiretResolve = (data: ResolvedLegalIdentity) => {
+    const updates: Partial<EntityFormData> = { siret: data.siret };
+    if (!formData.nom && data.raison_sociale) {
+      updates.nom = data.raison_sociale;
     }
-    return null;
-  }, [formData.siret]);
-
-  // Validate SIRET in real-time for visual feedback
-  const siretStatus = useMemo(() => {
-    const digits = formData.siret.replace(/\D/g, "");
-    if (digits.length === 0) return null;
-    if (digits.length < 14) return "incomplete";
-    return isValidSiret(digits) ? "valid" : "invalid";
-  }, [formData.siret]);
+    if (!formData.formeJuridique && data.forme_juridique) {
+      updates.formeJuridique = data.forme_juridique;
+    }
+    if (!formData.capitalSocial && data.capital_social != null) {
+      updates.capitalSocial = String(data.capital_social);
+    }
+    if (!formData.dateCreation && data.date_creation) {
+      updates.dateCreation = data.date_creation;
+    }
+    if (!formData.numeroTva && data.tva_intra) {
+      updates.numeroTva = data.tva_intra;
+    }
+    if (!formData.rcsVille && data.ville) {
+      updates.rcsVille = data.ville;
+    }
+    if (!formData.adresseSiege && data.adresse) {
+      updates.adresseSiege = data.adresse;
+    }
+    if (!formData.codePostalSiege && data.code_postal) {
+      updates.codePostalSiege = data.code_postal;
+    }
+    if (!formData.villeSiege && data.ville) {
+      updates.villeSiege = data.ville;
+    }
+    onChange(updates);
+  };
 
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-xl font-semibold">Informations légales</h2>
         <p className="text-muted-foreground text-sm">
-          Renseignez les informations d&apos;immatriculation de votre structure
+          Saisissez votre SIRET pour pré-remplir automatiquement vos informations d&apos;immatriculation depuis le
+          répertoire INSEE.
         </p>
       </div>
+
+      <SiretInput
+        value={formData.siret}
+        onChange={(next) => onChange({ siret: next })}
+        onResolve={handleSiretResolve}
+        label="SIRET de la structure"
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Raison sociale */}
@@ -73,9 +99,7 @@ export function StepLegalInfo({ formData, onChange, errors }: StepLegalInfoProps
             placeholder="Ex: ATOMGISTE"
             className={errors?.nom ? "border-destructive" : ""}
           />
-          {errors?.nom && (
-            <p className="text-xs text-destructive">{errors.nom}</p>
-          )}
+          {errors?.nom && <p className="text-xs text-destructive">{errors.nom}</p>}
         </div>
 
         {/* Forme juridique */}
@@ -96,9 +120,7 @@ export function StepLegalInfo({ formData, onChange, errors }: StepLegalInfoProps
               </option>
             ))}
           </select>
-          {errors?.formeJuridique && (
-            <p className="text-xs text-destructive">{errors.formeJuridique}</p>
-          )}
+          {errors?.formeJuridique && <p className="text-xs text-destructive">{errors.formeJuridique}</p>}
         </div>
 
         {/* Régime fiscal */}
@@ -119,39 +141,7 @@ export function StepLegalInfo({ formData, onChange, errors }: StepLegalInfoProps
               </option>
             ))}
           </select>
-          {regimeLocked && (
-            <p className="text-xs text-muted-foreground">
-              Imposé par le type de structure sélectionné
-            </p>
-          )}
-        </div>
-
-        {/* SIRET */}
-        <div className="space-y-2">
-          <Label htmlFor="siret">SIRET (14 chiffres)</Label>
-          <Input
-            id="siret"
-            value={formData.siret}
-            onChange={(e) => {
-              const v = e.target.value.replace(/[^\d\s]/g, "");
-              onChange({ siret: v });
-            }}
-            placeholder="123 456 789 01234"
-            maxLength={17}
-            className={errors?.siret ? "border-destructive" : siretStatus === "valid" ? "border-green-500" : ""}
-          />
-          {errors?.siret && (
-            <p className="text-xs text-destructive">{errors.siret}</p>
-          )}
-          {!errors?.siret && derivedSiren && (
-            <p className="text-xs text-muted-foreground">
-              SIREN : {derivedSiren}
-              {siretStatus === "valid" && " \u2713"}
-              {siretStatus === "invalid" && (
-                <span className="text-destructive ml-1">(cl\u00e9 de contr\u00f4le invalide)</span>
-              )}
-            </p>
-          )}
+          {regimeLocked && <p className="text-xs text-muted-foreground">Imposé par le type de structure sélectionné</p>}
         </div>
 
         {/* Capital social */}
@@ -180,9 +170,7 @@ export function StepLegalInfo({ formData, onChange, errors }: StepLegalInfoProps
             onChange={(e) => onChange({ nombreParts: e.target.value })}
             placeholder="100"
           />
-          <p className="text-xs text-muted-foreground">
-            Nombre total de parts émises (statuts)
-          </p>
+          <p className="text-xs text-muted-foreground">Nombre total de parts émises (statuts)</p>
         </div>
 
         {/* RCS Ville */}
@@ -239,16 +227,10 @@ export function StepLegalInfo({ formData, onChange, errors }: StepLegalInfoProps
               id="premierExerciceDebut"
               type="date"
               value={formData.premierExerciceDebut}
-              onChange={(e) =>
-                onChange({ premierExerciceDebut: e.target.value })
-              }
+              onChange={(e) => onChange({ premierExerciceDebut: e.target.value })}
               className={errors?.premierExerciceDebut ? "border-destructive" : ""}
             />
-            {errors?.premierExerciceDebut && (
-              <p className="text-xs text-destructive">
-                {errors.premierExerciceDebut}
-              </p>
-            )}
+            {errors?.premierExerciceDebut && <p className="text-xs text-destructive">{errors.premierExerciceDebut}</p>}
           </div>
 
           <div className="space-y-2">
@@ -266,18 +248,12 @@ export function StepLegalInfo({ formData, onChange, errors }: StepLegalInfoProps
               }}
               className={errors?.premierExerciceFin ? "border-destructive" : ""}
             />
-            {errors?.premierExerciceFin && (
-              <p className="text-xs text-destructive">
-                {errors.premierExerciceFin}
-              </p>
-            )}
+            {errors?.premierExerciceFin && <p className="text-xs text-destructive">{errors.premierExerciceFin}</p>}
           </div>
         </div>
 
         {formData.dateClotureExercice && (
-          <p className="text-xs text-muted-foreground">
-            Date de clôture annuelle : {formData.dateClotureExercice}
-          </p>
+          <p className="text-xs text-muted-foreground">Date de clôture annuelle : {formData.dateClotureExercice}</p>
         )}
       </div>
     </div>
