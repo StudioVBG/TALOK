@@ -414,13 +414,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Créer le lien d'onboarding
-    const returnBase = entityId
-      ? `${APP_URL}/syndic/settings/connect`
-      : `${APP_URL}/owner/money?tab=banque`;
+    // Le returnBase dépend du rôle : provider revient sur sa page payouts,
+    // syndic sur ses paramètres Connect (si scoping par entité), owner par
+    // défaut sur sa page money/banque.
+    let returnBase: string;
+    if (entityId) {
+      returnBase = `${APP_URL}/syndic/settings/connect`;
+    } else if (profile.role === "provider") {
+      returnBase = `${APP_URL}/provider/settings/payouts`;
+    } else {
+      returnBase = `${APP_URL}/owner/money?tab=banque`;
+    }
+    const querySeparator = returnBase.includes("?") ? "&" : "?";
     const accountLink = await connectService.createAccountLink({
       accountId: stripeAccountId,
-      refreshUrl: `${returnBase}${entityId ? "?" : "&"}refresh=true`,
-      returnUrl: `${returnBase}${entityId ? "?" : "&"}success=true`,
+      refreshUrl: `${returnBase}${querySeparator}refresh=true`,
+      returnUrl: `${returnBase}${querySeparator}success=true`,
       type: hasExistingAccount ? "account_update" : "account_onboarding",
     });
 
