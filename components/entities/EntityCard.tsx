@@ -4,8 +4,10 @@
  * EntityCard — Carte résumé d'une entité juridique
  */
 
+import type { KeyboardEvent, MouseEvent } from "react";
 import Link from "next/link";
-import { Building2, Check, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Building2, Check, AlertCircle, Pencil } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,19 +27,44 @@ interface EntityCardProps {
 }
 
 export function EntityCard({ entity, isActive, compact, selectable, selected, onToggle }: EntityCardProps) {
+  const router = useRouter();
   const Icon = getEntityIcon(entity.entityType);
   const typeLabel = ENTITY_TYPE_LABELS[entity.entityType] || entity.entityType;
   const hasWarnings = !entity.hasIban || !entity.siret;
 
+  const handleCardClick = () => {
+    if (selectable && onToggle) {
+      onToggle(entity.id);
+      return;
+    }
+    if (!compact) {
+      router.push(`/owner/entities/${entity.id}`);
+    }
+  };
+
+  const isCardClickable = selectable || !compact;
+
   return (
     <Card
+      role={isCardClickable ? "button" : undefined}
+      tabIndex={isCardClickable ? 0 : undefined}
+      onKeyDown={
+        isCardClickable
+          ? (e: KeyboardEvent<HTMLDivElement>) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleCardClick();
+              }
+            }
+          : undefined
+      }
       className={cn(
         "relative transition-all hover:shadow-md",
+        isCardClickable && "cursor-pointer",
         isActive && "ring-2 ring-primary",
-        selectable && "cursor-pointer",
         selected && "ring-2 ring-destructive bg-destructive/5"
       )}
-      onClick={selectable && onToggle ? () => onToggle(entity.id) : undefined}
+      onClick={isCardClickable ? handleCardClick : undefined}
     >
       <CardContent className={cn("p-5", compact && "p-4")}>
         {selectable && (
@@ -134,9 +161,18 @@ export function EntityCard({ entity, isActive, compact, selectable, selected, on
             </div>
 
             {/* Actions */}
-            <div className="flex gap-2">
+            <div
+              className="flex gap-2"
+              onClick={(e: MouseEvent<HTMLDivElement>) => e.stopPropagation()}
+            >
               <Button variant="outline" size="sm" className="flex-1" asChild>
                 <Link href={`/owner/entities/${entity.id}`}>Gérer</Link>
+              </Button>
+              <Button variant="default" size="sm" className="flex-1" asChild>
+                <Link href={`/owner/entities/${entity.id}/edit`}>
+                  <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                  Modifier
+                </Link>
               </Button>
             </div>
           </>
