@@ -368,6 +368,21 @@ export async function reverseEntry(
     throw new Error('Can only reverse validated entries');
   }
 
+  // Refuse de contre-passer dans un exercice fermé : la contre-passation
+  // créerait une nouvelle entry validée dans un exercice qui doit rester
+  // figé pour la conformité (pas de modification post-clôture).
+  const { data: exercise } = await supabase
+    .from('accounting_exercises')
+    .select('status')
+    .eq('id', original.exercise_id)
+    .maybeSingle();
+  if ((exercise as { status?: string } | null)?.status === 'closed') {
+    throw new Error(
+      "Impossible de contre-passer : l'exercice de l'écriture est clôturé. " +
+        "Créez l'opération de correction dans l'exercice ouvert courant.",
+    );
+  }
+
   const lines: EntryLine[] = original.accounting_entry_lines.map(
     (line: { account_number: string; label: string | null; debit_cents: number; credit_cents: number; piece_ref: string | null }) => ({
       accountNumber: line.account_number,

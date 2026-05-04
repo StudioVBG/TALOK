@@ -110,14 +110,22 @@ export async function POST(
       });
 
       if (balanceSheetAccounts.length > 0) {
+        // Bug fixé : un compte peut avoir des mouvements en débit ET en
+        // crédit dans l'exercice (ex: 512100 banque). On doit reporter
+        // le SOLDE NET (D - C), pas les deux côtés. Sinon le bilan
+        // d'a-nouveau est artificiellement gonflé et déséquilibré.
         const lines = balanceSheetAccounts
-          .filter((b) => b.soldeDebitCents > 0 || b.soldeCreditCents > 0)
-          .map((b) => ({
-            accountNumber: b.accountNumber,
-            label: `A-nouveau ${b.label}`,
-            debitCents: b.soldeDebitCents,
-            creditCents: b.soldeCreditCents,
-          }));
+          .map((b) => {
+            const soldeNet = b.soldeDebitCents - b.soldeCreditCents;
+            if (soldeNet === 0) return null;
+            return {
+              accountNumber: b.accountNumber,
+              label: `A-nouveau ${b.label}`,
+              debitCents: soldeNet > 0 ? soldeNet : 0,
+              creditCents: soldeNet < 0 ? -soldeNet : 0,
+            };
+          })
+          .filter((l): l is NonNullable<typeof l> => l !== null);
 
         if (lines.length >= 2) {
           // Ensure balance: add balancing line if needed

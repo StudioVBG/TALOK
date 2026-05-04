@@ -210,6 +210,16 @@ export async function generateFEC(
       continue;
     }
 
+    // FEC requirement (DGFIP) : ValidDate ne peut pas être vide. Une
+    // entry validée doit avoir validated_at non-NULL ; sinon la requête
+    // a un bug en amont et le FEC sera rejeté à l'import.
+    if (!entry.validated_at) {
+      errors.push(
+        `Ecriture ${entry.entry_number} marquée validée sans validated_at — FEC rejeté`,
+      );
+      continue;
+    }
+
     // Validate balance
     const totalD = lines.reduce((s, l) => s + l.debit_cents, 0);
     const totalC = lines.reduce((s, l) => s + l.credit_cents, 0);
@@ -221,6 +231,17 @@ export async function generateFEC(
     }
 
     for (const line of lines) {
+      // FEC requirement (DGFIP) : CompteLib doit être le libellé officiel
+      // du compte au plan comptable. Si le compte a été supprimé entre
+      // la création de l'écriture et l'export, le label retombait
+      // silencieusement sur le numéro brut → FEC accepté mais incohérent.
+      // On le détecte explicitement pour que le user puisse réparer.
+      if (!accountLabels.has(line.account_number)) {
+        errors.push(
+          `Ecriture ${entry.entry_number} : compte ${line.account_number} introuvable dans chart_of_accounts`,
+        );
+        continue;
+      }
       fecLines.push({
         JournalCode: entry.journal_code,
         JournalLib: journalLabels.get(entry.journal_code) ?? entry.journal_code,
