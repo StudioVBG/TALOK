@@ -15,6 +15,7 @@ import {
   extractPostalCode,
   postalCodeToCountryCodes,
 } from "@/lib/properties/address";
+import { checkGooglePlacesQuota } from "@/lib/rate-limit/google-places";
 
 // Mapping des catégories vers les types Google Places
 const CATEGORY_TO_GOOGLE_TYPE: Record<string, string[]> = {
@@ -158,6 +159,21 @@ export async function GET(request: NextRequest) {
           upgrade_url: "/owner/money?tab=forfait",
         },
         { status: 403 }
+      );
+    }
+
+    // Rate-limit Google Places (per-user-hour, per-user-day, per-ip-hour).
+    // Place avant le cache memoire car chaque requete (meme cachee) peut
+    // potentiellement deboucher sur un appel Google.
+    const quota = await checkGooglePlacesQuota({
+      scope: "nearby",
+      userId: user.id,
+      request,
+    });
+    if (!quota.allowed) {
+      return NextResponse.json(
+        { error: "Trop de recherches de prestataires. Réessayez plus tard." },
+        { status: 429, headers: quota.headers }
       );
     }
 

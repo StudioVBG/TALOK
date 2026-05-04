@@ -8,6 +8,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import type { SolutionFAQItem } from "./types";
+import { safeJsonLd } from "@/lib/seo/safe-json-ld";
 
 interface Props {
   heading: string;
@@ -34,7 +35,7 @@ export function SolutionFAQ({ heading, subheading, items }: Props) {
     <section className="py-20 bg-slate-900/40">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <div className="container mx-auto px-4">
         <motion.div

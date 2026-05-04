@@ -11,17 +11,33 @@
 
 import { createHmac } from "crypto";
 
-// Clé secrète pour signer les tokens — DOIT être configurée en env
+// Clé secrète dédiée à la signature des tokens d'invitation.
+// IMPORTANT : pas de fallback sur NEXTAUTH_SECRET / JWT_SECRET — chaque usage
+// doit avoir son propre secret pour pouvoir être tourné indépendamment.
+let warned = false;
+
 function getTokenSecret(): string {
-  const secret = process.env.SIGNATURE_TOKEN_SECRET || process.env.NEXTAUTH_SECRET;
-  if (!secret) {
-    // Fallback pour ne pas casser en dev, mais log un avertissement
-    console.warn(
-      "[secure-token] ⚠️ SIGNATURE_TOKEN_SECRET non configuré. Utilisation d'une clé par défaut (NON SÉCURISÉ EN PRODUCTION)."
-    );
-    return "dev-fallback-secret-do-not-use-in-production";
+  const secret = process.env.SIGNATURE_TOKEN_SECRET;
+  if (secret && secret.length >= 32) {
+    return secret;
   }
-  return secret;
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "[CRITICAL] SIGNATURE_TOKEN_SECRET is required in production (min 32 chars). " +
+        "Generate one with: openssl rand -hex 32"
+    );
+  }
+
+  if (!warned) {
+    console.warn(
+      "[secure-token] SIGNATURE_TOKEN_SECRET non configuré ou trop court. " +
+        "Utilisation d'un secret de développement (NON SÉCURISÉ EN PRODUCTION). " +
+        "Génère un secret dédié : openssl rand -hex 32"
+    );
+    warned = true;
+  }
+  return "dev-only-signature-token-secret-do-not-use-in-production-32chars";
 }
 
 export interface TokenPayload {

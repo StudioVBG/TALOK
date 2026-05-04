@@ -68,24 +68,46 @@ export async function POST(_request: NextRequest) {
     });
 
     // Stocker le challenge via le service client (RLS reservee au service_role).
-    // onConflict: "user_id,type" garantit qu'un seul challenge actif existe
-    // par (user, type) — l'index unique partiel est cree par la migration
-    // 20260504120000_passkeys_hardening.sql.
+    // Pattern delete+insert pour garantir un seul challenge actif par (user, type)
+    // sans dependre d'un index unique : en prod l'index partiel peut manquer ou
+    // PostgREST peut avoir cache un ancien schema, ce qui faisait echouer
+    // l'upsert avec onConflict (cause du 500 "Erreur lors de la preparation").
     const serviceClient = getServiceClient();
+
+    const { error: deleteError } = await serviceClient
+      .from("passkey_challenges")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("type", "registration");
+
+    if (deleteError) {
+      console.error("[Passkeys] Erreur nettoyage challenge:", {
+        code: deleteError.code,
+        message: deleteError.message,
+        details: deleteError.details,
+      });
+      return NextResponse.json(
+        { error: "Erreur lors de la préparation de l'enregistrement" },
+        { status: 500 }
+      );
+    }
+
     const { error: challengeError } = await serviceClient
       .from("passkey_challenges")
-      .upsert(
-        {
-          user_id: user.id,
-          challenge: options.challenge,
-          type: "registration",
-          expires_at: new Date(Date.now() + 60000).toISOString(),
-        },
-        { onConflict: "user_id,type" }
-      );
+      .insert({
+        user_id: user.id,
+        challenge: options.challenge,
+        type: "registration",
+        expires_at: new Date(Date.now() + 60000).toISOString(),
+      });
 
     if (challengeError) {
-      console.error("[Passkeys] Erreur stockage challenge:", challengeError);
+      console.error("[Passkeys] Erreur stockage challenge:", {
+        code: challengeError.code,
+        message: challengeError.message,
+        details: challengeError.details,
+        hint: challengeError.hint,
+      });
       return NextResponse.json(
         { error: "Erreur lors de la préparation de l'enregistrement" },
         { status: 500 }

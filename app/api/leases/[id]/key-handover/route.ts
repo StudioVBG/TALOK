@@ -16,6 +16,7 @@ import { createHmac } from "crypto";
 import { getInitialInvoiceSettlement } from "@/lib/services/invoice-status.service";
 import { sendKeyHandoverScanRequest } from "@/lib/emails/resend.service";
 import { sendSMS } from "@/lib/sms";
+import { getKeyHandoverSecret } from "./secret";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -23,8 +24,7 @@ interface RouteParams {
 
 function generateHandoverToken(leaseId: string, expiresAt: string): string {
   const payload = JSON.stringify({ leaseId, expiresAt, nonce: randomUUID() });
-  const secret = process.env.NEXTAUTH_SECRET || process.env.JWT_SECRET || "talok-key-handover-secret";
-  const hmac = createHmac("sha256", secret).update(payload).digest("hex");
+  const hmac = createHmac("sha256", getKeyHandoverSecret()).update(payload).digest("hex");
   // Token = base64(payload) + "." + hmac
   const b64 = Buffer.from(payload).toString("base64url");
   return `${b64}.${hmac}`;

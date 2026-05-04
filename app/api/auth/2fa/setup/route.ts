@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { setupTOTP, generateRecoveryCodes } from "@/lib/auth/totp";
+import { setupTOTP, generatePlainRecoveryCodes } from "@/lib/auth/totp";
 import { encrypt } from "@/lib/security/encryption.service";
 
 export async function POST(request: NextRequest) {
@@ -44,8 +44,21 @@ export async function POST(request: NextRequest) {
     // Générer le secret TOTP
     const totpSetup = setupTOTP(user.email || user.id);
 
-    // Générer les codes de récupération
-    const recoveryCodes = generateRecoveryCodes(10);
+    // Générer les codes de récupération en clair (montrés une seule fois à
+    // l'utilisateur dans la réponse) puis hasher via la fonction SQL pgcrypto
+    // avant stockage. Les codes en clair ne sont JAMAIS persistés en DB.
+    const plainCodes = generatePlainRecoveryCodes(10);
+    const { data: hashedCodes, error: hashError } = await serviceClient.rpc(
+      "hash_2fa_recovery_codes" as any,
+      { p_codes: plainCodes }
+    );
+    if (hashError || !hashedCodes) {
+      console.error("[2FA] Erreur hash recovery codes:", hashError);
+      return NextResponse.json(
+        { error: "Erreur lors de la génération des codes de récupération" },
+        { status: 500 }
+      );
+    }
 
     // Chiffrer le secret TOTP avant stockage
     const encryptedSecret = encrypt(totpSetup.secret);
@@ -54,7 +67,7 @@ export async function POST(request: NextRequest) {
     await serviceClient.from("user_2fa").upsert({
       user_id: user.id,
       totp_secret: encryptedSecret,
-      recovery_codes: recoveryCodes,
+      recovery_codes: hashedCodes,
       enabled: false,
       pending_activation: true,
       updated_at: new Date().toISOString(),
@@ -64,7 +77,7 @@ export async function POST(request: NextRequest) {
       secret: totpSetup.secret,
       uri: totpSetup.uri,
       qrCodeUrl: totpSetup.qrCodeUrl,
-      recoveryCodes: recoveryCodes.map((c) => c.code),
+      recoveryCodes: plainCodes,
     });
   } catch (error: unknown) {
     console.error("[2FA] Erreur setup:", error);

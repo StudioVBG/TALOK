@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 import { logGooglePlacesUsage } from "@/lib/services/google-places-usage";
 import { getPlanLevel, type PlanSlug } from "@/lib/subscriptions/plans";
+import { checkGooglePlacesQuota } from "@/lib/rate-limit/google-places";
 
 interface PlaceDetailsResult {
   website?: string;
@@ -26,7 +27,7 @@ const cache = new Map<string, { data: PlaceDetailsResult; timestamp: number }>()
 const CACHE_DURATION = 24 * 60 * 60 * 1000;
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ placeId: string }> },
 ) {
   const { placeId } = await params;
@@ -77,6 +78,19 @@ export async function GET(
           upgrade_url: "/owner/money?tab=forfait",
         },
         { status: 403 },
+      );
+    }
+
+    // Rate-limit Google Places (Place Details = ~17$/1000 appels).
+    const quota = await checkGooglePlacesQuota({
+      scope: "place_details",
+      userId: user.id,
+      request,
+    });
+    if (!quota.allowed) {
+      return NextResponse.json(
+        { error: "Trop de consultations de fiches. Réessayez plus tard." },
+        { status: 429, headers: quota.headers },
       );
     }
 

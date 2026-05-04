@@ -78,58 +78,29 @@ export function verifyTOTPCode(secret: string, token: string): boolean {
 }
 
 /**
- * Génère des codes de récupération (backup codes)
+ * Génère des codes de récupération en clair (à montrer une fois à l'utilisateur).
+ * Le stockage DB se fait via la fonction SQL `hash_2fa_recovery_codes` qui
+ * applique bcrypt — les codes en clair ne doivent JAMAIS être persistés.
  */
-export function generateRecoveryCodes(count: number = 10): RecoveryCode[] {
-  const codes: RecoveryCode[] = [];
-
+export function generatePlainRecoveryCodes(count: number = 10): string[] {
+  const codes: string[] = [];
   for (let i = 0; i < count; i++) {
     // Format: XXXX-XXXX-XXXX (12 caractères alphanumériques)
-    // Utilise crypto.randomBytes pour la sécurité cryptographique
     const code = Array.from({ length: 3 }, () =>
       crypto.randomBytes(3).toString("hex").substring(0, 4).toUpperCase()
     ).join("-");
-
-    codes.push({
-      code,
-      used: false,
-    });
+    codes.push(code);
   }
-
   return codes;
 }
 
 /**
- * Vérifie un code de récupération
+ * Compte les codes de récupération non utilisés. Compatible avec l'ancien format
+ * ({ code, used }) ET le nouveau format hashé ({ code_hash, used }).
  */
-export function verifyRecoveryCode(
-  codes: RecoveryCode[],
-  inputCode: string
-): { valid: boolean; updatedCodes: RecoveryCode[] } {
-  const normalizedInput = inputCode.toUpperCase().replace(/[^A-Z0-9]/g, "");
-
-  const updatedCodes = codes.map((c) => {
-    const normalizedCode = c.code.replace(/[^A-Z0-9]/g, "");
-    if (normalizedCode === normalizedInput && !c.used) {
-      return {
-        ...c,
-        used: true,
-        used_at: new Date().toISOString(),
-      };
-    }
-    return c;
-  });
-
-  const valid = updatedCodes.some(
-    (c, i) => c.used !== codes[i].used
-  );
-
-  return { valid, updatedCodes };
-}
-
-/**
- * Compte les codes de récupération restants
- */
-export function countRemainingRecoveryCodes(codes: RecoveryCode[]): number {
-  return codes.filter((c) => !c.used).length;
+export function countRemainingRecoveryCodes(
+  codes: Array<{ code?: string; code_hash?: string; used?: boolean }> | null | undefined
+): number {
+  if (!Array.isArray(codes)) return 0;
+  return codes.filter((c) => !c?.used).length;
 }

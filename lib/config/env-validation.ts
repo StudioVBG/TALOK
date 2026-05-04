@@ -141,7 +141,19 @@ const ENV_VARS: EnvVar[] = [
     name: "PASSWORD_RESET_COOKIE_SECRET",
     required: isProduction,
     minLength: 32,
-    description: "Secret used to sign password reset access cookies",
+    description: "Secret dédié à la signature des cookies de reset password (HMAC). Doit être DISTINCT des autres secrets — JAMAIS de fallback sur JWT_SECRET/NEXTAUTH_SECRET.",
+  },
+  {
+    name: "KEY_HANDOVER_SECRET",
+    required: isProduction,
+    minLength: 32,
+    description: "Secret dédié à la signature des tokens QR de remise des clés (HMAC). Doit être DISTINCT — la rotation de ce secret invalide les QR en circulation.",
+  },
+  {
+    name: "SIGNATURE_TOKEN_SECRET",
+    required: isProduction,
+    minLength: 32,
+    description: "Secret dédié à la signature des tokens d'invitation (bail/EDL). Doit être DISTINCT — la rotation invalide les liens d'invitation en circulation.",
   },
 
   // SMS - Optionnel mais recommandé

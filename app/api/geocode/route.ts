@@ -12,6 +12,8 @@ import {
   extractPostalCode,
   postalCodeToCountryCodes,
 } from "@/lib/properties/address";
+import { createClient } from "@/lib/supabase/server";
+import { checkGooglePlacesQuota } from "@/lib/rate-limit/google-places";
 
 interface GeocodeResult {
   latitude: number;
@@ -89,6 +91,30 @@ async function geocodeWithNominatim(
 }
 
 export async function GET(request: NextRequest) {
+  // Auth requise — l'ancien endpoint etait public, ce qui permettait a
+  // n'importe qui de cramer le quota Google Geocoding (~$32/1000 appels).
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+  if (authError || !user) {
+    return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+  }
+
+  // Rate-limit (per-user-hour, per-user-day, per-ip-hour).
+  const quota = await checkGooglePlacesQuota({
+    scope: "geocode",
+    userId: user.id,
+    request,
+  });
+  if (!quota.allowed) {
+    return NextResponse.json(
+      { error: "Trop de requêtes de géocodage. Réessayez plus tard." },
+      { status: 429, headers: quota.headers },
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const address = searchParams.get("address")?.trim();
   const countryCode = (searchParams.get("country") || "fr").toLowerCase();

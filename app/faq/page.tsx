@@ -8,6 +8,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { safeJsonLd } from "@/lib/seo/safe-json-ld";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -180,7 +181,7 @@ export default function FAQPage() {
       {/* Schema.org JSON-LD */}
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(faqSchema) }}
       />
 
       {/* Hero */}
