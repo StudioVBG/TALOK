@@ -98,7 +98,7 @@ interface NearbyProvider {
   is_open?: boolean;
   photo_url?: string;
   google_maps_url: string;
-  source: "google" | "demo";
+  source: "google" | "osm";
 }
 
 // Mapping ServiceType (filtres marketplace) -> catégorie API /api/providers/nearby
@@ -186,8 +186,7 @@ export function NearbyProvidersSearch({
   const [providers, setProviders] = useState<NearbyProvider[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dataSource, setDataSource] = useState<"google" | "cache" | "demo" | null>(null);
-  const [demoReason, setDemoReason] = useState<string | null>(null);
+  const [dataSource, setDataSource] = useState<"google" | "cache" | "osm" | null>(null);
   const [premiumRequired, setPremiumRequired] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [detailProvider, setDetailProvider] = useState<NearbyProvider | null>(null);
@@ -594,23 +593,13 @@ export function NearbyProvidersSearch({
           setPremiumRequired(true);
           setProviders([]);
           setDataSource(null);
-          setDemoReason(null);
         } else if (!res.ok) {
           setError(data?.error || "Erreur lors de la recherche");
           setProviders([]);
           setDataSource(null);
-          setDemoReason(null);
         } else {
           setProviders(data.providers || []);
-          setDataSource((data?.source as "google" | "cache" | "demo") ?? null);
-          // L'API renvoie `error` ou `message` quand elle bascule en démo
-          // (clé manquante, erreur Google) — on le surface pour qu'on puisse
-          // diagnostiquer côté ops sans aller fouiller les logs.
-          setDemoReason(
-            data?.source === "demo"
-              ? (data?.error as string) || (data?.message as string) || null
-              : null,
-          );
+          setDataSource((data?.source as "google" | "cache" | "osm") ?? null);
         }
       } catch (err) {
         if (!cancelled) {
@@ -753,21 +742,21 @@ export function NearbyProvidersSearch({
           </div>
         )}
 
-        {dataSource === "demo" && !premiumRequired && (
-          <div className="rounded-lg border border-amber-300 bg-amber-50/60 p-3 text-xs text-amber-900 dark:bg-amber-950/20 dark:border-amber-900 dark:text-amber-200 flex gap-2">
-            <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-            <div>
-              <strong>Mode démonstration.</strong> Les prestataires affichés sont fictifs : leurs adresses ne correspondent pas à leur position sur la carte.
-              {demoReason && (
-                <>
-                  {" "}
-                  <span className="opacity-80">Cause : {demoReason}</span>
-                </>
-              )}
-              <span className="block mt-1 opacity-80">
-                Pour des résultats réels, vérifiez que la variable <code className="font-mono">GOOGLE_PLACES_API_KEY</code> est bien définie pour l'environnement de production et que le déploiement a été relancé après son ajout.
-              </span>
-            </div>
+        {dataSource === "osm" && !premiumRequired && providers.length > 0 && (
+          <div className="rounded-lg border border-sky-200 bg-sky-50/60 p-3 text-xs text-sky-900 dark:bg-sky-950/20 dark:border-sky-900 dark:text-sky-200 flex gap-2">
+            <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <span>
+              Résultats issus d'<a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">OpenStreetMap</a>. Les coordonnées et coordonnées de contact proviennent des contributions publiques de la communauté.
+            </span>
+          </div>
+        )}
+
+        {dataSource && providers.length === 0 && !loading && !premiumRequired && !error && (
+          <div className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground flex gap-2">
+            <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+            <span>
+              Aucun prestataire trouvé pour cette catégorie dans un rayon de {Math.round(radius / 1000)} km. Essayez d'élargir le rayon ou de changer de métier.
+            </span>
           </div>
         )}
 

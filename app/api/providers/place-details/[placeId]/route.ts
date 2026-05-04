@@ -34,8 +34,9 @@ export async function GET(
     return NextResponse.json({ error: "placeId manquant" }, { status: 400 });
   }
 
-  // Les ID démo (préfixe "demo-") n'existent pas chez Google : court-circuit
-  if (placeId.startsWith("demo-")) {
+  // Les IDs OSM (préfixe "osm-") ne sont pas des place_id Google : court-circuit.
+  // (L'ancien préfixe "demo-" est conservé pour rétro-compat avec les caches/favoris créés avant la bascule OSM.)
+  if (placeId.startsWith("osm-") || placeId.startsWith("demo-")) {
     return NextResponse.json({ details: {} as PlaceDetailsResult });
   }
 

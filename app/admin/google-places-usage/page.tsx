@@ -93,6 +93,7 @@ const ENDPOINT_LABELS: Record<string, string> = {
 const SOURCE_BADGE: Record<string, { label: string; className: string }> = {
   google: { label: "Google", className: "bg-blue-100 text-blue-700" },
   cache: { label: "Cache", className: "bg-emerald-100 text-emerald-700" },
+  osm: { label: "OSM", className: "bg-sky-100 text-sky-700" },
   demo: { label: "Démo", className: "bg-amber-100 text-amber-700" },
 };
 
