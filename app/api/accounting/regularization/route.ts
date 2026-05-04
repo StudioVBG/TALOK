@@ -53,6 +53,24 @@ export async function GET(request: Request) {
       throw new ApiError(400, "entityId est requis");
     }
 
+    // Validation cross-entity : vérifier que l'utilisateur possède bien
+    // l'entité demandée. Sans ce check, un owner pouvait passer n'importe
+    // quel entityId UUID dans la query string et lire les régularisations
+    // d'une autre SCI (cf. pattern dans accounting/entries/route.ts).
+    const isAdmin =
+      profile.role === "admin" || profile.role === "platform_admin";
+    if (!isAdmin) {
+      const { data: entity } = await supabase
+        .from("legal_entities")
+        .select("id")
+        .eq("id", entityId)
+        .eq("owner_profile_id", profile.id)
+        .maybeSingle();
+      if (!entity) {
+        throw new ApiError(403, "Accès refusé à cette entité");
+      }
+    }
+
     let query = supabase
       .from("charge_regularizations")
       .select("*")
@@ -135,6 +153,22 @@ export async function POST(request: Request) {
 
     if (!entityId || !propertyId || !exerciseYear) {
       throw new ApiError(400, "entityId, propertyId et exerciseYear sont requis");
+    }
+
+    // Validation cross-entity (cf. GET) — un owner ne doit pas pouvoir
+    // créer une régularisation sur une SCI qu'il ne possède pas.
+    const isAdmin =
+      profile.role === "admin" || profile.role === "platform_admin";
+    if (!isAdmin) {
+      const { data: entity } = await supabase
+        .from("legal_entities")
+        .select("id")
+        .eq("id", entityId)
+        .eq("owner_profile_id", profile.id)
+        .maybeSingle();
+      if (!entity) {
+        throw new ApiError(403, "Accès refusé à cette entité");
+      }
     }
 
     if (

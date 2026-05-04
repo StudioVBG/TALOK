@@ -287,7 +287,10 @@ export async function reconcileTransactions(
     .eq('entity_id', entityId)
     .eq('exercise_id', exerciseId)
     .eq('is_validated', true)
-    .in('journal_code', ['BQ', 'OD']);
+    // Inclure 'AN' pour les agences avec compte mandant qui passent par
+    // un journal a-nouveau dédié au lieu de BQ ; sinon les transactions
+    // banque mandant restent éternellement orphelines.
+    .in('journal_code', ['BQ', 'OD', 'AN']);
 
   if (entryError) throw new Error(`Failed to fetch entries: ${entryError.message}`);
 
