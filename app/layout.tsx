@@ -190,7 +190,7 @@ export const metadata: Metadata = {
       "Gérez vos locations comme un pro. Baux ALUR, e-signatures, scoring IA, Open Banking. Rejoignez +10 000 propriétaires. 1er mois offert.",
     images: [
       {
-        url: "/og-image.png",
+        url: "/opengraph-image",
         width: 1200,
         height: 630,
         alt: "Talok - Logiciel de gestion locative",
@@ -205,7 +205,7 @@ export const metadata: Metadata = {
     title: "Talok | Logiciel de Gestion Locative n°1",
     description:
       "Baux ALUR, e-signatures, scoring IA, Open Banking. +10 000 propriétaires en France. 1er mois offert.",
-    images: ["/og-image.png"],
+    images: ["/opengraph-image"],
   },
   appleWebApp: {
     capable: true,
