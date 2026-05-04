@@ -355,7 +355,7 @@ export function ArticleSchema({
     "@type": "Article",
     headline,
     description,
-    image: image || "https://talok.fr/og-image.png",
+    image: image || "https://talok.fr/opengraph-image",
     datePublished,
     dateModified: dateModified || datePublished,
     author: {
