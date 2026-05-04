@@ -85,8 +85,11 @@ export async function POST(request: NextRequest) {
 
     const { registrationInfo } = verification;
 
-    // Encoder le credential ID et la clé publique en base64
-    const credentialIdBase64 = Buffer.from(registrationInfo.credential.id).toString("base64url");
+    // @simplewebauthn/server v13 : registrationInfo.credential.id est deja une
+    // Base64URLString (string), on la stocke telle quelle. Re-encoder via
+    // Buffer.from(str).toString('base64url') donnerait la base64-de-l'ASCII et
+    // casserait le lookup au login. La publicKey reste un Uint8Array.
+    const credentialIdBase64 = registrationInfo.credential.id;
     const publicKeyBase64 = Buffer.from(registrationInfo.credential.publicKey).toString("base64");
 
     // Calculer un friendly_name unique pour cet utilisateur
