@@ -43,6 +43,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_passkey_challenges_user_type_unique
 -- des autres. On restreint au service_role exclusivement.
 -- =============================================================================
 DROP POLICY IF EXISTS "Service role full access to challenges" ON passkey_challenges;
+DROP POLICY IF EXISTS "service_role can manage challenges" ON passkey_challenges;
 
 CREATE POLICY "service_role can manage challenges"
   ON passkey_challenges
