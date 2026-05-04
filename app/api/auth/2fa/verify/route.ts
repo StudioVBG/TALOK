@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
-import { verifyTOTPCode, verifyRecoveryCode } from "@/lib/auth/totp";
+import { verifyTOTPCode, countRemainingRecoveryCodes } from "@/lib/auth/totp";
 import { decrypt, isEncrypted } from "@/lib/security/encryption.service";
 
 export async function POST(request: NextRequest) {
@@ -95,21 +95,23 @@ export async function POST(request: NextRequest) {
     }
 
     let valid = false;
-    let updatedRecoveryCodes = twoFAConfig.recovery_codes || [];
 
     if (isRecoveryCode) {
-      // Vérifier le code de récupération
-      const result = verifyRecoveryCode(twoFAConfig.recovery_codes || [], inputCode);
-      valid = result.valid;
-      updatedRecoveryCodes = result.updatedCodes;
-
-      if (valid) {
-        // Mettre à jour les codes de récupération
-        await serviceClient
-          .from("user_2fa")
-          .update({ recovery_codes: updatedRecoveryCodes })
-          .eq("user_id", user.id);
+      // Vérification via la fonction SQL pgcrypto : crypt() en temps constant,
+      // marque le code comme used=true en transaction. Les codes sont stockés
+      // hashés (bcrypt cost 12) — la comparaison plain-text n'est plus possible.
+      const { data: matched, error: rpcError } = await serviceClient.rpc(
+        "verify_2fa_recovery_code" as any,
+        { p_user_id: user.id, p_code: inputCode }
+      );
+      if (rpcError) {
+        console.error("[2FA] Erreur RPC verify_2fa_recovery_code:", rpcError);
+        return NextResponse.json(
+          { error: "Erreur de vérification" },
+          { status: 500 }
+        );
       }
+      valid = matched === true;
     } else {
       // Vérifier le code TOTP avec le secret déchiffré
       valid = verifyTOTPCode(totpSecret, inputCode);
@@ -122,9 +124,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Recharger la config pour obtenir les recovery_codes à jour (le RPC a
+    // pu marquer un code comme used).
+    const { data: refreshed } = await serviceClient
+      .from("user_2fa")
+      .select("recovery_codes")
+      .eq("user_id", user.id)
+      .single();
+    const updatedRecoveryCodes = (refreshed?.recovery_codes as any) || twoFAConfig.recovery_codes || [];
+
     // Si c'est l'activation initiale
     if (activateAfterVerify && (twoFAConfig.pending_activation || !twoFAConfig.enabled)) {
-      // Nouvelle table
       await serviceClient
         .from("user_2fa")
         .upsert({
@@ -160,9 +170,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       valid: true,
-      remainingRecoveryCodes: updatedRecoveryCodes.filter(
-        (c: { used: boolean }) => !c.used
-      ).length,
+      remainingRecoveryCodes: countRemainingRecoveryCodes(updatedRecoveryCodes),
     });
   } catch (error: unknown) {
     console.error("[2FA] Erreur vérification:", error);
