@@ -152,6 +152,22 @@ export async function GET(request: NextRequest) {
     for (const row of (providersRows ?? []) as ProviderRow[]) {
       if (row.profile_id) providersByProfileId.set(row.profile_id, row);
     }
+
+    // Favoris du propriétaire courant (table provider_favorites).
+    let favoriteIds = new Set<string>();
+    const { data: ownerProfile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+    if (ownerProfile?.id && providerIds.length > 0) {
+      const { data: favs } = await supabase
+        .from('provider_favorites')
+        .select('provider_profile_id')
+        .eq('owner_profile_id', ownerProfile.id)
+        .in('provider_profile_id', providerIds);
+      favoriteIds = new Set((favs ?? []).map((f: any) => f.provider_profile_id));
+    }
     
     // Construire les résultats enrichis
     const enrichedProviders = providers?.map(provider => {
@@ -231,6 +247,7 @@ export async function GET(request: NextRequest) {
         longitude,
         service_radius_km: providerRow?.service_radius_km ?? null,
         distance_km,
+        is_favorite: favoriteIds.has(provider.profile_id),
       };
     }) || [];
     

@@ -60,9 +60,13 @@ interface ProviderDetail {
   review_count: number;
   intervention_count: number;
   location: string;
-  address?: string;
-  phone?: string;
-  email?: string;
+  address?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  service_radius_km?: number | null;
+  is_verified?: boolean;
   hourly_rate_min?: number;
   hourly_rate_max?: number;
   is_urgent_available: boolean;
@@ -73,6 +77,7 @@ interface ProviderDetail {
   created_at: string;
   portfolio: PortfolioItem[];
   reviews: Review[];
+  is_favorite?: boolean;
   stats: {
     completed_interventions: number;
     on_time_rate: number;
@@ -143,6 +148,7 @@ export default function ProviderDetailPage() {
       if (response.ok) {
         const data = await response.json();
         setProvider(data.provider);
+        setIsFavorite(!!data.provider?.is_favorite);
       } else {
         console.warn("[provider detail] API non disponible");
         setProvider(null);
@@ -152,6 +158,24 @@ export default function ProviderDetailPage() {
       setProvider(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleFavorite = async () => {
+    // Optimistic update — le bouton bascule immédiatement, puis on resynchronise
+    // depuis la réponse serveur (ou on rollback en cas d'échec).
+    const prev = isFavorite;
+    setIsFavorite(!prev);
+    try {
+      const res = await fetch(`/api/providers/${providerId}/favorite`, {
+        method: 'POST',
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setIsFavorite(!!data.is_favorite);
+    } catch (err) {
+      console.error('Erreur toggle favori:', err);
+      setIsFavorite(prev); // rollback
     }
   };
   
@@ -313,20 +337,88 @@ export default function ProviderDetailPage() {
                 </div>
               )}
               
+              {/* Adresse + contact direct */}
+              {(provider.address || provider.phone || provider.email) && (
+                <div className="rounded-lg border bg-muted/40 p-4 space-y-2 text-sm">
+                  {provider.address && (
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                      <span>{provider.address}</span>
+                    </div>
+                  )}
+                  {provider.phone && (
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <a href={`tel:${provider.phone}`} className="hover:underline">
+                        {provider.phone}
+                      </a>
+                    </div>
+                  )}
+                  {provider.email && (
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                      <a href={`mailto:${provider.email}`} className="hover:underline truncate">
+                        {provider.email}
+                      </a>
+                    </div>
+                  )}
+                  {provider.service_radius_km != null && (
+                    <p className="text-xs text-muted-foreground pt-1">
+                      Intervient jusqu'à {provider.service_radius_km} km autour de cette adresse.
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex flex-wrap gap-3 pt-2">
-                <Button 
+                <Button
                   size="lg"
                   onClick={() => router.push(`/owner/tickets/new?provider=${provider.id}`)}
                 >
                   <MessageSquare className="h-5 w-5 mr-2" />
                   Demander un devis
                 </Button>
-                
-                <Button 
-                  variant="outline" 
+
+                {provider.phone && (
+                  <Button variant="outline" size="lg" asChild>
+                    <a href={`tel:${provider.phone}`}>
+                      <Phone className="h-5 w-5 mr-2" />
+                      Appeler
+                    </a>
+                  </Button>
+                )}
+
+                {provider.email && (
+                  <Button variant="outline" size="lg" asChild>
+                    <a
+                      href={`mailto:${provider.email}?subject=${encodeURIComponent(
+                        'Demande via Talok',
+                      )}`}
+                    >
+                      <Mail className="h-5 w-5 mr-2" />
+                      Email
+                    </a>
+                  </Button>
+                )}
+
+                {provider.latitude != null && provider.longitude != null && (
+                  <Button variant="outline" size="lg" asChild>
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${provider.latitude},${provider.longitude}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      <ExternalLink className="h-5 w-5 mr-2" />
+                      Voir sur Maps
+                    </a>
+                  </Button>
+                )}
+
+                <Button
+                  variant="outline"
                   size="lg"
-                  onClick={() => setIsFavorite(!isFavorite)}
+                  onClick={toggleFavorite}
                   className={isFavorite ? 'text-red-500 border-red-200' : ''}
                 >
                   <Heart className={`h-5 w-5 mr-2 ${isFavorite ? 'fill-current' : ''}`} />
