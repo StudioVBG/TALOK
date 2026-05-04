@@ -33,6 +33,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import { ProviderLogoCard } from "@/components/provider/provider-logo-card";
 import { ActiveSessionsCard } from "@/components/auth/active-sessions-card";
+import { PROVIDER_SERVICES } from "@/lib/constants/provider-services";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -333,7 +334,7 @@ export default function ProviderSettingsPage() {
                 <div className="space-y-2">
                   <Label>Services proposés</Label>
                   <div className="flex flex-wrap gap-2">
-                    {["Plomberie", "Électricité", "Serrurerie", "Chauffage", "Climatisation", "Peinture", "Menuiserie"].map(
+                    {PROVIDER_SERVICES.map(
                       (service) => (
                         <Badge
                           key={service}

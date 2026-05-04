@@ -10,25 +10,13 @@ import { providerProfilesService } from "../services/provider-profiles.service";
 import type { CreateProviderProfileData } from "../services/provider-profiles.service";
 import type { ProviderProfile } from "@/lib/types";
 import { useProfile } from "@/lib/hooks/use-profile";
+import { PROVIDER_SERVICES } from "@/lib/constants/provider-services";
 
 interface ProviderProfileFormProps {
   onSuccess?: () => void;
 }
 
-const SERVICE_TYPES = [
-  "Plomberie",
-  "Électricité",
-  "Chauffage",
-  "Menuiserie",
-  "Peinture",
-  "Maçonnerie",
-  "Élagage",
-  "Jardinage",
-  "Nettoyage",
-  "Serrurerie",
-  "Vitrerie",
-  "Autre",
-];
+const SERVICE_TYPES = PROVIDER_SERVICES;
 
 export function ProviderProfileForm({ onSuccess }: ProviderProfileFormProps) {
   const { profile, providerProfile } = useProfile();

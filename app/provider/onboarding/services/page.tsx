@@ -10,22 +10,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { onboardingService } from "@/features/onboarding/services/onboarding.service";
 import { providerServicesSchema } from "@/lib/validations/onboarding";
+import { PROVIDER_SERVICES } from "@/lib/constants/provider-services";
 import { Wrench, MapPin, ArrowRight, X, CheckCircle2 } from "lucide-react";
 
-const SPECIALITES = [
-  "Plomberie",
-  "Électricité",
-  "Chauffage",
-  "Menuiserie",
-  "Peinture",
-  "Carrelage",
-  "Élagage",
-  "Jardinage",
-  "Ménage",
-  "Vitrerie",
-  "Serrurerie",
-  "Autre",
-];
+const SPECIALITES = PROVIDER_SERVICES;
 
 export default function ProviderServicesPage() {
   const router = useRouter();
