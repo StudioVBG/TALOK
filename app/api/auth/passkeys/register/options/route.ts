@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateRegistrationOptions } from "@simplewebauthn/server";
 import { createClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service-client";
 
 const RP_NAME = "Talok";
 // Normaliser l'URL avec protocole pour éviter "Invalid URL" avec new URL()
@@ -13,7 +14,7 @@ const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 const normalizedAppUrl = rawAppUrl.startsWith("http") ? rawAppUrl : `https://${rawAppUrl}`;
 const RP_ID = rawAppUrl ? new URL(normalizedAppUrl).hostname : "localhost";
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const supabase = await createClient();
     const {
@@ -35,15 +36,16 @@ export async function POST(request: NextRequest) {
       .eq("user_id", user.id)
       .single();
 
-    // Récupérer les passkeys existantes de l'utilisateur
+    // Récupérer les passkeys existantes de l'utilisateur (pour exclusion)
     const { data: existingCredentials } = await supabase
       .from("passkey_credentials")
-      .select("credential_id")
+      .select("credential_id, transports")
       .eq("user_id", user.id);
 
     const excludeCredentials = (existingCredentials || []).map((cred) => ({
-      id: cred.credential_id,
+      id: cred.credential_id as string,
       type: "public-key" as const,
+      transports: (cred.transports as string[] | null) || undefined,
     }));
 
     const options = await generateRegistrationOptions({
@@ -59,18 +61,36 @@ export async function POST(request: NextRequest) {
       authenticatorSelection: {
         residentKey: "preferred",
         userVerification: "preferred",
-        authenticatorAttachment: "platform", // Préférer Face ID / Touch ID
+        // Pas de authenticatorAttachment : on autorise platform (Touch ID,
+        // Face ID, Windows Hello) ET cross-platform (YubiKey, clés FIDO2)
       },
       timeout: 60000,
     });
 
-    // Stocker le challenge temporairement
-    await supabase.from("passkey_challenges").upsert({
-      user_id: user.id,
-      challenge: options.challenge,
-      type: "registration",
-      expires_at: new Date(Date.now() + 60000).toISOString(),
-    });
+    // Stocker le challenge via le service client (RLS reservee au service_role).
+    // onConflict: "user_id,type" garantit qu'un seul challenge actif existe
+    // par (user, type) — l'index unique partiel est cree par la migration
+    // 20260504120000_passkeys_hardening.sql.
+    const serviceClient = getServiceClient();
+    const { error: challengeError } = await serviceClient
+      .from("passkey_challenges")
+      .upsert(
+        {
+          user_id: user.id,
+          challenge: options.challenge,
+          type: "registration",
+          expires_at: new Date(Date.now() + 60000).toISOString(),
+        },
+        { onConflict: "user_id,type" }
+      );
+
+    if (challengeError) {
+      console.error("[Passkeys] Erreur stockage challenge:", challengeError);
+      return NextResponse.json(
+        { error: "Erreur lors de la préparation de l'enregistrement" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json(options);
   } catch (error: unknown) {

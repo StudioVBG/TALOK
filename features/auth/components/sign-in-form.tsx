@@ -10,11 +10,13 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { Separator } from "@/components/ui/separator";
-import { authService } from "../services/auth.service";
+import { authService, signInWithPasskey } from "../services/auth.service";
 import type { SignInData } from "../services/auth.service";
 import { TurnstileWidget } from "@/components/auth/TurnstileWidget";
 import { TalokLogo } from "@/components/marketing/TalokLogo";
 import { getRoleDashboardUrl } from "@/lib/helpers/role-redirects";
+import { isWebAuthnSupported } from "@/lib/auth/passkeys";
+import { Fingerprint } from "lucide-react";
 
 // Icône SVG pour Google OAuth
 const GoogleIcon = () => (
@@ -63,11 +65,17 @@ export function SignInForm() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [passkeySupported, setPasskeySupported] = useState(false);
   const [formData, setFormData] = useState<SignInData>({
     email: "",
     password: "",
   });
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPasskeySupported(isWebAuthnSupported());
+  }, []);
 
   const redirectTo = getSafeRedirectUrl(searchParams.get("redirect"));
 
@@ -103,6 +111,40 @@ export function SignInForm() {
         variant: "destructive",
       });
       setGoogleLoading(false);
+    }
+  };
+
+  const handlePasskeySignIn = async () => {
+    setPasskeyLoading(true);
+    try {
+      const result = await signInWithPasskey(formData.email || undefined);
+
+      if (!result.success) {
+        toast({
+          title: "Connexion par passkey impossible",
+          description: result.error || "Aucune passkey n'a pu être validée.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Session etablie via verifyOtp dans signInWithPasskey
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      const profile = await authService.getProfile();
+      const profileData = profile as any;
+      const targetRoute = redirectTo || getRoleDashboardUrl(profileData?.role);
+      router.push(targetRoute);
+      router.refresh();
+    } catch (error: unknown) {
+      console.error("[SignIn] Erreur passkey:", error);
+      const errorMessage = error instanceof Error ? error.message : "Erreur de connexion par passkey";
+      toast({
+        title: "Erreur de connexion",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setPasskeyLoading(false);
     }
   };
 
@@ -246,6 +288,23 @@ export function SignInForm() {
             )}
             <span className="ml-2">Continuer avec Apple</span>
           </Button>
+
+          {passkeySupported && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handlePasskeySignIn}
+              disabled={loading || googleLoading || appleLoading || passkeyLoading}
+              className="w-full"
+            >
+              {passkeyLoading ? (
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+              ) : (
+                <Fingerprint className="h-5 w-5" />
+              )}
+              <span className="ml-2">Se connecter avec une passkey</span>
+            </Button>
+          )}
         </div>
 
         <div className="relative">

@@ -63,6 +63,8 @@ export async function POST(request: NextRequest) {
     const publicKey = Buffer.from(storedCredential.public_key as string, "base64");
 
     // Vérifier la réponse d'authentification
+    // requireUserVerification: false — on accepte les cles sans biometrie
+    // (la UV est tentee si l'authenticateur la supporte cote client).
     const verification = await verifyAuthenticationResponse({
       response: credential,
       expectedChallenge: challengeData.challenge as string,
@@ -74,7 +76,7 @@ export async function POST(request: NextRequest) {
         counter: storedCredential.counter as number,
         transports: storedCredential.transports as any,
       },
-      requireUserVerification: true,
+      requireUserVerification: false,
     });
 
     if (!verification.verified) {
@@ -111,14 +113,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Générer un magic link pour créer la session
+    // Generer un magic link et recuperer le hashed_token. Le client utilisera
+    // ensuite supabase.auth.verifyOtp({ token_hash, type: 'magiclink' }) pour
+    // etablir la session (generateLink ne renvoie PAS access_token directement).
     const { data: magicLinkData, error: magicLinkError } =
       await serviceClient.auth.admin.generateLink({
         type: "magiclink",
         email: authUser.user.email!,
       });
 
-    if (magicLinkError) {
+    const tokenHash = (magicLinkData?.properties as any)?.hashed_token as
+      | string
+      | undefined;
+
+    if (magicLinkError || !tokenHash) {
+      console.error("[Passkeys] Erreur generation magic link:", magicLinkError);
       return NextResponse.json(
         { error: "Erreur création session" },
         { status: 500 }
@@ -127,9 +136,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      // Renvoyer les tokens pour établir la session côté client
-      access_token: (magicLinkData.properties as any)?.access_token,
-      refresh_token: (magicLinkData.properties as any)?.refresh_token,
+      // Le client appelle verifyOtp({ token_hash, type: 'magiclink' })
+      // pour echanger ce hash contre une session (cookies).
+      token_hash: tokenHash,
+      email: authUser.user.email,
       user: {
         id: authUser.user.id,
         email: authUser.user.email,
