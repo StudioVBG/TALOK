@@ -343,13 +343,17 @@ async function upsertPaymentAttempt(
     paidAt?: string | null;
   }
 ) {
+  // Lit le statut actuel pour calculer newlySucceeded/newlyFailed.
+  // La race condition ne porte plus sur l'INSERT (UNIQUE provider_ref +
+  // upsert ON CONFLICT) ; ce SELECT sert uniquement à savoir si on
+  // déclenche les side-effects post-paiement (compta, quittance, email).
   const { data: existingPayment } = await supabase
     .from("payments")
-    .select("id, statut")
+    .select("statut")
     .eq("provider_ref", params.providerRef)
     .maybeSingle();
 
-  const existing = existingPayment as { id?: string | null; statut?: string | null } | null;
+  const existing = existingPayment as { statut?: string | null } | null;
   // `payments.date_paiement` est de type DATE — les callers passent souvent
   // `new Date().toISOString()` (timestamp ISO). On normalise vers YYYY-MM-DD
   // pour éviter la coercition silencieuse côté Postgres.
@@ -365,31 +369,22 @@ async function upsertPaymentAttempt(
     statut: params.status,
   };
 
-  if (existing?.id) {
-    const { data: updatedPayment } = await supabase
-      .from("payments")
-      .update(payload)
-      .eq("id", existing.id)
-      .select("id")
-      .single();
-
-    return {
-      paymentId: (updatedPayment as { id?: string } | null)?.id || existing.id,
-      newlySucceeded: existing.statut !== "succeeded" && params.status === "succeeded",
-      newlyFailed: existing.statut !== "failed" && params.status === "failed",
-    };
-  }
-
-  const { data: createdPayment } = await supabase
+  // Upsert atomique sur la contrainte UNIQUE (provider_ref) installée par
+  // migration 20260504100000. Élimine la fenêtre TOCTOU entre SELECT et
+  // INSERT qui permettait deux webhooks Stripe simultanés de créer deux
+  // rows payments pour le même payment_intent.
+  const { data: upsertedPayment } = await supabase
     .from("payments")
-    .insert(payload)
+    .upsert(payload, { onConflict: "provider_ref" })
     .select("id")
     .single();
 
   return {
-    paymentId: (createdPayment as { id?: string } | null)?.id || null,
-    newlySucceeded: params.status === "succeeded",
-    newlyFailed: params.status === "failed",
+    paymentId: (upsertedPayment as { id?: string } | null)?.id ?? null,
+    newlySucceeded:
+      (existing?.statut ?? null) !== "succeeded" && params.status === "succeeded",
+    newlyFailed:
+      (existing?.statut ?? null) !== "failed" && params.status === "failed",
   };
 }
 
@@ -2087,6 +2082,53 @@ export async function POST(request: NextRequest) {
               .from("work_orders")
               .update({ statut: "cancelled" })
               .eq("id", wp.work_order_id);
+          }
+        }
+
+        // Cas normal : paiement de loyer (table payments). Le payment_intent
+        // d'origine est référencé par charge.payment_intent.
+        // Bug pré-existant : ce cas n'était PAS traité, la facture restait
+        // "paid" après remboursement et la compta divergeait.
+        const paymentIntentId =
+          typeof charge.payment_intent === "string"
+            ? charge.payment_intent
+            : charge.payment_intent?.id ?? null;
+
+        if (paymentIntentId) {
+          const { data: rentPayment } = await supabase
+            .from("payments")
+            .select("id, invoice_id, statut, montant")
+            .eq("provider_ref", paymentIntentId)
+            .maybeSingle();
+
+          if (rentPayment) {
+            const rp = rentPayment as {
+              id: string;
+              invoice_id: string | null;
+              statut: string | null;
+              montant: number | string | null;
+            };
+
+            const refundedCents = charge.amount_refunded ?? 0;
+            const grossCents = Math.round(Number(rp.montant ?? 0) * 100);
+            const isFullRefund = grossCents > 0 && refundedCents >= grossCents;
+
+            await supabase
+              .from("payments")
+              .update({
+                statut: isFullRefund ? "refunded" : rp.statut ?? "succeeded",
+              })
+              .eq("id", rp.id);
+
+            if (rp.invoice_id) {
+              // Recalcule le statut de la facture à partir des paiements
+              // restants (paid → refunded ou partially_paid selon le solde).
+              await syncInvoiceStatusFromPayments(
+                supabase as any,
+                rp.invoice_id,
+                null
+              );
+            }
           }
         }
         break;
