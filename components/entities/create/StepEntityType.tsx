@@ -1,11 +1,15 @@
 "use client";
 
-import { Building2, User, Users, ArrowUpDown } from "lucide-react";
+import { Building2, User, Users, ArrowUpDown, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StepEntityTypeProps {
   value: string;
   onChange: (type: string) => void;
+  /** When true, non-particulier types are visually locked and onChange is intercepted */
+  gateNonParticulier?: boolean;
+  /** Called when a locked type is clicked */
+  onGatedTypeAttempt?: () => void;
 }
 
 const ENTITY_TYPES = [
@@ -120,7 +124,20 @@ const ENTITY_TYPES = [
   },
 ];
 
-export function StepEntityType({ value, onChange }: StepEntityTypeProps) {
+export function StepEntityType({
+  value,
+  onChange,
+  gateNonParticulier = false,
+  onGatedTypeAttempt,
+}: StepEntityTypeProps) {
+  const handleClick = (typeId: string) => {
+    if (gateNonParticulier && typeId !== "particulier") {
+      onGatedTypeAttempt?.();
+      return;
+    }
+    onChange(typeId);
+  };
+
   return (
     <div className="space-y-4">
       <div>
@@ -133,15 +150,18 @@ export function StepEntityType({ value, onChange }: StepEntityTypeProps) {
       <div className="grid gap-3 sm:grid-cols-2">
         {ENTITY_TYPES.map((type) => {
           const isSelected = value === type.id;
+          const isLocked = gateNonParticulier && type.id !== "particulier";
           return (
             <button
               key={type.id}
-              onClick={() => onChange(type.id)}
+              type="button"
+              onClick={() => handleClick(type.id)}
               className={cn(
-                "flex items-start gap-3 p-4 rounded-lg border text-left transition-all",
+                "relative flex items-start gap-3 p-4 rounded-lg border text-left transition-all",
                 isSelected
                   ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                  : "border-border hover:border-primary/30 hover:bg-muted/30"
+                  : "border-border hover:border-primary/30 hover:bg-muted/30",
+                isLocked && "opacity-70"
               )}
             >
               <div
@@ -157,15 +177,23 @@ export function StepEntityType({ value, onChange }: StepEntityTypeProps) {
                   )}
                 />
               </div>
-              <div>
-                <p
-                  className={cn(
-                    "font-medium text-sm",
-                    isSelected && "text-primary"
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <p
+                    className={cn(
+                      "font-medium text-sm",
+                      isSelected && "text-primary"
+                    )}
+                  >
+                    {type.label}
+                  </p>
+                  {isLocked && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-600 rounded border border-amber-500/30 uppercase">
+                      <Lock className="h-2.5 w-2.5" />
+                      Enterprise
+                    </span>
                   )}
-                >
-                  {type.label}
-                </p>
+                </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {type.description}
                 </p>

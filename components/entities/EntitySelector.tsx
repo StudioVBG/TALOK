@@ -10,7 +10,7 @@
  * P1-8: Peut filtrer les entités par bien sélectionné (propertyEntityId)
  */
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useEntityStore } from "@/stores/useEntityStore";
 import { Building2, User, AlertCircle, Star } from "lucide-react";
 import {
@@ -57,6 +57,23 @@ export function EntitySelector({
   className,
 }: EntitySelectorProps) {
   const { entities, isLoading } = useEntityStore();
+
+  // If a "particulier" entity already exists, hide the legacy "Profil personnel"
+  // option (which maps to legal_entity_id = null). Otherwise the user sees two
+  // indistinguishable choices and can create orphan records.
+  const particulierEntity = useMemo(
+    () => entities.find((e) => e.entityType === "particulier"),
+    [entities]
+  );
+  const hasParticulierEntity = !!particulierEntity;
+
+  // Auto-coerce legacy null value (= "Profil personnel") onto the existing
+  // particulier entity to prevent orphan records.
+  useEffect(() => {
+    if (value === null && particulierEntity) {
+      onChange(particulierEntity.id);
+    }
+  }, [value, particulierEntity, onChange]);
 
   // P1-8: Sort entities — property owner entity first, then alphabetical
   const sortedEntities = useMemo(() => {
@@ -120,13 +137,17 @@ export function EntitySelector({
           <SelectValue placeholder="Sélectionner une entité" />
         </SelectTrigger>
         <SelectContent>
-          {/* Personal profile option */}
-          <SelectItem value="__personal__">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <span>Profil personnel</span>
-            </div>
-          </SelectItem>
+          {/* Personal profile option — hidden if a "particulier" entity exists
+              to avoid the orphan-record trap (legal_entity_id NULL bypasses
+              the accounting module). */}
+          {!hasParticulierEntity && (
+            <SelectItem value="__personal__">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span>Profil personnel</span>
+              </div>
+            </SelectItem>
+          )}
 
           {/* Entity options — P1-8: property owner entity shown first */}
           {sortedEntities.map((entity) => {

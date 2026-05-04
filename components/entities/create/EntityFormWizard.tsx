@@ -107,6 +107,10 @@ export interface EntityFormWizardProps {
   submitLabel: string;
   /** Submit loading label */
   submitLoadingLabel: string;
+  /** Display a "Plan Enterprise requis" badge on non-particulier types */
+  gateNonParticulier?: boolean;
+  /** Called when user clicks a gated (non-particulier) type without access */
+  onGatedTypeAttempt?: () => void;
 }
 
 // ============================================
@@ -121,6 +125,8 @@ export function EntityFormWizard({
   header,
   submitLabel,
   submitLoadingLabel,
+  gateNonParticulier = false,
+  onGatedTypeAttempt,
 }: EntityFormWizardProps) {
   const router = useRouter();
 
@@ -427,6 +433,8 @@ export function EntityFormWizard({
           <StepEntityType
             value={formData.entityType}
             onChange={(v) => updateFormData({ entityType: v })}
+            gateNonParticulier={gateNonParticulier}
+            onGatedTypeAttempt={onGatedTypeAttempt}
           />
         )}
         {step === 2 && (
