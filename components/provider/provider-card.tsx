@@ -46,7 +46,7 @@ export interface ProviderCardData {
   review_count: number;
   intervention_count: number;
   location: string;
-  distance_km?: number;
+  distance_km?: number | null;
   hourly_rate_min?: number;
   hourly_rate_max?: number;
   is_urgent_available: boolean;
@@ -60,6 +60,11 @@ export interface ProviderCardData {
     title: string;
   };
   is_favorite?: boolean;
+  // Coordonnées de contact + géolocalisation (depuis providers.identité légale)
+  phone?: string | null;
+  email?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 interface ProviderCardProps {
@@ -126,7 +131,7 @@ export function ProviderCard({
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MapPin className="h-3 w-3" />
                 {provider.location}
-                {provider.distance_km !== undefined && (
+                {provider.distance_km != null && (
                   <span className="text-xs">({provider.distance_km.toFixed(1)} km)</span>
                 )}
               </div>
@@ -242,23 +247,52 @@ export function ProviderCard({
         )}
       </CardContent>
       
-      <CardFooter className="pt-3 gap-2">
-        {onRequestQuote && (
-          <Button 
-            className="flex-1"
-            onClick={() => onRequestQuote(provider.id)}
-          >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Demander un devis
-          </Button>
+      <CardFooter className="pt-3 flex-col gap-2 items-stretch">
+        {/* Actions de contact direct (téléphone, Maps) */}
+        {(provider.phone || (provider.latitude != null && provider.longitude != null)) && (
+          <div className="flex gap-2 flex-wrap">
+            {provider.phone && (
+              <Button variant="outline" size="sm" asChild className="flex-1 min-w-0">
+                <a href={`tel:${provider.phone}`}>
+                  <Phone className="h-4 w-4 mr-1.5" />
+                  <span className="truncate">{provider.phone}</span>
+                </a>
+              </Button>
+            )}
+            {provider.latitude != null && provider.longitude != null && (
+              <Button variant="outline" size="sm" asChild>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${provider.latitude},${provider.longitude}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Voir sur Google Maps"
+                >
+                  <ExternalLink className="h-4 w-4 mr-1.5" />
+                  Maps
+                </a>
+              </Button>
+            )}
+          </div>
         )}
-        
-        <Button variant="outline" asChild>
-          <Link href={`/owner/providers/${provider.id}`}>
-            Voir le profil
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Link>
-        </Button>
+
+        <div className="flex gap-2">
+          {onRequestQuote && (
+            <Button
+              className="flex-1"
+              onClick={() => onRequestQuote(provider.id)}
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Demander un devis
+            </Button>
+          )}
+
+          <Button variant="outline" asChild>
+            <Link href={`/owner/providers/${provider.id}`}>
+              Voir le profil
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Link>
+          </Button>
+        </div>
       </CardFooter>
     </Card>
   );
@@ -315,23 +349,38 @@ export function ProviderCardCompact({
           />
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{provider.location}</span>
+          <span className="truncate">{provider.location}</span>
+          {provider.distance_km != null && (
+            <>
+              <span>•</span>
+              <span className="whitespace-nowrap">{provider.distance_km.toFixed(1)} km</span>
+            </>
+          )}
           {provider.hourly_rate_min && (
             <>
               <span>•</span>
-              <span>{provider.hourly_rate_min}€/h</span>
+              <span className="whitespace-nowrap">{provider.hourly_rate_min}€/h</span>
             </>
           )}
         </div>
       </div>
-      
+
       <ProviderBadgeList badges={badges.slice(0, 2)} size="sm" showTooltip={false} />
-      
-      {onRequestQuote && (
-        <Button size="sm" onClick={() => onRequestQuote(provider.id)}>
-          Devis
-        </Button>
-      )}
+
+      <div className="flex gap-1">
+        {provider.phone && (
+          <Button size="sm" variant="outline" asChild>
+            <a href={`tel:${provider.phone}`} aria-label={`Appeler ${provider.name}`}>
+              <Phone className="h-4 w-4" />
+            </a>
+          </Button>
+        )}
+        {onRequestQuote && (
+          <Button size="sm" onClick={() => onRequestQuote(provider.id)}>
+            Devis
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
