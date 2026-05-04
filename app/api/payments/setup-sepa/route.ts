@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     const { data: lease } = await supabase
       .from("leases")
       .select(`
-        id, loyer, charges_forfaitaires, depot_de_garantie,
+        id, loyer, charges_forfaitaires, depot_de_garantie, statut,
         property:properties(
           id, adresse_complete,
           owner:profiles!properties_owner_id_fkey(
@@ -89,6 +89,22 @@ export async function POST(request: NextRequest) {
 
     if (!lease) {
       return NextResponse.json({ error: "Bail non trouvé" }, { status: 404 });
+    }
+
+    // Refuser de créer un mandat SEPA tant que le bail n'est pas
+    // entièrement signé. Sans cette garde, le locataire pouvait être
+    // engagé dans des prélèvements automatiques avant que le bail soit
+    // juridiquement actif (donc sans accord ferme côté propriétaire).
+    const allowedStatuses = ["fully_signed", "active"];
+    if (!allowedStatuses.includes((lease as any).statut)) {
+      return NextResponse.json(
+        {
+          error:
+            "Le mandat SEPA ne peut être créé qu'une fois le bail intégralement signé.",
+          lease_status: (lease as any).statut,
+        },
+        { status: 409 }
+      );
     }
 
     const owner = (lease.property as any)?.owner;
@@ -256,15 +272,36 @@ export async function POST(request: NextRequest) {
 }
 
 /**
+ * Renvoie le dernier jour calendaire d'un mois donné (1-indexed).
+ * Ex : lastDayOfMonth(2026, 2) = 28 (ou 29 année bissextile).
+ */
+function lastDayOfMonth(year: number, monthOneBased: number): number {
+  // Date(year, month, 0) renvoie le dernier jour du mois précédent.
+  return new Date(year, monthOneBased, 0).getDate();
+}
+
+/**
+ * Construit une Date au jour `day` du mois (year, monthZeroBased), en
+ * cappant au dernier jour réel du mois si `day > lastDayOfMonth`.
+ *
+ * Bug fixé : `new Date(2026, 1, 29)` retournait silencieusement le
+ * 1er mars (overflow), prélevant les locataires à une mauvaise date.
+ */
+function safeDateInMonth(year: number, monthZeroBased: number, day: number): Date {
+  const last = lastDayOfMonth(year, monthZeroBased + 1);
+  return new Date(year, monthZeroBased, Math.min(day, last));
+}
+
+/**
  * Calculer la prochaine date de prélèvement
  */
 function getNextCollectionDate(day: number): string {
   const now = new Date();
-  let nextDate = new Date(now.getFullYear(), now.getMonth(), day);
+  let nextDate = safeDateInMonth(now.getFullYear(), now.getMonth(), day);
 
   // Si le jour est déjà passé ce mois, prendre le mois suivant
   if (nextDate <= now) {
-    nextDate = new Date(now.getFullYear(), now.getMonth() + 1, day);
+    nextDate = safeDateInMonth(now.getFullYear(), now.getMonth() + 1, day);
   }
 
   // Ajouter 5 jours de délai minimum pour SEPA
@@ -272,7 +309,7 @@ function getNextCollectionDate(day: number): string {
   minDate.setDate(minDate.getDate() + 5);
 
   if (nextDate < minDate) {
-    nextDate = new Date(now.getFullYear(), now.getMonth() + 1, day);
+    nextDate = safeDateInMonth(now.getFullYear(), now.getMonth() + 1, day);
   }
 
   return nextDate.toISOString().split("T")[0];
