@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { getServiceClient } from '@/lib/supabase/service-client';
 import { NextRequest, NextResponse } from 'next/server';
 import { PropertyMetersService, exchangeEnedisCode, fetchEnedisDaily } from '@/lib/services/meters';
+import { encrypt } from '@/lib/security/encryption.service';
 
 /**
  * GET /api/oauth/enedis/callback?code=xxx&state=meterId:userId
@@ -48,11 +49,16 @@ export async function GET(request: NextRequest) {
       .eq('user_id', userId)
       .maybeSingle();
 
-    // Store encrypted tokens and mark as connected
+    // Chiffrement AES-256-GCM avant stockage. Les colonnes sont
+    // *_encrypted ; jusqu'ici elles contenaient le token brut (TODO oublié).
+    // Si un attaquant accédait à la DB, les tokens OAuth Enedis lui
+    // donnaient accès aux relevés du compteur du locataire.
     const expiresAt = new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString();
     await metersService.markConnected(meterId, {
-      oauth_token_encrypted: tokenResponse.access_token, // TODO: encrypt with vault
-      oauth_refresh_token_encrypted: tokenResponse.refresh_token,
+      oauth_token_encrypted: encrypt(tokenResponse.access_token),
+      oauth_refresh_token_encrypted: tokenResponse.refresh_token
+        ? encrypt(tokenResponse.refresh_token)
+        : null,
       oauth_expires_at: expiresAt,
       connection_consent_by: profile?.id || userId,
     });

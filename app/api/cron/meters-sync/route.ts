@@ -10,8 +10,22 @@ import {
   fetchGRDFConsumption,
   refreshGRDFToken,
 } from '@/lib/services/meters';
+import { encrypt, decrypt, isEncrypted } from '@/lib/security/encryption.service';
 
 const CRON_SECRET = process.env.CRON_SECRET || '';
+
+// Délai minimum entre 2 sync d'un même compteur. Empêche un double-run
+// (Netlify timeout/retry) de re-synchroniser les mêmes lectures.
+const MIN_SYNC_INTERVAL_HOURS = 6;
+
+/**
+ * Renvoie le token en clair, qu'il soit déjà chiffré ou stocké en
+ * clair (legacy avant le fix de chiffrement OAuth).
+ */
+function readToken(stored: string | null | undefined): string | null {
+  if (!stored) return null;
+  return isEncrypted(stored) ? decrypt(stored) : stored;
+}
 
 /**
  * POST /api/cron/meters-sync
@@ -30,7 +44,9 @@ export async function POST(request: NextRequest) {
     const metersService = new PropertyMetersService(serviceClient);
     const meters = await metersService.getActiveConnectedMeters();
 
-    const results = { synced: 0, errors: 0, skipped: 0 };
+    const results = { synced: 0, errors: 0, skipped: 0, throttled: 0 };
+    const minIntervalMs = MIN_SYNC_INTERVAL_HOURS * 60 * 60 * 1000;
+    const now = Date.now();
 
     for (const meter of meters) {
       try {
@@ -39,32 +55,51 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        let accessToken = meter.oauth_token_encrypted;
+        // Idempotence : skip si on a sync ce compteur il y a moins de 6h.
+        // Évite qu'un double-run du cron (Netlify timeout/retry) ne
+        // re-synchronise les mêmes lectures.
+        const lastSync = (meter as any).last_sync_at;
+        if (lastSync && now - new Date(lastSync).getTime() < minIntervalMs) {
+          results.throttled++;
+          continue;
+        }
+
+        let accessToken = readToken(meter.oauth_token_encrypted);
+        const refreshTokenPlain = readToken(meter.oauth_refresh_token_encrypted);
+
+        if (!accessToken || !refreshTokenPlain) {
+          results.skipped++;
+          continue;
+        }
 
         // Check if token needs refresh
         if (meter.oauth_expires_at && new Date(meter.oauth_expires_at) < new Date()) {
           try {
             if (meter.provider === 'enedis') {
-              const refreshed = await refreshEnedisToken(meter.oauth_refresh_token_encrypted);
+              const refreshed = await refreshEnedisToken(refreshTokenPlain);
               accessToken = refreshed.access_token;
               const expiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
               await serviceClient
                 .from('property_meters')
                 .update({
-                  oauth_token_encrypted: refreshed.access_token,
-                  oauth_refresh_token_encrypted: refreshed.refresh_token,
+                  oauth_token_encrypted: encrypt(refreshed.access_token),
+                  oauth_refresh_token_encrypted: refreshed.refresh_token
+                    ? encrypt(refreshed.refresh_token)
+                    : null,
                   oauth_expires_at: expiresAt,
                 })
                 .eq('id', meter.id);
             } else if (meter.provider === 'grdf') {
-              const refreshed = await refreshGRDFToken(meter.oauth_refresh_token_encrypted);
+              const refreshed = await refreshGRDFToken(refreshTokenPlain);
               accessToken = refreshed.access_token;
               const expiresAt = new Date(Date.now() + refreshed.expires_in * 1000).toISOString();
               await serviceClient
                 .from('property_meters')
                 .update({
-                  oauth_token_encrypted: refreshed.access_token,
-                  oauth_refresh_token_encrypted: refreshed.refresh_token,
+                  oauth_token_encrypted: encrypt(refreshed.access_token),
+                  oauth_refresh_token_encrypted: refreshed.refresh_token
+                    ? encrypt(refreshed.refresh_token)
+                    : null,
                   oauth_expires_at: expiresAt,
                 })
                 .eq('id', meter.id);
@@ -74,6 +109,11 @@ export async function POST(request: NextRequest) {
             results.errors++;
             continue;
           }
+        }
+
+        if (!accessToken) {
+          results.skipped++;
+          continue;
         }
 
         // Fetch recent readings
