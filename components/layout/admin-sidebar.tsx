@@ -124,6 +124,7 @@ const adminNavItems: NavCategory[] = [
   {
     category: "Sécurité & Conformité",
     items: [
+      { href: "/admin/security", label: "Mon compte (2FA)", icon: ShieldCheck },
       { href: "/admin/privacy", label: "RGPD", icon: Lock },
       { href: "/admin/audit-logs", label: "Journal d'audit", icon: ScrollText },
     ],
