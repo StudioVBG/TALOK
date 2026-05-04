@@ -418,6 +418,21 @@ export async function signInWithPasskey(email?: string): Promise<{
       return { success: false, error: verifyData.error };
     }
 
+    // 4. Echanger le token_hash contre une session Supabase (cookies)
+    if (!verifyData.token_hash) {
+      return { success: false, error: "Réponse de session invalide" };
+    }
+
+    const supabase = createClient();
+    const { error: otpError } = await supabase.auth.verifyOtp({
+      type: "magiclink",
+      token_hash: verifyData.token_hash,
+    });
+
+    if (otpError) {
+      return { success: false, error: otpError.message };
+    }
+
     return {
       success: true,
       user: verifyData.user,

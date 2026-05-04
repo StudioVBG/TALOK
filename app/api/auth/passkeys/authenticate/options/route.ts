@@ -14,41 +14,42 @@ const RP_ID = rawAppUrl ? new URL(normalizedAppUrl).hostname : "localhost";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { email } = body;
+    const body = await request.json().catch(() => ({}));
+    const email: string | undefined = typeof body?.email === "string"
+      ? body.email.trim().toLowerCase()
+      : undefined;
 
     const serviceClient = getServiceClient();
 
-    let allowCredentials: { id: string; type: "public-key" }[] = [];
+    let allowCredentials: {
+      id: string;
+      type: "public-key";
+      transports?: string[];
+    }[] = [];
 
-    // Si email fourni, récupérer les passkeys de l'utilisateur
+    // Si email fourni, restreindre les credentials autorises a ceux de l'utilisateur.
+    // Lookup direct par email via la table profiles (pas de listUsers paginee).
     if (email) {
-      const { data: userData } = await serviceClient
+      const { data: profile } = await serviceClient
         .from("profiles")
         .select("user_id")
-        .eq("user_id", (serviceClient.auth.admin
-          ? undefined
-          : undefined) as any)
-        .single();
+        .eq("email", email)
+        .maybeSingle();
 
-      // Rechercher l'utilisateur par email via auth.users
-      const { data: authUser } = await serviceClient.auth.admin.listUsers();
-      const user = authUser?.users?.find(
-        (u) => u.email?.toLowerCase() === email.toLowerCase()
-      );
-
-      if (user) {
+      if (profile?.user_id) {
         const { data: credentials } = await serviceClient
           .from("passkey_credentials")
           .select("credential_id, transports")
-          .eq("user_id", user.id);
+          .eq("user_id", profile.user_id);
 
-        allowCredentials = (credentials || []).map((cred: any) => ({
+        allowCredentials = (credentials || []).map((cred) => ({
           id: cred.credential_id as string,
           type: "public-key" as const,
-          transports: cred.transports,
-        })) as { id: string; type: "public-key" }[];
+          transports: (cred.transports as string[] | null) || undefined,
+        }));
       }
+      // Si pas trouve : on ne revele rien et on genere quand meme des options
+      // (le navigateur affichera les passkeys disponibles via discoverable cred).
     }
 
     const options = await generateAuthenticationOptions({
@@ -58,19 +59,29 @@ export async function POST(request: NextRequest) {
       timeout: 60000,
     });
 
-    // Stocker le challenge (sans user_id si pas connecté)
+    // Stocker le challenge (sans user_id, identifie par UUID retourne au client)
     const challengeId = crypto.randomUUID();
-    await serviceClient.from("passkey_challenges").insert({
-      id: challengeId,
-      user_id: null, // Sera vérifié après
-      challenge: options.challenge,
-      type: "authentication",
-      expires_at: new Date(Date.now() + 60000).toISOString(),
-    });
+    const { error: challengeError } = await serviceClient
+      .from("passkey_challenges")
+      .insert({
+        id: challengeId,
+        user_id: null,
+        challenge: options.challenge,
+        type: "authentication",
+        expires_at: new Date(Date.now() + 60000).toISOString(),
+      });
+
+    if (challengeError) {
+      console.error("[Passkeys] Erreur stockage challenge auth:", challengeError);
+      return NextResponse.json(
+        { error: "Erreur lors de la préparation de la connexion" },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       ...options,
-      challengeId, // Renvoyer l'ID pour la vérification
+      challengeId,
     });
   } catch (error: unknown) {
     console.error("[Passkeys] Erreur génération options auth:", error);
