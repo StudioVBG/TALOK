@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { getServiceClient } from '@/lib/supabase/service-client';
 import { NextRequest, NextResponse } from 'next/server';
 import { PropertyMetersService, exchangeGRDFCode, fetchGRDFConsumption } from '@/lib/services/meters';
+import { encrypt } from '@/lib/security/encryption.service';
 
 /**
  * GET /api/oauth/grdf/callback?code=xxx&state=meterId:userId
@@ -46,10 +47,14 @@ export async function GET(request: NextRequest) {
       .eq('user_id', userId)
       .maybeSingle();
 
+    // Chiffrement AES-256-GCM avant stockage. Cf. fix Enedis (les
+    // colonnes *_encrypted contenaient le token brut).
     const expiresAt = new Date(Date.now() + tokenResponse.expires_in * 1000).toISOString();
     await metersService.markConnected(meterId, {
-      oauth_token_encrypted: tokenResponse.access_token,
-      oauth_refresh_token_encrypted: tokenResponse.refresh_token,
+      oauth_token_encrypted: encrypt(tokenResponse.access_token),
+      oauth_refresh_token_encrypted: tokenResponse.refresh_token
+        ? encrypt(tokenResponse.refresh_token)
+        : null,
       oauth_expires_at: expiresAt,
       connection_consent_by: profile?.id || userId,
     });
