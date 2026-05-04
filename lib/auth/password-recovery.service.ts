@@ -42,20 +42,25 @@ export interface PasswordResetValidationResult {
 }
 
 function getPasswordResetSecret(): string {
-  const secret =
-    process.env.PASSWORD_RESET_COOKIE_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    process.env.JWT_SECRET;
+  const secret = process.env.PASSWORD_RESET_COOKIE_SECRET;
 
-  if (secret) {
+  if (secret && secret.length >= 32) {
     return secret;
   }
 
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "[CRITICAL] PASSWORD_RESET_COOKIE_SECRET is required in production (min 32 chars). " +
+        "Generate one with: openssl rand -hex 32"
+    );
+  }
+
   console.warn(
-    "[password-recovery] PASSWORD_RESET_COOKIE_SECRET non configuré. " +
-      "Utilisation d'un secret de développement (non sécurisé en production)."
+    "[password-recovery] PASSWORD_RESET_COOKIE_SECRET non configuré ou trop court. " +
+      "Utilisation d'un secret de développement (non sécurisé en production). " +
+      "Génère un secret dédié : openssl rand -hex 32"
   );
-  return "dev-password-reset-secret-do-not-use-in-production";
+  return "dev-password-reset-secret-do-not-use-in-production-32chars";
 }
 
 export function hashEmail(email: string): string {
