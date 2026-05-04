@@ -117,6 +117,14 @@ export async function GET(request: Request) {
 
       const profileData = profile as ProfilePartial | null;
 
+      // Roles privilegies (admin, platform_admin) : pas de flux d'inscription
+      // public — on les envoie direct sur leur dashboard. Sans ce shortcut
+      // isValidRole() rejette "admin" (pas dans PUBLIC_ROLES) et le user
+      // termine sur /signup/role meme s'il a un compte complet.
+      if (profileData?.role === "admin" || profileData?.role === "platform_admin") {
+        return NextResponse.redirect(new URL(getRoleDashboardUrl(profileData.role), origin));
+      }
+
       const metadataRole = data.user.user_metadata?.role as string | undefined;
       const role = isValidRole(profileData?.role)
         ? (profileData!.role as PublicRole)
@@ -211,6 +219,17 @@ export async function GET(request: Request) {
         .maybeSingle();
 
       const profileData = profile as ProfilePartial | null;
+
+      // Roles privilegies (admin, platform_admin) : pas de flux d'inscription
+      // public — on les envoie direct sur leur dashboard. Sans ce shortcut
+      // isValidRole() rejette "admin" (pas dans PUBLIC_ROLES) et le user
+      // termine sur /signup/role meme s'il a un compte complet.
+      if (profileData?.role === "admin" || profileData?.role === "platform_admin") {
+        const dashUrl = isSafeRelativePath(redirectParam)
+          ? redirectParam
+          : getRoleDashboardUrl(profileData.role);
+        return NextResponse.redirect(new URL(dashUrl, origin));
+      }
 
       // Rôle : priorité au profil DB, fallback sur user_metadata.role (posé au
       // signUp). Si rien, on envoie choisir un rôle.
