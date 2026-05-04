@@ -133,7 +133,7 @@ export class PropertyMetersService {
     meterId: string,
     tokenData: {
       oauth_token_encrypted: string;
-      oauth_refresh_token_encrypted: string;
+      oauth_refresh_token_encrypted: string | null;
       oauth_expires_at: string;
       connection_consent_by: string;
     }
