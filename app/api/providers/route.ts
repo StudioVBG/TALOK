@@ -38,6 +38,7 @@ export async function GET(request: Request) {
 
     // Paramètres de requête
     const { searchParams } = new URL(request.url);
+    // `category` est un alias historique — la colonne réelle est trade_categories[].
     const category = searchParams.get("category");
     const specialty = searchParams.get("specialty");
     const status = searchParams.get("status");
@@ -56,14 +57,12 @@ export async function GET(request: Request) {
       .from("providers")
       .select("*", { count: "exact" });
 
-    // Filtrer par catégorie
+    // Filtre catégorie / spécialité — tous deux ciblent la colonne array trade_categories
     if (category) {
-      query = query.eq("category", category);
+      query = query.contains("trade_categories", [category]);
     }
-
-    // Filtrer par spécialité (dans le JSON specialties)
     if (specialty) {
-      query = query.contains("specialties", [specialty]);
+      query = query.contains("trade_categories", [specialty]);
     }
 
     // Filtrer par statut
@@ -88,7 +87,7 @@ export async function GET(request: Request) {
     // Pagination et ordre
     query = query
       .order("is_verified", { ascending: false })
-      .order("rating", { ascending: false, nullsFirst: false })
+      .order("avg_rating", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 

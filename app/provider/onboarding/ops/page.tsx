@@ -67,19 +67,27 @@ export default function ProviderOpsPage() {
         horaires_fin: formData.horaires_fin,
         sla_souhaite: formData.sla_souhaite,
         payout_iban: formData.payout_iban,
-        kyc_complete: false, // À compléter plus tard
+        kyc_complete: false,
       });
 
-      // Sauvegarder les préférences
+      const res = await fetch("/api/provider/onboarding/ops", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(validated),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Erreur lors de la sauvegarde");
+      }
+
       await onboardingService.saveDraft("provider_ops", validated, "provider");
-      await onboardingService.markStepCompleted("provider_ops", "provider");
 
       toast({
         title: "Préférences enregistrées",
         description: "Vos disponibilités et préférences ont été sauvegardées.",
       });
 
-      // Rediriger vers la validation
       router.push("/provider/onboarding/review");
     } catch (error: unknown) {
       toast({
