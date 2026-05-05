@@ -28,6 +28,7 @@ import {
   StickyNote,
   Save,
   Globe,
+  RefreshCw,
 } from "lucide-react";
 import "leaflet/dist/leaflet.css";
 
@@ -83,6 +84,18 @@ const Popup = dynamic(
 const Circle = dynamic(
   () => import("react-leaflet").then((m) => m.Circle),
   { ssr: false }
+);
+
+// Composant interne qui fait fitBounds sur le cercle de rayon à chaque
+// changement de centre / rayon. Sans ça, MapContainer reste figé sur
+// `zoom={13}` (zoom de l'init) — quand l'utilisateur élargit à 100 km
+// la carte ne dézoome pas et le cercle déborde de la zone visible.
+//
+// Dynamique pour garder useMap dans le bundle client uniquement (Leaflet
+// ne supporte pas le SSR).
+const MapAutoFit = dynamic(
+  () => import("./map-autofit").then((m) => m.MapAutoFit),
+  { ssr: false },
 );
 
 interface PropertyOption {
@@ -720,6 +733,10 @@ export function NearbyProvidersSearch({
     };
   }, [isControlled, selectedProperty]);
 
+  // Compteur d'actualisations manuelles : incrémenté par le bouton "Actualiser",
+  // sert de dépendance au useEffect pour re-déclencher une recherche bypass cache.
+  const [refreshNonce, setRefreshNonce] = useState(0);
+
   // Lancer la recherche dès qu'on a un centre, une catégorie et un rayon
   useEffect(() => {
     if (!center || !selectedProperty) return;
@@ -736,11 +753,27 @@ export function NearbyProvidersSearch({
           radius: String(radius),
           address: selectedProperty.address,
         });
+        // Le 1er appel utilise le cache (rapide). Toute pression sur "Actualiser"
+        // ajoute ?fresh=1 pour bypass le cache Redis 24 h et refaire un vrai
+        // call Google/OSM — utile quand Marie-Line a changé la zone ou quand
+        // on suspecte un cache 0-result poisoning.
+        if (refreshNonce > 0) params.set("fresh", "1");
         const res = await fetch(`/api/providers/nearby?${params.toString()}`);
         const data = await res.json();
         if (cancelled) return;
         if (res.status === 403 && data?.error === "premium_required") {
           setPremiumRequired(true);
+          setProviders([]);
+          setDataSource(null);
+        } else if (res.status === 429) {
+          // Rate-limit explicite — on utilise le toast plutôt que le banner
+          // rouge "erreur" pour signaler que c'est temporaire et lié à la
+          // fréquence d'usage (pas à un bug Talok).
+          toast({
+            title: "Trop de recherches",
+            description: "Limite quotidienne Google atteinte. Réessayez dans environ une heure.",
+            variant: "destructive",
+          });
           setProviders([]);
           setDataSource(null);
         } else if (!res.ok) {
@@ -763,7 +796,7 @@ export function NearbyProvidersSearch({
     return () => {
       cancelled = true;
     };
-  }, [center, category, radius, selectedProperty]);
+  }, [center, category, radius, selectedProperty, refreshNonce]);
 
   if (!isControlled && propertiesLoading) {
     return (
@@ -951,31 +984,43 @@ export function NearbyProvidersSearch({
                 Aucun prestataire trouvé pour cette catégorie dans un rayon de {Math.round(radius / 1000)} km.
               </span>
             </div>
-            {/* Bouton "élargir auto" — disponible si on n'est pas déjà au max
-                de la liste (50 km en mode contrôlé via parent, 50 km en
-                standalone via RADIUS_OPTIONS). */}
-            {(() => {
-              const currentKm = Math.round(radius / 1000);
-              const nextKm = currentKm < 20 ? 50 : currentKm < 50 ? 100 : null;
-              if (!nextKm) return null;
-              const handleExpand = () => {
-                if (isControlled && onRequestRadiusKm) {
-                  onRequestRadiusKm(nextKm);
-                } else {
-                  setRadius(nextKm * 1000);
-                }
-              };
-              return (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleExpand}
-                  className="self-start sm:self-auto"
-                >
-                  Élargir à {nextKm} km
-                </Button>
-              );
-            })()}
+            <div className="flex flex-wrap gap-2 self-start sm:self-auto">
+              {/* Refresh manuel : bypass cache 24 h. Utile quand le résultat
+                  est cached à 0 par accident (Google transient down,
+                  Overpass timeout) et que l'utilisateur sait qu'il devrait y
+                  avoir des artisans dans la zone. */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setRefreshNonce((n) => n + 1)}
+                disabled={loading}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
+                Actualiser
+              </Button>
+              {/* Bouton "élargir auto" : 5/10/20 → 50, 30/50 → 100. */}
+              {(() => {
+                const currentKm = Math.round(radius / 1000);
+                const nextKm = currentKm < 20 ? 50 : currentKm < 50 ? 100 : null;
+                if (!nextKm) return null;
+                const handleExpand = () => {
+                  if (isControlled && onRequestRadiusKm) {
+                    onRequestRadiusKm(nextKm);
+                  } else {
+                    setRadius(nextKm * 1000);
+                  }
+                };
+                return (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleExpand}
+                  >
+                    Élargir à {nextKm} km
+                  </Button>
+                );
+              })()}
+            </div>
           </div>
         )}
 
@@ -994,10 +1039,13 @@ export function NearbyProvidersSearch({
                 <MapContainer
                   key={`${center.lat}-${center.lng}-${radius}`}
                   center={[center.lat, center.lng]}
-                  zoom={13}
+                  // Zoom initial très large — MapAutoFit ajuste précisément
+                  // au cercle après mount.
+                  zoom={11}
                   scrollWheelZoom
                   style={{ height: "100%", width: "100%" }}
                 >
+                  <MapAutoFit center={center} radiusMeters={radius} />
                   <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
