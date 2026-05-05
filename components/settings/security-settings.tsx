@@ -8,10 +8,12 @@
  */
 
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import {
   isWebAuthnSupported,
   registerPasskey,
@@ -41,6 +43,8 @@ interface SecurityStatus {
 
 export function SecuritySettings() {
   const { toast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<SecurityStatus | null>(null);
   const [webAuthnSupported, setWebAuthnSupported] = useState(false);
@@ -57,9 +61,67 @@ export function SecuritySettings() {
   const [addingPasskey, setAddingPasskey] = useState(false);
   const [passkeyName, setPasskeyName] = useState("");
 
+  // États pour régénération recovery codes
+  const [showRegenRecovery, setShowRegenRecovery] = useState(false);
+  const [regenCode, setRegenCode] = useState("");
+  const [regenerating, setRegenerating] = useState(false);
+  const [newRecoveryCodes, setNewRecoveryCodes] = useState<string[] | null>(null);
+
   useEffect(() => {
     setWebAuthnSupported(isWebAuthnSupported());
     fetchSecurityStatus();
+  }, []);
+
+  // Realtime auto-redirect : dès que user_2fa.enabled passe à true (par exemple
+  // depuis un autre onglet ou après vérification d'un code TOTP), on redirige.
+  useEffect(() => {
+    let channel: ReturnType<ReturnType<typeof createSupabaseClient>["channel"]> | null = null;
+    let cancelled = false;
+
+    (async () => {
+      const supabase = createSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+
+      const forced = searchParams?.get("force_2fa") === "1";
+
+      channel = supabase
+        .channel(`user-2fa-${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "user_2fa",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const next = payload.new as { enabled?: boolean };
+            if (next?.enabled) {
+              toast({
+                title: "2FA activée",
+                description: forced
+                  ? "Redirection vers l'administration..."
+                  : "Authentification à deux facteurs active.",
+              });
+              fetchSecurityStatus();
+              if (forced) {
+                setTimeout(() => router.push("/admin"), 800);
+              }
+            }
+          }
+        )
+        .subscribe();
+    })();
+
+    return () => {
+      cancelled = true;
+      if (channel) {
+        const supabase = createSupabaseClient();
+        supabase.removeChannel(channel);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchSecurityStatus = async () => {
@@ -154,6 +216,51 @@ export function SecuritySettings() {
       title: "Copié",
       description: "Les codes de récupération ont été copiés.",
     });
+  };
+
+  const copyNewRecoveryCodes = () => {
+    if (!newRecoveryCodes) return;
+    navigator.clipboard.writeText(newRecoveryCodes.join("\n"));
+    toast({
+      title: "Copié",
+      description: "Les nouveaux codes ont été copiés.",
+    });
+  };
+
+  const regenerateRecoveryCodes = async () => {
+    if (regenCode.length !== 6) {
+      toast({
+        title: "Code invalide",
+        description: "Saisissez votre code TOTP à 6 chiffres pour confirmer.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setRegenerating(true);
+    try {
+      const response = await fetch("/api/auth/2fa/recovery-codes/regenerate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: regenCode }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Erreur");
+      setNewRecoveryCodes(data.recoveryCodes);
+      setRegenCode("");
+      toast({
+        title: "Codes régénérés",
+        description: "Les anciens codes sont désormais invalides.",
+      });
+      fetchSecurityStatus();
+    } catch (error: unknown) {
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Erreur",
+        variant: "destructive",
+      });
+    } finally {
+      setRegenerating(false);
+    }
   };
 
   // ============ Passkey Functions ============
@@ -381,6 +488,89 @@ export function SecuritySettings() {
                   Il vous reste peu de codes de récupération. Pensez à les régénérer.
                 </p>
               </div>
+            )}
+
+            {/* Régénération des codes de récupération */}
+            {newRecoveryCodes ? (
+              <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Key className="h-4 w-4 text-blue-700" />
+                    <span className="font-medium text-blue-900">
+                      Nouveaux codes de récupération
+                    </span>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={copyNewRecoveryCodes}>
+                    <Copy className="h-4 w-4 mr-1" />
+                    Copier
+                  </Button>
+                </div>
+                <p className="text-xs text-blue-800">
+                  Conservez ces codes en lieu sûr. Ils ne seront plus jamais affichés.
+                  Les anciens codes sont désormais invalides.
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {newRecoveryCodes.map((code, i) => (
+                    <code key={i} className="text-xs font-mono bg-white px-2 py-1 rounded border border-blue-200">
+                      {code}
+                    </code>
+                  ))}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNewRecoveryCodes(null)}
+                >
+                  J'ai sauvegardé mes codes
+                </Button>
+              </div>
+            ) : showRegenRecovery ? (
+              <div className="rounded-lg border p-4 space-y-3">
+                <Label>
+                  Confirmez avec votre code TOTP actuel pour régénérer 10 nouveaux codes
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="000000"
+                    value={regenCode}
+                    onChange={(e) => setRegenCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    className="max-w-[150px] text-center font-mono text-lg"
+                    maxLength={6}
+                  />
+                  <Button
+                    onClick={regenerateRecoveryCodes}
+                    disabled={regenerating || regenCode.length !== 6}
+                  >
+                    {regenerating ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Key className="h-4 w-4 mr-2" />
+                    )}
+                    Régénérer
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setShowRegenRecovery(false);
+                      setRegenCode("");
+                    }}
+                  >
+                    Annuler
+                  </Button>
+                </div>
+                <p className="text-xs text-amber-700">
+                  ⚠️ Les 10 anciens codes deviendront immédiatement invalides.
+                </p>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowRegenRecovery(true)}
+              >
+                <Key className="h-4 w-4 mr-2" />
+                Régénérer les codes de récupération
+              </Button>
             )}
           </div>
         ) : showTOTPSetup ? (

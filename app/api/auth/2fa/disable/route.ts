@@ -10,8 +10,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { verifyTOTPCode } from "@/lib/auth/totp";
+import { decrypt, isEncrypted } from "@/lib/security/encryption.service";
+import { applyRateLimit } from "@/lib/security/rate-limit";
+import { sendTwoFactorChangeNotification } from "@/lib/emails/resend.service";
 
 export async function POST(request: NextRequest) {
+  // Rate limit anti-bruteforce (le code TOTP est requis pour désactiver)
+  const rateLimitResponse = await applyRateLimit(request, "auth");
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const supabase = await createClient();
     const {
@@ -89,6 +96,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Déchiffrer si nécessaire — le secret est stocké chiffré (AES-256-GCM)
+    // dans user_2fa. Sans ce déchiffrement, verifyTOTPCode échouait toujours.
+    if (isEncrypted(totpSecret)) {
+      try {
+        totpSecret = decrypt(totpSecret);
+      } catch (decryptError) {
+        console.error("[2FA] Erreur déchiffrement disable:", decryptError);
+        return NextResponse.json(
+          { error: "Erreur de configuration 2FA" },
+          { status: 500 }
+        );
+      }
+    }
+
     // Vérifier le code TOTP
     const valid = verifyTOTPCode(totpSecret, inputCode);
 
@@ -128,6 +149,27 @@ export async function POST(request: NextRequest) {
       entity_type: "user",
       entity_id: user.id,
     } as any);
+
+    // Notification email (non bloquante) — alerte sécurité
+    if (user.email) {
+      try {
+        const { data: profile } = await serviceClient
+          .from("profiles")
+          .select("prenom, nom")
+          .eq("user_id", user.id)
+          .single();
+        const userName =
+          [profile?.prenom, profile?.nom].filter(Boolean).join(" ") ||
+          user.email.split("@")[0];
+        await sendTwoFactorChangeNotification({
+          userEmail: user.email,
+          userName,
+          action: "disabled",
+        });
+      } catch (emailError) {
+        console.error("[2FA] email notif désactivation failed:", emailError);
+      }
+    }
 
     return NextResponse.json({
       success: true,
