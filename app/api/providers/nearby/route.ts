@@ -132,7 +132,14 @@ const CATEGORY_TO_OSM_FILTERS: Record<string, string[]> = {
 // Cache Redis (Upstash) — partagé entre toutes les lambdas Vercel.
 // En dev sans Redis configuré, getRedis() retourne null et le code dégrade
 // proprement (pas de cache, mais fonctionnel).
-const CACHE_TTL_SEC = 24 * 60 * 60; // 24 heures
+//
+// TTL différencié pour éviter le "0-result poisoning" : si Google a un
+// hoquet transient (REQUEST_DENIED, OVER_QUERY_LIMIT, ZERO_RESULTS sur
+// une requête trop spécifique) ou si OSM Overpass est down, on cachait
+// avant 24 h une liste vide → l'utilisateur restait bloqué une journée
+// entière. On garde 24 h pour les résultats utiles, 5 min pour les vides.
+const CACHE_TTL_OK_SEC = 24 * 60 * 60;     // 24 heures pour ≥ 1 résultat
+const CACHE_TTL_EMPTY_SEC = 5 * 60;        // 5 minutes pour 0 résultat
 const CACHE_PREFIX = "providers:nearby:v1";
 
 export async function GET(request: NextRequest) {
@@ -200,6 +207,10 @@ export async function GET(request: NextRequest) {
     const lng = parseFloat(searchParams.get("lng") || "0");
     const radius = parseInt(searchParams.get("radius") || "10000"); // 10km par défaut
     const address = searchParams.get("address") || "";
+    // `?fresh=1` permet à l'utilisateur (bouton "Actualiser") de bypasser
+    // le cache Redis. Indispensable quand Google a corrigé un downtime ou
+    // qu'un nouvel artisan vient d'apparaître — on ne veut pas l'attendre 24 h.
+    const skipCache = searchParams.get("fresh") === "1";
 
     // Vérifier la clé API Google
     const googleApiKey = process.env.GOOGLE_PLACES_API_KEY;
@@ -209,7 +220,7 @@ export async function GET(request: NextRequest) {
     const cacheKey = `${CACHE_PREFIX}:${category}:${lat.toFixed(2)}:${lng.toFixed(2)}:${radius}`;
     const redis = getRedis();
 
-    if (redis) {
+    if (redis && !skipCache) {
       try {
         const cached = await redis.get<NearbyProvider[]>(cacheKey);
         if (cached && Array.isArray(cached)) {
@@ -447,6 +458,24 @@ export async function GET(request: NextRequest) {
       // un point qui apparaîtrait hors du cercle bleu sur la carte.
       .filter((p: NearbyProvider) => (p.distance_km ?? 0) <= radius / 1000);
 
+    // Si Google retourne 0 résultat (zone mal couverte par sa taxonomie,
+    // typique en DROM-COM), on retombe sur OSM Overpass plutôt que de
+    // renvoyer une liste vide. Pour "Tout métier", l'union des 17 tags
+    // OSM remonte presque toujours quelque chose.
+    if (providers.length === 0) {
+      const osmFallback = await searchOSMProviders(category, latitude, longitude, radius);
+      if (osmFallback.length > 0) {
+        await writeCache(redis, cacheKey, osmFallback);
+        return NextResponse.json({
+          providers: osmFallback,
+          source: "osm",
+          total: osmFallback.length,
+          search_location: { lat: latitude, lng: longitude },
+          fallback_reason: "google_zero_results",
+        });
+      }
+    }
+
     await writeCache(redis, cacheKey, providers);
 
     void logGooglePlacesUsage({
@@ -475,14 +504,19 @@ export async function GET(request: NextRequest) {
 }
 
 // Écriture cache Redis tolérante aux pannes (fail-open).
+// TTL différencié : 24 h si on a des résultats utilisables, 5 min sinon —
+// les zéro-résultats sont souvent transients (rate-limit Google, Overpass
+// timeout, key invalide pendant 30 s) et on ne veut pas bloquer
+// l'utilisateur 24 h à cause d'un hoquet de l'API tierce.
 async function writeCache(
   redis: ReturnType<typeof getRedis>,
   key: string,
   data: NearbyProvider[],
 ): Promise<void> {
   if (!redis) return;
+  const ttl = data.length > 0 ? CACHE_TTL_OK_SEC : CACHE_TTL_EMPTY_SEC;
   try {
-    await redis.set(key, data, { ex: CACHE_TTL_SEC });
+    await redis.set(key, data, { ex: ttl });
   } catch (err) {
     console.warn("[providers/nearby] Redis write échoué:", err);
   }

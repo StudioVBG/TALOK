@@ -54,6 +54,7 @@ import { SERVICE_TYPE_LABELS, type ServiceType } from '@/lib/data/service-pricin
 import { PLANS, getRequiredPlanForFeature } from '@/lib/subscriptions/plans';
 import { formatPropertyAddress } from '@/lib/properties/address';
 import { geocodeAddress } from '@/lib/services/geocoding.service';
+import { useToast } from '@/components/ui/use-toast';
 
 interface PropertyOption {
   id: string;
@@ -90,6 +91,7 @@ export default function ProvidersMarketplacePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { hasFeature } = useSubscription();
+  const { toast } = useToast();
   
   const [providers, setProviders] = useState<ProviderCardData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -220,14 +222,24 @@ export default function ProvidersMarketplacePage() {
       }
       
       const response = await fetch(`/api/providers/search?${params.toString()}`);
-      
+
       if (response.ok) {
         const data = await response.json();
         setProviders(data.providers || []);
         setTotalCount(data.total || 0);
+      } else if (response.status === 429) {
+        // Rate-limit Google Places atteint (par-user-h, par-user-day, ou
+        // par-IP-h). Avant on échouait silencieusement → l'utilisateur
+        // pensait qu'aucun artisan n'existait.
+        toast({
+          title: "Trop de recherches",
+          description: "Vous avez atteint la limite. Réessayez dans environ une heure.",
+          variant: "destructive",
+        });
+        setProviders([]);
+        setTotalCount(0);
       } else {
-        // Aucun prestataire disponible - API non accessible
-        console.warn("[providers] API non disponible, aucun prestataire chargé");
+        console.warn("[providers] API non disponible, status =", response.status);
         setProviders([]);
         setTotalCount(0);
       }
@@ -626,14 +638,20 @@ export default function ProvidersMarketplacePage() {
               <CardContent className="py-8 text-center">
                 <Search className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                 <h3 className="text-lg font-medium">
-                  Aucun prestataire Talok ne correspond à vos critères
+                  {activeFiltersCount > 0
+                    ? "Aucun prestataire Talok ne correspond à vos filtres"
+                    : "Aucun prestataire Talok inscrit dans votre zone pour le moment"}
                 </h3>
                 <p className="text-muted-foreground mt-1 text-sm">
-                  Pas d'inquiétude — la carte ci-dessous liste les artisans réels autour de votre bien.
+                  {activeFiltersCount > 0
+                    ? "Essayez de relâcher quelques filtres ou consultez la carte ci-dessous pour les artisans réels autour de votre bien."
+                    : "La marketplace Talok grandit chaque semaine — en attendant, la carte ci-dessous liste les artisans et entreprises autour de votre bien."}
                 </p>
-                <Button variant="outline" className="mt-4" onClick={clearFilters}>
-                  Réinitialiser les filtres
-                </Button>
+                {activeFiltersCount > 0 && (
+                  <Button variant="outline" className="mt-4" onClick={clearFilters}>
+                    Réinitialiser les filtres
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
