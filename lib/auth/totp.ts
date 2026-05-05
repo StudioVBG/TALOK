@@ -16,7 +16,6 @@ authenticator.options = {
 export interface TOTPSetup {
   secret: string;
   uri: string;
-  qrCodeUrl: string;
 }
 
 export interface RecoveryCode {
@@ -44,25 +43,17 @@ export function generateTOTPUri(
 }
 
 /**
- * Génère l'URL du QR code via l'API Google Charts
- */
-export function generateQRCodeUrl(uri: string): string {
-  const encodedUri = encodeURIComponent(uri);
-  return `https://chart.googleapis.com/chart?chs=200x200&chld=M|0&cht=qr&chl=${encodedUri}`;
-}
-
-/**
- * Configure TOTP pour un utilisateur (génère secret + URI + QR)
+ * Configure TOTP pour un utilisateur (génère secret + URI otpauth://).
+ * Le QR code est généré côté serveur dans la route /api/auth/2fa/setup
+ * via lib/qr/generator.ts (logo Talok au centre).
  */
 export function setupTOTP(email: string): TOTPSetup {
   const secret = generateTOTPSecret();
   const uri = generateTOTPUri(secret, email);
-  const qrCodeUrl = generateQRCodeUrl(uri);
 
   return {
     secret,
     uri,
-    qrCodeUrl,
   };
 }
 

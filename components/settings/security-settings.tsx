@@ -8,10 +8,12 @@
  */
 
 import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { createClient as createSupabaseClient } from "@/lib/supabase/client";
 import {
   isWebAuthnSupported,
   registerPasskey,
@@ -41,6 +43,8 @@ interface SecurityStatus {
 
 export function SecuritySettings() {
   const { toast } = useToast();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<SecurityStatus | null>(null);
   const [webAuthnSupported, setWebAuthnSupported] = useState(false);
@@ -60,6 +64,58 @@ export function SecuritySettings() {
   useEffect(() => {
     setWebAuthnSupported(isWebAuthnSupported());
     fetchSecurityStatus();
+  }, []);
+
+  // Realtime auto-redirect : dès que user_2fa.enabled passe à true (par exemple
+  // depuis un autre onglet ou après vérification d'un code TOTP), on redirige.
+  useEffect(() => {
+    let channel: ReturnType<ReturnType<typeof createSupabaseClient>["channel"]> | null = null;
+    let cancelled = false;
+
+    (async () => {
+      const supabase = createSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user || cancelled) return;
+
+      const forced = searchParams?.get("force_2fa") === "1";
+
+      channel = supabase
+        .channel(`user-2fa-${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "user_2fa",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const next = payload.new as { enabled?: boolean };
+            if (next?.enabled) {
+              toast({
+                title: "2FA activée",
+                description: forced
+                  ? "Redirection vers l'administration..."
+                  : "Authentification à deux facteurs active.",
+              });
+              fetchSecurityStatus();
+              if (forced) {
+                setTimeout(() => router.push("/admin"), 800);
+              }
+            }
+          }
+        )
+        .subscribe();
+    })();
+
+    return () => {
+      cancelled = true;
+      if (channel) {
+        const supabase = createSupabaseClient();
+        supabase.removeChannel(channel);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchSecurityStatus = async () => {

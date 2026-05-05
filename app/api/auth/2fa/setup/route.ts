@@ -5,13 +5,21 @@
  * @security CRITICAL - Les secrets TOTP sont chiffrés avant stockage
  */
 
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { setupTOTP, generatePlainRecoveryCodes } from "@/lib/auth/totp";
 import { encrypt } from "@/lib/security/encryption.service";
+import { generateBrandedQR } from "@/lib/qr/generator";
+import { applyRateLimit } from "@/lib/security/rate-limit";
 
 export async function POST(request: NextRequest) {
+  const rateLimitResponse = await applyRateLimit(request, "auth");
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const supabase = await createClient();
     const {
@@ -73,10 +81,16 @@ export async function POST(request: NextRequest) {
       updated_at: new Date().toISOString(),
     });
 
+    // QR code brandé Talok (PNG data URL avec logo au centre)
+    const qrCodeUrl = await generateBrandedQR(totpSetup.uri, {
+      size: 320,
+      withLogo: true,
+    });
+
     return NextResponse.json({
       secret: totpSetup.secret,
       uri: totpSetup.uri,
-      qrCodeUrl: totpSetup.qrCodeUrl,
+      qrCodeUrl,
       recoveryCodes: plainCodes,
     });
   } catch (error: unknown) {

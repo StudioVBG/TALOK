@@ -13,8 +13,13 @@ import { createClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service-client";
 import { verifyTOTPCode, countRemainingRecoveryCodes } from "@/lib/auth/totp";
 import { decrypt, isEncrypted } from "@/lib/security/encryption.service";
+import { applyRateLimit } from "@/lib/security/rate-limit";
 
 export async function POST(request: NextRequest) {
+  // Rate limit anti-bruteforce TOTP (5 tentatives / 15 min par IP)
+  const rateLimitResponse = await applyRateLimit(request, "auth");
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const supabase = await createClient();
     const {
