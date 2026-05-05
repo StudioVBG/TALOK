@@ -107,6 +107,9 @@ export default function ProvidersMarketplacePage() {
   const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
   const [propertyCenter, setPropertyCenter] = useState<{ lat: number; lng: number } | null>(null);
+  // Indique que le géocodage Nominatim est en cours pour éviter d'afficher
+  // prématurément "Bien non géolocalisé" pendant la résolution (1-2 s).
+  const [propertyCenterLoading, setPropertyCenterLoading] = useState<boolean>(false);
   const [radiusKm, setRadiusKm] = useState<number>(30);
 
   const selectedProperty = properties.find((p) => p.id === selectedPropertyId) ?? null;
@@ -163,6 +166,7 @@ export default function ProvidersMarketplacePage() {
     (async () => {
       if (!selectedProperty) {
         setPropertyCenter(null);
+        setPropertyCenterLoading(false);
         return;
       }
       if (selectedProperty.latitude != null && selectedProperty.longitude != null) {
@@ -170,11 +174,14 @@ export default function ProvidersMarketplacePage() {
           lat: selectedProperty.latitude,
           lng: selectedProperty.longitude,
         });
+        setPropertyCenterLoading(false);
         return;
       }
+      setPropertyCenterLoading(true);
       const result = await geocodeAddress(selectedProperty.address);
       if (cancelled) return;
       setPropertyCenter(result ? { lat: result.latitude, lng: result.longitude } : null);
+      setPropertyCenterLoading(false);
     })();
     return () => {
       cancelled = true;
@@ -667,13 +674,20 @@ export default function ProvidersMarketplacePage() {
           )}
 
           {/* Carte des artisans à proximité — toujours visible pour compléter
-              les artisans Talok inscrits avec les commerces Google/OSM. */}
+              les artisans Talok inscrits avec les commerces Google/OSM.
+              Le parent pilote bien + rayon (mode contrôlé) pour éviter les
+              sélecteurs en doublon avec ceux du Card ci-dessus. */}
           <div className="mt-6">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
               Autres artisans à proximité (carte)
             </h2>
             <NearbyProvidersSearch
               initialCategory={filters.services[0] ?? 'autre'}
+              controlledProperty={selectedProperty}
+              controlledCenter={propertyCenter}
+              controlledCenterLoading={propertyCenterLoading}
+              controlledRadiusKm={radiusKm}
+              hasTalokProviders={providers.length > 0}
             />
           </div>
         </>

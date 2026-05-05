@@ -142,6 +142,18 @@ const RADIUS_OPTIONS = [
 interface NearbyProvidersSearchProps {
   initialCategory?: string;
   className?: string;
+  // Pilotage externe (parent = source de vérité). Quand fournis, le composant
+  // n'affiche plus son propre sélecteur de bien ni de rayon, et n'appelle plus
+  // /api/properties ni geocodeAddress (déjà fait par le parent).
+  controlledProperty?: PropertyOption | null;
+  controlledCenter?: { lat: number; lng: number } | null;
+  // Permet de différencier "géocoding en cours" (skeleton) de
+  // "géocoding échoué" (message d'erreur).
+  controlledCenterLoading?: boolean;
+  controlledRadiusKm?: number;
+  // Pour adapter le titre : "Aucun prestataire référencé" vs "Compléter les
+  // prestataires Talok par les artisans à proximité".
+  hasTalokProviders?: boolean;
 }
 
 const SAVED_PROVIDERS_STORAGE_KEY = "talok:nearby-providers:saved";
@@ -173,16 +185,28 @@ function writeSavedIds(ids: Set<string>) {
 export function NearbyProvidersSearch({
   initialCategory = "autre",
   className,
+  controlledProperty,
+  controlledCenter,
+  controlledCenterLoading = false,
+  controlledRadiusKm,
+  hasTalokProviders = false,
 }: NearbyProvidersSearchProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const isControlled = controlledProperty !== undefined;
   const [properties, setProperties] = useState<PropertyOption[]>([]);
-  const [propertiesLoading, setPropertiesLoading] = useState(true);
+  const [propertiesLoading, setPropertiesLoading] = useState(!isControlled);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
   const [category, setCategory] = useState<string>(normalizeCategory(initialCategory));
-  const [radius, setRadius] = useState<number>(10000);
+  // Rayon en mètres (Google Places + Overpass attendent des mètres).
+  // Quand le parent pilote, on dérive ce rayon depuis controlledRadiusKm.
+  const [radius, setRadius] = useState<number>(
+    controlledRadiusKm ? controlledRadiusKm * 1000 : 10000,
+  );
 
-  const [center, setCenter] = useState<{ lat: number; lng: number } | null>(null);
+  const [center, setCenter] = useState<{ lat: number; lng: number } | null>(
+    controlledCenter ?? null,
+  );
   const [providers, setProviders] = useState<NearbyProvider[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -453,16 +477,31 @@ export function NearbyProvidersSearch({
   };
 
   const selectedProperty = useMemo(
-    () => properties.find((p) => p.id === selectedPropertyId) ?? null,
-    [properties, selectedPropertyId]
+    () =>
+      isControlled
+        ? controlledProperty ?? null
+        : properties.find((p) => p.id === selectedPropertyId) ?? null,
+    [isControlled, controlledProperty, properties, selectedPropertyId],
   );
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Charger les biens du propriétaire
+  // Sync rayon contrôlé (km → m).
   useEffect(() => {
+    if (controlledRadiusKm != null) setRadius(controlledRadiusKm * 1000);
+  }, [controlledRadiusKm]);
+
+  // Sync centre contrôlé.
+  useEffect(() => {
+    if (controlledCenter !== undefined) setCenter(controlledCenter);
+  }, [controlledCenter]);
+
+  // Charger les biens du propriétaire — sauté en mode contrôlé (le parent a
+  // déjà chargé /api/properties + géocodé, on évite ainsi le double appel).
+  useEffect(() => {
+    if (isControlled) return;
     let cancelled = false;
     (async () => {
       setPropertiesLoading(true);
@@ -496,7 +535,7 @@ export function NearbyProvidersSearch({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isControlled]);
 
   // Préparer les icônes Leaflet (uniquement côté client)
   useEffect(() => {
@@ -539,8 +578,10 @@ export function NearbyProvidersSearch({
     });
   }, []);
 
-  // Géocoder l'adresse du bien sélectionné si pas déjà fait
+  // Géocoder l'adresse du bien sélectionné si pas déjà fait — sauté en mode
+  // contrôlé (le parent fournit déjà `controlledCenter`).
   useEffect(() => {
+    if (isControlled) return;
     let cancelled = false;
     (async () => {
       if (!selectedProperty) {
@@ -568,7 +609,7 @@ export function NearbyProvidersSearch({
     return () => {
       cancelled = true;
     };
-  }, [selectedProperty]);
+  }, [isControlled, selectedProperty]);
 
   // Lancer la recherche dès qu'on a un centre, une catégorie et un rayon
   useEffect(() => {
@@ -615,7 +656,7 @@ export function NearbyProvidersSearch({
     };
   }, [center, category, radius, selectedProperty]);
 
-  if (propertiesLoading) {
+  if (!isControlled && propertiesLoading) {
     return (
       <Card className={className}>
         <CardContent className="py-8 space-y-3">
@@ -626,7 +667,7 @@ export function NearbyProvidersSearch({
     );
   }
 
-  if (properties.length === 0) {
+  if (!isControlled && properties.length === 0) {
     return (
       <Card className={className}>
         <CardContent className="py-12 text-center space-y-3">
@@ -634,6 +675,41 @@ export function NearbyProvidersSearch({
           <h3 className="font-medium">Aucun bien à géolocaliser</h3>
           <p className="text-sm text-muted-foreground">
             Ajoutez un bien avec son adresse pour voir les prestataires autour.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // En mode contrôlé, le parent gère le cas "pas de bien sélectionné" — on
+  // affiche un placeholder léger plutôt qu'un Card vide qui désaligne le layout.
+  if (isControlled && !selectedProperty) {
+    return null;
+  }
+
+  // Si le parent a fourni un bien mais que le géocodage a échoué (rare en
+  // DROM-COM avec une adresse mal formée), on aide l'utilisateur à corriger
+  // au lieu de boucler sur un loader silencieux (BUG audit #5).
+  // controlledCenterLoading distingue "Nominatim en cours" (skeleton) de
+  // "Nominatim a renvoyé null" (vrai échec).
+  if (isControlled && selectedProperty && controlledCenter === null) {
+    if (controlledCenterLoading) {
+      return (
+        <Card className={className}>
+          <CardContent className="py-8 space-y-3">
+            <Skeleton className="h-6 w-1/3" />
+            <Skeleton className="h-64 w-full" />
+          </CardContent>
+        </Card>
+      );
+    }
+    return (
+      <Card className={className}>
+        <CardContent className="py-8 text-center space-y-2">
+          <MapPin className="h-10 w-10 mx-auto text-muted-foreground" />
+          <h3 className="font-medium">Bien non géolocalisé</h3>
+          <p className="text-sm text-muted-foreground">
+            L'adresse <strong>{selectedProperty.address}</strong> n'a pas pu être trouvée. Vérifiez l'orthographe sur la fiche du bien (Mes biens → Modifier).
           </p>
         </CardContent>
       </Card>
@@ -649,32 +725,37 @@ export function NearbyProvidersSearch({
             Prestataires autour de votre logement
           </h3>
           <p className="text-sm text-muted-foreground">
-            Aucun prestataire référencé pour le moment — voici les artisans à proximité du bien sélectionné.
+            {hasTalokProviders
+              ? "Complétez les prestataires Talok ci-dessus avec les artisans et entreprises à proximité du bien sélectionné."
+              : "Aucun prestataire Talok inscrit dans la zone — voici les artisans et entreprises à proximité du bien sélectionné."}
           </p>
         </div>
 
-        {/* Filtres */}
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
-              Bien
-            </label>
-            <Select
-              value={selectedPropertyId}
-              onValueChange={setSelectedPropertyId}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choisir un bien" />
-              </SelectTrigger>
-              <SelectContent>
-                {properties.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        {/* Filtres — sélecteur Métier uniquement en mode contrôlé (le parent
+            pilote le bien et le rayon pour éviter les doublons). */}
+        <div className={isControlled ? "max-w-sm" : "grid gap-3 md:grid-cols-3"}>
+          {!isControlled && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                Bien
+              </label>
+              <Select
+                value={selectedPropertyId}
+                onValueChange={setSelectedPropertyId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choisir un bien" />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">
               Métier
@@ -692,26 +773,28 @@ export function NearbyProvidersSearch({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
-              Rayon de recherche
-            </label>
-            <Select
-              value={String(radius)}
-              onValueChange={(v) => setRadius(Number(v))}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {RADIUS_OPTIONS.map((r) => (
-                  <SelectItem key={r.value} value={String(r.value)}>
-                    {r.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!isControlled && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                Rayon de recherche
+              </label>
+              <Select
+                value={String(radius)}
+                onValueChange={(v) => setRadius(Number(v))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RADIUS_OPTIONS.map((r) => (
+                    <SelectItem key={r.value} value={String(r.value)}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         {premiumRequired && (
