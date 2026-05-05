@@ -49,6 +49,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { geocodeAddress } from "@/lib/services/geocoding.service";
@@ -151,6 +160,9 @@ interface NearbyProvidersSearchProps {
   // "géocoding échoué" (message d'erreur).
   controlledCenterLoading?: boolean;
   controlledRadiusKm?: number;
+  // Permet au composant de demander au parent d'augmenter le rayon
+  // (ex. bouton "Élargir à 50 km" affiché quand 0 résultat).
+  onRequestRadiusKm?: (radiusKm: number) => void;
   // Pour adapter le titre : "Aucun prestataire référencé" vs "Compléter les
   // prestataires Talok par les artisans à proximité".
   hasTalokProviders?: boolean;
@@ -189,6 +201,7 @@ export function NearbyProvidersSearch({
   controlledCenter,
   controlledCenterLoading = false,
   controlledRadiusKm,
+  onRequestRadiusKm,
   hasTalokProviders = false,
 }: NearbyProvidersSearchProps) {
   const router = useRouter();
@@ -221,6 +234,13 @@ export function NearbyProvidersSearch({
   const [propertyIcon, setPropertyIcon] = useState<any>(null);
   const [providerIcon, setProviderIcon] = useState<any>(null);
   const [isClient, setIsClient] = useState(false);
+
+  // Dialog d'invitation in-app (remplace l'ancien mailto: qui sortait
+  // l'utilisateur vers son client mail). Le mail part de no-reply@talok.fr.
+  const [inviteProvider, setInviteProvider] = useState<NearbyProvider | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteMessage, setInviteMessage] = useState("");
+  const [inviteSending, setInviteSending] = useState(false);
 
   // Hydratation immédiate depuis localStorage (UI réactive sans flash),
   // puis réconciliation avec le serveur (source de vérité multi-appareils).
@@ -340,21 +360,58 @@ export function NearbyProvidersSearch({
     }
   };
 
-  const inviteByEmail = (provider: NearbyProvider) => {
-    const subject = "Rejoignez-moi sur Talok pour gérer nos interventions";
-    const body = [
-      `Bonjour ${provider.name},`,
-      "",
-      "Je gère mes biens immobiliers avec Talok (talok.fr) et j'aimerais vous y inscrire pour pouvoir échanger nos devis, factures et photos d'intervention au même endroit.",
-      "",
-      "Créez votre compte prestataire gratuit ici :",
-      "https://talok.fr/auth/register?role=provider",
-      "",
-      "Talok est un logiciel français (né en Martinique) de gestion locative — votre profil est gratuit côté artisan.",
-      "",
-      "Merci !",
-    ].join("\n");
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const openInviteDialog = (provider: NearbyProvider) => {
+    // Pré-condition : le prestataire doit être en favori (la route serveur
+    // l'exige pour éviter le spam). On s'en assure proactivement ici plutôt
+    // que d'attendre l'erreur 404.
+    if (!savedIds.has(provider.id)) {
+      toast({
+        title: "Enregistrez d'abord ce prestataire",
+        description: "Cliquez sur ‟Enregistrer” avant de l'inviter sur Talok.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setInviteProvider(provider);
+    setInviteEmail("");
+    setInviteMessage("");
+  };
+
+  const submitInvite = async () => {
+    if (!inviteProvider) return;
+    setInviteSending(true);
+    try {
+      const res = await fetch(
+        `/api/providers/external-favorites/${encodeURIComponent(inviteProvider.id)}/invite`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: inviteEmail.trim(),
+            custom_message: inviteMessage.trim() || undefined,
+          }),
+        },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || "HTTP " + res.status);
+      }
+      toast({
+        title: "Invitation envoyée",
+        description: `Un email a été envoyé à ${inviteEmail}.`,
+      });
+      setInviteProvider(null);
+    } catch (err) {
+      console.error("[NearbyProvidersSearch] Invitation échouée:", err);
+      toast({
+        title: "Envoi impossible",
+        description:
+          err instanceof Error ? err.message : "Réessayez dans un instant.",
+        variant: "destructive",
+      });
+    } finally {
+      setInviteSending(false);
+    }
   };
 
   const inviteBySms = (provider: NearbyProvider) => {
@@ -835,11 +892,38 @@ export function NearbyProvidersSearch({
         )}
 
         {dataSource && providers.length === 0 && !loading && !premiumRequired && !error && (
-          <div className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground flex gap-2">
-            <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
-            <span>
-              Aucun prestataire trouvé pour cette catégorie dans un rayon de {Math.round(radius / 1000)} km. Essayez d'élargir le rayon ou de changer de métier.
-            </span>
+          <div className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex gap-2">
+              <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+              <span>
+                Aucun prestataire trouvé pour cette catégorie dans un rayon de {Math.round(radius / 1000)} km.
+              </span>
+            </div>
+            {/* Bouton "élargir auto" — disponible si on n'est pas déjà au max
+                de la liste (50 km en mode contrôlé via parent, 50 km en
+                standalone via RADIUS_OPTIONS). */}
+            {(() => {
+              const currentKm = Math.round(radius / 1000);
+              const nextKm = currentKm < 20 ? 50 : currentKm < 50 ? 100 : null;
+              if (!nextKm) return null;
+              const handleExpand = () => {
+                if (isControlled && onRequestRadiusKm) {
+                  onRequestRadiusKm(nextKm);
+                } else {
+                  setRadius(nextKm * 1000);
+                }
+              };
+              return (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleExpand}
+                  className="self-start sm:self-auto"
+                >
+                  Élargir à {nextKm} km
+                </Button>
+              );
+            })()}
           </div>
         )}
 
@@ -1222,7 +1306,7 @@ export function NearbyProvidersSearch({
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       variant="outline"
-                      onClick={() => inviteByEmail(detailProvider)}
+                      onClick={() => openInviteDialog(detailProvider)}
                     >
                       <Mail className="h-4 w-4 mr-2" />
                       Email
@@ -1249,6 +1333,82 @@ export function NearbyProvidersSearch({
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Dialog d'invitation in-app — remplace l'ancien mailto: pour que le
+          mail parte de no-reply@talok.fr (deliverability + tracking UTM). */}
+      <Dialog
+        open={!!inviteProvider}
+        onOpenChange={(open) => {
+          if (!open) setInviteProvider(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Inviter sur Talok</DialogTitle>
+            <DialogDescription>
+              {inviteProvider
+                ? `${inviteProvider.name} recevra un email d'invitation depuis Talok avec un lien pour créer sa fiche prestataire gratuite.`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium" htmlFor="invite-email">
+                Email du prestataire *
+              </label>
+              <Input
+                id="invite-email"
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="contact@artisan.fr"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium" htmlFor="invite-message">
+                Message personnalisé (optionnel)
+              </label>
+              <Textarea
+                id="invite-message"
+                value={inviteMessage}
+                onChange={(e) => setInviteMessage(e.target.value)}
+                placeholder="Ex. : Bonjour, j'ai 3 biens en location à Fort-de-France et j'aimerais vous y associer pour les interventions futures."
+                rows={3}
+                maxLength={2000}
+              />
+              <div className="text-right text-xs text-muted-foreground">
+                {inviteMessage.length}/2000
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setInviteProvider(null)}
+              disabled={inviteSending}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={submitInvite}
+              disabled={inviteSending || !inviteEmail.trim()}
+            >
+              {inviteSending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Envoi…
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Envoyer l'invitation
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

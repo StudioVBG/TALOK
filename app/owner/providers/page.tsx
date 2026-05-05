@@ -687,6 +687,7 @@ export default function ProvidersMarketplacePage() {
               controlledCenter={propertyCenter}
               controlledCenterLoading={propertyCenterLoading}
               controlledRadiusKm={radiusKm}
+              onRequestRadiusKm={setRadiusKm}
               hasTalokProviders={providers.length > 0}
             />
           </div>

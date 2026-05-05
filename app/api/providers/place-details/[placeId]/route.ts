@@ -14,8 +14,9 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 import { logGooglePlacesUsage } from "@/lib/services/google-places-usage";
-import { getPlanLevel, type PlanSlug } from "@/lib/subscriptions/plans";
 import { checkGooglePlacesQuota } from "@/lib/rate-limit/google-places";
+import { getRedis } from "@/lib/rate-limit/upstash";
+import { withFeatureAccess } from "@/lib/middleware/subscription-check";
 
 interface PlaceDetailsResult {
   website?: string;
@@ -23,8 +24,8 @@ interface PlaceDetailsResult {
   google_maps_url?: string;
 }
 
-const cache = new Map<string, { data: PlaceDetailsResult; timestamp: number }>();
-const CACHE_DURATION = 24 * 60 * 60 * 1000;
+const CACHE_TTL_SEC = 24 * 60 * 60; // 24h
+const CACHE_PREFIX = "providers:place_details:v1";
 
 export async function GET(
   request: NextRequest,
@@ -61,21 +62,15 @@ export async function GET(
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    // Même feature gate que /nearby (Confort+)
-    const { data: subscription } = await supabase
-      .from("subscriptions")
-      .select("plan_slug, status")
-      .eq("owner_id", profile.id)
-      .in("status", ["active", "trialing"])
-      .maybeSingle();
-
-    const planSlug: PlanSlug = (subscription?.plan_slug as PlanSlug) || "gratuit";
-    if (getPlanLevel(planSlug) < getPlanLevel("confort")) {
+    // Même feature gate que /nearby (Pro+, via providers_management).
+    const featureCheck = await withFeatureAccess(profile.id, "providers_management");
+    if (!featureCheck.allowed) {
       return NextResponse.json(
         {
           error: "premium_required",
-          message: "Cette fonctionnalité nécessite un plan Confort ou supérieur",
+          message: featureCheck.message,
           upgrade_url: "/owner/money?tab=forfait",
+          required_plan: featureCheck.requiredPlan,
         },
         { status: 403 },
       );
@@ -94,17 +89,26 @@ export async function GET(
       );
     }
 
-    // Cache hit
-    const cached = cache.get(placeId);
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      void logGooglePlacesUsage({
-        endpoint: "place_details",
-        source: "cache",
-        status: "ok",
-        userId: user.id,
-        cacheHit: true,
-      });
-      return NextResponse.json({ details: cached.data, cached: true });
+    // Cache Redis (place_details Google = ~17$/1000 appels, ça vaut le partage
+    // entre lambdas).
+    const cacheKey = `${CACHE_PREFIX}:${placeId}`;
+    const redis = getRedis();
+    if (redis) {
+      try {
+        const cached = await redis.get<PlaceDetailsResult>(cacheKey);
+        if (cached && typeof cached === "object") {
+          void logGooglePlacesUsage({
+            endpoint: "place_details",
+            source: "cache",
+            status: "ok",
+            userId: user.id,
+            cacheHit: true,
+          });
+          return NextResponse.json({ details: cached, cached: true });
+        }
+      } catch (err) {
+        console.warn("[providers/place-details] Redis read échoué:", err);
+      }
     }
 
     const googleApiKey = process.env.GOOGLE_PLACES_API_KEY;
@@ -144,7 +148,13 @@ export async function GET(
       google_maps_url: data.result?.url,
     };
 
-    cache.set(placeId, { data: result, timestamp: Date.now() });
+    if (redis) {
+      try {
+        await redis.set(cacheKey, result, { ex: CACHE_TTL_SEC });
+      } catch (err) {
+        console.warn("[providers/place-details] Redis write échoué:", err);
+      }
+    }
 
     void logGooglePlacesUsage({
       endpoint: "place_details",
