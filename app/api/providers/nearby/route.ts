@@ -40,7 +40,9 @@ const CATEGORY_TO_SEARCH_TERM: Record<string, string> = {
   peinture: "peintre bâtiment",
   nettoyage: "entreprise nettoyage",
   jardinage: "jardinier paysagiste",
-  autre: "dépannage artisan",
+  // "autre" / Tout métier : terme volontairement large pour ne pas filtrer
+  // les artisans isolés (très présents en DROM-COM où Google catégorise mal).
+  autre: "artisan",
 };
 
 interface GooglePlaceResult {
@@ -300,6 +302,12 @@ export async function GET(request: NextRequest) {
     const googleTypes = CATEGORY_TO_GOOGLE_TYPE[category] || [];
     const primaryType = googleTypes[0]; // Nearby Search n'accepte qu'un seul type
 
+    // Pour "autre" / Tout métier on retire toute contrainte de type Google :
+    // `general_contractor` filtre la majorité des artisans indépendants
+    // (zéro résultat sur Fort-de-France 20 km par exemple). On laisse le
+    // keyword seul piloter la recherche.
+    const isAllCategories = category === "autre";
+
     const buildNearbyUrl = () => {
       const params = new URLSearchParams({
         location: `${latitude},${longitude}`,
@@ -308,7 +316,7 @@ export async function GET(request: NextRequest) {
         language: "fr",
         key: googleApiKey,
       });
-      if (primaryType) params.set("type", primaryType);
+      if (primaryType && !isAllCategories) params.set("type", primaryType);
       return `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${params.toString()}`;
     };
 
@@ -469,8 +477,21 @@ async function searchOSMProviders(
   centerLng: number,
   radiusMeters: number,
 ): Promise<NearbyProvider[]> {
+  // Pour "autre" / Tout métier on union TOUS les tags de toutes les
+  // catégories. Sans ça, en DROM-COM (couverture OSM craft=* éparse) la
+  // recherche ne retournait que `craft=handyman/builder` + `shop=hardware`
+  // — quasi inexistants à Fort-de-France ou Cayenne, donc liste vide.
   const filters =
-    CATEGORY_TO_OSM_FILTERS[category] || CATEGORY_TO_OSM_FILTERS.autre;
+    category === "autre"
+      ? Array.from(
+          new Set(
+            Object.entries(CATEGORY_TO_OSM_FILTERS)
+              .filter(([key]) => key !== "autre")
+              .flatMap(([, v]) => v)
+              .concat(CATEGORY_TO_OSM_FILTERS.autre),
+          ),
+        )
+      : CATEGORY_TO_OSM_FILTERS[category] || CATEGORY_TO_OSM_FILTERS.autre;
 
   // Union de nodes/ways pour chaque tag, dans le rayon demandé.
   const queryParts = filters
@@ -484,7 +505,11 @@ async function searchOSMProviders(
     })
     .join("\n");
 
-  const overpassQuery = `[out:json][timeout:15];(${queryParts});out center tags 40;`;
+  // Timeout 25s pour absorber les unions larges (catégorie "autre" → 17 tags
+  // donc 34 sous-requêtes node+way). `out center tags 60` suffit largement
+  // après dédup et tri par distance, on ne garde de toute façon que les 15
+  // premiers côté serveur.
+  const overpassQuery = `[out:json][timeout:25];(${queryParts});out center tags 60;`;
 
   try {
     const res = await fetch("https://overpass-api.de/api/interpreter", {
