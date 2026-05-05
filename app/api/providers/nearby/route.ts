@@ -92,6 +92,10 @@ interface NearbyProvider {
 
 // Mapping catégories → tags OpenStreetMap (Overpass).
 // Utilisé pour le fallback réel quand Google Places n'est pas disponible.
+// Pour `autre` (Tout métier) on inclut tous les métiers du bâtiment courants
+// qui n'ont pas d'entrée dédiée dans l'UI (couvreur, maçon, carreleur, etc.) :
+// le propriétaire ne doit pas être obligé de connaître la catégorie OSM
+// exacte pour trouver une entreprise qui réalise les travaux.
 const CATEGORY_TO_OSM_FILTERS: Record<string, string[]> = {
   plomberie: ["craft=plumber"],
   electricite: ["craft=electrician"],
@@ -101,7 +105,18 @@ const CATEGORY_TO_OSM_FILTERS: Record<string, string[]> = {
   peinture: ["craft=painter"],
   nettoyage: ["office=cleaning", "craft=cleaning"],
   jardinage: ["craft=gardener", "craft=tree_surgeon"],
-  autre: ["craft=handyman", "craft=builder", "shop=hardware"],
+  autre: [
+    "craft=handyman",
+    "craft=builder",
+    "craft=roofer",
+    "craft=stonemason",
+    "craft=tiler",
+    "craft=plasterer",
+    "craft=glazier",
+    "craft=metal_construction",
+    "shop=hardware",
+    "shop=trade",
+  ],
 };
 
 // Cache simple en mémoire (en production, utiliser Redis)
@@ -298,7 +313,10 @@ export async function GET(request: NextRequest) {
     // sont les coordonnées rooftop officielles du commerce — c'est la
     // meilleure précision possible côté API.
     // -------------------------------------------------------------------
-    const searchTerm = CATEGORY_TO_SEARCH_TERM[category] || "artisan dépannage";
+    // Fallback volontairement large : on ne biaise pas vers "dépannage" / 24h.
+    // Toute entreprise qui propose le métier doit pouvoir remonter, le
+    // propriétaire choisira ensuite qui contacter.
+    const searchTerm = CATEGORY_TO_SEARCH_TERM[category] || "artisan";
     const googleTypes = CATEGORY_TO_GOOGLE_TYPE[category] || [];
     const primaryType = googleTypes[0]; // Nearby Search n'accepte qu'un seul type
 
