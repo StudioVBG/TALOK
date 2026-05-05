@@ -40,9 +40,10 @@ const CATEGORY_TO_SEARCH_TERM: Record<string, string> = {
   peinture: "peintre bâtiment",
   nettoyage: "entreprise nettoyage",
   jardinage: "jardinier paysagiste",
-  // "autre" / Tout métier : terme volontairement large pour ne pas filtrer
-  // les artisans isolés (très présents en DROM-COM où Google catégorise mal).
-  autre: "artisan",
+  // "autre" / Tout métier : on cible artisans ET entreprises (SARL, SAS,
+  // sociétés bâtiment). Mot "artisan" seul rate les entreprises classiques
+  // qui font les mêmes travaux. "bâtiment" attrape les entreprises générales.
+  autre: "artisan entreprise bâtiment",
 };
 
 interface GooglePlaceResult {
@@ -116,6 +117,11 @@ const CATEGORY_TO_OSM_FILTERS: Record<string, string[]> = {
     "craft=metal_construction",
     "shop=hardware",
     "shop=trade",
+    // Entreprises (pas seulement artisans isolés) : `office=construction_company`
+    // est le tag canonique OSM pour les sociétés du bâtiment qui ne sont pas
+    // taguées craft=*. Sans ça, une SARL bâtiment de 12 salariés à Fort-de-France
+    // ne remontait jamais sur la carte.
+    "office=construction_company",
   ],
 };
 
