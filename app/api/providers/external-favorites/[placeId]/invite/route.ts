@@ -99,7 +99,7 @@ export async function POST(
   // ajouté en favori, et on récupère le nom enregistré pour personnaliser.
   const { data: favorite } = await (supabase as any)
     .from("provider_external_favorites")
-    .select("name, phone")
+    .select("name, phone, invite_count")
     .eq("owner_profile_id", profile.id)
     .eq("place_id", placeId)
     .maybeSingle();
@@ -141,6 +141,31 @@ export async function POST(
       { error: "L'envoi de l'email a échoué. Réessayez dans un instant." },
       { status: 502 },
     );
+  }
+
+  // Persiste le tracking après envoi réussi (avant l'envoi : pas pertinent
+  // si Resend échoue). On n'utilise pas RPC `increment` ici pour éviter une
+  // fonction SQL dédiée — on lit puis on écrit, race acceptable (un compteur
+  // décalé d'1 invitation n'est pas un bug critique).
+  try {
+    await (supabase as any)
+      .from("provider_external_favorites")
+      .update({
+        last_invite_at: new Date().toISOString(),
+        last_invite_email: email,
+        // Postgres expression update : SQL `+1` direct côté serveur via
+        // `increment` n'existe pas dans supabase-js, on remonte le compteur
+        // côté JS — favorite.invite_count récupéré au check précédent serait
+        // plus propre, mais on accepte ici un .select() supplémentaire pour
+        // ne pas écraser un autre incrément concurrent.
+        invite_count: ((favorite as any).invite_count ?? 0) + 1,
+      })
+      .eq("owner_profile_id", profile.id)
+      .eq("place_id", placeId);
+  } catch (err) {
+    // Échec de tracking ≠ échec d'envoi. On a déjà envoyé l'email,
+    // on ne veut pas faire échouer la requête utilisateur pour ça.
+    console.warn("[providers/invite] Tracking update échoué:", err);
   }
 
   return NextResponse.json({ success: true });

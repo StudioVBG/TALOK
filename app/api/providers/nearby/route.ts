@@ -129,7 +129,7 @@ const CATEGORY_TO_OSM_FILTERS: Record<string, string[]> = {
   ],
 };
 
-// Cache Redis (Upstash) — partagé entre toutes les lambdas Netlify/Vercel.
+// Cache Redis (Upstash) — partagé entre toutes les lambdas Vercel.
 // En dev sans Redis configuré, getRedis() retourne null et le code dégrade
 // proprement (pas de cache, mais fonctionnel).
 const CACHE_TTL_SEC = 24 * 60 * 60; // 24 heures

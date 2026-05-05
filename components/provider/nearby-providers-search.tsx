@@ -108,6 +108,10 @@ interface NearbyProvider {
   photo_url?: string;
   google_maps_url: string;
   source: "google" | "osm";
+  // Tracking d'invitation (persisté côté DB via /invite). Optionnel : seuls
+  // les favoris en ont, et seulement après un envoi réussi.
+  last_invite_at?: string | null;
+  invite_count?: number | null;
 }
 
 // Mapping ServiceType (filtres marketplace) -> catégorie API /api/providers/nearby
@@ -180,6 +184,18 @@ function readSavedIds(): Set<string> {
   } catch {
     return new Set();
   }
+}
+
+// Format compact d'une date d'invitation pour le badge — au-delà de 30 jours
+// on affiche la date courte, sinon "il y a X jours" pour rester lisible.
+function formatInviteDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days <= 0) return "aujourd'hui";
+  if (days === 1) return "hier";
+  if (days < 30) return `il y a ${days} j`;
+  return `le ${d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}`;
 }
 
 function writeSavedIds(ids: Set<string>) {
@@ -286,13 +302,15 @@ export function NearbyProvidersSearch({
           const notes = (found?.notes as string) ?? "";
           setDetailNotes(notes);
           setDetailNotesLoaded(notes);
-          if (found?.website || found?.phone) {
+          if (found) {
             setDetailProvider((prev) =>
               prev && prev.id === provider.id
                 ? {
                     ...prev,
                     website: prev.website ?? found.website ?? undefined,
                     phone: prev.phone ?? found.phone ?? undefined,
+                    last_invite_at: found.last_invite_at ?? null,
+                    invite_count: found.invite_count ?? 0,
                   }
                 : prev,
             );
@@ -540,6 +558,40 @@ export function NearbyProvidersSearch({
         : properties.find((p) => p.id === selectedPropertyId) ?? null,
     [isControlled, controlledProperty, properties, selectedPropertyId],
   );
+
+  // Décale légèrement les markers superposés (mêmes coords ou très proches).
+  // Sans ça, 3 artisans dans le même immeuble ne donnent qu'un seul pin
+  // cliquable. On regroupe par lat/lng arrondis à 4 décimales (~11 m), puis
+  // on dispose en cercle de ~13 m autour du point d'origine. Les coords
+  // réelles utilisées pour la distance restent celles de `providers`.
+  const displayedProviders = useMemo<NearbyProvider[]>(() => {
+    const groups = new Map<string, NearbyProvider[]>();
+    for (const p of providers) {
+      const key = `${p.latitude.toFixed(4)},${p.longitude.toFixed(4)}`;
+      const arr = groups.get(key);
+      if (arr) arr.push(p);
+      else groups.set(key, [p]);
+    }
+
+    const result: NearbyProvider[] = [];
+    for (const group of groups.values()) {
+      if (group.length === 1) {
+        result.push(group[0]);
+        continue;
+      }
+      // ~13 m de rayon. 0.00012° de latitude ≈ 13.3 m partout.
+      const radiusDeg = 0.00012;
+      for (let i = 0; i < group.length; i++) {
+        const angle = (2 * Math.PI * i) / group.length;
+        result.push({
+          ...group[i],
+          latitude: group[i].latitude + radiusDeg * Math.cos(angle),
+          longitude: group[i].longitude + radiusDeg * Math.sin(angle),
+        });
+      }
+    }
+    return result;
+  }, [providers]);
 
   useEffect(() => {
     setIsClient(true);
@@ -976,7 +1028,7 @@ export function NearbyProvidersSearch({
                     </Marker>
                   )}
                   {providerIcon &&
-                    providers.map((p) => (
+                    displayedProviders.map((p) => (
                       <Marker
                         key={p.id}
                         position={[p.latitude, p.longitude]}
@@ -1129,12 +1181,21 @@ export function NearbyProvidersSearch({
           {detailProvider && (
             <>
               <SheetHeader className="text-left">
-                <SheetTitle className="flex items-start gap-2 pr-6">
+                <SheetTitle className="flex flex-wrap items-start gap-2 pr-6">
                   <span className="flex-1">{detailProvider.name}</span>
                   {savedIds.has(detailProvider.id) && (
                     <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 flex-shrink-0">
                       <BookmarkCheck className="h-3 w-3 mr-1" />
                       Enregistré
+                    </Badge>
+                  )}
+                  {detailProvider.last_invite_at && (
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 flex-shrink-0">
+                      <Mail className="h-3 w-3 mr-1" />
+                      Invité {formatInviteDate(detailProvider.last_invite_at)}
+                      {detailProvider.invite_count && detailProvider.invite_count > 1
+                        ? ` (×${detailProvider.invite_count})`
+                        : ""}
                     </Badge>
                   )}
                 </SheetTitle>

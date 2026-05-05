@@ -6,7 +6,7 @@
  * sliding window), largement suffisant pour de l'anti-abus SMS.
  *
  * À utiliser pour les flux SMS / OTP qui doivent survivre en
- * environnement serverless multi-instances (Netlify).
+ * environnement serverless multi-instances (Vercel).
  * Ne remplace pas lib/security/rate-limit.ts (route-level legacy).
  */
 
