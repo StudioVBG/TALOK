@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@/lib/supabase/server';
 import { withFeatureAccess, createSubscriptionErrorResponse } from '@/lib/middleware/subscription-check';
+import { extractPostalCode } from '@/lib/properties/address';
 
 export async function GET(request: NextRequest) {
   try {
@@ -281,13 +282,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Filtre par localisation (matching textuel sur zones_intervention).
-    // `location` peut être un code postal, une ville ou un département.
+    // Filtre par localisation (matching sur zones_intervention).
+    // `location` peut être un code postal (5 chiffres), une ville, ou un dép.
+    // Ancien comportement : `includes(lowerLocation)` matchait "Paris" dans
+    // "Parisot" et n'était pas robuste sur "75001". On normalise et on
+    // privilégie le code postal s'il est fourni.
     if (location) {
-      const lowerLocation = location.toLowerCase();
-      filteredProviders = filteredProviders.filter(p =>
-        p.location.toLowerCase().includes(lowerLocation),
-      );
+      const postal = extractPostalCode(location);
+      if (postal) {
+        // Match strict sur le code postal (présent en clair dans p.location).
+        filteredProviders = filteredProviders.filter((p) =>
+          p.location.includes(postal),
+        );
+      } else {
+        // Match sur mots entiers (\\b) pour éviter "Paris" → "Parisot".
+        const tokens = normalizeLocation(location)
+          .split(/\s+/)
+          .filter((t) => t.length >= 3);
+        if (tokens.length > 0) {
+          filteredProviders = filteredProviders.filter((p) => {
+            const haystack = normalizeLocation(p.location);
+            return tokens.every((t) => new RegExp(`\\b${escapeRegex(t)}\\b`).test(haystack));
+          });
+        }
+      }
     }
 
     // Filtre par rayon (uniquement pour les artisans géocodés).
@@ -368,6 +386,24 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Normalise une chaîne de lieu pour comparaison (lowercase, sans accent).
+// "Saint-Étienne" → "saint etienne", "fort-de-france" → "fort de france".
+function normalizeLocation(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize("NFD")
+    // Unicode block U+0300–U+036F = combining diacritical marks.
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[-']/g, " ")
+    .trim();
+}
+
+// Échappe les caractères regex spéciaux (sécurité — `location` vient de
+// query string utilisateur).
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // Distance en km entre deux points (formule de Haversine).

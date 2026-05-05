@@ -49,6 +49,15 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { geocodeAddress } from "@/lib/services/geocoding.service";
@@ -99,6 +108,10 @@ interface NearbyProvider {
   photo_url?: string;
   google_maps_url: string;
   source: "google" | "osm";
+  // Tracking d'invitation (persisté côté DB via /invite). Optionnel : seuls
+  // les favoris en ont, et seulement après un envoi réussi.
+  last_invite_at?: string | null;
+  invite_count?: number | null;
 }
 
 // Mapping ServiceType (filtres marketplace) -> catégorie API /api/providers/nearby
@@ -142,6 +155,21 @@ const RADIUS_OPTIONS = [
 interface NearbyProvidersSearchProps {
   initialCategory?: string;
   className?: string;
+  // Pilotage externe (parent = source de vérité). Quand fournis, le composant
+  // n'affiche plus son propre sélecteur de bien ni de rayon, et n'appelle plus
+  // /api/properties ni geocodeAddress (déjà fait par le parent).
+  controlledProperty?: PropertyOption | null;
+  controlledCenter?: { lat: number; lng: number } | null;
+  // Permet de différencier "géocoding en cours" (skeleton) de
+  // "géocoding échoué" (message d'erreur).
+  controlledCenterLoading?: boolean;
+  controlledRadiusKm?: number;
+  // Permet au composant de demander au parent d'augmenter le rayon
+  // (ex. bouton "Élargir à 50 km" affiché quand 0 résultat).
+  onRequestRadiusKm?: (radiusKm: number) => void;
+  // Pour adapter le titre : "Aucun prestataire référencé" vs "Compléter les
+  // prestataires Talok par les artisans à proximité".
+  hasTalokProviders?: boolean;
 }
 
 const SAVED_PROVIDERS_STORAGE_KEY = "talok:nearby-providers:saved";
@@ -156,6 +184,18 @@ function readSavedIds(): Set<string> {
   } catch {
     return new Set();
   }
+}
+
+// Format compact d'une date d'invitation pour le badge — au-delà de 30 jours
+// on affiche la date courte, sinon "il y a X jours" pour rester lisible.
+function formatInviteDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (days <= 0) return "aujourd'hui";
+  if (days === 1) return "hier";
+  if (days < 30) return `il y a ${days} j`;
+  return `le ${d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}`;
 }
 
 function writeSavedIds(ids: Set<string>) {
@@ -173,16 +213,29 @@ function writeSavedIds(ids: Set<string>) {
 export function NearbyProvidersSearch({
   initialCategory = "autre",
   className,
+  controlledProperty,
+  controlledCenter,
+  controlledCenterLoading = false,
+  controlledRadiusKm,
+  onRequestRadiusKm,
+  hasTalokProviders = false,
 }: NearbyProvidersSearchProps) {
   const router = useRouter();
   const { toast } = useToast();
+  const isControlled = controlledProperty !== undefined;
   const [properties, setProperties] = useState<PropertyOption[]>([]);
-  const [propertiesLoading, setPropertiesLoading] = useState(true);
+  const [propertiesLoading, setPropertiesLoading] = useState(!isControlled);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>("");
   const [category, setCategory] = useState<string>(normalizeCategory(initialCategory));
-  const [radius, setRadius] = useState<number>(10000);
+  // Rayon en mètres (Google Places + Overpass attendent des mètres).
+  // Quand le parent pilote, on dérive ce rayon depuis controlledRadiusKm.
+  const [radius, setRadius] = useState<number>(
+    controlledRadiusKm ? controlledRadiusKm * 1000 : 10000,
+  );
 
-  const [center, setCenter] = useState<{ lat: number; lng: number } | null>(null);
+  const [center, setCenter] = useState<{ lat: number; lng: number } | null>(
+    controlledCenter ?? null,
+  );
   const [providers, setProviders] = useState<NearbyProvider[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -197,6 +250,13 @@ export function NearbyProvidersSearch({
   const [propertyIcon, setPropertyIcon] = useState<any>(null);
   const [providerIcon, setProviderIcon] = useState<any>(null);
   const [isClient, setIsClient] = useState(false);
+
+  // Dialog d'invitation in-app (remplace l'ancien mailto: qui sortait
+  // l'utilisateur vers son client mail). Le mail part de no-reply@talok.fr.
+  const [inviteProvider, setInviteProvider] = useState<NearbyProvider | null>(null);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteMessage, setInviteMessage] = useState("");
+  const [inviteSending, setInviteSending] = useState(false);
 
   // Hydratation immédiate depuis localStorage (UI réactive sans flash),
   // puis réconciliation avec le serveur (source de vérité multi-appareils).
@@ -242,13 +302,15 @@ export function NearbyProvidersSearch({
           const notes = (found?.notes as string) ?? "";
           setDetailNotes(notes);
           setDetailNotesLoaded(notes);
-          if (found?.website || found?.phone) {
+          if (found) {
             setDetailProvider((prev) =>
               prev && prev.id === provider.id
                 ? {
                     ...prev,
                     website: prev.website ?? found.website ?? undefined,
                     phone: prev.phone ?? found.phone ?? undefined,
+                    last_invite_at: found.last_invite_at ?? null,
+                    invite_count: found.invite_count ?? 0,
                   }
                 : prev,
             );
@@ -316,21 +378,58 @@ export function NearbyProvidersSearch({
     }
   };
 
-  const inviteByEmail = (provider: NearbyProvider) => {
-    const subject = "Rejoignez-moi sur Talok pour gérer nos interventions";
-    const body = [
-      `Bonjour ${provider.name},`,
-      "",
-      "Je gère mes biens immobiliers avec Talok (talok.fr) et j'aimerais vous y inscrire pour pouvoir échanger nos devis, factures et photos d'intervention au même endroit.",
-      "",
-      "Créez votre compte prestataire gratuit ici :",
-      "https://talok.fr/auth/register?role=provider",
-      "",
-      "Talok est un logiciel français (né en Martinique) de gestion locative — votre profil est gratuit côté artisan.",
-      "",
-      "Merci !",
-    ].join("\n");
-    window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const openInviteDialog = (provider: NearbyProvider) => {
+    // Pré-condition : le prestataire doit être en favori (la route serveur
+    // l'exige pour éviter le spam). On s'en assure proactivement ici plutôt
+    // que d'attendre l'erreur 404.
+    if (!savedIds.has(provider.id)) {
+      toast({
+        title: "Enregistrez d'abord ce prestataire",
+        description: "Cliquez sur ‟Enregistrer” avant de l'inviter sur Talok.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setInviteProvider(provider);
+    setInviteEmail("");
+    setInviteMessage("");
+  };
+
+  const submitInvite = async () => {
+    if (!inviteProvider) return;
+    setInviteSending(true);
+    try {
+      const res = await fetch(
+        `/api/providers/external-favorites/${encodeURIComponent(inviteProvider.id)}/invite`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: inviteEmail.trim(),
+            custom_message: inviteMessage.trim() || undefined,
+          }),
+        },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err?.error || "HTTP " + res.status);
+      }
+      toast({
+        title: "Invitation envoyée",
+        description: `Un email a été envoyé à ${inviteEmail}.`,
+      });
+      setInviteProvider(null);
+    } catch (err) {
+      console.error("[NearbyProvidersSearch] Invitation échouée:", err);
+      toast({
+        title: "Envoi impossible",
+        description:
+          err instanceof Error ? err.message : "Réessayez dans un instant.",
+        variant: "destructive",
+      });
+    } finally {
+      setInviteSending(false);
+    }
   };
 
   const inviteBySms = (provider: NearbyProvider) => {
@@ -453,16 +552,65 @@ export function NearbyProvidersSearch({
   };
 
   const selectedProperty = useMemo(
-    () => properties.find((p) => p.id === selectedPropertyId) ?? null,
-    [properties, selectedPropertyId]
+    () =>
+      isControlled
+        ? controlledProperty ?? null
+        : properties.find((p) => p.id === selectedPropertyId) ?? null,
+    [isControlled, controlledProperty, properties, selectedPropertyId],
   );
+
+  // Décale légèrement les markers superposés (mêmes coords ou très proches).
+  // Sans ça, 3 artisans dans le même immeuble ne donnent qu'un seul pin
+  // cliquable. On regroupe par lat/lng arrondis à 4 décimales (~11 m), puis
+  // on dispose en cercle de ~13 m autour du point d'origine. Les coords
+  // réelles utilisées pour la distance restent celles de `providers`.
+  const displayedProviders = useMemo<NearbyProvider[]>(() => {
+    const groups = new Map<string, NearbyProvider[]>();
+    for (const p of providers) {
+      const key = `${p.latitude.toFixed(4)},${p.longitude.toFixed(4)}`;
+      const arr = groups.get(key);
+      if (arr) arr.push(p);
+      else groups.set(key, [p]);
+    }
+
+    const result: NearbyProvider[] = [];
+    for (const group of groups.values()) {
+      if (group.length === 1) {
+        result.push(group[0]);
+        continue;
+      }
+      // ~13 m de rayon. 0.00012° de latitude ≈ 13.3 m partout.
+      const radiusDeg = 0.00012;
+      for (let i = 0; i < group.length; i++) {
+        const angle = (2 * Math.PI * i) / group.length;
+        result.push({
+          ...group[i],
+          latitude: group[i].latitude + radiusDeg * Math.cos(angle),
+          longitude: group[i].longitude + radiusDeg * Math.sin(angle),
+        });
+      }
+    }
+    return result;
+  }, [providers]);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Charger les biens du propriétaire
+  // Sync rayon contrôlé (km → m).
   useEffect(() => {
+    if (controlledRadiusKm != null) setRadius(controlledRadiusKm * 1000);
+  }, [controlledRadiusKm]);
+
+  // Sync centre contrôlé.
+  useEffect(() => {
+    if (controlledCenter !== undefined) setCenter(controlledCenter);
+  }, [controlledCenter]);
+
+  // Charger les biens du propriétaire — sauté en mode contrôlé (le parent a
+  // déjà chargé /api/properties + géocodé, on évite ainsi le double appel).
+  useEffect(() => {
+    if (isControlled) return;
     let cancelled = false;
     (async () => {
       setPropertiesLoading(true);
@@ -496,7 +644,7 @@ export function NearbyProvidersSearch({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [isControlled]);
 
   // Préparer les icônes Leaflet (uniquement côté client)
   useEffect(() => {
@@ -539,8 +687,10 @@ export function NearbyProvidersSearch({
     });
   }, []);
 
-  // Géocoder l'adresse du bien sélectionné si pas déjà fait
+  // Géocoder l'adresse du bien sélectionné si pas déjà fait — sauté en mode
+  // contrôlé (le parent fournit déjà `controlledCenter`).
   useEffect(() => {
+    if (isControlled) return;
     let cancelled = false;
     (async () => {
       if (!selectedProperty) {
@@ -568,7 +718,7 @@ export function NearbyProvidersSearch({
     return () => {
       cancelled = true;
     };
-  }, [selectedProperty]);
+  }, [isControlled, selectedProperty]);
 
   // Lancer la recherche dès qu'on a un centre, une catégorie et un rayon
   useEffect(() => {
@@ -615,7 +765,7 @@ export function NearbyProvidersSearch({
     };
   }, [center, category, radius, selectedProperty]);
 
-  if (propertiesLoading) {
+  if (!isControlled && propertiesLoading) {
     return (
       <Card className={className}>
         <CardContent className="py-8 space-y-3">
@@ -626,7 +776,7 @@ export function NearbyProvidersSearch({
     );
   }
 
-  if (properties.length === 0) {
+  if (!isControlled && properties.length === 0) {
     return (
       <Card className={className}>
         <CardContent className="py-12 text-center space-y-3">
@@ -634,6 +784,41 @@ export function NearbyProvidersSearch({
           <h3 className="font-medium">Aucun bien à géolocaliser</h3>
           <p className="text-sm text-muted-foreground">
             Ajoutez un bien avec son adresse pour voir les prestataires autour.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // En mode contrôlé, le parent gère le cas "pas de bien sélectionné" — on
+  // affiche un placeholder léger plutôt qu'un Card vide qui désaligne le layout.
+  if (isControlled && !selectedProperty) {
+    return null;
+  }
+
+  // Si le parent a fourni un bien mais que le géocodage a échoué (rare en
+  // DROM-COM avec une adresse mal formée), on aide l'utilisateur à corriger
+  // au lieu de boucler sur un loader silencieux (BUG audit #5).
+  // controlledCenterLoading distingue "Nominatim en cours" (skeleton) de
+  // "Nominatim a renvoyé null" (vrai échec).
+  if (isControlled && selectedProperty && controlledCenter === null) {
+    if (controlledCenterLoading) {
+      return (
+        <Card className={className}>
+          <CardContent className="py-8 space-y-3">
+            <Skeleton className="h-6 w-1/3" />
+            <Skeleton className="h-64 w-full" />
+          </CardContent>
+        </Card>
+      );
+    }
+    return (
+      <Card className={className}>
+        <CardContent className="py-8 text-center space-y-2">
+          <MapPin className="h-10 w-10 mx-auto text-muted-foreground" />
+          <h3 className="font-medium">Bien non géolocalisé</h3>
+          <p className="text-sm text-muted-foreground">
+            L'adresse <strong>{selectedProperty.address}</strong> n'a pas pu être trouvée. Vérifiez l'orthographe sur la fiche du bien (Mes biens → Modifier).
           </p>
         </CardContent>
       </Card>
@@ -649,32 +834,37 @@ export function NearbyProvidersSearch({
             Prestataires autour de votre logement
           </h3>
           <p className="text-sm text-muted-foreground">
-            Aucun prestataire référencé pour le moment — voici les artisans à proximité du bien sélectionné.
+            {hasTalokProviders
+              ? "Complétez les prestataires Talok ci-dessus avec les artisans et entreprises à proximité du bien sélectionné."
+              : "Aucun prestataire Talok inscrit dans la zone — voici les artisans et entreprises à proximité du bien sélectionné."}
           </p>
         </div>
 
-        {/* Filtres */}
-        <div className="grid gap-3 md:grid-cols-3">
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
-              Bien
-            </label>
-            <Select
-              value={selectedPropertyId}
-              onValueChange={setSelectedPropertyId}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choisir un bien" />
-              </SelectTrigger>
-              <SelectContent>
-                {properties.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        {/* Filtres — sélecteur Métier uniquement en mode contrôlé (le parent
+            pilote le bien et le rayon pour éviter les doublons). */}
+        <div className={isControlled ? "max-w-sm" : "grid gap-3 md:grid-cols-3"}>
+          {!isControlled && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                Bien
+              </label>
+              <Select
+                value={selectedPropertyId}
+                onValueChange={setSelectedPropertyId}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choisir un bien" />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-1">
             <label className="text-xs font-medium text-muted-foreground">
               Métier
@@ -692,26 +882,28 @@ export function NearbyProvidersSearch({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-muted-foreground">
-              Rayon de recherche
-            </label>
-            <Select
-              value={String(radius)}
-              onValueChange={(v) => setRadius(Number(v))}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {RADIUS_OPTIONS.map((r) => (
-                  <SelectItem key={r.value} value={String(r.value)}>
-                    {r.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!isControlled && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                Rayon de recherche
+              </label>
+              <Select
+                value={String(radius)}
+                onValueChange={(v) => setRadius(Number(v))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {RADIUS_OPTIONS.map((r) => (
+                    <SelectItem key={r.value} value={String(r.value)}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
 
         {premiumRequired && (
@@ -752,11 +944,38 @@ export function NearbyProvidersSearch({
         )}
 
         {dataSource && providers.length === 0 && !loading && !premiumRequired && !error && (
-          <div className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground flex gap-2">
-            <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
-            <span>
-              Aucun prestataire trouvé pour cette catégorie dans un rayon de {Math.round(radius / 1000)} km. Essayez d'élargir le rayon ou de changer de métier.
-            </span>
+          <div className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex gap-2">
+              <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+              <span>
+                Aucun prestataire trouvé pour cette catégorie dans un rayon de {Math.round(radius / 1000)} km.
+              </span>
+            </div>
+            {/* Bouton "élargir auto" — disponible si on n'est pas déjà au max
+                de la liste (50 km en mode contrôlé via parent, 50 km en
+                standalone via RADIUS_OPTIONS). */}
+            {(() => {
+              const currentKm = Math.round(radius / 1000);
+              const nextKm = currentKm < 20 ? 50 : currentKm < 50 ? 100 : null;
+              if (!nextKm) return null;
+              const handleExpand = () => {
+                if (isControlled && onRequestRadiusKm) {
+                  onRequestRadiusKm(nextKm);
+                } else {
+                  setRadius(nextKm * 1000);
+                }
+              };
+              return (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleExpand}
+                  className="self-start sm:self-auto"
+                >
+                  Élargir à {nextKm} km
+                </Button>
+              );
+            })()}
           </div>
         )}
 
@@ -809,7 +1028,7 @@ export function NearbyProvidersSearch({
                     </Marker>
                   )}
                   {providerIcon &&
-                    providers.map((p) => (
+                    displayedProviders.map((p) => (
                       <Marker
                         key={p.id}
                         position={[p.latitude, p.longitude]}
@@ -962,12 +1181,21 @@ export function NearbyProvidersSearch({
           {detailProvider && (
             <>
               <SheetHeader className="text-left">
-                <SheetTitle className="flex items-start gap-2 pr-6">
+                <SheetTitle className="flex flex-wrap items-start gap-2 pr-6">
                   <span className="flex-1">{detailProvider.name}</span>
                   {savedIds.has(detailProvider.id) && (
                     <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 flex-shrink-0">
                       <BookmarkCheck className="h-3 w-3 mr-1" />
                       Enregistré
+                    </Badge>
+                  )}
+                  {detailProvider.last_invite_at && (
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-100 flex-shrink-0">
+                      <Mail className="h-3 w-3 mr-1" />
+                      Invité {formatInviteDate(detailProvider.last_invite_at)}
+                      {detailProvider.invite_count && detailProvider.invite_count > 1
+                        ? ` (×${detailProvider.invite_count})`
+                        : ""}
                     </Badge>
                   )}
                 </SheetTitle>
@@ -1139,7 +1367,7 @@ export function NearbyProvidersSearch({
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       variant="outline"
-                      onClick={() => inviteByEmail(detailProvider)}
+                      onClick={() => openInviteDialog(detailProvider)}
                     >
                       <Mail className="h-4 w-4 mr-2" />
                       Email
@@ -1166,6 +1394,82 @@ export function NearbyProvidersSearch({
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Dialog d'invitation in-app — remplace l'ancien mailto: pour que le
+          mail parte de no-reply@talok.fr (deliverability + tracking UTM). */}
+      <Dialog
+        open={!!inviteProvider}
+        onOpenChange={(open) => {
+          if (!open) setInviteProvider(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Inviter sur Talok</DialogTitle>
+            <DialogDescription>
+              {inviteProvider
+                ? `${inviteProvider.name} recevra un email d'invitation depuis Talok avec un lien pour créer sa fiche prestataire gratuite.`
+                : ""}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-xs font-medium" htmlFor="invite-email">
+                Email du prestataire *
+              </label>
+              <Input
+                id="invite-email"
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="contact@artisan.fr"
+                autoFocus
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium" htmlFor="invite-message">
+                Message personnalisé (optionnel)
+              </label>
+              <Textarea
+                id="invite-message"
+                value={inviteMessage}
+                onChange={(e) => setInviteMessage(e.target.value)}
+                placeholder="Ex. : Bonjour, j'ai 3 biens en location à Fort-de-France et j'aimerais vous y associer pour les interventions futures."
+                rows={3}
+                maxLength={2000}
+              />
+              <div className="text-right text-xs text-muted-foreground">
+                {inviteMessage.length}/2000
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setInviteProvider(null)}
+              disabled={inviteSending}
+            >
+              Annuler
+            </Button>
+            <Button
+              onClick={submitInvite}
+              disabled={inviteSending || !inviteEmail.trim()}
+            >
+              {inviteSending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Envoi…
+                </>
+              ) : (
+                <>
+                  <Mail className="h-4 w-4 mr-2" />
+                  Envoyer l'invitation
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

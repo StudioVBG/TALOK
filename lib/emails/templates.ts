@@ -2140,6 +2140,47 @@ export const emailTemplates = {
     };
   },
 
+  // Invitation envoyée par un propriétaire à un artisan repéré sur la
+  // marketplace (Google Places / OSM). Pas de compte créé côté Talok à ce
+  // stade — c'est juste un teaser pour pousser l'artisan à s'inscrire.
+  providerInviteFromOwner: (data: {
+    providerName: string;
+    ownerName: string;
+    customMessage?: string;
+    registerUrl: string;
+  }) => ({
+    subject: `${data.ownerName} vous invite sur Talok`,
+    html: baseLayout(`
+      <div class="content">
+        <h1>Bonjour ${escapeHtml(data.providerName)},</h1>
+        <p>
+          <strong>${escapeHtml(data.ownerName)}</strong> gère ses biens sur Talok et souhaite vous y retrouver pour échanger devis, factures et photos d'intervention au même endroit.
+        </p>
+
+        ${
+          data.customMessage
+            ? `<div class="highlight-box">
+                <p style="color: ${COLORS.gray[500]}; font-size: 14px; margin-bottom: 8px;">Message de ${escapeHtml(data.ownerName)} :</p>
+                <p style="margin: 4px 0; white-space: pre-line;">${escapeHtml(data.customMessage)}</p>
+              </div>`
+            : ""
+        }
+
+        <p>
+          Talok est un logiciel français de gestion locative (né en Martinique). La création de votre fiche prestataire est gratuite — vous touchez plus de propriétaires sans changer vos outils.
+        </p>
+
+        <div style="text-align: center;">
+          <a href="${data.registerUrl}" class="button">Créer ma fiche prestataire</a>
+        </div>
+
+        <p style="font-size: 13px; color: ${COLORS.gray[500]}; margin-top: 24px;">
+          Vous recevez ce message parce que ${escapeHtml(data.ownerName)} vous a recommandé manuellement depuis la marketplace Talok. Vous ne recevrez pas d'autres emails de notre part sans inscription.
+        </p>
+      </div>
+    `, `${data.ownerName} vous invite sur Talok`),
+  }),
+
   providerInvite: (data: {
     providerName: string;
     email: string;

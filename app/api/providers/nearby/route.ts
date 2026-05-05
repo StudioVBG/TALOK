@@ -10,12 +10,16 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/server";
 import { logGooglePlacesUsage } from "@/lib/services/google-places-usage";
-import { getPlanLevel, type PlanSlug } from "@/lib/subscriptions/plans";
 import {
   extractPostalCode,
   postalCodeToCountryCodes,
 } from "@/lib/properties/address";
 import { checkGooglePlacesQuota } from "@/lib/rate-limit/google-places";
+import { getRedis } from "@/lib/rate-limit/upstash";
+import {
+  withFeatureAccess,
+  createSubscriptionErrorResponse,
+} from "@/lib/middleware/subscription-check";
 
 // Mapping des catégories vers les types Google Places
 const CATEGORY_TO_GOOGLE_TYPE: Record<string, string[]> = {
@@ -40,7 +44,10 @@ const CATEGORY_TO_SEARCH_TERM: Record<string, string> = {
   peinture: "peintre bâtiment",
   nettoyage: "entreprise nettoyage",
   jardinage: "jardinier paysagiste",
-  autre: "dépannage artisan",
+  // "autre" / Tout métier : on cible artisans ET entreprises (SARL, SAS,
+  // sociétés bâtiment). Mot "artisan" seul rate les entreprises classiques
+  // qui font les mêmes travaux. "bâtiment" attrape les entreprises générales.
+  autre: "artisan entreprise bâtiment",
 };
 
 interface GooglePlaceResult {
@@ -90,6 +97,10 @@ interface NearbyProvider {
 
 // Mapping catégories → tags OpenStreetMap (Overpass).
 // Utilisé pour le fallback réel quand Google Places n'est pas disponible.
+// Pour `autre` (Tout métier) on inclut tous les métiers du bâtiment courants
+// qui n'ont pas d'entrée dédiée dans l'UI (couvreur, maçon, carreleur, etc.) :
+// le propriétaire ne doit pas être obligé de connaître la catégorie OSM
+// exacte pour trouver une entreprise qui réalise les travaux.
 const CATEGORY_TO_OSM_FILTERS: Record<string, string[]> = {
   plomberie: ["craft=plumber"],
   electricite: ["craft=electrician"],
@@ -99,12 +110,30 @@ const CATEGORY_TO_OSM_FILTERS: Record<string, string[]> = {
   peinture: ["craft=painter"],
   nettoyage: ["office=cleaning", "craft=cleaning"],
   jardinage: ["craft=gardener", "craft=tree_surgeon"],
-  autre: ["craft=handyman", "craft=builder", "shop=hardware"],
+  autre: [
+    "craft=handyman",
+    "craft=builder",
+    "craft=roofer",
+    "craft=stonemason",
+    "craft=tiler",
+    "craft=plasterer",
+    "craft=glazier",
+    "craft=metal_construction",
+    "shop=hardware",
+    "shop=trade",
+    // Entreprises (pas seulement artisans isolés) : `office=construction_company`
+    // est le tag canonique OSM pour les sociétés du bâtiment qui ne sont pas
+    // taguées craft=*. Sans ça, une SARL bâtiment de 12 salariés à Fort-de-France
+    // ne remontait jamais sur la carte.
+    "office=construction_company",
+  ],
 };
 
-// Cache simple en mémoire (en production, utiliser Redis)
-const cache = new Map<string, { data: NearbyProvider[]; timestamp: number }>();
-const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 heures
+// Cache Redis (Upstash) — partagé entre toutes les lambdas Vercel.
+// En dev sans Redis configuré, getRedis() retourne null et le code dégrade
+// proprement (pas de cache, mais fonctionnel).
+const CACHE_TTL_SEC = 24 * 60 * 60; // 24 heures
+const CACHE_PREFIX = "providers:nearby:v1";
 
 export async function GET(request: NextRequest) {
   try {
@@ -119,7 +148,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // Vérifier le plan de l'utilisateur (doit être Confort ou supérieur)
     const { data: profile } = await supabase
       .from("profiles")
       .select("id")
@@ -130,35 +158,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Profil non trouvé" }, { status: 404 });
     }
 
-    // Vérifier l'abonnement.
-    // NB : la table `subscriptions` est scopée par `owner_id` (FK profiles.id),
-    // pas `user_id`. L'ancienne requête `.eq("user_id", profile.id)` ne
-    // matchait JAMAIS, donc planSlug retombait toujours sur "gratuit" et
-    // tous les comptes — y compris entreprise — recevaient 403.
-    // On accepte aussi `trialing` car un compte en période d'essai a accès
-    // aux features de son plan.
-    const { data: subscription } = await supabase
-      .from("subscriptions")
-      .select("plan_slug, status")
-      .eq("owner_id", profile.id)
-      .in("status", ["active", "trialing"])
-      .maybeSingle();
-
-    const planSlug: PlanSlug = (subscription?.plan_slug as PlanSlug) || "gratuit";
-    // Confort+ = niveau confort ou supérieur (pro, enterprise_s/m/l/xl, legacy
-    // enterprise). On compare via getPlanLevel pour ne pas oublier les variantes
-    // entreprise — un slug `enterprise_s` n'aurait jamais matché la liste
-    // hardcodée précédente.
-    const isConfortOrHigher = getPlanLevel(planSlug) >= getPlanLevel("confort");
-
-    if (!isConfortOrHigher) {
+    // Aligner le gating UI ↔ API : la page /owner/providers vérifie déjà
+    // `providers_management` (Pro+) côté client. On utilise la même feature
+    // ici plutôt qu'un seuil ad-hoc Confort+ qui créait une incohérence
+    // (l'utilisateur Confort ne voyait jamais la page mais l'API l'aurait
+    // laissé passer).
+    const featureCheck = await withFeatureAccess(profile.id, "providers_management");
+    if (!featureCheck.allowed) {
+      // On garde la convention `error: premium_required` pour que l'UI
+      // continue d'afficher la modale d'upgrade contextuelle.
       return NextResponse.json(
         {
           error: "premium_required",
-          message: "Cette fonctionnalité nécessite un plan Confort ou supérieur",
+          message: featureCheck.message,
           upgrade_url: "/owner/money?tab=forfait",
+          required_plan: featureCheck.requiredPlan,
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -188,26 +204,35 @@ export async function GET(request: NextRequest) {
     // Vérifier la clé API Google
     const googleApiKey = process.env.GOOGLE_PLACES_API_KEY;
 
-    // Créer une clé de cache
-    const cacheKey = `${category}-${lat.toFixed(2)}-${lng.toFixed(2)}-${radius}`;
+    // Clé de cache Redis — la précision .toFixed(2) regroupe les requêtes
+    // dans un rayon de ~1 km, ce qui maximise les hits sans créer de biais.
+    const cacheKey = `${CACHE_PREFIX}:${category}:${lat.toFixed(2)}:${lng.toFixed(2)}:${radius}`;
+    const redis = getRedis();
 
-    // Vérifier le cache
-    const cached = cache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-      void logGooglePlacesUsage({
-        endpoint: "text_search",
-        source: "cache",
-        status: "ok",
-        category,
-        userId: user.id,
-        resultsCount: cached.data.length,
-        cacheHit: true,
-      });
-      return NextResponse.json({
-        providers: cached.data,
-        source: "cache",
-        cached: true,
-      });
+    if (redis) {
+      try {
+        const cached = await redis.get<NearbyProvider[]>(cacheKey);
+        if (cached && Array.isArray(cached)) {
+          void logGooglePlacesUsage({
+            endpoint: "text_search",
+            source: "cache",
+            status: "ok",
+            category,
+            userId: user.id,
+            resultsCount: cached.length,
+            cacheHit: true,
+          });
+          return NextResponse.json({
+            providers: cached,
+            source: "cache",
+            cached: true,
+          });
+        }
+      } catch (err) {
+        // Redis down → on ignore et on appelle Google/OSM directement
+        // (fail-open, comme tout le reste de la pile rate-limit).
+        console.warn("[providers/nearby] Redis read échoué:", err);
+      }
     }
 
     // Si on a une adresse mais pas de coordonnées, géocoder via Google (si dispo)
@@ -269,7 +294,7 @@ export async function GET(request: NextRequest) {
     // de vrais artisans présents dans OSM autour du bien sélectionné.
     if (!googleApiKey) {
       const osmResults = await searchOSMProviders(category, latitude, longitude, radius);
-      cache.set(cacheKey, { data: osmResults, timestamp: Date.now() });
+      await writeCache(redis, cacheKey, osmResults);
       void logGooglePlacesUsage({
         endpoint: "text_search",
         source: "osm",
@@ -296,9 +321,18 @@ export async function GET(request: NextRequest) {
     // sont les coordonnées rooftop officielles du commerce — c'est la
     // meilleure précision possible côté API.
     // -------------------------------------------------------------------
-    const searchTerm = CATEGORY_TO_SEARCH_TERM[category] || "artisan dépannage";
+    // Fallback volontairement large : on ne biaise pas vers "dépannage" / 24h.
+    // Toute entreprise qui propose le métier doit pouvoir remonter, le
+    // propriétaire choisira ensuite qui contacter.
+    const searchTerm = CATEGORY_TO_SEARCH_TERM[category] || "artisan";
     const googleTypes = CATEGORY_TO_GOOGLE_TYPE[category] || [];
     const primaryType = googleTypes[0]; // Nearby Search n'accepte qu'un seul type
+
+    // Pour "autre" / Tout métier on retire toute contrainte de type Google :
+    // `general_contractor` filtre la majorité des artisans indépendants
+    // (zéro résultat sur Fort-de-France 20 km par exemple). On laisse le
+    // keyword seul piloter la recherche.
+    const isAllCategories = category === "autre";
 
     const buildNearbyUrl = () => {
       const params = new URLSearchParams({
@@ -308,7 +342,7 @@ export async function GET(request: NextRequest) {
         language: "fr",
         key: googleApiKey,
       });
-      if (primaryType) params.set("type", primaryType);
+      if (primaryType && !isAllCategories) params.set("type", primaryType);
       return `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${params.toString()}`;
     };
 
@@ -342,7 +376,7 @@ export async function GET(request: NextRequest) {
       // Fallback OSM : on renvoie de vrais artisans depuis OpenStreetMap
       // plutôt que des données fictives.
       const osmResults = await searchOSMProviders(category, latitude, longitude, radius);
-      cache.set(cacheKey, { data: osmResults, timestamp: Date.now() });
+      await writeCache(redis, cacheKey, osmResults);
       return NextResponse.json({
         providers: osmResults,
         source: "osm",
@@ -413,7 +447,7 @@ export async function GET(request: NextRequest) {
       // un point qui apparaîtrait hors du cercle bleu sur la carte.
       .filter((p: NearbyProvider) => (p.distance_km ?? 0) <= radius / 1000);
 
-    cache.set(cacheKey, { data: providers, timestamp: Date.now() });
+    await writeCache(redis, cacheKey, providers);
 
     void logGooglePlacesUsage({
       endpoint: usedEndpoint,
@@ -437,6 +471,20 @@ export async function GET(request: NextRequest) {
       { error: "Erreur serveur" },
       { status: 500 }
     );
+  }
+}
+
+// Écriture cache Redis tolérante aux pannes (fail-open).
+async function writeCache(
+  redis: ReturnType<typeof getRedis>,
+  key: string,
+  data: NearbyProvider[],
+): Promise<void> {
+  if (!redis) return;
+  try {
+    await redis.set(key, data, { ex: CACHE_TTL_SEC });
+  } catch (err) {
+    console.warn("[providers/nearby] Redis write échoué:", err);
   }
 }
 
@@ -469,8 +517,21 @@ async function searchOSMProviders(
   centerLng: number,
   radiusMeters: number,
 ): Promise<NearbyProvider[]> {
+  // Pour "autre" / Tout métier on union TOUS les tags de toutes les
+  // catégories. Sans ça, en DROM-COM (couverture OSM craft=* éparse) la
+  // recherche ne retournait que `craft=handyman/builder` + `shop=hardware`
+  // — quasi inexistants à Fort-de-France ou Cayenne, donc liste vide.
   const filters =
-    CATEGORY_TO_OSM_FILTERS[category] || CATEGORY_TO_OSM_FILTERS.autre;
+    category === "autre"
+      ? Array.from(
+          new Set(
+            Object.entries(CATEGORY_TO_OSM_FILTERS)
+              .filter(([key]) => key !== "autre")
+              .flatMap(([, v]) => v)
+              .concat(CATEGORY_TO_OSM_FILTERS.autre),
+          ),
+        )
+      : CATEGORY_TO_OSM_FILTERS[category] || CATEGORY_TO_OSM_FILTERS.autre;
 
   // Union de nodes/ways pour chaque tag, dans le rayon demandé.
   const queryParts = filters
@@ -484,7 +545,11 @@ async function searchOSMProviders(
     })
     .join("\n");
 
-  const overpassQuery = `[out:json][timeout:15];(${queryParts});out center tags 40;`;
+  // Timeout 25s pour absorber les unions larges (catégorie "autre" → 17 tags
+  // donc 34 sous-requêtes node+way). `out center tags 60` suffit largement
+  // après dédup et tri par distance, on ne garde de toute façon que les 15
+  // premiers côté serveur.
+  const overpassQuery = `[out:json][timeout:25];(${queryParts});out center tags 60;`;
 
   try {
     const res = await fetch("https://overpass-api.de/api/interpreter", {
