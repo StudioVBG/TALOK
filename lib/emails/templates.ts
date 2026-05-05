@@ -698,6 +698,67 @@ export const emailTemplates = {
   },
 
   /**
+   * Notification de changement d'état de la 2FA (activation, désactivation,
+   * régénération des codes de récupération). Email d'alerte sécurité.
+   */
+  twoFactorChanged: (data: {
+    userName: string;
+    action: "enabled" | "disabled" | "recovery_codes_regenerated";
+    securityUrl: string;
+  }) => {
+    const safeUrl = escapeHtml(data.securityUrl);
+    const labels: Record<typeof data.action, { title: string; body: string; icon: string; color: string; subject: string }> = {
+      enabled: {
+        title: "Authentification à deux facteurs activée",
+        body: "L'authentification à deux facteurs (2FA) vient d'être <strong>activée</strong> sur votre compte Talok. Votre compte est désormais mieux protégé.",
+        icon: "🔒",
+        color: "#d1fae5",
+        subject: "Talok — 2FA activée sur votre compte",
+      },
+      disabled: {
+        title: "Authentification à deux facteurs désactivée",
+        body: "L'authentification à deux facteurs (2FA) vient d'être <strong>désactivée</strong> sur votre compte Talok. Si vous n'êtes pas à l'origine de cette action, sécurisez immédiatement votre compte.",
+        icon: "⚠️",
+        color: "#fee2e2",
+        subject: "Talok — 2FA désactivée sur votre compte",
+      },
+      recovery_codes_regenerated: {
+        title: "Codes de récupération régénérés",
+        body: "Les codes de récupération 2FA de votre compte Talok ont été <strong>régénérés</strong>. Les anciens codes ne sont plus valides.",
+        icon: "🔑",
+        color: "#dbeafe",
+        subject: "Talok — Codes de récupération 2FA régénérés",
+      },
+    };
+    const meta = labels[data.action];
+    return {
+      subject: meta.subject,
+      html: baseLayout(`
+        <div class="content">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="display: inline-block; width: 64px; height: 64px; background: ${meta.color}; border-radius: 50%; line-height: 64px; font-size: 32px;">${meta.icon}</div>
+          </div>
+
+          <h1 style="text-align: center;">${meta.title}</h1>
+          <p>Bonjour ${escapeHtml(data.userName)},</p>
+          <p>${meta.body}</p>
+
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${safeUrl}" class="button">Vérifier ma sécurité</a>
+          </div>
+
+          <div class="highlight-box">
+            <p style="font-size: 14px; color: ${COLORS.gray[500]}; margin: 0;">
+              Si vous n'êtes pas à l'origine de cette opération, contactez immédiatement le support et changez votre mot de passe.
+            </p>
+          </div>
+        </div>
+      `, meta.subject),
+      text: `Bonjour ${data.userName},\n\n${meta.title}.\n\nVérifiez votre sécurité : ${data.securityUrl}\n\nSi vous n'êtes pas à l'origine de cette opération, contactez immédiatement le support.`,
+    };
+  },
+
+  /**
    * Confirmation de changement de mot de passe
    */
   passwordChanged: (data: {

@@ -14,6 +14,7 @@ import { getServiceClient } from "@/lib/supabase/service-client";
 import { verifyTOTPCode, countRemainingRecoveryCodes } from "@/lib/auth/totp";
 import { decrypt, isEncrypted } from "@/lib/security/encryption.service";
 import { applyRateLimit } from "@/lib/security/rate-limit";
+import { sendTwoFactorChangeNotification } from "@/lib/emails/resend.service";
 
 export async function POST(request: NextRequest) {
   // Rate limit anti-bruteforce TOTP (5 tentatives / 15 min par IP)
@@ -164,6 +165,27 @@ export async function POST(request: NextRequest) {
         entity_type: "user",
         entity_id: user.id,
       } as any);
+
+      // Notification email (non bloquante)
+      if (user.email) {
+        try {
+          const { data: profile } = await serviceClient
+            .from("profiles")
+            .select("prenom, nom")
+            .eq("user_id", user.id)
+            .single();
+          const userName =
+            [profile?.prenom, profile?.nom].filter(Boolean).join(" ") ||
+            user.email.split("@")[0];
+          await sendTwoFactorChangeNotification({
+            userEmail: user.email,
+            userName,
+            action: "enabled",
+          });
+        } catch (emailError) {
+          console.error("[2FA] email notif activation failed:", emailError);
+        }
+      }
 
       return NextResponse.json({
         success: true,

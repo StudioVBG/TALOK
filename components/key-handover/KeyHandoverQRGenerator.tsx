@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import QRCode from "qrcode";
+import { createClient } from "@/lib/supabase/client";
 
 interface KeyItem {
   type: string;
@@ -53,6 +54,16 @@ export function KeyHandoverQRGenerator({ leaseId, className }: KeyHandoverQRGene
           const data = await res.json();
           if (data.confirmed) {
             setStatus("confirmed");
+          } else if (data.handover?.id) {
+            setQrData((prev) =>
+              prev ?? {
+                token: data.handover.token,
+                expires_at: data.handover.expires_at,
+                keys: data.handover.keys_list || [],
+                property_address: "",
+                handover_id: data.handover.id,
+              }
+            );
           }
         }
       } catch {
@@ -61,6 +72,40 @@ export function KeyHandoverQRGenerator({ leaseId, className }: KeyHandoverQRGene
     }
     checkStatus();
   }, [leaseId]);
+
+  // Realtime auto-refresh : dès que le locataire confirme la remise sur son
+  // mobile (via /key-handover/verify), key_handovers.confirmed_at devient non
+  // NULL — on reçoit l'événement et on bascule l'UI sans reload manuel.
+  useEffect(() => {
+    if (!qrData?.handover_id || status === "confirmed") return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`key-handover-${qrData.handover_id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "key_handovers",
+          filter: `id=eq.${qrData.handover_id}`,
+        },
+        (payload) => {
+          const next = payload.new as { confirmed_at?: string | null };
+          if (next?.confirmed_at) {
+            setStatus("confirmed");
+            toast({
+              title: "Clés remises",
+              description: "Le locataire vient de confirmer la réception.",
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [qrData?.handover_id, status, toast]);
 
   const generateQR = useCallback(async () => {
     setIsGenerating(true);
@@ -77,11 +122,25 @@ export function KeyHandoverQRGenerator({ leaseId, className }: KeyHandoverQRGene
       setStatus("generated");
 
       const url = `${window.location.origin}/key-handover/verify?token=${encodeURIComponent(data.token)}&lease=${leaseId}`;
-      const qrDataUrl = await QRCode.toDataURL(url, {
-        width: 256,
-        margin: 1,
-      });
-      setQrImageSrc(qrDataUrl);
+
+      // QR brandé Talok (avec logo au centre) côté serveur — fallback local
+      // si l'API échoue (offline, rate limit) pour ne pas bloquer le flux.
+      try {
+        const qrRes = await fetch("/api/qr/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data: url, withLogo: true, size: 256 }),
+        });
+        if (qrRes.ok) {
+          const { dataUrl } = await qrRes.json();
+          setQrImageSrc(dataUrl);
+        } else {
+          throw new Error("API QR indisponible");
+        }
+      } catch {
+        const qrDataUrl = await QRCode.toDataURL(url, { width: 256, margin: 1 });
+        setQrImageSrc(qrDataUrl);
+      }
     } catch (error) {
       toast({
         variant: "destructive",
@@ -135,8 +194,6 @@ export function KeyHandoverQRGenerator({ leaseId, className }: KeyHandoverQRGene
         title: "Clés remises",
         description: "La remise des clés est confirmée et le bail est maintenant actif.",
       });
-      // Reload pour refléter le nouveau statut
-      window.location.reload();
     } catch (error) {
       toast({
         variant: "destructive",

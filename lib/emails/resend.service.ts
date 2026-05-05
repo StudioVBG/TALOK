@@ -894,6 +894,34 @@ export async function sendCashReceiptSignatureRequest(data: {
 }
 
 /**
+ * Notification de changement d'état 2FA (activation, désactivation,
+ * régénération codes de récupération). Email d'alerte de sécurité.
+ */
+export async function sendTwoFactorChangeNotification(data: {
+  userEmail: string;
+  userName: string;
+  action: "enabled" | "disabled" | "recovery_codes_regenerated";
+}): Promise<EmailResult> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://talok.fr";
+  const template = emailTemplates.twoFactorChanged({
+    userName: data.userName,
+    action: data.action,
+    securityUrl: `${appUrl}/settings/security`,
+  });
+
+  return sendEmail({
+    to: data.userEmail,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+    tags: [
+      { name: "type", value: "2fa_change" },
+      { name: "action", value: data.action },
+    ],
+  });
+}
+
+/**
  * Confirmation de suppression de compte (RGPD Article 17)
  */
 export async function sendAccountDeletionConfirmation(
