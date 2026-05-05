@@ -105,6 +105,15 @@ const nextConfig = {
   
   // Optimisations expérimentales pour améliorer les performances
   experimental: {
+    // Inclure les assets de public/images/ dans les bundles serverless qui les
+    // lisent au runtime (lib/qr/generator.ts charge talok-icon.png pour brander
+    // les QR). Sans ça, Vercel/Netlify n'embarquent pas public/ dans la fonction.
+    outputFileTracingIncludes: {
+      "/api/auth/2fa/setup": ["./public/images/talok-icon.png"],
+      "/api/qr/generate": ["./public/images/talok-icon.png"],
+      "/api/leases/*/key-handover": ["./public/images/talok-icon.png"],
+    },
+
     // Packages à ne pas bundler côté serveur (résout les problèmes de syntaxe moderne)
     serverComponentsExternalPackages: [
       'cheerio',

@@ -45,11 +45,24 @@ const DEFAULT_OPTIONS: Required<BrandedQROptions> = {
 
 const LOGO_PATH = path.join(process.cwd(), "public/images/talok-icon.png");
 let cachedLogoBuffer: Buffer | null = null;
+let logoLoadFailed = false;
 
-async function getLogoBuffer(): Promise<Buffer> {
+async function getLogoBuffer(): Promise<Buffer | null> {
   if (cachedLogoBuffer) return cachedLogoBuffer;
-  cachedLogoBuffer = await fs.readFile(LOGO_PATH);
-  return cachedLogoBuffer;
+  if (logoLoadFailed) return null;
+  try {
+    cachedLogoBuffer = await fs.readFile(LOGO_PATH);
+    return cachedLogoBuffer;
+  } catch (err) {
+    // Vercel serverless ne bundle pas public/ par défaut. On log une fois et
+    // on retombe sur un QR sans logo plutôt que de bloquer le flow 2FA.
+    logoLoadFailed = true;
+    console.warn(
+      "[qr/generator] Logo Talok introuvable, fallback QR sans logo:",
+      err instanceof Error ? err.message : err
+    );
+    return null;
+  }
 }
 
 /**
@@ -83,13 +96,17 @@ export async function generateBrandedQR(
     return `data:image/png;base64,${qrBuffer.toString("base64")}`;
   }
 
+  const logoSrc = await getLogoBuffer();
+  if (!logoSrc) {
+    // Logo introuvable (Vercel serverless ne bundle pas public/) → QR plain
+    return `data:image/png;base64,${qrBuffer.toString("base64")}`;
+  }
+
   // Logo : 22% du QR, fond blanc arrondi pour isoler des modules
   const logoSize = Math.round(opts.size * 0.22);
   const padding = Math.round(opts.size * 0.018);
   const backgroundSize = logoSize + padding * 2;
   const radius = Math.round(backgroundSize * 0.18);
-
-  const logoSrc = await getLogoBuffer();
   const logoResized = await sharp(logoSrc)
     .resize(logoSize, logoSize, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 0 } })
     .png()
